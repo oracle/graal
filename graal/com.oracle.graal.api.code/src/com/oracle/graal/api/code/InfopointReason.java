@@ -20,36 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
-
-import java.lang.reflect.Method;
-
-import org.junit.Test;
+package com.oracle.graal.api.code;
 
 /**
- * Test class for small Java methods compiled to PTX kernels.
+ * A reason for infopoint insertion.
  */
-public class BasicPTXTest extends PTXTestBase {
+public enum InfopointReason {
 
-    @Test
-    public void testAdd() {
-        compile("testAddConst1I");
-    }
+    UNKNOWN, SAFEPOINT, CALL, IMPLICIT_EXCEPTION, METHOD_START, METHOD_END, LINE_NUMBER;
 
-    public static int testAddConst1I(int a) {
-        return a + 1;
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
-    }
 }

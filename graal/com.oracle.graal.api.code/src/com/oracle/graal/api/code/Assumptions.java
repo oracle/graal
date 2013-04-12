@@ -45,6 +45,40 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         private static final long serialVersionUID = -1936652569665112915L;
     }
 
+    public static final class NoFinalizableSubclass extends Assumption {
+
+        private static final long serialVersionUID = 6451169735564055081L;
+
+        private ResolvedJavaType receiverType;
+
+        public NoFinalizableSubclass(ResolvedJavaType receiverType) {
+            this.receiverType = receiverType;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + receiverType.hashCode();
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof NoFinalizableSubclass) {
+                NoFinalizableSubclass other = (NoFinalizableSubclass) obj;
+                return other.receiverType == receiverType;
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return "NoFinalizableSubclass[receiverType=" + toJavaName(receiverType) + "]";
+        }
+
+    }
+
     /**
      * An assumption about a unique subtype of a given type.
      */
@@ -273,12 +307,10 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
      * Records an assumption that the specified type has no finalizable subclasses.
      * 
      * @param receiverType the type that is assumed to have no finalizable subclasses
-     * @return {@code true} if the assumption was recorded and can be assumed; {@code false}
-     *         otherwise
      */
-    public boolean recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
+    public void recordNoFinalizableSubclassAssumption(ResolvedJavaType receiverType) {
         assert useOptimisticAssumptions;
-        return false;
+        record(new NoFinalizableSubclass(receiverType));
     }
 
     /**

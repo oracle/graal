@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
+ * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
-public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLengthProvider {
+public class InfopointNode extends AbstractStateSplit implements LIRLowerable, IterableNodeType {
 
-    @Input private ValueNode length;
+    public final InfopointReason reason;
 
-    public ValueNode length() {
-        return length;
-    }
-
-    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, ValueNode anchor) {
-        super(object, stamp, anchor);
-        this.length = length;
+    public InfopointNode(InfopointReason reason) {
+        super(StampFactory.forVoid());
+        this.reason = reason;
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        if (!(object() instanceof ArrayLengthProvider) || length() != ((ArrayLengthProvider) object()).length()) {
-            return this;
-        }
-        return super.canonical(tool);
+    public void generate(LIRGeneratorTool generator) {
+        generator.visitInfopointNode(this);
     }
 
-    @NodeIntrinsic
-    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp, Object anchor);
+    @Override
+    public boolean hasSideEffect() {
+        return false;
+    }
+
+    @Override
+    public void setStateAfter(FrameState state) {
+        // shield this node from frame state removal
+        // TODO turn InfopointNode into a FixedWithNextNode subclass with a self-maintained
+        // FrameState that is correctly dealt with by scheduling and partial escape analysis
+        if (state != null) {
+            super.setStateAfter(state);
+        }
+    }
+
 }

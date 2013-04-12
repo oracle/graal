@@ -33,6 +33,10 @@ import com.oracle.graal.phases.*;
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
     public void registerReplacements(Replacements replacements) {
+        for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
+            replacements.registerSubstitutions(clazz);
+        }
+
         if (GraalOptions.Intrinsify) {
             replacements.registerSubstitutions(MathSubstitutionsX86.class);
             replacements.registerSubstitutions(DoubleSubstitutions.class);

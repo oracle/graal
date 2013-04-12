@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -122,20 +121,6 @@ public @interface Snippet {
     }
 
     /**
-     * Denotes a snippet parameter that will be bound during snippet template
-     * {@linkplain SnippetTemplate#instantiate instantiation}.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.PARAMETER)
-    public @interface Parameter {
-
-        /**
-         * The name of this parameter.
-         */
-        String value();
-    }
-
-    /**
      * Denotes a snippet parameter representing 0 or more arguments that will be bound during
      * snippet template {@linkplain SnippetTemplate#instantiate instantiation}. During snippet
      * template creation, its value must be an array whose length specifies the number of arguments
@@ -149,11 +134,6 @@ public @interface Snippet {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     public @interface VarargsParameter {
-
-        /**
-         * The name of this parameter.
-         */
-        String value();
     }
 
     /**
@@ -163,61 +143,5 @@ public @interface Snippet {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
     public @interface ConstantParameter {
-
-        /**
-         * The name of this constant.
-         */
-        String value();
-    }
-
-    /**
-     * Wrapper for the prototype value of a {@linkplain VarargsParameter varargs} parameter.
-     */
-    public static class Varargs {
-
-        private final Object args;
-        private final Class argType;
-        private final int length;
-        private final Stamp argStamp;
-
-        public static Varargs vargargs(Object array, Stamp argStamp) {
-            return new Varargs(array, argStamp);
-        }
-
-        public Varargs(Object array, Stamp argStamp) {
-            assert array != null;
-            this.argType = array.getClass().getComponentType();
-            this.argStamp = argStamp;
-            assert this.argType != null;
-            this.length = java.lang.reflect.Array.getLength(array);
-            this.args = array;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Varargs) {
-                Varargs other = (Varargs) obj;
-                return other.argType == argType && other.length == length;
-            }
-            return false;
-        }
-
-        public Object getArray() {
-            return args;
-        }
-
-        public Stamp getArgStamp() {
-            return argStamp;
-        }
-
-        @Override
-        public int hashCode() {
-            return argType.hashCode() ^ length;
-        }
-
-        @Override
-        public String toString() {
-            return argType.getName() + "[" + length + "]";
-        }
     }
 }

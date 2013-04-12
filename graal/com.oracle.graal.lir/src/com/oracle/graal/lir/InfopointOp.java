@@ -20,36 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
+package com.oracle.graal.lir;
 
-import java.lang.reflect.Method;
+import static com.oracle.graal.lir.LIRInstruction.Opcode;
 
-import org.junit.Test;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * Test class for small Java methods compiled to PTX kernels.
+ * Emits an infopoint (only mark the position).
  */
-public class BasicPTXTest extends PTXTestBase {
+@Opcode("INFOPOINT")
+public class InfopointOp extends LIRInstruction {
 
-    @Test
-    public void testAdd() {
-        compile("testAddConst1I");
+    @State protected LIRFrameState state;
+
+    private final InfopointReason reason;
+
+    public InfopointOp(LIRFrameState state, InfopointReason reason) {
+        this.state = state;
+        this.reason = reason;
     }
 
-    public static int testAddConst1I(int a) {
-        return a + 1;
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
+    @Override
+    public void emitCode(TargetMethodAssembler tasm) {
+        tasm.recordInfopoint(tasm.asm.codeBuffer.position(), state, reason);
     }
 }

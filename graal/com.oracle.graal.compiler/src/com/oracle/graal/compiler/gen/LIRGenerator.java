@@ -335,7 +335,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
                 TTY.println("LIRGen for " + instr);
             }
             FrameState stateAfter = null;
-            if (instr instanceof StateSplit) {
+            if (instr instanceof StateSplit && !(instr instanceof InfopointNode)) {
                 stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr instanceof ValueNode) {

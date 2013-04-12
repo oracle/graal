@@ -1148,7 +1148,7 @@ public class InliningUtil {
             }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
-                assert frameState.bci != FrameState.BEFORE_BCI;
+                assert frameState.bci != FrameState.BEFORE_BCI : frameState;
                 if (frameState.bci == FrameState.AFTER_BCI) {
                     frameState.replaceAndDelete(stateAfter);
                 } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {

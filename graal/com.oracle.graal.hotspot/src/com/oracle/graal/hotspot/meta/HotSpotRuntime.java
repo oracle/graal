@@ -48,7 +48,7 @@ import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.Safepoint;
+import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
@@ -327,17 +327,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSubstitutions(AESCryptSubstitutions.class);
             replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyArrayCopy) {
-            replacements.registerSnippets(ArrayCopySnippets.class);
-        }
-        if (GraalOptions.IntrinsifyObjectClone) {
-            replacements.registerSnippets(ObjectCloneSnippets.class);
-        }
-
-        replacements.registerSnippets(BoxingSnippets.class);
-        for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
-            replacements.registerSubstitutions(clazz);
-        }
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
@@ -381,18 +370,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             addExceptionHandlersComment(compResult, hcf);
             Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
-            for (Safepoint safepoint : compResult.getSafepoints()) {
-                if (safepoint instanceof Call) {
-                    Call call = (Call) safepoint;
+            for (Infopoint infopoint : compResult.getInfopoints()) {
+                if (infopoint instanceof Call) {
+                    Call call = (Call) infopoint;
                     if (call.debugInfo != null) {
                         hcf.addComment(call.pcOffset + call.size, CodeUtil.append(new StringBuilder(100), call.debugInfo, slotFormatter).toString());
                     }
                     addOperandComment(hcf, call.pcOffset, "{" + getTargetName(call) + "}");
                 } else {
-                    if (safepoint.debugInfo != null) {
-                        hcf.addComment(safepoint.pcOffset, CodeUtil.append(new StringBuilder(100), safepoint.debugInfo, slotFormatter).toString());
+                    if (infopoint.debugInfo != null) {
+                        hcf.addComment(infopoint.pcOffset, CodeUtil.append(new StringBuilder(100), infopoint.debugInfo, slotFormatter).toString());
                     }
-                    addOperandComment(hcf, safepoint.pcOffset, "{safepoint}");
+                    addOperandComment(hcf, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
             for (DataPatch site : compResult.getDataReferences()) {
@@ -710,7 +699,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
-        } else if (n instanceof UnwindNode) {
+        } else if (n instanceof UnwindNode || n instanceof DeoptimizeNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
         } else if (n instanceof BoxNode) {
             boxingSnippets.lower((BoxNode) n);
