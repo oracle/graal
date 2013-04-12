@@ -519,4 +519,31 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         final Class<?> encl = mirror().getEnclosingClass();
         return encl == null ? null : fromClass(encl);
     }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        Constructor[] constructors = javaMirror.getDeclaredConstructors();
+        ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
+        for (int i = 0; i < constructors.length; i++) {
+            result[i] = HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaConstructor(constructors[i]);
+            assert result[i].isConstructor();
+        }
+        return result;
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        Method[] methods = javaMirror.getDeclaredMethods();
+        ResolvedJavaMethod[] result = new ResolvedJavaMethod[methods.length];
+        for (int i = 0; i < methods.length; i++) {
+            result[i] = HotSpotGraalRuntime.getInstance().getRuntime().lookupJavaMethod(methods[i]);
+            assert !result[i].isConstructor();
+        }
+        return result;
+    }
+
+    @Override
+    public Constant newArray(int length) {
+        return Constant.forObject(Array.newInstance(javaMirror, length));
+    }
 }

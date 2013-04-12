@@ -274,4 +274,22 @@ public interface ResolvedJavaType extends JavaType {
      * Returns the enclosing type of this type, if it exists, or {@code null}.
      */
     ResolvedJavaType getEnclosingType();
+
+    /**
+     * Returns an array reflecting all the constructors declared by this type. This method is
+     * similar to {@link Class#getDeclaredConstructors()} in terms of returned constructors.
+     */
+    ResolvedJavaMethod[] getDeclaredConstructors();
+
+    /**
+     * Returns an array reflecting all the methods declared by this type. This method is similar to
+     * {@link Class#getDeclaredMethods()} in terms of returned methods.
+     */
+    ResolvedJavaMethod[] getDeclaredMethods();
+
+    /**
+     * Creates a new array with this type as the component type and the specified length. This
+     * method is similar to {@link Array#newInstance(Class, int)}.
+     */
+    Constant newArray(int length);
 }

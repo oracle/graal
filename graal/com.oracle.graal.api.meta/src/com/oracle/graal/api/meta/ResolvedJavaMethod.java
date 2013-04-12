@@ -180,4 +180,26 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * Returns the localvariable table of this method.
      */
     LocalVariableTable getLocalVariableTable();
+
+    /**
+     * Invokes the underlying method represented by this object, on the specified object with the
+     * specified parameters. This method is similar to a reflective method invocation by
+     * {@link Method#invoke}.
+     * 
+     * @param receiver The receiver for the invocation, or {@code null} if it is a static method.
+     * @param arguments The arguments for the invocation.
+     * @return The value returned by the method invocation, or {@code null} if the return type is
+     *         {@code void}.
+     */
+    Constant invoke(Constant receiver, Constant[] arguments);
+
+    /**
+     * Uses the constructor represented by this object to create and initialize a new instance of
+     * the constructor's declaring class, with the specified initialization parameters. This method
+     * is similar to a reflective instantiation by {@link Constructor#newInstance}.
+     * 
+     * @param arguments The arguments for the constructor.
+     * @return The newly created and initialized object.
+     */
+    Constant newInstance(Constant[] arguments);
 }
