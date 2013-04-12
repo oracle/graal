@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.*;
 
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
-    private static final int ITERATIONS = 10000;
+    private static final int ITERATIONS = 1000000;
     private final MetaAccessProvider metaAccessProvider;
     Object[] argsToBind;
 
@@ -51,7 +51,6 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
     }
 
-    @Ignore
     @Test
     public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
