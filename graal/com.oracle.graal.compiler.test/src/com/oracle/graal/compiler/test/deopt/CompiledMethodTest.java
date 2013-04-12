@@ -27,13 +27,10 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.InstalledCode.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.test.*;
 
