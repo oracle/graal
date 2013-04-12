@@ -30,6 +30,7 @@ import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
@@ -307,8 +308,9 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         graph = parse(snippet);
         new ComputeProbabilityPhase().apply(graph);
         Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(runtime(), assumptions);
         new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
+        new PartialEscapeAnalysisPhase(false, false).apply(graph, context);
         new CullFrameStatesPhase().apply(graph);
     }
 
@@ -325,13 +327,14 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
                 new ComputeProbabilityPhase().apply(graph);
                 Assumptions assumptions = new Assumptions(false);
+                HighTierContext context = new HighTierContext(runtime(), assumptions);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 if (loopPeeling) {
                     new LoopTransformHighPhase().apply(graph);
                 }
                 new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
-                new PartialEscapeAnalysisPhase(runtime(), assumptions, false, false).apply(graph);
+                new CanonicalizerPhase().apply(graph, context);
+                new PartialEscapeAnalysisPhase(false, false).apply(graph, context);
 
                 for (MaterializeObjectNode materialize : graph.getNodes(MaterializeObjectNode.class)) {
                     materialize.getVirtualObject().materializeAt(materialize, materialize.getValues(), false, materialize.getLockCount());
@@ -339,12 +342,12 @@ public class BoxingEliminationTest extends GraalCompilerTest {
 
                 new CullFrameStatesPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase().apply(graph, context);
 
                 StructuredGraph referenceGraph = parse(referenceSnippet);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(referenceGraph);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
-                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(referenceGraph);
+                new CanonicalizerPhase().apply(referenceGraph, context);
                 assertEquals(referenceGraph, graph, excludeVirtual);
             }
         });

@@ -123,9 +123,11 @@ public class GraalCompiler {
             new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
         }
 
+        HighTierContext highTierContext = new HighTierContext(runtime, assumptions);
+
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (GraalOptions.IterativeInlining) {
-                new IterativeInliningPhase(runtime, replacements, assumptions, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph);
+                new IterativeInliningPhase(replacements, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph, highTierContext);
             } else {
                 new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
@@ -153,11 +155,10 @@ public class GraalCompiler {
             }
         }
 
-        if (GraalOptions.PartialEscapeAnalysis && !plan.isPhaseDisabled(PartialEscapeAnalysisPhase.class)) {
-            new PartialEscapeAnalysisPhase(runtime, assumptions, true, GraalOptions.OptEarlyReadElimination).apply(graph);
+        if (GraalOptions.PartialEscapeAnalysis) {
+            new PartialEscapeAnalysisPhase(true, GraalOptions.OptEarlyReadElimination).apply(graph, highTierContext);
         }
 
-        HighTierContext highTierContext = new HighTierContext(runtime, assumptions);
         Suites.HIGH_TIER.apply(graph, highTierContext);
 
         if (GraalOptions.OptCanonicalizer) {

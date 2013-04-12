@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
@@ -222,9 +223,10 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                 }
 
                 Assumptions assumptions = new Assumptions(false);
+                HighTierContext context = new HighTierContext(runtime(), assumptions);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                new PartialEscapeAnalysisPhase(runtime(), assumptions, iterativeEscapeAnalysis, false).apply(graph);
+                new PartialEscapeAnalysisPhase(iterativeEscapeAnalysis, false).apply(graph, context);
                 Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
                 ReturnNode returnNode = graph.getNodes(ReturnNode.class).first();
                 if (expectedConstantResult != null) {
