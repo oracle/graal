@@ -128,7 +128,7 @@ public final class GraalOptions {
     public static String  MethodFilter                       = null;
     public static boolean DumpOnError                        = ____;
     public static boolean GenericDynamicCounters             = ____;
-    public static boolean BenchmarkDynamicCounters           = ____;
+    public static String  BenchmarkDynamicCounters           = null;
 
     // Ideal graph visualizer output settings
     public static boolean PrintBinaryGraphs                  = true;
