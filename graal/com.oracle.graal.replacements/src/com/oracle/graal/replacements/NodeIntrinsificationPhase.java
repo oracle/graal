@@ -184,13 +184,6 @@ public class NodeIntrinsificationPhase extends Phase {
         return result;
     }
 
-    private ResolvedJavaType asBoxedType(ResolvedJavaType type) {
-        if (!type.isPrimitive()) {
-            return type;
-        }
-        return runtime.lookupJavaType(type.getKind().toBoxedJavaClass());
-    }
-
     private Node createNodeInstance(ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Constant[] nodeConstructorArguments) {
         ResolvedJavaMethod constructor = null;
         Constant[] arguments = null;
@@ -256,9 +249,8 @@ public class NodeIntrinsificationPhase extends Phase {
 
             ResolvedJavaType componentType = signature[fixedArgs].getComponentType();
             assert componentType != null;
-            ResolvedJavaType boxedType = asBoxedType(componentType);
             for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
-                if (!boxedType.isAssignableFrom(runtime.lookupJavaType(nodeConstructorArguments[i]))) {
+                if (!parameterTypes[i].equals(componentType)) {
                     return null;
                 }
             }
