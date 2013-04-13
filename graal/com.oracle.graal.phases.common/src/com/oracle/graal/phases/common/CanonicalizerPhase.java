@@ -50,7 +50,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     public interface CustomCanonicalizer {
 
-        ValueNode canonicalize(Node node);
+        ValueNode canonicalize(ValueNode node);
     }
 
     @Override
@@ -187,11 +187,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         public boolean tryCanonicalize(final Node node, final StructuredGraph graph) {
             boolean result = baseTryCanonicalize(node, graph);
-            if (!result && customCanonicalizer != null) {
-                ValueNode canonical = customCanonicalizer.canonicalize(node);
-                if (canonical == node && customCanonicalizer != null) {
-                    canonical = customCanonicalizer.canonicalize(node);
-                }
+            if (!result && customCanonicalizer != null && node instanceof ValueNode) {
+                ValueNode valueNode = (ValueNode) node;
+                ValueNode canonical = customCanonicalizer.canonicalize(valueNode);
                 result = performReplacement(node, graph, canonical);
             }
             return result;
