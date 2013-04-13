@@ -367,4 +367,46 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
         return unsafe.getByte(metaspaceMethod + config.methodIntrinsicIdOffset) & 0xff;
     }
+
+    @Override
+    public Constant invoke(Constant receiver, Constant[] arguments) {
+        assert !isConstructor();
+        Method javaMethod = toJava();
+        javaMethod.setAccessible(true);
+
+        Object[] objArguments = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            objArguments[i] = arguments[i].asBoxedValue();
+        }
+        Object objReceiver = receiver != null ? receiver.asObject() : null;
+
+        try {
+            Object objResult = javaMethod.invoke(objReceiver, objArguments);
+            return javaMethod.getReturnType() == void.class ? null : Constant.forBoxed(getSignature().getReturnKind(), objResult);
+
+        } catch (IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
+
+    @Override
+    public Constant newInstance(Constant[] arguments) {
+        assert isConstructor();
+        Constructor javaConstructor = toJavaConstructor();
+        javaConstructor.setAccessible(true);
+
+        Object[] objArguments = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            objArguments[i] = arguments[i].asBoxedValue();
+        }
+
+        try {
+            Object objResult = javaConstructor.newInstance(objArguments);
+            assert objResult != null;
+            return Constant.forObject(objResult);
+
+        } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
 }

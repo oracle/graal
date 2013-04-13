@@ -189,6 +189,10 @@ public class Debug {
         }
     }
 
+    public static DebugHistogram createHistogram(String name) {
+        return new DebugHistogramImpl(name);
+    }
+
     public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled,
                     final Collection<DebugDumpHandler> dumpHandlers, final PrintStream output) {
         return new DebugConfig() {

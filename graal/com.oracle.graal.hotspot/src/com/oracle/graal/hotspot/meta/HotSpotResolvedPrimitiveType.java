@@ -210,4 +210,19 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     public ResolvedJavaType getEnclosingType() {
         return null;
     }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return new ResolvedJavaMethod[0];
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return new ResolvedJavaMethod[0];
+    }
+
+    @Override
+    public Constant newArray(int length) {
+        return Constant.forObject(Array.newInstance(javaMirror, length));
+    }
 }

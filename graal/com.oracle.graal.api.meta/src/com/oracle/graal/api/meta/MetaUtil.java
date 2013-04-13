@@ -47,6 +47,17 @@ public class MetaUtil {
     }
 
     /**
+     * Calls {@link JavaType#resolve(ResolvedJavaType)} on an array of types.
+     */
+    public static ResolvedJavaType[] resolveJavaTypes(JavaType[] types, ResolvedJavaType accessingClass) {
+        ResolvedJavaType[] result = new ResolvedJavaType[types.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = types[i].resolve(accessingClass);
+        }
+        return result;
+    }
+
+    /**
      * Calls {@link MetaAccessProvider#lookupJavaType(Class)} on an array of classes.
      */
     public static ResolvedJavaType[] lookupJavaTypes(MetaAccessProvider metaAccess, Class[] classes) {
@@ -55,54 +66,6 @@ public class MetaUtil {
             result[i] = metaAccess.lookupJavaType(classes[i]);
         }
         return result;
-    }
-
-    /**
-     * Gets the {@link Class} mirror for a given resolved type.
-     * 
-     * @param type the type for which the Java mirror is requested
-     * @param loader class loader from which the class must be loaded (null means use the class
-     *            loader of the {@link MetaUtil} class)
-     * @return the mirror for {@code type}
-     * @throws NoClassDefFoundError if the mirror is not available
-     */
-    public static Class getMirrorOrFail(ResolvedJavaType type, ClassLoader loader) throws NoClassDefFoundError {
-        ResolvedJavaType elementalType = getElementalType(type);
-        Class elementalClass;
-        if (elementalType.isPrimitive()) {
-            elementalClass = elementalType.getKind().toJavaClass();
-        } else {
-            try {
-                elementalClass = Class.forName(toJavaName(elementalType), true, loader);
-            } catch (ClassNotFoundException e) {
-                throw (NoClassDefFoundError) new NoClassDefFoundError().initCause(e);
-            }
-        }
-        if (type.isArray()) {
-            ResolvedJavaType t = type;
-            while (t.getComponentType() != null) {
-                elementalClass = Array.newInstance(elementalClass, 0).getClass();
-                t = t.getComponentType();
-            }
-        }
-        assert elementalClass != null : toJavaName(type);
-        return elementalClass;
-    }
-
-    /**
-     * Gets the {@link Class} mirror for a given resolved type.
-     * 
-     * @param type the type for which the Java mirror is requested
-     * @param loader class loader from which the class must be loaded (null means use the class
-     *            loader of the {@link MetaUtil} class)
-     * @return the mirror for {@code type} or null if it is not available
-     */
-    public static Class getMirror(ResolvedJavaType type, ClassLoader loader) {
-        try {
-            return getMirrorOrFail(type, loader);
-        } catch (NoClassDefFoundError e) {
-            return null;
-        }
     }
 
     /**

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
-
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -67,41 +65,26 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    public static Class<?>[] signatureToTypes(Signature signature, JavaType receiverType, ResolvedJavaType accessingClass) {
-        int count = signature.getParameterCount(receiverType != null);
-        Class<?>[] result = new Class<?>[count];
-        int j = 0;
-        if (receiverType != null) {
-            result[0] = getMirrorOrFail(receiverType.resolve(accessingClass), Thread.currentThread().getContextClassLoader());
-            j = 1;
-        }
-        for (int i = 0; i + j < result.length; ++i) {
-            result[i + j] = getMirrorOrFail(signature.getParameterType(i, accessingClass).resolve(accessingClass), Thread.currentThread().getContextClassLoader());
-        }
-        return result;
-    }
-
     private boolean tryIntrinsify(Invoke invoke, List<Node> cleanUpReturnList) {
         ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
-        JavaType receiverType = invoke.methodCallTarget().isStatic() ? null : declaringClass;
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
+            assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
 
-            // TODO mjj non-static intrinsic?
-            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), null, declaringClass);
+            ResolvedJavaType[] parameterTypes = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(target), declaringClass);
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
-            Object[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
+            Constant[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
             if (nodeConstructorArguments == null) {
                 return false;
             }
 
             // Create the new node instance.
-            Class<?> c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(runtime, c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
+            ResolvedJavaType c = getNodeClass(target, intrinsic);
+            Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             invoke.asNode().graph().add(newInstance);
@@ -110,23 +93,22 @@ public class NodeIntrinsificationPhase extends Phase {
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnList.add(newInstance);
         } else if (target.getAnnotation(Fold.class) != null) {
-            Class<?>[] parameterTypes = signatureToTypes(target.getSignature(), receiverType, declaringClass);
+            ResolvedJavaType[] parameterTypes = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(target), declaringClass);
 
             // Prepare the arguments for the reflective method call
-            Object[] arguments = prepareArguments(invoke, parameterTypes, target, true);
+            Constant[] arguments = prepareArguments(invoke, parameterTypes, target, true);
             if (arguments == null) {
                 return false;
             }
-            Object receiver = null;
+            Constant receiver = null;
             if (!invoke.methodCallTarget().isStatic()) {
                 receiver = arguments[0];
-                arguments = Arrays.asList(arguments).subList(1, arguments.length).toArray();
-                parameterTypes = Arrays.asList(parameterTypes).subList(1, parameterTypes.length).toArray(new Class<?>[parameterTypes.length - 1]);
+                arguments = Arrays.copyOfRange(arguments, 1, arguments.length);
+                parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
             }
 
             // Call the method
-            Constant constant = callMethod(target.getSignature().getReturnKind(), getMirrorOrFail(declaringClass, Thread.currentThread().getContextClassLoader()), target.getName(), parameterTypes,
-                            receiver, arguments);
+            Constant constant = target.invoke(receiver, arguments);
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
@@ -151,9 +133,9 @@ public class NodeIntrinsificationPhase extends Phase {
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't
      */
-    private Object[] prepareArguments(Invoke invoke, Class<?>[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
+    private Constant[] prepareArguments(Invoke invoke, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
         NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
-        Object[] reflectionCallArguments = new Object[arguments.size()];
+        Constant[] reflectionCallArguments = new Constant[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
             int parameterIndex = i;
             if (!invoke.methodCallTarget().isStatic()) {
@@ -168,130 +150,63 @@ public class NodeIntrinsificationPhase extends Phase {
                 Constant constant = constantNode.asConstant();
                 Object o = constant.asBoxedValue();
                 if (o instanceof Class<?>) {
-                    reflectionCallArguments[i] = runtime.lookupJavaType((Class<?>) o);
-                    parameterTypes[i] = ResolvedJavaType.class;
+                    reflectionCallArguments[i] = Constant.forObject(runtime.lookupJavaType((Class<?>) o));
+                    parameterTypes[i] = runtime.lookupJavaType(ResolvedJavaType.class);
                 } else {
-                    if (parameterTypes[i] == boolean.class) {
-                        reflectionCallArguments[i] = Boolean.valueOf(constant.asInt() != 0);
-                    } else if (parameterTypes[i] == byte.class) {
-                        reflectionCallArguments[i] = Byte.valueOf((byte) constant.asInt());
-                    } else if (parameterTypes[i] == short.class) {
-                        reflectionCallArguments[i] = Short.valueOf((short) constant.asInt());
-                    } else if (parameterTypes[i] == char.class) {
-                        reflectionCallArguments[i] = Character.valueOf((char) constant.asInt());
+                    if (parameterTypes[i].getKind() == Kind.Boolean) {
+                        reflectionCallArguments[i] = Constant.forObject(Boolean.valueOf(constant.asInt() != 0));
+                    } else if (parameterTypes[i].getKind() == Kind.Byte) {
+                        reflectionCallArguments[i] = Constant.forObject(Byte.valueOf((byte) constant.asInt()));
+                    } else if (parameterTypes[i].getKind() == Kind.Short) {
+                        reflectionCallArguments[i] = Constant.forObject(Short.valueOf((short) constant.asInt()));
+                    } else if (parameterTypes[i].getKind() == Kind.Char) {
+                        reflectionCallArguments[i] = Constant.forObject(Character.valueOf((char) constant.asInt()));
                     } else {
-                        reflectionCallArguments[i] = o;
+                        reflectionCallArguments[i] = constant;
                     }
                 }
             } else {
-                reflectionCallArguments[i] = argument;
-                parameterTypes[i] = ValueNode.class;
+                reflectionCallArguments[i] = Constant.forObject(argument);
+                parameterTypes[i] = runtime.lookupJavaType(ValueNode.class);
             }
         }
         return reflectionCallArguments;
     }
 
-    private static Class<?> getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
-        Class<?> result = intrinsic.value();
-        if (result == NodeIntrinsic.class) {
-            return getMirrorOrFail(target.getDeclaringClass(), Thread.currentThread().getContextClassLoader());
+    private ResolvedJavaType getNodeClass(ResolvedJavaMethod target, NodeIntrinsic intrinsic) {
+        ResolvedJavaType result;
+        if (intrinsic.value() == NodeIntrinsic.class) {
+            result = target.getDeclaringClass();
+        } else {
+            result = runtime.lookupJavaType(intrinsic.value());
         }
-        assert Node.class.isAssignableFrom(result);
+        assert runtime.lookupJavaType(ValueNode.class).isAssignableFrom(result);
         return result;
     }
 
-    private static Class asBoxedType(Class type) {
-        if (!type.isPrimitive()) {
-            return type;
-        }
+    private Node createNodeInstance(ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Constant[] nodeConstructorArguments) {
+        ResolvedJavaMethod constructor = null;
+        Constant[] arguments = null;
 
-        if (Boolean.TYPE == type) {
-            return Boolean.class;
-        }
-        if (Character.TYPE == type) {
-            return Character.class;
-        }
-        if (Byte.TYPE == type) {
-            return Byte.class;
-        }
-        if (Short.TYPE == type) {
-            return Short.class;
-        }
-        if (Integer.TYPE == type) {
-            return Integer.class;
-        }
-        if (Long.TYPE == type) {
-            return Long.class;
-        }
-        if (Float.TYPE == type) {
-            return Float.class;
-        }
-        assert Double.TYPE == type;
-        return Double.class;
-    }
+        for (ResolvedJavaMethod c : nodeClass.getDeclaredConstructors()) {
+            Constant[] match = match(c, parameterTypes, nodeConstructorArguments);
 
-    static final int VARARGS = 0x00000080;
-
-    private static Node createNodeInstance(MetaAccessProvider runtime, Class<?> nodeClass, Class<?>[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType,
-                    Object[] nodeConstructorArguments) {
-        Object[] arguments = null;
-        Constructor<?> constructor = null;
-        boolean needsMetaAccessProviderArgument = false;
-        nextConstructor: for (Constructor c : nodeClass.getDeclaredConstructors()) {
-            needsMetaAccessProviderArgument = false;
-            Class[] signature = c.getParameterTypes();
-            if (signature.length != 0 && signature[0] == MetaAccessProvider.class) {
-                // Chop off the MetaAccessProvider first parameter
-                signature = Arrays.copyOfRange(signature, 1, signature.length);
-                needsMetaAccessProviderArgument = true;
-            }
-            if ((c.getModifiers() & VARARGS) != 0) {
-                int fixedArgs = signature.length - 1;
-                if (parameterTypes.length < fixedArgs) {
-                    continue nextConstructor;
+            if (match != null) {
+                if (constructor == null) {
+                    constructor = c;
+                    arguments = match;
+                } else {
+                    throw new GraalInternalError("Found multiple constructors in " + nodeClass + " compatible with signature " + Arrays.toString(parameterTypes) + ": " + constructor + ", " + c);
                 }
-
-                for (int i = 0; i < fixedArgs; i++) {
-                    if (!parameterTypes[i].equals(signature[i])) {
-                        continue nextConstructor;
-                    }
-                }
-
-                Class componentType = signature[fixedArgs].getComponentType();
-                assert componentType != null : "expected last parameter of varargs constructor " + c + " to be an array type";
-                Class boxedType = asBoxedType(componentType);
-                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
-                    if (!boxedType.isInstance(nodeConstructorArguments[i])) {
-                        continue nextConstructor;
-                    }
-                }
-                arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
-                int varargsLength = nodeConstructorArguments.length - fixedArgs;
-                Object varargs = Array.newInstance(componentType, varargsLength);
-                for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
-                    Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i]);
-                }
-                arguments[fixedArgs] = varargs;
-                constructor = c;
-                break;
-            } else if (Arrays.equals(parameterTypes, signature)) {
-                arguments = nodeConstructorArguments;
-                constructor = c;
-                break;
             }
         }
         if (constructor == null) {
             throw new GraalInternalError("Could not find constructor in " + nodeClass + " compatible with signature " + Arrays.toString(parameterTypes));
         }
-        if (needsMetaAccessProviderArgument) {
-            Object[] copy = new Object[arguments.length + 1];
-            System.arraycopy(arguments, 0, copy, 1, arguments.length);
-            copy[0] = runtime;
-            arguments = copy;
-        }
-        constructor.setAccessible(true);
+
         try {
-            ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments);
+            ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments).asObject();
+
             if (setStampFromReturnType) {
                 if (returnType.getKind() == Kind.Object) {
                     intrinsicNode.setStamp(StampFactory.declared(returnType));
@@ -305,26 +220,58 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    /**
-     * Calls a Java method via reflection.
-     */
-    private static Constant callMethod(Kind returnKind, Class<?> holder, String name, Class<?>[] parameterTypes, Object receiver, Object[] arguments) {
-        Method method;
-        try {
-            method = holder.getDeclaredMethod(name, parameterTypes);
-            method.setAccessible(true);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    private Constant[] match(ResolvedJavaMethod c, ResolvedJavaType[] parameterTypes, Constant[] nodeConstructorArguments) {
+        Constant[] arguments = null;
+        boolean needsMetaAccessProviderArgument = false;
+
+        ResolvedJavaType[] signature = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
+        if (signature.length != 0 && signature[0].equals(runtime.lookupJavaType(MetaAccessProvider.class))) {
+            // Chop off the MetaAccessProvider first parameter
+            signature = Arrays.copyOfRange(signature, 1, signature.length);
+            needsMetaAccessProviderArgument = true;
         }
-        try {
-            Object result = method.invoke(receiver, arguments);
-            if (result == null) {
+
+        if (Arrays.equals(parameterTypes, signature)) {
+            // Exact match
+            arguments = nodeConstructorArguments;
+
+        } else if (signature.length > 0 && signature[signature.length - 1].isArray()) {
+            // Last constructor parameter is an array, so check if we have a vararg match
+            int fixedArgs = signature.length - 1;
+            if (parameterTypes.length < fixedArgs) {
                 return null;
             }
-            return Constant.forBoxed(returnKind, result);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            for (int i = 0; i < fixedArgs; i++) {
+                if (!parameterTypes[i].equals(signature[i])) {
+                    return null;
+                }
+            }
+
+            ResolvedJavaType componentType = signature[fixedArgs].getComponentType();
+            assert componentType != null;
+            for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                if (!parameterTypes[i].equals(componentType)) {
+                    return null;
+                }
+            }
+            arguments = Arrays.copyOf(nodeConstructorArguments, fixedArgs + 1);
+            arguments[fixedArgs] = componentType.newArray(nodeConstructorArguments.length - fixedArgs);
+
+            Object varargs = arguments[fixedArgs].asObject();
+            for (int i = fixedArgs; i < nodeConstructorArguments.length; i++) {
+                Array.set(varargs, i - fixedArgs, nodeConstructorArguments[i].asBoxedValue());
+            }
+        } else {
+            return null;
         }
+
+        if (needsMetaAccessProviderArgument) {
+            Constant[] copy = new Constant[arguments.length + 1];
+            System.arraycopy(arguments, 0, copy, 1, arguments.length);
+            copy[0] = Constant.forObject(runtime);
+            arguments = copy;
+        }
+        return arguments;
     }
 
     private static String sourceLocation(Node n) {
