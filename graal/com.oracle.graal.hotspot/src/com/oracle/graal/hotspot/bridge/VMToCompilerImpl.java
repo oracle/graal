@@ -393,6 +393,10 @@ public class VMToCompilerImpl implements VMToCompiler {
         System.gc();
         phaseTransition("bootstrap2");
 
+        if (GraalOptions.CompileTheWorld != null) {
+            new CompileTheWorld().compile();
+            System.exit(0);
+        }
     }
 
     private MetricRateInPhase parsedBytecodesPerSecond;

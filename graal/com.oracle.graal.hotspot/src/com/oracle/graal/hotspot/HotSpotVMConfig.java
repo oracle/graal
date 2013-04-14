@@ -37,6 +37,9 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int codeEntryAlignment;
     public boolean verifyOops;
     public boolean ciTime;
+    public boolean compileTheWorld;
+    public int compileTheWorldStartAt;
+    public int compileTheWorldStopAt;
     public boolean printCompilation;
     public boolean printInlining;
     public boolean useFastLocking;

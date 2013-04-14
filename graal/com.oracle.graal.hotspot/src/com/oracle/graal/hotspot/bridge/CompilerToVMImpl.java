@@ -79,6 +79,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
     @Override
+    public native int constantPoolLength(HotSpotResolvedObjectType pool);
+
+    @Override
     public native Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
 
     @Override
