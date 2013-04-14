@@ -30,6 +30,13 @@ package com.oracle.graal.api.meta;
 public interface ConstantPool {
 
     /**
+     * Returns the number of entries the constant pool.
+     * 
+     * @return number of entries in the constant pool
+     */
+    int length();
+
+    /**
      * Ensures that the type referenced by the specified constant pool entry is loaded and
      * initialized. This can be used to compile time resolve a type. It works for field, method, or
      * type constant pool entries.

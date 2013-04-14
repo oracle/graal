@@ -88,6 +88,9 @@ public final class GraalOptions {
     public static int     SlowQueueCutoff                    = 100000;
     public static boolean SlowCompileThreads                 = ____;
     public static boolean DynamicCompilePriority             = ____;
+    public static String  CompileTheWorld                    = null;
+    public static int     CompileTheWorldStartAt             = 1;
+    public static int     CompileTheWorldStopAt              = Integer.MAX_VALUE;
 
     // graph caching
     public static boolean CacheGraphs                        = true;

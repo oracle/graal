@@ -40,6 +40,11 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
     }
 
     @Override
+    public int length() {
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().constantPoolLength(type);
+    }
+
+    @Override
     public Object lookupConstant(int cpi) {
         assert cpi != 0;
         Object constant = HotSpotGraalRuntime.getInstance().getCompilerToVM().lookupConstantInPool(type, cpi);
