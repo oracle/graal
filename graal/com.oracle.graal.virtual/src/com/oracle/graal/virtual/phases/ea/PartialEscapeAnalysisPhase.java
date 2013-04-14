@@ -181,14 +181,13 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
                 }
             }
         }
-        // CheckStyle: stop system..print check
         boolean success = true;
         for (Node node : obsoleteNodes) {
             if (flood.isMarked(node)) {
-                System.out.print("offending node path:");
+                TTY.print("offending node path:");
                 Node current = node;
                 while (current != null) {
-                    System.out.println(current.toString());
+                    TTY.println(current.toString());
                     current = path.get(current);
                     if (current != null && current instanceof FixedNode && !obsoleteNodes.contains(current)) {
                         break;
@@ -197,7 +196,6 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
                 success = false;
             }
         }
-        // CheckStyle: resume system..print check
         return success;
     }
 

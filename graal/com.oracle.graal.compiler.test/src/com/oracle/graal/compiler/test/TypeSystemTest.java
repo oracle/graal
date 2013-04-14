@@ -205,21 +205,20 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    // CheckStyle: stop system..print check
     public static void outputGraph(StructuredGraph graph, String message) {
-        System.out.println("========================= " + message);
+        TTY.println("========================= " + message);
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
         for (Block block : schedule.getCFG().getBlocks()) {
-            System.out.print("Block " + block + " ");
+            TTY.print("Block " + block + " ");
             if (block == schedule.getCFG().getStartBlock()) {
-                System.out.print("* ");
+                TTY.print("* ");
             }
-            System.out.print("-> ");
+            TTY.print("-> ");
             for (Block succ : block.getSuccessors()) {
-                System.out.print(succ + " ");
+                TTY.print(succ + " ");
             }
-            System.out.println();
+            TTY.println();
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
                 outputNode(node);
             }
@@ -227,11 +226,11 @@ public class TypeSystemTest extends GraalCompilerTest {
     }
 
     private static void outputNode(Node node) {
-        System.out.print("  " + node + "    (usage count: " + node.usages().count() + ") (inputs:");
+        TTY.print("  " + node + "    (usage count: " + node.usages().count() + ") (inputs:");
         for (Node input : node.inputs()) {
-            System.out.print(" " + input.toString(Verbosity.Id));
+            TTY.print(" " + input.toString(Verbosity.Id));
         }
-        System.out.println(")");
+        TTY.println(")");
         if (node instanceof MergeNode) {
             for (PhiNode phi : ((MergeNode) node).phis()) {
                 outputNode(phi);
@@ -239,7 +238,6 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    // CheckStyle: resume system..print check
     private <T extends Node & Node.IterableNodeType> void test(String snippet, Class<T> clazz) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
