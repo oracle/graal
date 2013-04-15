@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.phases.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.*;
@@ -140,7 +139,7 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
-        Suites.HIGH_TIER.apply(graph, highTierContext);
+        Suites.DEFAULT.highTier.apply(graph, highTierContext);
 
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 

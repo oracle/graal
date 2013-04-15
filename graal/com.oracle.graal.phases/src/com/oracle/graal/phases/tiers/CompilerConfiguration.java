@@ -20,12 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
 
-public class Suites {
+public interface CompilerConfiguration {
 
-    public static final PhaseSuite<HighTierContext> HIGH_TIER = new HighTier();
+    PhaseSuite<HighTierContext> createHighTier();
 }
