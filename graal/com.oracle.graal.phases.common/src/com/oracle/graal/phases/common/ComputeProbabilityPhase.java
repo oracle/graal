@@ -346,7 +346,7 @@ public class ComputeProbabilityPhase extends Phase {
         private static Scope createScope(Loop loop, HashMap<Loop, Scope> processedLoops) {
             Scope parent = processedLoops.get(loop.parent);
             if (parent == null) {
-                parent = createScope(loop, processedLoops);
+                parent = createScope(loop.parent, processedLoops);
             }
             Scope result = new Scope(loop.loopBegin(), parent);
             processedLoops.put(loop, result);
