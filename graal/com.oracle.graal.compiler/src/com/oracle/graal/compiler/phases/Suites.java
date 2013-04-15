@@ -22,59 +22,10 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import java.util.*;
-
-import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.phases.ea.*;
 
 public class Suites {
 
-    public static final PhaseSuite<HighTierContext> HIGH_TIER = createHighTier();
-
-    private static PhaseSuite<HighTierContext> createHighTier() {
-        ArrayList<BasePhase<? super HighTierContext>> phases = new ArrayList<>();
-
-        if (GraalOptions.FullUnroll) {
-            phases.add(new LoopFullUnrollPhase());
-            if (GraalOptions.OptCanonicalizer) {
-                phases.add(new CanonicalizerPhase());
-            }
-        }
-
-        if (GraalOptions.OptTailDuplication) {
-            phases.add(new TailDuplicationPhase());
-            if (GraalOptions.OptCanonicalizer) {
-                phases.add(new CanonicalizerPhase());
-            }
-        }
-
-        if (GraalOptions.PartialEscapeAnalysis) {
-            phases.add(new PartialEscapeAnalysisPhase(true, GraalOptions.OptEarlyReadElimination));
-        }
-
-        if (GraalOptions.OptConvertDeoptsToGuards) {
-            phases.add(new ConvertDeoptimizeToGuardPhase());
-        }
-
-        phases.add(new LockEliminationPhase());
-
-        if (GraalOptions.OptLoopTransform) {
-            phases.add(new LoopTransformHighPhase());
-            phases.add(new LoopTransformLowPhase());
-        }
-        phases.add(new RemoveValueProxyPhase());
-
-        if (GraalOptions.CullFrameStates) {
-            phases.add(new CullFrameStatesPhase());
-        }
-
-        if (GraalOptions.OptCanonicalizer) {
-            phases.add(new CanonicalizerPhase());
-        }
-
-        return new PhaseSuite<>("HighTier", phases);
-    }
+    public static final PhaseSuite<HighTierContext> HIGH_TIER = new HighTier();
 }

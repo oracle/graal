@@ -30,9 +30,27 @@ public class PhaseSuite<C> extends BasePhase<C> {
 
     private final List<BasePhase<? super C>> phases;
 
-    public PhaseSuite(String name, List<BasePhase<? super C>> phases) {
-        super(name);
-        this.phases = phases;
+    public PhaseSuite() {
+        this.phases = new ArrayList<>();
+    }
+
+    protected final void addPhase(BasePhase<? super C> phase) {
+        phases.add(phase);
+    }
+
+    protected final ListIterator<BasePhase<? super C>> findPhase(Class<? extends BasePhase<? super C>> phaseClass) {
+        ListIterator<BasePhase<? super C>> it = phases.listIterator();
+        findNextPhase(it, phaseClass);
+        return it;
+    }
+
+    protected static <C> void findNextPhase(ListIterator<BasePhase<? super C>> it, Class<? extends BasePhase<? super C>> phaseClass) {
+        while (it.hasNext()) {
+            BasePhase<? super C> phase = it.next();
+            if (phaseClass.isInstance(phase)) {
+                break;
+            }
+        }
     }
 
     @Override
