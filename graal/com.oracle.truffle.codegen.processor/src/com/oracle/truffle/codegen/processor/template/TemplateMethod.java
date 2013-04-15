@@ -188,13 +188,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return prev;
     }
 
-    public List<TypeData> getSignature(TypeSystemData typeSystem) {
+    public TypeData getReturnSignature() {
+        return getReturnType().getTypeSystemType();
+    }
+
+    public List<TypeData> getSignature() {
         List<TypeData> types = new ArrayList<>();
-        for (ActualParameter parameter : getReturnTypeAndParameters()) {
+        for (ActualParameter parameter : getParameters()) {
             if (!parameter.getSpecification().isSignature()) {
                 continue;
             }
-            TypeData typeData = parameter.getActualTypeData(typeSystem);
+            TypeData typeData = parameter.getTypeSystemType();
             if (typeData != null) {
                 types.add(typeData);
             }
@@ -222,14 +226,27 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return compare;
     }
 
+    public List<ActualParameter> getParametersAfter(ActualParameter genericParameter) {
+        boolean found = false;
+        List<ActualParameter> foundParameters = new ArrayList<>();
+        for (ActualParameter param : getParameters()) {
+            if (param.getLocalName().equals(genericParameter.getLocalName())) {
+                found = true;
+            } else if (found) {
+                foundParameters.add(param);
+            }
+        }
+        return foundParameters;
+    }
+
     public int compareBySignature(TemplateMethod compareMethod) {
         TypeSystemData typeSystem = getTemplate().getTypeSystem();
         if (typeSystem != compareMethod.getTemplate().getTypeSystem()) {
             throw new IllegalStateException("Cannot compare two methods with different type systems.");
         }
 
-        List<TypeData> signature1 = getSignature(typeSystem);
-        List<TypeData> signature2 = compareMethod.getSignature(typeSystem);
+        List<TypeData> signature1 = getSignature();
+        List<TypeData> signature2 = compareMethod.getSignature();
         if (signature1.size() != signature2.size()) {
             return signature2.size() - signature1.size();
         }
@@ -243,6 +260,12 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
                 // We cannot define an order.
                 return 0;
             }
+        }
+        if (result == 0) {
+            TypeData returnSignature1 = getReturnSignature();
+            TypeData returnSignature2 = compareMethod.getReturnSignature();
+
+            result = compareActualParameter(typeSystem, returnSignature1, returnSignature2);
         }
 
         return result;

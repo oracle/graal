@@ -48,7 +48,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         return spec;
     }
 
-    private static List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
+    protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
         Set<TypeMirror> typeMirrors = new LinkedHashSet<>();
 
         for (ExecutableTypeData typeData : nodeData.getExecutableTypes()) {
@@ -66,11 +66,15 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
 
     @Override
     public boolean isParsable(ExecutableElement method) {
-        return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+        if (getAnnotationType() != null) {
+            return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;
+        }
+
+        return true;
     }
 
     @SuppressWarnings("unused")
-    protected final MethodSpec createDefaultMethodSpec(ExecutableElement method, AnnotationMirror mirror, String shortCircuitName) {
+    protected final MethodSpec createDefaultMethodSpec(ExecutableElement method, AnnotationMirror mirror, boolean shortCircuitsEnabled, String shortCircuitName) {
         MethodSpec methodSpec = new MethodSpec(createReturnParameterSpec());
 
         if (getNode().supportsFrame()) {
@@ -80,7 +84,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         resolveAndAddImplicitThis(methodSpec, method);
 
         for (NodeFieldData field : getNode().getFields()) {
-            if (field.getKind() == FieldKind.FIELD) {
+            if (field.getKind() == FieldKind.FINAL_FIELD) {
                 ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
                 spec.setLocal(true);
                 methodSpec.addOptional(spec);
@@ -105,7 +109,9 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                     break;
                 }
 
-                methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
+                if (shortCircuitsEnabled) {
+                    methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
+                }
                 methodSpec.addRequired(createValueParameterSpec(valueName, field.getNodeData()));
             } else {
                 assert false;

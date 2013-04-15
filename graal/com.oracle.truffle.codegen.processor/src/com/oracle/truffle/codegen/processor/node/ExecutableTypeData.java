@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.codegen.processor.node;
 
+import java.util.*;
+
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.*;
@@ -61,6 +63,43 @@ public class ExecutableTypeData extends TemplateMethod {
 
     public boolean isAbstract() {
         return getMethod().getModifiers().contains(Modifier.ABSTRACT);
+    }
+
+    public int getEvaluatedCount() {
+        int count = 0;
+        for (ActualParameter parameter : getParameters()) {
+            if (parameter.getSpecification().isSignature()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public boolean startsWithSignature(TemplateMethod method) {
+        for (ActualParameter param : getParameters()) {
+            if (!param.getSpecification().isSignature()) {
+                continue;
+            }
+            ActualParameter foundParam = method.findParameter(param.getLocalName());
+            if (foundParam != null) {
+                TypeData actualType = param.getTypeSystemType();
+                TypeData foundType = foundParam.getTypeSystemType();
+                if (actualType == null || foundType == null || !actualType.equalsType(foundType)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean hasGenericSignature() {
+        List<TypeData> types = getSignature();
+        for (TypeData typeData : types) {
+            if (!typeData.isGeneric()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

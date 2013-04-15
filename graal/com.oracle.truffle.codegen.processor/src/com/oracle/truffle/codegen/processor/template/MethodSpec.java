@@ -60,8 +60,9 @@ public class MethodSpec {
         optional.add(spec);
     }
 
-    public void addRequired(ParameterSpec spec) {
+    public ParameterSpec addRequired(ParameterSpec spec) {
         required.add(spec);
+        return spec;
     }
 
     public List<TypeMirror> getImplicitRequiredTypes() {
@@ -78,10 +79,6 @@ public class MethodSpec {
 
     public List<ParameterSpec> getOptional() {
         return optional;
-    }
-
-    public void makeTypeDefinitions() {
-
     }
 
     public List<ParameterSpec> getAll() {

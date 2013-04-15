@@ -46,6 +46,11 @@ public class CodeTreeBuilder {
         this.parent = parent;
     }
 
+    @Override
+    public String toString() {
+        return root.toString();
+    }
+
     public int getTreeCount() {
         return treeCount;
     }
@@ -277,7 +282,13 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder tree(CodeTree treeToAdd) {
-        return push((BuilderCodeTree) treeToAdd).end();
+        if (treeToAdd instanceof BuilderCodeTree) {
+            return push((BuilderCodeTree) treeToAdd).end();
+        } else {
+            BuilderCodeTree tree = new BuilderCodeTree(GROUP, null, null);
+            tree.add(treeToAdd);
+            return push(tree).end();
+        }
     }
 
     public CodeTreeBuilder string(String chunk1, String chunk2, String chunk3, String chunk4, String... chunks) {

@@ -46,7 +46,7 @@ public class NodeData extends Template {
 
     private List<SpecializationData> specializations;
     private List<SpecializationListenerData> specializationListeners;
-    private List<ExecutableTypeData> executableTypes;
+    private Map<Integer, List<ExecutableTypeData>> executableTypes;
     private List<ShortCircuitData> shortCircuits;
 
     public NodeData(TypeElement type, String id) {
@@ -92,7 +92,7 @@ public class NodeData extends Template {
             children.addAll(specializationListeners);
         }
         if (executableTypes != null) {
-            children.addAll(executableTypes);
+            children.addAll(getExecutableTypes());
         }
         if (shortCircuits != null) {
             children.addAll(shortCircuits);
@@ -134,9 +134,11 @@ public class NodeData extends Template {
     }
 
     public boolean supportsFrame() {
-        for (ExecutableTypeData execType : executableTypes) {
-            if (execType.findParameter("frameValue") == null) {
-                return false;
+        if (executableTypes != null) {
+            for (ExecutableTypeData execType : getExecutableTypes(-1)) {
+                if (execType.findParameter("frameValue") == null) {
+                    return false;
+                }
             }
         }
         return true;
@@ -213,9 +215,21 @@ public class NodeData extends Template {
         return null;
     }
 
+    public List<ExecutableTypeData> getExecutableTypes(int evaluatedCount) {
+        if (evaluatedCount == -1) {
+            List<ExecutableTypeData> typeData = new ArrayList<>();
+            for (int currentEvaluationCount : executableTypes.keySet()) {
+                typeData.addAll(executableTypes.get(currentEvaluationCount));
+            }
+            return typeData;
+        } else {
+            return executableTypes.get(evaluatedCount);
+        }
+    }
+
     public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
         List<ExecutableTypeData> types = new ArrayList<>();
-        for (ExecutableTypeData type : executableTypes) {
+        for (ExecutableTypeData type : getExecutableTypes(0)) {
             if (!type.hasUnexpectedValue(context)) {
                 types.add(type);
             }
@@ -224,7 +238,7 @@ public class NodeData extends Template {
     }
 
     public ExecutableTypeData findExecutableType(TypeData prmitiveType) {
-        for (ExecutableTypeData type : executableTypes) {
+        for (ExecutableTypeData type : getExecutableTypes(0)) {
             if (Utils.typeEquals(type.getType().getPrimitiveType(), prmitiveType.getPrimitiveType())) {
                 return type;
             }
@@ -235,7 +249,7 @@ public class NodeData extends Template {
     public SpecializationData findUniqueSpecialization(TypeData type) {
         SpecializationData result = null;
         for (SpecializationData specialization : specializations) {
-            if (specialization.getReturnType().getActualTypeData(getTypeSystem()) == type) {
+            if (specialization.getReturnType().getTypeSystemType() == type) {
                 if (result != null) {
                     // Result not unique;
                     return null;
@@ -244,14 +258,6 @@ public class NodeData extends Template {
             }
         }
         return result;
-    }
-
-    public List<TypeMirror> getExecutablePrimitiveTypeMirrors() {
-        List<TypeMirror> typeMirrors = new ArrayList<>();
-        for (ExecutableTypeData executableType : executableTypes) {
-            typeMirrors.add(executableType.getType().getPrimitiveType());
-        }
-        return typeMirrors;
     }
 
     public NodeFieldData[] filterFields(FieldKind fieldKind, ExecutionKind usage) {
@@ -264,15 +270,6 @@ public class NodeData extends Template {
             }
         }
         return filteredFields.toArray(new NodeFieldData[filteredFields.size()]);
-    }
-
-    public boolean hasUnexpectedExecutableTypes(ProcessorContext context) {
-        for (ExecutableTypeData type : getExecutableTypes()) {
-            if (type.hasUnexpectedValue(context)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public boolean needsRewrites(ProcessorContext context) {
@@ -408,7 +405,7 @@ public class NodeData extends Template {
     }
 
     public List<ExecutableTypeData> getExecutableTypes() {
-        return executableTypes;
+        return getExecutableTypes(-1);
     }
 
     public List<ShortCircuitData> getShortCircuits() {
@@ -428,7 +425,7 @@ public class NodeData extends Template {
         this.specializationListeners = specializationListeners;
     }
 
-    void setExecutableTypes(List<ExecutableTypeData> executableTypes) {
+    void setExecutableTypes(Map<Integer, List<ExecutableTypeData>> executableTypes) {
         this.executableTypes = executableTypes;
     }
 

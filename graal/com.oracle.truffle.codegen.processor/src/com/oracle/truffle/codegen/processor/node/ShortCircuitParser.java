@@ -49,7 +49,7 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         String shortCircuitValue = Utils.getAnnotationValue(String.class, mirror, "value");
-        return createDefaultMethodSpec(method, mirror, shortCircuitValue);
+        return createDefaultMethodSpec(method, mirror, true, shortCircuitValue);
     }
 
     @Override

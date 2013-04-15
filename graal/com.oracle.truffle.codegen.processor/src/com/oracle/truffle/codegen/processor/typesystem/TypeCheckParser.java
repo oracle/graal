@@ -53,7 +53,7 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
         assert checkedType != null;
         ActualParameter parameter = method.findParameter("valueValue");
         assert parameter != null;
-        return new TypeCheckData(method, checkedType, parameter.getActualTypeData(getTypeSystem()));
+        return new TypeCheckData(method, checkedType, parameter.getTypeSystemType());
     }
 
     @Override

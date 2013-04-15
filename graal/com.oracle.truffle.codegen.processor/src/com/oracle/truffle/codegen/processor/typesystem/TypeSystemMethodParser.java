@@ -34,10 +34,6 @@ abstract class TypeSystemMethodParser<E extends TemplateMethod> extends Template
         super(context, typeSystem);
     }
 
-    public TypeSystemData getTypeSystem() {
-        return template;
-    }
-
     @Override
     public final boolean isParsable(ExecutableElement method) {
         return Utils.findAnnotationMirror(getContext().getEnvironment(), method, getAnnotationType()) != null;

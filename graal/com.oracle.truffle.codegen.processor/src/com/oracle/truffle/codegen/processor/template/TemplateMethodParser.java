@@ -34,6 +34,7 @@ import javax.lang.model.util.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
+import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public abstract class TemplateMethodParser<T extends Template, E extends TemplateMethod> {
 
@@ -67,6 +68,10 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
     public ProcessorContext getContext() {
         return context;
+    }
+
+    public TypeSystemData getTypeSystem() {
+        return template.getTypeSystem();
     }
 
     public abstract MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror);
@@ -263,16 +268,22 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return parsedParams;
     }
 
-    private ActualParameter matchParameter(ParameterSpec specification, TypeMirror mirror, Template typeSystem, int index, boolean implicit) {
+    private ActualParameter matchParameter(ParameterSpec specification, TypeMirror mirror, Template originalTemplate, int index, boolean implicit) {
         TypeMirror resolvedType = mirror;
         if (hasError(resolvedType)) {
-            resolvedType = context.resolveNotYetCompiledType(mirror, typeSystem);
+            resolvedType = context.resolveNotYetCompiledType(mirror, originalTemplate);
         }
 
         if (!specification.matches(resolvedType)) {
             return null;
         }
-        return new ActualParameter(specification, resolvedType, index, implicit);
+
+        TypeData resolvedTypeData = getTypeSystem().findTypeData(resolvedType);
+        if (resolvedTypeData != null) {
+            return new ActualParameter(specification, resolvedTypeData, index, implicit);
+        } else {
+            return new ActualParameter(specification, resolvedType, index, implicit);
+        }
     }
 
     /* Helper class for parsing. */

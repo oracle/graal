@@ -40,7 +40,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return createDefaultMethodSpec(method, mirror, null);
+        return createDefaultMethodSpec(method, mirror, true, null);
     }
 
     @Override
