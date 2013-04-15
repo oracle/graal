@@ -282,7 +282,15 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void storeLocal(Kind kind, int index) {
-        frameState.storeLocal(index, frameState.pop(kind));
+        ValueNode value;
+        if (kind == Kind.Object) {
+            value = frameState.xpop();
+            // astore and astore_<n> may be used to store a returnAddress (jsr) see JVMS §6.5.astore
+            assert value.kind() == Kind.Object || value.kind() == Kind.Int;
+        } else {
+            value = frameState.pop(kind);
+        }
+        frameState.storeLocal(index, value);
     }
 
     public static boolean covers(ExceptionHandler handler, int bci) {
@@ -1788,15 +1796,15 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void traceState() {
-        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && !TTY.isSuppressed()) {
-            TTY.println(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
+        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
+            Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
                 ValueNode value = frameState.localAt(i);
-                TTY.println(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                Debug.log(String.format("|   local[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
             }
             for (int i = 0; i < frameState.stackSize(); ++i) {
                 ValueNode value = frameState.stackAt(i);
-                TTY.println(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
+                Debug.log(String.format("|   stack[%d] = %-8s : %s", i, value == null ? "bogus" : value.kind().getJavaName(), value));
             }
         }
     }
@@ -2018,7 +2026,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_INSTRUCTIONS && !TTY.isSuppressed()) {
+        if (GraalOptions.TraceBytecodeParserLevel >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
             StringBuilder sb = new StringBuilder(40);
             sb.append(blockStart ? '+' : '|');
             if (bci < 10) {
@@ -2033,7 +2041,7 @@ public class GraphBuilderPhase extends Phase {
             if (!currentBlock.jsrScope.isEmpty()) {
                 sb.append(' ').append(currentBlock.jsrScope);
             }
-            TTY.println(sb.toString());
+            Debug.log(sb.toString());
         }
     }
 
