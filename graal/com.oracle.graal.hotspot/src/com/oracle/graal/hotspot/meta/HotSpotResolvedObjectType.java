@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static java.lang.reflect.Modifier.*;
 
@@ -63,7 +63,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     private final Class<?> javaMirror; // this could be read directly from 'metaspaceKlass'...
     private final String simpleName;
-    private final boolean hasFinalizableSubclass;
 
     /**
      * The instance size (in bytes) for an instance type,
@@ -120,17 +119,15 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     /**
-     * @param hasFinalizableSubclass
      * @param sizeOrSpecies the size of an instance of the type, or
      *            {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or
      *            {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
      */
-    public HotSpotResolvedObjectType(long metaspaceKlass, String name, String simpleName, Class javaMirror, boolean hasFinalizableSubclass, int sizeOrSpecies) {
+    public HotSpotResolvedObjectType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies) {
         super(name);
         this.metaspaceKlass = metaspaceKlass;
         this.javaMirror = javaMirror;
         this.simpleName = simpleName;
-        this.hasFinalizableSubclass = hasFinalizableSubclass;
         this.sizeOrSpecies = sizeOrSpecies;
         assert name.charAt(0) != '[' || sizeOrSpecies == ARRAY_SPECIES_VALUE : name + " " + Long.toHexString(sizeOrSpecies);
         assert javaMirror.isArray() == isArray();
@@ -260,7 +257,8 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean hasFinalizableSubclass() {
-        return hasFinalizableSubclass;
+        assert !isArray();
+        return HotSpotGraalRuntime.getInstance().getCompilerToVM().hasFinalizableSubclass(this);
     }
 
     @Override
