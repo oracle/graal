@@ -29,12 +29,20 @@ import com.oracle.graal.phases.*;
 
 public final class Suites {
 
-    public final PhaseSuite<HighTierContext> highTier;
-    public final PhaseSuite<MidTierContext> midTier;
-
     public static final Suites DEFAULT;
 
+    private final PhaseSuite<HighTierContext> highTier;
+    private final PhaseSuite<MidTierContext> midTier;
+
     private static final Map<String, CompilerConfiguration> configurations;
+
+    public PhaseSuite<HighTierContext> getHighTier() {
+        return highTier;
+    }
+
+    public PhaseSuite<MidTierContext> getMidTier() {
+        return midTier;
+    }
 
     static {
         configurations = new HashMap<>();
