@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
@@ -99,11 +100,23 @@ public class TargetMethodAssembler {
             }
         }
 
-        Debug.metric("TargetMethods").increment();
-        Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
-        Debug.metric("SafepointsEmitted").add(compilationResult.getInfopoints().size());
-        Debug.metric("DataPatches").add(compilationResult.getDataReferences().size());
-        Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
+        if (Debug.isMeterEnabled()) {
+            List<DataPatch> ldp = compilationResult.getDataReferences();
+            DebugMetric[] dms = new DebugMetric[Kind.values().length];
+            for (int i = 0; i < dms.length; i++) {
+                dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
+            }
+
+            for (DataPatch dp : ldp) {
+                dms[dp.constant.getKind().ordinal()].add(1);
+            }
+
+            Debug.metric("TargetMethods").increment();
+            Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
+            Debug.metric("SafepointsEmitted").add(compilationResult.getInfopoints().size());
+            Debug.metric("DataPatches").add(ldp.size());
+            Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
+        }
         Debug.log("Finished target method %s, isStub %b", name, isStub);
         return compilationResult;
     }
