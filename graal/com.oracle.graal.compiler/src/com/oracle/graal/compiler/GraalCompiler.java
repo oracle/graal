@@ -143,42 +143,8 @@ public class GraalCompiler {
 
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 
-        if (GraalOptions.OptPushThroughPi) {
-            new PushThroughPiPhase().apply(graph);
-            if (GraalOptions.OptCanonicalizer) {
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-            }
-        }
-
-        if (GraalOptions.OptFloatingReads) {
-            int mark = graph.getMark();
-            new FloatingReadPhase().apply(graph);
-            new CanonicalizerPhase.Instance(runtime, assumptions, mark, null).apply(graph);
-            if (GraalOptions.OptReadElimination) {
-                new ReadEliminationPhase().apply(graph);
-            }
-        }
-        new RemoveValueProxyPhase().apply(graph);
-
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-        }
-
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
-            new EliminatePartiallyRedundantGuardsPhase(false, true).apply(graph);
-        }
-
-        if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-            new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
-        }
-
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
-            new EliminatePartiallyRedundantGuardsPhase(true, true).apply(graph);
-        }
-
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-        }
+        MidTierContext midTierContext = new MidTierContext(runtime, assumptions);
+        Suites.DEFAULT.midTier.apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
 

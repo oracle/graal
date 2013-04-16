@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.phases.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 
-public interface CompilerConfiguration {
+public class MidTierContext extends PhaseContext {
 
-    PhaseSuite<HighTierContext> createHighTier();
-
-    PhaseSuite<MidTierContext> createMidTier();
+    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions) {
+        super(runtime, assumptions);
+    }
 }

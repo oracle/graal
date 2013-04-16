@@ -32,4 +32,8 @@ public class BasicConfiguration implements CompilerConfiguration {
     public PhaseSuite<HighTierContext> createHighTier() {
         return new HighTier();
     }
+
+    public PhaseSuite<MidTierContext> createMidTier() {
+        return new MidTier();
+    }
 }
