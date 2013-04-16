@@ -84,7 +84,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
                     if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
                         new CanonicalizerPhase().apply(graph, context);
-                        new IterativeConditionalEliminationPhase(context.getRuntime(), context.getAssumptions()).apply(graph);
+                        new IterativeConditionalEliminationPhase().apply(graph, context);
                     }
 
                     return progress;
