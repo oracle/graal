@@ -27,15 +27,15 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.tiers.*;
 
-public class PartialCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
+public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
 
     private final CustomCanonicalizer customCanonicalizer;
 
-    public PartialCanonicalizerPhase() {
+    public IncrementalCanonicalizerPhase() {
         this(null);
     }
 
-    public PartialCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+    public IncrementalCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
         this.customCanonicalizer = customCanonicalizer;
     }
 

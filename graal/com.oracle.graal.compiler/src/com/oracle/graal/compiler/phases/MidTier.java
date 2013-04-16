@@ -37,7 +37,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (GraalOptions.OptFloatingReads) {
-            PartialCanonicalizerPhase<MidTierContext> canonicalizer = new PartialCanonicalizerPhase<>();
+            IncrementalCanonicalizerPhase<MidTierContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
             canonicalizer.addPhase(new FloatingReadPhase());
             addPhase(canonicalizer);
             if (GraalOptions.OptReadElimination) {
