@@ -285,7 +285,7 @@ public class GraphBuilderPhase extends Phase {
         ValueNode value;
         if (kind == Kind.Object) {
             value = frameState.xpop();
-            // astore and astore_<n> may be used to store a returnAddress (jsr) see JVMS §6.5.astore
+            // astore and astore_<n> may be used to store a returnAddress (jsr) see JVMS par. 6.5.astore
             assert value.kind() == Kind.Object || value.kind() == Kind.Int;
         } else {
             value = frameState.pop(kind);
