@@ -598,7 +598,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void emitInvoke(Invoke x) {
-        AbstractCallTargetNode callTarget = (AbstractCallTargetNode) x.callTarget();
+        LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
         CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(runtime), callTarget.signature(), target(), false);
         frameMap.callsMethod(cc);
 

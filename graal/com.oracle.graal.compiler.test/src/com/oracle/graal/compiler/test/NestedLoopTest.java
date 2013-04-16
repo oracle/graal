@@ -28,6 +28,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.java.*;
 
 public class NestedLoopTest extends GraalCompilerTest {
 
@@ -134,9 +135,9 @@ public class NestedLoopTest extends GraalCompilerTest {
     }
 
     private static Invoke getInvoke(String name, StructuredGraph graph) {
-        for (Invoke invoke : graph.getInvokes()) {
-            if (invoke.methodCallTarget().targetMethod().getName().equals(name)) {
-                return invoke;
+        for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
+            if (callTarget.targetMethod().getName().equals(name)) {
+                return callTarget.invoke();
             }
         }
         return null;

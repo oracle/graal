@@ -42,20 +42,18 @@ public class NodeIntrinsificationVerificationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (Invoke i : graph.getInvokes()) {
-            if (i.callTarget() instanceof MethodCallTargetNode) {
-                checkInvoke(i);
-            }
+        for (MethodCallTargetNode n : graph.getNodes(MethodCallTargetNode.class)) {
+            checkInvoke(n);
         }
     }
 
-    private static void checkInvoke(Invoke invoke) {
-        ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
+    private static void checkInvoke(MethodCallTargetNode n) {
+        ResolvedJavaMethod target = n.targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         if (intrinsic != null) {
-            throw new GraalInternalError("Illegal call to node intrinsic in " + invoke.graph() + ": " + invoke);
+            throw new GraalInternalError("Illegal call to node intrinsic in " + n.graph() + ": " + n.invoke());
         } else if (target.getAnnotation(Fold.class) != null) {
-            throw new GraalInternalError("Illegal call to foldable method in " + invoke.graph() + ": " + invoke);
+            throw new GraalInternalError("Illegal call to foldable method in " + n.graph() + ": " + n.invoke());
         }
     }
 }

@@ -252,7 +252,7 @@ public class InliningUtil {
 
         protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InliningCallback callback, Replacements replacements, Assumptions assumptions, boolean receiverNullCheck) {
             Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(replacements, concrete);
-            StructuredGraph graph = (StructuredGraph) invoke.graph();
+            StructuredGraph graph = (StructuredGraph) invoke.asNode().graph();
             if (macroNodeClass != null) {
                 FixedWithNextNode macroNode;
                 try {
@@ -297,7 +297,7 @@ public class InliningUtil {
         }
 
         protected void replaceInvokeCallTarget(StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
-            MethodCallTargetNode oldCallTarget = invoke.methodCallTarget();
+            MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
             MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType()));
             invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
         }
@@ -384,7 +384,7 @@ public class InliningUtil {
 
         private void createGuard(StructuredGraph graph, MetaAccessProvider runtime) {
             InliningUtil.receiverNullCheck(invoke);
-            ValueNode receiver = invoke.methodCallTarget().receiver();
+            ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
             LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver, typeHub.kind()));
             CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
@@ -463,7 +463,7 @@ public class InliningUtil {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
-            ValueNode originalReceiver = invoke.methodCallTarget().receiver();
+            ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
             returnMerge.setProbability(invoke.probability());
@@ -539,7 +539,7 @@ public class InliningUtil {
                 Invoke invokeForInlining = (Invoke) node.next();
 
                 ResolvedJavaType commonType = getLeastCommonType(i);
-                ValueNode receiver = invokeForInlining.methodCallTarget().receiver();
+                ValueNode receiver = ((MethodCallTargetNode) invokeForInlining.callTarget()).receiver();
                 boolean exact = getTypeCount(i) == 1;
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
@@ -559,7 +559,8 @@ public class InliningUtil {
                 FixedNode current = returnMerge;
                 int opportunities = 0;
                 do {
-                    if (current instanceof InvokeNode && ((InvokeNode) current).methodCallTarget().receiver() == originalReceiver) {
+                    if (current instanceof InvokeNode && ((InvokeNode) current).callTarget() instanceof MethodCallTargetNode &&
+                                    ((MethodCallTargetNode) ((InvokeNode) current).callTarget()).receiver() == originalReceiver) {
                         opportunities++;
                     } else if (current.inputs().contains(originalReceiver)) {
                         opportunities++;
@@ -626,8 +627,8 @@ public class InliningUtil {
         private void createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor) {
             assert ptypes.size() > 1;
 
-            Kind hubKind = invoke.methodCallTarget().targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
-            LoadHubNode hub = graph.add(new LoadHubNode(invoke.methodCallTarget().receiver(), hubKind));
+            Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
+            LoadHubNode hub = graph.add(new LoadHubNode(((MethodCallTargetNode) invoke.callTarget()).receiver(), hubKind));
             graph.addBeforeFixed(invoke.asNode(), hub);
 
             ResolvedJavaType[] keys = new ResolvedJavaType[ptypes.size()];
@@ -717,7 +718,7 @@ public class InliningUtil {
         }
 
         private void tryToDevirtualizeMultipleMethods(StructuredGraph graph) {
-            MethodCallTargetNode methodCallTarget = invoke.methodCallTarget();
+            MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
             if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
                 ResolvedJavaType leastCommonType = getLeastCommonType();
@@ -744,7 +745,7 @@ public class InliningUtil {
             createDispatchOnTypeBeforeInvoke(graph, successors, true);
 
             invocationEntry.setNext(invoke.asNode());
-            ValueNode receiver = invoke.methodCallTarget().receiver();
+            ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             PiNode anchoredReceiver = createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
             replaceInvokeCallTarget(graph, kind, target);
@@ -820,7 +821,7 @@ public class InliningUtil {
             return null;
         }
         ResolvedJavaMethod caller = getCaller(invoke);
-        MethodCallTargetNode callTarget = invoke.methodCallTarget();
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
         if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
@@ -970,13 +971,14 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
         } else if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has already been lowered, or has been created as a low-level node");
-        } else if (invoke.methodCallTarget().targetMethod() == null) {
+        } else if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, "target method is null");
         } else if (invoke.stateAfter() == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has no after state");
         } else if (!invoke.useForInlining()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
-        } else if (invoke.methodCallTarget().receiver() != null && invoke.methodCallTarget().receiver().isConstant() && invoke.methodCallTarget().receiver().asConstant().isNull()) {
+        } else if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
+                        ((MethodCallTargetNode) invoke.callTarget()).receiver().asConstant().isNull()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "receiver is null");
         } else {
             return true;
@@ -1198,8 +1200,8 @@ public class InliningUtil {
     }
 
     public static void receiverNullCheck(Invoke invoke) {
-        MethodCallTargetNode callTarget = invoke.methodCallTarget();
-        StructuredGraph graph = (StructuredGraph) invoke.graph();
+        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+        StructuredGraph graph = (StructuredGraph) callTarget.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {

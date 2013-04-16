@@ -54,10 +54,8 @@ public class NodeIntrinsificationPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         ArrayList<Node> cleanUpReturnList = new ArrayList<>();
-        for (Invoke i : graph.getInvokes()) {
-            if (i.callTarget() instanceof MethodCallTargetNode) {
-                tryIntrinsify(i, cleanUpReturnList);
-            }
+        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.class)) {
+            tryIntrinsify(node, cleanUpReturnList);
         }
 
         for (Node node : cleanUpReturnList) {
@@ -65,8 +63,8 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    private boolean tryIntrinsify(Invoke invoke, List<Node> cleanUpReturnList) {
-        ResolvedJavaMethod target = invoke.methodCallTarget().targetMethod();
+    private boolean tryIntrinsify(MethodCallTargetNode methodCallTargetNode, List<Node> cleanUpReturnList) {
+        ResolvedJavaMethod target = methodCallTargetNode.targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
         if (intrinsic != null) {
@@ -77,7 +75,7 @@ public class NodeIntrinsificationPhase extends Phase {
             ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
-            Constant[] nodeConstructorArguments = prepareArguments(invoke, parameterTypes, target, false);
+            Constant[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
             if (nodeConstructorArguments == null) {
                 return false;
             }
@@ -87,8 +85,8 @@ public class NodeIntrinsificationPhase extends Phase {
             Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
-            invoke.asNode().graph().add(newInstance);
-            invoke.intrinsify(newInstance);
+            methodCallTargetNode.graph().add(newInstance);
+            methodCallTargetNode.invoke().intrinsify(newInstance);
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnList.add(newInstance);
@@ -96,12 +94,12 @@ public class NodeIntrinsificationPhase extends Phase {
             ResolvedJavaType[] parameterTypes = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(target), declaringClass);
 
             // Prepare the arguments for the reflective method call
-            Constant[] arguments = prepareArguments(invoke, parameterTypes, target, true);
+            Constant[] arguments = prepareArguments(methodCallTargetNode, parameterTypes, target, true);
             if (arguments == null) {
                 return false;
             }
             Constant receiver = null;
-            if (!invoke.methodCallTarget().isStatic()) {
+            if (!methodCallTargetNode.isStatic()) {
                 receiver = arguments[0];
                 arguments = Arrays.copyOfRange(arguments, 1, arguments.length);
                 parameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
@@ -112,14 +110,14 @@ public class NodeIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forConstant(constant, runtime, invoke.asNode().graph());
-                invoke.intrinsify(node);
+                ConstantNode node = ConstantNode.forConstant(constant, runtime, methodCallTargetNode.graph());
+                methodCallTargetNode.invoke().intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
                 cleanUpReturnList.add(node);
             } else {
                 // Remove the invoke
-                invoke.intrinsify(null);
+                methodCallTargetNode.invoke().intrinsify(null);
             }
         }
         return true;
@@ -133,12 +131,12 @@ public class NodeIntrinsificationPhase extends Phase {
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't
      */
-    private Constant[] prepareArguments(Invoke invoke, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
-        NodeInputList<ValueNode> arguments = invoke.callTarget().arguments();
+    private Constant[] prepareArguments(MethodCallTargetNode methodCallTargetNode, ResolvedJavaType[] parameterTypes, ResolvedJavaMethod target, boolean folding) {
+        NodeInputList<ValueNode> arguments = methodCallTargetNode.arguments();
         Constant[] reflectionCallArguments = new Constant[arguments.size()];
         for (int i = 0; i < reflectionCallArguments.length; ++i) {
             int parameterIndex = i;
-            if (!invoke.methodCallTarget().isStatic()) {
+            if (!methodCallTargetNode.isStatic()) {
                 parameterIndex--;
             }
             ValueNode argument = arguments.get(i);

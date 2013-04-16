@@ -31,6 +31,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -267,8 +268,9 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         private static int numberOfTransferredValues(InlineInfo info) {
-            Signature signature = info.invoke().methodCallTarget().targetMethod().getSignature();
-            int transferredValues = signature.getParameterCount(!Modifier.isStatic(info.invoke().methodCallTarget().targetMethod().getModifiers()));
+            MethodCallTargetNode methodCallTargetNode = ((MethodCallTargetNode) info.invoke().callTarget());
+            Signature signature = methodCallTargetNode.targetMethod().getSignature();
+            int transferredValues = signature.getParameterCount(!Modifier.isStatic(methodCallTargetNode.targetMethod().getModifiers()));
             if (signature.getReturnKind() != Kind.Void) {
                 transferredValues++;
             }
@@ -292,10 +294,11 @@ public class InliningPhase extends Phase implements InliningCallback {
              * argument simplifies the callee
              */
             int moreSpecificArgumentInfo = 0;
-            boolean isStatic = info.invoke().methodCallTarget().isStatic();
+            MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) info.invoke().callTarget();
+            boolean isStatic = methodCallTarget.isStatic();
             int signatureOffset = isStatic ? 0 : 1;
-            NodeInputList arguments = info.invoke().methodCallTarget().arguments();
-            ResolvedJavaMethod targetMethod = info.invoke().methodCallTarget().targetMethod();
+            NodeInputList arguments = methodCallTarget.arguments();
+            ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
             ResolvedJavaType methodHolderClass = targetMethod.getDeclaringClass();
             Signature signature = targetMethod.getSignature();
 

@@ -345,13 +345,12 @@ public class ReplacementsImpl implements Replacements {
             assert !Modifier.isAbstract(methodToParse.getModifiers()) && !Modifier.isNative(methodToParse.getModifiers()) : methodToParse;
             final StructuredGraph graph = buildInitialGraph(methodToParse);
 
-            for (Invoke invoke : graph.getInvokes()) {
-                MethodCallTargetNode callTarget = invoke.methodCallTarget();
+            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
                 ResolvedJavaMethod callee = callTarget.targetMethod();
                 if (callee == method) {
                     final StructuredGraph originalGraph = new StructuredGraph(original);
                     new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
-                    InliningUtil.inline(invoke, originalGraph, true);
+                    InliningUtil.inline(callTarget.invoke(), originalGraph, true);
 
                     Debug.dump(graph, "after inlining %s", callee);
                     afterInline(graph, originalGraph);
@@ -365,7 +364,7 @@ public class ReplacementsImpl implements Replacements {
                         } else {
                             targetGraph = parseGraph(callee, policy);
                         }
-                        InliningUtil.inline(invoke, targetGraph, true);
+                        InliningUtil.inline(callTarget.invoke(), targetGraph, true);
                         Debug.dump(graph, "after inlining %s", callee);
                         afterInline(graph, targetGraph);
                     }

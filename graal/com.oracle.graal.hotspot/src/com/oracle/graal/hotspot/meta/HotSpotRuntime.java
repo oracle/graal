@@ -502,7 +502,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof Invoke) {
             Invoke invoke = (Invoke) n;
             if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                MethodCallTargetNode callTarget = invoke.methodCallTarget();
+                MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
                 NodeInputList<ValueNode> parameters = callTarget.arguments();
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
                 if (!callTarget.isStatic() && receiver.kind() == Kind.Object && !receiver.objectStamp().nonNull()) {
@@ -510,7 +510,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
                 JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
-                AbstractCallTargetNode loweredCallTarget = null;
+                LoweredCallTargetNode loweredCallTarget = null;
                 if (callTarget.invokeKind() == InvokeKind.Virtual && GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || invoke.isPolymorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();

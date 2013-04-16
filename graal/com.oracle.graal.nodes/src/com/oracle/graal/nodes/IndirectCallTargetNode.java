@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.type.*;
 
-public class IndirectCallTargetNode extends AbstractCallTargetNode {
+public class IndirectCallTargetNode extends LoweredCallTargetNode {
 
     @Input protected ValueNode computedAddress;
 
