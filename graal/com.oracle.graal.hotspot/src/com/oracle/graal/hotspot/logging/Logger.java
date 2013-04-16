@@ -26,6 +26,8 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.debug.*;
+
 /**
  * Scoped logging class used to display the call hierarchy of VMToCompiler/CompilerToVM calls.
  */
@@ -70,12 +72,11 @@ public class Logger {
         }
     }
 
-    // CheckStyle: stop system..print check
     public static void info(String message) {
         if (ENABLED) {
             log(message);
         } else {
-            System.out.println(message);
+            TTY.println(message);
         }
         if (out != null) {
             out.println(message);
@@ -88,11 +89,11 @@ public class Logger {
             Logger logger = loggerTL.get();
             for (String line : message.split("\n")) {
                 if (logger.open) {
-                    System.out.println("...");
+                    TTY.println("...");
                     logger.open = false;
                 }
-                System.out.print(space(logger.level));
-                System.out.println(line);
+                TTY.print(space(logger.level));
+                TTY.println(line);
             }
         }
     }
@@ -101,11 +102,11 @@ public class Logger {
         if (ENABLED) {
             Logger logger = loggerTL.get();
             if (logger.open) {
-                System.out.println("...");
+                TTY.println("...");
                 logger.open = false;
             }
-            System.out.print(space(logger.level));
-            System.out.print(message);
+            TTY.print(space(logger.level));
+            TTY.print(message);
             logger.openStack.push(logger.open);
             logger.open = true;
             logger.level++;
@@ -117,15 +118,13 @@ public class Logger {
             Logger logger = loggerTL.get();
             logger.level--;
             if (logger.open) {
-                System.out.println(message);
+                TTY.println(message);
             } else {
-                System.out.println(space(logger.level) + "..." + message);
+                TTY.println(space(logger.level) + "..." + message);
             }
             logger.open = logger.openStack.pop();
         }
     }
-
-    // CheckStyle: resume system..print check
 
     private static String[] spaces = new String[50];
 
