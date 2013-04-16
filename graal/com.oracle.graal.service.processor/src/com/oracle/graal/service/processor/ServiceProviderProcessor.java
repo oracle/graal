@@ -29,7 +29,6 @@ import javax.annotation.processing.*;
 import javax.lang.model.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
-import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.*;
 
@@ -39,38 +38,7 @@ import com.oracle.graal.api.runtime.*;
 @SupportedAnnotationTypes("com.oracle.graal.api.runtime.ServiceProvider")
 public class ServiceProviderProcessor extends AbstractProcessor {
 
-    private Map<String, Set<TypeElement>> serviceMap;
-
-    public ServiceProviderProcessor() {
-        serviceMap = new HashMap<>();
-    }
-
-    private void addProvider(String serviceName, TypeElement serviceProvider) {
-        Set<TypeElement> providers = serviceMap.get(serviceName);
-        if (providers == null) {
-            providers = new HashSet<>();
-            serviceMap.put(serviceName, providers);
-        }
-        providers.add(serviceProvider);
-    }
-
-    private void generateServicesFiles() {
-        Filer filer = processingEnv.getFiler();
-        for (Map.Entry<String, Set<TypeElement>> entry : serviceMap.entrySet()) {
-            String filename = "META-INF/services/" + entry.getKey();
-            TypeElement[] providers = entry.getValue().toArray(new TypeElement[0]);
-            try {
-                FileObject servicesFile = filer.createResource(StandardLocation.CLASS_OUTPUT, "", filename, providers);
-                PrintWriter writer = new PrintWriter(new OutputStreamWriter(servicesFile.openOutputStream(), "UTF-8"));
-                for (TypeElement provider : providers) {
-                    writer.println(provider.getQualifiedName());
-                }
-                writer.close();
-            } catch (IOException e) {
-                processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage());
-            }
-        }
-    }
+    private final Set<TypeElement> processed = new HashSet<>();
 
     private boolean verifyAnnotation(TypeMirror serviceInterface, TypeElement serviceProvider) {
         if (!processingEnv.getTypeUtils().isSubtype(serviceProvider.asType(), serviceInterface)) {
@@ -83,6 +51,11 @@ public class ServiceProviderProcessor extends AbstractProcessor {
     }
 
     private void processElement(TypeElement serviceProvider) {
+        if (processed.contains(serviceProvider)) {
+            return;
+        }
+
+        processed.add(serviceProvider);
         ServiceProvider annotation = serviceProvider.getAnnotation(ServiceProvider.class);
         if (annotation != null) {
             try {
@@ -91,40 +64,27 @@ public class ServiceProviderProcessor extends AbstractProcessor {
                 TypeMirror serviceInterface = ex.getTypeMirror();
                 if (verifyAnnotation(serviceInterface, serviceProvider)) {
                     String interfaceName = ex.getTypeMirror().toString();
-                    addProvider(interfaceName, serviceProvider);
+                    createProviderFile(serviceProvider, interfaceName);
                 }
             }
         }
     }
 
-    private void processOldElements() {
-        Filer filer = processingEnv.getFiler();
-        Elements elements = processingEnv.getElementUtils();
-        for (String key : serviceMap.keySet()) {
-            String filename = "META-INF/services/" + key;
-            try {
-                FileObject servicesFile = filer.getResource(StandardLocation.CLASS_OUTPUT, "", filename);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(servicesFile.openInputStream(), "UTF-8"));
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    TypeElement serviceProvider = elements.getTypeElement(line);
-                    if (serviceProvider != null) {
-                        processElement(serviceProvider);
-                    }
-                }
-                reader.close();
-                servicesFile.delete();
-            } catch (IOException e) {
-                // old services file not found: do nothing
-            }
+    private void createProviderFile(TypeElement serviceProvider, String interfaceName) {
+        String filename = "META-INF/providers/" + serviceProvider.getQualifiedName();
+        try {
+            FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, serviceProvider);
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
+            writer.println(interfaceName);
+            writer.close();
+        } catch (IOException e) {
+            processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), serviceProvider);
         }
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
-            processOldElements();
-            generateServicesFiles();
             return true;
         }
 
