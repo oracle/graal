@@ -48,14 +48,24 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
     public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
+    private final CustomCanonicalizer customCanonicalizer;
+
     public interface CustomCanonicalizer {
 
         ValueNode canonicalize(ValueNode node);
     }
 
+    public CanonicalizerPhase() {
+        this(null);
+    }
+
+    public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+        this.customCanonicalizer = customCanonicalizer;
+    }
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions()).run(graph);
+        new Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).run(graph);
     }
 
     public static class Instance extends Phase {

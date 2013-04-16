@@ -20,13 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.phases.common;
 
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import com.oracle.graal.phases.tiers.*;
 
-public interface CompilerConfiguration {
+public class PartialCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
 
-    PhaseSuite<HighTierContext> createHighTier();
+    private final CustomCanonicalizer customCanonicalizer;
 
-    PhaseSuite<MidTierContext> createMidTier();
+    public PartialCanonicalizerPhase() {
+        this(null);
+    }
+
+    public PartialCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+        this.customCanonicalizer = customCanonicalizer;
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, C context) {
+        int mark = graph.getMark();
+        super.run(graph, context);
+        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), mark, customCanonicalizer).apply(graph);
+    }
 }

@@ -30,6 +30,7 @@ import com.oracle.graal.phases.*;
 public final class Suites {
 
     public final PhaseSuite<HighTierContext> highTier;
+    public final PhaseSuite<MidTierContext> midTier;
 
     public static final Suites DEFAULT;
 
@@ -50,6 +51,7 @@ public final class Suites {
 
     private Suites(CompilerConfiguration config) {
         highTier = config.createHighTier();
+        midTier = config.createMidTier();
     }
 
     public static Suites createDefaultSuites() {
