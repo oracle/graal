@@ -66,4 +66,19 @@ public abstract class TypedNode extends ConditionNode {
         return a instanceof String || b instanceof String;
     }
 
+    @SuppressWarnings("unused")
+    public Object executeEvaluated(VirtualFrame frame, Object val1) {
+        return executeGeneric(frame);
+    }
+
+    @SuppressWarnings("unused")
+    public Object executeEvaluated(VirtualFrame frame, Object val1, Object val2) {
+        return executeEvaluated(frame, val1);
+    }
+
+    @SuppressWarnings("unused")
+    public Object executeEvaluated(VirtualFrame frame, Object val1, Object val2, Object val3) {
+        return executeEvaluated(frame, val1, val2);
+    }
+
 }
