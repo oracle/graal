@@ -76,7 +76,6 @@ public interface VMToCompiler {
      * @param name the {@linkplain JavaType#getName() name} of the type
      * @param simpleName a simple, unqualified name for the type
      * @param javaMirror the {@link Class} mirror
-     * @param hasFinalizableSubclass specifies if the type has a finalizable subtype
      * @param sizeOrSpecies the size of an instance of the type, or
      *            {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or
      *            {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
@@ -84,7 +83,7 @@ public interface VMToCompiler {
      *         instantiated by this call in the case of another thread racing to create the same
      *         type
      */
-    ResolvedJavaType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, boolean hasFinalizableSubclass, int sizeOrSpecies);
+    ResolvedJavaType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies);
 
     Constant createConstant(Kind kind, long value);
 

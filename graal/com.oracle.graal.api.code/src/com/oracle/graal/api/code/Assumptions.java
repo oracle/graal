@@ -57,10 +57,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + receiverType.hashCode();
-            return result;
+            return 31 + receiverType.hashCode();
         }
 
         @Override
@@ -195,10 +192,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
         @Override
         public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + method.hashCode();
-            return result;
+            return 31 + method.hashCode();
         }
 
         @Override
