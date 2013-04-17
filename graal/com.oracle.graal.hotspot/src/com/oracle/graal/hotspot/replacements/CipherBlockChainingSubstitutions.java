@@ -96,7 +96,7 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    abstract static class AESCryptStubCall extends FixedWithNextNode implements LIRGenLowerable {
+    abstract static class AESCryptStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
         @Input private final ValueNode in;
         @Input private final ValueNode out;
