@@ -285,7 +285,7 @@ public class GraphBuilderPhase extends Phase {
         ValueNode value;
         if (kind == Kind.Object) {
             value = frameState.xpop();
-            // astore and astore_<n> may be used to store a returnAddress (jsr) see JVMS par. 6.5.astore
+            // astore and astore_<n> may be used to store a returnAddress (jsr)
             assert value.kind() == Kind.Object || value.kind() == Kind.Int;
         } else {
             value = frameState.pop(kind);
@@ -1169,7 +1169,7 @@ public class GraphBuilderPhase extends Phase {
         createInvokeNode(callTarget, resultType);
     }
 
-    protected Invoke createInvokeNode(MethodCallTargetNode callTarget, Kind resultType) {
+    protected Invoke createInvokeNode(CallTargetNode callTarget, Kind resultType) {
         // be conservative if information was not recorded (could result in endless recompiles
         // otherwise)
         if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
