@@ -27,6 +27,8 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Assumptions.Assumption;
+import com.oracle.graal.api.code.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -37,20 +39,15 @@ import com.oracle.graal.phases.common.*;
 public class FinalizableSubclassTest extends GraalCompilerTest {
 
     public static class NoFinalizerEver {
-
     }
 
     public static class NoFinalizerYet {
-
     }
 
     public static class WithFinalizer extends NoFinalizerYet {
 
-        static int someCounter = 0;
-
         @Override
         protected void finalize() throws Throwable {
-            someCounter++;
             super.finalize();
         }
     }
@@ -72,6 +69,13 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(optimistic);
         StructuredGraph graph = parseAndProcess(cl, assumptions);
         Assert.assertTrue(graph.getNodes().filter(RegisterFinalizerNode.class).count() == (shouldContainFinalizer ? 1 : 0));
+        int noFinalizerAssumption = 0;
+        for (Assumption a : assumptions) {
+            if (a instanceof NoFinalizableSubclass) {
+                noFinalizerAssumption++;
+            }
+        }
+        Assert.assertTrue(noFinalizerAssumption == (shouldContainFinalizer ? 0 : 1));
     }
 
     @Test
