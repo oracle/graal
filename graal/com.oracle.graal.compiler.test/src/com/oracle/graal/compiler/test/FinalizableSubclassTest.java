@@ -22,7 +22,10 @@
  */
 package com.oracle.graal.compiler.test;
 
+import java.io.*;
 import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 import org.junit.*;
 
@@ -30,6 +33,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
 import com.oracle.graal.api.code.Assumptions.NoFinalizableSubclass;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -38,13 +42,16 @@ import com.oracle.graal.phases.common.*;
 
 public class FinalizableSubclassTest extends GraalCompilerTest {
 
-    public static class NoFinalizerEver {
+    /**
+     * used as template to generate class files at runtime.
+     */
+    public static class NoFinalizerEverAAAA {
     }
 
-    public static class NoFinalizerYet {
+    public static class NoFinalizerYetAAAA {
     }
 
-    public static class WithFinalizer extends NoFinalizerYet {
+    public static class WithFinalizerAAAA extends NoFinalizerYetAAAA {
 
         @Override
         protected void finalize() throws Throwable {
@@ -78,15 +85,120 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         Assert.assertTrue(noFinalizerAssumption == (shouldContainFinalizer ? 0 : 1));
     }
 
+    /**
+     * Use a custom class loader to generate classes, to make sure the given classes are loaded in
+     * correct order.
+     */
     @Test
-    public void test1() {
-        checkForRegisterFinalizeNode(NoFinalizerEver.class, true, false);
-        checkForRegisterFinalizeNode(NoFinalizerEver.class, false, true);
+    public void test1() throws ClassNotFoundException {
+        for (int i = 0; i < 2; i++) {
+            ClassTemplateLoader loader = new ClassTemplateLoader();
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), true, false);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerEverAAAA"), false, true);
 
-        // fails if WithFinalizer is already loaded (e.g. on a second execution of this test)
-        checkForRegisterFinalizeNode(NoFinalizerYet.class, false, true);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), false, true);
 
-        checkForRegisterFinalizeNode(WithFinalizer.class, true, true);
-        checkForRegisterFinalizeNode(NoFinalizerYet.class, true, true);
+            checkForRegisterFinalizeNode(loader.findClass("WithFinalizerAAAA"), true, true);
+            checkForRegisterFinalizeNode(loader.findClass("NoFinalizerYetAAAA"), true, true);
+        }
+    }
+
+    private static class ClassTemplateLoader extends ClassLoader {
+
+        private static int loaderInstance = 0;
+
+        private final String replaceTo;
+        private HashMap<String, Class> cache = new HashMap<>();
+
+        public ClassTemplateLoader() {
+            loaderInstance++;
+            replaceTo = String.format("%04d", loaderInstance);
+        }
+
+        @Override
+        protected Class<?> findClass(final String name) throws ClassNotFoundException {
+            return Debug.scope("FinalizableSubclassTest", new Callable<Class<?>>() {
+
+                @Override
+                public Class<?> call() throws Exception {
+                    String nameReplaced = name.replaceAll("AAAA", replaceTo);
+                    if (cache.containsKey(nameReplaced)) {
+                        return cache.get(nameReplaced);
+                    }
+
+                    // copy classfile to byte array
+                    byte[] classData = null;
+                    try {
+                        InputStream is = FinalizableSubclassTest.class.getResourceAsStream("FinalizableSubclassTest$" + name + ".class");
+                        assert is != null;
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+                        byte[] buf = new byte[1024];
+                        int size;
+                        while ((size = is.read(buf, 0, buf.length)) != -1) {
+                            baos.write(buf, 0, size);
+                        }
+                        baos.flush();
+                        classData = baos.toByteArray();
+                    } catch (IOException e) {
+                        Assert.fail("can't access class: " + name);
+                    }
+                    dumpStringsInByteArray(classData);
+
+                    // replace all occurrences of "AAAA" in classfile
+                    int index = -1;
+                    while ((index = indexOfAAAA(classData, index + 1)) != -1) {
+                        replaceAAAA(classData, index, replaceTo);
+                    }
+                    dumpStringsInByteArray(classData);
+
+                    Class c = defineClass(null, classData, 0, classData.length);
+                    cache.put(nameReplaced, c);
+                    return c;
+                }
+            });
+        }
+
+        private static int indexOfAAAA(byte[] b, int index) {
+            for (int i = index; i < b.length; i++) {
+                boolean match = true;
+                for (int j = i; j < i + 4; j++) {
+                    if (b[j] != (byte) 'A') {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private static void replaceAAAA(byte[] b, int index, String replacer) {
+            assert replacer.length() == 4;
+            for (int i = index; i < index + 4; i++) {
+                b[i] = (byte) replacer.charAt(i - index);
+            }
+        }
+
+        private static void dumpStringsInByteArray(byte[] b) {
+            boolean wasChar = true;
+            StringBuilder sb = new StringBuilder();
+            for (Byte x : b) {
+                // check for [a-zA-Z0-9]
+                if ((x >= 0x41 && x <= 0x7a) || (x >= 0x30 && x <= 0x39)) {
+                    if (!wasChar) {
+                        Debug.log(sb + "");
+                        sb.setLength(0);
+                    }
+                    sb.append(String.format("%c", x));
+                    wasChar = true;
+                } else {
+                    wasChar = false;
+                }
+            }
+            Debug.log(sb + "");
+        }
     }
 }
