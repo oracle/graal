@@ -27,7 +27,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
 @ServiceProvider(CompilerConfiguration.class)
-public class BasicConfiguration implements CompilerConfiguration {
+public class BasicCompilerConfiguration implements CompilerConfiguration {
 
     public PhaseSuite<HighTierContext> createHighTier() {
         return new HighTier();
