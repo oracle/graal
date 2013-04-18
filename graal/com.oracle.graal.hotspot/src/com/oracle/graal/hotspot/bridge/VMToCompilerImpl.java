@@ -155,7 +155,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 public void run() {
                     ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
                     for (ReplacementsProvider provider : serviceLoader) {
-                        provider.registerReplacements(replacements);
+                        provider.registerReplacements(runtime, replacements, runtime.getTarget());
                     }
                     runtime.registerReplacements(replacements);
                     if (GraalOptions.BootstrapReplacements) {

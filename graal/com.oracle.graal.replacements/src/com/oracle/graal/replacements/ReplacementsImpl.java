@@ -62,6 +62,7 @@ public class ReplacementsImpl implements Replacements {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
     private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registerMacroSubstitutions;
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
+    private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
     public ReplacementsImpl(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
         this.runtime = runtime;
@@ -71,6 +72,7 @@ public class ReplacementsImpl implements Replacements {
         this.registeredMethodSubstitutions = new HashMap<>();
         this.registerMacroSubstitutions = new HashMap<>();
         this.forcedSubstitutions = new HashSet<>();
+        this.snippetTemplateCache = new HashMap<>();
     }
 
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
@@ -478,5 +480,17 @@ public class ReplacementsImpl implements Replacements {
     @Override
     public boolean isForcedSubstitution(ResolvedJavaMethod method) {
         return forcedSubstitutions.contains(method);
+    }
+
+    @Override
+    public void registerSnippetTemplateCache(SnippetTemplateCache templates) {
+        assert snippetTemplateCache.get(templates.getClass()) == null;
+        snippetTemplateCache.put(templates.getClass(), templates);
+    }
+
+    @Override
+    public <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass) {
+        SnippetTemplateCache ret = snippetTemplateCache.get(templatesClass);
+        return templatesClass.cast(ret);
     }
 }

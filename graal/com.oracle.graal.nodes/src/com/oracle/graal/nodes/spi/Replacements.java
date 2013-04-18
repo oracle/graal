@@ -78,4 +78,15 @@ public interface Replacements {
      * Determines whether the replacement of this method is flagged as being inlined always.
      */
     boolean isForcedSubstitution(ResolvedJavaMethod methodAt);
+
+    /**
+     * Register snippet templates.
+     */
+    void registerSnippetTemplateCache(SnippetTemplateCache snippetTemplates);
+
+    /**
+     * Get snippet templates that were registered with
+     * {@link Replacements#registerSnippetTemplateCache(SnippetTemplateCache)}.
+     */
+    <T extends SnippetTemplateCache> T getSnippetTemplateCache(Class<T> templatesClass);
 }

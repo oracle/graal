@@ -20,15 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+package com.oracle.graal.api.replacements;
 
 /**
- * Interface for service providers that register replacements with the compiler.
+ * Marker interface for classes that cache snippet templates.
  */
-public interface ReplacementsProvider {
-
-    void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target);
+public interface SnippetTemplateCache {
 }
