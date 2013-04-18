@@ -740,6 +740,10 @@ public class VMToCompilerImpl implements VMToCompiler {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
         }
         phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
+        if (GraalOptions.VerifyPhases) {
+            phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierVerificationPhase());
+
+        }
         return phasePlan;
     }
 
