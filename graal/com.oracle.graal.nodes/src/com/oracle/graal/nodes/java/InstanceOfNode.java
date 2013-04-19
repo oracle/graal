@@ -63,7 +63,7 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
         ObjectStamp stamp = object().objectStamp();
         ResolvedJavaType stampType = stamp.type();
 
-        if (stamp.isExactType()) {
+        if (stamp.isExactType() || stampType != null) {
             boolean subType = type().isAssignableFrom(stampType);
 
             if (subType) {
@@ -77,27 +77,15 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
                     return graph().unique(new IsNullNode(object()));
                 }
             } else {
-                // since this type check failed for an exact type we know that it can never succeed
-                // at run time.
-                // we also don't care about null values, since they will also make the check fail.
-                return LogicConstantNode.contradiction(graph());
-            }
-        } else if (stampType != null) {
-            boolean subType = type().isAssignableFrom(stampType);
-
-            if (subType) {
-                if (stamp.nonNull()) {
-                    // the instanceOf matches, so return true
-                    return LogicConstantNode.tautology(graph());
+                if (stamp.isExactType()) {
+                    // since this type check failed for an exact type we know that it can never
+                    // succeed at run time. we also don't care about null values, since they will
+                    // also make the check fail.
+                    return LogicConstantNode.contradiction(graph());
                 } else {
-                    // the instanceof matches if the object is non-null, so return true depending on
-                    // the null-ness.
-                    negateUsages();
-                    return graph().unique(new IsNullNode(object()));
+                    // since the subtype comparison was only performed on a declared type we don't
+                    // really know if it might be true at run time...
                 }
-            } else {
-                // since the subtype comparison was only performed on a declared type we don't
-                // really know if it might be true at run time...
             }
         }
         if (object().objectStamp().alwaysNull()) {
