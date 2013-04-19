@@ -106,10 +106,10 @@ public class AMD64 extends Architecture {
         rip
     };
 
-    private final int useSSE;
-    private final int useAVX;
+    private final int supportedSSEVersion;
+    private final int supportedAVXVersion;
 
-    public AMD64(int useSSE, int useAVX) {
+    public AMD64(int supportedSSEVersion, int supportedAVXVersion) {
         super("AMD64",
               8,
               ByteOrder.LITTLE_ENDIAN,
@@ -118,15 +118,15 @@ public class AMD64 extends Architecture {
               1,
               r15.encoding + 1,
               8);
-        assert useSSE >= 2;
-        this.useSSE = useSSE;
-        this.useAVX = useAVX;
+        assert supportedSSEVersion >= 2;
+        this.supportedSSEVersion = supportedSSEVersion;
+        this.supportedAVXVersion = supportedAVXVersion;
     }
     // @formatter:on
 
     @Override
     public int getMaxVectorLength(Kind kind) {
-        if (useAVX > 0) {
+        if (supportedAVXVersion > 0) {
             switch (kind) {
                 case Boolean:
                     return 32;
@@ -172,11 +172,11 @@ public class AMD64 extends Architecture {
         return 1;
     }
 
-    public int getSSE() {
-        return useSSE;
+    public int getSupportedSSEVersion() {
+        return supportedSSEVersion;
     }
 
-    public int getAVX() {
-        return useAVX;
+    public int getSupportedAVXVersion() {
+        return supportedAVXVersion;
     }
 }
