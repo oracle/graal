@@ -30,41 +30,40 @@ import com.oracle.truffle.api.nodes.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, Str.class})
+    @TypeSystem({int.class, Str.class, CallTarget.class, Object[].class})
     static class SimpleTypes {
     }
 
     @TypeSystemReference(SimpleTypes.class)
-    abstract static class ValueNode extends Node {
+    public abstract static class ValueNode extends Node {
 
-        int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectInteger(execute(frame));
         }
 
-        Str executeStr(VirtualFrame frame) throws UnexpectedResultException {
+        public Str executeStr(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectStr(execute(frame));
         }
 
-        abstract Object execute(VirtualFrame frame);
+        public Object[] executeIntArray(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectObjectArray(execute(frame));
+        }
+
+        public abstract Object execute(VirtualFrame frame);
+
+        @Override
+        public ValueNode copy() {
+            return (ValueNode) super.copy();
+        }
+    }
+
+    @NodeChild(value = "children", type = ValueNode[].class)
+    public abstract static class ChildrenNode extends ValueNode {
+
     }
 
     @TypeSystemReference(SimpleTypes.class)
-    abstract static class ChildrenNode extends ValueNode {
-
-        @Children protected ValueNode[] children;
-
-        public ChildrenNode(ValueNode... children) {
-            this.children = adoptChildren(children);
-        }
-
-        public ChildrenNode(ChildrenNode node) {
-            this(node.children);
-        }
-
-    }
-
-    @TypeSystemReference(SimpleTypes.class)
-    static class TestRootNode<E extends ValueNode> extends RootNode {
+    public static class TestRootNode<E extends ValueNode> extends RootNode {
 
         @Child private E node;
 
@@ -82,7 +81,7 @@ public class TypeSystemTest {
         }
     }
 
-    static class TestArguments extends Arguments {
+    public static class TestArguments extends Arguments {
 
         private final Object[] values;
 
@@ -100,7 +99,7 @@ public class TypeSystemTest {
 
     }
 
-    static class ArgumentNode extends ValueNode {
+    public static class ArgumentNode extends ValueNode {
 
         final int index;
 
@@ -109,7 +108,7 @@ public class TypeSystemTest {
         }
 
         @Override
-        Object execute(VirtualFrame frame) {
+        public Object execute(VirtualFrame frame) {
             return ((TestArguments) frame.getArguments()).get(index);
         }
 

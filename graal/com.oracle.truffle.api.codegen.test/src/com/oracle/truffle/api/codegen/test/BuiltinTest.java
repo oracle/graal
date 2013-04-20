@@ -32,7 +32,6 @@ import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrAcce
 import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrConcatFactory;
 import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrLengthFactory;
 import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrSubstrFactory;
-import com.oracle.truffle.api.codegen.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 
@@ -97,7 +96,7 @@ public class BuiltinTest {
         assertSame(context, executeWith(node));
     }
 
-    @NodeClass(BuiltinNode.class)
+    @NodeClass(value = BuiltinNode.class, splitByMethodName = true)
     static class Str {
 
         private final String internal;
@@ -162,23 +161,22 @@ public class BuiltinTest {
         }
     }
 
-    abstract static class BuiltinNode extends ChildrenNode {
+    @NodeChild(value = "children", type = ValueNode[].class)
+    abstract static class BuiltinNode extends ValueNode {
 
         protected final Context context;
 
         public BuiltinNode(BuiltinNode node) {
-            this(node.context, node.children);
+            this(node.context);
         }
 
-        public BuiltinNode(Context context, ValueNode... children) {
-            super(children);
+        public BuiltinNode(Context context) {
             this.context = context;
         }
 
         public Context getContext() {
             return context;
         }
-
     }
 
     static class Context {

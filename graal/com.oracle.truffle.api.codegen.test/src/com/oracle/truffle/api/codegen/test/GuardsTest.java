@@ -30,7 +30,6 @@ import org.junit.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.codegen.test.GuardsTestFactory.GlobalFlagGuardFactory;
 import com.oracle.truffle.api.codegen.test.GuardsTestFactory.InvocationGuardFactory;
-import com.oracle.truffle.api.codegen.test.TypeSystemTest.ChildrenNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 
@@ -52,18 +51,11 @@ public class GuardsTest {
         assertEquals(1, InvocationGuard.genericInvocations);
     }
 
-    public abstract static class InvocationGuard extends ChildrenNode {
+    @NodeChildren({@NodeChild("value0"), @NodeChild("value1")})
+    public abstract static class InvocationGuard extends ValueNode {
 
         static int specializedInvocations = 0;
         static int genericInvocations = 0;
-
-        public InvocationGuard(ValueNode... children) {
-            super(children);
-        }
-
-        public InvocationGuard(InvocationGuard node) {
-            super(node);
-        }
 
         boolean guard(int value0, int value1) {
             return value0 != Integer.MAX_VALUE;
@@ -95,17 +87,10 @@ public class GuardsTest {
         assertEquals(42, executeWith(root, NULL));
     }
 
-    public abstract static class GlobalFlagGuard extends ChildrenNode {
+    @NodeChild("expression")
+    public abstract static class GlobalFlagGuard extends ValueNode {
 
         static boolean globalFlag = false;
-
-        public GlobalFlagGuard(ValueNode... children) {
-            super(children);
-        }
-
-        public GlobalFlagGuard(GlobalFlagGuard node) {
-            super(node);
-        }
 
         static boolean globalFlagGuard() {
             return globalFlag;

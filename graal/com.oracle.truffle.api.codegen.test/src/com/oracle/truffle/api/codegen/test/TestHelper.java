@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.codegen.test.BuiltinTest.*;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.*;
 
 /**
@@ -46,7 +47,7 @@ class TestHelper {
 
         List<Object> argumentList = new ArrayList<>();
         argumentList.addAll(Arrays.asList(constants));
-        if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass())) {
+        if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass()) || BuiltinNode.class.isAssignableFrom(factory.getNodeClass())) {
             argumentList.add(argumentNodes);
         } else {
             argumentList.addAll(Arrays.asList(argumentNodes));
