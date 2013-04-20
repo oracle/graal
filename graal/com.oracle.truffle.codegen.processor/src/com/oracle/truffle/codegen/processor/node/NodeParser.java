@@ -61,7 +61,6 @@ public class NodeParser extends TemplateParser<NodeData> {
                 if (node != null) {
                     String dump = parsed.dump();
                     log.message(Kind.ERROR, null, null, null, dump);
-                    System.out.println(dump);
                 }
             }
         } finally {
