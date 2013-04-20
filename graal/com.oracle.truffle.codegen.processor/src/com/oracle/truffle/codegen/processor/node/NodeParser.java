@@ -128,14 +128,8 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         AnnotationMirror methodNodes = Utils.findAnnotationMirror(processingEnv, templateType, NodeClass.class);
-
         if (methodNodes == null && !Utils.isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
             return null; // not a node
-        }
-
-        if (templateType.getModifiers().contains(Modifier.PRIVATE)) {
-            // TODO error message here!?
-            return null; // not visible, not a node
         }
 
         List<TypeElement> lookupTypes = findSuperClasses(new ArrayList<TypeElement>(), templateType);
