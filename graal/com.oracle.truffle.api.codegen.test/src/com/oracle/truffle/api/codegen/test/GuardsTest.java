@@ -23,9 +23,9 @@
 package com.oracle.truffle.api.codegen.test;
 
 import static com.oracle.truffle.api.codegen.test.TestHelper.*;
-import static junit.framework.Assert.*;
 
 import org.junit.*;
+import static org.junit.Assert.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.codegen.test.GuardsTestFactory.GlobalFlagGuardFactory;

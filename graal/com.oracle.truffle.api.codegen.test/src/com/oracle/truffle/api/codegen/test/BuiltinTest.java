@@ -23,7 +23,7 @@
 package com.oracle.truffle.api.codegen.test;
 
 import static com.oracle.truffle.api.codegen.test.TestHelper.*;
-import static junit.framework.Assert.*;
+import static org.junit.Assert.*;
 
 import org.junit.*;
 
