@@ -24,20 +24,7 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.codegen.*;
 
-@ExecuteChildren({"leftNode", "rightNode"})
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
 public abstract class BinaryNode extends TypedNode {
-
-    @Child protected TypedNode leftNode;
-
-    @Child protected TypedNode rightNode;
-
-    public BinaryNode(TypedNode left, TypedNode right) {
-        this.leftNode = adoptChild(left);
-        this.rightNode = adoptChild(right);
-    }
-
-    public BinaryNode(BinaryNode node) {
-        this(node.leftNode, node.rightNode);
-    }
 
 }

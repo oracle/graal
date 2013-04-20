@@ -74,7 +74,7 @@ public class NodeFactory {
         if (expressions.size() >= 1) {
             StatementNode[] nodes = new StatementNode[expressions.size() + 1];
             for (int i = 0; i < expressions.size(); i++) {
-                nodes[i] = PrintNodeFactory.create(expressions.get(i), printOutput);
+                nodes[i] = PrintNodeFactory.create(printOutput, expressions.get(i));
             }
             nodes[expressions.size()] = new PrintLineNode(printOutput);
             return new BlockNode(nodes);

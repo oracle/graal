@@ -27,24 +27,8 @@ import java.math.*;
 import com.oracle.truffle.api.codegen.*;
 
 @SuppressWarnings("unused")
-@ExecuteChildren({"conditionNode", "ifPartNode", "elsePartNode"})
+@NodeChildren({@NodeChild(value = "conditionNode", type = ConditionNode.class), @NodeChild("ifPartNode"), @NodeChild("elsePartNode")})
 public abstract class TernaryNode extends TypedNode {
-
-    @Child protected ConditionNode conditionNode;
-
-    @Child protected TypedNode ifPartNode;
-
-    @Child protected TypedNode elsePartNode;
-
-    public TernaryNode(ConditionNode condition, TypedNode ifPart, TypedNode elsePart) {
-        this.conditionNode = adoptChild(condition);
-        this.ifPartNode = adoptChild(ifPart);
-        this.elsePartNode = adoptChild(elsePart);
-    }
-
-    public TernaryNode(TernaryNode condition) {
-        this(condition.conditionNode, condition.ifPartNode, condition.elsePartNode);
-    }
 
     @ShortCircuit("ifPartNode")
     public boolean needsIfPart(boolean condition) {

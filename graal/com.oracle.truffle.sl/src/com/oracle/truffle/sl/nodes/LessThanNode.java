@@ -28,14 +28,6 @@ import com.oracle.truffle.api.codegen.*;
 
 public abstract class LessThanNode extends BinaryNode {
 
-    public LessThanNode(TypedNode left, TypedNode right) {
-        super(left, right);
-    }
-
-    public LessThanNode(LessThanNode node) {
-        this(node.leftNode, node.rightNode);
-    }
-
     @Specialization
     public boolean doInteger(int left, int right) {
         return left < right;
