@@ -27,13 +27,10 @@ import java.util.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.codegen.processor.template.MethodSpec.TypeDef;
 
 public class ParameterSpec {
-
-    public enum Cardinality {
-        ONE, MULTIPLE;
-    }
 
     private final String name;
     private final List<TypeMirror> allowedTypes;

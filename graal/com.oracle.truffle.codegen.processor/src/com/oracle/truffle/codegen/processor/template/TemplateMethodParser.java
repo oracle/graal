@@ -33,7 +33,7 @@ import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public abstract class TemplateMethodParser<T extends Template, E extends TemplateMethod> {
@@ -226,7 +226,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         ConsumableListIterator<ParameterSpec> required = new ConsumableListIterator<>(spec.getRequired());
         while (required.get() != null || types.get() != null) {
             if (required.get() == null || types.get() == null) {
-                if (required.get() != null && required.get().getCardinality() == Cardinality.MULTIPLE) {
+                if (required.get() != null && required.get().getCardinality() == Cardinality.MANY) {
                     required.consume();
                     specificationParameterIndex = 0;
                     continue;
@@ -236,7 +236,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             boolean implicit = types.getIndex() < spec.getImplicitRequiredTypes().size();
             ActualParameter resolvedParameter = matchParameter(required.get(), types.get(), template, specificationParameterIndex, implicit);
             if (resolvedParameter == null) {
-                if (required.get().getCardinality() == Cardinality.MULTIPLE) {
+                if (required.get().getCardinality() == Cardinality.MANY) {
                     required.consume();
                     continue;
                 }
@@ -248,7 +248,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 if (required.get().getCardinality() == Cardinality.ONE) {
                     required.consume();
                     specificationParameterIndex = 0;
-                } else if (required.get().getCardinality() == Cardinality.MULTIPLE) {
+                } else if (required.get().getCardinality() == Cardinality.MANY) {
                     specificationParameterIndex++;
                 }
             }

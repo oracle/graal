@@ -28,9 +28,9 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.node.NodeFieldData.*;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
 
 public abstract class NodeMethodParser<E extends TemplateMethod> extends TemplateMethodParser<NodeData, E> {
 
@@ -84,37 +84,36 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         resolveAndAddImplicitThis(methodSpec, method);
 
         for (NodeFieldData field : getNode().getFields()) {
-            if (field.getKind() == FieldKind.FINAL_FIELD) {
+            if (!Utils.isFieldAccessible(method, field.getVariable())) {
                 ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
                 spec.setLocal(true);
                 methodSpec.addOptional(spec);
             }
         }
 
-        for (NodeFieldData field : getNode().getFields()) {
-            if (field.getExecutionKind() == ExecutionKind.IGNORE) {
-                continue;
-            }
+        // children are null when parsing executable types
+        if (getNode().getChildren() != null) {
+            for (NodeChildData child : getNode().getChildren()) {
+                if (child.getExecutionKind() == ExecutionKind.DEFAULT) {
+                    ParameterSpec spec = createValueParameterSpec(child.getName(), child.getNodeData());
+                    if (child.getCardinality().isMany()) {
+                        spec.setCardinality(Cardinality.MANY);
+                        spec.setIndexed(true);
+                    }
+                    methodSpec.addRequired(spec);
+                } else if (child.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
+                    String valueName = child.getName();
+                    if (shortCircuitName != null && valueName.equals(shortCircuitName)) {
+                        break;
+                    }
 
-            if (field.getExecutionKind() == ExecutionKind.DEFAULT) {
-                ParameterSpec spec = createValueParameterSpec(field.getName(), field.getNodeData());
-                if (field.getKind() == FieldKind.CHILDREN) {
-                    spec.setCardinality(Cardinality.MULTIPLE);
-                    spec.setIndexed(true);
+                    if (shortCircuitsEnabled) {
+                        methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
+                    }
+                    methodSpec.addRequired(createValueParameterSpec(valueName, child.getNodeData()));
+                } else {
+                    assert false;
                 }
-                methodSpec.addRequired(spec);
-            } else if (field.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
-                String valueName = field.getName();
-                if (shortCircuitName != null && valueName.equals(shortCircuitName)) {
-                    break;
-                }
-
-                if (shortCircuitsEnabled) {
-                    methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
-                }
-                methodSpec.addRequired(createValueParameterSpec(valueName, field.getNodeData()));
-            } else {
-                assert false;
             }
         }
 

@@ -29,8 +29,8 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.codegen.processor.template.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.*;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeData> {
@@ -46,7 +46,7 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         MethodSpec spec = createDefaultMethodSpec(method, mirror, false, null);
         spec.setVariableRequiredArguments(true);
         ParameterSpec other = new ParameterSpec("other", nodeTypeMirrors(getNode()));
-        other.setCardinality(Cardinality.MULTIPLE);
+        other.setCardinality(Cardinality.MANY);
         other.setSignature(true);
         other.setIndexed(true);
         spec.addRequired(other);

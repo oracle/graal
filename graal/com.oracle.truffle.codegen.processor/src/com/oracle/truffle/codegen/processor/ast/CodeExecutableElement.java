@@ -215,7 +215,7 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
             copy.addAnnotationMirror(mirror);
         }
         for (VariableElement var : method.getParameters()) {
-            copy.addParameter(var);
+            copy.addParameter(CodeVariableElement.clone(var));
         }
         for (Element element : method.getEnclosedElements()) {
             copy.add(element);

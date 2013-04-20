@@ -43,8 +43,8 @@ public final class TruffleTypes {
     private final TypeMirror nodeArray;
     private final TypeMirror unexpectedValueException;
     private final TypeMirror frame;
-    private final TypeMirror stableAnnotation;
-    private final TypeMirror contentStableAnnotation;
+    private final DeclaredType childAnnotation;
+    private final DeclaredType childrenAnnotation;
     private final TypeMirror typeConversion;
     private final TypeMirror truffleIntrinsics;
 
@@ -55,8 +55,8 @@ public final class TruffleTypes {
         nodeArray = context.getEnvironment().getTypeUtils().getArrayType(node);
         unexpectedValueException = getRequired(context, UnexpectedResultException.class);
         frame = getRequired(context, VirtualFrame.class);
-        stableAnnotation = getRequired(context, Child.class);
-        contentStableAnnotation = getRequired(context, Children.class);
+        childAnnotation = getRequired(context, Child.class);
+        childrenAnnotation = getRequired(context, Children.class);
         typeConversion = getRequired(context, TypeConversion.class);
         truffleIntrinsics = getRequired(context, TruffleIntrinsics.class);
     }
@@ -73,12 +73,12 @@ public final class TruffleTypes {
         return false;
     }
 
-    private TypeMirror getRequired(ProcessorContext context, Class clazz) {
+    private DeclaredType getRequired(ProcessorContext context, Class clazz) {
         TypeMirror type = context.getType(clazz);
         if (type == null) {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));
         }
-        return type;
+        return (DeclaredType) type;
     }
 
     public TypeMirror getTruffleIntrinsics() {
@@ -105,11 +105,11 @@ public final class TruffleTypes {
         return unexpectedValueException;
     }
 
-    public TypeMirror getStableAnnotation() {
-        return stableAnnotation;
+    public DeclaredType getChildAnnotation() {
+        return childAnnotation;
     }
 
-    public TypeMirror getContentStableAnnotation() {
-        return contentStableAnnotation;
+    public DeclaredType getChildrenAnnotation() {
+        return childrenAnnotation;
     }
 }

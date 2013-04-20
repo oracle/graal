@@ -29,7 +29,7 @@ import javax.lang.model.element.*;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.node.NodeFieldData.ExecutionKind;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
 
 public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
@@ -40,8 +40,8 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
         super(context, node);
 
         shortCircuitValues = new HashSet<>();
-        NodeFieldData[] shortCircuitFields = node.filterFields(null, ExecutionKind.SHORT_CIRCUIT);
-        for (NodeFieldData field : shortCircuitFields) {
+        NodeChildData[] shortCircuitFields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
+        for (NodeChildData field : shortCircuitFields) {
             shortCircuitValues.add(field.getName());
         }
     }

@@ -27,7 +27,7 @@ import java.util.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.template.ParameterSpec.Cardinality;
+import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 
 public class MethodSpec {
 
@@ -151,11 +151,11 @@ public class MethodSpec {
 
         for (ParameterSpec requiredSpec : getRequired()) {
             b.append(sep);
-            if (requiredSpec.getCardinality() == Cardinality.MULTIPLE) {
+            if (requiredSpec.getCardinality() == Cardinality.MANY) {
                 b.append("{");
             }
             b.append(createTypeSignature(requiredSpec, false));
-            if (requiredSpec.getCardinality() == Cardinality.MULTIPLE) {
+            if (requiredSpec.getCardinality() == Cardinality.MANY) {
                 b.append("}");
             }
             sep = ", ";

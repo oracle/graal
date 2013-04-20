@@ -30,6 +30,11 @@ import com.oracle.truffle.api.nodes.*;
 @Target({ElementType.TYPE})
 public @interface NodeClass {
 
-    Class<? extends Node> value();
+    public static final class InheritNode extends Node {
+    }
+
+    Class<? extends Node> value() default InheritNode.class;
+
+    boolean splitByMethodName() default false;
 
 }

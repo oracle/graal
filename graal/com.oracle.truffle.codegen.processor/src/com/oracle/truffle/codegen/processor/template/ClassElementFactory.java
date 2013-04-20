@@ -99,7 +99,6 @@ public abstract class ClassElementFactory<M> extends CodeElementFactory<M> {
         if (element.getModifiers().contains(Modifier.PRIVATE)) {
             return null;
         }
-
         CodeExecutableElement executable = CodeExecutableElement.clone(getContext().getEnvironment(), element);
         executable.setReturnType(null);
         executable.setSimpleName(CodeNames.of(type.getSimpleName().toString()));

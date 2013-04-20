@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.codegen.processor.node;
+package com.oracle.truffle.api.codegen;
 
-import javax.lang.model.element.*;
-import javax.lang.model.type.*;
+import java.lang.annotation.*;
 
-import com.oracle.truffle.codegen.processor.template.*;
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.TYPE})
+public @interface NodeChild {
 
-public class NodeFieldData extends MessageContainer {
+    String value() default "";
 
-    private VariableElement variable;
+    Class<?> type() default NodeClass.InheritNode.class;
 
-    public NodeFieldData(VariableElement var) {
-        this.variable = var;
-    }
-
-    @Override
-    public Element getMessageElement() {
-        return variable;
-    }
-
-    public String getName() {
-        return variable.getSimpleName().toString();
-    }
-
-    public TypeMirror getType() {
-        return variable.asType();
-    }
-
-    public VariableElement getVariable() {
-        return variable;
-    }
-
+    String[] executeWith() default {};
 }

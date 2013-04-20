@@ -63,11 +63,17 @@ public class CodeTypeMirror implements TypeMirror {
 
     public static class DeclaredCodeTypeMirror extends CodeTypeMirror implements DeclaredType {
 
-        private final CodeTypeElement clazz;
+        private final TypeElement clazz;
+        private final List<? extends TypeMirror> typeArguments;
 
-        public DeclaredCodeTypeMirror(CodeTypeElement clazz) {
+        public DeclaredCodeTypeMirror(TypeElement clazz) {
+            this(clazz, Collections.<TypeMirror> emptyList());
+        }
+
+        public DeclaredCodeTypeMirror(TypeElement clazz, List<? extends TypeMirror> typeArguments) {
             super(TypeKind.DECLARED);
             this.clazz = clazz;
+            this.typeArguments = typeArguments;
         }
 
         @Override
@@ -82,7 +88,7 @@ public class CodeTypeMirror implements TypeMirror {
 
         @Override
         public List<? extends TypeMirror> getTypeArguments() {
-            return Collections.emptyList();
+            return typeArguments;
         }
 
         @Override
