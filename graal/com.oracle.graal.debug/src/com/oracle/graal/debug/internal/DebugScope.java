@@ -138,13 +138,26 @@ public final class DebugScope {
         }
     }
 
-    public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, Object[] newContext) {
+    /**
+     * Runs a task in a new debug scope which is either a child of the current scope or a disjoint
+     * top level scope.
+     * 
+     * @param newName the name of the new scope
+     * @param runnable the task to run (must be null iff {@code callable} is not null)
+     * @param callable the task to run (must be null iff {@code runnable} is not null)
+     * @param sandbox specifies if the scope is a child of the current scope or a top level scope
+     * @param sandboxConfig the config to use of a new top level scope (ignored if
+     *            {@code sandbox == false})
+     * @param newContext context objects of the new scope
+     * @return the value returned by the task
+     */
+    public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, DebugConfig sandboxConfig, Object[] newContext) {
         DebugScope oldContext = getInstance();
         DebugConfig oldConfig = getConfig();
         DebugScope newChild = null;
         if (sandbox) {
             newChild = new DebugScope(newName, newName, null, newContext);
-            setConfig(null);
+            setConfig(sandboxConfig);
         } else {
             newChild = oldContext.createChild(newName, newContext);
         }
@@ -215,7 +228,7 @@ public final class DebugScope {
                         return new RuntimeException("Exception while intercepting exception", t);
                     }
                 }
-            }, false, new Object[]{e});
+            }, false, null, new Object[]{e});
         }
         return null;
     }
