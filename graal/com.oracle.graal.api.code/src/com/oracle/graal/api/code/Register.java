@@ -196,6 +196,16 @@ public final class Register implements Comparable<Register>, Serializable {
     }
 
     /**
+     * Gets a hash code for this register.
+     * 
+     * @return the value of {@link #number}
+     */
+    @Override
+    public int hashCode() {
+        return number;
+    }
+
+    /**
      * Categorizes a set of registers by {@link RegisterFlag}.
      * 
      * @param registers a list of registers to be categorized
