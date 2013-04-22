@@ -44,7 +44,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
     }
 
     private ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {
-        super(object, object.graph().add(new LocationNode(locationIdentity, kind, displacement)), StampFactory.forKind(kind));
+        super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
     }
 
     private ReadNode(ValueNode object, ValueNode location, ValueNode dependency) {
@@ -57,7 +57,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, location().generateLoad(gen, object(), this));
+        gen.setResult(this, location().generateLoad(gen, gen.operand(object()), this));
     }
 
     @Override
@@ -73,8 +73,8 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && object != null && object.isConstant()) {
-            if (location.locationIdentity() == LocationNode.FINAL_LOCATION && location.getClass() == LocationNode.class) {
-                long displacement = location.displacement();
+            if (location.locationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
+                long displacement = ((ConstantLocationNode) location).displacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
