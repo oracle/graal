@@ -1658,11 +1658,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             if (targetField != null) {
                 Element accessElement = targetField.getAccessElement();
-                if (accessElement == null) {
+                if (accessElement == null || accessElement.getKind() == ElementKind.METHOD) {
                     builder.string("this.").string(targetField.getName());
-                } else if (accessElement.getKind() == ElementKind.METHOD) {
-                    builder.startCall(accessElement.getSimpleName().toString()).end();
-                } else if (accessElement.getKind() == ElementKind.FIELD) {
+                } /*
+                   * FIXME Temporary deactivated due to partial evaluation failure else if
+                   * (accessElement.getKind() == ElementKind.METHOD) {
+                   * builder.startCall(accessElement.getSimpleName().toString()).end(); }
+                   */
+                else if (accessElement.getKind() == ElementKind.FIELD) {
                     builder.string("this.").string(accessElement.getSimpleName().toString());
                 } else {
                     throw new AssertionError();
