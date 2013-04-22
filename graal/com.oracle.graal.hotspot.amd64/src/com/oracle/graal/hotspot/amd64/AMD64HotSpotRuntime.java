@@ -105,8 +105,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0: object */ javaCallingConvention(Kind.Object,
                 /* arg1:   lock */                       word));
 
-        addRuntimeCall(NEW_ARRAY, 0L,
-                /*        temps */ null,
+        addStubCall(NEW_ARRAY,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
@@ -117,8 +116,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_INSTANCE, 0L,
-                /*        temps */ null,
+        addStubCall(NEW_INSTANCE,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word));
 

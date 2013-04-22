@@ -271,6 +271,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     /**
+     * Registers the details for linking a call to a compiled {@link Stub}.
+     * 
+     * @param descriptor name and signature of the call
+     * @param ret where the call returns its result
+     * @param args where arguments are passed to the call
+     */
+    protected RuntimeCallTarget addStubCall(Descriptor descriptor, Value ret, Value... args) {
+        return addRuntimeCall(descriptor, 0L, null, ret, args);
+    }
+
+    /**
      * Registers the details for linking a runtime call.
      * 
      * @param descriptor name and signature of the call
@@ -580,6 +591,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CompareAndSwapNode) {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
+            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+            cas.setLocation(location);
             cas.setWriteBarrierType(getCompareAndSwapBarrier(cas));
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;

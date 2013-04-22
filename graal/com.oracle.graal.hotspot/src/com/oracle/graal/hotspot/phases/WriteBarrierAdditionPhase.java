@@ -61,11 +61,9 @@ public class WriteBarrierAdditionPhase extends Phase {
     private static void addCASBarriers(CompareAndSwapNode node, StructuredGraph graph) {
         WriteBarrierType barrierType = node.getWriteBarrierType();
         if (barrierType == WriteBarrierType.PRECISE) {
-            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, node.expected().kind(), node.displacement(), node.offset(), graph, 1);
-            graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), location, true)));
+            graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), true)));
         } else if (barrierType == WriteBarrierType.IMPRECISE) {
-            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, node.expected().kind(), node.displacement(), node.offset(), graph, 1);
-            graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), location, false)));
+            graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), false)));
         } else {
             assert barrierType == WriteBarrierType.NONE;
         }

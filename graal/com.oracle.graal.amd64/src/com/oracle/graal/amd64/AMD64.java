@@ -29,6 +29,7 @@ import java.nio.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Register.RegisterFlag;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the AMD64 architecture.
@@ -105,7 +106,10 @@ public class AMD64 extends Architecture {
         rip
     };
 
-    public AMD64() {
+    private final int supportedSSEVersion;
+    private final int supportedAVXVersion;
+
+    public AMD64(int supportedSSEVersion, int supportedAVXVersion) {
         super("AMD64",
               8,
               ByteOrder.LITTLE_ENDIAN,
@@ -114,6 +118,65 @@ public class AMD64 extends Architecture {
               1,
               r15.encoding + 1,
               8);
+        assert supportedSSEVersion >= 2;
+        this.supportedSSEVersion = supportedSSEVersion;
+        this.supportedAVXVersion = supportedAVXVersion;
     }
     // @formatter:on
+
+    @Override
+    public int getMaxVectorLength(Kind kind) {
+        if (supportedAVXVersion > 0) {
+            switch (kind) {
+                case Boolean:
+                    return 32;
+                case Byte:
+                    return 32;
+                case Short:
+                    return 16;
+                case Char:
+                    return 16;
+                case Int:
+                    return 8;
+                case Float:
+                    return 8;
+                case Long:
+                    return 4;
+                case Double:
+                    return 4;
+                case Object:
+                    return 4;
+            }
+        } else {
+            switch (kind) {
+                case Boolean:
+                    return 16;
+                case Byte:
+                    return 16;
+                case Short:
+                    return 8;
+                case Char:
+                    return 8;
+                case Int:
+                    return 4;
+                case Float:
+                    return 4;
+                case Long:
+                    return 2;
+                case Double:
+                    return 2;
+                case Object:
+                    return 2;
+            }
+        }
+        return 1;
+    }
+
+    public int getSupportedSSEVersion() {
+        return supportedSSEVersion;
+    }
+
+    public int getSupportedAVXVersion() {
+        return supportedAVXVersion;
+    }
 }

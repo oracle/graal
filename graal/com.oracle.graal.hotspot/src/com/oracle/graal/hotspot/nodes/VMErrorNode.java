@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.*;
  * Causes the VM to exit with a description of the current Java location and an optional
  * {@linkplain Log#printf(String, long) formatted} error message specified.
  */
-public final class VMErrorNode extends FixedWithNextNode implements LIRGenLowerable {
+public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private ValueNode format;
     @Input private ValueNode value;

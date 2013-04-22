@@ -76,9 +76,26 @@ public class Debug {
         return callable;
     }
 
-    public static void sandbox(String name, Runnable runnable) {
+    public static void sandbox(String name, DebugConfig config, Runnable runnable) {
         if (ENABLED) {
-            DebugScope.getInstance().scope(name, runnable, null, true, new Object[0]);
+            DebugScope.getInstance().scope(name, runnable, null, true, config, new Object[0]);
+        } else {
+            runnable.run();
+        }
+    }
+
+    /**
+     * Creates a new debug scope that is unrelated to the current scope and runs a given task in the
+     * new scope.
+     * 
+     * @param name new scope name
+     * @param context the context objects of the new scope
+     * @param config the debug configuration to use for the new scope
+     * @param runnable the task to run in the new scope
+     */
+    public static void sandbox(String name, Object[] context, DebugConfig config, Runnable runnable) {
+        if (ENABLED) {
+            DebugScope.getInstance().scope(name, runnable, null, true, config, context);
         } else {
             runnable.run();
         }
@@ -98,7 +115,7 @@ public class Debug {
 
     public static void scope(String name, Object[] context, Runnable runnable) {
         if (ENABLED) {
-            DebugScope.getInstance().scope(name, runnable, null, false, context);
+            DebugScope.getInstance().scope(name, runnable, null, false, null, context);
         } else {
             runnable.run();
         }
@@ -118,7 +135,7 @@ public class Debug {
 
     public static <T> T scope(String name, Object[] context, Callable<T> callable) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, callable, false, context);
+            return DebugScope.getInstance().scope(name, null, callable, false, null, context);
         } else {
             return DebugScope.call(callable);
         }

@@ -161,7 +161,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 previousInlineContext = inlineContext;
 
                 final SchedulePhase predefinedSchedule = getPredefinedSchedule();
-                Debug.sandbox("PrintingGraph", new Runnable() {
+                Debug.sandbox("PrintingGraph", null, new Runnable() {
 
                     @Override
                     public void run() {

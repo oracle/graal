@@ -47,7 +47,7 @@ import com.oracle.graal.phases.common.*;
  * In order to avoid this situation, an anchor node is introduced in CheckCastSnippts.
  */
 
-public class ReadAfterCheckCast extends GraphScheduleTest {
+public class ReadAfterCheckCastTest extends GraphScheduleTest {
 
     public static long foo = 0;
 

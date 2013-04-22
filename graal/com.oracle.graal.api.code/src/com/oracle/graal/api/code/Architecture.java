@@ -24,6 +24,8 @@ package com.oracle.graal.api.code;
 
 import java.nio.*;
 
+import com.oracle.graal.api.meta.*;
+
 /**
  * Represents a CPU architecture, including information such as its endianness, CPU registers, word
  * width, etc.
@@ -153,5 +155,13 @@ public abstract class Architecture {
      */
     public final int requiredBarriers(int barriers) {
         return barriers & ~implicitMemoryBarriers;
+    }
+
+    /**
+     * Determine the maximum vector length supported for vector operations on values of a given
+     * {@link Kind}.
+     */
+    public int getMaxVectorLength(@SuppressWarnings("unused") Kind kind) {
+        return 1;
     }
 }

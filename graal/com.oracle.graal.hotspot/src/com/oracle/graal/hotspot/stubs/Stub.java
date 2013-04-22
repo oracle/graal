@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
@@ -29,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
@@ -64,11 +66,26 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     /**
      * The code installed for the stub.
      */
-    protected InstalledCode stubCode;
+    protected InstalledCode code;
 
     /**
-     * Creates a new stub container. The new stub still needs to be
-     * {@linkplain #getAddress(Backend) installed}.
+     * The registers defined by this stub.
+     */
+    private Set<Register> definedRegisters;
+
+    public void initDefinedRegisters(Set<Register> registers) {
+        assert registers != null;
+        assert definedRegisters == null : "cannot redefine";
+        definedRegisters = registers;
+    }
+
+    public Set<Register> getDefinedRegisters() {
+        assert definedRegisters != null : "not yet initialized";
+        return definedRegisters;
+    }
+
+    /**
+     * Creates a new stub container..
      * 
      * @param linkage linkage details for a call to the stub
      */
@@ -100,37 +117,43 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     }
 
     /**
-     * Ensures the code for this stub is installed.
-     * 
-     * @return the entry point address for calls to this stub
+     * Gets the code for this stub, compiling it first if necessary.
      */
-    public synchronized long getAddress(Backend backend) {
-        if (stubCode == null) {
-            Arguments args = makeArguments(stubInfo);
-            SnippetTemplate template = template(args);
-            StructuredGraph graph = template.copySpecializedGraph();
-
-            PhasePlan phasePlan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-            phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-            final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog());
-
-            stubCode = Debug.scope("CodeInstall", new Object[]{runtime(), getMethod()}, new Callable<InstalledCode>() {
+    public synchronized InstalledCode getCode(final Backend backend) {
+        if (code == null) {
+            Debug.sandbox("CompilingStub", new Object[]{runtime(), getMethod()}, DebugScope.getConfig(), new Runnable() {
 
                 @Override
-                public InstalledCode call() {
-                    InstalledCode installedCode = runtime().addMethod(getMethod(), compResult);
-                    assert installedCode != null : "error installing stub " + getMethod();
-                    if (Debug.isDumpEnabled()) {
-                        Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-                    }
-                    return installedCode;
+                public void run() {
+
+                    Arguments args = makeArguments(stubInfo);
+                    SnippetTemplate template = template(args);
+                    StructuredGraph graph = template.copySpecializedGraph();
+
+                    PhasePlan phasePlan = new PhasePlan();
+                    GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                    phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                    final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan,
+                                    OptimisticOptimizations.ALL, new SpeculationLog());
+
+                    assert definedRegisters != null;
+                    code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
+
+                        @Override
+                        public InstalledCode call() {
+                            InstalledCode installedCode = runtime().addMethod(getMethod(), compResult);
+                            assert installedCode != null : "error installing stub " + getMethod();
+                            if (Debug.isDumpEnabled()) {
+                                Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
+                            }
+                            return installedCode;
+                        }
+                    });
+
                 }
             });
-
-            assert stubCode != null : "error installing stub " + getMethod();
+            assert code != null : "error installing stub " + getMethod();
         }
-        return stubCode.getStart();
+        return code;
     }
 }

@@ -114,7 +114,7 @@ public final class GraalOptions {
     // debugging settings
     public static boolean ZapStackOnMethodEntry              = ____;
     public static boolean DeoptALot                          = ____;
-    public static boolean VerifyPhases                       = true;
+    public static boolean VerifyPhases                       = false;
 
     public static String  PrintFilter                        = null;
 

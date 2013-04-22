@@ -48,8 +48,8 @@ public final class Suites {
         configurations = new HashMap<>();
         for (CompilerConfiguration config : ServiceLoader.loadInstalled(CompilerConfiguration.class)) {
             String name = config.getClass().getSimpleName();
-            if (name.endsWith("Configuration")) {
-                name = name.substring(0, name.length() - "Configuration".length());
+            if (name.endsWith("CompilerConfiguration")) {
+                name = name.substring(0, name.length() - "CompilerConfiguration".length());
             }
             configurations.put(name.toLowerCase(), config);
         }

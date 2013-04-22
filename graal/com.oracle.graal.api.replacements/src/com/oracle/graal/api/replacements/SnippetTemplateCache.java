@@ -20,22 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.api.replacements;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
-
-public class MidTierContext extends PhaseContext {
-
-    private final Replacements replacements;
-
-    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-        super(runtime, assumptions);
-        this.replacements = replacements;
-    }
-
-    public Replacements getReplacements() {
-        return replacements;
-    }
+/**
+ * Marker interface for classes that cache snippet templates.
+ */
+public interface SnippetTemplateCache {
 }

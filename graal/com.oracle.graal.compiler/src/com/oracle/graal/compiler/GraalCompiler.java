@@ -143,7 +143,7 @@ public class GraalCompiler {
 
         new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
 
-        MidTierContext midTierContext = new MidTierContext(runtime, assumptions);
+        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);

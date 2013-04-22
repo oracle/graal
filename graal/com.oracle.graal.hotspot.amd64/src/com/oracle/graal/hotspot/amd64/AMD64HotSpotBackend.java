@@ -28,6 +28,7 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import sun.misc.*;
 
@@ -42,10 +43,13 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -154,6 +158,30 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         if (deoptimizationRescueSlot != null) {
             tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
+
+        Stub stub = runtime().asStub(lirGen.method());
+        if (stub != null) {
+            final Set<Register> definedRegisters = new HashSet<>();
+            ValueProcedure defProc = new ValueProcedure() {
+
+                @Override
+                public Value doValue(Value value) {
+                    if (ValueUtil.isRegister(value)) {
+                        final Register reg = ValueUtil.asRegister(value);
+                        definedRegisters.add(reg);
+                    }
+                    return value;
+                }
+            };
+            for (Block block : lir.codeEmittingOrder()) {
+                for (LIRInstruction op : lir.lir(block)) {
+                    op.forEachTemp(defProc);
+                    op.forEachOutput(defProc);
+                }
+            }
+            stub.initDefinedRegisters(definedRegisters);
+        }
+
         return tasm;
     }
 
