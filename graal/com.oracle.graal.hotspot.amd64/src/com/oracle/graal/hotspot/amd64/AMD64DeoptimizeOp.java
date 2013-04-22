@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
@@ -49,7 +51,7 @@ final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        HotSpotGraalRuntime runtime = HotSpotGraalRuntime.getInstance();
+        HotSpotGraalRuntime runtime = graalRuntime();
         Register thread = runtime.getRuntime().threadRegister();
         masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
         AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), null, false, info);

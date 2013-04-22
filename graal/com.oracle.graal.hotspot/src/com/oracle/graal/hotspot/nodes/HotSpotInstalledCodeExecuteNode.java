@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
@@ -86,7 +87,7 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         StructuredGraph g = (StructuredGraph) graph();
 
         LoadFieldNode loadnmethod = g.add(new LoadFieldNode(code, nmethodField));
-        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadnmethod, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), HotSpotGraalRuntime.getInstance().getTarget().wordKind));
+        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadnmethod, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
 
         LoadFieldNode loadMethod = g.add(new LoadFieldNode(code, methodField));
         LoadFieldNode loadmetaspaceMethod = g.add(new LoadFieldNode(loadMethod, metaspaceMethodField));

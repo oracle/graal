@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
 
@@ -37,6 +38,6 @@ public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements
 
     @Override
     public String getSourceFileName() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getFileName(this);
+        return graalRuntime().getCompilerToVM().getFileName(this);
     }
 }

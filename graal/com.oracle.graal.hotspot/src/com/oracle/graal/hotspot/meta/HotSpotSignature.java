@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -118,7 +120,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         }
         JavaType type = argumentTypes[index];
         if (type == null || !(type instanceof ResolvedJavaType)) {
-            type = HotSpotGraalRuntime.getInstance().lookupType(arguments.get(index), (HotSpotResolvedObjectType) accessingClass, false);
+            type = graalRuntime().lookupType(arguments.get(index), (HotSpotResolvedObjectType) accessingClass, false);
             argumentTypes[index] = type;
         }
         return type;
@@ -137,7 +139,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
         if (returnTypeCache == null || !(returnTypeCache instanceof ResolvedJavaType)) {
-            returnTypeCache = HotSpotGraalRuntime.getInstance().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
+            returnTypeCache = graalRuntime().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
         }
         return returnTypeCache;
     }
