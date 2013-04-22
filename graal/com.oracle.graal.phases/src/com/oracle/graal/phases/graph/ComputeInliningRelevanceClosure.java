@@ -20,30 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.nodes.util.*;
 
 public class ComputeInliningRelevanceClosure {
 
     private static final double EPSILON = 1d / Integer.MAX_VALUE;
 
     private final StructuredGraph graph;
-    private final NodeProbabilities nodeProbabilities;
-    private final NodeProbabilities nodeRelevances;
+    private final NodesToDoubles nodeProbabilities;
+    private final NodesToDoubles nodeRelevances;
 
-    public ComputeInliningRelevanceClosure(StructuredGraph graph, NodeProbabilities nodeProbabilities) {
+    public ComputeInliningRelevanceClosure(StructuredGraph graph, NodesToDoubles nodeProbabilities) {
         this.graph = graph;
         this.nodeProbabilities = nodeProbabilities;
-        this.nodeRelevances = new NodeProbabilities(graph.getNodeCount());
+        this.nodeRelevances = new NodesToDoubles(graph.getNodeCount());
     }
 
-    public NodeProbabilities run() {
+    public NodesToDoubles apply() {
         new ComputeInliningRelevanceIterator(graph).apply();
         return nodeRelevances;
     }
@@ -71,7 +71,7 @@ public class ComputeInliningRelevanceClosure {
                 assert scope.parent != null;
                 double parentProbability = 0;
                 for (EndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
-                    parentProbability += nodeProbabilities.getProbability(end);
+                    parentProbability += nodeProbabilities.get(end);
                 }
                 return parentProbability / scope.parent.minPathProbability;
             } else {
@@ -82,11 +82,11 @@ public class ComputeInliningRelevanceClosure {
 
         @Override
         protected void invoke(Invoke invoke) {
-            double probability = nodeProbabilities.getProbability(invoke.asNode());
+            double probability = nodeProbabilities.get(invoke.asNode());
             assert !Double.isNaN(probability);
 
             double relevance = (probability / currentProbability) * Math.min(1.0, parentRelevance);
-            nodeRelevances.setProbability(invoke.asNode(), relevance);
+            nodeRelevances.put(invoke.asNode(), relevance);
             assert !Double.isNaN(relevance);
         }
 
@@ -133,7 +133,7 @@ public class ComputeInliningRelevanceClosure {
             FixedNode scopeStart = scope.start;
             ArrayList<FixedNode> pathBeginNodes = new ArrayList<>();
             pathBeginNodes.add(scopeStart);
-            double minPathProbability = nodeProbabilities.getProbability(scopeStart);
+            double minPathProbability = nodeProbabilities.get(scopeStart);
             boolean isLoopScope = scopeStart instanceof LoopBeginNode;
 
             do {
@@ -158,8 +158,8 @@ public class ComputeInliningRelevanceClosure {
         }
 
         private double getMinPathProbability(FixedNode current, double minPathProbability) {
-            if (current != null && nodeProbabilities.getProbability(current) < minPathProbability) {
-                return nodeProbabilities.getProbability(current);
+            if (current != null && nodeProbabilities.get(current) < minPathProbability) {
+                return nodeProbabilities.get(current);
             }
             return minPathProbability;
         }
@@ -189,7 +189,7 @@ public class ComputeInliningRelevanceClosure {
             int pathBeginCount = pathBeginNodes.size();
 
             for (LoopExitNode sux : loopBegin.loopExits()) {
-                double probability = nodeProbabilities.getProbability(sux);
+                double probability = nodeProbabilities.get(sux);
                 if (probability > maxProbability) {
                     maxProbability = probability;
                     maxSux = sux;

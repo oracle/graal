@@ -73,9 +73,6 @@ public final class GraalOptions {
     public static double  TailDuplicationProbability         = 0.5;
     public static int     TailDuplicationTrivialSize         = 1;
 
-    // absolute probability analysis
-    public static boolean ProbabilityAnalysis                = true;
-
     // profiling information
     public static int     DeoptsToDisableOptimisticOptimization = 40;
     public static int     MatureExecutionsBranch             = 1;

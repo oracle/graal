@@ -20,31 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.cfg;
+package com.oracle.graal.nodes.util;
 
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
 
-public class NodeProbabilities {
+public class NodesToDoubles {
 
     private final IdentityHashMap<FixedNode, Double> nodeProbabilities;
 
-    public NodeProbabilities(int numberOfNodes) {
+    public NodesToDoubles(int numberOfNodes) {
         this.nodeProbabilities = new IdentityHashMap<>(numberOfNodes);
     }
 
-    public void setProbability(FixedNode n, double value) {
+    public void put(FixedNode n, double value) {
         nodeProbabilities.put(n, value);
     }
 
-    public double getProbability(FixedNode n) {
+    public double get(FixedNode n) {
         Double value = nodeProbabilities.get(n);
         assert value != null;
         return value;
-    }
-
-    public int size() {
-        return nodeProbabilities.size();
     }
 }

@@ -20,15 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * Computes probabilities for nodes in a graph.
@@ -53,18 +52,18 @@ public class ComputeProbabilityClosure {
     private static final double EPSILON = 1d / Integer.MAX_VALUE;
 
     private final StructuredGraph graph;
-    private final NodeProbabilities nodeProbabilities;
+    private final NodesToDoubles nodeProbabilities;
     private final Set<LoopInfo> loopInfos;
     private final Map<MergeNode, Set<LoopInfo>> mergeLoops;
 
     public ComputeProbabilityClosure(StructuredGraph graph) {
         this.graph = graph;
-        this.nodeProbabilities = new NodeProbabilities(graph.getNodeCount());
+        this.nodeProbabilities = new NodesToDoubles(graph.getNodeCount());
         this.loopInfos = new HashSet<>();
         this.mergeLoops = new IdentityHashMap<>();
     }
 
-    public NodeProbabilities run() {
+    public NodesToDoubles apply() {
         new PropagateProbability(graph.start()).apply();
         Debug.dump(graph, "After PropagateProbability");
         computeLoopFactors();
@@ -99,7 +98,7 @@ public class ComputeProbabilityClosure {
             this.requires = loopBegin.graph().createNodeMap();
         }
 
-        public double loopFrequency(NodeProbabilities nodeProbabilities) {
+        public double loopFrequency(NodesToDoubles nodeProbabilities) {
             if (loopFrequency == -1 && ended) {
                 double backEdgeProb = 0.0;
                 for (LoopEndNode le : loopBegin.loopEnds()) {
@@ -112,13 +111,13 @@ public class ComputeProbabilityClosure {
                         }
                         factor *= t;
                     }
-                    backEdgeProb += nodeProbabilities.getProbability(le) * factor;
+                    backEdgeProb += nodeProbabilities.get(le) * factor;
                 }
-                double d = nodeProbabilities.getProbability(loopBegin) - backEdgeProb;
+                double d = nodeProbabilities.get(loopBegin) - backEdgeProb;
                 if (d < EPSILON) {
                     d = EPSILON;
                 }
-                loopFrequency = nodeProbabilities.getProbability(loopBegin) / d;
+                loopFrequency = nodeProbabilities.get(loopBegin) / d;
                 loopBegin.setLoopFrequency(loopFrequency);
             }
             return loopFrequency;
@@ -233,7 +232,7 @@ public class ComputeProbabilityClosure {
 
         @Override
         protected void node(FixedNode node) {
-            nodeProbabilities.setProbability(node, state.probability);
+            nodeProbabilities.put(node, state.probability);
         }
     }
 
@@ -289,7 +288,7 @@ public class ComputeProbabilityClosure {
 
         @Override
         protected void node(FixedNode node) {
-            nodeProbabilities.setProbability(node, nodeProbabilities.getProbability(node) * state.count);
+            nodeProbabilities.put(node, nodeProbabilities.get(node) * state.count);
         }
 
     }

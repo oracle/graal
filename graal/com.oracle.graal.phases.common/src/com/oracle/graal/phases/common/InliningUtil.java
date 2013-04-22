@@ -35,7 +35,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -71,7 +70,7 @@ public class InliningUtil {
 
         void scanInvokes(Iterable<? extends Node> newNodes);
 
-        boolean isWorthInlining(InlineInfo info, NodeProbabilities nodeProbabilities, NodeProbabilities nodeRelevance);
+        boolean isWorthInlining(InlineInfo info, NodesToDoubles nodeProbabilities, NodesToDoubles nodeRelevance);
     }
 
     /**

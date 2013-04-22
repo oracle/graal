@@ -53,10 +53,6 @@ public final class OptimisticOptimizations {
         if (checkDeoptimizations(method.getProfilingInfo(), deoptReason)) {
             enabledOpts.add(optimization);
         } else {
-            /*
-             * TODO (chaeubl): see GRAAL-75 (remove when we are sure that optimistic optimizations
-             * are not disabled unnecessarily
-             */
             disabledOptimisticOptsMetric.increment();
         }
     }

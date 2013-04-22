@@ -29,13 +29,13 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
 
 /**
  * This class is a phase that looks for opportunities for tail duplication. The static method
@@ -130,12 +130,12 @@ public class TailDuplicationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        NodeProbabilities nodeProbabilities = new ComputeProbabilityClosure(graph).run();
+        NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
 
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
-            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.getProbability(merge) >= GraalOptions.TailDuplicationProbability) {
+            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= GraalOptions.TailDuplicationProbability) {
                 tailDuplicate(merge, DEFAULT_DECISION, null);
             }
         }

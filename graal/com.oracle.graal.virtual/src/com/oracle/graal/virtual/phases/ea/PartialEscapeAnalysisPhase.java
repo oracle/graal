@@ -29,9 +29,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
@@ -201,21 +201,21 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
     }
 
     public static Map<Invoke, Double> getHints(StructuredGraph graph) {
-        NodeProbabilities probabilities = new ComputeProbabilityClosure(graph).run();
+        NodesToDoubles probabilities = new ComputeProbabilityClosure(graph).apply();
         Map<Invoke, Double> hints = null;
         for (MaterializeObjectNode materialize : graph.getNodes(MaterializeObjectNode.class)) {
             double sum = 0;
             double invokeSum = 0;
             for (Node usage : materialize.usages()) {
                 if (usage instanceof FixedNode) {
-                    sum += probabilities.getProbability((FixedNode) usage);
+                    sum += probabilities.get((FixedNode) usage);
                 } else {
                     if (usage instanceof MethodCallTargetNode) {
-                        invokeSum += probabilities.getProbability(((MethodCallTargetNode) usage).invoke().asNode());
+                        invokeSum += probabilities.get(((MethodCallTargetNode) usage).invoke().asNode());
                     }
                     for (Node secondLevelUage : materialize.usages()) {
                         if (secondLevelUage instanceof FixedNode) {
-                            sum += probabilities.getProbability(((FixedNode) secondLevelUage));
+                            sum += probabilities.get(((FixedNode) secondLevelUage));
                         }
                     }
                 }
