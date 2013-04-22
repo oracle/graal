@@ -49,9 +49,8 @@ public class BinaryNodeTest {
         executeWith(node, new Object(), new Object());
     }
 
-    @NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
+    @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     abstract static class BinaryNode extends ValueNode {
-
     }
 
     abstract static class AddNode extends BinaryNode {

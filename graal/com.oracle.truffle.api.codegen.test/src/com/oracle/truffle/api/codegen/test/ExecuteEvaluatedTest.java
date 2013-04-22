@@ -26,21 +26,12 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
 
 public class ExecuteEvaluatedTest {
 
-    public abstract static class ExtValueNode extends ValueNode {
-
-        public CallTarget executeCallTarget(VirtualFrame frame) throws UnexpectedResultException {
-            return SimpleTypesGen.SIMPLETYPES.expectCallTarget(execute(frame));
-        }
-
-    }
-
     /* Represents target[element] */
-    @NodeChildren({@NodeChild("targetNode"), @NodeChild("elementNode")})
-    abstract static class ReadElementNode extends ExtValueNode {
+    @NodeChildren({@NodeChild("target"), @NodeChild("element")})
+    abstract static class ReadElementNode extends ValueNode {
 
         @Specialization
         int getInt(Object[] target, int element) {
@@ -51,12 +42,12 @@ public class ExecuteEvaluatedTest {
     }
 
     /* Represents target[element]() */
-    @NodeChildren({@NodeChild("targetNode"), @NodeChild(value = "elementNode", type = ReadElementNode.class, executeWith = "targetNode")})
-    abstract static class ElementCallNode extends ExtValueNode {
+    @NodeChildren({@NodeChild("target"), @NodeChild(value = "element", type = ReadElementNode.class, executeWith = "target")})
+    abstract static class ElementCallNode extends ValueNode {
 
         @Specialization
-        Object call(Object receiver, CallTarget callTarget) {
-            return callTarget.call(new TestArguments(receiver));
+        Object call(Object receiver, Object callTarget) {
+            return ((CallTarget) callTarget).call(new TestArguments(receiver));
         }
 
     }
