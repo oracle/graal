@@ -35,9 +35,9 @@ public abstract class LoopPolicies {
     }
 
     // TODO (gd) change when inversion is available
-    public static boolean shouldPeel(LoopEx loop) {
+    public static boolean shouldPeel(LoopEx loop, NodeProbabilities probabilities) {
         LoopBeginNode loopBegin = loop.loopBegin();
-        double entryProbability = loopBegin.forwardEnd().probability();
+        double entryProbability = probabilities.getProbability(loopBegin.forwardEnd());
         return entryProbability > GraalOptions.MinimumPeelProbability && loop.size() + loopBegin.graph().getNodeCount() < GraalOptions.MaximumDesiredSize;
     }
 

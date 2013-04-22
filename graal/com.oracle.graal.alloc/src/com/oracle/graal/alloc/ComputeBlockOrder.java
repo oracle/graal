@@ -66,11 +66,11 @@ public final class ComputeBlockOrder {
      * 
      * @return sorted list of blocks
      */
-    public static List<Block> computeLinearScanOrder(int blockCount, Block startBlock) {
+    public static List<Block> computeLinearScanOrder(int blockCount, Block startBlock, NodeProbabilities nodeProbabilities) {
         List<Block> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
-        PriorityQueue<Block> worklist = initializeWorklist(startBlock, visitedBlocks);
-        computeLinearScanOrder(order, worklist, visitedBlocks);
+        PriorityQueue<Block> worklist = initializeWorklist(startBlock, visitedBlocks, nodeProbabilities);
+        computeLinearScanOrder(order, worklist, visitedBlocks, nodeProbabilities);
         assert checkOrder(order, blockCount);
         return order;
     }
@@ -80,11 +80,11 @@ public final class ComputeBlockOrder {
      * 
      * @return sorted list of blocks
      */
-    public static List<Block> computeCodeEmittingOrder(int blockCount, Block startBlock) {
+    public static List<Block> computeCodeEmittingOrder(int blockCount, Block startBlock, NodeProbabilities nodeProbabilities) {
         List<Block> order = new ArrayList<>();
         BitSet visitedBlocks = new BitSet(blockCount);
-        PriorityQueue<Block> worklist = initializeWorklist(startBlock, visitedBlocks);
-        computeCodeEmittingOrder(order, worklist, visitedBlocks);
+        PriorityQueue<Block> worklist = initializeWorklist(startBlock, visitedBlocks, nodeProbabilities);
+        computeCodeEmittingOrder(order, worklist, visitedBlocks, nodeProbabilities);
         assert checkOrder(order, blockCount);
         return order;
     }
@@ -92,28 +92,28 @@ public final class ComputeBlockOrder {
     /**
      * Iteratively adds paths to the code emission block order.
      */
-    private static void computeCodeEmittingOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
+    private static void computeCodeEmittingOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
         while (!worklist.isEmpty()) {
             Block nextImportantPath = worklist.poll();
-            addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks);
+            addPathToCodeEmittingOrder(nextImportantPath, order, worklist, visitedBlocks, nodeProbabilities);
         }
     }
 
     /**
      * Iteratively adds paths to the linear scan block order.
      */
-    private static void computeLinearScanOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
+    private static void computeLinearScanOrder(List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
         while (!worklist.isEmpty()) {
             Block nextImportantPath = worklist.poll();
-            addPathToLinearScanOrder(nextImportantPath, order, worklist, visitedBlocks);
+            addPathToLinearScanOrder(nextImportantPath, order, worklist, visitedBlocks, nodeProbabilities);
         }
     }
 
     /**
      * Initializes the priority queue used for the work list of blocks and adds the start block.
      */
-    private static PriorityQueue<Block> initializeWorklist(Block startBlock, BitSet visitedBlocks) {
-        PriorityQueue<Block> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, blockComparator);
+    private static PriorityQueue<Block> initializeWorklist(Block startBlock, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
+        PriorityQueue<Block> result = new PriorityQueue<>(INITIAL_WORKLIST_CAPACITY, new BlockOrderComparator(nodeProbabilities));
         result.add(startBlock);
         visitedBlocks.set(startBlock.getId());
         return result;
@@ -122,10 +122,10 @@ public final class ComputeBlockOrder {
     /**
      * Add a linear path to the linear scan order greedily following the most likely successor.
      */
-    private static void addPathToLinearScanOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
+    private static void addPathToLinearScanOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
         block.setLinearScanNumber(order.size());
         order.add(block);
-        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
+        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks, nodeProbabilities);
         enqueueSuccessors(block, worklist, visitedBlocks);
         if (mostLikelySuccessor != null) {
             if (!mostLikelySuccessor.isLoopHeader() && mostLikelySuccessor.getPredecessorCount() > 1) {
@@ -134,24 +134,24 @@ public final class ComputeBlockOrder {
                 double unscheduledSum = 0.0;
                 for (Block pred : mostLikelySuccessor.getPredecessors()) {
                     if (pred.getLinearScanNumber() == -1) {
-                        unscheduledSum += pred.getBeginNode().probability();
+                        unscheduledSum += nodeProbabilities.getProbability(pred.getBeginNode());
                     }
                 }
 
-                if (unscheduledSum > block.getProbability() / PENALTY_VERSUS_UNSCHEDULED) {
+                if (unscheduledSum > nodeProbabilities.getProbability(block.getBeginNode()) / PENALTY_VERSUS_UNSCHEDULED) {
                     // Add this merge only after at least one additional predecessor gets scheduled.
                     visitedBlocks.clear(mostLikelySuccessor.getId());
                     return;
                 }
             }
-            addPathToLinearScanOrder(mostLikelySuccessor, order, worklist, visitedBlocks);
+            addPathToLinearScanOrder(mostLikelySuccessor, order, worklist, visitedBlocks, nodeProbabilities);
         }
     }
 
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    private static void addPathToCodeEmittingOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks) {
+    private static void addPathToCodeEmittingOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
 
         // Skip loop headers if there is only a single loop end block to make the backward jump be a
         // conditional jump.
@@ -180,10 +180,10 @@ public final class ComputeBlockOrder {
             }
         }
 
-        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks);
+        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks, nodeProbabilities);
         enqueueSuccessors(block, worklist, visitedBlocks);
         if (mostLikelySuccessor != null) {
-            addPathToCodeEmittingOrder(mostLikelySuccessor, order, worklist, visitedBlocks);
+            addPathToCodeEmittingOrder(mostLikelySuccessor, order, worklist, visitedBlocks, nodeProbabilities);
         }
     }
 
@@ -198,11 +198,12 @@ public final class ComputeBlockOrder {
     /**
      * Find the highest likely unvisited successor block of a given block.
      */
-    private static Block findAndMarkMostLikelySuccessor(Block block, BitSet visitedBlocks) {
+    private static Block findAndMarkMostLikelySuccessor(Block block, BitSet visitedBlocks, NodeProbabilities nodeProbabilities) {
         Block result = null;
         for (Block successor : block.getSuccessors()) {
-            assert successor.getProbability() >= 0.0 : "Probabilities must be positive";
-            if (!visitedBlocks.get(successor.getId()) && successor.getLoopDepth() >= block.getLoopDepth() && (result == null || successor.getProbability() >= result.getProbability())) {
+            assert nodeProbabilities.getProbability(successor.getBeginNode()) >= 0.0 : "Probabilities must be positive";
+            if (!visitedBlocks.get(successor.getId()) && successor.getLoopDepth() >= block.getLoopDepth() &&
+                            (result == null || nodeProbabilities.getProbability(successor.getBeginNode()) >= nodeProbabilities.getProbability(result.getBeginNode()))) {
                 result = successor;
             }
         }
@@ -243,7 +244,13 @@ public final class ComputeBlockOrder {
     /**
      * Comparator for sorting blocks based on loop depth and probability.
      */
-    private static Comparator<Block> blockComparator = new Comparator<Block>() {
+    private static class BlockOrderComparator implements Comparator<Block> {
+
+        private final NodeProbabilities probabilities;
+
+        public BlockOrderComparator(NodeProbabilities probabilities) {
+            this.probabilities = probabilities;
+        }
 
         @Override
         public int compare(Block a, Block b) {
@@ -254,11 +261,11 @@ public final class ComputeBlockOrder {
             }
 
             // Blocks with high probability before blocks with low probability.
-            if (a.getProbability() > b.getProbability()) {
+            if (probabilities.getProbability(a.getBeginNode()) > probabilities.getProbability(b.getBeginNode())) {
                 return -1;
             } else {
                 return 1;
             }
         }
-    };
+    }
 }

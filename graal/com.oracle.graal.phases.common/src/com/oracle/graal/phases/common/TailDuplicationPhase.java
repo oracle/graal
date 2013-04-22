@@ -29,6 +29,7 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -129,10 +130,12 @@ public class TailDuplicationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        NodeProbabilities nodeProbabilities = new ComputeProbabilityClosure(graph).run();
+
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
-            if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
+            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.getProbability(merge) >= GraalOptions.TailDuplicationProbability) {
                 tailDuplicate(merge, DEFAULT_DECISION, null);
             }
         }
@@ -219,7 +222,7 @@ public class TailDuplicationPhase extends Phase {
          * </ul>
          */
         private void duplicate() {
-            Debug.log("tail duplication at merge %s in %s (prob %f)", merge, graph.method(), merge.probability());
+            Debug.log("tail duplication at merge %s in %s", merge, graph.method());
 
             ValueAnchorNode anchor = addValueAnchor();
 
@@ -420,9 +423,7 @@ public class TailDuplicationPhase extends Phase {
          */
         private EndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
             MergeNode newBottomMerge = graph.add(new MergeNode());
-            newBottomMerge.setProbability(successor.probability());
             EndNode newBottomEnd = graph.add(new EndNode());
-            newBottomEnd.setProbability(successor.probability());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);
             ((FixedWithNextNode) successor.predecessor()).setNext(newBottomEnd);

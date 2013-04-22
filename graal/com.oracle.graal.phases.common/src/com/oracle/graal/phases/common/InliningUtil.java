@@ -35,6 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -70,7 +71,7 @@ public class InliningUtil {
 
         void scanInvokes(Iterable<? extends Node> newNodes);
 
-        boolean isWorthInlining(InlineInfo info);
+        boolean isWorthInlining(InlineInfo info, NodeProbabilities nodeProbabilities, NodeProbabilities nodeRelevance);
     }
 
     /**
@@ -260,7 +261,6 @@ public class InliningUtil {
                 } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
                     throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
                 }
-                macroNode.setProbability(invoke.asNode().probability());
                 CallTargetNode callTarget = invoke.callTarget();
                 if (invoke instanceof InvokeNode) {
                     graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
@@ -466,7 +466,6 @@ public class InliningUtil {
             ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
-            returnMerge.setProbability(invoke.probability());
             returnMerge.setStateAfter(invoke.stateAfter().duplicate(invoke.stateAfter().bci));
 
             PhiNode returnValuePhi = null;
@@ -481,7 +480,6 @@ public class InliningUtil {
                 ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithException.exceptionEdge();
 
                 exceptionMerge = graph.add(new MergeNode());
-                exceptionMerge.setProbability(exceptionEdge.probability());
 
                 FixedNode exceptionSux = exceptionEdge.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
@@ -492,20 +490,13 @@ public class InliningUtil {
             // create one separate block for each invoked method
             BeginNode[] successors = new BeginNode[numberOfMethods + 1];
             for (int i = 0; i < numberOfMethods; i++) {
-                double probability = 0;
-                for (int j = 0; j < typesToConcretes.length; j++) {
-                    if (typesToConcretes[j] == i) {
-                        probability += ptypes.get(j).getProbability();
-                    }
-                }
-
-                successors[i] = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, invoke.probability() * probability, true);
+                successors[i] = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, true);
             }
 
             // create the successor for an unknown type
             FixedNode unknownTypeSux;
             if (shouldFallbackToInvoke()) {
-                unknownTypeSux = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, notRecordedTypeProbability, false);
+                unknownTypeSux = createInvocationBlock(graph, invoke, returnMerge, returnValuePhi, exceptionMerge, exceptionObjectPhi, false);
             } else {
                 unknownTypeSux = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.TypeCheckedInliningViolated));
             }
@@ -612,7 +603,6 @@ public class InliningUtil {
             assert concretes.size() == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             BeginNode calleeEntryNode = graph.add(new BeginNode());
-            calleeEntryNode.setProbability(invoke.probability());
 
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
@@ -649,15 +639,12 @@ public class InliningUtil {
         }
 
         private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
-                        double probability, boolean useForInlining) {
-            Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining, probability);
+                        boolean useForInlining) {
+            Invoke duplicatedInvoke = duplicateInvokeForInlining(graph, invoke, exceptionMerge, exceptionObjectPhi, useForInlining);
             BeginNode calleeEntryNode = graph.add(new BeginNode());
             calleeEntryNode.setNext(duplicatedInvoke.asNode());
-            calleeEntryNode.setProbability(probability);
 
             EndNode endNode = graph.add(new EndNode());
-            endNode.setProbability(probability);
-
             duplicatedInvoke.setNext(endNode);
             returnMerge.addForwardEnd(endNode);
 
@@ -667,13 +654,11 @@ public class InliningUtil {
             return calleeEntryNode;
         }
 
-        private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining, double probability) {
+        private static Invoke duplicateInvokeForInlining(StructuredGraph graph, Invoke invoke, MergeNode exceptionMerge, PhiNode exceptionObjectPhi, boolean useForInlining) {
             Invoke result = (Invoke) invoke.asNode().copyWithInputs();
             Node callTarget = result.callTarget().copyWithInputs();
             result.asNode().replaceFirstInput(result.callTarget(), callTarget);
             result.setUseForInlining(useForInlining);
-            result.setProbability(probability);
-            result.setInliningRelevance(invoke.inliningRelevance() * probability);
 
             Kind kind = invoke.asNode().kind();
             if (kind != Kind.Void) {
@@ -738,8 +723,6 @@ public class InliningUtil {
             InliningUtil.receiverNullCheck(invoke);
 
             BeginNode invocationEntry = graph.add(new BeginNode());
-            invocationEntry.setProbability(invoke.probability());
-
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
             createDispatchOnTypeBeforeInvoke(graph, successors, true);
@@ -966,6 +949,7 @@ public class InliningUtil {
         return graph.unique(new PiNode(receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType), anchor));
     }
 
+    // TODO (chaeubl): cleanup this method
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.predecessor() == null || !invoke.asNode().isAlive()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
@@ -974,6 +958,7 @@ public class InliningUtil {
         } else if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, "target method is null");
         } else if (invoke.stateAfter() == null) {
+            // TODO (chaeubl): why should an invoke not have a state after?
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has no after state");
         } else if (!invoke.useForInlining()) {
             return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
@@ -1127,27 +1112,8 @@ public class InliningUtil {
         }
 
         FrameState outerFrameState = null;
-        double invokeProbability = invoke.asNode().probability();
         int callerLockDepth = stateAfter.nestedLockDepth();
         for (Node node : duplicates.values()) {
-            if (GraalOptions.ProbabilityAnalysis) {
-                if (node instanceof FixedNode) {
-                    FixedNode fixed = (FixedNode) node;
-                    double newProbability = fixed.probability() * invokeProbability;
-                    if (GraalOptions.LimitInlinedProbability) {
-                        newProbability = Math.min(newProbability, invokeProbability);
-                    }
-                    fixed.setProbability(newProbability);
-                }
-                if (node instanceof Invoke) {
-                    Invoke newInvoke = (Invoke) node;
-                    double newRelevance = newInvoke.inliningRelevance() * invoke.inliningRelevance();
-                    if (GraalOptions.LimitInlinedRelevance) {
-                        newRelevance = Math.min(newRelevance, invoke.inliningRelevance());
-                    }
-                    newInvoke.setInliningRelevance(newRelevance);
-                }
-            }
             if (node instanceof FrameState) {
                 FrameState frameState = (FrameState) node;
                 assert frameState.bci != FrameState.BEFORE_BCI : frameState;

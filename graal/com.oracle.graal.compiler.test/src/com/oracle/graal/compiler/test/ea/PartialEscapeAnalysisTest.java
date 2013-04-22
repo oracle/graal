@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -131,10 +132,12 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
         try {
             Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes(NewInstanceNode.class).isEmpty());
             Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes(NewArrayNode.class).isEmpty());
+
+            NodeProbabilities nodeProbabilities = new ComputeProbabilityClosure(result).run();
             double probabilitySum = 0;
             int materializeCount = 0;
             for (MaterializeObjectNode materialize : result.getNodes(MaterializeObjectNode.class)) {
-                probabilitySum += materialize.probability();
+                probabilitySum += nodeProbabilities.getProbability(materialize);
                 materializeCount++;
             }
             Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
@@ -156,10 +159,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
             @Override
             public StructuredGraph call() {
                 StructuredGraph graph = parse(snippet);
-                new ComputeProbabilityPhase().apply(graph);
-                for (Invoke n : graph.getInvokes()) {
-                    n.asNode().setProbability(100000);
-                }
+
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);

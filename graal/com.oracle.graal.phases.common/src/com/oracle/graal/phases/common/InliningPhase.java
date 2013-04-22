@@ -31,6 +31,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -99,13 +100,15 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     @Override
     protected void run(final StructuredGraph graph) {
+        NodeProbabilities nodeProbabilities = new ComputeProbabilityClosure(graph).run();
+        NodeProbabilities nodeRelevance = new ComputeInliningRelevanceClosure(graph, nodeProbabilities).run();
         inliningPolicy.initialize(graph);
 
         while (inliningPolicy.continueInlining(graph)) {
             final InlineInfo candidate = inliningPolicy.next();
 
             if (candidate != null) {
-                boolean isWorthInlining = inliningPolicy.isWorthInlining(candidate);
+                boolean isWorthInlining = inliningPolicy.isWorthInlining(candidate, nodeProbabilities, nodeRelevance);
                 isWorthInlining &= candidate.numberOfMethods() <= maxMethodPerInlining;
 
                 metricInliningConsidered.increment();
@@ -120,6 +123,10 @@ public class InliningPhase extends Phase implements InliningCallback {
                         if (GraalOptions.OptCanonicalizer) {
                             new CanonicalizerPhase.Instance(runtime, assumptions, invokeUsages, mark, customCanonicalizer).apply(graph);
                         }
+
+                        nodeProbabilities = new ComputeProbabilityClosure(graph).run();
+                        nodeRelevance = new ComputeInliningRelevanceClosure(graph, nodeProbabilities).run();
+
                         inliningCount++;
                         metricInliningPerformed.increment();
                     } catch (BailoutException bailout) {
@@ -159,7 +166,6 @@ public class InliningPhase extends Phase implements InliningCallback {
 
                 if (GraalOptions.ProbabilityAnalysis) {
                     new DeadCodeEliminationPhase().apply(newGraph);
-                    new ComputeProbabilityPhase().apply(newGraph);
                 }
                 if (GraalOptions.OptCanonicalizer) {
                     new CanonicalizerPhase.Instance(runtime, assumptions).apply(newGraph);
@@ -177,7 +183,7 @@ public class InliningPhase extends Phase implements InliningCallback {
 
     private interface InliningDecision {
 
-        boolean isWorthInlining(InlineInfo info);
+        boolean isWorthInlining(InlineInfo info, NodeProbabilities nodeProbabilities, NodeProbabilities nodeRelevance);
     }
 
     private static class GreedySizeBasedInliningDecision implements InliningDecision {
@@ -193,7 +199,7 @@ public class InliningPhase extends Phase implements InliningCallback {
         }
 
         @Override
-        public boolean isWorthInlining(InlineInfo info) {
+        public boolean isWorthInlining(InlineInfo info, NodeProbabilities nodeProbabilities, NodeProbabilities nodeRelevance) {
             assert GraalOptions.ProbabilityAnalysis;
             /*
              * TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
@@ -220,8 +226,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             int bytecodeSize = (int) (bytecodeCodeSize(info) / bonus);
             int complexity = (int) (compilationComplexity(info) / bonus);
             int compiledCodeSize = (int) (compiledCodeSize(info) / bonus);
-            double relevance = info.invoke().inliningRelevance();
-
+            double relevance = nodeRelevance.getProbability(info.invoke().asNode());
             /*
              * as long as the compiled code size is small enough (or the method was not yet
              * compiled), we can do a pretty general inlining that suits most situations
@@ -240,7 +245,7 @@ public class InliningPhase extends Phase implements InliningCallback {
              * the normal inlining did not fit this invoke, so check if we have any reason why we
              * should still do the inlining
              */
-            double probability = info.invoke().probability();
+            double probability = nodeProbabilities.getProbability(info.invoke().asNode());
             int transferredValues = numberOfTransferredValues(info);
             int invokeUsages = countInvokeUsages(info);
             int moreSpecificArguments = countMoreSpecificArgumentInfo(info);
@@ -409,8 +414,9 @@ public class InliningPhase extends Phase implements InliningCallback {
             return info;
         }
 
-        public boolean isWorthInlining(InlineInfo info) {
-            return inliningDecision.isWorthInlining(info);
+        @Override
+        public boolean isWorthInlining(InlineInfo info, NodeProbabilities nodeProbabilities, NodeProbabilities nodeRelevance) {
+            return inliningDecision.isWorthInlining(info, nodeProbabilities, nodeRelevance);
         }
 
         public void initialize(StructuredGraph graph) {

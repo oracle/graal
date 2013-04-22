@@ -42,7 +42,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
-    private double inliningRelevance;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, DispatchBeginNode exceptionEdge, int bci) {
         super(callTarget.returnStamp());
@@ -51,7 +50,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         this.callTarget = callTarget;
         this.polymorphic = false;
         this.useForInlining = true;
-        this.inliningRelevance = Double.NaN;
     }
 
     public DispatchBeginNode exceptionEdge() {
@@ -98,16 +96,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public void setUseForInlining(boolean value) {
         this.useForInlining = value;
-    }
-
-    @Override
-    public double inliningRelevance() {
-        return inliningRelevance;
-    }
-
-    @Override
-    public void setInliningRelevance(double value) {
-        inliningRelevance = value;
     }
 
     @Override
