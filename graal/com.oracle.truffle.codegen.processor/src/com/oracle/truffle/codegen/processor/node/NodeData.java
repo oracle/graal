@@ -115,8 +115,11 @@ public class NodeData extends Template {
         if (shortCircuits != null) {
             containerChildren.addAll(shortCircuits);
         }
-        if (containerChildren != null) {
-            containerChildren.addAll(containerChildren);
+        if (children != null) {
+            containerChildren.addAll(children);
+        }
+        if (fields != null) {
+            containerChildren.addAll(fields);
         }
         return containerChildren;
     }

@@ -29,7 +29,9 @@ import java.util.*;
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.lang.model.util.*;
 
+import com.oracle.truffle.codegen.processor.ast.*;
 import com.oracle.truffle.codegen.processor.ast.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.codegen.processor.template.*;
 
@@ -185,4 +187,26 @@ public class ProcessorContext {
 
     }
 
+    public TypeMirror reloadTypeElement(TypeElement type) {
+        return getType(type.getQualifiedName().toString());
+    }
+
+    public TypeMirror reloadType(TypeMirror type) {
+        if (type instanceof CodeTypeMirror) {
+            return type;
+        } else if (type.getKind().isPrimitive()) {
+            return type;
+        }
+        Types types = getEnvironment().getTypeUtils();
+
+        switch (type.getKind()) {
+            case ARRAY:
+                return types.getArrayType(reloadType(((ArrayType) type).getComponentType()));
+            case WILDCARD:
+                return types.getWildcardType(((WildcardType) type).getExtendsBound(), ((WildcardType) type).getSuperBound());
+            case DECLARED:
+                return reloadTypeElement((TypeElement) (((DeclaredType) type).asElement()));
+        }
+        return type;
+    }
 }

@@ -151,9 +151,9 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return Collections.unmodifiableList(allParameters);
     }
 
-    public boolean canBeAccessedByInstanceOf(TypeMirror type) {
+    public boolean canBeAccessedByInstanceOf(ProcessorContext context, TypeMirror type) {
         TypeMirror methodType = Utils.findNearestEnclosingType(getMethod()).asType();
-        return Utils.isAssignable(type, methodType) || Utils.isAssignable(methodType, type);
+        return Utils.isAssignable(context, type, methodType) || Utils.isAssignable(context, methodType, type);
     }
 
     public ExecutableElement getMethod() {

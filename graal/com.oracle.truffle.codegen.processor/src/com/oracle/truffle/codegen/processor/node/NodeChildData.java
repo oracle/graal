@@ -82,7 +82,9 @@ public class NodeChildData extends MessageContainer {
 
     void setNode(NodeData nodeData) {
         this.nodeData = nodeData;
-        getMessages().addAll(nodeData.collectMessages());
+        if (nodeData != null) {
+            getMessages().addAll(nodeData.collectMessages());
+        }
     }
 
     public Element getAccessElement() {

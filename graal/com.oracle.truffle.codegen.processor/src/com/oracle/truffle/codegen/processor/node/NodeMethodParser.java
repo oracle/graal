@@ -123,7 +123,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     protected void resolveAndAddImplicitThis(MethodSpec methodSpec, ExecutableElement method) {
         TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
 
-        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(declaredType, getContext().getTruffleTypes().getNode())) {
+        if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(getContext(), declaredType, getContext().getTruffleTypes().getNode())) {
             methodSpec.addImplicitRequiredType(getNode().getTemplateType().asType());
         }
     }

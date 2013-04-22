@@ -145,33 +145,100 @@ public class Utils {
         }
     }
 
-    /**
-     * True if t1 is assignable to t2.
-     */
-    public static boolean isAssignable(TypeMirror t1, TypeMirror t2) {
-        if (typeEquals(t1, t2)) {
+    public static boolean isAssignable(ProcessorContext context, TypeMirror from, TypeMirror to) {
+        if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
+            return context.getEnvironment().getTypeUtils().isAssignable(context.reloadType(from), context.reloadType(to));
+        } else {
+            return isAssignableImpl(context, from, to);
+        }
+    }
+
+    private static boolean isAssignableImpl(ProcessorContext context, TypeMirror from, TypeMirror to) {
+        // JLS 5.1.1 identity conversion
+        if (Utils.typeEquals(from, to)) {
             return true;
         }
-        if (isPrimitive(t1) || isPrimitive(t2)) {
-            // non-equal primitive types
+
+        // JLS 5.1.2 widening primitives
+        if (Utils.isPrimitive(from) && Utils.isPrimitive(to)) {
+            TypeKind fromKind = from.getKind();
+            TypeKind toKind = to.getKind();
+            switch (fromKind) {
+                case BYTE:
+                    switch (toKind) {
+                        case SHORT:
+                        case INT:
+                        case LONG:
+                        case FLOAT:
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+                case SHORT:
+                    switch (toKind) {
+                        case INT:
+                        case LONG:
+                        case FLOAT:
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+                case CHAR:
+                    switch (toKind) {
+                        case INT:
+                        case LONG:
+                        case FLOAT:
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+                case INT:
+                    switch (toKind) {
+                        case LONG:
+                        case FLOAT:
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+                case LONG:
+                    switch (toKind) {
+                        case FLOAT:
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+                case FLOAT:
+                    switch (toKind) {
+                        case DOUBLE:
+                            return true;
+                    }
+                    break;
+
+            }
+            return false;
+        } else if (Utils.isPrimitive(from) || Utils.isPrimitive(to)) {
             return false;
         }
-        if (t1 instanceof ArrayType && t2 instanceof ArrayType) {
-            return isAssignable(((ArrayType) t1).getComponentType(), ((ArrayType) t2).getComponentType());
+
+        if (from instanceof ArrayType && to instanceof ArrayType) {
+            return isAssignable(context, ((ArrayType) from).getComponentType(), ((ArrayType) to).getComponentType());
         }
 
-        TypeElement e1 = fromTypeMirror(t1);
-        TypeElement e2 = fromTypeMirror(t2);
-        if (e1 == null || e2 == null) {
+        TypeElement fromType = Utils.fromTypeMirror(from);
+        TypeElement toType = Utils.fromTypeMirror(to);
+        if (fromType == null || toType == null) {
             return false;
         }
+        // JLS 5.1.6 narrowing reference conversion
 
-        List<TypeElement> superTypes = getSuperTypes(e1);
+        List<TypeElement> superTypes = Utils.getSuperTypes(fromType);
         for (TypeElement superType : superTypes) {
-            if (typeEquals(superType.asType(), t2)) {
+            if (Utils.typeEquals(superType.asType(), to)) {
                 return true;
             }
         }
+
+        // TODO more spec
         return false;
     }
 

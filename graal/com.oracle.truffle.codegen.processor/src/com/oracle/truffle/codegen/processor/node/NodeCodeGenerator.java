@@ -137,7 +137,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
     }
 
-    private static CodeTree createTemplateMethodCall(CodeTreeBuilder parent, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName) {
+    private CodeTree createTemplateMethodCall(CodeTreeBuilder parent, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName) {
         CodeTreeBuilder builder = parent.create();
 
         boolean castedValues = sourceMethod != targetMethod;
@@ -150,7 +150,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         TypeElement targetClass = Utils.findNearestEnclosingType(method.getEnclosingElement());
         NodeData node = (NodeData) targetMethod.getTemplate();
 
-        boolean accessible = targetMethod.canBeAccessedByInstanceOf(node.getNodeType());
+        boolean accessible = targetMethod.canBeAccessedByInstanceOf(getContext(), node.getNodeType());
         if (accessible) {
             if (builder.findMethod().getModifiers().contains(STATIC)) {
                 if (method.getModifiers().contains(STATIC)) {
@@ -353,7 +353,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private static CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization) {
+    private CodeTree createExplicitGuards(CodeTreeBuilder parent, String conditionPrefix, SpecializationData valueSpecialization, SpecializationData guardedSpecialization) {
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
         String andOperator = conditionPrefix != null ? conditionPrefix + " && " : "";
         if (guardedSpecialization.getGuards().size() > 0) {
@@ -568,6 +568,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             for (NodeChildData child : node.getChildren()) {
                 clazz.add(createChildField(child));
+
+                if (child.getAccessElement() != null && child.getAccessElement().getModifiers().contains(Modifier.ABSTRACT)) {
+                    ExecutableElement getter = (ExecutableElement) child.getAccessElement();
+                    CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), getter);
+                    method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.createBuilder().startReturn().string("this.").string(child.getName()).end();
+                    clazz.add(method);
+                }
             }
 
             createConstructors(node, clazz);

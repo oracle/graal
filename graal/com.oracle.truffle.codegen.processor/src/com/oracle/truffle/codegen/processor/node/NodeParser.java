@@ -41,7 +41,7 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 public class NodeParser extends TemplateParser<NodeData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
-                    ExecuteChildren.class, NodeClass.class, NodeId.class);
+                    ExecuteChildren.class, NodeClass.class, NodeChild.class, NodeChildren.class, NodeId.class);
 
     private Map<String, NodeData> parsedNodes;
 
@@ -120,15 +120,13 @@ public class NodeParser extends TemplateParser<NodeData> {
         return rootNode;
     }
 
-    private NodeData parseNode(TypeElement templateType) {
-        if (Utils.findAnnotationMirror(processingEnv, templateType, GeneratedBy.class) != null) {
+    private NodeData parseNode(TypeElement originalTemplateType) {
+        // reloading the type elements is needed for ecj
+        TypeElement templateType = Utils.fromTypeMirror(context.reloadTypeElement(originalTemplateType));
+
+        if (Utils.findAnnotationMirror(processingEnv, originalTemplateType, GeneratedBy.class) != null) {
             // generated nodes should not get called again.
             return null;
-        }
-
-        AnnotationMirror methodNodes = Utils.findAnnotationMirror(processingEnv, templateType, NodeClass.class);
-        if (methodNodes == null && !Utils.isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
-            return null; // not a node
         }
 
         List<TypeElement> lookupTypes = findSuperClasses(new ArrayList<TypeElement>(), templateType);
@@ -136,7 +134,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         AnnotationMirror nodeClass = findFirstAnnotation(lookupTypes, NodeClass.class);
         TypeMirror nodeType = null;
-        if (Utils.isAssignable(templateType.asType(), context.getTruffleTypes().getNode())) {
+        if (Utils.isAssignable(context, templateType.asType(), context.getTruffleTypes().getNode())) {
             nodeType = templateType.asType();
         }
         if (nodeClass != null) {
@@ -144,8 +142,13 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         if (nodeType == null) {
-            // FIXME error
-            return null;
+            if (nodeClass == null) {
+                // no node
+                return null;
+            } else {
+                // FIXME nodeType not specified error
+                return null;
+            }
         }
 
         Set<Element> elementSet = new HashSet<>(context.getEnvironment().getElementUtils().getAllMembers(templateType));
@@ -323,7 +326,12 @@ public class NodeParser extends TemplateParser<NodeData> {
                     assert paramType != null;
                     actualType = paramType.getType();
                 }
-                parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isImplicit()));
+
+                if (actualType != null) {
+                    parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isImplicit()));
+                } else {
+                    parameters.add(new ActualParameter(parameterSpec, specializationParameter.getType(), specializationParameter.getIndex(), specializationParameter.isImplicit()));
+                }
             }
             TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
             genericSpecialization = new SpecializationData(genericMethod, true, false);
@@ -544,7 +552,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         TypeMirror typeSytemType = Utils.getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
         final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSytemType, true);
         if (typeSystem == null) {
-            nodeData.addError("The used type system '%s' is invalid.", Utils.getQualifiedName(typeSytemType));
+            nodeData.addError("The used type system '%s' is invalid or not a Node.", Utils.getQualifiedName(typeSytemType));
             return nodeData;
         }
 
@@ -562,7 +570,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
 
         // parseChildren invokes cyclic parsing.
-        nodeData.setChildren(parseChildren(elements, lookupTypes));
+        nodeData.setChildren(parseChildren(templateType, elements, lookupTypes));
 
         return nodeData;
     }
@@ -699,7 +707,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         return fields;
     }
 
-    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
+    private List<NodeChildData> parseChildren(TypeElement templateType, List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
         Set<String> shortCircuits = new HashSet<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
@@ -716,7 +724,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             AnnotationMirror nodeChildrenMirror = Utils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
 
             TypeMirror nodeClassType = type.getSuperclass();
-            if (!Utils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
+            if (!Utils.isAssignable(context, nodeClassType, context.getTruffleTypes().getNode())) {
                 nodeClassType = null;
             }
 
@@ -742,7 +750,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                     kind = ExecutionKind.SHORT_CIRCUIT;
                 }
 
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, getter, cardinality, kind);
+                NodeChildData nodeChild = new NodeChildData(templateType, childMirror, name, childType, getter, cardinality, kind);
 
                 parsedChildren.add(nodeChild);
 
@@ -753,9 +761,8 @@ public class NodeParser extends TemplateParser<NodeData> {
 
                 NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(childType));
                 nodeChild.setNode(fieldNodeData);
-
                 if (fieldNodeData == null) {
-                    nodeChild.addError("Node type '%s' is invalid.", Utils.getQualifiedName(type));
+                    nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
                 } else if (fieldNodeData.findGenericExecutableTypes(context).isEmpty()) {
                     nodeChild.addError("No executable generic types found for node '%s'.", Utils.getQualifiedName(type));
                 }
