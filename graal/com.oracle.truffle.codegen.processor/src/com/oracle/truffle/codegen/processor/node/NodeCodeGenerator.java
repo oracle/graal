@@ -1655,17 +1655,17 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             TypeData type = sourceParameter.getTypeSystemType();
             ExecutableTypeData execType = targetField.getNodeData().findExecutableType(type);
 
+            /*
+             * FIXME Temporary deactivated due to partial evaluation failure else if
+             * (accessElement.getKind() == ElementKind.METHOD) {
+             * builder.startCall(accessElement.getSimpleName().toString()).end(); }
+             */
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             if (targetField != null) {
                 Element accessElement = targetField.getAccessElement();
                 if (accessElement == null || accessElement.getKind() == ElementKind.METHOD) {
                     builder.string("this.").string(targetField.getName());
-                } /*
-                   * FIXME Temporary deactivated due to partial evaluation failure else if
-                   * (accessElement.getKind() == ElementKind.METHOD) {
-                   * builder.startCall(accessElement.getSimpleName().toString()).end(); }
-                   */
-                else if (accessElement.getKind() == ElementKind.FIELD) {
+                } else if (accessElement.getKind() == ElementKind.FIELD) {
                     builder.string("this.").string(accessElement.getSimpleName().toString());
                 } else {
                     throw new AssertionError();
