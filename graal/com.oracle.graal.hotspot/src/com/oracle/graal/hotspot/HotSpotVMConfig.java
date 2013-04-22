@@ -363,6 +363,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logPrimitiveStub;
     public long logObjectStub;
     public long logPrintfStub;
+    public long stubPrintfStub;
     public int deoptReasonNone;
     public long threadIsInterruptedStub;
     public long identityHashCodeStub;
