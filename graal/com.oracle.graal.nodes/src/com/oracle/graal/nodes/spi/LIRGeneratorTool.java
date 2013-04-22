@@ -57,11 +57,11 @@ public abstract class LIRGeneratorTool {
 
     public abstract void emitMove(Value dst, Value src);
 
-    public abstract Value emitLoad(Kind kind, Value base, int displacement, Value index, int scale, DeoptimizingNode deopting);
+    public abstract Value emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting);
 
-    public abstract void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value input, DeoptimizingNode deopting);
+    public abstract void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value input, DeoptimizingNode deopting);
 
-    public abstract Value emitLea(Value base, int displacement, Value index, int scale);
+    public abstract Value emitLea(Value base, long displacement, Value index, int scale);
 
     public abstract Value emitLea(StackSlot slot);
 

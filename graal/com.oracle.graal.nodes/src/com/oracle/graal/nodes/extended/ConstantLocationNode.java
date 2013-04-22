@@ -34,17 +34,17 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "Loc {p#locationIdentity/s}")
 public class ConstantLocationNode extends LocationNode {
 
-    private final int displacement;
+    private final long displacement;
 
-    public int displacement() {
+    public long displacement() {
         return displacement;
     }
 
-    public static ConstantLocationNode create(Object identity, Kind kind, int displacement, Graph graph) {
+    public static ConstantLocationNode create(Object identity, Kind kind, long displacement, Graph graph) {
         return graph.unique(new ConstantLocationNode(identity, kind, displacement));
     }
 
-    protected ConstantLocationNode(Object identity, Kind kind, int displacement) {
+    protected ConstantLocationNode(Object identity, Kind kind, long displacement) {
         super(identity, kind);
         this.displacement = displacement;
     }

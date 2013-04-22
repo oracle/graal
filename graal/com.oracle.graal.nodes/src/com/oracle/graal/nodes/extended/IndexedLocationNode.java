@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.spi.*;
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     @Input private ValueNode index;
-    private final int displacement;
+    private final long displacement;
     private final int indexScaling;
 
     /**
@@ -53,11 +53,11 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         return indexScaling;
     }
 
-    public static IndexedLocationNode create(Object identity, Kind kind, int displacement, ValueNode index, Graph graph, int indexScaling) {
+    public static IndexedLocationNode create(Object identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
         return graph.unique(new IndexedLocationNode(identity, kind, index, displacement, indexScaling));
     }
 
-    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, int displacement, int indexScaling) {
+    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, long displacement, int indexScaling) {
         super(identity, kind);
         this.index = index;
         this.displacement = displacement;
@@ -71,10 +71,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
             long constantIndexLong = constantIndex.asLong();
             constantIndexLong *= indexScaling;
             constantIndexLong += displacement;
-            int constantIndexInt = (int) constantIndexLong;
-            if (constantIndexLong == constantIndexInt) {
-                return ConstantLocationNode.create(locationIdentity(), getValueKind(), constantIndexInt, graph());
-            }
+            return ConstantLocationNode.create(locationIdentity(), getValueKind(), constantIndexLong, graph());
         }
         return this;
     }
