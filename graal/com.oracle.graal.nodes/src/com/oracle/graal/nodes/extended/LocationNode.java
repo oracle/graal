@@ -86,6 +86,8 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
         return locationIdentity;
     }
 
+    protected abstract LocationNode addDisplacement(long displacement);
+
     @Override
     public void generate(LIRGeneratorTool generator) {
         // nothing to do...

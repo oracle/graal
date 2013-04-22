@@ -50,6 +50,11 @@ public class ConstantLocationNode extends LocationNode {
     }
 
     @Override
+    protected ConstantLocationNode addDisplacement(long x) {
+        return create(locationIdentity(), getValueKind(), displacement + x, graph());
+    }
+
+    @Override
     public Value generateLea(LIRGeneratorTool gen, Value base) {
         return gen.emitLea(base, displacement(), Value.ILLEGAL, 0);
     }

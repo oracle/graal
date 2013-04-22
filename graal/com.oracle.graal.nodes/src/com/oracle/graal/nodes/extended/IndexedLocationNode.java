@@ -46,6 +46,10 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         return index;
     }
 
+    public long displacement() {
+        return displacement;
+    }
+
     /**
      * @return Constant that is used to scale the index.
      */
@@ -62,6 +66,11 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         this.index = index;
         this.displacement = displacement;
         this.indexScaling = indexScaling;
+    }
+
+    @Override
+    protected LocationNode addDisplacement(long x) {
+        return create(locationIdentity(), getValueKind(), displacement + x, index, graph(), indexScaling);
     }
 
     @Override
