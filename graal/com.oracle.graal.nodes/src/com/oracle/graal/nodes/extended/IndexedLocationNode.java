@@ -58,10 +58,14 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     public static IndexedLocationNode create(Object identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
-        return graph.unique(new IndexedLocationNode(identity, kind, index, displacement, indexScaling));
+        return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
     }
 
-    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, long displacement, int indexScaling) {
+    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, int indexScaling) {
+        this(identity, kind, 0, index, indexScaling);
+    }
+
+    private IndexedLocationNode(Object identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(identity, kind);
         this.index = index;
         this.displacement = displacement;
@@ -99,4 +103,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     public void generateStore(LIRGeneratorTool gen, Value base, Value value, DeoptimizingNode deopting) {
         gen.emitStore(getValueKind(), base, displacement, gen.operand(index()), indexScaling(), value, deopting);
     }
+
+    @NodeIntrinsic
+    public static native Location indexedLocation(@ConstantNodeParameter Object identity, @ConstantNodeParameter Kind kind, int index, @ConstantNodeParameter int indexScaling);
 }
