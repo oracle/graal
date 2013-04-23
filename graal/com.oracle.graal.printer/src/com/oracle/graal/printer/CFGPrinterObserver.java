@@ -146,7 +146,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         } else if (object instanceof StructuredGraph) {
             if (cfgPrinter.cfg == null) {
-                cfgPrinter.cfg = ControlFlowGraph.compute((StructuredGraph) object, true, true, true, false);
+                StructuredGraph graph = (StructuredGraph) object;
+                cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             }
             cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
 

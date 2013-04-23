@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.util;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
+import java.util.*;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode {
+import com.oracle.graal.nodes.*;
 
-    FixedNode next();
+public class NodesToDoubles {
 
-    void setNext(FixedNode x);
+    private final IdentityHashMap<FixedNode, Double> nodeProbabilities;
 
-    CallTargetNode callTarget();
+    public NodesToDoubles(int numberOfNodes) {
+        this.nodeProbabilities = new IdentityHashMap<>(numberOfNodes);
+    }
 
-    int bci();
+    public void put(FixedNode n, double value) {
+        nodeProbabilities.put(n, value);
+    }
 
-    FixedNode asNode();
-
-    FrameState stateDuring();
-
-    FrameState stateAfter();
-
-    Node predecessor();
-
-    void intrinsify(Node node);
-
-    boolean useForInlining();
-
-    void setUseForInlining(boolean value);
-
-    /**
-     * True if this invocation is almost certainly polymorphic, false when in doubt.
-     */
-    boolean isPolymorphic();
-
-    void setPolymorphic(boolean value);
+    public double get(FixedNode n) {
+        Double value = nodeProbabilities.get(n);
+        assert value != null;
+        return value;
+    }
 }

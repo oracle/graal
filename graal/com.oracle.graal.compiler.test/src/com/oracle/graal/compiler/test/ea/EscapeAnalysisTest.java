@@ -218,9 +218,6 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
 
             public ReturnNode call() {
                 new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                for (Invoke n : graph.getInvokes()) {
-                    n.setInliningRelevance(1);
-                }
 
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions);

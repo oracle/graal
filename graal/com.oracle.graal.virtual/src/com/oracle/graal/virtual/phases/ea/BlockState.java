@@ -169,7 +169,6 @@ class BlockState {
 
         MaterializeObjectNode materialize = new MaterializeObjectNode(virtual, obj.getLockCount());
         ValueNode[] values = new ValueNode[obj.getEntries().length];
-        materialize.setProbability(fixed.probability());
         obj.escape(materialize, state);
         deferred.add(virtual);
         for (int i = 0; i < fieldState.length; i++) {

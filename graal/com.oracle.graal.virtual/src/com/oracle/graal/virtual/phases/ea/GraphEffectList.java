@@ -49,7 +49,6 @@ public class GraphEffectList extends EffectList {
                 assert position.isAlive();
                 DynamicCounterNode node = graph.add(new DynamicCounterNode(name, increment, addContext));
                 graph.addBeforeFixed(position, node);
-                node.setProbability(position.probability());
             }
         });
     }
@@ -70,7 +69,6 @@ public class GraphEffectList extends EffectList {
                 assert position.isAlive();
                 DynamicCounterNode node = graph.add(new SurvivingCounterNode(name, increment, addContext, checkedValue));
                 graph.addBeforeFixed(position, node);
-                node.setProbability(position.probability());
             }
         });
     }
@@ -94,7 +92,6 @@ public class GraphEffectList extends EffectList {
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert !node.isAlive() && !node.isDeleted() && position.isAlive();
                 graph.addBeforeFixed(position, graph.add(node));
-                node.setProbability(position.probability());
             }
         });
     }
@@ -140,7 +137,6 @@ public class GraphEffectList extends EffectList {
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert !node.isAlive() && !node.isDeleted() && position.isAlive();
                 graph.addBeforeFixed(position, graph.add(node));
-                node.setProbability(position.probability());
                 for (int i = 0; i < values.length; i++) {
                     node.getValues().set(i, values[i]);
                 }

@@ -39,6 +39,7 @@ public class ControlFlowGraph {
     public static ControlFlowGraph compute(StructuredGraph graph, boolean connectBlocks, boolean computeLoops, boolean computeDominators, boolean computePostdominators) {
         ControlFlowGraph cfg = new ControlFlowGraph(graph);
         cfg.identifyBlocks();
+
         if (connectBlocks || computeLoops || computeDominators || computePostdominators) {
             cfg.connectBlocks();
         }
@@ -111,16 +112,15 @@ public class ControlFlowGraph {
     public void clearNodeToBlock() {
         nodeToBlock.clear();
         for (Block block : reversePostOrder) {
-            identifyBlock(block, block.beginNode);
+            identifyBlock(block);
         }
     }
 
     protected static final int BLOCK_ID_INITIAL = -1;
     protected static final int BLOCK_ID_VISITED = -2;
 
-    private void identifyBlock(Block block, BeginNode begin) {
-        block.beginNode = begin;
-        Node cur = begin;
+    private void identifyBlock(Block block) {
+        Node cur = block.getBeginNode();
         Node last;
         do {
             assert !cur.isDeleted();
@@ -145,9 +145,9 @@ public class ControlFlowGraph {
         int numBlocks = 0;
         for (Node node : graph.getNodes()) {
             if (node instanceof BeginNode) {
-                Block block = new Block();
+                Block block = new Block((BeginNode) node);
                 numBlocks++;
-                identifyBlock(block, (BeginNode) node);
+                identifyBlock(block);
             }
         }
 

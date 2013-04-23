@@ -47,8 +47,6 @@ public final class GraalOptions {
            static boolean InlineMegamorphicCalls             = ____;
     public static int     MaximumDesiredSize                 = 5000;
     public static int     MaximumRecursiveInlining           = 1;
-    public static boolean LimitInlinedProbability            = ____;
-    public static boolean LimitInlinedRelevance              = true;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
     public static float   RelevanceCapForInlining            = 1f;
     public static boolean IterativeInlining                  = ____;
@@ -74,9 +72,6 @@ public final class GraalOptions {
 
     public static double  TailDuplicationProbability         = 0.5;
     public static int     TailDuplicationTrivialSize         = 1;
-
-    // absolute probability analysis
-    public static boolean ProbabilityAnalysis                = true;
 
     // profiling information
     public static int     DeoptsToDisableOptimisticOptimization = 40;

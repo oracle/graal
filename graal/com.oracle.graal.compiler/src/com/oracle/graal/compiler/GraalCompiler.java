@@ -38,9 +38,11 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
@@ -99,8 +101,8 @@ public class GraalCompiler {
      * 
      * @param target
      */
-    public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, StructuredGraph graph, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan,
-                    OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
+    public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, final StructuredGraph graph, Replacements replacements, Assumptions assumptions, GraphCache cache,
+                    PhasePlan plan, OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -111,10 +113,6 @@ public class GraalCompiler {
             new DeadCodeEliminationPhase().apply(graph);
         } else {
             Debug.dump(graph, "initial state");
-        }
-
-        if (GraalOptions.ProbabilityAnalysis && graph.start().probability() == 0) {
-            new ComputeProbabilityPhase().apply(graph);
         }
 
         if (GraalOptions.OptCanonicalizer) {
@@ -170,14 +168,13 @@ public class GraalCompiler {
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        new ComputeProbabilityPhase().apply(graph);
-
         return Debug.scope("ComputeLinearScanOrder", new Callable<LIR>() {
 
             @Override
             public LIR call() {
-                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock);
-                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock);
+                NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
+                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, nodeProbabilities);
+                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, nodeProbabilities);
 
                 LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder, speculationLog);
                 Debug.dump(lir, "After linear scan order");

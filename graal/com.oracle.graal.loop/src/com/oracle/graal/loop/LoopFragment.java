@@ -248,7 +248,6 @@ public abstract class LoopFragment {
                 continue;
             }
             MergeNode merge = graph.add(new MergeNode());
-            merge.setProbability(next.probability());
             EndNode originalEnd = graph.add(new EndNode());
             EndNode newEnd = graph.add(new EndNode());
             merge.addForwardEnd(originalEnd);

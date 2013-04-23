@@ -158,7 +158,6 @@ public class InliningTest extends GraalCompilerTest {
                 StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
                 PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
                 Assumptions assumptions = new Assumptions(true);
-                new ComputeProbabilityPhase().apply(graph);
                 Debug.dump(graph, "Graph");
                 new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");

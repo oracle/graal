@@ -35,6 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
 
 /**
  * This class is a phase that looks for opportunities for tail duplication. The static method
@@ -129,10 +130,12 @@ public class TailDuplicationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
+
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
-            if (!(merge instanceof LoopBeginNode) && merge.probability() >= GraalOptions.TailDuplicationProbability) {
+            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= GraalOptions.TailDuplicationProbability) {
                 tailDuplicate(merge, DEFAULT_DECISION, null);
             }
         }
@@ -219,7 +222,7 @@ public class TailDuplicationPhase extends Phase {
          * </ul>
          */
         private void duplicate() {
-            Debug.log("tail duplication at merge %s in %s (prob %f)", merge, graph.method(), merge.probability());
+            Debug.log("tail duplication at merge %s in %s", merge, graph.method());
 
             ValueAnchorNode anchor = addValueAnchor();
 
@@ -420,9 +423,7 @@ public class TailDuplicationPhase extends Phase {
          */
         private EndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
             MergeNode newBottomMerge = graph.add(new MergeNode());
-            newBottomMerge.setProbability(successor.probability());
             EndNode newBottomEnd = graph.add(new EndNode());
-            newBottomEnd.setProbability(successor.probability());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);
             ((FixedWithNextNode) successor.predecessor()).setNext(newBottomEnd);
