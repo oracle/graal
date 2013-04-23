@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.intrinsics;
+package com.oracle.truffle.api;
 
 /**
  * This class contains methods that will be part of java.lang.Math starting with JDK 8. Until JDK 8
