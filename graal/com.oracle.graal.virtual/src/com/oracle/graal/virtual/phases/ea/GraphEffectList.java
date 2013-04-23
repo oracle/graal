@@ -33,7 +33,7 @@ import com.oracle.graal.virtual.nodes.*;
 
 public class GraphEffectList extends EffectList {
 
-    public void addCounterBefore(final String name, final int increment, final boolean addContext, final FixedNode position) {
+    public void addCounterBefore(final String group, final String name, final int increment, final boolean addContext, final FixedNode position) {
         if (!DynamicCounterNode.enabled) {
             return;
         }
@@ -47,13 +47,13 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert position.isAlive();
-                DynamicCounterNode node = graph.add(new DynamicCounterNode(name, increment, addContext));
+                DynamicCounterNode node = graph.add(new DynamicCounterNode(group, name, increment, addContext));
                 graph.addBeforeFixed(position, node);
             }
         });
     }
 
-    public void addSurvivingCounterBefore(final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
+    public void addSurvivingCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
         if (!DynamicCounterNode.enabled) {
             return;
         }
@@ -67,7 +67,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert position.isAlive();
-                DynamicCounterNode node = graph.add(new SurvivingCounterNode(name, increment, addContext, checkedValue));
+                DynamicCounterNode node = graph.add(new SurvivingCounterNode(group, name, increment, addContext, checkedValue));
                 graph.addBeforeFixed(position, node);
             }
         });
