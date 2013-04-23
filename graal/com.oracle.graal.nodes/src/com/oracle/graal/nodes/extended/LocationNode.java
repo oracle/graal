@@ -99,7 +99,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
         // nothing to do...
     }
 
-    public abstract Value generateLea(LIRGeneratorTool gen, Value base);
+    public abstract Value generateAddress(LIRGeneratorTool gen, Value base);
 
     public abstract Value generateLoad(LIRGeneratorTool gen, Value base, DeoptimizingNode deopting);
 

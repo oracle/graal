@@ -90,7 +90,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Value generateLea(LIRGeneratorTool gen, Value base) {
+    public Value generateAddress(LIRGeneratorTool gen, Value base) {
         return gen.emitLea(base, displacement, gen.operand(index()), indexScaling());
     }
 
