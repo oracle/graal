@@ -24,11 +24,43 @@ package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.nodes.*;
 
+/**
+ * An assumption is a global boolean flag that starts with the value true (i.e., the assumption is
+ * valid) and can subsequently be invalidated (using {@link Assumption#invalidate()}). Once
+ * invalidated, an assumption can never get valid again. Assumptions can be created using the
+ * {@link TruffleRuntime#createAssumption()} or the {@link TruffleRuntime#createAssumption(String)}
+ * method. The Truffle compiler has special knowledge of this class in order to produce efficient
+ * machine code for checking an assumption in case the assumption object is a compile time constant.
+ * Therefore, assumptions should be stored in final fields in Truffle nodes.
+ */
 public interface Assumption {
 
+    /**
+     * Checks that this assumption is still valid. The method throws an exception, if this is no
+     * longer the case. This method is preferred over the {@link #isValid()} method when writing
+     * guest language interpreter code. The catch block should perform a node rewrite (see
+     * {@link Node#replace(Node)}) with a node that no longer relies on the assumption.
+     * 
+     * @throws InvalidAssumptionException If the assumption is no longer valid.
+     */
     void check() throws InvalidAssumptionException;
 
+    /**
+     * Checks whether the assumption is still valid.
+     * 
+     * @return a boolean value indicating the validity of the assumption
+     */
+    boolean isValid();
+
+    /**
+     * Invalidates this assumption. Performs no operation, if the assumption is already invalid.
+     */
     void invalidate();
 
+    /**
+     * A name for the assumption that is used for debug output.
+     * 
+     * @return the name of the assumption
+     */
     String getName();
 }
