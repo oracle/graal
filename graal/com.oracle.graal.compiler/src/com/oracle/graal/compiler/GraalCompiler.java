@@ -145,8 +145,6 @@ public class GraalCompiler {
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
 
-        plan.runPhases(PhasePosition.MID_LEVEL, graph);
-
         // Add safepoints to loops
         new SafepointInsertionPhase().apply(graph);
 
