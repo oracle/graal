@@ -135,7 +135,8 @@ public abstract class Node implements Cloneable {
     }
 
     /**
-     * Replaces this node with another node.
+     * Replaces this node with another node. If there is a source section (see
+     * {@link #getSourceSection()}) associated with this node, it is transferred to the new node.
      * 
      * @param newNode the new node that is the replacement
      * @param reason a description of the reason for the replacement
@@ -144,6 +145,10 @@ public abstract class Node implements Cloneable {
     @SuppressWarnings({"unchecked"})
     public final <T extends Node> T replace(T newNode, String reason) {
         assert this.getParent() != null;
+        if (sourceSection != null) {
+            // Pass on the source section to the new node.
+            newNode.assignSourceSection(sourceSection);
+        }
         return (T) this.getParent().replaceChild(this, newNode);
     }
 
@@ -154,7 +159,8 @@ public abstract class Node implements Cloneable {
     }
 
     /**
-     * Replaces this node with another node.
+     * Replaces this node with another node. If there is a source section (see
+     * {@link #getSourceSection()}) associated with this node, it is transferred to the new node.
      * 
      * @param newNode the new node that is the replacement
      * @return the new node
