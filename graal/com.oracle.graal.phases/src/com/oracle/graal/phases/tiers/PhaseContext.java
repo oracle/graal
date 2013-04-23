@@ -24,15 +24,18 @@ package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.spi.*;
 
 public class PhaseContext {
 
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
+    private final Replacements replacements;
 
-    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions) {
+    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
         this.runtime = runtime;
         this.assumptions = assumptions;
+        this.replacements = replacements;
     }
 
     public MetaAccessProvider getRuntime() {
@@ -41,5 +44,9 @@ public class PhaseContext {
 
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    public Replacements getReplacements() {
+        return replacements;
     }
 }

@@ -28,17 +28,11 @@ import com.oracle.graal.nodes.spi.*;
 
 public class LowTierContext extends PhaseContext {
 
-    private final Replacements replacements;
     private final TargetDescription target;
 
     public LowTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, TargetDescription target) {
-        super(runtime, assumptions);
-        this.replacements = replacements;
+        super(runtime, assumptions, replacements);
         this.target = target;
-    }
-
-    public Replacements getReplacements() {
-        return replacements;
     }
 
     public TargetDescription getTarget() {

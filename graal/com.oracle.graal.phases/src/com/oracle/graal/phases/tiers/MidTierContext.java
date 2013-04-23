@@ -28,14 +28,14 @@ import com.oracle.graal.nodes.spi.*;
 
 public class MidTierContext extends PhaseContext {
 
-    private final Replacements replacements;
+    private final TargetDescription target;
 
-    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-        super(runtime, assumptions);
-        this.replacements = replacements;
+    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, TargetDescription target) {
+        super(runtime, assumptions, replacements);
+        this.target = target;
     }
 
-    public Replacements getReplacements() {
-        return replacements;
+    public TargetDescription getTarget() {
+        return target;
     }
 }

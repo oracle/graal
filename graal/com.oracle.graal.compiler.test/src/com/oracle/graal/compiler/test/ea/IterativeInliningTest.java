@@ -101,7 +101,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
     private void processMethod(final String snippet) {
         graph = parse(snippet);
         GraalOptions.OptEarlyReadElimination = true;
-        HighTierContext context = new HighTierContext(runtime(), new Assumptions(false));
+        HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
         new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false).apply(graph, context);
     }
 }

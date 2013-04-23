@@ -120,7 +120,7 @@ public class GraalCompiler {
             new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
         }
 
-        HighTierContext highTierContext = new HighTierContext(runtime, assumptions);
+        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
 
         if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (GraalOptions.IterativeInlining) {
@@ -142,7 +142,7 @@ public class GraalCompiler {
 
         new LoweringPhase(target, runtime, replacements, assumptions, LoweringType.BEFORE_GUARDS).apply(graph);
 
-        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements);
+        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.MID_LEVEL, graph);
