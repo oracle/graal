@@ -1477,7 +1477,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private CodeTree createDeoptimize(CodeTreeBuilder parent) {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             builder.startStatement();
-            builder.startStaticCall(getContext().getTruffleTypes().getTruffleIntrinsics(), "deoptimize").end();
+            builder.startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end();
             builder.end();
             return builder.getRoot();
         }
