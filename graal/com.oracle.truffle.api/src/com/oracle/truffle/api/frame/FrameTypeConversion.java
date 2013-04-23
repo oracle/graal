@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes;
-
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+package com.oracle.truffle.api.frame;
 
 /**
- * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
- * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode, FrameDescriptor)}.
+ * Interface for defining type conversions for frame slot values.
  */
-public abstract class RootNode extends Node {
+public interface FrameTypeConversion {
 
-    /**
-     * Executes this function using the specified frame and returns the result value.
-     * 
-     * @param frame the frame of the currently executing guest language method
-     * @return the value of the execution
-     */
-    public abstract Object execute(VirtualFrame frame);
+    Object getDefaultValue();
 
-    private CallTarget callTarget;
-
-    public CallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
-    }
+    void updateFrameSlot(Frame frame, FrameSlot slot, Object value);
 }

@@ -62,4 +62,5 @@ public class AbstractTest {
         System.setErr(origErr);
         Assert.assertEquals(repeat(concat(expectedOutput), REPEATS), new String(out.toByteArray()));
     }
+
 }

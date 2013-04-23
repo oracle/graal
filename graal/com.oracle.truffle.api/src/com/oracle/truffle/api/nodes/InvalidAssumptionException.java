@@ -22,31 +22,13 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-
 /**
- * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
- * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode, FrameDescriptor)}.
+ * An exception that should be thrown if an assumption is checked and the check fails. The Truffle
+ * optimizer has special knowledge of this exception class and will never compile a catch block that
+ * catches this exception type.
  */
-public abstract class RootNode extends Node {
+public final class InvalidAssumptionException extends SlowPathException {
 
-    /**
-     * Executes this function using the specified frame and returns the result value.
-     * 
-     * @param frame the frame of the currently executing guest language method
-     * @return the value of the execution
-     */
-    public abstract Object execute(VirtualFrame frame);
+    private static final long serialVersionUID = -6801338218909717979L;
 
-    private CallTarget callTarget;
-
-    public CallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
-    }
 }

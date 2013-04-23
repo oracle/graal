@@ -64,7 +64,7 @@ public class FrameTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", Integer.class);
+        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", int.class);
         TestRootNode rootNode = new TestRootNode(new AssignLocal(slot), new ReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
         Object result = target.call();
@@ -109,7 +109,11 @@ public class FrameTest {
 
         @Override
         int execute(VirtualFrame frame) {
-            frame.setInt(slot, 42);
+            try {
+                frame.setInt(slot, 42);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException(e);
+            }
             return 0;
         }
     }
@@ -122,7 +126,11 @@ public class FrameTest {
 
         @Override
         int execute(VirtualFrame frame) {
-            return frame.getInt(slot);
+            try {
+                return frame.getInt(slot);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 }

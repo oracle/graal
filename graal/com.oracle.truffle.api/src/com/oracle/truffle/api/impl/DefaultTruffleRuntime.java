@@ -38,13 +38,13 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public CallTarget createCallTarget(RootNode rootNode, FrameDescriptor frameDescriptor) {
-        return new DefaultCallTarget(rootNode, frameDescriptor);
+    public CallTarget createCallTarget(RootNode rootNode) {
+        return createCallTarget(rootNode, new FrameDescriptor());
     }
 
     @Override
-    public CallTarget createCallTarget(RootNode rootNode) {
-        return createCallTarget(rootNode, new FrameDescriptor());
+    public CallTarget createCallTarget(RootNode rootNode, FrameDescriptor frameDescriptor) {
+        return new DefaultCallTarget(rootNode, frameDescriptor);
     }
 
     @Override
@@ -55,5 +55,15 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public MaterializedFrame createMaterializedFrame(Arguments arguments, FrameDescriptor frameDescriptor) {
         return new DefaultMaterializedFrame(new DefaultVirtualFrame(frameDescriptor, null, arguments));
+    }
+
+    @Override
+    public Assumption createAssumption() {
+        return createAssumption(null);
+    }
+
+    @Override
+    public Assumption createAssumption(String name) {
+        return new DefaultAssumption(name);
     }
 }

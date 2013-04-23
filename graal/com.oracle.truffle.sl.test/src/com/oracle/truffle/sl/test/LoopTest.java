@@ -28,17 +28,17 @@ import org.junit.*;
 public class LoopTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  i = 0;  ",
-"  while (i < 1000) {  ",
-"    i = i + 1;  ",
-"  }  ",
-"  return i;  ",
-"}  ",
+        "function main {  ",
+        "  i = 0;  ",
+        "  while (i < 1000) {  ",
+        "    i = i + 1;  ",
+        "  }  ",
+        "  return i;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"1000",
+        "1000",
     };
 
     @Test

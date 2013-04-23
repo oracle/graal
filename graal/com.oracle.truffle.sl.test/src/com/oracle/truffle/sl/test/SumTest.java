@@ -28,19 +28,19 @@ import org.junit.*;
 public class SumTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  i = 0;  ",
-"  sum = 0;  ",
-"  while (i < 100000) {  ",
-"    sum = sum + 1000000;  ",
-"    i = i + 1;  ",
-"  }  ",
-"  return sum;  ",
-"}  ",
+        "function main {  ",
+        "  i = 0;  ",
+        "  sum = 0;  ",
+        "  while (i < 100000) {  ",
+        "    sum = sum + 1000000;  ",
+        "    i = i + 1;  ",
+        "  }  ",
+        "  return sum;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"100000000000",
+        "100000000000",
     };
 
     @Test

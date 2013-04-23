@@ -39,68 +39,68 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public Object getObject(FrameSlot slot) {
+    public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getObject(slot);
     }
 
     @Override
-    public void setObject(FrameSlot slot, Object value) {
+    public void setObject(FrameSlot slot, Object value) throws FrameSlotTypeException {
         wrapped.setObject(slot, value);
     }
 
     @Override
-    public boolean getBoolean(FrameSlot slot) {
+    public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getBoolean(slot);
     }
 
     @Override
-    public void setBoolean(FrameSlot slot, boolean value) {
+    public void setBoolean(FrameSlot slot, boolean value) throws FrameSlotTypeException {
         wrapped.setBoolean(slot, value);
     }
 
     @Override
-    public int getInt(FrameSlot slot) {
+    public int getInt(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getInt(slot);
     }
 
     @Override
-    public void setInt(FrameSlot slot, int value) {
+    public void setInt(FrameSlot slot, int value) throws FrameSlotTypeException {
         wrapped.setInt(slot, value);
     }
 
     @Override
-    public long getLong(FrameSlot slot) {
+    public long getLong(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getLong(slot);
     }
 
     @Override
-    public void setLong(FrameSlot slot, long value) {
+    public void setLong(FrameSlot slot, long value) throws FrameSlotTypeException {
         wrapped.setLong(slot, value);
     }
 
     @Override
-    public float getFloat(FrameSlot slot) {
+    public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getFloat(slot);
     }
 
     @Override
-    public void setFloat(FrameSlot slot, float value) {
+    public void setFloat(FrameSlot slot, float value) throws FrameSlotTypeException {
         wrapped.setFloat(slot, value);
     }
 
     @Override
-    public double getDouble(FrameSlot slot) {
+    public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
         return wrapped.getDouble(slot);
     }
 
     @Override
-    public void setDouble(FrameSlot slot, double value) {
+    public void setDouble(FrameSlot slot, double value) throws FrameSlotTypeException {
         wrapped.setDouble(slot, value);
     }
 
     @Override
-    public void updateToLatestVersion() {
-        wrapped.updateToLatestVersion();
+    public Object getValue(FrameSlot slot) {
+        return wrapped.getValue(slot);
     }
 
     @Override

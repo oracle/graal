@@ -20,30 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.frame;
+package com.oracle.truffle.api;
 
-/**
- * Default type conversion semantics where a conversion is without changing any data.
- */
-public final class DefaultTypeConversion implements TypeConversion {
+public interface LoopCountReceiver {
 
-    private static DefaultTypeConversion instance = new DefaultTypeConversion();
-
-    public static TypeConversion getInstance() {
-        return instance;
-    }
-
-    private DefaultTypeConversion() {
-
-    }
-
-    @Override
-    public Class<?> getTopType() {
-        return Object.class;
-    }
-
-    @Override
-    public Object convertTo(Class<?> targetType, Object value) {
-        return value;
-    }
+    void reportLoopCount(int count);
 }

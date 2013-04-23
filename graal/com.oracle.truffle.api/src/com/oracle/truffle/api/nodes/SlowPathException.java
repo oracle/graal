@@ -33,7 +33,36 @@ public class SlowPathException extends Exception {
     /**
      * Creates an exception thrown to enter a slow path.
      */
+    public SlowPathException() {
+    }
+
+    /**
+     * Creates an exception thrown to enter a slow path.
+     */
     public SlowPathException(String message, Throwable cause) {
         super(message, cause);
+    }
+
+    /**
+     * Creates an exception thrown to enter a slow path.
+     */
+    public SlowPathException(String message) {
+        super(message);
+    }
+
+    /**
+     * Creates an exception thrown to enter a slow path.
+     */
+    public SlowPathException(Throwable cause) {
+        super(cause);
+    }
+
+    /**
+     * For performance reasons, this exception does not record any stack trace information.
+     */
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return null;
     }
 }

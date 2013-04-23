@@ -30,4 +30,5 @@ package com.oracle.truffle.api.frame;
  * also does not provide access to the caller frame.
  */
 public interface MaterializedFrame extends Frame {
+
 }

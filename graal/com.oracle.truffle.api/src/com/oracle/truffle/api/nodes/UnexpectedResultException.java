@@ -39,7 +39,6 @@ public final class UnexpectedResultException extends SlowPathException {
      * @param result the alternative result
      */
     public UnexpectedResultException(Object result) {
-        super(null, null);
         assert !(result instanceof Throwable);
         this.result = result;
     }
@@ -49,14 +48,5 @@ public final class UnexpectedResultException extends SlowPathException {
      */
     public Object getResult() {
         return result;
-    }
-
-    /**
-     * For performance reasons, this exception does not record any stack trace information.
-     */
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return null;
     }
 }

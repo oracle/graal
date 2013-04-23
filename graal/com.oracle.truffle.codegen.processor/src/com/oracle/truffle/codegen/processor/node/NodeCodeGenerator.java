@@ -676,15 +676,17 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private CodeVariableElement createChildField(NodeChildData child) {
+            CodeVariableElement var = new CodeVariableElement(child.getNodeType(), child.getName());
+            var.getModifiers().add(Modifier.PROTECTED);
+
             DeclaredType annotationType;
             if (child.getCardinality() == Cardinality.MANY) {
+                var.getModifiers().add(Modifier.FINAL);
                 annotationType = getContext().getTruffleTypes().getChildrenAnnotation();
             } else {
                 annotationType = getContext().getTruffleTypes().getChildAnnotation();
             }
 
-            CodeVariableElement var = new CodeVariableElement(child.getNodeType(), child.getName());
-            var.getModifiers().add(Modifier.PROTECTED);
             var.getAnnotationMirrors().add(new CodeAnnotationMirror(annotationType));
             return var;
         }
@@ -1498,6 +1500,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.startCall(factoryClassName(node), "createSpecialized").string("this").string("null").end();
             }
             builder.end().end();
+            emitSpecializationListeners(builder, node);
             return builder.getRoot();
         }
 

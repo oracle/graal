@@ -44,4 +44,11 @@ public final class TruffleIntrinsics {
             throw new RuntimeException("Timeout");
         }
     }
+
+    public static void mustNotReachHere() {
+    }
+
+    public static void interpreterOnly(Runnable runnable) {
+        runnable.run();
+    }
 }

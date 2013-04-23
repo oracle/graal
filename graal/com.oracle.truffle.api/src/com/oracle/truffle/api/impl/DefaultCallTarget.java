@@ -31,19 +31,24 @@ public class DefaultCallTarget extends CallTarget {
     protected final RootNode rootNode;
     protected final FrameDescriptor frameDescriptor;
 
-    protected DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
+    public DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
         this.rootNode = function;
         this.frameDescriptor = frameDescriptor;
+        this.rootNode.setCallTarget(this);
     }
 
     @Override
     public String toString() {
-        return "DefaultCallTarget " + rootNode;
+        return "CallTarget " + rootNode;
     }
 
     @Override
     public Object call(PackedFrame caller, Arguments args) {
         VirtualFrame frame = new DefaultVirtualFrame(frameDescriptor, caller, args);
         return rootNode.execute(frame);
+    }
+
+    public RootNode getRootNode() {
+        return rootNode;
     }
 }

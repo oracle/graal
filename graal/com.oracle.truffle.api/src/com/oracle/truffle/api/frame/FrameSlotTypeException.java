@@ -20,33 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes;
+package com.oracle.truffle.api.frame;
 
-import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
- * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode, FrameDescriptor)}.
+ * Exception thrown if the frame slot type does not match the access type.
  */
-public abstract class RootNode extends Node {
+public final class FrameSlotTypeException extends SlowPathException {
 
-    /**
-     * Executes this function using the specified frame and returns the result value.
-     * 
-     * @param frame the frame of the currently executing guest language method
-     * @return the value of the execution
-     */
-    public abstract Object execute(VirtualFrame frame);
+    private static final long serialVersionUID = 6972120475215757452L;
 
-    private CallTarget callTarget;
-
-    public CallTarget getCallTarget() {
-        return callTarget;
-    }
-
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
+    public FrameSlotTypeException() {
     }
 }

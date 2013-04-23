@@ -28,19 +28,19 @@ import org.junit.*;
 public class SubTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  print 3 - 4;  ",
-"  print 3 - 4000000000000;  ",
-"  print 3000000000000 - 4;  ",
-"  print 3000000000000 - 4000000000000;  ",
-"}  ",
+        "function main {  ",
+        "  print 3 - 4;  ",
+        "  print 3 - 4000000000000;  ",
+        "  print 3000000000000 - 4;  ",
+        "  print 3000000000000 - 4000000000000;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"-1",
-"-3999999999997",
-"2999999999996",
-"-1000000000000",
+        "-1",
+        "-3999999999997",
+        "2999999999996",
+        "-1000000000000",
     };
 
     @Test

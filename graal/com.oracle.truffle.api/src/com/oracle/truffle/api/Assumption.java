@@ -20,14 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.frame;
+package com.oracle.truffle.api;
 
-/**
- * Interface for defining type conversions for frame slot values.
- */
-public interface TypeConversion {
+import com.oracle.truffle.api.nodes.*;
 
-    Class<?> getTopType();
+public interface Assumption {
 
-    Object convertTo(Class<?> targetType, Object value);
+    void check() throws InvalidAssumptionException;
+
+    void invalidate();
+
+    String getName();
 }

@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.math.*;
-
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -37,29 +35,23 @@ public abstract class ReadLocalNode extends FrameSlotNode {
         this(specialized.slot);
     }
 
-    @Specialization
-    public int doInteger(VirtualFrame frame) {
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public int doInteger(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getInt(slot);
     }
 
-    @Specialization
-    public BigInteger doBigInteger(VirtualFrame frame) {
-        return (BigInteger) frame.getObject(slot);
-    }
-
-    @Specialization
-    public boolean doBoolean(VirtualFrame frame) {
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public boolean doBoolean(VirtualFrame frame) throws FrameSlotTypeException {
         return frame.getBoolean(slot);
     }
 
-    @Specialization
-    public String doString(VirtualFrame frame) {
-        return (String) frame.getObject(slot);
-    }
-
-    @Generic
-    public Object doGeneric(VirtualFrame frame) {
-        return frame.getObject(slot);
+    @Generic(useSpecializations = false)
+    public Object doObject(VirtualFrame frame) {
+        try {
+            return frame.getObject(slot);
+        } catch (FrameSlotTypeException e) {
+            throw new RuntimeException("uninitialized variable " + slot.getIdentifier());
+        }
     }
 
     @Override

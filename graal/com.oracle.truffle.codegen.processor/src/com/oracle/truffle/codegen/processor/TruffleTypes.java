@@ -45,7 +45,6 @@ public final class TruffleTypes {
     private final TypeMirror frame;
     private final DeclaredType childAnnotation;
     private final DeclaredType childrenAnnotation;
-    private final TypeMirror typeConversion;
     private final TypeMirror truffleIntrinsics;
 
     private final List<String> errors = new ArrayList<>();
@@ -57,7 +56,6 @@ public final class TruffleTypes {
         frame = getRequired(context, VirtualFrame.class);
         childAnnotation = getRequired(context, Child.class);
         childrenAnnotation = getRequired(context, Children.class);
-        typeConversion = getRequired(context, TypeConversion.class);
         truffleIntrinsics = getRequired(context, TruffleIntrinsics.class);
     }
 
@@ -83,10 +81,6 @@ public final class TruffleTypes {
 
     public TypeMirror getTruffleIntrinsics() {
         return truffleIntrinsics;
-    }
-
-    public TypeMirror getTypeConversion() {
-        return typeConversion;
     }
 
     public TypeMirror getNode() {

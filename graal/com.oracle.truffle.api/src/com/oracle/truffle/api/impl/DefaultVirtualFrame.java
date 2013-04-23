@@ -29,29 +29,18 @@ import com.oracle.truffle.api.frame.*;
 
 public final class DefaultVirtualFrame implements VirtualFrame {
 
-    private static final Object UNDEFINED_OBJECT = null;
-    private static final Boolean UNDEFINED_BOOLEAN = false;
-    private static final Integer UNDEFINED_INTEGER = 0;
-    private static final Float UNDEFINED_FLOAT = 0.0f;
-    private static final Long UNDEFINED_LONG = 0L;
-    private static final Double UNDEFINED_DOUBLE = 0.0d;
-
     private final FrameDescriptor descriptor;
     private final PackedFrame caller;
     private final Arguments arguments;
-    private FrameVersion currentVersion;
-    protected Object[] locals;
-    protected Class[] tags;
+    private Object[] locals;
+    private Class[] tags;
 
     public DefaultVirtualFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments arguments) {
         this.descriptor = descriptor;
         this.caller = caller;
         this.arguments = arguments;
-        this.currentVersion = descriptor.getCurrentVersion();
         this.locals = new Object[descriptor.getSize()];
-        // The tags are only needed for assertion checking, so initialize the field only when
-        // assertions are enabled
-        assert (this.tags = new Class[descriptor.getSize()]) != null;
+        this.tags = new Class[descriptor.getSize()];
     }
 
     @Override
@@ -75,126 +64,139 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public Object getObject(FrameSlot slot) {
-        return get(slot, Object.class, UNDEFINED_OBJECT);
+    public Object getObject(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, Object.class);
+        return locals[slot.getIndex()];
     }
 
     @Override
-    public void setObject(FrameSlot slot, Object value) {
-        set(slot, Object.class, value);
-    }
-
-    @Override
-    public boolean getBoolean(FrameSlot slot) {
-        return (Boolean) get(slot, Boolean.class, UNDEFINED_BOOLEAN);
-    }
-
-    @Override
-    public void setBoolean(FrameSlot slot, boolean value) {
-        set(slot, Boolean.class, value);
-    }
-
-    @Override
-    public int getInt(FrameSlot slot) {
-        return (Integer) get(slot, Integer.class, UNDEFINED_INTEGER);
-    }
-
-    @Override
-    public void setInt(FrameSlot slot, int value) {
-        set(slot, Integer.class, value);
-    }
-
-    @Override
-    public long getLong(FrameSlot slot) {
-        return (Long) get(slot, Long.class, UNDEFINED_LONG);
-    }
-
-    @Override
-    public void setLong(FrameSlot slot, long value) {
-        set(slot, Long.class, value);
-    }
-
-    @Override
-    public float getFloat(FrameSlot slot) {
-        return (Float) get(slot, Float.class, UNDEFINED_FLOAT);
-    }
-
-    @Override
-    public void setFloat(FrameSlot slot, float value) {
-        set(slot, Float.class, value);
-    }
-
-    @Override
-    public double getDouble(FrameSlot slot) {
-        return (Double) get(slot, Double.class, UNDEFINED_DOUBLE);
-    }
-
-    @Override
-    public void setDouble(FrameSlot slot, double value) {
-        set(slot, Double.class, value);
-    }
-
-    private Object get(FrameSlot slot, Class<?> accessType, Object defaultValue) {
-        Object value = locals[slot.getIndex()];
-        assert verifyGet(slot, accessType, value);
-        if (value == null) {
-            return defaultValue;
-        } else {
-            return value;
-        }
-    }
-
-    private boolean verifyGet(FrameSlot slot, Class<?> accessType, Object value) {
-        assert descriptor.getSlots().get(slot.getIndex()) == slot;
-        Class<?> tag = tags[slot.getIndex()];
-        if (value == null) {
-            assert tag == null || tag == Object.class;
-        } else {
-            assert tag == accessType : "Local variable " + slot + " was written with set" + tag.getSimpleName() + ", but is read with get" + accessType.getSimpleName();
-        }
-        return true;
-    }
-
-    private void set(FrameSlot slot, Class<?> accessType, Object value) {
-        assert verifySet(slot, accessType, value);
+    public void setObject(FrameSlot slot, Object value) throws FrameSlotTypeException {
+        verifySet(slot, Object.class);
         locals[slot.getIndex()] = value;
     }
 
-    private boolean verifySet(FrameSlot slot, Class<?> accessType, Object value) {
-        assert descriptor.getSlots().get(slot.getIndex()) == slot;
-        tags[slot.getIndex()] = accessType;
-        assert accessType.isAssignableFrom(slot.getType()) : "Local variable " + slot + ": " + accessType + " is not assignable from " + slot.getType();
-        if (value == null) {
-            assert accessType == Object.class;
-        } else {
-            assert slot.getType().isAssignableFrom(value.getClass()) : "Local variable " + slot + ": " + slot.getType() + " is not assignable from " + value.getClass();
-        }
-        return true;
+    @Override
+    public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, boolean.class);
+        return (boolean) locals[slot.getIndex()];
     }
 
     @Override
-    public void updateToLatestVersion() {
-        if (currentVersion.getNext() != null) {
-            doUpdateToLatestVersion();
-        }
+    public void setBoolean(FrameSlot slot, boolean value) throws FrameSlotTypeException {
+        verifySet(slot, boolean.class);
+        locals[slot.getIndex()] = value;
     }
 
-    private void doUpdateToLatestVersion() {
-        FrameVersion version = currentVersion;
-        while (version.getNext() != null) {
-            version = version.getNext();
-            if (version instanceof FrameVersion.TypeChange) {
-                ((FrameVersion.TypeChange) version).applyTransformation(this);
-            } else if (version instanceof FrameVersion.Resize) {
-                int newSize = ((FrameVersion.Resize) version).getNewSize();
-                locals = Arrays.copyOf(locals, newSize);
-            }
-        }
-        currentVersion = version;
+    @Override
+    public int getInt(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, int.class);
+        return (int) locals[slot.getIndex()];
+    }
+
+    @Override
+    public void setInt(FrameSlot slot, int value) throws FrameSlotTypeException {
+        verifySet(slot, int.class);
+        locals[slot.getIndex()] = value;
+    }
+
+    @Override
+    public long getLong(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, long.class);
+        return (long) locals[slot.getIndex()];
+    }
+
+    @Override
+    public void setLong(FrameSlot slot, long value) throws FrameSlotTypeException {
+        verifySet(slot, long.class);
+        locals[slot.getIndex()] = value;
+    }
+
+    @Override
+    public float getFloat(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, float.class);
+        return (float) locals[slot.getIndex()];
+    }
+
+    @Override
+    public void setFloat(FrameSlot slot, float value) throws FrameSlotTypeException {
+        verifySet(slot, float.class);
+        locals[slot.getIndex()] = value;
+    }
+
+    @Override
+    public double getDouble(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, double.class);
+        return (double) locals[slot.getIndex()];
+    }
+
+    @Override
+    public void setDouble(FrameSlot slot, double value) throws FrameSlotTypeException {
+        verifySet(slot, double.class);
+        locals[slot.getIndex()] = value;
     }
 
     @Override
     public FrameDescriptor getFrameDescriptor() {
         return this.descriptor;
+    }
+
+    @Override
+    public Object getValue(FrameSlot slot) {
+        int index = slot.getIndex();
+        if (index >= tags.length) {
+            assert index >= 0 && index < descriptor.getSize();
+            return descriptor.getTypeConversion().getDefaultValue();
+        }
+        Class tag = tags[index];
+        if (tag == null) {
+            return descriptor.getTypeConversion().getDefaultValue();
+        } else {
+            return locals[index];
+        }
+    }
+
+    private void verifySet(FrameSlot slot, Class accessType) throws FrameSlotTypeException {
+        if (slot.getType() != accessType) {
+            throw new FrameSlotTypeException();
+        }
+        int slotIndex = slot.getIndex();
+        if (slotIndex >= tags.length) {
+            resize();
+        }
+        tags[slotIndex] = accessType;
+    }
+
+    private void verifyGet(FrameSlot slot, Class accessType) throws FrameSlotTypeException {
+        Class<?> slotType = slot.getType();
+        int slotIndex = slot.getIndex();
+        if (slotType != accessType) {
+            if (slotType == null) {
+                slot.setType(Object.class);
+                this.setObject(slot, descriptor.getTypeConversion().getDefaultValue());
+                if (accessType != Object.class) {
+                    throw new FrameSlotTypeException();
+                }
+            } else {
+                throw new FrameSlotTypeException();
+            }
+        }
+        if (slotIndex >= tags.length) {
+            resize();
+        }
+        Class tag = tags[slotIndex];
+        if (tag != slotType) {
+            descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
+            if (tags[slotIndex] != slotType) {
+                throw new FrameSlotTypeException();
+            }
+        }
+    }
+
+    private void resize() {
+        int newSize = descriptor.getSize();
+        if (newSize > tags.length) {
+            locals = Arrays.copyOf(locals, newSize);
+            tags = Arrays.copyOf(tags, newSize);
+        }
     }
 }

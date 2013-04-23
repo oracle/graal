@@ -22,10 +22,45 @@
  */
 package com.oracle.truffle.api.frame;
 
-/**
- * Listener for the event of a type change of a frame slot.
- */
-public interface FrameSlotTypeListener {
+public final class FrameSlotImpl implements FrameSlot {
 
-    void typeChanged(FrameSlot slot, Class<?> oldType);
+    private final FrameDescriptor descriptor;
+    private final Object identifier;
+    private final int index;
+    private Class<?> type;
+
+    protected FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, Class<?> type) {
+        this.descriptor = descriptor;
+        this.identifier = identifier;
+        this.index = index;
+        this.type = type;
+    }
+
+    public Object getIdentifier() {
+        return identifier;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public Class<?> getType() {
+        return type;
+    }
+
+    public void setType(final Class<?> type) {
+        assert this.type != type;
+        this.type = type;
+        this.descriptor.updateVersion();
+    }
+
+    @Override
+    public String toString() {
+        return "[" + index + "," + identifier + "," + type + "]";
+    }
+
+    @Override
+    public FrameDescriptor getFrameDescriptor() {
+        return this.descriptor;
+    }
 }

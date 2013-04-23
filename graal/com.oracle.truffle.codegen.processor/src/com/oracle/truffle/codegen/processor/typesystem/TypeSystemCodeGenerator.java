@@ -79,14 +79,9 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             String name = typeName(typeSystem);
             CodeTypeElement clazz = createClass(typeSystem, modifiers(PUBLIC), name, typeSystem.getTemplateType().asType(), false);
 
-            clazz.getImplements().add(getContext().getTruffleTypes().getTypeConversion());
-
             clazz.add(createConstructorUsingFields(modifiers(PROTECTED), clazz));
             CodeVariableElement singleton = createSingleton(clazz);
             clazz.add(singleton);
-
-            clazz.add(createGetTopType(typeSystem));
-            clazz.add(createConvertTo(typeSystem, singleton));
 
             for (TypeData type : typeSystem.getTypes()) {
                 if (!type.isGeneric()) {
@@ -123,58 +118,6 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
                 sourceTypes.add(cast.getCheckedType());
             }
             return new ArrayList<>(sourceTypes);
-        }
-
-        private CodeExecutableElement createConvertTo(TypeSystemData typeSystem, CodeVariableElement singleton) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(Object.class), "convertTo");
-            method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "targetType"));
-            method.addParameter(new CodeVariableElement(getContext().getType(Object.class), "value"));
-
-            CodeTreeBuilder builder = method.createBuilder();
-
-            boolean first = true;
-            for (TypeData type : typeSystem.getTypes()) {
-                if (first) {
-                    builder.startIf();
-                    first = false;
-                } else {
-                    builder.startElseIf();
-                }
-                builder.string("targetType").string(" == ").typeLiteral(type.getBoxedType());
-                builder.end(); // if
-                builder.startBlock();
-
-                builder.startReturn();
-
-                if (typeEquals(type.getBoxedType(), getContext().getType(Object.class))) {
-                    builder.string("value");
-                } else {
-                    builder.string(singleton.getName()).string(".").startCall(asTypeMethodName(type)).string("value").end();
-                }
-
-                builder.end(); // return
-
-                builder.end(); // block
-            }
-
-            builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class)).end().end();
-
-            return method;
-        }
-
-        private CodeExecutableElement createGetTopType(TypeSystemData typeSystem) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(Class.class), "getTopType");
-
-            CodeTreeBuilder builder = method.createBuilder();
-            builder.startReturn();
-            if (!typeSystem.getTypes().isEmpty()) {
-                builder.typeLiteral(typeSystem.getTypes().get(0).getBoxedType());
-            } else {
-                builder.null_();
-            }
-            builder.end(); // return
-
-            return method;
         }
 
         private static String typeName(TypeSystemData typeSystem) {

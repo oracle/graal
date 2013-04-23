@@ -28,25 +28,25 @@ import org.junit.*;
 public class AddTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  print 3 + 4;  ",
-"  print 3 + \"4\";  ",
-"  print \"3\" + 4;  ",
-"  print \"3\" + \"4\";  ",
-"  print 3 + 4000000000000;  ",
-"  print 3000000000000 + 4;  ",
-"  print 3000000000000 + 4000000000000;  ",
-"}  ",
+        "function main {  ",
+        "  print 3 + 4;  ",
+        "  print 3 + \"4\";  ",
+        "  print \"3\" + 4;  ",
+        "  print \"3\" + \"4\";  ",
+        "  print 3 + 4000000000000;  ",
+        "  print 3000000000000 + 4;  ",
+        "  print 3000000000000 + 4000000000000;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"7",
-"34",
-"34",
-"34",
-"4000000000003",
-"3000000000004",
-"7000000000000",
+        "7",
+        "34",
+        "34",
+        "34",
+        "4000000000003",
+        "3000000000004",
+        "7000000000000",
     };
 
     @Test

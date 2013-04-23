@@ -28,19 +28,19 @@ import org.junit.*;
 public class DivTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  print 4 / 2;  ",
-"  print 4 / 4000000000000;  ",
-"  print 3000000000000 / 3;  ",
-"  print 3000000000000 / 3000000000000;  ",
-"}  ",
+        "function main {  ",
+        "  print 4 / 2;  ",
+        "  print 4 / 4000000000000;  ",
+        "  print 3000000000000 / 3;  ",
+        "  print 3000000000000 / 3000000000000;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"2",
-"0",
-"1000000000000",
-"1",
+        "2",
+        "0",
+        "1000000000000",
+        "1",
     };
 
     @Test

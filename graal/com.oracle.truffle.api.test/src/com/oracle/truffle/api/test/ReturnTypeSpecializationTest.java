@@ -47,10 +47,10 @@ public class ReturnTypeSpecializationTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", Integer.class);
+        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", int.class);
         TestRootNode rootNode = new TestRootNode(new IntAssignLocal(slot, new StringTestChildNode()), new IntReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
-        Assert.assertEquals(Integer.class, slot.getType());
+        Assert.assertEquals(int.class, slot.getType());
         Object result = target.call();
         Assert.assertEquals("42", result);
         Assert.assertEquals(Object.class, slot.getType());
@@ -104,33 +104,30 @@ public class ReturnTypeSpecializationTest {
 
     }
 
-    class IntAssignLocal extends FrameSlotNode implements FrameSlotTypeListener {
+    class IntAssignLocal extends FrameSlotNode {
 
         @Child private TestChildNode value;
 
         IntAssignLocal(FrameSlot slot, TestChildNode value) {
             super(slot);
             this.value = adoptChild(value);
-            slot.registerOneShotTypeListener(this);
         }
 
         @Override
         Object execute(VirtualFrame frame) {
             try {
-                frame.setInt(slot, value.executeInt(frame));
+                int result = value.executeInt(frame);
+                try {
+                    frame.setInt(slot, result);
+                } catch (FrameSlotTypeException e) {
+                    FrameUtil.setObjectSafe(frame, slot, result);
+                    replace(new ObjectAssignLocal(slot, value));
+                }
             } catch (UnexpectedResultException e) {
-                slot.setType(Object.class);
-                frame.updateToLatestVersion();
-                frame.setObject(slot, e.getResult());
+                FrameUtil.setObjectSafe(frame, slot, e.getResult());
+                replace(new ObjectAssignLocal(slot, value));
             }
             return null;
-        }
-
-        @Override
-        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
-            if (changedSlot.getType() == Object.class) {
-                this.replace(new ObjectAssignLocal(changedSlot, value));
-            }
         }
     }
 
@@ -146,32 +143,36 @@ public class ReturnTypeSpecializationTest {
         @Override
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
-            frame.setObject(slot, o);
+            try {
+                frame.setObject(slot, o);
+            } catch (FrameSlotTypeException e) {
+                FrameUtil.setObjectSafe(frame, slot, o);
+            }
             return null;
         }
     }
 
-    class IntReadLocal extends FrameSlotNode implements FrameSlotTypeListener {
+    class IntReadLocal extends FrameSlotNode {
 
         IntReadLocal(FrameSlot slot) {
             super(slot);
-            slot.registerOneShotTypeListener(this);
         }
 
         @Override
         Object execute(VirtualFrame frame) {
-            return executeInt(frame);
+            try {
+                return frame.getInt(slot);
+            } catch (FrameSlotTypeException e) {
+                return replace(new ObjectReadLocal(slot)).execute(frame);
+            }
         }
 
         @Override
-        int executeInt(VirtualFrame frame) {
-            return frame.getInt(slot);
-        }
-
-        @Override
-        public void typeChanged(FrameSlot changedSlot, Class<?> oldType) {
-            if (changedSlot.getType() == Object.class) {
-                this.replace(new ObjectReadLocal(changedSlot));
+        int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            try {
+                return frame.getInt(slot);
+            } catch (FrameSlotTypeException e) {
+                return replace(new ObjectReadLocal(slot)).executeInt(frame);
             }
         }
     }
@@ -184,7 +185,11 @@ public class ReturnTypeSpecializationTest {
 
         @Override
         Object execute(VirtualFrame frame) {
-            return frame.getObject(slot);
+            try {
+                return frame.getObject(slot);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 }

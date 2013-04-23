@@ -104,6 +104,11 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
     }
 
     @Override
+    public Object getValue(FrameSlot slot) {
+        throw new UnsupportedOperationException("native frame");
+    }
+
+    @Override
     public PackedFrame pack() {
         return this;
     }
@@ -121,10 +126,6 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
     @Override
     public VirtualFrame unpack() {
         return this;
-    }
-
-    @Override
-    public void updateToLatestVersion() {
     }
 
     @Override

@@ -60,6 +60,21 @@ public interface TruffleRuntime {
     CallTarget createCallTarget(RootNode rootNode, FrameDescriptor frameDescriptor);
 
     /**
+     * Creates a new assumption object that can be checked and invalidated.
+     * 
+     * @return the newly created assumption object
+     */
+    Assumption createAssumption();
+
+    /**
+     * Creates a new assumption object with a given name that can be checked and invalidated.
+     * 
+     * @param name the name for the new assumption
+     * @return the newly created assumption object
+     */
+    Assumption createAssumption(String name);
+
+    /**
      * Creates a new materialized frame object that can be used to store values.
      * 
      * @return the newly created materialized frame object

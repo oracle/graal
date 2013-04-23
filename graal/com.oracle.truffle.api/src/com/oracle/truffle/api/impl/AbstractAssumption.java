@@ -20,33 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes;
+package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
 
-/**
- * A root node is a node with a method to execute it given only a frame as a parameter. Therefore, a
- * root node can be used to create a call target using
- * {@link TruffleRuntime#createCallTarget(RootNode, FrameDescriptor)}.
- */
-public abstract class RootNode extends Node {
+public abstract class AbstractAssumption implements Assumption {
 
-    /**
-     * Executes this function using the specified frame and returns the result value.
-     * 
-     * @param frame the frame of the currently executing guest language method
-     * @return the value of the execution
-     */
-    public abstract Object execute(VirtualFrame frame);
+    protected final String name;
+    protected boolean isValid;
 
-    private CallTarget callTarget;
-
-    public CallTarget getCallTarget() {
-        return callTarget;
+    protected AbstractAssumption(String name) {
+        this.name = name;
+        this.isValid = true;
     }
 
-    public void setCallTarget(CallTarget callTarget) {
-        this.callTarget = callTarget;
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public String toString() {
+        return "Assumption: " + name;
     }
 }

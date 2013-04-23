@@ -28,25 +28,25 @@ import org.junit.*;
 public class ComparisonTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
-"function main {  ",
-"  print 4 < 20;  ",
-"  print 4 < \"20\";  ",
-"  print \"4\" < 20;  ",
-"  print \"4\" < \"20\";  ",
-"  print 4 < 20000000000000;  ",
-"  print 4000000000000 < 20;  ",
-"  print 4000000000000 < 20000000000000;  ",
-"}  ",
+        "function main {  ",
+        "  print 4 < 20;  ",
+        "  print 4 < \"20\";  ",
+        "  print \"4\" < 20;  ",
+        "  print \"4\" < \"20\";  ",
+        "  print 4 < 20000000000000;  ",
+        "  print 4000000000000 < 20;  ",
+        "  print 4000000000000 < 20000000000000;  ",
+        "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-"true",
-"false",
-"false",
-"false",
-"true",
-"false",
-"true",
+        "true",
+        "false",
+        "false",
+        "false",
+        "true",
+        "false",
+        "true",
     };
 
     @Test
