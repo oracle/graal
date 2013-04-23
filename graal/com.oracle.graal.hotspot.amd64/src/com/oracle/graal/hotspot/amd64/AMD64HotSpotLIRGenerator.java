@@ -43,11 +43,11 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.ParametersOp;
+import com.oracle.graal.lir.StandardOp.PlaceholderOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
@@ -71,15 +71,43 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     StackSlot deoptimizationRescueSlot;
 
     /**
-     * The position at which the instruction for saving RBP should be inserted.
+     * Utility for emitting the instruction to save RBP.
      */
-    Block saveRbpBlock;
-    int saveRbpIndex;
+    class SaveRbp {
 
-    /**
-     * The slot reserved for saving RBP.
-     */
-    StackSlot rbpSlot;
+        final PlaceholderOp placeholder;
+
+        /**
+         * The slot reserved for saving RBP.
+         */
+        final StackSlot reservedSlot;
+
+        public SaveRbp(PlaceholderOp placeholder) {
+            this.placeholder = placeholder;
+            this.reservedSlot = frameMap.allocateSpillSlot(Kind.Long);
+            assert reservedSlot.getRawOffset() == -16 : reservedSlot.getRawOffset();
+        }
+
+        /**
+         * Replaces this operation with the appropriate move for saving rbp.
+         * 
+         * @param useStack specifies if rbp must be saved to the stack
+         */
+        public AllocatableValue finalize(boolean useStack) {
+            AllocatableValue dst;
+            if (useStack) {
+                dst = reservedSlot;
+            } else {
+                frameMap.freeSpillSlot(reservedSlot);
+                dst = newVariable(Kind.Long);
+            }
+
+            placeholder.replace(lir, new MoveFromRegOp(dst, rbp.asValue(Kind.Long)));
+            return dst;
+        }
+    }
+
+    private SaveRbp saveRbp;
 
     /**
      * List of epilogue operations that need to restore RBP.
@@ -119,11 +147,9 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
         ParametersOp paramsOp = new ParametersOp(params);
         append(paramsOp);
-        saveRbpBlock = currentBlock;
-        saveRbpIndex = lir.lir(saveRbpBlock).size();
-        append(paramsOp); // placeholder
-        rbpSlot = frameMap.allocateSpillSlot(Kind.Long);
-        assert rbpSlot.getRawOffset() == -16 : rbpSlot.getRawOffset();
+
+        saveRbp = new SaveRbp(new PlaceholderOp(currentBlock, lir.lir(currentBlock).size()));
+        append(saveRbp.placeholder);
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
@@ -238,23 +264,14 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     public void beforeRegisterAllocation() {
-        assert rbpSlot != null;
-        RegisterValue rbpParam = rbp.asValue(Kind.Long);
-        AllocatableValue savedRbp;
-        LIRInstruction saveRbp;
-        if (lir.hasDebugInfo()) {
-            savedRbp = rbpSlot;
+        boolean hasDebugInfo = lir.hasDebugInfo();
+        AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
+        if (hasDebugInfo) {
             deoptimizationRescueSlot = frameMap.allocateSpillSlot(Kind.Long);
-        } else {
-            frameMap.freeSpillSlot(rbpSlot);
-            savedRbp = newVariable(Kind.Long);
         }
 
         for (AMD64HotSpotEpilogueOp op : epilogueOps) {
             op.savedRbp = savedRbp;
         }
-
-        saveRbp = new MoveFromRegOp(savedRbp, rbpParam);
-        lir.lir(saveRbpBlock).set(saveRbpIndex, saveRbp);
     }
 }
