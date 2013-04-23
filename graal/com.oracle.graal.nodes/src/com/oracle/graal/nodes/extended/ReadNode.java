@@ -103,11 +103,15 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
         Object locId = location().locationIdentity();
         if (locId instanceof ResolvedJavaField) {
             ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
-            ResolvedJavaType beforePiType = parent.object().objectStamp().type();
+            ValueNode piValueStamp = parent.object();
+            ResolvedJavaType beforePiType = piValueStamp.objectStamp().type();
 
             if (beforePiType != null && fieldType.isAssignableFrom(beforePiType)) {
-                replaceFirstInput(parent, parent.object());
-                return true;
+                ObjectStamp piStamp = parent.objectStamp();
+                if (piStamp.nonNull() == piValueStamp.objectStamp().nonNull() && piStamp.alwaysNull() == piValueStamp.objectStamp().alwaysNull()) {
+                    replaceFirstInput(parent, piValueStamp);
+                    return true;
+                }
             }
         }
         return false;

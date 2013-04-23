@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * An IsNullNode will be true if the supplied value is null, and false if it is non-null.
@@ -81,7 +82,13 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
 
     @Override
     public boolean push(PiNode parent) {
-        replaceFirstInput(parent, parent.object());
-        return true;
+        ObjectStamp piStamp = parent.objectStamp();
+        ObjectStamp piValueStamp = parent.object().objectStamp();
+        if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
+            replaceFirstInput(parent, parent.object());
+            return true;
+        } else {
+            return false;
+        }
     }
 }
