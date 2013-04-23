@@ -218,6 +218,10 @@ public class GuardLoweringPhase extends Phase {
     }
 
     private boolean isImplicitNullCheck(LocationNode location) {
-        return !(location instanceof IndexedLocationNode) && location.displacement() < target.implicitNullCheckLimit;
+        if (location instanceof ConstantLocationNode) {
+            return ((ConstantLocationNode) location).displacement() < target.implicitNullCheckLimit;
+        } else {
+            return false;
+        }
     }
 }

@@ -84,7 +84,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        location().generateStore(gen, object(), value(), this);
+        location().generateStore(gen, gen.operand(object()), gen.operand(value()), this);
     }
 
     @NodeIntrinsic

@@ -137,7 +137,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    private PTXAddressValue prepareAddress(Kind kind, Value base, int displacement, Value index, int scale) {
+    private PTXAddressValue prepareAddress(Kind kind, Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -181,7 +181,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value base, int displacement, Value index, int scale, DeoptimizingNode deopting) {
+    public Variable emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting) {
         PTXAddressValue loadAddress = prepareAddress(kind, base, displacement, index, scale);
         Variable result = newVariable(loadAddress.getKind());
         append(new LoadOp(result, loadAddress, deopting != null ? state(deopting) : null));
@@ -189,14 +189,14 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitStore(Kind kind, Value base, int displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
+    public void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
         PTXAddressValue storeAddress = prepareAddress(kind, base, displacement, index, scale);
         Variable input = load(inputVal);
         append(new StoreOp(storeAddress, input, deopting != null ? state(deopting) : null));
     }
 
     @Override
-    public Variable emitLea(Value base, int displacement, Value index, int scale) {
+    public Variable emitLea(Value base, long displacement, Value index, int scale) {
         throw new InternalError("NYI");
     }
 

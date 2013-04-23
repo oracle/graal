@@ -22,19 +22,25 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.nodes.CStringNode.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -43,6 +49,7 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
+import com.oracle.graal.word.*;
 
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a
@@ -155,5 +162,53 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
             assert code != null : "error installing stub " + getMethod();
         }
         return code;
+    }
+
+    static void log(boolean enabled, String format, long value) {
+        if (enabled) {
+            printf(format, value);
+        }
+    }
+
+    static void log(boolean enabled, String format, WordBase value) {
+        if (enabled) {
+            printf(format, value.rawValue());
+        }
+    }
+
+    static void log(boolean enabled, String format, Word v1, long v2) {
+        if (enabled) {
+            printf(format, v1.rawValue(), v2);
+        }
+    }
+
+    static void log(boolean enabled, String format, Word v1, Word v2) {
+        if (enabled) {
+            printf(format, v1.rawValue(), v2.rawValue());
+        }
+    }
+
+    public static final Descriptor STUB_PRINTF = new Descriptor("stubPrintf", false, void.class, Word.class, long.class, long.class, long.class);
+
+    @NodeIntrinsic(RuntimeCallNode.class)
+    private static native void printf(@ConstantNodeParameter Descriptor stubPrintf, Word format, long v1, long v2, long v3);
+
+    /**
+     * Prints a formatted string to the log stream.
+     * 
+     * @param format a C style printf format value that can contain at most one conversion specifier
+     *            (i.e., a sequence of characters starting with '%').
+     * @param value the value associated with the conversion specifier
+     */
+    public static void printf(String format, long value) {
+        printf(STUB_PRINTF, cstring(format), value, 0L, 0L);
+    }
+
+    public static void printf(String format, long v1, long v2) {
+        printf(STUB_PRINTF, cstring(format), v1, v2, 0L);
+    }
+
+    public static void printf(String format, long v1, long v2, long v3) {
+        printf(STUB_PRINTF, cstring(format), v1, v2, v3);
     }
 }
