@@ -65,5 +65,10 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         if (GraalOptions.OptCanonicalizer) {
             addPhase(new CanonicalizerPhase());
         }
+
+        // Add safepoints to loops
+        addPhase(new SafepointInsertionPhase());
+
+        addPhase(new GuardLoweringPhase());
     }
 }

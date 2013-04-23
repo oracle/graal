@@ -38,7 +38,6 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -140,26 +139,13 @@ public class GraalCompiler {
 
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
 
-        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
-
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
-
-        // Add safepoints to loops
-        new SafepointInsertionPhase().apply(graph);
-
-        new GuardLoweringPhase().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
         LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
-
-        new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, lowTierContext);
-
-        new FrameStateAssignmentPhase().apply(graph);
-
-        new DeadCodeEliminationPhase().apply(graph);
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);

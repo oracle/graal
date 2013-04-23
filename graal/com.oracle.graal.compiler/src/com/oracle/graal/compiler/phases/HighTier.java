@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.phases;
 
 import com.oracle.graal.loop.phases.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -68,6 +69,8 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         if (GraalOptions.OptCanonicalizer) {
             addPhase(new CanonicalizerPhase());
         }
+
+        addPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));
     }
 
 }
