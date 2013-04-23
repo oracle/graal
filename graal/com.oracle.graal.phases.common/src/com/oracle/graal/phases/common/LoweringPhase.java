@@ -56,11 +56,6 @@ public class LoweringPhase extends Phase {
         }
 
         @Override
-        public TargetDescription getTarget() {
-            return target;
-        }
-
-        @Override
         public GraalCodeCacheProvider getRuntime() {
             return runtime;
         }
@@ -120,7 +115,6 @@ public class LoweringPhase extends Phase {
         }
     }
 
-    private final TargetDescription target;
     private final GraalCodeCacheProvider runtime;
     private final Replacements replacements;
     private final Assumptions assumptions;
@@ -128,8 +122,7 @@ public class LoweringPhase extends Phase {
 
     private boolean deferred;
 
-    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions, LoweringType loweringType) {
-        this.target = target;
+    public LoweringPhase(GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions, LoweringType loweringType) {
         this.runtime = runtime;
         this.replacements = replacements;
         this.assumptions = assumptions;

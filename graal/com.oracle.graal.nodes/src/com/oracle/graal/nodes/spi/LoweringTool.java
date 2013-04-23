@@ -30,8 +30,6 @@ import com.oracle.graal.nodes.cfg.*;
 
 public interface LoweringTool {
 
-    TargetDescription getTarget();
-
     GraalCodeCacheProvider getRuntime();
 
     Replacements getReplacements();

@@ -86,7 +86,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             // structure changes significantly
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                new LoweringPhase(null, runtime(), replacements, new Assumptions(false), LoweringType.BEFORE_GUARDS).apply(graph);
+                new LoweringPhase(runtime(), replacements, new Assumptions(false), LoweringType.BEFORE_GUARDS).apply(graph);
                 new FloatingReadPhase().apply(graph);
                 new EliminatePartiallyRedundantGuardsPhase(true, false).apply(graph);
                 new ReadEliminationPhase().apply(graph);
