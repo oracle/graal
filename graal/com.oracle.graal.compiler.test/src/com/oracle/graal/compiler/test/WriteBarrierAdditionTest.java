@@ -49,8 +49,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
         main.b = temp2;
     }
 
-    public static void test2Snippet() {
-        boolean test = true;
+    public static void test2Snippet(boolean test) {
         Container main = new Container();
         Container temp1 = new Container();
         Container temp2 = new Container();
@@ -58,11 +57,9 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             if (test) {
                 main.a = temp1;
                 main.b = temp2;
-                test = false;
             } else {
                 main.a = temp2;
                 main.b = temp1;
-                test = true;
             }
         }
     }
@@ -109,7 +106,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                 for (WriteNode write : graph.getNodes(WriteNode.class)) {
                     if (write.getWriteBarrierType() != WriteBarrierType.NONE) {
                         Assert.assertTrue(write.successors().count() == 1);
-                        Assert.assertTrue(write.successors().first() instanceof SerialWriteBarrier);
+                        Assert.assertTrue(write.next() instanceof SerialWriteBarrier);
                     }
                 }
             }
