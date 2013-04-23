@@ -150,7 +150,7 @@ public class GraalCompiler {
         // Add safepoints to loops
         new SafepointInsertionPhase().apply(graph);
 
-        new GuardLoweringPhase(target).apply(graph);
+        new GuardLoweringPhase().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
