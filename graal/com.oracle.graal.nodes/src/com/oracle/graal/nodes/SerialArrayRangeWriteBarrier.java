@@ -51,7 +51,7 @@ public final class SerialArrayRangeWriteBarrier extends FixedWithNextNode implem
 
     }
 
-    public void lower(LoweringTool generator) {
+    public void lower(LoweringTool generator, LoweringType loweringType) {
         generator.getRuntime().lower(this, generator);
     }
 

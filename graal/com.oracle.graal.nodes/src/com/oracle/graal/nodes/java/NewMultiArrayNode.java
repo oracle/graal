@@ -62,7 +62,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

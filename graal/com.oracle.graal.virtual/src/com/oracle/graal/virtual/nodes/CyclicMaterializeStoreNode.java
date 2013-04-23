@@ -68,7 +68,7 @@ public final class CyclicMaterializeStoreNode extends FixedWithNextNode implemen
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         StructuredGraph graph = (StructuredGraph) graph();
         ResolvedJavaType type = object.objectStamp().type();
         FixedWithNextNode store;

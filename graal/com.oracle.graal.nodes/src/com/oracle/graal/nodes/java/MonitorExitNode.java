@@ -49,7 +49,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
         return new Object[]{LocationNode.ANY_LOCATION};
     }
 
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

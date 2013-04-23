@@ -30,6 +30,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
+import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.phases.common.*;
 
 public class WriteBarrierAdditionTest extends GraalCompilerTest {
@@ -100,7 +101,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                new LoweringPhase(null, runtime(), replacements, new Assumptions(false)).apply(graph);
+                new LoweringPhase(null, runtime(), replacements, new Assumptions(false), LoweringType.BEFORE_GUARDS).apply(graph);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");
                 final int barriers = graph.getNodes(SerialWriteBarrier.class).count();

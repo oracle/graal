@@ -48,7 +48,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         StructuredGraph graph = (StructuredGraph) graph();
 
         LogicNode equalComp;

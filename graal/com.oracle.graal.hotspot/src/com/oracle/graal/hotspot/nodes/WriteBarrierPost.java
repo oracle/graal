@@ -58,7 +58,7 @@ public final class WriteBarrierPost extends FixedWithNextNode implements Lowerab
         this.precise = precise;
     }
 
-    public void lower(LoweringTool generator) {
+    public void lower(LoweringTool generator, LoweringType loweringType) {
         generator.getRuntime().lower(this, generator);
     }
 }

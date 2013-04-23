@@ -58,7 +58,7 @@ public final class WriteBarrierPre extends FixedWithNextNode implements Lowerabl
         this.expectedObject = expectedObject;
     }
 
-    public void lower(LoweringTool generator) {
+    public void lower(LoweringTool generator, LoweringType loweringType) {
         generator.getRuntime().lower(this, generator);
     }
 

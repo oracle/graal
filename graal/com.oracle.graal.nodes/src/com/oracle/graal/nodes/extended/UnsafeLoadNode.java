@@ -50,7 +50,7 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

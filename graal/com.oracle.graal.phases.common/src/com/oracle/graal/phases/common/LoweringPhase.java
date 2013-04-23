@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 
@@ -86,6 +87,9 @@ public class LoweringPhase extends Phase {
 
         @Override
         public ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+            if (loweringType == LoweringType.AFTER_GUARDS) {
+                throw new GraalInternalError("Cannot create guards in after-guard lowering");
+            }
             if (GraalOptions.OptEliminateGuards) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).negated() == negated) {
@@ -120,14 +124,16 @@ public class LoweringPhase extends Phase {
     private final GraalCodeCacheProvider runtime;
     private final Replacements replacements;
     private final Assumptions assumptions;
+    private final LoweringType loweringType;
 
     private boolean deferred;
 
-    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions) {
+    public LoweringPhase(TargetDescription target, GraalCodeCacheProvider runtime, Replacements replacements, Assumptions assumptions, LoweringType loweringType) {
         this.target = target;
         this.runtime = runtime;
         this.replacements = replacements;
         this.assumptions = assumptions;
+        this.loweringType = loweringType;
     }
 
     private static boolean containsLowerable(NodeIterable<Node> nodes) {
@@ -208,16 +214,16 @@ public class LoweringPhase extends Phase {
 
             if (node.isAlive() && !processed.isMarked(node) && node instanceof Lowerable) {
                 if (loweringTool.lastFixedNode() == null) {
-                    // We cannot lower the node now because we don't have a fixed node to anchor the
-                    // replacements.
-                    // This can happen when previous lowerings in this lowering iteration deleted
-                    // the BeginNode of this block.
-                    // In the next iteration, we will have the new BeginNode available, and we can
-                    // lower this node.
+                    /*
+                     * We cannot lower the node now because we don't have a fixed node to anchor the
+                     * replacements. This can happen when previous lowerings in this lowering
+                     * iteration deleted the BeginNode of this block. In the next iteration, we will
+                     * have the new BeginNode available, and we can lower this node.
+                     */
                     deferred = true;
                 } else {
                     processed.mark(node);
-                    ((Lowerable) node).lower(loweringTool);
+                    ((Lowerable) node).lower(loweringTool, loweringType);
                 }
             }
 

@@ -51,7 +51,7 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         if (code.isConstant() && code.asConstant().asObject() instanceof HotSpotInstalledCode) {
             HotSpotInstalledCode hsCode = (HotSpotInstalledCode) code.asConstant().asObject();
             InvokeNode invoke = replaceWithInvoke(tool.getRuntime());

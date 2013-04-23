@@ -38,6 +38,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -139,7 +140,7 @@ public class GraalCompiler {
 
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
 
-        new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
+        new LoweringPhase(target, runtime, replacements, assumptions, LoweringType.BEFORE_GUARDS).apply(graph);
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
@@ -153,7 +154,7 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        new LoweringPhase(target, runtime, replacements, assumptions).apply(graph);
+        new LoweringPhase(target, runtime, replacements, assumptions, LoweringType.AFTER_GUARDS).apply(graph);
 
         new FrameStateAssignmentPhase().apply(graph);
 

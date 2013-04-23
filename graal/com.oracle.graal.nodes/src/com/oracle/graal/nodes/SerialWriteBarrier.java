@@ -53,7 +53,8 @@ public final class SerialWriteBarrier extends FixedWithNextNode implements Lower
     }
 
     @Override
-    public void lower(LoweringTool generator) {
+    public void lower(LoweringTool generator, LoweringType loweringType) {
+        assert loweringType == LoweringType.AFTER_GUARDS;
         generator.getRuntime().lower(this, generator);
     }
 }
