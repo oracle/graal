@@ -29,4 +29,6 @@ public interface CompilerConfiguration {
     PhaseSuite<HighTierContext> createHighTier();
 
     PhaseSuite<MidTierContext> createMidTier();
+
+    PhaseSuite<LowTierContext> createLowTier();
 }

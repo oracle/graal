@@ -154,6 +154,9 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
+        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
+        Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
+
         new LoweringPhase(target, runtime, replacements, assumptions, LoweringType.AFTER_GUARDS).apply(graph);
 
         new FrameStateAssignmentPhase().apply(graph);

@@ -20,24 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.phases.tiers;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.spi.*;
 
-@ServiceProvider(CompilerConfiguration.class)
-public class BasicCompilerConfiguration implements CompilerConfiguration {
+public class LowTierContext extends PhaseContext {
 
-    public PhaseSuite<HighTierContext> createHighTier() {
-        return new HighTier();
+    private final Replacements replacements;
+    private final TargetDescription target;
+
+    public LowTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, TargetDescription target) {
+        super(runtime, assumptions);
+        this.replacements = replacements;
+        this.target = target;
     }
 
-    public PhaseSuite<MidTierContext> createMidTier() {
-        return new MidTier();
+    public Replacements getReplacements() {
+        return replacements;
     }
 
-    public PhaseSuite<LowTierContext> createLowTier() {
-        return new LowTier();
+    public TargetDescription getTarget() {
+        return target;
     }
 }

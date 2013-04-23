@@ -22,22 +22,11 @@
  */
 package com.oracle.graal.compiler.phases;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-@ServiceProvider(CompilerConfiguration.class)
-public class BasicCompilerConfiguration implements CompilerConfiguration {
+public class LowTier extends PhaseSuite<LowTierContext> {
 
-    public PhaseSuite<HighTierContext> createHighTier() {
-        return new HighTier();
-    }
-
-    public PhaseSuite<MidTierContext> createMidTier() {
-        return new MidTier();
-    }
-
-    public PhaseSuite<LowTierContext> createLowTier() {
-        return new LowTier();
+    public LowTier() {
     }
 }
