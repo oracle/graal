@@ -140,7 +140,7 @@ public class GraalCompiler {
 
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
 
-        new LoweringPhase(runtime, replacements, assumptions, LoweringType.BEFORE_GUARDS).apply(graph);
+        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
@@ -157,7 +157,7 @@ public class GraalCompiler {
         LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
 
-        new LoweringPhase(runtime, replacements, assumptions, LoweringType.AFTER_GUARDS).apply(graph);
+        new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, lowTierContext);
 
         new FrameStateAssignmentPhase().apply(graph);
 
