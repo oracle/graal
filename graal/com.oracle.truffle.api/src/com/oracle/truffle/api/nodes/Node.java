@@ -135,19 +135,6 @@ public abstract class Node implements Cloneable {
     }
 
     /**
-     * Replaces one child of this node with another node.
-     * 
-     * @param oldChild the old child
-     * @param newChild the new child that should replace the old child
-     * @return the new child
-     */
-    public final <T extends Node> T replaceChild(T oldChild, T newChild) {
-        NodeUtil.replaceChild(this, oldChild, newChild);
-        adoptChild(newChild);
-        return newChild;
-    }
-
-    /**
      * Replaces this node with another node.
      * 
      * @param newNode the new node that is the replacement
@@ -158,6 +145,12 @@ public abstract class Node implements Cloneable {
     public final <T extends Node> T replace(T newNode, String reason) {
         assert this.getParent() != null;
         return (T) this.getParent().replaceChild(this, newNode);
+    }
+
+    private <T extends Node> T replaceChild(T oldChild, T newChild) {
+        NodeUtil.replaceChild(this, oldChild, newChild);
+        adoptChild(newChild);
+        return newChild;
     }
 
     /**
