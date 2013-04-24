@@ -582,11 +582,10 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setSplitByMethodName(splitByMethodName);
         nodeData.setTypeSystem(typeSystem);
         nodeData.setFields(parseFields(elements));
-        nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
         parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
-
         // parseChildren invokes cyclic parsing.
         nodeData.setChildren(parseChildren(templateType, elements, lookupTypes));
+        nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         return nodeData;
     }
