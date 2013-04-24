@@ -24,6 +24,8 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
+import com.oracle.truffle.api.nodes.*;
+
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface NodeChild {
@@ -32,5 +34,14 @@ public @interface NodeChild {
 
     Class<?> type() default NodeClass.InheritNode.class;
 
+    /**
+     * Executes the {@link NodeChild} with values from other defined {@link NodeChild} elements.
+     * These referenced children must be defined before the current node in the execution order. The
+     * current node {@link #type()} attribute must be set to a {@link Node} which supports the
+     * evaluated execution with the number of {@link #executeWith()} arguments that are defined. For
+     * example if this child is executed with one argument, the {@link #type()} attribute must
+     * define a node which publicly declares a method with the signature
+     * <code>Object execute*(VirtualFrame, Object)</code>.
+     */
     String[] executeWith() default {};
 }
