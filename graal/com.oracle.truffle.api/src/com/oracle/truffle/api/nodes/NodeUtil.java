@@ -100,9 +100,6 @@ public class NodeUtil {
             this.parentOffset = parentOffsetTemp;
         }
 
-        /**
-         * (db) getters added to support AST cloning for parallel execution.
-         */
         public long getParentOffset() {
             return parentOffset;
         }

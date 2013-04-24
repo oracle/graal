@@ -156,8 +156,13 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     private void verifySet(FrameSlot slot, Class accessType) throws FrameSlotTypeException {
-        if (slot.getType() != accessType) {
-            throw new FrameSlotTypeException();
+        Class<?> slotType = slot.getType();
+        if (slotType != accessType) {
+            if (slotType == null) {
+                slot.setType(accessType);
+            } else {
+                throw new FrameSlotTypeException();
+            }
         }
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
@@ -168,25 +173,21 @@ public final class DefaultVirtualFrame implements VirtualFrame {
 
     private void verifyGet(FrameSlot slot, Class accessType) throws FrameSlotTypeException {
         Class<?> slotType = slot.getType();
-        int slotIndex = slot.getIndex();
         if (slotType != accessType) {
-            if (slotType == null) {
+            if (slotType == null && accessType == Object.class) {
                 slot.setType(Object.class);
                 this.setObject(slot, descriptor.getTypeConversion().getDefaultValue());
-                if (accessType != Object.class) {
-                    throw new FrameSlotTypeException();
-                }
             } else {
                 throw new FrameSlotTypeException();
             }
         }
+        int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
             resize();
         }
-        Class tag = tags[slotIndex];
-        if (tag != slotType) {
+        if (tags[slotIndex] != accessType) {
             descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
-            if (tags[slotIndex] != slotType) {
+            if (tags[slotIndex] != accessType) {
                 throw new FrameSlotTypeException();
             }
         }

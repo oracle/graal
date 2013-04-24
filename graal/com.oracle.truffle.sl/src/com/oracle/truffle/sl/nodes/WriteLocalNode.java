@@ -38,29 +38,13 @@ public abstract class WriteLocalNode extends FrameSlotNode {
 
     @Specialization(rewriteOn = FrameSlotTypeException.class)
     public int write(VirtualFrame frame, int right) throws FrameSlotTypeException {
-        try {
-            frame.setInt(slot, right);
-        } catch (FrameSlotTypeException e) {
-            if (slot.getType() == null) {
-                FrameUtil.setIntSafe(frame, slot, right);
-            } else {
-                throw e;
-            }
-        }
+        frame.setInt(slot, right);
         return right;
     }
 
     @Specialization(rewriteOn = FrameSlotTypeException.class)
     public boolean write(VirtualFrame frame, boolean right) throws FrameSlotTypeException {
-        try {
-            frame.setBoolean(slot, right);
-        } catch (FrameSlotTypeException e) {
-            if (slot.getType() == null) {
-                FrameUtil.setBooleanSafe(frame, slot, right);
-            } else {
-                throw e;
-            }
-        }
+        frame.setBoolean(slot, right);
         return right;
     }
 
