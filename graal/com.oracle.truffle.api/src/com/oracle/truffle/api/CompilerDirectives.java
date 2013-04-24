@@ -77,4 +77,12 @@ public class CompilerDirectives {
     public static void injectBranchProbability(double probability) {
         assert probability >= 0.0 && probability <= 1.0;
     }
+
+    /**
+     * Bails out of a compilation (e.g., for guest language features that should never be compiled).
+     * 
+     * @param reason the reason for the bailout
+     */
+    public static void bailout(String reason) {
+    }
 }
