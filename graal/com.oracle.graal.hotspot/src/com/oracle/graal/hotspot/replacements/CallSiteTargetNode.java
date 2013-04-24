@@ -43,13 +43,14 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
     private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccessProvider, Assumptions assumptions) {
         if (getCallSite().isConstant() && !getCallSite().isNullConstant()) {
             CallSite callSite = (CallSite) getCallSite().asConstant().asObject();
-            if (callSite instanceof ConstantCallSite) {
-                return ConstantNode.forObject(callSite.getTarget(), metaAccessProvider, graph());
-            } else if (callSite instanceof MutableCallSite || callSite instanceof VolatileCallSite && assumptions != null && assumptions.useOptimisticAssumptions()) {
-                MethodHandle target = callSite.getTarget();
+            MethodHandle target = callSite.getTarget();
+            if (!(callSite instanceof ConstantCallSite)) {
+                if (assumptions == null || !assumptions.useOptimisticAssumptions()) {
+                    return null;
+                }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
-                return ConstantNode.forObject(target, metaAccessProvider, graph());
             }
+            return ConstantNode.forObject(target, metaAccessProvider, graph());
         }
         return null;
     }
