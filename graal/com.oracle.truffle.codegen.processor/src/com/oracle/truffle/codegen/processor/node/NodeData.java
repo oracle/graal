@@ -49,6 +49,7 @@ public class NodeData extends Template {
     private List<SpecializationListenerData> specializationListeners;
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
     private List<ShortCircuitData> shortCircuits;
+    private List<String> assumptions;
 
     public NodeData(TypeElement type, String id) {
         super(type, null, null);
@@ -68,6 +69,7 @@ public class NodeData extends Template {
         this.shortCircuits = splitSource.shortCircuits;
         this.fields = splitSource.fields;
         this.children = splitSource.children;
+        this.assumptions = splitSource.assumptions;
     }
 
     public boolean isSplitByMethodName() {
@@ -141,6 +143,14 @@ public class NodeData extends Template {
             return nodeType;
         }
         return getTemplateType().asType();
+    }
+
+    void setAssumptions(List<String> assumptions) {
+        this.assumptions = assumptions;
+    }
+
+    public List<String> getAssumptions() {
+        return assumptions;
     }
 
     public boolean needsFactory() {
@@ -241,6 +251,9 @@ public class NodeData extends Template {
     }
 
     public List<ExecutableTypeData> getExecutableTypes(int evaluatedCount) {
+        if (executableTypes == null) {
+            return Collections.emptyList();
+        }
         if (evaluatedCount == -1) {
             List<ExecutableTypeData> typeData = new ArrayList<>();
             for (int currentEvaluationCount : executableTypes.keySet()) {
@@ -304,7 +317,7 @@ public class NodeData extends Template {
                 break;
             }
         }
-        return needsRewrites;
+        return needsRewrites || getSpecializations().size() > 1;
     }
 
     public SpecializationData getGenericSpecialization() {
@@ -339,6 +352,7 @@ public class NodeData extends Template {
         dumpProperty(builder, indent, "fields", getChildren());
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
+        dumpProperty(builder, indent, "assumptions", getAssumptions());
         dumpProperty(builder, indent, "messages", collectMessages());
         if (getDeclaredNodes().size() > 0) {
             builder.append(String.format("\n%s  children = [", indent));

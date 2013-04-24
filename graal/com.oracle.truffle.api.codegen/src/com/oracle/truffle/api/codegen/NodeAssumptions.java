@@ -24,23 +24,15 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
+/**
+ * Declares one or multiple assumptions for use inside a source code generation enabled node.
+ * Declared assumptions must be passed to the {@link NodeFactory#createNode(Object...)} method as
+ * parameters.
+ */
 @Retention(RetentionPolicy.CLASS)
-@Target({ElementType.METHOD})
-public @interface Specialization {
+@Target({ElementType.TYPE})
+public @interface NodeAssumptions {
 
-    int DEFAULT_ORDER = -1;
-
-    int order() default DEFAULT_ORDER;
-
-    Class<? extends Throwable>[] rewriteOn() default {};
-
-    String[] guards() default {};
-
-    /**
-     * Defines the assumptions to check for this specialization. When the specialization method is
-     * invoked it is guaranteed that the assigned assumptions still hold. To declare assumptions use
-     * the {@link NodeAssumptions} annotation at class level.
-     */
-    String[] assumptions() default {};
+    String[] value();
 
 }

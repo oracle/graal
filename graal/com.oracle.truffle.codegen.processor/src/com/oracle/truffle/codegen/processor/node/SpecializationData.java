@@ -36,8 +36,9 @@ public class SpecializationData extends TemplateMethod {
     private final boolean uninitialized;
     private final List<SpecializationThrowsData> exceptions;
     private List<String> guardDefinitions = Collections.emptyList();
-    private List<GuardData> guards;
+    private List<GuardData> guards = Collections.emptyList();
     private List<ShortCircuitData> shortCircuits;
+    private List<String> assumptions = Collections.emptyList();
     private boolean useSpecializationsForGeneric = true;
     private NodeData node;
 
@@ -59,7 +60,6 @@ public class SpecializationData extends TemplateMethod {
         this.generic = generic;
         this.uninitialized = uninitialized;
         this.exceptions = Collections.emptyList();
-        this.guards = new ArrayList<>();
     }
 
     @Override
@@ -79,6 +79,9 @@ public class SpecializationData extends TemplateMethod {
             return true;
         }
         if (!getGuards().isEmpty()) {
+            return true;
+        }
+        if (!getAssumptions().isEmpty()) {
             return true;
         }
         for (ActualParameter parameter : getParameters()) {
@@ -173,6 +176,14 @@ public class SpecializationData extends TemplateMethod {
 
     public boolean isUseSpecializationsForGeneric() {
         return useSpecializationsForGeneric;
+    }
+
+    public List<String> getAssumptions() {
+        return assumptions;
+    }
+
+    void setAssumptions(List<String> assumptions) {
+        this.assumptions = assumptions;
     }
 
     public SpecializationData findNextSpecialization() {

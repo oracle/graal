@@ -43,6 +43,8 @@ public final class TruffleTypes {
     private final TypeMirror nodeArray;
     private final TypeMirror unexpectedValueException;
     private final TypeMirror frame;
+    private final TypeMirror assumption;
+    private final TypeMirror invalidAssumption;
     private final DeclaredType childAnnotation;
     private final DeclaredType childrenAnnotation;
     private final TypeMirror compilerDirectives;
@@ -57,6 +59,8 @@ public final class TruffleTypes {
         childAnnotation = getRequired(context, Child.class);
         childrenAnnotation = getRequired(context, Children.class);
         compilerDirectives = getRequired(context, CompilerDirectives.class);
+        assumption = getRequired(context, Assumption.class);
+        invalidAssumption = getRequired(context, InvalidAssumptionException.class);
     }
 
     public boolean verify(ProcessorContext context, Element element, AnnotationMirror mirror) {
@@ -77,6 +81,14 @@ public final class TruffleTypes {
             errors.add(String.format("Could not find required type: %s", clazz.getSimpleName()));
         }
         return (DeclaredType) type;
+    }
+
+    public TypeMirror getInvalidAssumption() {
+        return invalidAssumption;
+    }
+
+    public TypeMirror getAssumption() {
+        return assumption;
     }
 
     public TypeMirror getCompilerDirectives() {

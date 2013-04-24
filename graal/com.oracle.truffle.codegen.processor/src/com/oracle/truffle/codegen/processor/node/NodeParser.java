@@ -562,6 +562,22 @@ public class NodeParser extends TemplateParser<NodeData> {
             splitByMethodName = Utils.getAnnotationValue(Boolean.class, nodeClass, "splitByMethodName");
         }
 
+        List<String> assumptionsList = new ArrayList<>();
+
+        for (int i = lookupTypes.size() - 1; i >= 0; i--) {
+            TypeElement type = lookupTypes.get(i);
+            AnnotationMirror assumptions = Utils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
+            if (assumptions != null) {
+                List<String> assumptionStrings = Utils.getAnnotationValueList(String.class, assumptions, "value");
+                for (String string : assumptionStrings) {
+                    if (assumptionsList.contains(string)) {
+                        assumptionsList.remove(string);
+                    }
+                    assumptionsList.add(string);
+                }
+            }
+        }
+        nodeData.setAssumptions(new ArrayList<>(assumptionsList));
         nodeData.setNodeType(nodeType);
         nodeData.setSplitByMethodName(splitByMethodName);
         nodeData.setTypeSystem(typeSystem);

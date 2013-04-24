@@ -53,7 +53,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         return Specialization.class;
     }
 
-    private static SpecializationData parseSpecialization(TemplateMethod method) {
+    private SpecializationData parseSpecialization(TemplateMethod method) {
         int order = Utils.getAnnotationValue(Integer.class, method.getMarkerAnnotation(), "order");
         if (order < 0 && order != Specialization.DEFAULT_ORDER) {
             method.addError("Invalid order attribute %d. The value must be >= 0 or the default value.");
@@ -82,7 +82,15 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         List<String> guardDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "guards");
         specialization.setGuardDefinitions(guardDefs);
 
+        List<String> assumptionDefs = Utils.getAnnotationValueList(String.class, specialization.getMarkerAnnotation(), "assumptions");
+        specialization.setAssumptions(assumptionDefs);
+
+        for (String assumption : assumptionDefs) {
+            if (!getNode().getAssumptions().contains(assumption)) {
+                specialization.addError("Undeclared assumption '%s' used. Use @NodeAssumptions to declare them.", assumption);
+            }
+        }
+
         return specialization;
     }
-
 }
