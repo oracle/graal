@@ -85,11 +85,11 @@ public class SpecializationData extends TemplateMethod {
             return true;
         }
         for (ActualParameter parameter : getParameters()) {
-            NodeChildData field = getNode().findChild(parameter.getSpecification().getName());
-            if (field == null) {
+            NodeChildData child = getNode().findChild(parameter.getSpecification().getName());
+            if (child == null) {
                 continue;
             }
-            ExecutableTypeData type = field.getNodeData().findExecutableType(parameter.getTypeSystemType());
+            ExecutableTypeData type = child.findExecutableType(context, parameter.getTypeSystemType());
             if (type.hasUnexpectedValue(context)) {
                 return true;
             }

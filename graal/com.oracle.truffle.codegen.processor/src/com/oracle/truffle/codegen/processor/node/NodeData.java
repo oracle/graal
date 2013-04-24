@@ -224,8 +224,8 @@ public class NodeData extends Template {
         return methods;
     }
 
-    public ExecutableTypeData findGenericExecutableType(ProcessorContext context, TypeData type) {
-        List<ExecutableTypeData> types = findGenericExecutableTypes(context);
+    public ExecutableTypeData findGenericExecutableType(ProcessorContext context, TypeData type, int evaluatedCount) {
+        List<ExecutableTypeData> types = findGenericExecutableTypes(context, evaluatedCount);
         for (ExecutableTypeData availableType : types) {
             if (Utils.typeEquals(availableType.getType().getBoxedType(), type.getBoxedType())) {
                 return availableType;
@@ -234,8 +234,8 @@ public class NodeData extends Template {
         return null;
     }
 
-    public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context) {
-        List<ExecutableTypeData> types = findGenericExecutableTypes(context);
+    public ExecutableTypeData findAnyGenericExecutableType(ProcessorContext context, int evaluatedCount) {
+        List<ExecutableTypeData> types = findGenericExecutableTypes(context, evaluatedCount);
         for (ExecutableTypeData type : types) {
             if (type.getType().isGeneric()) {
                 return type;
@@ -261,13 +261,17 @@ public class NodeData extends Template {
             }
             return typeData;
         } else {
-            return executableTypes.get(evaluatedCount);
+            List<ExecutableTypeData> types = executableTypes.get(evaluatedCount);
+            if (types == null) {
+                return Collections.emptyList();
+            }
+            return types;
         }
     }
 
-    public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context) {
+    public List<ExecutableTypeData> findGenericExecutableTypes(ProcessorContext context, int evaluatedCount) {
         List<ExecutableTypeData> types = new ArrayList<>();
-        for (ExecutableTypeData type : getExecutableTypes(0)) {
+        for (ExecutableTypeData type : getExecutableTypes(evaluatedCount)) {
             if (!type.hasUnexpectedValue(context)) {
                 types.add(type);
             }
@@ -275,8 +279,8 @@ public class NodeData extends Template {
         return types;
     }
 
-    public ExecutableTypeData findExecutableType(TypeData prmitiveType) {
-        for (ExecutableTypeData type : getExecutableTypes(0)) {
+    public ExecutableTypeData findExecutableType(TypeData prmitiveType, int evaluatedCount) {
+        for (ExecutableTypeData type : getExecutableTypes(evaluatedCount)) {
             if (Utils.typeEquals(type.getType().getPrimitiveType(), prmitiveType.getPrimitiveType())) {
                 return type;
             }

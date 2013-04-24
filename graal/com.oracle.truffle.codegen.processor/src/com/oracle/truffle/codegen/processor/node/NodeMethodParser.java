@@ -42,7 +42,8 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         return template;
     }
 
-    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData) {
+    @SuppressWarnings("unused")
+    protected ParameterSpec createValueParameterSpec(String valueName, NodeData nodeData, int evaluatedCount) {
         ParameterSpec spec = new ParameterSpec(valueName, nodeTypeMirrors(nodeData));
         spec.setSignature(true);
         return spec;
@@ -61,7 +62,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     }
 
     protected ParameterSpec createReturnParameterSpec() {
-        return createValueParameterSpec("returnValue", getNode());
+        return createValueParameterSpec("returnValue", getNode(), 0);
     }
 
     @Override
@@ -95,7 +96,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         if (getNode().getChildren() != null) {
             for (NodeChildData child : getNode().getChildren()) {
                 if (child.getExecutionKind() == ExecutionKind.DEFAULT) {
-                    ParameterSpec spec = createValueParameterSpec(child.getName(), child.getNodeData());
+                    ParameterSpec spec = createValueParameterSpec(child.getName(), child.getNodeData(), child.getExecuteWith().size());
                     if (child.getCardinality().isMany()) {
                         spec.setCardinality(Cardinality.MANY);
                         spec.setIndexed(true);
@@ -110,7 +111,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                     if (shortCircuitsEnabled) {
                         methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
                     }
-                    methodSpec.addRequired(createValueParameterSpec(valueName, child.getNodeData()));
+                    methodSpec.addRequired(createValueParameterSpec(valueName, child.getNodeData(), child.getExecuteWith().size()));
                 } else {
                     assert false;
                 }

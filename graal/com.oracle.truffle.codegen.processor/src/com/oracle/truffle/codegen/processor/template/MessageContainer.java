@@ -34,11 +34,15 @@ public abstract class MessageContainer {
     private final List<Message> messages = new ArrayList<>();
 
     public final void addWarning(String text, Object... params) {
-        getMessages().add(new Message(this, String.format(text, params), Kind.WARNING));
+        getMessages().add(new Message(null, this, String.format(text, params), Kind.WARNING));
     }
 
     public final void addError(String text, Object... params) {
-        getMessages().add(new Message(this, String.format(text, params), Kind.ERROR));
+        addError(null, text, params);
+    }
+
+    public final void addError(AnnotationValue value, String text, Object... params) {
+        getMessages().add(new Message(value, this, String.format(text, params), Kind.ERROR));
     }
 
     protected List<MessageContainer> findChildContainers() {
@@ -150,13 +154,19 @@ public abstract class MessageContainer {
     public static final class Message {
 
         private final MessageContainer originalContainer;
+        private final AnnotationValue annotationValue;
         private final String text;
         private final Kind kind;
 
-        public Message(MessageContainer originalContainer, String text, Kind kind) {
+        public Message(AnnotationValue annotationValue, MessageContainer originalContainer, String text, Kind kind) {
+            this.annotationValue = annotationValue;
             this.originalContainer = originalContainer;
             this.text = text;
             this.kind = kind;
+        }
+
+        public AnnotationValue getAnnotationValue() {
+            return annotationValue;
         }
 
         public MessageContainer getOriginalContainer() {

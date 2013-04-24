@@ -36,7 +36,7 @@ public class BinaryNodeTest {
 
     @Test
     public void testAdd() {
-        TestRootNode<AddNode> node = create(AddNodeFactory.getInstance());
+        TestRootNode<AddNode> node = createRoot(AddNodeFactory.getInstance());
         assertEquals(42, executeWith(node, 19, 23));
         assertEquals(42d, executeWith(node, 19d, 23d));
         assertEquals(42d, executeWith(node, "19", "23"));
@@ -45,7 +45,7 @@ public class BinaryNodeTest {
 
     @Test(expected = RuntimeException.class)
     public void testAddUnsupported() {
-        TestRootNode<AddNode> node = create(AddNodeFactory.getInstance());
+        TestRootNode<AddNode> node = createRoot(AddNodeFactory.getInstance());
         executeWith(node, new Object(), new Object());
     }
 

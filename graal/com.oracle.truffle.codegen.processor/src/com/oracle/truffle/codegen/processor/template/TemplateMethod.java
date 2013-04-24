@@ -206,6 +206,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return types;
     }
 
+    public List<ActualParameter> getSignatureParameters() {
+        List<ActualParameter> types = new ArrayList<>();
+        for (ActualParameter parameter : getParameters()) {
+            if (!parameter.getSpecification().isSignature()) {
+                continue;
+            }
+            types.add(parameter);
+        }
+        return types;
+    }
+
     @Override
     public int compareTo(TemplateMethod o) {
         if (this == o) {

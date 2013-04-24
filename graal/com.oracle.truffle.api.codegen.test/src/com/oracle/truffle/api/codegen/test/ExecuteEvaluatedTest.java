@@ -22,48 +22,86 @@
  */
 package com.oracle.truffle.api.codegen.test;
 
+import org.junit.*;
+
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.codegen.test.ExecuteEvaluatedTestFactory.DoubleEvaluatedNodeFactory;
+import com.oracle.truffle.api.codegen.test.ExecuteEvaluatedTestFactory.EvaluatedNodeFactory;
+import com.oracle.truffle.api.codegen.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluatedNodeFactory;
+import com.oracle.truffle.api.codegen.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
+import com.oracle.truffle.api.codegen.test.TypeSystemTest.ArgumentNode;
+import com.oracle.truffle.api.codegen.test.TypeSystemTest.TestArguments;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
 public class ExecuteEvaluatedTest {
 
-    /* Represents target[element] */
-    @NodeChildren({@NodeChild("target"), @NodeChild("element")})
-    abstract static class ReadElementNode extends ValueNode {
+    @Test
+    public void testSingleEvaluated() {
+        ArgumentNode arg0 = new ArgumentNode(0);
+        CallTarget callTarget = TestHelper.createCallTarget(UseEvaluatedNodeFactory.create(arg0, EvaluatedNodeFactory.create(null)));
 
-        @Specialization
-        int getInt(Object[] target, int element) {
-            return (int) target[element];
-        }
-
-        public abstract Object executeWith(VirtualFrame frame, Object targetValue);
+        Assert.assertEquals(43, callTarget.call(new TestArguments(42)));
+        Assert.assertEquals(1, arg0.getInvocationCount());
     }
 
-    /* Represents target[element]() */
-    @NodeChildren({@NodeChild("target"), @NodeChild(value = "element", type = ReadElementNode.class, executeWith = "target")})
-    abstract static class ElementCallNode extends ValueNode {
+    @NodeChild("exp")
+    abstract static class EvaluatedNode extends ValueNode {
 
         @Specialization
-        Object call(Object receiver, Object callTarget) {
-            return ((CallTarget) callTarget).call(new TestArguments(receiver));
+        int doExecuteWith(int exp) {
+            return exp + 1;
         }
 
+        public abstract Object executeEvaluated(VirtualFrame frame, Object targetValue);
+
+        public abstract int executeIntEvaluated(VirtualFrame frame, Object targetValue) throws UnexpectedResultException;
     }
 
-    public static class TestArguments extends Arguments {
+    @NodeChildren({@NodeChild("exp0"), @NodeChild(value = "exp1", type = EvaluatedNode.class, executeWith = "exp0")})
+    abstract static class UseEvaluatedNode extends ValueNode {
 
-        private final Object receiver;
+        @Specialization
+        int call(int exp0, int exp1) {
+            Assert.assertEquals(exp0 + 1, exp1);
+            return exp1;
+        }
+    }
 
-        public TestArguments(Object receiver) {
-            this.receiver = receiver;
+    @Test
+    public void testDoubleEvaluated() {
+        ArgumentNode arg0 = new ArgumentNode(0);
+        ArgumentNode arg1 = new ArgumentNode(1);
+        CallTarget callTarget = TestHelper.createCallTarget(UseDoubleEvaluatedNodeFactory.create(arg0, arg1, DoubleEvaluatedNodeFactory.create(null, null)));
+
+        Assert.assertEquals(85, callTarget.call(new TestArguments(42, 43)));
+        Assert.assertEquals(1, arg0.getInvocationCount());
+        Assert.assertEquals(1, arg1.getInvocationCount());
+    }
+
+    @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1")})
+    abstract static class DoubleEvaluatedNode extends ValueNode {
+
+        @Specialization
+        int doExecuteWith(int exp0, int exp1) {
+            return exp0 + exp1;
         }
 
-        public Object getReceiver() {
-            return receiver;
-        }
+        public abstract Object executeEvaluated(VirtualFrame frame, Object exp0, Object exp1);
 
+        public abstract int executeIntEvaluated(VirtualFrame frame, Object exp0, Object exp1) throws UnexpectedResultException;
+    }
+
+    @NodeChildren({@NodeChild("exp0"), @NodeChild("exp1"), @NodeChild(value = "exp2", type = DoubleEvaluatedNode.class, executeWith = {"exp0", "exp1"})})
+    abstract static class UseDoubleEvaluatedNode extends ValueNode {
+
+        @Specialization
+        int call(int exp0, int exp1, int exp2) {
+            Assert.assertEquals(exp0 + exp1, exp2);
+            return exp2;
+        }
     }
 
 }

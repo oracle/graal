@@ -38,7 +38,7 @@ public class AssumptionsTest {
     @Test
     public void testSingleAssumption() {
         Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.create(SingleAssumptionNodeFactory.getInstance(), assumption);
+        TestRootNode<?> root = TestHelper.createRoot(SingleAssumptionNodeFactory.getInstance(), assumption);
 
         Assert.assertEquals(42, TestHelper.executeWith(root));
         assumption.invalidate();
@@ -63,7 +63,7 @@ public class AssumptionsTest {
     public void testMultipleAssumption() {
         Assumption assumption1 = Truffle.getRuntime().createAssumption();
         Assumption assumption2 = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.create(MultipleAssumptionsNodeFactory.getInstance(), assumption1, assumption2);
+        TestRootNode<?> root = TestHelper.createRoot(MultipleAssumptionsNodeFactory.getInstance(), assumption1, assumption2);
 
         Assert.assertEquals(42, TestHelper.executeWith(root));
         assumption2.invalidate();
@@ -95,7 +95,7 @@ public class AssumptionsTest {
     public void testDerivedAssumption() {
         Assumption additionalAssumption = Truffle.getRuntime().createAssumption();
         Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.create(DerivedAssumptionNodeFactory.getInstance(), assumption, additionalAssumption);
+        TestRootNode<?> root = TestHelper.createRoot(DerivedAssumptionNodeFactory.getInstance(), assumption, additionalAssumption);
 
         Assert.assertEquals(42, TestHelper.executeWith(root));
         assumption.invalidate();
@@ -117,7 +117,7 @@ public class AssumptionsTest {
     public void testDerivedAssumptionRedeclared() {
         Assumption additionalAssumption = Truffle.getRuntime().createAssumption();
         Assumption assumption = Truffle.getRuntime().createAssumption();
-        TestRootNode<?> root = TestHelper.create(DerivedAssumptionRedeclaredNodeFactory.getInstance(), additionalAssumption, assumption);
+        TestRootNode<?> root = TestHelper.createRoot(DerivedAssumptionRedeclaredNodeFactory.getInstance(), additionalAssumption, assumption);
 
         Assert.assertEquals(42, TestHelper.executeWith(root));
         assumption.invalidate();

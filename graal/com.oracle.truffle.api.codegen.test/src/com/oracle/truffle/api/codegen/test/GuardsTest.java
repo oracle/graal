@@ -40,7 +40,7 @@ public class GuardsTest {
 
     @Test
     public void testGuardInvocations() {
-        TestRootNode<InvocationGuard> root = create(InvocationGuardFactory.getInstance());
+        TestRootNode<InvocationGuard> root = createRoot(InvocationGuardFactory.getInstance());
 
         assertEquals(Integer.MAX_VALUE, executeWith(root, Integer.MAX_VALUE - 1, 1));
         assertEquals(1, InvocationGuard.specializedInvocations);
@@ -76,7 +76,7 @@ public class GuardsTest {
 
     @Test
     public void testGuardGlobal() {
-        TestRootNode<GlobalFlagGuard> root = create(GlobalFlagGuardFactory.getInstance());
+        TestRootNode<GlobalFlagGuard> root = createRoot(GlobalFlagGuardFactory.getInstance());
 
         assertEquals(42, executeWith(root, NULL));
 
