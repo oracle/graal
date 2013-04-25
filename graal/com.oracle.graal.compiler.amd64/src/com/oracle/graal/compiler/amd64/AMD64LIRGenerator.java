@@ -156,7 +156,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(createMove(dst, src));
     }
 
-    private AMD64AddressValue prepareAddress(Kind kind, Value base, long displacement, Value index, int scale) {
+    private AMD64AddressValue prepareAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -205,38 +205,38 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             }
         }
 
-        return new AMD64AddressValue(kind, baseRegister, indexRegister, scaleEnum, displacementInt);
+        return new AMD64AddressValue(target().wordKind, baseRegister, indexRegister, scaleEnum, displacementInt);
     }
 
     @Override
     public Variable emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting) {
-        AMD64AddressValue loadAddress = prepareAddress(kind, base, displacement, index, scale);
-        Variable result = newVariable(loadAddress.getKind());
-        append(new LoadOp(result, loadAddress, deopting != null ? state(deopting) : null));
+        AMD64AddressValue loadAddress = prepareAddress(base, displacement, index, scale);
+        Variable result = newVariable(kind);
+        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
         return result;
     }
 
     @Override
     public void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
-        AMD64AddressValue storeAddress = prepareAddress(kind, base, displacement, index, scale);
+        AMD64AddressValue storeAddress = prepareAddress(base, displacement, index, scale);
         LIRFrameState state = deopting != null ? state(deopting) : null;
 
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
-                append(new StoreConstantOp(storeAddress, c, state));
+                append(new StoreConstantOp(kind, storeAddress, c, state));
                 return;
             }
         }
 
         Variable input = load(inputVal);
-        append(new StoreOp(storeAddress, input, state));
+        append(new StoreOp(kind, storeAddress, input, state));
     }
 
     @Override
     public Variable emitLea(Value base, long displacement, Value index, int scale) {
         Variable result = newVariable(target().wordKind);
-        AMD64AddressValue address = prepareAddress(result.getKind(), base, displacement, index, scale);
+        AMD64AddressValue address = prepareAddress(base, displacement, index, scale);
         append(new LeaOp(result, address));
         return result;
     }

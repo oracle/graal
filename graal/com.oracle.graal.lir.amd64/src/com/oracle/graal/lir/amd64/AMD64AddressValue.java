@@ -67,8 +67,7 @@ public class AMD64AddressValue extends CompositeValue {
 
     @Override
     public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append(getKind().getJavaName()).append("[");
+        StringBuilder s = new StringBuilder("[");
         String sep = "";
         if (isLegal(base)) {
             s.append(base);

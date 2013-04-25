@@ -137,7 +137,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    private PTXAddressValue prepareAddress(Kind kind, Value base, long displacement, Value index, int scale) {
+    private PTXAddressValue prepareAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -177,22 +177,22 @@ public class PTXLIRGenerator extends LIRGenerator {
             }
         }
 
-        return new PTXAddressValue(kind, baseRegister, finalDisp);
+        return new PTXAddressValue(target().wordKind, baseRegister, finalDisp);
     }
 
     @Override
     public Variable emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting) {
-        PTXAddressValue loadAddress = prepareAddress(kind, base, displacement, index, scale);
-        Variable result = newVariable(loadAddress.getKind());
-        append(new LoadOp(result, loadAddress, deopting != null ? state(deopting) : null));
+        PTXAddressValue loadAddress = prepareAddress(base, displacement, index, scale);
+        Variable result = newVariable(kind);
+        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
         return result;
     }
 
     @Override
     public void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
-        PTXAddressValue storeAddress = prepareAddress(kind, base, displacement, index, scale);
+        PTXAddressValue storeAddress = prepareAddress(base, displacement, index, scale);
         Variable input = load(inputVal);
-        append(new StoreOp(storeAddress, input, deopting != null ? state(deopting) : null));
+        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
     }
 
     @Override
