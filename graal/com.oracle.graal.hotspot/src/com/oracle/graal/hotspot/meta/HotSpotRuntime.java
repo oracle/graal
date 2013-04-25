@@ -453,11 +453,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return "MARK:" + mark.id;
     }
 
-    private static void addExceptionHandlersComment(CompilationResult tm, HexCodeFile hcf) {
-        if (!tm.getExceptionHandlers().isEmpty()) {
+    private static void addExceptionHandlersComment(CompilationResult compResult, HexCodeFile hcf) {
+        if (!compResult.getExceptionHandlers().isEmpty()) {
             String nl = HexCodeFile.NEW_LINE;
             StringBuilder buf = new StringBuilder("------ Exception Handlers ------").append(nl);
-            for (CompilationResult.ExceptionHandler e : tm.getExceptionHandlers()) {
+            for (CompilationResult.ExceptionHandler e : compResult.getExceptionHandlers()) {
                 buf.append("    ").append(e.pcOffset).append(" -> ").append(e.handlerPos).append(nl);
                 hcf.addComment(e.pcOffset, "[exception -> " + e.handlerPos + "]");
                 hcf.addComment(e.handlerPos, "[exception handler for " + e.pcOffset + "]");
