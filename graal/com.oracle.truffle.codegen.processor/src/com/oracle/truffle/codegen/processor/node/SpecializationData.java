@@ -93,6 +93,10 @@ public class SpecializationData extends TemplateMethod {
             if (type.hasUnexpectedValue(context)) {
                 return true;
             }
+            if (type.getReturnType().getTypeSystemType().needsCastTo(context, parameter.getTypeSystemType())) {
+                return true;
+            }
+
         }
         return false;
     }
