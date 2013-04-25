@@ -104,7 +104,7 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean isSafepoint(Node node) {
-        return (node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize();
+        return ((node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize()) || (node instanceof LoopBeginNode);
     }
 
     private static boolean foundCorrectBarrier(Node write, Node barrier) {
