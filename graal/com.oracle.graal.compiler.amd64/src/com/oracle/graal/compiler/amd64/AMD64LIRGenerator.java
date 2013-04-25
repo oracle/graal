@@ -90,7 +90,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public static class AMD64SpillMoveFactory implements LIR.SpillMoveFactory {
 
         @Override
-        public LIRInstruction createMove(Value result, Value input) {
+        public LIRInstruction createMove(AllocatableValue result, Value input) {
             return AMD64LIRGenerator.createMove(result, input);
         }
     }
@@ -143,7 +143,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    private static AMD64LIRInstruction createMove(Value dst, Value src) {
+    private static AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
         if (isRegister(src) || isStackSlot(dst)) {
             return new MoveFromRegOp(dst, src);
         } else {

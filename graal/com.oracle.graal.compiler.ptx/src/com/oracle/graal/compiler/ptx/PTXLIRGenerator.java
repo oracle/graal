@@ -80,7 +80,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     public static class PTXSpillMoveFactory implements LIR.SpillMoveFactory {
 
         @Override
-        public LIRInstruction createMove(Value result, Value input) {
+        public LIRInstruction createMove(AllocatableValue result, Value input) {
             throw new InternalError("NYI");
         }
     }

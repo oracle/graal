@@ -44,10 +44,10 @@ public class AMD64Move {
     @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
 
-        @Def({REG, HINT}) protected Value result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
-        public MoveToRegOp(Value result, Value input) {
+        public MoveToRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -63,7 +63,7 @@ public class AMD64Move {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
@@ -71,10 +71,10 @@ public class AMD64Move {
     @Opcode("MOVE")
     public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
 
-        @Def({REG, STACK}) protected Value result;
+        @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
-        public MoveFromRegOp(Value result, Value input) {
+        public MoveFromRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -90,7 +90,7 @@ public class AMD64Move {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
