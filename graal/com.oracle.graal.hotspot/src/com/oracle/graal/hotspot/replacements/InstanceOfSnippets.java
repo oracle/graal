@@ -58,14 +58,12 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofExact(Object object, Word exactHub, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (checkNull && object == null) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             return falseValue;
         }
         Word objectHub = loadHub(object);
-        if (objectHub.notEqual(exactHub)) {
-            probability(LIKELY_PROBABILITY);
+        if (probability(LIKELY_PROBABILITY, objectHub.notEqual(exactHub))) {
             exactMiss.inc();
             return falseValue;
         }
@@ -78,14 +76,12 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofPrimary(Word hub, Object object, @ConstantParameter int superCheckOffset, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (checkNull && object == null) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             return falseValue;
         }
         Word objectHub = loadHub(object);
-        if (objectHub.readWord(superCheckOffset, FINAL_LOCATION).notEqual(hub)) {
-            probability(NOT_LIKELY_PROBABILITY);
+        if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, FINAL_LOCATION).notEqual(hub))) {
             displayMiss.inc();
             return falseValue;
         }
@@ -99,8 +95,7 @@ public class InstanceOfSnippets implements Snippets {
     @Snippet
     public static Object instanceofSecondary(Word hub, Object object, @VarargsParameter Word[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
                     @ConstantParameter boolean checkNull) {
-        if (checkNull && object == null) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             return falseValue;
         }
@@ -110,8 +105,7 @@ public class InstanceOfSnippets implements Snippets {
         for (int i = 0; i < hints.length; i++) {
             Word hintHub = hints[i];
             boolean positive = hintIsPositive[i];
-            if (hintHub.equal(objectHub)) {
-                probability(NOT_FREQUENT_PROBABILITY);
+            if (probability(NOT_FREQUENT_PROBABILITY, hintHub.equal(objectHub))) {
                 hintsHit.inc();
                 return positive ? trueValue : falseValue;
             }
@@ -127,8 +121,7 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofDynamic(Class mirror, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (checkNull && object == null) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             return falseValue;
         }

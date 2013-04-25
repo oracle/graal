@@ -84,8 +84,8 @@ public class ArrayCopySnippets implements Snippets {
         long nonVectorBytes = byteLength % VECTOR_SIZE;
         long srcOffset = (long) srcPos * elementSize;
         long destOffset = (long) destPos * elementSize;
-        if (src == dest && srcPos < destPos) { // bad aliased case
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
+            // bad aliased case
             for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
                 UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
             }
@@ -107,7 +107,6 @@ public class ArrayCopySnippets implements Snippets {
 
     public static void checkNonNull(Object obj) {
         if (obj == null) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkNPECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -116,7 +115,6 @@ public class ArrayCopySnippets implements Snippets {
     public static int checkArrayType(Word hub) {
         int layoutHelper = readLayoutHelper(hub);
         if (layoutHelper >= 0) {
-            probability(DEOPT_PATH_PROBABILITY);
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         return layoutHelper;
@@ -124,27 +122,22 @@ public class ArrayCopySnippets implements Snippets {
 
     public static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
         if (srcPos < 0) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (destPos < 0) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (length < 0) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (srcPos + length > ArrayLengthNode.arrayLength(src)) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         if (destPos + length > ArrayLengthNode.arrayLength(dest)) {
-            probability(DEOPT_PATH_PROBABILITY);
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -278,13 +271,10 @@ public class ArrayCopySnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         final boolean isObjectArray = ((layoutHelper & layoutHelperElementTypePrimitiveInPlace()) == 0);
 
-        if (srcHub.equal(destHub) && src != dest) {
-            probability(FAST_PATH_PROBABILITY);
-
+        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub) && src != dest)) {
             checkLimits(src, srcPos, dest, destPos, length);
-            if (isObjectArray) {
+            if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
-                probability(FAST_PATH_PROBABILITY);
                 arrayObjectCopy(src, srcPos, dest, destPos, length);
             } else {
                 genericPrimitiveCallCounter.inc();
