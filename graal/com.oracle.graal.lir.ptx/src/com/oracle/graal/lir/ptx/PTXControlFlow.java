@@ -97,6 +97,7 @@ public class PTXControlFlow {
 
     @SuppressWarnings("unused")
     public static class CondMoveOp extends PTXLIRInstruction {
+
         @Def({REG, HINT}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
@@ -119,6 +120,7 @@ public class PTXControlFlow {
 
     @SuppressWarnings("unused")
     public static class FloatCondMoveOp extends PTXLIRInstruction {
+
         @Def({REG}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Alive({REG}) protected Value falseValue;
@@ -142,14 +144,14 @@ public class PTXControlFlow {
     }
 
     public static class SequentialSwitchOp extends PTXLIRInstruction implements FallThroughOp {
+
         @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
         @Temp({REG, ILLEGAL}) protected Value scratch;
 
-        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget,
-                                  Value key, Value scratch) {
+        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
             assert keyConstants.length == keyTargets.length;
             this.keyConstants = keyConstants;
             this.keyTargets = keyTargets;
@@ -216,14 +218,14 @@ public class PTXControlFlow {
     }
 
     public static class TableSwitchOp extends PTXLIRInstruction {
+
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
         @Alive protected Value index;
         @Temp protected Value scratch;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets,
-                             Variable index, Variable scratch) {
+        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -238,9 +240,7 @@ public class PTXControlFlow {
     }
 
     @SuppressWarnings("unused")
-    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey,
-                                    LabelRef defaultTarget, LabelRef[] targets,
-                                    Register value, Register scratch) {
+    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;

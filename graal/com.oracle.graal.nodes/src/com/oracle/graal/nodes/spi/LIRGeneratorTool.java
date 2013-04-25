@@ -53,9 +53,9 @@ public interface LIRGeneratorTool {
 
     Value setResult(ValueNode x, Value operand);
 
-    Value emitMove(Value input);
+    AllocatableValue emitMove(Value input);
 
-    void emitMove(Value dst, Value src);
+    void emitMove(AllocatableValue dst, Value src);
 
     Value emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting);
 

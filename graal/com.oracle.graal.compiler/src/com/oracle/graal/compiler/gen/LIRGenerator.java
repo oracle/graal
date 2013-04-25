@@ -251,7 +251,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    public Value resultOperandFor(Kind kind) {
+    public AllocatableValue resultOperandFor(Kind kind) {
         if (kind == Kind.Void) {
             return ILLEGAL;
         }
@@ -461,7 +461,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public void visitReturn(ReturnNode x) {
-        Value operand = Value.ILLEGAL;
+        AllocatableValue operand = ILLEGAL;
         if (x.result() != null) {
             operand = resultOperandFor(x.result().kind());
             emitMove(operand, operand(x.result()));
@@ -630,7 +630,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
-    protected static Value toStackKind(Value value) {
+    protected static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.
@@ -651,7 +651,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                Value operand = toStackKind(cc.getArgument(j));
+                AllocatableValue operand = toStackKind(cc.getArgument(j));
                 emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
@@ -672,7 +672,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
-            Value loc = cc.getArgument(i);
+            AllocatableValue loc = cc.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }

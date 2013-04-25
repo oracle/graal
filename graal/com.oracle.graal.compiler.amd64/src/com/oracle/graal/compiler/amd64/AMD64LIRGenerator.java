@@ -152,7 +152,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitMove(Value dst, Value src) {
+    public void emitMove(AllocatableValue dst, Value src) {
         append(createMove(dst, src));
     }
 

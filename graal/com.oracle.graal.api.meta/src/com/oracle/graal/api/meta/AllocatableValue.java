@@ -30,6 +30,8 @@ public abstract class AllocatableValue extends Value {
 
     private static final long serialVersionUID = 153019506717492133L;
 
+    public static final AllocatableValue[] NONE = {};
+
     public AllocatableValue(Kind kind) {
         super(kind);
     }

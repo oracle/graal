@@ -32,8 +32,6 @@ public abstract class Value implements Serializable {
 
     private static final long serialVersionUID = -6909397188697766469L;
 
-    public static final Value[] NONE = {};
-
     @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(Kind.Illegal) {
 
         @Override
