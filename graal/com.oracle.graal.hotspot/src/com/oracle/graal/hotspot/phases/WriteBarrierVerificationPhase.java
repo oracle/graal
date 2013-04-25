@@ -34,48 +34,26 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Verification phase that checks if, for every write, at least one write barrier is present between
- * safepoint intervals. Initially, the algorithm performs a bottom-up traversal of the graph in
- * order to discover safepoints. For every safepoint discovered, a brute-force bottom-up traversal
- * is performed again that validates every write until all possible reachable safepoints from the
- * currently processed write.
+ * Verification phase that checks if, for every write, at least one write barrier is present at all
+ * paths leading to the previous safepoint. For every write, necessitating a write barrier, a
+ * bottom-up traversal of the graph is performed up to the previous safepoints via all possible
+ * paths. If, for a certain path, no write barrier satisfying the processed write is found, an
+ * assertion is generated.
  */
 public class WriteBarrierVerificationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        processSafepoints(graph);
+        processWrites(graph);
     }
 
-    private static void processSafepoints(StructuredGraph graph) {
-        for (Node node : graph.getNodes()) {
-            if (isSafepoint(node)) {
-                verifyWrites(node);
-            }
-        }
-    }
-
-    private static void verifyWrites(Node safepoint) {
-        /*
-         * The list below holds all already processed writes in order to avoid repetitive
-         * validations of writes reachable from different paths.
-         */
+    private static void processWrites(StructuredGraph graph) {
         List<Node> processedWrites = new LinkedList<>();
-        Deque<Node> frontier = new ArrayDeque<>();
-        expandFrontier(frontier, safepoint);
-        while (!frontier.isEmpty()) {
-            Node currentNode = frontier.removeFirst();
-            /*
-             * Any safepoints reached at this point are skipped since they will be processed later.
-             */
-            if (isSafepoint(currentNode)) {
-                continue;
+        for (Node node : graph.getNodes()) {
+            if (isObjectWrite(node) && !processedWrites.contains(node)) {
+                validateWrite(node);
+                processedWrites.add(node);
             }
-            if (isObjectWrite(currentNode) && !processedWrites.contains(currentNode)) {
-                validateWrite(currentNode);
-                processedWrites.add(currentNode);
-            }
-            expandFrontier(frontier, currentNode);
         }
     }
 
