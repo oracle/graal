@@ -28,17 +28,13 @@ import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
 
-import com.oracle.graal.api.code.AllocatableValue;
 import com.oracle.graal.api.code.CodeCacheProvider;
 import com.oracle.graal.api.code.DeoptimizationAction;
 import com.oracle.graal.api.code.RuntimeCallTarget;
 import com.oracle.graal.api.code.StackSlot;
 import com.oracle.graal.api.code.TargetDescription;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.Constant;
-import com.oracle.graal.api.meta.Kind;
-import com.oracle.graal.api.meta.ResolvedJavaMethod;
-import com.oracle.graal.api.meta.Value;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.gen.LIRGenerator;
 import com.oracle.graal.compiler.target.LIRGenLowerable;
@@ -142,15 +138,13 @@ public class PTXLIRGenerator extends LIRGenerator {
         long finalDisp = displacement;
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
-                baseRegister = AllocatableValue.UNUSED;
+                baseRegister = Value.ILLEGAL;
             } else if (asConstant(base).getKind() != Kind.Object) {
                 finalDisp += asConstant(base).asLong();
-                baseRegister = AllocatableValue.UNUSED;
+                baseRegister = Value.ILLEGAL;
             } else {
                 baseRegister = load(base);
             }
-        } else if (base == Value.ILLEGAL) {
-            baseRegister = AllocatableValue.UNUSED;
         } else {
             baseRegister = asAllocatable(base);
         }
@@ -166,7 +160,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                     indexRegister = index;
                 }
 
-                if (baseRegister == AllocatableValue.UNUSED) {
+                if (baseRegister == Value.ILLEGAL) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
                     Variable newBase = newVariable(Kind.Int);

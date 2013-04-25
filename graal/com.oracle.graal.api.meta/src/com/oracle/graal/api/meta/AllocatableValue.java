@@ -20,28 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
-
-import com.oracle.graal.api.meta.*;
+package com.oracle.graal.api.meta;
 
 /**
- * Common base class for values that can be manipulated by the register allocator.
+ * Common base class for values that are stored in some location that's managed by the register
+ * allocator (e.g. register, stack slot).
  */
 public abstract class AllocatableValue extends Value {
 
     private static final long serialVersionUID = 153019506717492133L;
-
-    /**
-     * Marker to tell the register allocator that no storage location needs to be allocated for this
-     * value.
-     */
-    @SuppressWarnings("serial") public static final AllocatableValue UNUSED = new AllocatableValue(Kind.Illegal) {
-
-        @Override
-        public String toString() {
-            return "-";
-        }
-    };
 
     public AllocatableValue(Kind kind) {
         super(kind);

@@ -34,7 +34,7 @@ public abstract class Value implements Serializable {
 
     public static final Value[] NONE = {};
 
-    @SuppressWarnings("serial") public static final Value ILLEGAL = new Value(Kind.Illegal) {
+    @SuppressWarnings("serial") public static final AllocatableValue ILLEGAL = new AllocatableValue(Kind.Illegal) {
 
         @Override
         public String toString() {

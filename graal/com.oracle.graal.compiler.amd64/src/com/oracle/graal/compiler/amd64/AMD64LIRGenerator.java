@@ -161,15 +161,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         long finalDisp = displacement;
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
-                baseRegister = AllocatableValue.UNUSED;
+                baseRegister = Value.ILLEGAL;
             } else if (asConstant(base).getKind() != Kind.Object && !runtime.needsDataPatch(asConstant(base))) {
                 finalDisp += asConstant(base).asLong();
-                baseRegister = AllocatableValue.UNUSED;
+                baseRegister = Value.ILLEGAL;
             } else {
                 baseRegister = load(base);
             }
-        } else if (base == Value.ILLEGAL) {
-            baseRegister = AllocatableValue.UNUSED;
         } else {
             baseRegister = asAllocatable(base);
         }
@@ -180,12 +178,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             scaleEnum = Scale.fromInt(scale);
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
-                indexRegister = AllocatableValue.UNUSED;
+                indexRegister = Value.ILLEGAL;
             } else {
                 indexRegister = asAllocatable(index);
             }
         } else {
-            indexRegister = AllocatableValue.UNUSED;
+            indexRegister = Value.ILLEGAL;
             scaleEnum = Scale.Times1;
         }
 
@@ -195,9 +193,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             displacementInt = 0;
             AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
-            if (baseRegister == AllocatableValue.UNUSED) {
+            if (baseRegister == Value.ILLEGAL) {
                 baseRegister = displacementRegister;
-            } else if (indexRegister == AllocatableValue.UNUSED) {
+            } else if (indexRegister == Value.ILLEGAL) {
                 indexRegister = displacementRegister;
                 scaleEnum = Scale.Times1;
             } else {

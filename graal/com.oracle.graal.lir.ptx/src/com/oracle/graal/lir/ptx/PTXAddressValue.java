@@ -29,6 +29,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 
 /**
  * Represents an address in target machine memory, specified via some combination of a base register
@@ -38,7 +39,7 @@ public final class PTXAddressValue extends CompositeValue {
 
     private static final long serialVersionUID = 1802222435353022623L;
 
-    @Component({REG, UNUSED}) private AllocatableValue base;
+    @Component({REG, OperandFlag.ILLEGAL}) private AllocatableValue base;
     private final long displacement;
 
     /**
@@ -68,7 +69,7 @@ public final class PTXAddressValue extends CompositeValue {
     }
 
     public PTXAddress toAddress() {
-        Register baseReg = base == AllocatableValue.UNUSED ? Register.None : asRegister(base);
+        Register baseReg = base == Value.ILLEGAL ? Register.None : asRegister(base);
         return new PTXAddress(baseReg, displacement);
     }
 
