@@ -111,7 +111,9 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
+        if (loweringType == LoweringType.AFTER_GUARDS) {
+            tool.getRuntime().lower(this, tool);
+        }
     }
 
     @Override
