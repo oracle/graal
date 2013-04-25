@@ -234,6 +234,80 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         safepoint();
     }
 
+    public static void test11Snippet(boolean test) {
+        Container main1 = new Container();
+        Container main2 = new Container();
+        Container main3 = new Container();
+        Container temp1 = new Container();
+        Container temp2 = new Container();
+        safepoint();
+        if (test) {
+            barrierIndex = 1;
+            main1.a = temp1;
+            barrierIndex = 2;
+            main3.a = temp1;
+            if (!test) {
+                barrierIndex = 3;
+                main2.a = temp2;
+            } else {
+                barrierIndex = 4;
+                main1.a = temp2;
+                barrierIndex = 5;
+                main3.a = temp2;
+            }
+        } else {
+            barrierIndex = 6;
+            main1.b = temp2;
+            for (int i = 0; i < 10; i++) {
+                barrierIndex = 7;
+                main3.a = temp1;
+            }
+            barrierIndex = 8;
+            main3.b = temp2;
+        }
+        barrierIndex = 9;
+        main1.b = temp2;
+        barrierIndex = 10;
+        main2.b = temp2;
+        barrierIndex = 11;
+        main3.b = temp2;
+        safepoint();
+    }
+
+    public static void test12Snippet(boolean test) {
+        Container main = new Container();
+        Container main1 = new Container();
+        Container temp1 = new Container();
+        Container temp2 = new Container();
+        barrierIndex = 0;
+        safepoint();
+        barrierIndex = 7;
+        main1.a = temp1;
+        for (int i = 0; i < 10; i++) {
+            if (test) {
+                barrierIndex = 1;
+                main.a = temp1;
+                barrierIndex = 2;
+                main.b = temp2;
+            } else {
+                barrierIndex = 3;
+                main.a = temp1;
+                barrierIndex = 4;
+                main.b = temp2;
+            }
+        }
+
+        barrierIndex = 5;
+        main.a = temp1;
+        barrierIndex = 6;
+        main.b = temp1;
+        barrierIndex = 8;
+        main1.b = temp1;
+
+        safepoint();
+
+    }
+
     @Test(expected = AssertionError.class)
     public void test1() {
         test("test1Snippet", 2, new int[]{1});
@@ -284,12 +358,12 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test3Snippet", 4, new int[]{4});
     }
 
-    @Test
+    @Test(expected = AssertionError.class)
     public void test11() {
         test("test4Snippet", 5, new int[]{2, 3});
     }
 
-    @Test
+    @Test(expected = AssertionError.class)
     public void test12() {
         test("test4Snippet", 5, new int[]{4, 5});
     }
@@ -457,6 +531,81 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
     @Test(expected = AssertionError.class)
     public void test45() {
         test("test10Snippet", 5, new int[]{3, 4});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test46() {
+        test("test11Snippet", 11, new int[]{1});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test47() {
+        test("test11Snippet", 11, new int[]{2});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test48() {
+        test("test11Snippet", 11, new int[]{3});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test49() {
+        test("test11Snippet", 11, new int[]{6});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test50() {
+        test("test11Snippet", 11, new int[]{7});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test51() {
+        test("test11Snippet", 11, new int[]{8});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test52() {
+        test("test11Snippet", 11, new int[]{9});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test53() {
+        test("test11Snippet", 11, new int[]{10});
+    }
+
+    @Test
+    public void test54() {
+        test("test11Snippet", 11, new int[]{4});
+    }
+
+    @Test
+    public void test55() {
+        test("test11Snippet", 11, new int[]{5});
+    }
+
+    @Test
+    public void test56() {
+        test("test11Snippet", 11, new int[]{11});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test57() {
+        test("test12Snippet", 8, new int[]{5});
+    }
+
+    @Test
+    public void test58() {
+        test("test12Snippet", 8, new int[]{6});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test59() {
+        test("test12Snippet", 8, new int[]{7});
+    }
+
+    @Test(expected = AssertionError.class)
+    public void test60() {
+        test("test12Snippet", 8, new int[]{8});
     }
 
     private void test(final String snippet, final int expectedBarriers, final int... removedBarrierIndices) {
