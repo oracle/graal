@@ -72,8 +72,27 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
             } else if (probabilityValue > 1.0) {
                 throw new GraalInternalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
             }
-            for (IfNode ifNodeUsages : this.usages().filter(IfNode.class)) {
-                ifNodeUsages.setTrueSuccessorProbability(probabilityValue);
+            boolean couldSet = false;
+            for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
+                if (node.condition() == Condition.EQ) {
+                    ValueNode other = node.x();
+                    if (node.x() == this) {
+                        other = node.y();
+                    }
+                    if (other.isConstant()) {
+                        double probabilityToSet = probabilityValue;
+                        if (!other.asConstant().asBoolean()) {
+                            probabilityToSet = 1.0 - probabilityToSet;
+                        }
+                        for (IfNode ifNodeUsages : node.usages().filter(IfNode.class)) {
+                            couldSet = true;
+                            ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
+                        }
+                    }
+                }
+            }
+            if (!couldSet) {
+                throw new GraalInternalError("Wrong usage of branch probability injection!");
             }
             return condition;
         }
