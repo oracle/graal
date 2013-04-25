@@ -59,7 +59,7 @@ public class NodeFactory {
     }
 
     public TypedNode createLocal(String name) {
-        return ReadLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name, int.class));
+        return ReadLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name, FrameSlotKind.Int));
     }
 
     public TypedNode createStringLiteral(String value) {
@@ -67,7 +67,7 @@ public class NodeFactory {
     }
 
     public StatementNode createAssignment(String name, TypedNode right) {
-        return WriteLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name, int.class), right);
+        return WriteLocalNodeFactory.create(frameDescriptor.findOrAddFrameSlot(name, FrameSlotKind.Int), right);
     }
 
     public StatementNode createPrint(List<TypedNode> expressions) {
@@ -123,7 +123,7 @@ public class NodeFactory {
     }
 
     public StatementNode createReturn(TypedNode value) {
-        FrameSlot slot = frameDescriptor.findOrAddFrameSlot("<retval>", int.class);
+        FrameSlot slot = frameDescriptor.findOrAddFrameSlot("<retval>", FrameSlotKind.Int);
         if (returnValue == null) {
             returnValue = ReadLocalNodeFactory.create(slot);
         }

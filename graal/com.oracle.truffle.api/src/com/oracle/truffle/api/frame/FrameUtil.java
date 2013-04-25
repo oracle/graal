@@ -33,8 +33,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setObjectSafe(Frame frame, FrameSlot slot, Object value) {
-        if (slot.getType() != Object.class) {
-            slot.setType(Object.class);
+        if (slot.getKind() != FrameSlotKind.Object) {
+            slot.setKind(FrameSlotKind.Object);
         }
         try {
             frame.setObject(slot, value);
@@ -52,8 +52,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setBooleanSafe(Frame frame, FrameSlot slot, boolean value) {
-        if (slot.getType() != boolean.class) {
-            slot.setType(boolean.class);
+        if (slot.getKind() != FrameSlotKind.Boolean) {
+            slot.setKind(FrameSlotKind.Boolean);
         }
         try {
             frame.setBoolean(slot, value);
@@ -71,8 +71,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setIntSafe(Frame frame, FrameSlot slot, int value) {
-        if (slot.getType() != int.class) {
-            slot.setType(int.class);
+        if (slot.getKind() != FrameSlotKind.Int) {
+            slot.setKind(FrameSlotKind.Int);
         }
         try {
             frame.setInt(slot, value);
@@ -90,8 +90,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setLongSafe(Frame frame, FrameSlot slot, long value) {
-        if (slot.getType() != long.class) {
-            slot.setType(long.class);
+        if (slot.getKind() != FrameSlotKind.Long) {
+            slot.setKind(FrameSlotKind.Long);
         }
         try {
             frame.setLong(slot, value);
@@ -109,8 +109,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setFloatSafe(Frame frame, FrameSlot slot, float value) {
-        if (slot.getType() != float.class) {
-            slot.setType(float.class);
+        if (slot.getKind() != FrameSlotKind.Float) {
+            slot.setKind(FrameSlotKind.Float);
         }
         try {
             frame.setFloat(slot, value);
@@ -128,8 +128,8 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setDoubleSafe(Frame frame, FrameSlot slot, double value) {
-        if (slot.getType() != double.class) {
-            slot.setType(double.class);
+        if (slot.getKind() != FrameSlotKind.Double) {
+            slot.setKind(FrameSlotKind.Double);
         }
         try {
             frame.setDouble(slot, value);
