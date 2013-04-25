@@ -27,6 +27,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.amd64.*;
@@ -234,6 +235,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
         } else {
             assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
             HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.target();
+            assert !Modifier.isAbstract(resolvedMethod.getModifiers()) : "Cannot make direct call to abstract method.";
             Constant metaspaceMethod = resolvedMethod.getMetaspaceMethodConstant();
             append(new AMD64HotspotDirectStaticCallOp(callTarget.target(), result, parameters, temps, callState, invokeKind, metaspaceMethod));
         }

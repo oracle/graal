@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -101,6 +103,14 @@ public class MethodCallTargetNode extends CallTargetNode implements Node.Iterabl
         assert usages().count() <= 1 : "call target may only be used by a single invoke";
         for (Node n : usages()) {
             assertTrue(n instanceof Invoke, "call target can only be used from an invoke (%s)", n);
+        }
+        if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Static) {
+            assertFalse(Modifier.isAbstract(targetMethod.getModifiers()), "special calls or static calls are only allowed for concrete methods (%s)", targetMethod);
+        }
+        if (invokeKind == InvokeKind.Static) {
+            assertTrue(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for static methods (%s)", targetMethod);
+        } else {
+            assertFalse(Modifier.isStatic(targetMethod.getModifiers()), "static calls are only allowed for non-static methods (%s)", targetMethod);
         }
         return super.verify();
     }

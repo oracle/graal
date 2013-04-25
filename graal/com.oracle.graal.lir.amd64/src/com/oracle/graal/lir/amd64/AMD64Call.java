@@ -25,6 +25,8 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
