@@ -206,7 +206,7 @@ public final class LinearScan {
     /**
      * Gets the operand denoted by a given operand number.
      */
-    private Value operandFor(int operandNumber) {
+    private AllocatableValue operandFor(int operandNumber) {
         if (operandNumber < firstVariableNumber) {
             assert operandNumber >= 0;
             return registers[operandNumber].asValue();
@@ -281,7 +281,7 @@ public final class LinearScan {
      * @param operand the operand for the interval
      * @return the created interval
      */
-    Interval createInterval(Value operand) {
+    Interval createInterval(AllocatableValue operand) {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
         Interval interval = new Interval(operand, operandNumber);
@@ -346,7 +346,7 @@ public final class LinearScan {
         return intervals[operandNumber];
     }
 
-    Interval getOrCreateInterval(Value operand) {
+    Interval getOrCreateInterval(AllocatableValue operand) {
         Interval ret = intervalFor(operand);
         if (ret == null) {
             return createInterval(operand);
@@ -555,8 +555,8 @@ public final class LinearScan {
                             insertionBuffer.init(instructions);
                         }
 
-                        Value fromLocation = interval.location();
-                        Value toLocation = canonicalSpillOpr(interval);
+                        AllocatableValue fromLocation = interval.location();
+                        AllocatableValue toLocation = canonicalSpillOpr(interval);
 
                         assert isRegister(fromLocation) : "from operand must be a register but is: " + fromLocation + " toLocation=" + toLocation + " spillState=" + interval.spillState();
                         assert isStackSlot(toLocation) : "to operand must be a stack slot";
@@ -968,7 +968,7 @@ public final class LinearScan {
         TTY.println(blockData.get(block).liveOut.toString());
     }
 
-    void addUse(Value operand, int from, int to, RegisterPriority registerPriority, Kind kind) {
+    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -987,7 +987,7 @@ public final class LinearScan {
         interval.addUsePos(to & ~1, registerPriority);
     }
 
-    void addTemp(Value operand, int tempPos, RegisterPriority registerPriority, Kind kind) {
+    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1008,7 +1008,7 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
-    void addDef(Value operand, int defPos, RegisterPriority registerPriority, Kind kind) {
+    void addDef(AllocatableValue operand, int defPos, RegisterPriority registerPriority, Kind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1114,8 +1114,8 @@ public final class LinearScan {
                 @Override
                 protected Value doValue(Value registerHint) {
                     if (isVariableOrRegister(registerHint)) {
-                        Interval from = getOrCreateInterval(registerHint);
-                        Interval to = getOrCreateInterval(targetValue);
+                        Interval from = getOrCreateInterval((AllocatableValue) registerHint);
+                        Interval to = getOrCreateInterval((AllocatableValue) targetValue);
 
                         // hints always point from def to use
                         if (hintAtDef) {
@@ -1156,7 +1156,7 @@ public final class LinearScan {
             BitSet live = blockData.get(block).liveOut;
             for (int operandNum = live.nextSetBit(0); operandNum >= 0; operandNum = live.nextSetBit(operandNum + 1)) {
                 assert live.get(operandNum) : "should not stop here otherwise";
-                Value operand = operandFor(operandNum);
+                AllocatableValue operand = operandFor(operandNum);
                 if (GraalOptions.TraceLinearScanLevel >= 2) {
                     TTY.println("live in %s to %d", operand, blockTo + 2);
                 }
@@ -1197,7 +1197,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addDef(operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
+                            addDef((AllocatableValue) operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags, true);
                         }
                         return operand;
@@ -1208,7 +1208,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addTemp(operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
+                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1220,7 +1220,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1232,7 +1232,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse(operand, blockFrom, opId, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getKind().getStackKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1247,7 +1247,7 @@ public final class LinearScan {
 
                     @Override
                     public Value doValue(Value operand) {
-                        addUse(operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
+                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
                         return operand;
                     }
                 });

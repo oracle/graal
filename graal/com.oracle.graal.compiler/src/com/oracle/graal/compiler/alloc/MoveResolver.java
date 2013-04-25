@@ -196,8 +196,8 @@ final class MoveResolver {
         assert fromInterval.kind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
-        Value fromOpr = fromInterval.operand;
-        Value toOpr = toInterval.operand;
+        AllocatableValue fromOpr = fromInterval.operand;
+        AllocatableValue toOpr = toInterval.operand;
 
         insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
@@ -210,7 +210,7 @@ final class MoveResolver {
         assert fromOpr.getKind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
-        Value toOpr = toInterval.operand;
+        AllocatableValue toOpr = toInterval.operand;
         insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
         if (GraalOptions.TraceLinearScanLevel >= 4) {

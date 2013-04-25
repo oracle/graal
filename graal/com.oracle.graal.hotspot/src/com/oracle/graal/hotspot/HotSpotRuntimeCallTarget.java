@@ -91,13 +91,13 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
             assert stub != null : "linkage without an address must be a stub";
             InstalledCode code = stub.getCode(backend);
 
-            Value[] argumentLocations = new Value[cc.getArgumentCount()];
+            AllocatableValue[] argumentLocations = new AllocatableValue[cc.getArgumentCount()];
             for (int i = 0; i < argumentLocations.length; i++) {
                 argumentLocations[i] = cc.getArgument(i);
             }
 
             Set<Register> definedRegisters = stub.getDefinedRegisters();
-            Value[] temporaryLocations = new Value[definedRegisters.size()];
+            AllocatableValue[] temporaryLocations = new AllocatableValue[definedRegisters.size()];
             int i = 0;
             for (Register reg : definedRegisters) {
                 temporaryLocations[i++] = reg.asValue();

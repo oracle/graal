@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.graph.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
@@ -84,7 +85,8 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        location().generateStore(gen, gen.operand(object()), gen.operand(value()), this);
+        Value address = location().generateAddress(gen, gen.operand(object()));
+        gen.emitStore(location().getValueKind(), address, gen.operand(value()), this);
     }
 
     @NodeIntrinsic

@@ -54,7 +54,7 @@ public final class WriteRegisterNode extends FixedWithNextNode implements LIRLow
     @Override
     public void generate(LIRGeneratorTool generator) {
         Value val = generator.operand(value);
-        generator.emitMove(val, register.asValue(val.getKind()));
+        generator.emitMove(register.asValue(val.getKind()), val);
     }
 
     @Override

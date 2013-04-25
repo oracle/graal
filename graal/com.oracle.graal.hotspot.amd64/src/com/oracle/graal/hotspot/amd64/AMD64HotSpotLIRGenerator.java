@@ -243,9 +243,9 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        Value metaspaceMethod = AMD64.rbx.asValue();
+        AllocatableValue metaspaceMethod = AMD64.rbx.asValue();
         emitMove(metaspaceMethod, operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod()));
-        Value targetAddress = AMD64.rax.asValue();
+        AllocatableValue targetAddress = AMD64.rax.asValue();
         emitMove(targetAddress, operand(callTarget.computedAddress()));
         append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod, targetAddress, callState));
     }

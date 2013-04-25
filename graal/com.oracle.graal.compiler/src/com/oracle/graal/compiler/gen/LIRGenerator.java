@@ -52,7 +52,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator extends LIRGeneratorTool {
+public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public final FrameMap frameMap;
     public final NodeMap<Value> nodeOperands;
@@ -168,8 +168,8 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public Value setResult(ValueNode x, Value operand) {
-        assert (isVariable(operand) && x.kind() == operand.getKind()) || (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
-                        (isConstant(operand) && x.kind() == operand.getKind().getStackKind()) : operand.getKind() + " for node " + x;
+        assert (!isVariable(operand) || x.kind() == operand.getKind()) : operand.getKind() + " for node " + x;
+        assert (!isRegister(operand) || !attributes(asRegister(operand)).isAllocatable());
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.getKind().getStackKind() == x.kind() : operand.getKind().getStackKind() + " must match " + x.kind();
@@ -251,7 +251,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
      * @return the operand representing the ABI defined location used return a value of kind
      *         {@code kind}
      */
-    public Value resultOperandFor(Kind kind) {
+    public AllocatableValue resultOperandFor(Kind kind) {
         if (kind == Kind.Void) {
             return ILLEGAL;
         }
@@ -461,7 +461,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     @Override
     public void visitReturn(ReturnNode x) {
-        Value operand = Value.ILLEGAL;
+        AllocatableValue operand = ILLEGAL;
         if (x.result() != null) {
             operand = resultOperandFor(x.result().kind());
             emitMove(operand, operand(x.result()));
@@ -630,7 +630,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
-    protected static Value toStackKind(Value value) {
+    protected static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
             // We only have stack-kinds in the LIR, so convert the operand kind for values from the
             // calling convention.
@@ -651,7 +651,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                Value operand = toStackKind(cc.getArgument(j));
+                AllocatableValue operand = toStackKind(cc.getArgument(j));
                 emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
@@ -672,7 +672,7 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
-            Value loc = cc.getArgument(i);
+            AllocatableValue loc = cc.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
@@ -824,6 +824,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public FrameMap frameMap() {
         return frameMap;
+    }
+
+    @Override
+    public void beforeRegisterAllocation() {
     }
 
     public abstract void emitBitCount(Variable result, Value operand);
