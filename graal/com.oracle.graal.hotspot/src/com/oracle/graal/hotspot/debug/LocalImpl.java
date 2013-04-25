@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.debug;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
 public class LocalImpl implements Local {
@@ -39,9 +40,9 @@ public class LocalImpl implements Local {
         this.bciStart = bciStart;
         this.bciEnd = bciEnd;
         this.slot = slot;
-        JavaType t = HotSpotGraalRuntime.getInstance().lookupType(type, holder, true);
+        JavaType t = graalRuntime().lookupType(type, holder, true);
         if (t instanceof ResolvedJavaType) {
-            this.resolvedType = (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(type, holder, false);
+            this.resolvedType = (ResolvedJavaType) graalRuntime().lookupType(type, holder, false);
         } else {
             throw new AssertionError(t.getClass() + " is not a ResolvedJavaType");
         }

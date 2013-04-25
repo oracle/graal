@@ -49,7 +49,7 @@ public class HotSpotSnippetUtils {
     public static final Object FINAL_LOCATION = LocationNode.FINAL_LOCATION;
 
     public static HotSpotVMConfig config() {
-        return HotSpotGraalRuntime.getInstance().getConfig();
+        return graalRuntime().getConfig();
     }
 
     @Fold
@@ -148,22 +148,22 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static Kind wordKind() {
-        return HotSpotGraalRuntime.getInstance().getTarget().wordKind;
+        return graalRuntime().getTarget().wordKind;
     }
 
     @Fold
     public static Register threadRegister() {
-        return HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
+        return graalRuntime().getRuntime().threadRegister();
     }
 
     @Fold
     public static Register stackPointerRegister() {
-        return HotSpotGraalRuntime.getInstance().getRuntime().stackPointerRegister();
+        return graalRuntime().getRuntime().stackPointerRegister();
     }
 
     @Fold
     public static int wordSize() {
-        return HotSpotGraalRuntime.getInstance().getTarget().wordSize;
+        return graalRuntime().getTarget().wordSize;
     }
 
     @Fold

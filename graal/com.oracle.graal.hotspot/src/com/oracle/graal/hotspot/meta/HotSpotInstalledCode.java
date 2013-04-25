@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
@@ -69,12 +71,12 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public boolean isValid() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().isInstalledCodeValid(nmethod);
+        return graalRuntime().getCompilerToVM().isInstalledCodeValid(nmethod);
     }
 
     @Override
     public void invalidate() {
-        HotSpotGraalRuntime.getInstance().getCompilerToVM().invalidateInstalledCode(nmethod);
+        graalRuntime().getCompilerToVM().invalidateInstalledCode(nmethod);
     }
 
     @Override
@@ -88,7 +90,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
+        return graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
     }
 
     private boolean checkArgs(Object... args) {
@@ -108,7 +110,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().executeCompiledMethodVarargs(args, nmethod);
+        return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, nmethod);
     }
 
     @Override
@@ -118,6 +120,6 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public byte[] getCode() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCode(nmethod);
+        return graalRuntime().getCompilerToVM().getCode(nmethod);
     }
 }

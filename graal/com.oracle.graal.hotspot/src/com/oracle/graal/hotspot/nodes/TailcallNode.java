@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -58,7 +60,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool generator) {
         LIRGenerator gen = (LIRGenerator) generator;
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        HotSpotVMConfig config = graalRuntime().getConfig();
         ResolvedJavaMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.getModifiers());
 

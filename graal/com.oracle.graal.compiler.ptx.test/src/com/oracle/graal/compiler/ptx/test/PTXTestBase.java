@@ -22,23 +22,19 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import com.oracle.graal.api.code.CodeCacheProvider;
-import com.oracle.graal.api.code.CompilationResult;
-import com.oracle.graal.api.code.SpeculationLog;
-import com.oracle.graal.api.code.TargetDescription;
-import com.oracle.graal.api.runtime.Graal;
-import com.oracle.graal.compiler.GraalCompiler;
-import com.oracle.graal.compiler.ptx.PTXBackend;
-import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.debug.Debug;
-import com.oracle.graal.java.GraphBuilderConfiguration;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.PhasePlan;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.ptx.*;
+import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.debug.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.ptx.PTX;
+import com.oracle.graal.ptx.*;
 
 public abstract class PTXTestBase extends GraalCompilerTest {
 
@@ -48,14 +44,12 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
         PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(CodeCacheProvider.class), target);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(),
-                                                                    OptimisticOptimizations.NONE);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
-        CompilationResult result = GraalCompiler.compileMethod(runtime, HotSpotGraalRuntime.getInstance().getReplacements(),
-                                                               ptxBackend, target, graph.method(), graph, null, phasePlan,
-                                                               OptimisticOptimizations.NONE, new SpeculationLog());
+        CompilationResult result = GraalCompiler.compileMethod(runtime, graalRuntime().getReplacements(), ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE,
+                        new SpeculationLog());
         return result;
     }
 
