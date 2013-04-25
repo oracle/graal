@@ -45,14 +45,6 @@ public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode {
 
     void intrinsify(Node node);
 
-    double probability();
-
-    void setProbability(double value);
-
-    double inliningRelevance();
-
-    void setInliningRelevance(double value);
-
     boolean useForInlining();
 
     void setUseForInlining(boolean value);

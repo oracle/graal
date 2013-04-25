@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class SerialWriteBarrier extends FixedWithNextNode implements Lowerable {
+public final class SerialWriteBarrier extends FixedWithNextNode implements Lowerable, Node.IterableNodeType {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
@@ -52,7 +53,8 @@ public final class SerialWriteBarrier extends FixedWithNextNode implements Lower
     }
 
     @Override
-    public void lower(LoweringTool generator) {
+    public void lower(LoweringTool generator, LoweringType loweringType) {
+        assert loweringType == LoweringType.AFTER_GUARDS;
         generator.getRuntime().lower(this, generator);
     }
 }

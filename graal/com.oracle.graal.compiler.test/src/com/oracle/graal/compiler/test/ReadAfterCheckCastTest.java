@@ -32,7 +32,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 /* consider
  *     B b = (B) a;
@@ -85,11 +87,12 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             // structure changes significantly
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                new LoweringPhase(null, runtime(), replacements, new Assumptions(false)).apply(graph);
+                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
+                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 new FloatingReadPhase().apply(graph);
                 new EliminatePartiallyRedundantGuardsPhase(true, false).apply(graph);
                 new ReadEliminationPhase().apply(graph);
-                new CanonicalizerPhase.Instance(runtime(), null).apply(graph);
+                new CanonicalizerPhase().apply(graph, context);
 
                 Debug.dump(graph, "After lowering");
 

@@ -25,7 +25,6 @@ package com.oracle.graal.phases.common;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -34,8 +33,9 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.tiers.*;
 
-public class GuardLoweringPhase extends Phase {
+public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private abstract static class ScheduledNodeIterator {
 
@@ -81,9 +81,14 @@ public class GuardLoweringPhase extends Phase {
         protected abstract void processNode(Node node);
     }
 
-    private class UseImplicitNullChecks extends ScheduledNodeIterator {
+    private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
         private final IdentityHashMap<ValueNode, GuardNode> nullGuarded = new IdentityHashMap<>();
+        private final int implicitNullCheckLimit;
+
+        UseImplicitNullChecks(int implicitNullCheckLimit) {
+            this.implicitNullCheckLimit = implicitNullCheckLimit;
+        }
 
         @Override
         protected void processNode(Node node) {
@@ -134,9 +139,17 @@ public class GuardLoweringPhase extends Phase {
                 nullGuarded.put(obj, guard);
             }
         }
+
+        private boolean isImplicitNullCheck(LocationNode location) {
+            if (location instanceof ConstantLocationNode) {
+                return ((ConstantLocationNode) location).displacement() < implicitNullCheckLimit;
+            } else {
+                return false;
+            }
+        }
     }
 
-    private class LowerGuards extends ScheduledNodeIterator {
+    private static class LowerGuards extends ScheduledNodeIterator {
 
         private final Block block;
 
@@ -193,35 +206,21 @@ public class GuardLoweringPhase extends Phase {
         }
     }
 
-    private TargetDescription target;
-
-    public GuardLoweringPhase(TargetDescription target) {
-        this.target = target;
-    }
-
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, MidTierContext context) {
         SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
 
         for (Block block : schedule.getCFG().getBlocks()) {
-            processBlock(block, schedule);
+            processBlock(block, schedule, context.getTarget().implicitNullCheckLimit);
         }
     }
 
-    private void processBlock(Block block, SchedulePhase schedule) {
+    private static void processBlock(Block block, SchedulePhase schedule, int implicitNullCheckLimit) {
         List<ScheduledNode> nodes = schedule.nodesFor(block);
-        if (GraalOptions.OptImplicitNullChecks && target.implicitNullCheckLimit > 0) {
-            new UseImplicitNullChecks().processNodes(nodes, block.getBeginNode());
+        if (GraalOptions.OptImplicitNullChecks && implicitNullCheckLimit > 0) {
+            new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(nodes, block.getBeginNode());
         }
         new LowerGuards(block).processNodes(nodes, block.getBeginNode());
-    }
-
-    private boolean isImplicitNullCheck(LocationNode location) {
-        if (location instanceof ConstantLocationNode) {
-            return ((ConstantLocationNode) location).displacement() < target.implicitNullCheckLimit;
-        } else {
-            return false;
-        }
     }
 }

@@ -96,7 +96,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

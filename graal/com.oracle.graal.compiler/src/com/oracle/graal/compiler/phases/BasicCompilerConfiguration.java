@@ -36,4 +36,8 @@ public class BasicCompilerConfiguration implements CompilerConfiguration {
     public PhaseSuite<MidTierContext> createMidTier() {
         return new MidTier();
     }
+
+    public PhaseSuite<LowTierContext> createLowTier() {
+        return new LowTier();
+    }
 }

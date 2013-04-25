@@ -32,17 +32,15 @@ public class DeadCodeEliminationPhase extends Phase {
     // Metrics
     private static final DebugMetric metricNodesRemoved = Debug.metric("NodesRemoved");
 
-    private NodeFlood flood;
-
     @Override
     protected void run(StructuredGraph graph) {
-        this.flood = graph.createNodeFlood();
+        NodeFlood flood = graph.createNodeFlood();
 
         flood.add(graph.start());
-        iterateSuccessors();
-        disconnectCFGNodes(graph);
-        iterateInputs(graph);
-        deleteNodes(graph);
+        iterateSuccessors(flood);
+        disconnectCFGNodes(flood, graph);
+        iterateInputs(flood, graph);
+        deleteNodes(flood, graph);
 
         // remove chained Merges
         for (MergeNode merge : graph.getNodes(MergeNode.class)) {
@@ -52,7 +50,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void iterateSuccessors() {
+    private static void iterateSuccessors(NodeFlood flood) {
         for (Node current : flood) {
             if (current instanceof EndNode) {
                 EndNode end = (EndNode) current;
@@ -65,7 +63,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void disconnectCFGNodes(StructuredGraph graph) {
+    private static void disconnectCFGNodes(NodeFlood flood, StructuredGraph graph) {
         for (EndNode node : graph.getNodes(EndNode.class)) {
             if (!flood.isMarked(node)) {
                 MergeNode merge = node.merge();
@@ -95,7 +93,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void deleteNodes(StructuredGraph graph) {
+    private static void deleteNodes(NodeFlood flood, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (!flood.isMarked(node)) {
                 node.clearInputs();
@@ -110,7 +108,7 @@ public class DeadCodeEliminationPhase extends Phase {
         }
     }
 
-    private void iterateInputs(StructuredGraph graph) {
+    private static void iterateInputs(NodeFlood flood, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (node instanceof LocalNode) {
                 flood.add(node);

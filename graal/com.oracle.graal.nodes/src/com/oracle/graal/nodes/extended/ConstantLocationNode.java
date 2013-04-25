@@ -55,7 +55,7 @@ public class ConstantLocationNode extends LocationNode {
     }
 
     @Override
-    public Value generateLea(LIRGeneratorTool gen, Value base) {
+    public Value generateAddress(LIRGeneratorTool gen, Value base) {
         return gen.emitLea(base, displacement(), Value.ILLEGAL, 0);
     }
 

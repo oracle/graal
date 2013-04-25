@@ -33,10 +33,12 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * In these test the FrameStates are explicitly cleared out, so that the scheduling of
@@ -221,7 +223,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                     Assumptions assumptions = new Assumptions(false);
                     new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 }
-                new LoweringPhase(null, runtime(), replacements, new Assumptions(false)).apply(graph);
+                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
+                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {

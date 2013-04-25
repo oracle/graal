@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes.util;
 
-import com.oracle.graal.api.meta.*;
+import java.util.*;
+
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
+public class NodesToDoubles {
 
-    @Input private ValueNode object;
-    @Input private ValueNode location;
+    private final IdentityHashMap<FixedNode, Double> nodeProbabilities;
 
-    public ValueNode getObject() {
-        return object;
+    public NodesToDoubles(int numberOfNodes) {
+        this.nodeProbabilities = new IdentityHashMap<>(numberOfNodes);
     }
 
-    public LocationNode getLocation() {
-        return (LocationNode) location;
+    public void put(FixedNode n, double value) {
+        nodeProbabilities.put(n, value);
     }
 
-    public ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
-        super(stamp);
-        this.object = object;
-        this.location = location;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        Value addr = getLocation().generateAddress(gen, gen.operand(getObject()));
-        gen.setResult(this, addr);
+    public double get(FixedNode n) {
+        Double value = nodeProbabilities.get(n);
+        assert value != null;
+        return value;
     }
 }

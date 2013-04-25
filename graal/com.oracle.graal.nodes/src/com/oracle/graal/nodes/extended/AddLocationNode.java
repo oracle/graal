@@ -48,11 +48,11 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
 
     public static AddLocationNode create(LocationNode x, LocationNode y, Graph graph) {
         assert x.getValueKind().equals(y.getValueKind()) && x.locationIdentity() == y.locationIdentity();
-        return graph.unique(new AddLocationNode(x, y));
+        return graph.unique(new AddLocationNode(x.locationIdentity(), x.getValueKind(), x, y));
     }
 
-    private AddLocationNode(LocationNode x, LocationNode y) {
-        super(x.locationIdentity(), x.getValueKind());
+    private AddLocationNode(Object identity, Kind kind, ValueNode x, ValueNode y) {
+        super(identity, kind);
         this.x = x;
         this.y = y;
     }
@@ -60,7 +60,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     @Override
     protected LocationNode addDisplacement(long displacement) {
         LocationNode added = getX().addDisplacement(displacement);
-        return graph().unique(new AddLocationNode(added, getY()));
+        return graph().unique(new AddLocationNode(locationIdentity(), getValueKind(), added, getY()));
     }
 
     @Override
@@ -86,20 +86,23 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     }
 
     @Override
-    public Value generateLea(LIRGeneratorTool gen, Value base) {
-        Value xAddr = getX().generateLea(gen, base);
-        return getY().generateLea(gen, xAddr);
+    public Value generateAddress(LIRGeneratorTool gen, Value base) {
+        Value xAddr = getX().generateAddress(gen, base);
+        return getY().generateAddress(gen, xAddr);
     }
 
     @Override
     public Value generateLoad(LIRGeneratorTool gen, Value base, DeoptimizingNode deopting) {
-        Value xAddr = getX().generateLea(gen, base);
+        Value xAddr = getX().generateAddress(gen, base);
         return getY().generateLoad(gen, xAddr, deopting);
     }
 
     @Override
     public void generateStore(LIRGeneratorTool gen, Value base, Value value, DeoptimizingNode deopting) {
-        Value xAddr = getX().generateLea(gen, base);
+        Value xAddr = getX().generateAddress(gen, base);
         getY().generateStore(gen, xAddr, value, deopting);
     }
+
+    @NodeIntrinsic
+    public static native Location addLocation(@ConstantNodeParameter Object identity, @ConstantNodeParameter Kind kind, Location x, Location y);
 }

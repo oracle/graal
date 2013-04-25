@@ -62,7 +62,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.compiler.phases;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
-public class ComputeAddressNode extends FloatingNode implements LIRLowerable {
+public class LowTier extends PhaseSuite<LowTierContext> {
 
-    @Input private ValueNode object;
-    @Input private ValueNode location;
+    public LowTier() {
+        addPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
 
-    public ValueNode getObject() {
-        return object;
-    }
+        addPhase(new FrameStateAssignmentPhase());
 
-    public LocationNode getLocation() {
-        return (LocationNode) location;
-    }
-
-    public ComputeAddressNode(ValueNode object, ValueNode location, Stamp stamp) {
-        super(stamp);
-        this.object = object;
-        this.location = location;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        Value addr = getLocation().generateAddress(gen, gen.operand(getObject()));
-        gen.setResult(this, addr);
+        addPhase(new DeadCodeEliminationPhase());
     }
 }

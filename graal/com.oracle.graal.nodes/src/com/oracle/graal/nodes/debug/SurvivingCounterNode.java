@@ -35,8 +35,8 @@ public class SurvivingCounterNode extends DynamicCounterNode implements Simplifi
 
     @Input private ValueNode checkedValue;
 
-    public SurvivingCounterNode(String name, long increment, boolean addContext, ValueNode checkedValue) {
-        super(name, increment, addContext);
+    public SurvivingCounterNode(String group, String name, long increment, boolean addContext, ValueNode checkedValue) {
+        super(group, name, increment, addContext);
         this.checkedValue = checkedValue;
     }
 

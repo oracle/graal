@@ -20,16 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
+import com.oracle.graal.nodes.util.*;
 
 /**
  * Computes probabilities for nodes in a graph.
@@ -49,23 +47,34 @@ import com.oracle.graal.phases.graph.*;
  * </ol>
  * TODO: add exception probability information to Invokes
  */
-public class ComputeProbabilityPhase extends Phase {
+public class ComputeProbabilityClosure {
 
     private static final double EPSILON = 1d / Integer.MAX_VALUE;
 
-    @Override
-    protected void run(StructuredGraph graph) {
+    private final StructuredGraph graph;
+    private final NodesToDoubles nodeProbabilities;
+    private final Set<LoopInfo> loopInfos;
+    private final Map<MergeNode, Set<LoopInfo>> mergeLoops;
+
+    public ComputeProbabilityClosure(StructuredGraph graph) {
+        this.graph = graph;
+        this.nodeProbabilities = new NodesToDoubles(graph.getNodeCount());
+        this.loopInfos = new HashSet<>();
+        this.mergeLoops = new IdentityHashMap<>();
+    }
+
+    public NodesToDoubles apply() {
         new PropagateProbability(graph.start()).apply();
         Debug.dump(graph, "After PropagateProbability");
         computeLoopFactors();
         Debug.dump(graph, "After computeLoopFactors");
         new PropagateLoopFrequency(graph.start()).apply();
-        new ComputeInliningRelevanceIterator(graph).apply();
+        return nodeProbabilities;
     }
 
     private void computeLoopFactors() {
         for (LoopInfo info : loopInfos) {
-            double frequency = info.loopFrequency();
+            double frequency = info.loopFrequency(nodeProbabilities);
             assert frequency != -1;
         }
     }
@@ -89,34 +98,31 @@ public class ComputeProbabilityPhase extends Phase {
             this.requires = loopBegin.graph().createNodeMap();
         }
 
-        public double loopFrequency() {
+        public double loopFrequency(NodesToDoubles nodeProbabilities) {
             if (loopFrequency == -1 && ended) {
                 double backEdgeProb = 0.0;
                 for (LoopEndNode le : loopBegin.loopEnds()) {
                     double factor = 1;
                     Set<LoopInfo> requireds = requires.get(le);
                     for (LoopInfo required : requireds) {
-                        double t = required.loopFrequency();
+                        double t = required.loopFrequency(nodeProbabilities);
                         if (t == -1) {
                             return -1;
                         }
                         factor *= t;
                     }
-                    backEdgeProb += le.probability() * factor;
+                    backEdgeProb += nodeProbabilities.get(le) * factor;
                 }
-                double d = loopBegin.probability() - backEdgeProb;
+                double d = nodeProbabilities.get(loopBegin) - backEdgeProb;
                 if (d < EPSILON) {
                     d = EPSILON;
                 }
-                loopFrequency = loopBegin.probability() / d;
+                loopFrequency = nodeProbabilities.get(loopBegin) / d;
                 loopBegin.setLoopFrequency(loopFrequency);
             }
             return loopFrequency;
         }
     }
-
-    public Set<LoopInfo> loopInfos = new HashSet<>();
-    public Map<MergeNode, Set<LoopInfo>> mergeLoops = new IdentityHashMap<>();
 
     private class Probability implements MergeableState<Probability> {
 
@@ -146,7 +152,7 @@ public class ComputeProbabilityPhase extends Phase {
                 }
                 for (LoopInfo info : loops) {
                     if (!intersection.contains(info)) {
-                        double loopFrequency = info.loopFrequency();
+                        double loopFrequency = info.loopFrequency(nodeProbabilities);
                         if (loopFrequency == -1) {
                             return false;
                         }
@@ -157,7 +163,7 @@ public class ComputeProbabilityPhase extends Phase {
                     double prob = other.probability;
                     for (LoopInfo info : other.loops) {
                         if (!intersection.contains(info)) {
-                            double loopFrequency = info.loopFrequency();
+                            double loopFrequency = info.loopFrequency(nodeProbabilities);
                             if (loopFrequency == -1) {
                                 return false;
                             }
@@ -226,7 +232,7 @@ public class ComputeProbabilityPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            node.setProbability(state.probability);
+            nodeProbabilities.put(node, state.probability);
         }
     }
 
@@ -251,7 +257,7 @@ public class ComputeProbabilityPhase extends Phase {
                 assert loops != null;
                 double countProd = 1;
                 for (LoopInfo loop : loops) {
-                    countProd *= loop.loopFrequency();
+                    countProd *= loop.loopFrequency(nodeProbabilities);
                 }
                 count = countProd;
             }
@@ -282,178 +288,8 @@ public class ComputeProbabilityPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            node.setProbability(node.probability() * state.count);
+            nodeProbabilities.put(node, nodeProbabilities.get(node) * state.count);
         }
 
-    }
-
-    private static class ComputeInliningRelevanceIterator extends ScopedPostOrderNodeIterator {
-
-        private final HashMap<FixedNode, Scope> scopes;
-        private double currentProbability;
-        private double parentRelevance;
-
-        public ComputeInliningRelevanceIterator(StructuredGraph graph) {
-            super(graph);
-            this.scopes = computeLowestPathProbabilities(computeScopeInformation(graph));
-        }
-
-        @Override
-        protected void initializeScope() {
-            Scope scope = scopes.get(currentScopeStart);
-            parentRelevance = getParentScopeRelevance(scope);
-            currentProbability = scope.minPathProbability;
-        }
-
-        private static double getParentScopeRelevance(Scope scope) {
-            if (scope.start instanceof LoopBeginNode) {
-                assert scope.parent != null;
-                double parentProbability = 0;
-                for (EndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
-                    parentProbability += end.probability();
-                }
-                return parentProbability / scope.parent.minPathProbability;
-            } else {
-                assert scope.parent == null;
-                return 1.0;
-            }
-        }
-
-        @Override
-        protected void invoke(Invoke invoke) {
-            assert !Double.isNaN(invoke.probability());
-            invoke.setInliningRelevance((invoke.probability() / currentProbability) * Math.min(1.0, parentRelevance));
-            assert !Double.isNaN(invoke.inliningRelevance());
-        }
-
-        private static Scope[] computeScopeInformation(StructuredGraph graph) {
-            ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-
-            Loop[] loops = cfg.getLoops();
-            HashMap<Loop, Scope> processedScopes = new HashMap<>();
-            Scope[] scopes = new Scope[loops.length + 1];
-            Scope methodScope = new Scope(graph.start(), null);
-            processedScopes.put(null, methodScope);
-
-            scopes[0] = methodScope;
-            for (int i = 0; i < loops.length; i++) {
-                scopes[i + 1] = createScope(loops[i], processedScopes);
-            }
-
-            return scopes;
-        }
-
-        private static Scope createScope(Loop loop, HashMap<Loop, Scope> processedLoops) {
-            Scope parent = processedLoops.get(loop.parent);
-            if (parent == null) {
-                parent = createScope(loop.parent, processedLoops);
-            }
-            Scope result = new Scope(loop.loopBegin(), parent);
-            processedLoops.put(loop, result);
-            return result;
-        }
-
-        private static HashMap<FixedNode, Scope> computeLowestPathProbabilities(Scope[] scopes) {
-            HashMap<FixedNode, Scope> result = new HashMap<>();
-
-            for (Scope scope : scopes) {
-                double lowestPathProbability = computeLowestPathProbability(scope);
-                scope.minPathProbability = Math.max(EPSILON, lowestPathProbability);
-                result.put(scope.start, scope);
-            }
-
-            return result;
-        }
-
-        private static double computeLowestPathProbability(Scope scope) {
-            FixedNode scopeStart = scope.start;
-            ArrayList<FixedNode> pathBeginNodes = new ArrayList<>();
-            pathBeginNodes.add(scopeStart);
-            double minPathProbability = scopeStart.probability();
-            boolean isLoopScope = scopeStart instanceof LoopBeginNode;
-
-            do {
-                Node current = pathBeginNodes.remove(pathBeginNodes.size() - 1);
-                do {
-                    if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
-                        return minPathProbability;
-                    } else if (current instanceof LoopBeginNode && current != scopeStart) {
-                        current = getMaxProbabilityLoopExit((LoopBeginNode) current, pathBeginNodes);
-                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
-                    } else if (current instanceof ControlSplitNode) {
-                        current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
-                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
-                    } else {
-                        assert current.successors().count() <= 1;
-                        current = current.successors().first();
-                    }
-                } while (current != null);
-            } while (!pathBeginNodes.isEmpty());
-
-            return minPathProbability;
-        }
-
-        private static double getMinPathProbability(FixedNode current, double minPathProbability) {
-            if (current != null && current.probability() < minPathProbability) {
-                return current.probability();
-            }
-            return minPathProbability;
-        }
-
-        private static Node getMaxProbabilitySux(ControlSplitNode controlSplit, ArrayList<FixedNode> pathBeginNodes) {
-            Node maxSux = null;
-            double maxProbability = 0.0;
-            int pathBeginCount = pathBeginNodes.size();
-
-            for (Node sux : controlSplit.successors()) {
-                double probability = controlSplit.probability((BeginNode) sux);
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                    maxSux = sux;
-                    truncate(pathBeginNodes, pathBeginCount);
-                } else if (probability == maxProbability) {
-                    pathBeginNodes.add((FixedNode) sux);
-                }
-            }
-
-            return maxSux;
-        }
-
-        private static Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin, ArrayList<FixedNode> pathBeginNodes) {
-            Node maxSux = null;
-            double maxProbability = 0.0;
-            int pathBeginCount = pathBeginNodes.size();
-
-            for (LoopExitNode sux : loopBegin.loopExits()) {
-                double probability = sux.probability();
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                    maxSux = sux;
-                    truncate(pathBeginNodes, pathBeginCount);
-                } else if (probability == maxProbability) {
-                    pathBeginNodes.add(sux);
-                }
-            }
-
-            return maxSux;
-        }
-
-        public static void truncate(ArrayList<FixedNode> pathBeginNodes, int pathBeginCount) {
-            for (int i = pathBeginNodes.size() - pathBeginCount; i > 0; i--) {
-                pathBeginNodes.remove(pathBeginNodes.size() - 1);
-            }
-        }
-    }
-
-    private static class Scope {
-
-        public final FixedNode start;
-        public final Scope parent;
-        public double minPathProbability;
-
-        public Scope(FixedNode start, Scope parent) {
-            this.start = start;
-            this.parent = parent;
-        }
     }
 }

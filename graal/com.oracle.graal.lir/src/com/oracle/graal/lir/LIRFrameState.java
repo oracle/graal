@@ -117,6 +117,6 @@ public class LIRFrameState {
 
     @Override
     public String toString() {
-        return debugInfo != null ? debugInfo.toString() : topFrame.toString();
+        return debugInfo != null ? debugInfo.toString() : topFrame != null ? topFrame.toString() : "<empty>";
     }
 }

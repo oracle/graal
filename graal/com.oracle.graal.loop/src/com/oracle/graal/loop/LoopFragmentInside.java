@@ -102,7 +102,6 @@ public class LoopFragmentInside extends LoopFragment {
             GraphUtil.killWithUnusedFloatingInputs(state);
         }
         loop.entryPoint().replaceAtPredecessor(entry);
-        end.setProbability(loop.entryPoint().probability());
         end.setNext(loop.entryPoint());
     }
 

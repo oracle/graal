@@ -24,7 +24,10 @@ package com.oracle.graal.lir;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.cfg.*;
+
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 /**
@@ -133,6 +136,36 @@ public class StandardOp {
         @Override
         public void emitCode(TargetMethodAssembler tasm) {
             // No code to emit.
+        }
+    }
+
+    /**
+     * Placeholder for a LIR instruction that will be subsequently replaced.
+     */
+    public static class PlaceholderOp extends LIRInstruction {
+
+        /**
+         * The block in which this instruction is located.
+         */
+        final Block block;
+
+        /**
+         * The block index of this instruction.
+         */
+        final int index;
+
+        public PlaceholderOp(Block block, int index) {
+            this.block = block;
+            this.index = index;
+        }
+
+        public void replace(LIR lir, LIRInstruction replacement) {
+            lir.lir(block).set(index, replacement);
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm) {
+            throw new GraalInternalError(this + " should have been replaced");
         }
     }
 }

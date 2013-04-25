@@ -25,7 +25,9 @@ package com.oracle.graal.loop.phases;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
 
 public class LoopTransformHighPhase extends Phase {
 
@@ -33,9 +35,10 @@ public class LoopTransformHighPhase extends Phase {
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
             if (GraalOptions.LoopPeeling) {
+                NodesToDoubles probabilities = new ComputeProbabilityClosure(graph).apply();
                 LoopsData data = new LoopsData(graph);
                 for (LoopEx loop : data.outterFirst()) {
-                    if (LoopPolicies.shouldPeel(loop)) {
+                    if (LoopPolicies.shouldPeel(loop, probabilities)) {
                         Debug.log("Peeling %s", loop);
                         LoopTransformations.peel(loop);
                         Debug.dump(graph, "After peeling %s", loop);

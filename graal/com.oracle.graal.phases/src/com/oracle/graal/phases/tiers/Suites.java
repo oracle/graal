@@ -33,6 +33,7 @@ public final class Suites {
 
     private final PhaseSuite<HighTierContext> highTier;
     private final PhaseSuite<MidTierContext> midTier;
+    private final PhaseSuite<LowTierContext> lowTier;
 
     private static final Map<String, CompilerConfiguration> configurations;
 
@@ -42,6 +43,10 @@ public final class Suites {
 
     public PhaseSuite<MidTierContext> getMidTier() {
         return midTier;
+    }
+
+    public PhaseSuite<LowTierContext> getLowTier() {
+        return lowTier;
     }
 
     static {
@@ -60,6 +65,7 @@ public final class Suites {
     private Suites(CompilerConfiguration config) {
         highTier = config.createHighTier();
         midTier = config.createMidTier();
+        lowTier = config.createLowTier();
     }
 
     public static Suites createDefaultSuites() {

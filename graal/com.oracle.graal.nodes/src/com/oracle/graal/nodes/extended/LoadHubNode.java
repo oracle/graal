@@ -45,7 +45,7 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

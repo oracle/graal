@@ -30,9 +30,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A location for a memory access in terms of the kind of value accessed and how to access it.
- * All locations have the form [base + location], where base is a node and location is defined
- * by subclasses of the {@link LocationNode}.
+ * A location for a memory access in terms of the kind of value accessed and how to access it. All
+ * locations have the form [base + location], where base is a node and location is defined by
+ * subclasses of the {@link LocationNode}.
  */
 public abstract class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
@@ -41,7 +41,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
 
     /**
      * Creates a new unique location identity for read and write operations.
-     *
+     * 
      * @param name the name of the new location identity, for debugging purposes
      * @return the new location identity
      */
@@ -66,6 +66,12 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
      * Denotes the location of a value that is guaranteed to be final.
      */
     public static final Object FINAL_LOCATION = createLocation("FINAL_LOCATION");
+
+    /**
+     * Marker interface for locations in snippets.
+     */
+    public interface Location {
+    }
 
     public static Object getArrayLocation(Kind elementKind) {
         return elementKind;
@@ -93,7 +99,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
         // nothing to do...
     }
 
-    public abstract Value generateLea(LIRGeneratorTool gen, Value base);
+    public abstract Value generateAddress(LIRGeneratorTool gen, Value base);
 
     public abstract Value generateLoad(LIRGeneratorTool gen, Value base, DeoptimizingNode deopting);
 

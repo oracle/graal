@@ -41,7 +41,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
-    private double inliningRelevance;
 
     /**
      * Constructs a new Invoke instruction.
@@ -55,7 +54,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
         this.bci = bci;
         this.polymorphic = false;
         this.useForInlining = true;
-        this.inliningRelevance = Double.NaN;
     }
 
     @Override
@@ -83,16 +81,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public double inliningRelevance() {
-        return inliningRelevance;
-    }
-
-    @Override
-    public void setInliningRelevance(double value) {
-        inliningRelevance = value;
-    }
-
-    @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
         debugProperties.put("targetMethod", callTarget.targetName());
@@ -105,7 +93,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

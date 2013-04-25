@@ -48,7 +48,7 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Lowerab
         return new Object[]{LocationNode.ANY_LOCATION};
     }
 
-    public void lower(LoweringTool tool) {
+    public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
 

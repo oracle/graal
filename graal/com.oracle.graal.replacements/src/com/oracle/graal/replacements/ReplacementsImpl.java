@@ -379,10 +379,7 @@ public class ReplacementsImpl implements Replacements {
                 end.disableSafepoint();
             }
 
-            if (GraalOptions.ProbabilityAnalysis) {
-                new DeadCodeEliminationPhase().apply(graph);
-                new ComputeProbabilityPhase().apply(graph);
-            }
+            new DeadCodeEliminationPhase().apply(graph);
             return graph;
         }
     }

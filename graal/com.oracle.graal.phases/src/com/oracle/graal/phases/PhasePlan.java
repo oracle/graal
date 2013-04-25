@@ -51,7 +51,6 @@ public class PhasePlan {
     public static enum PhasePosition {
         AFTER_PARSING,
         HIGH_LEVEL,
-        MID_LEVEL,
         LOW_LEVEL
     }
     // @formatter:on
