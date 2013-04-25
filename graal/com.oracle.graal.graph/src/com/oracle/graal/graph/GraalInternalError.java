@@ -51,6 +51,23 @@ public class GraalInternalError extends Error {
     }
 
     /**
+     * Checks a given condition and throws a {@link GraalInternalError} if it is false. Guarantees
+     * are stronger than assertions in that they are always checked. Error messages for guarantee
+     * violations should clearly indicate the nature of the problem as well as a suggested solution
+     * if possible.
+     * 
+     * @param condition the condition to check
+     * @param msg the message that will be associated with the error, in
+     *            {@link String#format(String, Object...)} syntax
+     * @param args arguments to the format string
+     */
+    public static void guarantee(boolean condition, String msg, Object... args) {
+        if (!condition) {
+            throw new GraalInternalError("failed guarantee: " + msg, args);
+        }
+    }
+
+    /**
      * This constructor creates a {@link GraalInternalError} with a message assembled via
      * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
      * always generate the same output.
