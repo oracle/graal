@@ -378,7 +378,7 @@ public class SnippetTemplate {
 
             new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), 0, null).apply(snippetCopy);
         }
-        assert NodeIntrinsificationVerificationPhase.verify(snippetCopy);
+        NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
         // Gather the template parameters
         parameters = new Object[parameterCount];
