@@ -303,16 +303,13 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 main.b = temp2;
             }
         }
-
         barrierIndex = 5;
         main.a = temp1;
         barrierIndex = 6;
         main.b = temp1;
         barrierIndex = 8;
         main1.b = temp1;
-
         safepoint();
-
     }
 
     @Test(expected = AssertionError.class)
