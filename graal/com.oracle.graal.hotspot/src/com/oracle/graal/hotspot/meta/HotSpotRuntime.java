@@ -47,8 +47,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CodeUtil.RefMapFormatter;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
+import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
@@ -163,23 +163,23 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    protected Value ret(Kind kind) {
+    protected AllocatableValue ret(Kind kind) {
         if (kind == Kind.Void) {
             return ILLEGAL;
         }
         return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
     }
 
-    protected Value[] javaCallingConvention(Kind... arguments) {
+    protected AllocatableValue[] javaCallingConvention(Kind... arguments) {
         return callingConvention(arguments, RuntimeCall);
     }
 
-    protected Value[] nativeCallingConvention(Kind... arguments) {
+    protected AllocatableValue[] nativeCallingConvention(Kind... arguments) {
         return callingConvention(arguments, NativeCall);
     }
 
-    private Value[] callingConvention(Kind[] arguments, CallingConvention.Type type) {
-        Value[] result = new Value[arguments.length];
+    private AllocatableValue[] callingConvention(Kind[] arguments, CallingConvention.Type type) {
+        AllocatableValue[] result = new AllocatableValue[arguments.length];
 
         TargetDescription target = graalRuntime.getTarget();
         int currentStackOffset = 0;
@@ -285,7 +285,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param ret where the call returns its result
      * @param args where arguments are passed to the call
      */
-    protected RuntimeCallTarget addStubCall(Descriptor descriptor, Value ret, Value... args) {
+    protected RuntimeCallTarget addStubCall(Descriptor descriptor, AllocatableValue ret, AllocatableValue... args) {
         return addRuntimeCall(descriptor, 0L, null, ret, args);
     }
 
@@ -298,8 +298,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param ret where the call returns its result
      * @param args where arguments are passed to the call
      */
-    protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, Value ret, Value... args) {
-        Value[] temps = tempRegs == null || tempRegs.length == 0 ? Value.NONE : new Value[tempRegs.length];
+    protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, AllocatableValue ret, AllocatableValue... args) {
+        AllocatableValue[] temps = tempRegs == null || tempRegs.length == 0 ? AllocatableValue.NONE : new AllocatableValue[tempRegs.length];
         for (int i = 0; i < temps.length; i++) {
             temps[i] = tempRegs[i].asValue();
         }

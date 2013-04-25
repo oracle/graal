@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -100,8 +99,4 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     }
 
     public abstract Value generateAddress(LIRGeneratorTool gen, Value base);
-
-    public abstract Value generateLoad(LIRGeneratorTool gen, Value base, DeoptimizingNode deopting);
-
-    public abstract void generateStore(LIRGeneratorTool gen, Value base, Value value, DeoptimizingNode deopting);
 }

@@ -39,10 +39,10 @@ public class PTXMove {
     @Opcode("MOVE")
     public static class SpillMoveOp extends PTXLIRInstruction implements MoveOp {
 
-        @Def({REG, STACK}) protected Value result;
+        @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
-        public SpillMoveOp(Value result, Value input) {
+        public SpillMoveOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -58,7 +58,7 @@ public class PTXMove {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
@@ -66,10 +66,10 @@ public class PTXMove {
     @Opcode("MOVE")
     public static class MoveToRegOp extends PTXLIRInstruction implements MoveOp {
 
-        @Def({REG, HINT}) protected Value result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
-        public MoveToRegOp(Value result, Value input) {
+        public MoveToRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -85,7 +85,7 @@ public class PTXMove {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
@@ -93,10 +93,10 @@ public class PTXMove {
     @Opcode("MOVE")
     public static class MoveFromRegOp extends PTXLIRInstruction implements MoveOp {
 
-        @Def({REG, STACK}) protected Value result;
+        @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
-        public MoveFromRegOp(Value result, Value input) {
+        public MoveFromRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -112,18 +112,20 @@ public class PTXMove {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
 
     public static class LoadOp extends PTXLIRInstruction {
 
+        private final Kind kind;
         @Def({REG}) protected AllocatableValue result;
         @Use({COMPOSITE}) protected PTXAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadOp(AllocatableValue result, PTXAddressValue address, LIRFrameState state) {
+        public LoadOp(Kind kind, AllocatableValue result, PTXAddressValue address, LIRFrameState state) {
+            this.kind = kind;
             this.result = result;
             this.address = address;
             this.state = state;
@@ -132,7 +134,7 @@ public class PTXMove {
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             PTXAddress addr = address.toAddress();
-            switch (address.getKind()) {
+            switch (kind) {
                 case Byte:
                     masm.ld_global_s8(asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
@@ -165,11 +167,13 @@ public class PTXMove {
 
     public static class StoreOp extends PTXLIRInstruction {
 
+        private final Kind kind;
         @Use({COMPOSITE}) protected PTXAddressValue address;
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
 
-        public StoreOp(PTXAddressValue address, AllocatableValue input, LIRFrameState state) {
+        public StoreOp(Kind kind, PTXAddressValue address, AllocatableValue input, LIRFrameState state) {
+            this.kind = kind;
             this.address = address;
             this.input = input;
             this.state = state;
@@ -179,7 +183,7 @@ public class PTXMove {
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             assert isRegister(input);
             PTXAddress addr = address.toAddress();
-            switch (address.getKind()) {
+            switch (kind) {
                 case Byte:
                     masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
                     break;

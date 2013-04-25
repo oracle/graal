@@ -44,10 +44,10 @@ public class AMD64Move {
     @Opcode("MOVE")
     public static class MoveToRegOp extends AMD64LIRInstruction implements MoveOp {
 
-        @Def({REG, HINT}) protected Value result;
+        @Def({REG, HINT}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
 
-        public MoveToRegOp(Value result, Value input) {
+        public MoveToRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -63,7 +63,7 @@ public class AMD64Move {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
@@ -71,10 +71,10 @@ public class AMD64Move {
     @Opcode("MOVE")
     public static class MoveFromRegOp extends AMD64LIRInstruction implements MoveOp {
 
-        @Def({REG, STACK}) protected Value result;
+        @Def({REG, STACK}) protected AllocatableValue result;
         @Use({REG, CONST, HINT}) protected Value input;
 
-        public MoveFromRegOp(Value result, Value input) {
+        public MoveFromRegOp(AllocatableValue result, Value input) {
             this.result = result;
             this.input = input;
         }
@@ -90,17 +90,19 @@ public class AMD64Move {
         }
 
         @Override
-        public Value getResult() {
+        public AllocatableValue getResult() {
             return result;
         }
     }
 
     public abstract static class MemOp extends AMD64LIRInstruction {
 
+        protected final Kind kind;
         @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
-        public MemOp(AMD64AddressValue address, LIRFrameState state) {
+        public MemOp(Kind kind, AMD64AddressValue address, LIRFrameState state) {
+            this.kind = kind;
             this.address = address;
             this.state = state;
         }
@@ -120,14 +122,14 @@ public class AMD64Move {
 
         @Def({REG}) protected AllocatableValue result;
 
-        public LoadOp(AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
-            super(address, state);
+        public LoadOp(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state) {
+            super(kind, address, state);
             this.result = result;
         }
 
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
-            switch (address.getKind()) {
+            switch (kind) {
                 case Boolean:
                 case Byte:
                     masm.movsxb(asRegister(result), address.toAddress());
@@ -163,15 +165,15 @@ public class AMD64Move {
 
         @Use({REG}) protected AllocatableValue input;
 
-        public StoreOp(AMD64AddressValue address, AllocatableValue input, LIRFrameState state) {
-            super(address, state);
+        public StoreOp(Kind kind, AMD64AddressValue address, AllocatableValue input, LIRFrameState state) {
+            super(kind, address, state);
             this.input = input;
         }
 
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
             assert isRegister(input);
-            switch (address.getKind()) {
+            switch (kind) {
                 case Boolean:
                 case Byte:
                     masm.movb(address.toAddress(), asRegister(input));
@@ -205,14 +207,14 @@ public class AMD64Move {
 
         protected final Constant input;
 
-        public StoreConstantOp(AMD64AddressValue address, Constant input, LIRFrameState state) {
-            super(address, state);
+        public StoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state) {
+            super(kind, address, state);
             this.input = input;
         }
 
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
-            switch (address.getKind()) {
+            switch (kind) {
                 case Boolean:
                 case Byte:
                     masm.movb(address.toAddress(), input.asInt() & 0xFF);

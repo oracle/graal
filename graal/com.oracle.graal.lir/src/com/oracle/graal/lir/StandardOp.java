@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.lir;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.cfg.*;
-
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 /**
  * A collection of machine-independent LIR operations, as well as interfaces to be implemented for
@@ -117,7 +117,7 @@ public class StandardOp {
 
         Value getInput();
 
-        Value getResult();
+        AllocatableValue getResult();
     }
 
     /**

@@ -73,7 +73,7 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
         StackSlot slot = hsGen.getLockSlot(lockDepth);
         if (!eliminated) {
-            Value result = gen.emitLea(slot);
+            Value result = gen.emitAddress(slot);
             gen.setResult(this, result);
         }
     }
