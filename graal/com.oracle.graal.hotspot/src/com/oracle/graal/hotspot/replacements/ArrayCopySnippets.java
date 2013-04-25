@@ -84,7 +84,7 @@ public class ArrayCopySnippets implements Snippets {
         long nonVectorBytes = byteLength % VECTOR_SIZE;
         long srcOffset = (long) srcPos * elementSize;
         long destOffset = (long) destPos * elementSize;
-        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
+        if (probability(NOT_FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case
             for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
                 UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
@@ -271,7 +271,7 @@ public class ArrayCopySnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         final boolean isObjectArray = ((layoutHelper & layoutHelperElementTypePrimitiveInPlace()) == 0);
 
-        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub) && src != dest)) {
+        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, src != dest)) {
             checkLimits(src, srcPos, dest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();

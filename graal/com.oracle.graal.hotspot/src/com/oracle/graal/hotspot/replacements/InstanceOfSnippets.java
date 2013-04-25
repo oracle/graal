@@ -58,7 +58,7 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofExact(Object object, Word exactHub, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;
         }
@@ -76,7 +76,7 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofPrimary(Word hub, Object object, @ConstantParameter int superCheckOffset, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;
         }
@@ -95,7 +95,7 @@ public class InstanceOfSnippets implements Snippets {
     @Snippet
     public static Object instanceofSecondary(Word hub, Object object, @VarargsParameter Word[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
                     @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;
         }
@@ -121,7 +121,7 @@ public class InstanceOfSnippets implements Snippets {
      */
     @Snippet
     public static Object instanceofDynamic(Class mirror, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
             return falseValue;
         }

@@ -65,7 +65,7 @@ public class CheckCastSnippets implements Snippets {
      */
     @Snippet
     public static Object checkcastExact(Object object, Word exactHub, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
@@ -90,7 +90,7 @@ public class CheckCastSnippets implements Snippets {
      */
     @Snippet
     public static Object checkcastPrimary(Word hub, Object object, @ConstantParameter int superCheckOffset, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
@@ -109,7 +109,7 @@ public class CheckCastSnippets implements Snippets {
      */
     @Snippet
     public static Object checkcastSecondary(Word hub, Object object, @VarargsParameter Word[] hints, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
@@ -137,7 +137,7 @@ public class CheckCastSnippets implements Snippets {
      */
     @Snippet
     public static Object checkcastDynamic(Word hub, Object object, @ConstantParameter boolean checkNull) {
-        if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
+        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
