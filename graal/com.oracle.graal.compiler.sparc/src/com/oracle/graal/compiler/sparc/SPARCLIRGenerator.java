@@ -214,25 +214,25 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode canTrap) {
+    public Value emitAddress(Value base, long displacement, Value index, int scale) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value input, DeoptimizingNode canTrap) {
-        // SPARC: Auto-generated method stub
-
-    }
-
-    @Override
-    public Value emitLea(Value base, long displacement, Value index, int scale) {
+    public Value emitLoad(Kind kind, Value address, DeoptimizingNode canTrap) {
         // SPARC: Auto-generated method stub
         return null;
     }
 
     @Override
-    public Value emitLea(StackSlot address) {
+    public void emitStore(Kind kind, Value address, Value input, DeoptimizingNode canTrap) {
+        // SPARC: Auto-generated method stub
+
+    }
+
+    @Override
+    public Value emitAddress(StackSlot address) {
         // SPARC: Auto-generated method stub
         return null;
     }

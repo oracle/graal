@@ -57,13 +57,13 @@ public interface LIRGeneratorTool {
 
     void emitMove(AllocatableValue dst, Value src);
 
-    Value emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting);
+    Value emitAddress(Value base, long displacement, Value index, int scale);
 
-    void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value input, DeoptimizingNode deopting);
+    Value emitAddress(StackSlot slot);
 
-    Value emitLea(Value base, long displacement, Value index, int scale);
+    Value emitLoad(Kind kind, Value address, DeoptimizingNode deopting);
 
-    Value emitLea(StackSlot slot);
+    void emitStore(Kind kind, Value address, Value input, DeoptimizingNode deopting);
 
     Value emitNegate(Value input);
 

@@ -168,8 +168,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Value setResult(ValueNode x, Value operand) {
-        assert (isVariable(operand) && x.kind() == operand.getKind()) || (isRegister(operand) && !attributes(asRegister(operand)).isAllocatable()) ||
-                        (isConstant(operand) && x.kind() == operand.getKind().getStackKind()) : operand.getKind() + " for node " + x;
+        assert (!isVariable(operand) || x.kind() == operand.getKind()) : operand.getKind() + " for node " + x;
+        assert (!isRegister(operand) || !attributes(asRegister(operand)).isAllocatable());
         assert operand(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.getKind().getStackKind() == x.kind() : operand.getKind().getStackKind() + " must match " + x.kind();

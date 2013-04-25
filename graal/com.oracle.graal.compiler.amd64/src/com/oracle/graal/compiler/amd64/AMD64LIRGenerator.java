@@ -144,7 +144,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private static AMD64LIRInstruction createMove(AllocatableValue dst, Value src) {
-        if (isRegister(src) || isStackSlot(dst)) {
+        if (src instanceof AMD64AddressValue) {
+            return new LeaOp(dst, (AMD64AddressValue) src);
+        } else if (isRegister(src) || isStackSlot(dst)) {
             return new MoveFromRegOp(dst, src);
         } else {
             return new MoveToRegOp(dst, src);
@@ -156,7 +158,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(createMove(dst, src));
     }
 
-    private AMD64AddressValue prepareAddress(Value base, long displacement, Value index, int scale) {
+    @Override
+    public AMD64AddressValue emitAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -206,17 +209,25 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return new AMD64AddressValue(target().wordKind, baseRegister, indexRegister, scaleEnum, displacementInt);
     }
 
+    private AMD64AddressValue asAddress(Value address) {
+        if (address instanceof AMD64AddressValue) {
+            return (AMD64AddressValue) address;
+        } else {
+            return emitAddress(address, 0, Value.ILLEGAL, 0);
+        }
+    }
+
     @Override
-    public Variable emitLoad(Kind kind, Value base, long displacement, Value index, int scale, DeoptimizingNode deopting) {
-        AMD64AddressValue loadAddress = prepareAddress(base, displacement, index, scale);
+    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
+        AMD64AddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
         append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value base, long displacement, Value index, int scale, Value inputVal, DeoptimizingNode deopting) {
-        AMD64AddressValue storeAddress = prepareAddress(base, displacement, index, scale);
+    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+        AMD64AddressValue storeAddress = asAddress(address);
         LIRFrameState state = deopting != null ? state(deopting) : null;
 
         if (isConstant(inputVal)) {
@@ -232,15 +243,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLea(Value base, long displacement, Value index, int scale) {
-        Variable result = newVariable(target().wordKind);
-        AMD64AddressValue address = prepareAddress(base, displacement, index, scale);
-        append(new LeaOp(result, address));
-        return result;
-    }
-
-    @Override
-    public Variable emitLea(StackSlot address) {
+    public Variable emitAddress(StackSlot address) {
         Variable result = newVariable(target().wordKind);
         append(new StackLeaOp(result, address));
         return result;
