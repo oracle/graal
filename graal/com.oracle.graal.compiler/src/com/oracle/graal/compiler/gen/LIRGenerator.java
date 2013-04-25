@@ -52,7 +52,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class traverses the HIR instructions and generates LIR instructions from them.
  */
-public abstract class LIRGenerator extends LIRGeneratorTool {
+public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public final FrameMap frameMap;
     public final NodeMap<Value> nodeOperands;
@@ -824,6 +824,10 @@ public abstract class LIRGenerator extends LIRGeneratorTool {
 
     public FrameMap frameMap() {
         return frameMap;
+    }
+
+    @Override
+    public void beforeRegisterAllocation() {
     }
 
     public abstract void emitBitCount(Variable result, Value operand);
