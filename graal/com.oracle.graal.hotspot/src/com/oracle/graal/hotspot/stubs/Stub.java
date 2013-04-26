@@ -52,6 +52,8 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
+//JaCoCo Exclude
+
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a
  * snippet. A concrete stub is defined a subclass of this class.

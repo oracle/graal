@@ -372,6 +372,11 @@ public class ReplacementsImpl implements Replacements {
                         if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
                             targetGraph = intrinsicGraph;
                         } else {
+                            if (callee.getName().startsWith("$jacoco")) {
+                                throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + format("%H.%n(%p)", callee) + " from " + format("%H.%n(%p)", methodToParse) +
+                                                " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                                                methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
+                            }
                             targetGraph = parseGraph(callee, policy);
                         }
                         InliningUtil.inline(callTarget.invoke(), targetGraph, true);
