@@ -47,13 +47,13 @@ public class ReturnTypeSpecializationTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", int.class);
+        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(new IntAssignLocal(slot, new StringTestChildNode()), new IntReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
-        Assert.assertEquals(int.class, slot.getType());
+        Assert.assertEquals(FrameSlotKind.Int, slot.getKind());
         Object result = target.call();
         Assert.assertEquals("42", result);
-        Assert.assertEquals(Object.class, slot.getType());
+        Assert.assertEquals(FrameSlotKind.Object, slot.getKind());
     }
 
     class TestRootNode extends RootNode {

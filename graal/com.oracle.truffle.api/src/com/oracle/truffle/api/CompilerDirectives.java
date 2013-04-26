@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.api;
 
+import java.lang.annotation.*;
 import java.util.concurrent.*;
 
 /**
@@ -30,7 +31,11 @@ import java.util.concurrent.*;
  */
 public class CompilerDirectives {
 
-    private static final double SLOWPATH_PROBABILITY = 0.0001;
+    public static final double LIKELY_PROBABILITY = 0.75;
+    public static final double UNLIKELY_PROBABILITY = 1.0 - LIKELY_PROBABILITY;
+
+    public static final double SLOWPATH_PROBABILITY = 0.0001;
+    public static final double FASTPATH_PROBABILITY = 1.0 - SLOWPATH_PROBABILITY;
 
     /**
      * Directive for the compiler to discontinue compilation at this code position and instead
@@ -62,20 +67,38 @@ public class CompilerDirectives {
     }
 
     /**
-     * Directive for the compiler that the current path has a very low probability to be executed.
-     */
-    public static void slowpath() {
-        injectBranchProbability(SLOWPATH_PROBABILITY);
-    }
-
-    /**
-     * Injects a probability for the current path into the probability information of the
-     * immediately preceeding branch instruction.
+     * Injects a probability for the given condition into the probability information of the
+     * immediately succeeding branch instruction for the condition. The probability must be a value
+     * between 0.0 and 1.0 (inclusive). The condition should not be a combined condition.
+     * 
+     * Example usage immediately before an if statement (it specifies that the likelihood for a to
+     * be greater than b is 90%):
+     * 
+     * <code>
+     * if (injectBranchProbability(0.9, a > b)) {
+     *    // ...
+     * }
+     * </code>
+     * 
+     * Example usage for a combined condition (it specifies that the likelihood for a to be greater
+     * than b is 90% and under the assumption that this is true, the likelihood for a being 0 is
+     * 10%):
+     * 
+     * <code>
+     * if (injectBranchProbability(0.9, a > b) && injectBranchProbability(0.1, a == 0)) {
+     *    // ...
+     * }
+     * </code>
+     * 
+     * There are predefined constants for commonly used probabilities (see
+     * {@link #LIKELY_PROBABILITY} , {@link #UNLIKELY_PROBABILITY}, {@link #SLOWPATH_PROBABILITY},
+     * {@link #FASTPATH_PROBABILITY} ).
      * 
      * @param probability the probability value between 0.0 and 1.0 that should be injected
      */
-    public static void injectBranchProbability(double probability) {
+    public static boolean injectBranchProbability(double probability, boolean condition) {
         assert probability >= 0.0 && probability <= 1.0;
+        return condition;
     }
 
     /**
@@ -84,5 +107,14 @@ public class CompilerDirectives {
      * @param reason the reason for the bailout
      */
     public static void bailout(String reason) {
+    }
+
+    /**
+     * Marks fields that should be considered final for a Truffle compilation although they are not
+     * final while executing in the interpreter.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.FIELD})
+    public @interface CompilationFinal {
     }
 }

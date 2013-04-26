@@ -115,7 +115,7 @@ public class TypeSystemTest {
         @Override
         public Object execute(VirtualFrame frame) {
             invocationCount++;
-            return ((TestArguments) frame.getArguments()).get(index);
+            return frame.getArguments(TestArguments.class).get(index);
         }
 
     }

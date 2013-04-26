@@ -36,9 +36,16 @@ public interface Frame {
     FrameDescriptor getFrameDescriptor();
 
     /**
+     * Retrieves the arguments object from this frame. The runtime assumes that the arguments object
+     * is never null. Additionally, the runtime may assume that the given parameter indicating the
+     * class of the arguments object is correct. The runtime is not required to actually check the
+     * type of the arguments object. The parameter must be a value that can be reduced to a compile
+     * time constant.
+     * 
+     * @param clazz the known type of the arguments object as a compile time constant
      * @return the arguments used when calling this method
      */
-    Arguments getArguments();
+    <T extends Arguments> T getArguments(Class<T> clazz);
 
     /**
      * Read access to a local variable of type {@link Object}.

@@ -53,9 +53,9 @@ public final class FrameDescriptor implements Cloneable {
         return addFrameSlot(identifier, null);
     }
 
-    public FrameSlot addFrameSlot(Object identifier, Class<?> type) {
+    public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
         assert !identifierToSlotMap.containsKey(identifier);
-        FrameSlotImpl slot = new FrameSlotImpl(this, identifier, slots.size(), type);
+        FrameSlotImpl slot = new FrameSlotImpl(this, identifier, slots.size(), kind);
         slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
         updateVersion();
@@ -74,12 +74,12 @@ public final class FrameDescriptor implements Cloneable {
         return addFrameSlot(identifier);
     }
 
-    public FrameSlot findOrAddFrameSlot(Object identifier, Class<?> type) {
+    public FrameSlot findOrAddFrameSlot(Object identifier, FrameSlotKind kind) {
         FrameSlot result = findFrameSlot(identifier);
         if (result != null) {
             return result;
         }
-        return addFrameSlot(identifier, type);
+        return addFrameSlot(identifier, kind);
     }
 
     public int getSize() {

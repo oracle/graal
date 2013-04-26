@@ -34,8 +34,8 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public Arguments getArguments() {
-        return wrapped.getArguments();
+    public <T extends Arguments> T getArguments(Class<T> clazz) {
+        return wrapped.getArguments(clazz);
     }
 
     @Override

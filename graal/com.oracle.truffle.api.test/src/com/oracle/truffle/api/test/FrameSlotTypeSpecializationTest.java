@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.*;
  * <p>
  * Dynamically typed languages can speculate on the type of a frame slot and only fall back at run
  * time to a more generic type if necessary. The new type of a frame slot can be set using the
- * {@link FrameSlot#setType(Class)} method.
+ * {@link FrameSlot#setKind(FrameSlotKind)} method.
  * </p>
  * 
  * <p>
@@ -48,13 +48,13 @@ public class FrameSlotTypeSpecializationTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", int.class);
+        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(new IntAssignLocal(slot, new StringTestChildNode()), new IntReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
-        Assert.assertEquals(int.class, slot.getType());
+        Assert.assertEquals(FrameSlotKind.Int, slot.getKind());
         Object result = target.call();
         Assert.assertEquals("42", result);
-        Assert.assertEquals(Object.class, slot.getType());
+        Assert.assertEquals(FrameSlotKind.Object, slot.getKind());
     }
 
     class TestRootNode extends RootNode {

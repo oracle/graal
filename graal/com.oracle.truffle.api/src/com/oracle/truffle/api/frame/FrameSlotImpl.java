@@ -27,13 +27,13 @@ public final class FrameSlotImpl implements FrameSlot {
     private final FrameDescriptor descriptor;
     private final Object identifier;
     private final int index;
-    private Class<?> type;
+    private FrameSlotKind kind;
 
-    protected FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, Class<?> type) {
+    protected FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, FrameSlotKind kind) {
         this.descriptor = descriptor;
         this.identifier = identifier;
         this.index = index;
-        this.type = type;
+        this.kind = kind;
     }
 
     public Object getIdentifier() {
@@ -44,19 +44,19 @@ public final class FrameSlotImpl implements FrameSlot {
         return index;
     }
 
-    public Class<?> getType() {
-        return type;
+    public FrameSlotKind getKind() {
+        return kind;
     }
 
-    public void setType(final Class<?> type) {
-        assert this.type != type;
-        this.type = type;
+    public void setKind(final FrameSlotKind kind) {
+        assert this.kind != kind;
+        this.kind = kind;
         this.descriptor.updateVersion();
     }
 
     @Override
     public String toString() {
-        return "[" + index + "," + identifier + "," + type + "]";
+        return "[" + index + "," + identifier + "," + kind + "]";
     }
 
     @Override

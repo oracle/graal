@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,6 @@
  */
 package com.oracle.truffle.api.frame;
 
-/**
- * A slot in a frame that can store a value of a given type.
- */
-public interface FrameSlot extends Cloneable {
-
-    Object getIdentifier();
-
-    int getIndex();
-
-    FrameSlotKind getKind();
-
-    void setKind(FrameSlotKind kind);
-
-    FrameDescriptor getFrameDescriptor();
+public enum FrameSlotKind {
+    Illegal, Object, Long, Int, Double, Float, Boolean;
 }

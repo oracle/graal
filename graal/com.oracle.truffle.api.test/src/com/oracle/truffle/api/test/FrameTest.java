@@ -35,9 +35,9 @@ import com.oracle.truffle.api.nodes.*;
  * The frame is the preferred data structure for passing values between nodes. It can in particular
  * be used for storing the values of local variables of the guest language. The
  * {@link FrameDescriptor} represents the current structure of the frame. The method
- * {@link FrameDescriptor#addFrameSlot(Object, Class)} can be used to create predefined frame slots.
- * The setter and getter methods in the {@link Frame} class can be used to access the current value
- * of a particular frame slot.
+ * {@link FrameDescriptor#addFrameSlot(Object, FrameSlotKind)} can be used to create predefined
+ * frame slots. The setter and getter methods in the {@link Frame} class can be used to access the
+ * current value of a particular frame slot.
  * </p>
  * 
  * <p>
@@ -64,7 +64,7 @@ public class FrameTest {
     public void test() {
         TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", int.class);
+        FrameSlot slot = frameDescriptor.addFrameSlot("localVar", FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(new AssignLocal(slot), new ReadLocal(slot));
         CallTarget target = runtime.createCallTarget(rootNode, frameDescriptor);
         Object result = target.call();
