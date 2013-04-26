@@ -303,6 +303,14 @@ public class CodeUtil {
             }
             sb.append(' ').append(bm).append(nl);
         }
+        RegisterSaveLayout calleeSaveInfo = info.getCalleeSaveInfo();
+        if (calleeSaveInfo != null) {
+            sb.append("callee-save-info:").append(nl);
+            Map<Integer, Register> map = calleeSaveInfo.slotsToRegisters(true);
+            for (Map.Entry<Integer, Register> e : map.entrySet()) {
+                sb.append("    ").append(e.getValue()).append(" -> ").append(formatter.formatStackSlot(e.getKey())).append(nl);
+            }
+        }
         BytecodeFrame frame = info.frame();
         if (frame != null) {
             append(sb, frame);
