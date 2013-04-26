@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.InputChangedListener;
+import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -49,6 +48,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final CustomCanonicalizer customCanonicalizer;
+    private final Iterable<Node> workingSet;
 
     public interface CustomCanonicalizer {
 
@@ -60,12 +60,17 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+        this(customCanonicalizer, null);
+    }
+
+    public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer, Iterable<Node> workingSet) {
         this.customCanonicalizer = customCanonicalizer;
+        this.workingSet = workingSet;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).run(graph);
+        new Instance(context.getRuntime(), context.getAssumptions(), workingSet, customCanonicalizer).run(graph);
     }
 
     public static class Instance extends Phase {
@@ -78,7 +83,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         private NodeWorkList workList;
         private Tool tool;
-        private List<Node> snapshotTemp;
 
         public Instance(MetaAccessProvider runtime, Assumptions assumptions) {
             this(runtime, assumptions, null, 0, null);
@@ -110,7 +114,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             this.runtime = runtime;
             this.customCanonicalizer = customCanonicalizer;
             this.initWorkingSet = workingSet;
-            this.snapshotTemp = new ArrayList<>();
         }
 
         @Override
@@ -129,19 +132,22 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         private void processWorkSet(StructuredGraph graph) {
-            graph.trackInputChange(new InputChangedListener() {
+            NodeChangedListener nodeChangedListener = new NodeChangedListener() {
 
                 @Override
-                public void inputChanged(Node node) {
+                public void nodeChanged(Node node) {
                     workList.addAgain(node);
                 }
-            });
+            };
+            graph.trackInputChange(nodeChangedListener);
+            graph.trackUsagesDroppedZero(nodeChangedListener);
 
             for (Node n : workList) {
                 processNode(n, graph);
             }
 
             graph.stopTrackingInputChange();
+            graph.stopTrackingUsagesDroppedZero();
         }
 
         private void processNode(Node node, StructuredGraph graph) {
@@ -153,17 +159,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 }
                 int mark = graph.getMark();
                 if (!tryKillUnused(node)) {
-                    node.inputs().filter(GraphUtil.isFloatingNode()).snapshotTo(snapshotTemp);
                     if (!tryCanonicalize(node, graph)) {
                         tryInferStamp(node, graph);
-                    } else {
-                        for (Node in : snapshotTemp) {
-                            if (in.isAlive() && in.usages().isEmpty()) {
-                                GraphUtil.killWithUnusedFloatingInputs(in);
-                            }
-                        }
                     }
-                    snapshotTemp.clear();
                 }
 
                 for (Node newNode : graph.getNewNodes(mark)) {

@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class InliningUtil {
 
@@ -450,7 +451,7 @@ public class InliningUtil {
             if (hasSingleMethod()) {
                 inlineSingleMethod(graph, callback, replacements, assumptions);
             } else {
-                inlineMultipleMethods(graph, callback, replacements, assumptions);
+                inlineMultipleMethods(graph, callback, replacements, assumptions, runtime);
             }
         }
 
@@ -462,7 +463,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
+        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions, MetaAccessProvider runtime) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -564,7 +565,7 @@ public class InliningUtil {
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes);
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new HighTierContext(runtime, assumptions, replacements));
                 }
             }
         }
