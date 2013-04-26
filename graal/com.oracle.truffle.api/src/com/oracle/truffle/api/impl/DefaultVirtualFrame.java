@@ -43,9 +43,10 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         this.tags = new byte[descriptor.getSize()];
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Arguments getArguments() {
-        return arguments;
+    public <T extends Arguments> T getArguments(Class<T> clazz) {
+        return (T) arguments;
     }
 
     @Override

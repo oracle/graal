@@ -35,7 +35,7 @@ import com.oracle.truffle.api.nodes.*;
  * A guest language can pass its own custom arguments when invoking a Truffle method by creating a
  * subclass of {@link Arguments}. When invoking a call target with
  * {@link CallTarget#call(Arguments)}, the arguments can be passed. A Truffle node can access the
- * arguments passed into the Truffle method by using {@link VirtualFrame#getArguments()}.
+ * arguments passed into the Truffle method by using {@link VirtualFrame#getArguments}.
  * </p>
  * 
  * <p>
@@ -97,7 +97,7 @@ public class ArgumentsTest {
         }
 
         int execute(VirtualFrame frame) {
-            return ((TestArguments) frame.getArguments()).values[index];
+            return frame.getArguments(TestArguments.class).values[index];
         }
     }
 }
