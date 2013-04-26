@@ -45,19 +45,23 @@ public class GuardsTest {
         assertEquals(Integer.MAX_VALUE, executeWith(root, Integer.MAX_VALUE - 1, 1));
         assertEquals(1, InvocationGuard.specializedInvocations);
         assertEquals(0, InvocationGuard.genericInvocations);
+        assertEquals(1, InvocationGuard.guardInvocations);
 
         assertEquals(42, executeWith(root, Integer.MAX_VALUE, 1));
         assertEquals(1, InvocationGuard.specializedInvocations);
         assertEquals(1, InvocationGuard.genericInvocations);
+        assertEquals(2, InvocationGuard.guardInvocations);
     }
 
     @NodeChildren({@NodeChild("value0"), @NodeChild("value1")})
     public abstract static class InvocationGuard extends ValueNode {
 
+        static int guardInvocations = 0;
         static int specializedInvocations = 0;
         static int genericInvocations = 0;
 
         boolean guard(int value0, int value1) {
+            guardInvocations++;
             return value0 != Integer.MAX_VALUE;
         }
 
