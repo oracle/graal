@@ -38,9 +38,10 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
         this.arguments = arguments;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public Arguments getArguments() {
-        return arguments;
+    public <T extends Arguments> T getArguments(Class<T> clazz) {
+        return (T) arguments;
     }
 
     @Override
