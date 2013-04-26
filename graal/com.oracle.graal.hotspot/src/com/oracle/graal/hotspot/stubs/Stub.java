@@ -103,7 +103,6 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         super(runtime, replacements, target);
         this.stubInfo = snippet(getClass(), methodName);
         this.linkage = linkage;
-
     }
 
     /**
@@ -127,12 +126,10 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     }
 
     private boolean checkCompilationResult(CompilationResult compResult) {
-        if (this instanceof NewArrayStub) {
-            for (DataPatch data : compResult.getDataReferences()) {
-                Constant constant = data.constant;
-                assert constant.getKind() != Kind.Object : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
-                assert constant.getPrimitiveAnnotation() == null : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
-            }
+        for (DataPatch data : compResult.getDataReferences()) {
+            Constant constant = data.constant;
+            assert constant.getKind() != Kind.Object : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
+            assert constant.getPrimitiveAnnotation() == null : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
         }
         return true;
     }

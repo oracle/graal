@@ -343,8 +343,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int typeProfileWidth;
 
     // runtime stubs
-    public long newInstanceStub;
-    public long newArrayStub;
     public long newMultiArrayStub;
     public long inlineCacheMissStub;
     public long handleExceptionStub;
@@ -381,6 +379,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long cipherBlockChainingEncryptAESCryptStub;
     public long cipherBlockChainingDecryptAESCryptStub;
 
+    public long newInstanceAddress;
     public long newArrayAddress;
 
     public int deoptReasonNullCheck;

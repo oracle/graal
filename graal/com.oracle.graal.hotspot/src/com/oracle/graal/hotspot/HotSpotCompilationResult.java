@@ -58,9 +58,7 @@ public final class HotSpotCompilationResult extends CompilerObject {
         this.comp = comp;
         this.entryBCI = entryBCI;
 
-        // Class stubClass = Stub.class;
-        Class stubClass = NewArrayStub.class;
-        if (graalRuntime().getRuntime().lookupJavaType(stubClass).isAssignableFrom(method.getDeclaringClass()) && method.getAnnotation(Snippet.class) != null) {
+        if (graalRuntime().getRuntime().lookupJavaType(Stub.class).isAssignableFrom(method.getDeclaringClass()) && method.getAnnotation(Snippet.class) != null) {
             this.stubName = MetaUtil.format("%h.%n", method);
         } else {
             this.stubName = null;

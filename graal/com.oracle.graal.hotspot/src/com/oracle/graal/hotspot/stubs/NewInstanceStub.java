@@ -22,12 +22,18 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -56,9 +62,15 @@ public class NewInstanceStub extends Stub {
     protected Arguments makeArguments(SnippetInfo stub) {
         HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) runtime.lookupJavaType(int[].class);
 
+        // RuntimeStub cannot (currently) support oops or metadata embedded in the code so we
+        // convert the hub (i.e., Klass*) for int[] to be a naked word. This should be safe since
+        // the int[] class will never be unloaded.
+        Constant intArrayHub = intArrayType.klass();
+        intArrayHub = Constant.forIntegerKind(graalRuntime().getTarget().wordKind, intArrayHub.asLong(), null);
+
         Arguments args = new Arguments(stub);
         args.add("hub", null);
-        args.addConst("intArrayHub", intArrayType.klass());
+        args.addConst("intArrayHub", intArrayHub);
         args.addConst("log", Boolean.getBoolean("graal.logNewInstanceStub"));
         return args;
     }
@@ -86,7 +98,17 @@ public class NewInstanceStub extends Stub {
                 }
             }
         }
-        return verifyOop(NewInstanceSlowStubCall.call(hub));
+
+        log(log, "newInstance: calling new_instance_c\n", 0L);
+
+        newInstanceC(NEW_INSTANCE_C, thread(), hub);
+
+        if (clearPendingException(thread())) {
+            log(log, "newInstance: deoptimizing to caller\n", 0L);
+            getAndClearObjectResult(thread());
+            DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+        }
+        return verifyOop(getAndClearObjectResult(thread()));
     }
 
     /**
@@ -208,4 +230,9 @@ public class NewInstanceStub extends Stub {
     private static boolean forceSlowPath() {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
+
+    public static final Descriptor NEW_INSTANCE_C = new Descriptor("new_instance_c", false, void.class, Word.class, Word.class);
+
+    @NodeIntrinsic(CRuntimeCall.class)
+    public static native void newInstanceC(@ConstantNodeParameter Descriptor newInstanceC, Word thread, Word hub);
 }
