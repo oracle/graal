@@ -29,8 +29,10 @@ import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -104,7 +106,7 @@ public class NewArrayStub extends Stub {
         }
         log(log, "newArray: calling new_array_runtime\n", 0L);
 
-        NewArrayRuntimeCall.call(thread(), hub, length);
+        callNewArrayC(NEW_ARRAY_C, thread(), hub, length);
 
         if (clearPendingException(thread())) {
             log(log, "newArray: deoptimizing to caller\n", 0L);
@@ -113,4 +115,10 @@ public class NewArrayStub extends Stub {
         }
         return verifyOop(clearObjectResult(thread()));
     }
+
+    public static final Descriptor NEW_ARRAY_C = new Descriptor("new_array_c", false, Object.class, Word.class, Word.class, int.class);
+
+    @NodeIntrinsic(CRuntimeCall.class)
+    public static native Object callNewArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);
+
 }
