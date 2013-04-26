@@ -33,6 +33,7 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
+import static com.oracle.graal.hotspot.stubs.Stub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -262,7 +263,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:     value */                       Kind.Long,
                         /* arg3:     value */                       Kind.Long));
 
-        addRuntimeCall(Stub.STUB_PRINTF, config.stubPrintfStub,
+        addRuntimeCall(STUB_PRINTF, config.stubPrintfStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    format */ javaCallingConvention(Kind.Long,
@@ -951,8 +952,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
-            long nmethod = ((HotSpotInstalledCode) code).getMethodAddress();
-            return graalRuntime.getCompilerToVM().disassembleNMethod(nmethod);
+            long codeBlob = ((HotSpotInstalledCode) code).getCodeBlob();
+            return graalRuntime.getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;
     }

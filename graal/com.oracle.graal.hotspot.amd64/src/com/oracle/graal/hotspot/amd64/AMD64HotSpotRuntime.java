@@ -29,7 +29,7 @@ import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewArraySlowStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewArrayRuntimeCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceSlowStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
@@ -110,11 +110,12 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_ARRAY_SLOW, config.newArrayStub,
+        addRuntimeCall(NEW_ARRAY_RUNTIME, config.newArrayAddress,
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word),
-                /* arg1: length */ rbx.asValue(Kind.Int));
+                /* arg0: thread */ nativeCallingConvention(word,
+                /* arg1:    hub */                         word,
+                /* arg2: length */                         Kind.Int));
 
         addStubCall(NEW_INSTANCE,
                 /*          ret */ rax.asValue(Kind.Object),

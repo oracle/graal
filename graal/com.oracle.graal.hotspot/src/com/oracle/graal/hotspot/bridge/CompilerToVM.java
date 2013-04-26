@@ -194,20 +194,20 @@ public interface CompilerToVM {
 
     long getMaxCallTargetOffset(long stub);
 
-    String disassembleNMethod(long nmethod);
+    String disassembleCodeBlob(long codeBlob);
 
     /**
-     * Gets a copy of the machine code for an nmethod.
+     * Gets a copy of the machine code for a CodeBlob.
      * 
-     * @return the machine code for {@code nmethod} if it is valid, null otherwise
+     * @return the machine code for {@code codeBlob} if it is valid, null otherwise
      */
-    byte[] getCode(long nmethod);
+    byte[] getCode(long codeBlob);
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nmethod) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethodVarargs(Object[] args, long nmethod) throws InvalidInstalledCodeException;
 
     int getVtableEntryOffset(long metaspaceMethod);
 

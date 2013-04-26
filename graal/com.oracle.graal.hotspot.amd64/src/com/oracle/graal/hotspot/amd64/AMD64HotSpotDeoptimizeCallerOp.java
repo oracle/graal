@@ -24,24 +24,29 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.amd64.AMD64DeoptimizeOp.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Returns from a function.
+ * Removes the current frame and tail calls the uncommon trap routine.
  */
-@Opcode("RETURN")
-final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
+@Opcode("DEOPT_CALLER")
+final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
 
-    @Use({REG, ILLEGAL}) protected Value value;
+    private final DeoptimizationAction action;
+    private final DeoptimizationReason reason;
 
-    AMD64HotSpotReturnOp(Value value) {
-        this.value = value;
+    AMD64HotSpotDeoptimizeCallerOp(DeoptimizationAction action, DeoptimizationReason reason) {
+        this.action = action;
+        this.reason = reason;
     }
 
     @Override
@@ -58,6 +63,9 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
         if (tasm.frameContext != null) {
             tasm.frameContext.leave(tasm);
         }
-        masm.ret(0);
+        HotSpotGraalRuntime runtime = graalRuntime();
+        Register thread = runtime.getRuntime().threadRegister();
+        masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
+        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE));
     }
 }

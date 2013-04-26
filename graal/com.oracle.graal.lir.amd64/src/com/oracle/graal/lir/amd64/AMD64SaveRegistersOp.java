@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,44 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.lir.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Returns from a function.
+ * Saves registers to stack slots.
  */
-@Opcode("RETURN")
-final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
+@Opcode("SAVE_REGISTER")
+public final class AMD64SaveRegistersOp extends AMD64RegisterPreservationOp {
 
-    @Use({REG, ILLEGAL}) protected Value value;
+    @Use(REG) protected RegisterValue[] src;
+    @Def(STACK) protected StackSlot[] dst;
 
-    AMD64HotSpotReturnOp(Value value) {
-        this.value = value;
+    public AMD64SaveRegistersOp(RegisterValue[] src, StackSlot[] dst) {
+        this.src = src;
+        this.dst = dst;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        if (isStackSlot(savedRbp)) {
-            // Restoring RBP from the stack must be done before the frame is removed
-            masm.movq(rbp, (AMD64Address) tasm.asAddress(savedRbp));
-        } else {
-            Register framePointer = asRegister(savedRbp);
-            if (framePointer != rbp) {
-                masm.movq(rbp, framePointer);
-            }
-        }
-        if (tasm.frameContext != null) {
-            tasm.frameContext.leave(tasm);
-        }
-        masm.ret(0);
+        emitCode(tasm, masm, dst, src);
     }
+
+    @Override
+    public void doNotPreserve(Set<Register> registers) {
+        doNotPreserve(registers, src, dst);
+    }
+
 }

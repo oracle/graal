@@ -35,17 +35,19 @@ import com.oracle.graal.word.*;
 /**
  * Node implementing a call to the {@code new_array} stub.
  */
-public class NewArraySlowStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+public class NewArrayRuntimeCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
+    @Input private final ValueNode thread;
     @Input private final ValueNode hub;
     @Input private final ValueNode length;
 
-    public static final Descriptor NEW_ARRAY_SLOW = new Descriptor("new_array_slow", false, Object.class, Word.class, int.class);
+    public static final Descriptor NEW_ARRAY_RUNTIME = new Descriptor("new_array_runtime", false, Object.class, Word.class, Word.class, int.class);
 
-    public NewArraySlowStubCall(ValueNode hub, ValueNode length) {
+    public NewArrayRuntimeCall(ValueNode thread, ValueNode hub, ValueNode length) {
         super(defaultStamp);
+        this.thread = thread;
         this.hub = hub;
         this.length = length;
     }
@@ -61,11 +63,11 @@ public class NewArraySlowStubCall extends DeoptimizingStubCall implements LIRGen
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY_SLOW);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub), gen.operand(length));
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_ARRAY_RUNTIME);
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(thread), gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Object call(Word hub, int length);
+    public static native Object call(Word thread, Word hub, int length);
 }

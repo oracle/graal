@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * Removes the current frame and tail calls the uncommon trap routine.
  */
-public interface HotSpotLIRGenerator {
+@NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
+public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
-    /**
-     * Emits an operation to make a tail call.
-     * 
-     * @param args the arguments of the call
-     * @param address the target address of the call
-     */
-    void emitTailcall(Value[] args, Value address);
+    private final DeoptimizationAction action;
+    private final DeoptimizationReason reason;
 
-    void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+    public DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
+        super(StampFactory.forVoid());
+        this.action = action;
+        this.reason = reason;
+    }
 
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        ((HotSpotLIRGenerator) gen).emitDeoptimizeCaller(action, reason);
+    }
 
-    /**
-     * Gets a stack slot for a lock at a given lock nesting depth.
-     */
-    StackSlot getLockSlot(int lockDepth);
+    @NodeIntrinsic
+    public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
 }

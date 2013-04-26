@@ -144,8 +144,8 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
             }
         }
         params[params.length - 1] = rbpParam;
-
         ParametersOp paramsOp = new ParametersOp(params);
+
         append(paramsOp);
 
         saveRbp = new SaveRbp(new PlaceholderOp(currentBlock, lir.lir(currentBlock).size()));
@@ -169,6 +169,74 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     protected boolean needOnlyOopMaps() {
         // Stubs only need oop maps
         return runtime().asStub(method) != null;
+    }
+
+    /**
+     * Map from debug infos that need to be updated with callee save information to the operations
+     * that provide the information.
+     */
+    Map<LIRFrameState, AMD64RestoreRegistersOp> calleeSaveInfo = new HashMap<>();
+
+    private LIRFrameState currentRuntimeCallInfo;
+
+    @Override
+    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+        boolean needsCalleeSave = callTarget.getDescriptor() == NewArrayRuntimeCall.NEW_ARRAY_RUNTIME;
+        if (needsCalleeSave) {
+            currentRuntimeCallInfo = info;
+        }
+        super.emitCall(callTarget, result, arguments, temps, info);
+    }
+
+    @Override
+    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
+        boolean needsCalleeSave = callTarget.getDescriptor() == NewArrayRuntimeCall.NEW_ARRAY_RUNTIME;
+
+        RegisterValue[] savedRegisters = null;
+        StackSlot[] savedRegisterLocations = null;
+        if (needsCalleeSave) {
+            Register returnReg = isRegister(cc.getReturn()) ? asRegister(cc.getReturn()) : null;
+            Set<Register> registers = new HashSet<>(Arrays.asList(frameMap.registerConfig.getAllocatableRegisters()));
+            if (returnReg != null) {
+                registers.remove(returnReg);
+            }
+
+            savedRegisters = new RegisterValue[registers.size()];
+            savedRegisterLocations = new StackSlot[savedRegisters.length];
+            int savedRegisterIndex = 0;
+            for (Register reg : registers) {
+                assert reg.isCpu() || reg.isFpu();
+                savedRegisters[savedRegisterIndex++] = reg.asValue(reg.isCpu() ? Kind.Long : Kind.Double);
+            }
+
+            append(new ParametersOp(savedRegisters));
+            for (int i = 0; i < savedRegisters.length; i++) {
+                StackSlot spillSlot = frameMap.allocateSpillSlot(Kind.Long);
+                savedRegisterLocations[i] = spillSlot;
+            }
+            AMD64SaveRegistersOp save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations);
+            append(save);
+
+            Value thread = args[0];
+            AMD64HotSpotCRuntimeCallPrologueOp op = new AMD64HotSpotCRuntimeCallPrologueOp(thread);
+            append(op);
+        }
+
+        Variable result = super.emitCall(callTarget, cc, info, args);
+
+        if (needsCalleeSave) {
+
+            Value thread = args[0];
+            AMD64HotSpotCRuntimeCallEpilogueOp op = new AMD64HotSpotCRuntimeCallEpilogueOp(thread);
+            append(op);
+
+            AMD64RestoreRegistersOp restore = new AMD64RestoreRegistersOp(savedRegisterLocations.clone(), savedRegisters.clone());
+            AMD64RestoreRegistersOp oldValue = calleeSaveInfo.put(currentRuntimeCallInfo, restore);
+            assert oldValue == null;
+            append(restore);
+        }
+
+        return result;
     }
 
     @Override
@@ -223,7 +291,6 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     @Override
     public void emitTailcall(Value[] args, Value address) {
         append(new AMD64TailcallOp(args, address));
-
     }
 
     @Override
@@ -260,6 +327,13 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     @Override
     public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
         append(new AMD64DeoptimizeOp(action, deopting.getDeoptimizationReason(), state(deopting)));
+    }
+
+    @Override
+    public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
+        AMD64HotSpotDeoptimizeCallerOp op = new AMD64HotSpotDeoptimizeCallerOp(action, reason);
+        epilogueOps.add(op);
+        append(op);
     }
 
     @Override

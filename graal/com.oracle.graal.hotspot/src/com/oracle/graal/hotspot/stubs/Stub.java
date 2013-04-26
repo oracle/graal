@@ -28,6 +28,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -76,13 +77,13 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     protected InstalledCode code;
 
     /**
-     * The registers defined by this stub.
+     * The registers/temporaries defined by this stub.
      */
     private Set<Register> definedRegisters;
 
     public void initDefinedRegisters(Set<Register> registers) {
         assert registers != null;
-        assert definedRegisters == null : "cannot redefine";
+        assert definedRegisters == null || registers.equals(definedRegisters) : "cannot redefine";
         definedRegisters = registers;
     }
 
@@ -123,6 +124,17 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return linkage;
     }
 
+    private boolean checkCompilationResult(CompilationResult compResult) {
+        if (this instanceof NewArrayStub) {
+            for (DataPatch data : compResult.getDataReferences()) {
+                Constant constant = data.constant;
+                assert constant.getKind() != Kind.Object : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
+                assert constant.getPrimitiveAnnotation() == null : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
+            }
+        }
+        return true;
+    }
+
     /**
      * Gets the code for this stub, compiling it first if necessary.
      */
@@ -143,6 +155,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog());
 
+                    assert checkCompilationResult(compResult);
+
                     assert definedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
 
@@ -156,7 +170,6 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                             return installedCode;
                         }
                     });
-
                 }
             });
             assert code != null : "error installing stub " + getMethod();

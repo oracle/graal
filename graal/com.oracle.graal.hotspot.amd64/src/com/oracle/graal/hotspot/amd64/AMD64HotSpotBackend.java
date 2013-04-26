@@ -45,6 +45,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -161,28 +162,59 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         Stub stub = runtime().asStub(lirGen.method());
         if (stub != null) {
-            final Set<Register> definedRegisters = new HashSet<>();
-            ValueProcedure defProc = new ValueProcedure() {
 
-                @Override
-                public Value doValue(Value value) {
-                    if (ValueUtil.isRegister(value)) {
-                        final Register reg = ValueUtil.asRegister(value);
-                        definedRegisters.add(reg);
-                    }
-                    return value;
+            List<AMD64RegisterPreservationOp> registerPreservations = new ArrayList<>();
+            final Set<Register> definedRegisters = gatherDefinedRegisters(lir, registerPreservations);
+            stub.initDefinedRegisters(definedRegisters);
+
+            // Eliminate unnecessary register preservation
+            for (AMD64RegisterPreservationOp op : registerPreservations) {
+                op.doNotPreserve(definedRegisters);
+            }
+
+            // Record where preserved registers are saved
+            for (Map.Entry<LIRFrameState, AMD64RestoreRegistersOp> e : gen.calleeSaveInfo.entrySet()) {
+                e.getValue().describePreservation(e.getKey().debugInfo(), frameMap);
+            }
+        }
+
+        return tasm;
+    }
+
+    /**
+     * Finds all the registers that are defined by some given LIR.
+     * 
+     * @param lir the LIR to examine
+     * @param registerPreservations register preservation operations in {@code lir} are added to this list
+     * @return the registers that are defined by or used as temps for any instruction in {@code lir}
+     */
+    private static Set<Register> gatherDefinedRegisters(LIR lir, List<AMD64RegisterPreservationOp> registerPreservations) {
+        final Set<Register> definedRegisters = new HashSet<>();
+        ValueProcedure defProc = new ValueProcedure() {
+
+            @Override
+            public Value doValue(Value value) {
+                if (ValueUtil.isRegister(value)) {
+                    final Register reg = ValueUtil.asRegister(value);
+                    definedRegisters.add(reg);
                 }
-            };
-            for (Block block : lir.codeEmittingOrder()) {
-                for (LIRInstruction op : lir.lir(block)) {
+                return value;
+            }
+        };
+        for (Block block : lir.codeEmittingOrder()) {
+            for (LIRInstruction op : lir.lir(block)) {
+                if (op instanceof AMD64RegisterPreservationOp) {
+                    // Don't consider these ops as definitions
+                    registerPreservations.add((AMD64RegisterPreservationOp) op);
+                } else if (op instanceof ParametersOp) {
+                    // Don't consider these ops as definitions
+                } else {
                     op.forEachTemp(defProc);
                     op.forEachOutput(defProc);
                 }
             }
-            stub.initDefinedRegisters(definedRegisters);
         }
-
-        return tasm;
+        return definedRegisters;
     }
 
     @Override

@@ -22,11 +22,17 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.replacements.*;
 
 /**
  * Augments a {@link CompilationResult} with HotSpot-specific information.
@@ -37,7 +43,12 @@ public final class HotSpotCompilationResult extends CompilerObject {
     public final CompilationResult comp;
     public final HotSpotResolvedJavaMethod method; // used only for methods
     public final int entryBCI; // used only for methods
-    public final String name; // used only for stubs
+
+    /**
+     * Name of the RuntimeStub to be installed for this compilation result. If null, then the
+     * compilation result will be installed as an nmethod.
+     */
+    public final String stubName;
 
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
@@ -46,7 +57,14 @@ public final class HotSpotCompilationResult extends CompilerObject {
         this.method = method;
         this.comp = comp;
         this.entryBCI = entryBCI;
-        this.name = null;
+
+        // Class stubClass = Stub.class;
+        Class stubClass = NewArrayStub.class;
+        if (graalRuntime().getRuntime().lookupJavaType(stubClass).isAssignableFrom(method.getDeclaringClass()) && method.getAnnotation(Snippet.class) != null) {
+            this.stubName = MetaUtil.format("%h.%n", method);
+        } else {
+            this.stubName = null;
+        }
 
         sites = getSortedSites(comp);
         if (comp.getExceptionHandlers() == null) {

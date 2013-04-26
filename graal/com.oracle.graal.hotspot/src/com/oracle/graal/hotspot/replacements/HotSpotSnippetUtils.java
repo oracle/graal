@@ -97,6 +97,20 @@ public class HotSpotSnippetUtils {
         return config().threadTlabStartOffset;
     }
 
+    public static final Object PENDING_EXCEPTION_LOCATION = LocationNode.createLocation("PendingException");
+
+    @Fold
+    private static int threadPendingExceptionOffset() {
+        return config().pendingExceptionOffset;
+    }
+
+    public static final Object OBJECT_RESULT_LOCATION = LocationNode.createLocation("ObjectResult");
+
+    @Fold
+    private static int objectResultOffset() {
+        return config().threadObjectResultOffset;
+    }
+
     public static Object readExceptionOop(Word thread) {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
     }
@@ -129,6 +143,28 @@ public class HotSpotSnippetUtils {
         thread.writeWord(threadTlabStartOffset(), start, TLAB_START_LOCATION);
         thread.writeWord(threadTlabTopOffset(), start, TLAB_TOP_LOCATION);
         thread.writeWord(threadTlabEndOffset(), end, TLAB_END_LOCATION);
+    }
+
+    /**
+     * Clears the pending exception if for the given thread.
+     * 
+     * @return {@code true} if there was a pending exception
+     */
+    public static boolean clearPendingException(Word thread) {
+        boolean result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION) != null;
+        thread.writeObject(threadPendingExceptionOffset(), null);
+        return result;
+    }
+
+    /**
+     * Gets and clears the object result from a runtime call stored in a thread local.
+     * 
+     * @return the object that was in the thread local
+     */
+    public static Object clearObjectResult(Word thread) {
+        Object result = thread.readObject(objectResultOffset(), OBJECT_RESULT_LOCATION);
+        thread.writeObject(objectResultOffset(), null);
+        return result;
     }
 
     @Fold
