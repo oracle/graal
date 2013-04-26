@@ -102,12 +102,12 @@ public class NewArrayStub extends Stub {
                 return verifyOop(memory.toObject());
             }
         }
-        log(log, "newArray: calling new_array_runtime", 0L);
+        log(log, "newArray: calling new_array_runtime\n", 0L);
 
         NewArrayRuntimeCall.call(thread(), hub, length);
 
         if (clearPendingException(thread())) {
-            log(log, "newArray: deoptimizing to caller", 0L);
+            log(log, "newArray: deoptimizing to caller\n", 0L);
             clearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
