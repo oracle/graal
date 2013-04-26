@@ -282,6 +282,7 @@ public class ReplacementsImpl implements Replacements {
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
+            new ConvertDeoptimizeToGuardPhase().apply(graph);
 
             if (original == null) {
                 new SnippetFrameStateCleanupPhase().apply(graph);
