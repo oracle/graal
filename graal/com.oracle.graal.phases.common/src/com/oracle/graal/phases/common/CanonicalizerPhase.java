@@ -153,17 +153,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 }
                 int mark = graph.getMark();
                 if (!tryKillUnused(node)) {
-                    node.inputs().filter(GraphUtil.isFloatingNode()).snapshotTo(snapshotTemp);
                     if (!tryCanonicalize(node, graph)) {
                         tryInferStamp(node, graph);
-                    } else {
-                        for (Node in : snapshotTemp) {
-                            if (in.isAlive() && in.usages().isEmpty()) {
-                                GraphUtil.killWithUnusedFloatingInputs(in);
-                            }
-                        }
                     }
-                    snapshotTemp.clear();
                 }
 
                 for (Node newNode : graph.getNewNodes(mark)) {
