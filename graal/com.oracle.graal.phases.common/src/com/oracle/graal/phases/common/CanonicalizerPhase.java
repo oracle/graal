@@ -28,7 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Graph.InputChangedListener;
+import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -132,19 +132,22 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         private void processWorkSet(StructuredGraph graph) {
-            graph.trackInputChange(new InputChangedListener() {
+            NodeChangedListener nodeChangedListener = new NodeChangedListener() {
 
                 @Override
-                public void inputChanged(Node node) {
+                public void nodeChanged(Node node) {
                     workList.addAgain(node);
                 }
-            });
+            };
+            graph.trackInputChange(nodeChangedListener);
+            graph.trackUsagesDroppedZero(nodeChangedListener);
 
             for (Node n : workList) {
                 processNode(n, graph);
             }
 
             graph.stopTrackingInputChange();
+            graph.stopTrackingUsagesDroppedZero();
         }
 
         private void processNode(Node node, StructuredGraph graph) {
