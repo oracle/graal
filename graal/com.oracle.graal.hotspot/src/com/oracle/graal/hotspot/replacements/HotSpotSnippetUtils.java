@@ -161,7 +161,7 @@ public class HotSpotSnippetUtils {
      * 
      * @return the object that was in the thread local
      */
-    public static Object clearObjectResult(Word thread) {
+    public static Object getAndClearObjectResult(Word thread) {
         Object result = thread.readObject(objectResultOffset(), OBJECT_RESULT_LOCATION);
         thread.writeObject(objectResultOffset(), null);
         return result;

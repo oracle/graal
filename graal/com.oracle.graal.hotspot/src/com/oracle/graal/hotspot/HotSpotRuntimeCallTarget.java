@@ -46,7 +46,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     private long address;
 
     /**
-     * Non-null (eventually) iff this is a call to a snippet-based {@linkplain Stub stub}.
+     * Non-null (eventually) iff this is a call to a compiled {@linkplain Stub stub}.
      */
     private Stub stub;
 
@@ -112,5 +112,13 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     public boolean preservesRegisters() {
         assert address != 0;
         return true;
+    }
+
+    /**
+     * Determines if this is a link to a C/C++ function in the HotSpot runtime.
+     */
+    public boolean isCRuntimeCall() {
+        HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
+        return address == config.newArrayAddress || address == config.newInstanceAddress;
     }
 }

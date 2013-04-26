@@ -104,21 +104,20 @@ public class NewArrayStub extends Stub {
                 return verifyOop(memory.toObject());
             }
         }
-        log(log, "newArray: calling new_array_runtime\n", 0L);
+        log(log, "newArray: calling new_array_c\n", 0L);
 
-        callNewArrayC(NEW_ARRAY_C, thread(), hub, length);
+        newArrayC(NEW_ARRAY_C, thread(), hub, length);
 
         if (clearPendingException(thread())) {
             log(log, "newArray: deoptimizing to caller\n", 0L);
-            clearObjectResult(thread());
+            getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
-        return verifyOop(clearObjectResult(thread()));
+        return verifyOop(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_ARRAY_C = new Descriptor("new_array_c", false, Object.class, Word.class, Word.class, int.class);
+    public static final Descriptor NEW_ARRAY_C = new Descriptor("new_array_c", false, void.class, Word.class, Word.class, int.class);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native Object callNewArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);
-
+    public static native void newArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);
 }

@@ -182,7 +182,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        boolean needsCalleeSave = callTarget.getDescriptor() == NewArrayStub.NEW_ARRAY_C;
+        boolean needsCalleeSave = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
         if (needsCalleeSave) {
             currentRuntimeCallInfo = info;
         }
@@ -191,7 +191,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
 
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
-        boolean needsCalleeSave = callTarget.getDescriptor() == NewArrayStub.NEW_ARRAY_C;
+        boolean needsCalleeSave = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
 
         RegisterValue[] savedRegisters = null;
         StackSlot[] savedRegisterLocations = null;
