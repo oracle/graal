@@ -279,7 +279,10 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void finalizeGraph(StructuredGraph graph) {
             new NodeIntrinsificationPhase(runtime).apply(graph);
-            assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
+            if (!SnippetTemplate.hasConstantParameter(method)) {
+                NodeIntrinsificationVerificationPhase.verify(graph);
+            }
+            new ConvertDeoptimizeToGuardPhase().apply(graph);
 
             if (original == null) {
                 new SnippetFrameStateCleanupPhase().apply(graph);

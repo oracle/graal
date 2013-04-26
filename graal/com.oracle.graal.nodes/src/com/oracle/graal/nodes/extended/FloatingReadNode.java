@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -53,7 +54,8 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.setResult(this, location().generateLoad(gen, gen.operand(object()), this));
+        Value address = location().generateAddress(gen, gen.operand(object()));
+        gen.setResult(this, gen.emitLoad(location().getValueKind(), address, this));
     }
 
     @Override

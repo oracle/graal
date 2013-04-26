@@ -22,17 +22,17 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.util.*;
 
 /**
  * Instances of this node class will look for a preceding if node and put the given probability into
  * the if node's taken probability. Then the branch probability node will be removed. This node is
  * intended primarily for snippets, so that they can define their fast and slow paths.
  */
-public class BranchProbabilityNode extends FixedWithNextNode implements Simplifiable {
+public class BranchProbabilityNode extends FloatingNode implements Canonicalizable, Lowerable {
 
     public static final double LIKELY_PROBABILITY = 0.6;
     public static final double NOT_LIKELY_PROBABILITY = 1 - LIKELY_PROBABILITY;
@@ -43,41 +43,80 @@ public class BranchProbabilityNode extends FixedWithNextNode implements Simplifi
     public static final double FAST_PATH_PROBABILITY = 0.99;
     public static final double SLOW_PATH_PROBABILITY = 1 - FAST_PATH_PROBABILITY;
 
-    public static final double NOT_DEOPT_PATH_PROBABILITY = 0.999;
-    public static final double DEOPT_PATH_PROBABILITY = 1 - NOT_DEOPT_PATH_PROBABILITY;
+    public static final double VERY_FAST_DEOPT_PATH_PROBABILITY = 0.999;
+    public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_DEOPT_PATH_PROBABILITY;
 
-    private final double probability;
+    @Input private ValueNode probability;
+    @Input private ValueNode condition;
 
-    public BranchProbabilityNode(double probability) {
-        super(StampFactory.forVoid());
-        assert probability >= 0 && probability <= 1;
+    public BranchProbabilityNode(ValueNode probability, ValueNode condition) {
+        super(condition.stamp());
         this.probability = probability;
+        this.condition = condition;
+    }
+
+    public ValueNode getProbability() {
+        return probability;
+    }
+
+    public ValueNode getCondition() {
+        return condition;
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
-        FixedNode current = this;
-        while (!(current instanceof BeginNode)) {
-            current = (FixedNode) current.predecessor();
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (probability.isConstant()) {
+            double probabilityValue = probability.asConstant().asDouble();
+            if (probabilityValue < 0.0) {
+                throw new GraalInternalError("A negative probability of " + probabilityValue + " is not allowed!");
+            } else if (probabilityValue > 1.0) {
+                throw new GraalInternalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
+            }
+            boolean couldSet = false;
+            for (IntegerEqualsNode node : this.usages().filter(IntegerEqualsNode.class)) {
+                if (node.condition() == Condition.EQ) {
+                    ValueNode other = node.x();
+                    if (node.x() == this) {
+                        other = node.y();
+                    }
+                    if (other.isConstant()) {
+                        double probabilityToSet = probabilityValue;
+                        if (other.asConstant().asInt() == 0) {
+                            probabilityToSet = 1.0 - probabilityToSet;
+                        }
+                        for (IfNode ifNodeUsages : node.usages().filter(IfNode.class)) {
+                            couldSet = true;
+                            ifNodeUsages.setTrueSuccessorProbability(probabilityToSet);
+                        }
+                    }
+                }
+            }
+            if (!couldSet) {
+                throw new GraalInternalError("Wrong usage of branch probability injection!");
+            }
+            return condition;
         }
-        BeginNode begin = (BeginNode) current;
-        assert begin.predecessor() instanceof IfNode : "explicit branch probability cannot follow a merge, only if nodes";
-        IfNode ifNode = (IfNode) begin.predecessor();
-        if (ifNode.trueSuccessor() == begin) {
-            ifNode.setTrueSuccessorProbability(probability);
-        } else {
-            ifNode.setTrueSuccessorProbability(1 - probability);
-        }
-
-        FixedNode next = next();
-        setNext(null);
-        ((FixedWithNextNode) predecessor()).setNext(next);
-        GraphUtil.killCFG(this);
+        return this;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * This intrinsic should only be used for the condition of an if statement. The parameter
+     * condition should also only denote a simple condition and not a combined condition involving
+     * && or || operators. It injects the probability of the condition into the if statement.
+     * 
+     * @param probability the probability that the given condition is true as a double value between
+     *            0.0 and 1.0.
+     * @param condition the simple condition without any && or || operators
+     * @return the condition
+     */
     @NodeIntrinsic
-    public static void probability(@ConstantNodeParameter double probability) {
+    public static boolean probability(double probability, boolean condition) {
+        assert probability >= 0.0 && probability <= 1.0;
+        return condition;
     }
 
+    @Override
+    public void lower(LoweringTool tool, LoweringType loweringType) {
+        throw new GraalInternalError("Branch probability could not be injected, because the probability value did not reduce to a constant value.");
+    }
 }

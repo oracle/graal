@@ -117,7 +117,7 @@ public class StandardOp {
 
         Value getInput();
 
-        Value getResult();
+        AllocatableValue getResult();
     }
 
     /**
