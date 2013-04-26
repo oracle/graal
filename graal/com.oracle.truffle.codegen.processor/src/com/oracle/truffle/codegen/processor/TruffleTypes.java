@@ -48,6 +48,7 @@ public final class TruffleTypes {
     private final DeclaredType childAnnotation;
     private final DeclaredType childrenAnnotation;
     private final TypeMirror compilerDirectives;
+    private final TypeMirror compilerAsserts;
 
     private final List<String> errors = new ArrayList<>();
 
@@ -59,6 +60,7 @@ public final class TruffleTypes {
         childAnnotation = getRequired(context, Child.class);
         childrenAnnotation = getRequired(context, Children.class);
         compilerDirectives = getRequired(context, CompilerDirectives.class);
+        compilerAsserts = getRequired(context, CompilerAsserts.class);
         assumption = getRequired(context, Assumption.class);
         invalidAssumption = getRequired(context, InvalidAssumptionException.class);
     }
@@ -117,5 +119,9 @@ public final class TruffleTypes {
 
     public DeclaredType getChildrenAnnotation() {
         return childrenAnnotation;
+    }
+
+    public TypeMirror getCompilerAsserts() {
+        return compilerAsserts;
     }
 }
