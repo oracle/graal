@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
@@ -49,6 +48,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final CustomCanonicalizer customCanonicalizer;
+    private final Iterable<Node> workingSet;
 
     public interface CustomCanonicalizer {
 
@@ -60,12 +60,17 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
+        this(customCanonicalizer, null);
+    }
+
+    public CanonicalizerPhase(CustomCanonicalizer customCanonicalizer, Iterable<Node> workingSet) {
         this.customCanonicalizer = customCanonicalizer;
+        this.workingSet = workingSet;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).run(graph);
+        new Instance(context.getRuntime(), context.getAssumptions(), workingSet, customCanonicalizer).run(graph);
     }
 
     public static class Instance extends Phase {
@@ -78,7 +83,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         private NodeWorkList workList;
         private Tool tool;
-        private List<Node> snapshotTemp;
 
         public Instance(MetaAccessProvider runtime, Assumptions assumptions) {
             this(runtime, assumptions, null, 0, null);
@@ -110,7 +114,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             this.runtime = runtime;
             this.customCanonicalizer = customCanonicalizer;
             this.initWorkingSet = workingSet;
-            this.snapshotTemp = new ArrayList<>();
         }
 
         @Override

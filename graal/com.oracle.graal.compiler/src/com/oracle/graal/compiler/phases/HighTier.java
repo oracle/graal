@@ -34,16 +34,10 @@ public class HighTier extends PhaseSuite<HighTierContext> {
     public HighTier() {
         if (GraalOptions.FullUnroll) {
             addPhase(new LoopFullUnrollPhase());
-            if (GraalOptions.OptCanonicalizer) {
-                addPhase(new CanonicalizerPhase());
-            }
         }
 
         if (GraalOptions.OptTailDuplication) {
             addPhase(new TailDuplicationPhase());
-            if (GraalOptions.OptCanonicalizer) {
-                addPhase(new CanonicalizerPhase());
-            }
         }
 
         if (GraalOptions.PartialEscapeAnalysis) {
