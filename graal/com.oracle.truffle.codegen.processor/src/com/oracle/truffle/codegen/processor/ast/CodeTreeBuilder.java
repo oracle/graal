@@ -475,6 +475,19 @@ public class CodeTreeBuilder {
         currentElement.registerAtEnd(callback);
     }
 
+    public CodeTreeBuilder defaultDeclaration(TypeMirror type, String name) {
+        if (!Utils.isVoid(type)) {
+            startStatement();
+            type(type);
+            string(" ");
+            string(name);
+            string(" = ");
+            defaultValue(type);
+            end(); // statement
+        }
+        return this;
+    }
+
     public CodeTreeBuilder declaration(TypeMirror type, String name, CodeTree init) {
         if (Utils.isVoid(type)) {
             startStatement();
