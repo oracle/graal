@@ -96,7 +96,8 @@ public final class FrameMap {
 
     /**
      * Size of the area occupied by outgoing overflow arguments. This value is adjusted as calling
-     * conventions for outgoing calls are retrieved. On some platforms, there is a minimum
+     * conventions for outgoing calls are retrieved. On some platforms, there is a minimum outgoing
+     * size even if no overflow arguments are on the stack.
      */
     private int outgoingSize;
 
