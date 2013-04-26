@@ -78,22 +78,18 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
             BeginNode otherBegin = ifNode.trueSuccessor();
             LogicNode conditionNode = ifNode.condition();
-            if (!(conditionNode instanceof InstanceOfNode) && !(conditionNode instanceof InstanceOfDynamicNode)) {
-                // TODO The lowering currently does not support a FixedGuard as the usage of an
-                // InstanceOfNode. Relax this restriction.
-                FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
-                FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
-                if (deoptBegin == ifNode.trueSuccessor()) {
-                    graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
-                } else {
-                    graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
-                }
-                Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
-                FixedNode next = pred.next();
-                pred.setNext(guard);
-                guard.setNext(next);
-                return;
+            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
+            FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
+            if (deoptBegin == ifNode.trueSuccessor()) {
+                graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
+            } else {
+                graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
             }
+            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
+            FixedNode next = pred.next();
+            pred.setNext(guard);
+            guard.setNext(next);
+            return;
         }
 
         // We could not convert the control split - at least cut off control flow after the split.

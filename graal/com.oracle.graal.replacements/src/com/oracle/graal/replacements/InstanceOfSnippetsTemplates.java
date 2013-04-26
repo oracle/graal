@@ -97,8 +97,8 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
      */
     protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, LoweringTool tool, int nUsages, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
-        if (usage instanceof IfNode) {
-            replacer = new IfUsageReplacer(instantiation, ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph), instanceOf, (IfNode) usage);
+        if (usage instanceof IfNode || usage instanceof FixedGuardNode) {
+            replacer = new IfUsageReplacer(instantiation, ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph), instanceOf, (FixedNode) usage);
         } else {
             assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
             ConditionalNode c = (ConditionalNode) usage;
@@ -193,9 +193,9 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
      */
     public static class IfUsageReplacer extends InstanceOfUsageReplacer {
 
-        private final IfNode usage;
+        private final FixedNode usage;
 
-        public IfUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, IfNode usage) {
+        public IfUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, FixedNode usage) {
             super(instantiation, instanceOf, trueValue, falseValue);
             this.usage = usage;
         }
