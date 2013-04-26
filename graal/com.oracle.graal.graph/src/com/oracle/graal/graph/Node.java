@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.graph;
 
-import java.io.*;
 import java.lang.annotation.*;
 import java.util.*;
 
