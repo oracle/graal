@@ -117,4 +117,10 @@ public class SourceSection {
     public final String getCode() {
         return getSource().getCode().substring(charIndex, charLength);
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s:%d", source.getName(), startLine);
+    }
+
 }
