@@ -32,6 +32,7 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
+import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.Stub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
@@ -359,6 +360,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         registerStub(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
         registerStub(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
+        registerStub(new NewMultiArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_MULTI_ARRAY)));
     }
 
     private void registerStub(Stub stub) {

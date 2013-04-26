@@ -119,6 +119,6 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
      */
     public boolean isCRuntimeCall() {
         HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
-        return address == config.newArrayAddress || address == config.newInstanceAddress;
+        return address == config.newArrayAddress || address == config.newInstanceAddress || address == config.newMultiArrayAddress;
     }
 }

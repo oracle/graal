@@ -43,6 +43,7 @@ import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitut
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
+import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -127,12 +128,19 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0: thread */ nativeCallingConvention(word,
                 /* arg1:    hub */                         word));
 
-        addRuntimeCall(NEW_MULTI_ARRAY, config.newMultiArrayStub,
-                /*        temps */ null,
+        addStubCall(NEW_MULTI_ARRAY,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rax.asValue(word),
                 /* arg1:   rank */ rbx.asValue(Kind.Int),
                 /* arg2:   dims */ rcx.asValue(word));
+
+        addRuntimeCall(NEW_MULTI_ARRAY_C, config.newMultiArrayAddress,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0: thread */ nativeCallingConvention(word,
+                /* arg1:    hub */                         word,
+                /* arg2:   rank */                         Kind.Int,
+                /* arg3:   dims */                         word));
 
         addRuntimeCall(VERIFY_OOP, config.verifyOopStub,
                 /*        temps */ null,
