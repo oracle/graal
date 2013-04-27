@@ -166,7 +166,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
-        if (falseSuccessor().guards().isEmpty() && falseSuccessor().next() instanceof IfNode) {
+        if (falseSuccessor().usages().isEmpty() && falseSuccessor().next() instanceof IfNode) {
             BeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
             double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
@@ -208,7 +208,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     JavaTypeProfile profileA = instanceOfA.profile();
                     JavaTypeProfile profileB = instanceOfB.profile();
 
-                    Debug.log("Can swap instanceof for types (%s, %.3f) and (%s, %.3f)", instanceOfA.type(), probabilityA, instanceOfB.type(), probabilityB);
+                    Debug.log("Can swap instanceof for types %s and %s", instanceOfA.type(), instanceOfB.type());
                     JavaTypeProfile newProfile = null;
                     if (profileA != null && profileB != null) {
                         double remainder = 1.0;
@@ -244,6 +244,27 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     instanceOfB.setProfile(profileA);
                     instanceOfA.setProfile(newProfile);
                     return true;
+                }
+            }
+        } else if (a instanceof CompareNode) {
+            CompareNode compareA = (CompareNode) a;
+            Condition conditionA = compareA.condition();
+            if (b instanceof CompareNode) {
+                CompareNode compareB = (CompareNode) b;
+                Condition conditionB = null;
+                if (compareB.x() == compareA.x() && compareB.y() == compareA.y()) {
+                    conditionB = compareB.condition();
+                } else if (compareB.x() == compareA.y() && compareB.y() == compareA.x()) {
+                    conditionB = compareB.condition().mirror();
+                }
+
+                if (conditionB != null) {
+                    Condition combined = conditionA.join(conditionB);
+                    if (combined == null) {
+                        // The two conditions are disjoint => can reorder.
+                        Debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, conditionB);
+                        return true;
+                    }
                 }
             }
         }
