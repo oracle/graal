@@ -68,8 +68,14 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public ValueNode createNullCheckGuard(ValueNode object) {
-            return createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+        public ValueNode createNullCheckGuard(NodeInputList<ValueNode> list, ValueNode object) {
+            if (object.objectStamp().nonNull()) {
+                // Short cut creation of null check guard if the object is known to be non-null.
+                return null;
+            }
+            ValueNode guard = createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+            list.add(guard);
+            return guard;
         }
 
         @Override
