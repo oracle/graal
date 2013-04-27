@@ -674,6 +674,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
             tool.createNullCheckGuard(hub.dependencies(), object);
             graph.replaceFixed(loadHub, hub);
+        } else if (n instanceof LoadMethodNode) {
+            LoadMethodNode loadMethodNode = (LoadMethodNode) n;
+            HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) loadMethodNode.getMethod();
+            assert !hsMethod.getDeclaringClass().isInterface();
+
+            int vtableEntryOffset = hsMethod.vtableEntryOffset();
+            assert vtableEntryOffset > 0;
+            // We use LocationNode.ANY_LOCATION for the reads that access the vtable
+            // entry as HotSpot does not guarantee that this is a final value.
+            ReadNode metaspaceMethod = graph.add(new ReadNode(loadMethodNode.getHub(), ConstantLocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph),
+                            StampFactory.forKind(wordKind())));
+            graph.replaceFixed(loadMethodNode, metaspaceMethod);
         } else if (n instanceof FixedGuardNode) {
             FixedGuardNode node = (FixedGuardNode) n;
             ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated())));
