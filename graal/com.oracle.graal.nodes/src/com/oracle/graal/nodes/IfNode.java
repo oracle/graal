@@ -219,7 +219,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             if (instanceOfB.type().isAssignableFrom(type.getType())) {
                                 // Do not add to profile.
                             } else {
-                                ProfiledType newType = new ProfiledType(type.getType(), type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB));
+                                ProfiledType newType = new ProfiledType(type.getType(), Math.max(1.0, type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB)));
                                 profiledTypes.add(newType);
                                 remainder -= newType.getProbability();
                             }
@@ -227,7 +227,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
                         for (ProfiledType type : profileA.getTypes()) {
                             if (instanceOfA.type().isAssignableFrom(type.getType())) {
-                                ProfiledType newType = new ProfiledType(type.getType(), type.getProbability() / (1.0 - probabilityB));
+                                ProfiledType newType = new ProfiledType(type.getType(), Math.max(1.0, type.getProbability() / (1.0 - probabilityB)));
                                 profiledTypes.add(newType);
                                 remainder -= newType.getProbability();
                             }
