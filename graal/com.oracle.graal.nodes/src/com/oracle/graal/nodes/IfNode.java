@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -146,15 +147,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
                 ((StructuredGraph) graph()).removeSplit(this, trueSuccessor());
+                return;
             } else {
                 tool.deleteBranch(trueSuccessor());
                 tool.addToWorkList(falseSuccessor());
                 ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
+                return;
             }
         } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
-            if (!removeOrMaterializeIf(tool)) {
-                removeIntermediateMaterialization(tool);
+            if (removeOrMaterializeIf(tool)) {
+                return;
             }
+        }
+        if (removeIntermediateMaterialization(tool)) {
+            return;
         }
     }
 
@@ -173,7 +179,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (!phis.hasNext()) {
                     // empty if construct with no phis: remove it
                     removeEmptyIf(tool);
-                    return false;
+                    return true;
                 } else {
                     PhiNode singlePhi = phis.next();
                     if (!phis.hasNext()) {
