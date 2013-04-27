@@ -173,7 +173,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (this.trueSuccessorProbability < probabilityB) {
                 // Reordering of those two if statements is beneficial from the point of view of
                 // their probabilities.
-                if (prepareForSwap(condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
+                if (prepareForSwap(tool.runtime(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
                     assert intermediateBegin.next() == nextIf;
                     BeginNode bothFalseBegin = nextIf.falseSuccessor();
                     nextIf.setFalseSuccessor(null);
@@ -184,12 +184,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     nextIf.setFalseSuccessor(intermediateBegin);
                     intermediateBegin.setNext(this);
                     this.setFalseSuccessor(bothFalseBegin);
+                    return;
                 }
             }
         }
     }
 
-    private static boolean prepareForSwap(LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
+    private static boolean prepareForSwap(MetaAccessProvider runtime, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
             if (b instanceof IsNullNode) {
@@ -251,18 +252,39 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             Condition conditionA = compareA.condition();
             if (b instanceof CompareNode) {
                 CompareNode compareB = (CompareNode) b;
-                Condition conditionB = null;
+                if (compareA == compareB) {
+                    Debug.log("Same conditions => do not swap and leave the work for global value numbering.");
+                    return false;
+                }
+                Condition comparableCondition = null;
+                Condition conditionB = compareB.condition();
                 if (compareB.x() == compareA.x() && compareB.y() == compareA.y()) {
-                    conditionB = compareB.condition();
+                    comparableCondition = conditionB;
                 } else if (compareB.x() == compareA.y() && compareB.y() == compareA.x()) {
-                    conditionB = compareB.condition().mirror();
+                    comparableCondition = conditionB.mirror();
                 }
 
-                if (conditionB != null) {
-                    Condition combined = conditionA.join(conditionB);
+                if (comparableCondition != null) {
+                    Condition combined = conditionA.join(comparableCondition);
                     if (combined == null) {
                         // The two conditions are disjoint => can reorder.
-                        Debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, conditionB);
+                        Debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
+                        return true;
+                    }
+                } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {
+                    boolean canSwap = false;
+                    if ((compareA.x() == compareB.x() && valuesDistinct(runtime, compareA.y(), compareB.y()))) {
+                        canSwap = true;
+                    } else if ((compareA.x() == compareB.y() && valuesDistinct(runtime, compareA.y(), compareB.x()))) {
+                        canSwap = true;
+                    } else if ((compareA.y() == compareB.x() && valuesDistinct(runtime, compareA.x(), compareB.y()))) {
+                        canSwap = true;
+                    } else if ((compareA.y() == compareB.y() && valuesDistinct(runtime, compareA.x(), compareB.x()))) {
+                        canSwap = true;
+                    }
+
+                    if (canSwap) {
+                        Debug.log("Can swap equality condition with one shared and one disjoint value.");
                         return true;
                     }
                 }
@@ -270,6 +292,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         return false;
+    }
+
+    private static boolean valuesDistinct(MetaAccessProvider runtime, ValueNode a, ValueNode b) {
+        if (a.isConstant() && b.isConstant()) {
+            return !runtime.constantEquals(a.asConstant(), b.asConstant());
+        }
+
+        Stamp stampA = a.stamp();
+        Stamp stampB = b.stamp();
+        return stampA.alwaysDistinct(stampB);
     }
 
     /**
