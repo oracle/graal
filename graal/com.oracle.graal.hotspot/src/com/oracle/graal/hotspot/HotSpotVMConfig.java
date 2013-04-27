@@ -343,7 +343,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int typeProfileWidth;
 
     // runtime stubs
-    public long newMultiArrayStub;
     public long inlineCacheMissStub;
     public long handleExceptionStub;
     public long handleDeoptStub;
@@ -381,6 +380,7 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     public long newInstanceAddress;
     public long newArrayAddress;
+    public long newMultiArrayAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;
