@@ -877,12 +877,13 @@ public class InliningUtil {
         }
 
         ProfiledType[] rawProfiledTypes = typeProfile.getTypes();
-        ArrayList<ProfiledType> ptypes = getCompatibleTypes(rawProfiledTypes, holder);
+        double[] newNotRecordedTypeProbability = new double[1];
+        ArrayList<ProfiledType> ptypes = getCompatibleTypes(typeProfile, holder, newNotRecordedTypeProbability);
         if (ptypes == null || ptypes.size() <= 0) {
             return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remained after filtering (%d types were recorded)", rawProfiledTypes.length);
         }
 
-        double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
+        double notRecordedTypeProbability = newNotRecordedTypeProbability[0];
         if (ptypes.size() == 1 && notRecordedTypeProbability == 0) {
             if (!optimisticOpts.inlineMonomorphicCalls()) {
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining monomorphic calls is disabled");
@@ -997,15 +998,28 @@ public class InliningUtil {
         }
     }
 
-    private static ArrayList<ProfiledType> getCompatibleTypes(ProfiledType[] types, ResolvedJavaType holder) {
+    private static ArrayList<ProfiledType> getCompatibleTypes(JavaTypeProfile profile, ResolvedJavaType holder, double[] newNotRecordedTypeProbability) {
         ArrayList<ProfiledType> result = new ArrayList<>();
-        for (int i = 0; i < types.length; i++) {
-            ProfiledType ptype = types[i];
+        double totalIncompatibleProbability = 0.0;
+        for (int i = 0; i < profile.getTypes().length; i++) {
+            ProfiledType ptype = profile.getTypes()[i];
             ResolvedJavaType type = ptype.getType();
             assert !type.isInterface() && (type.isArray() || !Modifier.isAbstract(type.getModifiers())) : type;
             if (!GraalOptions.OptFilterProfiledTypes || holder.isAssignableFrom(type)) {
                 result.add(ptype);
+            } else {
+                totalIncompatibleProbability += ptype.getProbability();
             }
+        }
+        newNotRecordedTypeProbability[0] = profile.getNotRecordedProbability();
+        if (result.size() != 0 && totalIncompatibleProbability > 0.0) {
+            double factor = 1.0 / (1.0 - totalIncompatibleProbability);
+            assert factor > 1.0;
+            ArrayList<ProfiledType> newResult = new ArrayList<>();
+            for (ProfiledType type : result) {
+                newResult.add(new ProfiledType(type.getType(), type.getProbability() * factor));
+            }
+            newNotRecordedTypeProbability[0] *= factor;
         }
         return result;
     }
