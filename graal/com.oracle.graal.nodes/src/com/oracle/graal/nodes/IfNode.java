@@ -166,7 +166,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
-        if (falseSuccessor().usages().isEmpty() && falseSuccessor().next() instanceof IfNode) {
+        if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
             BeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
             double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
@@ -251,10 +251,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else if (a instanceof CompareNode) {
             CompareNode compareA = (CompareNode) a;
             Condition conditionA = compareA.condition();
+            if (compareA.unorderedIsTrue()) {
+                return false;
+            }
             if (b instanceof CompareNode) {
                 CompareNode compareB = (CompareNode) b;
                 if (compareA == compareB) {
                     Debug.log("Same conditions => do not swap and leave the work for global value numbering.");
+                    return false;
+                }
+                if (compareB.unorderedIsTrue()) {
                     return false;
                 }
                 Condition comparableCondition = null;
