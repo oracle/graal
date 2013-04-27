@@ -174,6 +174,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 // Reordering of those two if statements is beneficial from the point of view of
                 // their probabilities.
                 if (prepareForSwap(tool.runtime(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
+                    // Reording is allowed from (if1 => begin => if2) to (if2 => begin => if1).
                     assert intermediateBegin.next() == nextIf;
                     BeginNode bothFalseBegin = nextIf.falseSuccessor();
                     nextIf.setFalseSuccessor(null);
