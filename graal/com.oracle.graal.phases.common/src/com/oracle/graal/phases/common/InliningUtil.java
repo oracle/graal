@@ -546,6 +546,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 replacementNodes.add(null);
             }
+
             if (GraalOptions.OptTailDuplication) {
                 /*
                  * We might want to perform tail duplication at the merge after a type switch, if
@@ -619,7 +620,7 @@ public class InliningUtil {
         }
 
         private void createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor) {
-            assert ptypes.size() > 1;
+            assert ptypes.size() >= 1;
 
             Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
             LoadHubNode hub = graph.add(new LoadHubNode(((MethodCallTargetNode) invoke.callTarget()).receiver(), hubKind));
@@ -906,18 +907,85 @@ public class InliningUtil {
                                 notRecordedTypeProbability * 100);
             }
 
+            ArrayList<ProfiledType> usedTypes = ptypes;
+            if (notRecordedTypeProbability > 0) {
+                // Clean out uncommon types.
+                ArrayList<ProfiledType> newTypes = new ArrayList<>();
+                for (ProfiledType type : ptypes) {
+                    if (type.getProbability() < GraalOptions.MegamorphicInliningMinTypeProbability) {
+                        notRecordedTypeProbability += type.getProbability();
+                    } else {
+                        newTypes.add(type);
+                    }
+                }
+
+                if (newTypes.size() == 0) {
+                    // No type left that is worth checking for.
+                    return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.size());
+                }
+
+                usedTypes = newTypes;
+            }
+
             // determine concrete methods and map type to specific method
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
-            int[] typesToConcretes = new int[ptypes.size()];
-            for (int i = 0; i < ptypes.size(); i++) {
-                ResolvedJavaMethod concrete = ptypes.get(i).getType().resolveMethod(targetMethod);
+            ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
+            int[] typesToConcretes = new int[usedTypes.size()];
+            for (int i = 0; i < usedTypes.size(); i++) {
+                ResolvedJavaMethod concrete = usedTypes.get(i).getType().resolveMethod(targetMethod);
 
                 int index = concreteMethods.indexOf(concrete);
                 if (index < 0) {
                     index = concreteMethods.size();
                     concreteMethods.add(concrete);
+                    concreteMethodsProbabilities.add(usedTypes.get(i).getProbability());
+                } else {
+                    concreteMethodsProbabilities.set(index, concreteMethodsProbabilities.get(index) + usedTypes.get(i).getProbability());
                 }
                 typesToConcretes[i] = index;
+            }
+
+            if (notRecordedTypeProbability > 0) {
+                // Clean out uncommon methods.
+                ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
+                for (int i = 0; i < concreteMethods.size(); ++i) {
+                    if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability) {
+                        newConcreteMethods.add(concreteMethods.get(i));
+                    } else {
+                        concreteMethods.set(i, null);
+                    }
+                }
+
+                if (concreteMethods.size() != newConcreteMethods.size()) {
+
+                    if (newConcreteMethods.size() == 0) {
+                        // No method left that is worth inlining.
+                        return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
+                    }
+
+                    // Clean all types that referred to cleaned methods.
+                    ArrayList<ProfiledType> newTypes = new ArrayList<>();
+                    ArrayList<Integer> newTypesToConcretes = new ArrayList<>();
+                    for (int i = 0; i < typesToConcretes.length; ++i) {
+                        ResolvedJavaMethod resolvedJavaMethod = concreteMethods.get(typesToConcretes[i]);
+                        if (resolvedJavaMethod != null) {
+                            newTypes.add(usedTypes.get(i));
+                            newTypesToConcretes.add(newConcreteMethods.indexOf(resolvedJavaMethod));
+                        } else {
+                            notRecordedTypeProbability += usedTypes.get(i).getProbability();
+                        }
+                    }
+
+                    int[] newTypesToConcretesArray = new int[newTypesToConcretes.size()];
+                    for (int i = 0; i < newTypesToConcretesArray.length; ++i) {
+                        newTypesToConcretesArray[i] = newTypesToConcretes.get(i);
+                        concreteMethods.get(typesToConcretes[i]);
+                    }
+
+                    usedTypes = newTypes;
+                    typesToConcretes = newTypesToConcretesArray;
+                    concreteMethods = newConcreteMethods;
+                }
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
@@ -925,7 +993,7 @@ public class InliningUtil {
                     return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, ptypes, typesToConcretes, notRecordedTypeProbability);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability);
         }
     }
 
