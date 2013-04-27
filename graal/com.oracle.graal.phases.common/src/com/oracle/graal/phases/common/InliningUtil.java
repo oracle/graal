@@ -1017,7 +1017,7 @@ public class InliningUtil {
             assert factor > 1.0;
             ArrayList<ProfiledType> newResult = new ArrayList<>();
             for (ProfiledType type : result) {
-                newResult.add(new ProfiledType(type.getType(), type.getProbability() * factor));
+                newResult.add(new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() * factor)));
             }
             newNotRecordedTypeProbability[0] *= factor;
         }
