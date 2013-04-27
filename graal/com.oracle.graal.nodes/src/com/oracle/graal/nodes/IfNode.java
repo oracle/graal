@@ -197,7 +197,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (b instanceof IsNullNode) {
                 IsNullNode isNullNode = (IsNullNode) b;
                 if (isNullNode.object() == instanceOfA.object()) {
-                    if (instanceOfA.profile().getNullSeen() != TriState.FALSE) {
+                    if (instanceOfA.profile() != null && instanceOfA.profile().getNullSeen() != TriState.FALSE) {
                         instanceOfA.setProfile(new JavaTypeProfile(TriState.FALSE, instanceOfA.profile().getNotRecordedProbability(), instanceOfA.profile().getTypes()));
                     }
                     Debug.log("Can swap instanceof and isnull if");
