@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -191,7 +192,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     private static boolean prepareForSwap(LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
-            if (b instanceof InstanceOfNode) {
+            if (b instanceof IsNullNode) {
+                IsNullNode isNullNode = (IsNullNode) b;
+                if (isNullNode.object() == instanceOfA.object()) {
+                    if (instanceOfA.profile().getNullSeen() != TriState.FALSE) {
+                        instanceOfA.setProfile(new JavaTypeProfile(TriState.FALSE, instanceOfA.profile().getNotRecordedProbability(), instanceOfA.profile().getTypes()));
+                    }
+                    Debug.log("Can swap instanceof and isnull if");
+                    return true;
+                }
+            } else if (b instanceof InstanceOfNode) {
                 InstanceOfNode instanceOfB = (InstanceOfNode) b;
                 if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
                     // Two instanceof on the same value with mutually exclusive types.
