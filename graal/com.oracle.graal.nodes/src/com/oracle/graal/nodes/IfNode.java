@@ -22,14 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -162,6 +164,81 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (removeIntermediateMaterialization(tool)) {
             return;
         }
+
+        if (falseSuccessor().guards().isEmpty() && falseSuccessor().next() instanceof IfNode) {
+            BeginNode intermediateBegin = falseSuccessor();
+            IfNode nextIf = (IfNode) intermediateBegin.next();
+            double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
+            if (this.trueSuccessorProbability < probabilityB) {
+                // Reordering of those two if statements is beneficial from the point of view of
+                // their probabilities.
+                if (prepareForSwap(condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
+                    assert intermediateBegin.next() == nextIf;
+                    BeginNode bothFalseBegin = nextIf.falseSuccessor();
+                    nextIf.setFalseSuccessor(null);
+                    intermediateBegin.setNext(null);
+                    this.setFalseSuccessor(null);
+
+                    this.replaceAtPredecessor(nextIf);
+                    nextIf.setFalseSuccessor(intermediateBegin);
+                    intermediateBegin.setNext(this);
+                    this.setFalseSuccessor(bothFalseBegin);
+                }
+            }
+        }
+    }
+
+    private static boolean prepareForSwap(LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
+        if (a instanceof InstanceOfNode) {
+            InstanceOfNode instanceOfA = (InstanceOfNode) a;
+            if (b instanceof InstanceOfNode) {
+                InstanceOfNode instanceOfB = (InstanceOfNode) b;
+                if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
+                    // Two instanceof on the same value with mutually exclusive types.
+                    JavaTypeProfile profileA = instanceOfA.profile();
+                    JavaTypeProfile profileB = instanceOfB.profile();
+
+                    Debug.log("Can swap instanceof for types (%s, %.3f) and (%s, %.3f)", instanceOfA.type(), probabilityA, instanceOfB.type(), probabilityB);
+                    JavaTypeProfile newProfile = null;
+                    if (profileA != null && profileB != null) {
+                        double remainder = 1.0;
+                        ArrayList<ProfiledType> profiledTypes = new ArrayList<>();
+                        for (ProfiledType type : profileB.getTypes()) {
+                            if (instanceOfB.type().isAssignableFrom(type.getType())) {
+                                // Do not add to profile.
+                            } else {
+                                ProfiledType newType = new ProfiledType(type.getType(), type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB));
+                                profiledTypes.add(newType);
+                                remainder -= newType.getProbability();
+                            }
+                        }
+
+                        for (ProfiledType type : profileA.getTypes()) {
+                            if (instanceOfA.type().isAssignableFrom(type.getType())) {
+                                ProfiledType newType = new ProfiledType(type.getType(), type.getProbability() / (1.0 - probabilityB));
+                                profiledTypes.add(newType);
+                                remainder -= newType.getProbability();
+                            }
+                        }
+                        Collections.sort(profiledTypes);
+
+                        if (remainder < 0.0) {
+                            // Can happen due to round-off errors.
+                            remainder = 0.0;
+                        }
+                        newProfile = new JavaTypeProfile(profileB.getNullSeen(), remainder, profiledTypes.toArray(new ProfiledType[profiledTypes.size()]));
+                        Debug.log("First profile: %s", profileA);
+                        Debug.log("Original second profile: %s", profileB);
+                        Debug.log("New second profile: %s", newProfile);
+                    }
+                    instanceOfB.setProfile(profileA);
+                    instanceOfA.setProfile(newProfile);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

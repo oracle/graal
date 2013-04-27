@@ -78,6 +78,11 @@ public final class JavaTypeProfile implements Serializable {
             }
             return 0;
         }
+
+        @Override
+        public String toString() {
+            return "{" + type.getName() + ", " + probability + "}";
+        }
     }
 
     private final TriState nullSeen;
@@ -128,5 +133,39 @@ public final class JavaTypeProfile implements Serializable {
      */
     public ProfiledType[] getTypes() {
         return ptypes;
+    }
+
+    /**
+     * Searches for an entry of a given resolved Java type.
+     * 
+     * @param type the type for which an entry should be searched
+     * @return the entry or null if no entry for this type can be found
+     */
+    public ProfiledType findEntry(ResolvedJavaType type) {
+        if (ptypes != null) {
+            for (ProfiledType pt : ptypes) {
+                if (pt.getType() == type) {
+                    return pt;
+                }
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("JavaTypeProfile[");
+        builder.append(this.nullSeen);
+        builder.append(", ");
+        if (ptypes != null) {
+            for (ProfiledType pt : ptypes) {
+                builder.append(pt.toString());
+                builder.append(", ");
+            }
+        }
+        builder.append(this.notRecordedProbability);
+        builder.append("]");
+        return builder.toString();
     }
 }
