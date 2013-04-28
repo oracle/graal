@@ -105,20 +105,21 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean validateBarrier(Node write, SerialWriteBarrier barrier) {
+        ValueNode writtenObject = null;
+        LocationNode writtenLocation = null;
         if (write instanceof WriteNode) {
-            WriteNode writeNode = (WriteNode) write;
-            if ((barrier.getObject() == writeNode.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == writeNode.location()))) {
-                return true;
-            }
-            return false;
+            writtenObject = ((WriteNode) write).object();
+            writtenLocation = ((WriteNode) write).location();
         } else if (write instanceof CompareAndSwapNode) {
-            CompareAndSwapNode casNode = (CompareAndSwapNode) write;
-            if ((barrier.getObject() == casNode.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == casNode.getLocation()))) {
-                return true;
-            }
-            return false;
+            writtenObject = ((CompareAndSwapNode) write).object();
+            writtenLocation = ((CompareAndSwapNode) write).getLocation();
+        } else {
+            assert false : "Node must be of type requiring a write barrier";
         }
-        assert false : "Node must be of type requiring a write barrier";
+
+        if ((barrier.getObject() == writtenObject) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == writtenLocation))) {
+            return true;
+        }
         return false;
     }
 }
