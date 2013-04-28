@@ -187,6 +187,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     nextIf.setFalseSuccessor(intermediateBegin);
                     intermediateBegin.setNext(this);
                     this.setFalseSuccessor(bothFalseBegin);
+                    nextIf.setTrueSuccessorProbability(probabilityB);
+                    double newProbability = this.trueSuccessorProbability / (1.0 - probabilityB);
+                    this.setTrueSuccessorProbability(newProbability);
                     return;
                 }
             }
