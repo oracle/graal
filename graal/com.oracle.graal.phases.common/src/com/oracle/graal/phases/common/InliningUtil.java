@@ -891,7 +891,6 @@ public class InliningUtil {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
-        ResolvedJavaMethod caller = getCaller(invoke);
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
@@ -934,7 +933,7 @@ public class InliningUtil {
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(replacements, invoke, caller, holder, targetMethod, optimisticOpts);
+        return getTypeCheckedInlineInfo(replacements, invoke, targetMethod, optimisticOpts);
     }
 
     private static InlineInfo getAssumptionInlineInfo(Replacements replacements, Invoke invoke, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete, Assumption takenAssumption) {
@@ -953,28 +952,28 @@ public class InliningUtil {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(Replacements replacements, Invoke invoke, ResolvedJavaMethod caller, ResolvedJavaType holder, ResolvedJavaMethod targetMethod,
-                    OptimisticOptimizations optimisticOpts) {
-        ProfilingInfo profilingInfo = caller.getProfilingInfo();
-        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
-        if (typeProfile == null) {
+    private static InlineInfo getTypeCheckedInlineInfo(Replacements replacements, Invoke invoke, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
+        JavaTypeProfile typeProfile = null;
+        ValueNode receiver = invoke.callTarget().arguments().get(0);
+        if (receiver instanceof TypeProfileProxyNode) {
+            TypeProfileProxyNode typeProfileProxyNode = (TypeProfileProxyNode) receiver;
+            typeProfile = typeProfileProxyNode.getProfile();
+        } else {
             return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no type profile exists");
         }
 
-        ProfiledType[] rawProfiledTypes = typeProfile.getTypes();
-        double[] newNotRecordedTypeProbability = new double[1];
-        ArrayList<ProfiledType> ptypes = getCompatibleTypes(typeProfile, holder, newNotRecordedTypeProbability);
-        if (ptypes == null || ptypes.size() <= 0) {
-            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remained after filtering (%d types were recorded)", rawProfiledTypes.length);
+        ProfiledType[] ptypes = typeProfile.getTypes();
+        if (ptypes == null || ptypes.length <= 0) {
+            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types in profile");
         }
 
-        double notRecordedTypeProbability = newNotRecordedTypeProbability[0];
-        if (ptypes.size() == 1 && notRecordedTypeProbability == 0) {
+        double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
+        if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
             if (!optimisticOpts.inlineMonomorphicCalls()) {
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining monomorphic calls is disabled");
             }
 
-            ResolvedJavaType type = ptypes.get(0).getType();
+            ResolvedJavaType type = ptypes[0].getType();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -984,33 +983,28 @@ public class InliningUtil {
             invoke.setPolymorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.size());
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
                 // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
                 // the number of types is lower than what can be recorded in a type profile
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(),
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
                                 notRecordedTypeProbability * 100);
             }
 
-            ArrayList<ProfiledType> usedTypes = ptypes;
-            if (notRecordedTypeProbability > 0) {
-                // Clean out uncommon types.
-                ArrayList<ProfiledType> newTypes = new ArrayList<>();
-                for (ProfiledType type : ptypes) {
-                    if (type.getProbability() < GraalOptions.MegamorphicInliningMinTypeProbability) {
-                        notRecordedTypeProbability += type.getProbability();
-                    } else {
-                        newTypes.add(type);
-                    }
+            // Clean out uncommon types.
+            ArrayList<ProfiledType> usedTypes = new ArrayList<>();
+            for (ProfiledType type : ptypes) {
+                if (notRecordedTypeProbability > 0 && type.getProbability() < GraalOptions.MegamorphicInliningMinTypeProbability) {
+                    notRecordedTypeProbability += type.getProbability();
+                } else {
+                    usedTypes.add(type);
                 }
+            }
 
-                if (newTypes.size() == 0) {
-                    // No type left that is worth checking for.
-                    return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.size());
-                }
-
-                usedTypes = newTypes;
+            if (usedTypes.size() == 0) {
+                // No type left that is worth checking for.
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
             }
 
             // determine concrete methods and map type to specific method
@@ -1084,36 +1078,6 @@ public class InliningUtil {
             }
             return new MultiTypeGuardInlineInfo(invoke, concreteMethods, concreteMethodsProbabilities, usedTypes, typesToConcretes, notRecordedTypeProbability);
         }
-    }
-
-    private static ArrayList<ProfiledType> getCompatibleTypes(JavaTypeProfile profile, ResolvedJavaType holder, double[] newNotRecordedTypeProbability) {
-        ArrayList<ProfiledType> result = new ArrayList<>();
-        double totalIncompatibleProbability = 0.0;
-        for (int i = 0; i < profile.getTypes().length; i++) {
-            ProfiledType ptype = profile.getTypes()[i];
-            ResolvedJavaType type = ptype.getType();
-            assert !type.isInterface() && (type.isArray() || !Modifier.isAbstract(type.getModifiers())) : type;
-            if (!GraalOptions.OptFilterProfiledTypes || holder.isAssignableFrom(type)) {
-                result.add(ptype);
-            } else {
-                totalIncompatibleProbability += ptype.getProbability();
-            }
-        }
-        newNotRecordedTypeProbability[0] = profile.getNotRecordedProbability();
-        if (result.size() != 0 && totalIncompatibleProbability > 0.0) {
-            double factor = 1.0 / (1.0 - totalIncompatibleProbability);
-            assert factor > 1.0;
-            ArrayList<ProfiledType> newResult = new ArrayList<>();
-            for (ProfiledType type : result) {
-                newResult.add(new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() * factor)));
-            }
-            newNotRecordedTypeProbability[0] *= factor;
-        }
-        return result;
-    }
-
-    private static ResolvedJavaMethod getCaller(Invoke invoke) {
-        return invoke.stateAfter().method();
     }
 
     private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {

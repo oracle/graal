@@ -806,7 +806,8 @@ public class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, CHECKCAST);
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, getProfileForTypeCheck((ResolvedJavaType) type)));
+            JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, profileForTypeCheck));
             append(checkCast);
             frameState.apush(checkCast);
         } else {
@@ -1158,6 +1159,10 @@ public class GraphBuilderPhase extends Phase {
         JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
         if (graphBuilderConfig.eagerResolving()) {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
+        }
+        if (invokeKind != InvokeKind.Static && invokeKind != InvokeKind.Special) {
+            JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
+            args[0] = TypeProfileProxyNode.create(args[0], profile);
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
         createInvokeNode(callTarget, resultType);

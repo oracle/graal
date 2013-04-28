@@ -229,7 +229,7 @@ public class GraphUtil {
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
         @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException(cause.getMessage(), cause) {
+        RuntimeException exception = new RuntimeException((cause == null) ? null : cause.getMessage(), cause) {
 
             @Override
             public final synchronized Throwable fillInStackTrace() {
