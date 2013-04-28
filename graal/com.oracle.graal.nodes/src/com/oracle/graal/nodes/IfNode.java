@@ -157,13 +157,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
                 return;
             }
-        } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
+        } else if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+
             if (removeOrMaterializeIf(tool)) {
                 return;
             }
-        }
-        if (removeIntermediateMaterialization(tool)) {
-            return;
+
+            if (removeIntermediateMaterialization(tool)) {
+                return;
+            }
         }
 
         if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
@@ -413,10 +415,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        MergeNode merge = (MergeNode) predecessor();
-        if (!merge.anchored().isEmpty()) {
+        if (predecessor() instanceof LoopBeginNode) {
             return false;
         }
+
+        MergeNode merge = (MergeNode) predecessor();
 
         // Only consider merges with a single usage that is both a phi and an operand of the
         // comparison
@@ -442,10 +445,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
-        if (phi.valueCount() != merge.forwardEndCount()) {
-            // Handles a loop begin merge
-            return false;
-        }
+        assert phi.valueCount() == merge.forwardEndCount();
 
         Constant[] xs = constantValues(compare.x(), merge);
         Constant[] ys = constantValues(compare.y(), merge);
@@ -504,6 +504,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else {
             if (ends.size() == 1) {
                 EndNode end = ends.get(0);
+                FrameState stateAfter = oldMerge.stateAfter();
+                if (stateAfter != null) {
+                    stateAfter = stateAfter.duplicate();
+                    PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
+                    stateAfter.replaceFirstInput(oldPhi, phiValues.get(end));
+                    successor.setStateAfter(stateAfter);
+                }
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
