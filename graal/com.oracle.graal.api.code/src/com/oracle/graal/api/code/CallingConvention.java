@@ -76,17 +76,17 @@ public class CallingConvention {
      */
     private final int stackSize;
 
-    private final Value returnLocation;
+    private final AllocatableValue returnLocation;
 
     /**
      * The ordered locations in which the arguments are placed.
      */
-    private final Value[] argumentLocations;
+    private final AllocatableValue[] argumentLocations;
 
     /**
      * The locations used (and killed) by the call in addition to the arguments.
      */
-    private final Value[] temporaryLocations;
+    private final AllocatableValue[] temporaryLocations;
 
     /**
      * Creates a description of the registers and stack locations used by a call.
@@ -97,8 +97,8 @@ public class CallingConvention {
      *            call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
-    public CallingConvention(int stackSize, Value returnLocation, Value... argumentLocations) {
-        this(Value.NONE, stackSize, returnLocation, argumentLocations);
+    public CallingConvention(int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
+        this(AllocatableValue.NONE, stackSize, returnLocation, argumentLocations);
     }
 
     /**
@@ -112,7 +112,7 @@ public class CallingConvention {
      *            call
      * @param argumentLocations the ordered locations in which the arguments are placed
      */
-    public CallingConvention(Value[] temporaryLocations, int stackSize, Value returnLocation, Value... argumentLocations) {
+    public CallingConvention(AllocatableValue[] temporaryLocations, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
         assert argumentLocations != null;
         assert temporaryLocations != null;
         assert returnLocation != null;
@@ -126,14 +126,14 @@ public class CallingConvention {
     /**
      * Gets the location for the return value or {@link Value#ILLEGAL} if a void call.
      */
-    public Value getReturn() {
+    public AllocatableValue getReturn() {
         return returnLocation;
     }
 
     /**
      * Gets the location for the {@code index}'th argument.
      */
-    public Value getArgument(int index) {
+    public AllocatableValue getArgument(int index) {
         return argumentLocations[index];
     }
 
@@ -155,7 +155,7 @@ public class CallingConvention {
      * Gets the locations used (and killed) by the call apart from the
      * {@linkplain #getArgument(int) arguments}.
      */
-    public Value[] getTemporaries() {
+    public AllocatableValue[] getTemporaries() {
         if (temporaryLocations.length == 0) {
             return temporaryLocations;
         }

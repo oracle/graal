@@ -33,7 +33,7 @@ import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Performs an unwind to throw an exception.
+ * Returns from a function.
  */
 @Opcode("RETURN")
 final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {

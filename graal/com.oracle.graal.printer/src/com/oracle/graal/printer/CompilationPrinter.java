@@ -114,7 +114,7 @@ public class CompilationPrinter implements Closeable {
     /**
      * Formats given debug info as a multi line string.
      */
-    protected String debugInfoToString(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap, Architecture arch) {
+    protected String debugInfoToString(BytecodePosition codePos, BitSet registerRefMap, BitSet frameRefMap, RegisterSaveLayout calleeSaveInfo, Architecture arch) {
         StringBuilder sb = new StringBuilder();
 
         if (registerRefMap != null) {
@@ -128,8 +128,16 @@ public class CompilationPrinter implements Closeable {
 
         if (frameRefMap != null) {
             sb.append("frame-ref-map:");
-            for (int reg = frameRefMap.nextSetBit(0); reg >= 0; reg = frameRefMap.nextSetBit(reg + 1)) {
-                sb.append(' ').append("s").append(reg);
+            for (int slot = frameRefMap.nextSetBit(0); slot >= 0; slot = frameRefMap.nextSetBit(slot + 1)) {
+                sb.append(' ').append("s").append(slot);
+            }
+            sb.append("\n");
+        }
+
+        if (calleeSaveInfo != null) {
+            sb.append("callee-save-info:");
+            for (Map.Entry<Register, Integer> e : calleeSaveInfo.registersToSlots(true).entrySet()) {
+                sb.append(" " + e.getKey() + " -> s" + e.getValue());
             }
             sb.append("\n");
         }

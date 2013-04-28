@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import static java.util.Collections.*;
+
 import java.io.*;
 import java.util.*;
 
@@ -366,7 +368,7 @@ public class CompilationResult implements Serializable {
      */
     public void recordDataReference(int codePos, Constant data, int alignment, boolean inlined) {
         assert codePos >= 0 && data != null;
-        getDataReferences().add(new DataPatch(codePos, data, alignment, inlined));
+        dataReferences.add(new DataPatch(codePos, data, alignment, inlined));
     }
 
     /**
@@ -390,7 +392,7 @@ public class CompilationResult implements Serializable {
      * @param handlerPos the position of the handler
      */
     public void recordExceptionHandler(int codePos, int handlerPos) {
-        getExceptionHandlers().add(new ExceptionHandler(codePos, handlerPos));
+        exceptionHandlers.add(new ExceptionHandler(codePos, handlerPos));
     }
 
     /**
@@ -405,11 +407,11 @@ public class CompilationResult implements Serializable {
 
     private void addInfopoint(Infopoint infopoint) {
         // The infopoints list must always be sorted
-        if (!getInfopoints().isEmpty() && getInfopoints().get(getInfopoints().size() - 1).pcOffset >= infopoint.pcOffset) {
+        if (!infopoints.isEmpty() && infopoints.get(infopoints.size() - 1).pcOffset >= infopoint.pcOffset) {
             // This re-sorting should be very rare
-            Collections.sort(getInfopoints());
+            Collections.sort(infopoints);
         }
-        getInfopoints().add(infopoint);
+        infopoints.add(infopoint);
     }
 
     /**
@@ -421,7 +423,7 @@ public class CompilationResult implements Serializable {
      */
     public Mark recordMark(int codePos, Object id, Mark[] references) {
         Mark mark = new Mark(codePos, id, references);
-        getMarks().add(mark);
+        marks.add(mark);
         return mark;
     }
 
@@ -505,6 +507,16 @@ public class CompilationResult implements Serializable {
         if (info != null) {
             appendRefMap(sb, "stackMap", info.getFrameRefMap());
             appendRefMap(sb, "registerMap", info.getRegisterRefMap());
+            RegisterSaveLayout calleeSaveInfo = info.getCalleeSaveInfo();
+            if (calleeSaveInfo != null) {
+                sb.append(" callee-save-info[");
+                String sep = "";
+                for (Map.Entry<Register, Integer> e : calleeSaveInfo.registersToSlots(true).entrySet()) {
+                    sb.append(sep).append(e.getKey()).append("->").append(e.getValue());
+                    sep = ", ";
+                }
+                sb.append(']');
+            }
             BytecodePosition codePos = info.getBytecodePosition();
             if (codePos != null) {
                 MetaUtil.appendLocation(sb.append(" "), codePos.getMethod(), codePos.getBCI());
@@ -528,27 +540,39 @@ public class CompilationResult implements Serializable {
      * @return the list of infopoints, sorted by {@link Site#pcOffset}
      */
     public List<Infopoint> getInfopoints() {
-        return infopoints;
+        if (infopoints.isEmpty()) {
+            return emptyList();
+        }
+        return unmodifiableList(infopoints);
     }
 
     /**
      * @return the list of data references
      */
     public List<DataPatch> getDataReferences() {
-        return dataReferences;
+        if (dataReferences.isEmpty()) {
+            return emptyList();
+        }
+        return unmodifiableList(dataReferences);
     }
 
     /**
      * @return the list of exception handlers
      */
     public List<ExceptionHandler> getExceptionHandlers() {
-        return exceptionHandlers;
+        if (exceptionHandlers.isEmpty()) {
+            return emptyList();
+        }
+        return unmodifiableList(exceptionHandlers);
     }
 
     /**
      * @return the list of marks
      */
     public List<Mark> getMarks() {
-        return marks;
+        if (marks.isEmpty()) {
+            return emptyList();
+        }
+        return unmodifiableList(marks);
     }
 }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -178,7 +180,8 @@ public class NodeIntrinsificationPhase extends Phase {
         } else {
             result = runtime.lookupJavaType(intrinsic.value());
         }
-        assert runtime.lookupJavaType(ValueNode.class).isAssignableFrom(result);
+        assert runtime.lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" + NodeIntrinsic.class.getSimpleName() +
+                        " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
         return result;
     }
 

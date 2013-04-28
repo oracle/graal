@@ -47,9 +47,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     private static HotSpotGraalRuntime instance;
 
     /**
-     * Gets the singleton runtime instance object.
+     * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
-    public static HotSpotGraalRuntime getInstance() {
+    public static HotSpotGraalRuntime graalRuntime() {
         return instance;
     }
 

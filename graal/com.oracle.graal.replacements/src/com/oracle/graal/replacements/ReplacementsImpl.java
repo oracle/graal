@@ -279,7 +279,10 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void finalizeGraph(StructuredGraph graph) {
             new NodeIntrinsificationPhase(runtime).apply(graph);
-            assert SnippetTemplate.hasConstantParameter(method) || NodeIntrinsificationVerificationPhase.verify(graph);
+            if (!SnippetTemplate.hasConstantParameter(method)) {
+                NodeIntrinsificationVerificationPhase.verify(graph);
+            }
+            new ConvertDeoptimizeToGuardPhase().apply(graph);
 
             if (original == null) {
                 new SnippetFrameStateCleanupPhase().apply(graph);
@@ -293,7 +296,14 @@ public class ReplacementsImpl implements Replacements {
         private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
             StructuredGraph graph = graphCache.get(methodToParse);
             if (graph == null) {
-                graphCache.putIfAbsent(methodToParse, buildGraph(methodToParse, policy == null ? inliningPolicy(methodToParse) : policy));
+                StructuredGraph newGraph = Debug.scope("ParseGraph", new Object[]{methodToParse}, new Callable<StructuredGraph>() {
+
+                    public StructuredGraph call() throws Exception {
+                        return buildGraph(methodToParse, policy == null ? inliningPolicy(methodToParse) : policy);
+                    }
+                });
+
+                graphCache.putIfAbsent(methodToParse, newGraph);
                 graph = graphCache.get(methodToParse);
                 assert graph != null;
             }
@@ -308,8 +318,6 @@ public class ReplacementsImpl implements Replacements {
             GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault();
             GraphBuilderPhase graphBuilder = new GraphBuilderPhase(runtime, config, OptimisticOptimizations.NONE);
             graphBuilder.apply(graph);
-
-            Debug.dump(graph, "%s: %s", methodToParse.getName(), GraphBuilderPhase.class.getSimpleName());
 
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
 
@@ -364,6 +372,11 @@ public class ReplacementsImpl implements Replacements {
                         if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {
                             targetGraph = intrinsicGraph;
                         } else {
+                            if (callee.getName().startsWith("$jacoco")) {
+                                throw new GraalInternalError("Parsing call to JaCoCo instrumentation method " + format("%H.%n(%p)", callee) + " from " + format("%H.%n(%p)", methodToParse) +
+                                                " while preparing replacement " + format("%H.%n(%p)", method) + ". Placing \"//JaCoCo Exclude\" anywhere in " +
+                                                methodToParse.getDeclaringClass().getSourceFileName() + " should fix this.");
+                            }
                             targetGraph = parseGraph(callee, policy);
                         }
                         InliningUtil.inline(callTarget.invoke(), targetGraph, true);

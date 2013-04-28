@@ -36,7 +36,7 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
-    private final JavaTypeProfile profile;
+    private JavaTypeProfile profile;
 
     /**
      * Constructs a new InstanceOfNode.
@@ -109,10 +109,14 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
         return profile;
     }
 
+    public void setProfile(JavaTypeProfile profile) {
+        this.profile = profile;
+    }
+
     @Override
     public boolean verify() {
         for (Node usage : usages()) {
-            assertTrue(usage instanceof IfNode || usage instanceof ConditionalNode, "unsupported usage: ", usage);
+            assertTrue(usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ConditionalNode, "unsupported usage: ", usage);
         }
         return super.verify();
     }

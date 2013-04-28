@@ -102,10 +102,9 @@ public class MonitorSnippets implements Snippets {
             final Word biasableLockBits = mark.and(biasedLockMaskInPlace());
 
             // First check to see whether biasing is enabled for this object
-            if (biasableLockBits.notEqual(Word.unsigned(biasedLockPattern()))) {
+            if (probability(NOT_FREQUENT_PROBABILITY, biasableLockBits.notEqual(Word.unsigned(biasedLockPattern())))) {
                 // Biasing not enabled -> fall through to lightweight locking
             } else {
-                probability(FREQUENT_PROBABILITY);
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHub(object);
@@ -115,9 +114,8 @@ public class MonitorSnippets implements Snippets {
                 trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
                 trace(trace, "           thread: 0x%016lx\n", thread);
                 trace(trace, "              tmp: 0x%016lx\n", tmp);
-                if (tmp.equal(0)) {
+                if (probability(FREQUENT_PROBABILITY, tmp.equal(0))) {
                     // Object is already biased to current thread -> done
-                    probability(FREQUENT_PROBABILITY);
                     traceObject(trace, "+lock{bias:existing}", object);
                     return;
                 }
@@ -131,8 +129,7 @@ public class MonitorSnippets implements Snippets {
                 // If the low three bits in the xor result aren't clear, that means
                 // the prototype header is no longer biasable and we have to revoke
                 // the bias on this object.
-                if (tmp.and(biasedLockMaskInPlace()).equal(0)) {
-                    probability(FREQUENT_PROBABILITY);
+                if (probability(FREQUENT_PROBABILITY, tmp.and(biasedLockMaskInPlace()).equal(0))) {
                     // Biasing is still enabled for object's type. See whether the
                     // epoch of the current bias is still valid, meaning that the epoch
                     // bits of the mark word are equal to the epoch bits of the
@@ -142,8 +139,7 @@ public class MonitorSnippets implements Snippets {
                     // that the current epoch is invalid in order to do this because
                     // otherwise the manipulations it performs on the mark word are
                     // illegal.
-                    if (tmp.and(epochMaskInPlace()).equal(0)) {
-                        probability(FREQUENT_PROBABILITY);
+                    if (probability(FREQUENT_PROBABILITY, tmp.and(epochMaskInPlace()).equal(0))) {
                         // The epoch of the current bias is still valid but we know nothing
                         // about the owner; it might be set or it might be clear. Try to
                         // acquire the bias of the object using an atomic operation. If this
@@ -154,7 +150,7 @@ public class MonitorSnippets implements Snippets {
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark)) {
+                        if (probability(VERY_FAST_DEOPT_PATH_PROBABILITY, compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object);
                             return;
@@ -162,7 +158,6 @@ public class MonitorSnippets implements Snippets {
                         // If the biasing toward our thread failed, this means that another thread
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
-                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:revoke}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -175,7 +170,7 @@ public class MonitorSnippets implements Snippets {
                         // the bias from one thread to another directly in this situation.
                         Word biasedMark = prototypeMarkWord.or(thread);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark)) {
+                        if (probability(VERY_FAST_DEOPT_PATH_PROBABILITY, compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:transfer}", object);
                             return;
@@ -183,7 +178,6 @@ public class MonitorSnippets implements Snippets {
                         // If the biasing toward our thread failed, then another thread
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
-                        probability(DEOPT_PATH_PROBABILITY);
                         traceObject(trace, "+lock{stub:epoch-expired}", object);
                         MonitorEnterStubCall.call(object, lock);
                         return;
@@ -239,9 +233,8 @@ public class MonitorSnippets implements Snippets {
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.unsigned(wordSize() - 1);
             final Word stackPointer = stackPointer();
-            if (currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0)) {
+            if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
                 // Most likely not a recursive lock, go into a slow runtime call
-                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "+lock{stub:failed-cas}", object);
                 MonitorEnterStubCall.call(object, lock);
                 return;
@@ -290,8 +283,7 @@ public class MonitorSnippets implements Snippets {
             // the bias bit would be clear.
             final Word mark = loadWordFromObject(object, markOffset());
             trace(trace, "             mark: 0x%016lx\n", mark);
-            if (mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern()))) {
-                probability(FREQUENT_PROBABILITY);
+            if (probability(FREQUENT_PROBABILITY, mark.and(biasedLockMaskInPlace()).equal(Word.unsigned(biasedLockPattern())))) {
                 endLockScope();
                 decCounter();
                 traceObject(trace, "-lock{bias}", object);
@@ -313,10 +305,9 @@ public class MonitorSnippets implements Snippets {
             // Test if object's mark word is pointing to the displaced mark word, and if so, restore
             // the displaced mark in the object - if the object's mark word is not pointing to
             // the displaced mark word, do unlocking via runtime call.
-            if (DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock)) {
+            if (probability(VERY_SLOW_PATH_PROBABILITY, DirectCompareAndSwapNode.compareAndSwap(object, markOffset(), lock, displacedMark, MARK_WORD_LOCATION).notEqual(lock))) {
                 // The object's mark word was not pointing to the displaced header,
                 // we do unlocking via runtime call.
-                probability(DEOPT_PATH_PROBABILITY);
                 traceObject(trace, "-lock{stub}", object);
                 MonitorExitStubCall.call(object);
             } else {

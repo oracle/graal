@@ -24,7 +24,7 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.InputChangedListener;
+import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -49,7 +49,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
         }
     }
 
-    private static class Listener implements InputChangedListener {
+    private static class Listener implements NodeChangedListener {
 
         private final Set<Node> canonicalizationRoots;
 
@@ -58,7 +58,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
         }
 
         @Override
-        public void inputChanged(Node node) {
+        public void nodeChanged(Node node) {
             canonicalizationRoots.add(node);
         }
     }

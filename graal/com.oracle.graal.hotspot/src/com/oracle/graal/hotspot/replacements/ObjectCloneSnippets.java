@@ -84,7 +84,6 @@ public class ObjectCloneSnippets implements Snippets {
     private static Word getAndCheckHub(Object src) {
         Word hub = loadHub(src);
         if (!(src instanceof Cloneable)) {
-            probability(DEOPT_PATH_PROBABILITY);
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         return hub;
@@ -110,8 +109,7 @@ public class ObjectCloneSnippets implements Snippets {
         genericCloneCounter.inc();
         Word hub = getAndCheckHub(src);
         int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
-        if (layoutHelper < 0) {
-            probability(LIKELY_PROBABILITY);
+        if (probability(LIKELY_PROBABILITY, layoutHelper < 0)) {
             genericArrayCloneCounter.inc();
             return arrayClone(src, hub, layoutHelper);
         } else {

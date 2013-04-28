@@ -37,6 +37,8 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
+//JaCoCo Exclude
+
 /**
  * Utilities and common code paths used by the type check snippets.
  */
@@ -89,8 +91,7 @@ public class TypeCheckSnippetUtils {
         Word secondarySupers = s.readWord(secondarySupersOffset(), SECONDARY_SUPERS_LOCATION);
         int length = secondarySupers.readInt(metaspaceArrayLengthOffset(), FINAL_LOCATION);
         for (int i = 0; i < length; i++) {
-            if (t.equal(loadSecondarySupersElement(secondarySupers, i))) {
-                probability(NOT_LIKELY_PROBABILITY);
+            if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
                 s.writeWord(secondarySuperCacheOffset(), t, SECONDARY_SUPER_CACHE_LOCATION);
                 secondariesHit.inc();
                 return true;

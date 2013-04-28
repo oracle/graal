@@ -64,8 +64,7 @@ public class NewObjectSnippets implements Snippets {
          * this check might lead to problems if the TLAB is within 16GB of the address space end
          * (checked in c++ code)
          */
-        if (newTop.belowOrEqual(end)) {
-            probability(FAST_PATH_PROBABILITY);
+        if (probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             return top;
         }
@@ -76,11 +75,10 @@ public class NewObjectSnippets implements Snippets {
     public static Object initializeObject(Word memory, Word hub, Word prototypeMarkWord, @ConstantParameter int size, @ConstantParameter boolean fillContents, @ConstantParameter boolean locked) {
 
         Object result;
-        if (memory.equal(0)) {
+        if (probability(SLOW_PATH_PROBABILITY, memory.equal(0))) {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         } else {
-            probability(FAST_PATH_PROBABILITY);
             if (locked) {
                 formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
             } else {
@@ -108,11 +106,10 @@ public class NewObjectSnippets implements Snippets {
 
     private static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, int headerSize, boolean fillContents) {
         Object result;
-        if (memory.equal(0)) {
+        if (probability(SLOW_PATH_PROBABILITY, memory.equal(0))) {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         } else {
-            probability(FAST_PATH_PROBABILITY);
             newarray_loopInit.inc();
             formatArray(hub, allocationSize, length, headerSize, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
@@ -130,7 +127,6 @@ public class NewObjectSnippets implements Snippets {
     public static Object allocateArrayAndInitialize(int length, @ConstantParameter int alignment, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents, @ConstantParameter ResolvedJavaType type) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
-            probability(DEOPT_PATH_PROBABILITY);
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }

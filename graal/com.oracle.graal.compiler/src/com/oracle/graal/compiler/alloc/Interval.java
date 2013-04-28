@@ -409,7 +409,7 @@ public final class Interval {
      * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval
      * prior to register allocation.
      */
-    public final Value operand;
+    public final AllocatableValue operand;
 
     /**
      * The operand number for this interval's {@linkplain #operand operand}.
@@ -420,7 +420,7 @@ public final class Interval {
      * The {@linkplain RegisterValue register} or {@linkplain StackSlot spill slot} assigned to this
      * interval.
      */
-    private Value location;
+    private AllocatableValue location;
 
     /**
      * The stack slot to which all splits of this interval are spilled if necessary.
@@ -498,7 +498,7 @@ public final class Interval {
      */
     private Interval locationHint;
 
-    void assignLocation(Value newLocation) {
+    void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
             if (newLocation.getKind() == Kind.Illegal && kind != Kind.Illegal) {
@@ -518,7 +518,7 @@ public final class Interval {
      * Gets the {@linkplain RegisterValue register} or {@linkplain StackSlot spill slot} assigned to
      * this interval.
      */
-    public Value location() {
+    public AllocatableValue location() {
         return location;
     }
 
@@ -673,7 +673,7 @@ public final class Interval {
      */
     static final Interval EndMarker = new Interval(Value.ILLEGAL, -1);
 
-    Interval(Value operand, int operandNumber) {
+    Interval(AllocatableValue operand, int operandNumber) {
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;

@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * Implementation of {@link JavaType} for unresolved HotSpot classes.
@@ -85,6 +86,6 @@ public class HotSpotUnresolvedJavaType extends HotSpotJavaType {
 
     @Override
     public ResolvedJavaType resolve(ResolvedJavaType accessingClass) {
-        return (ResolvedJavaType) HotSpotGraalRuntime.getInstance().lookupType(getName(), (HotSpotResolvedObjectType) accessingClass, true);
+        return (ResolvedJavaType) graalRuntime().lookupType(getName(), (HotSpotResolvedObjectType) accessingClass, true);
     }
 }

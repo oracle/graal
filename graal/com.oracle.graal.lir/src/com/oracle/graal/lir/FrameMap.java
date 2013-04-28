@@ -210,8 +210,7 @@ public final class FrameMap {
     }
 
     /**
-     * Computes the offset of a stack slot relative to the frame register. This is also the bit
-     * index of stack slots in the reference map.
+     * Computes the offset of a stack slot relative to the frame register.
      * 
      * @param slot a stack slot
      * @return the offset of the stack slot
@@ -223,6 +222,18 @@ public final class FrameMap {
             accessesCallerFrame = true;
         }
         return slot.getOffset(totalFrameSize());
+    }
+
+    /**
+     * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
+     * slots in the reference map.
+     * 
+     * @param slot a stack slot
+     * @return the index of the stack slot
+     */
+    public int indexForStackSlot(StackSlot slot) {
+        assert offsetForStackSlot(slot) % target.wordSize == 0;
+        return offsetForStackSlot(slot) / target.wordSize;
     }
 
     /**
@@ -285,7 +296,7 @@ public final class FrameMap {
         return getSlot(kind, 0);
     }
 
-    private List<StackSlot> freedSlots;
+    private Set<StackSlot> freedSlots;
 
     /**
      * Frees a spill slot that was obtained via {@link #allocateSpillSlot(Kind)} such that it can be
@@ -293,7 +304,7 @@ public final class FrameMap {
      */
     public void freeSpillSlot(StackSlot slot) {
         if (freedSlots == null) {
-            freedSlots = new ArrayList<>();
+            freedSlots = new HashSet<>();
         }
         freedSlots.add(slot);
     }
@@ -327,11 +338,6 @@ public final class FrameMap {
         } else {
             return getSlot(target.wordKind, 0);
         }
-    }
-
-    private int frameRefMapIndex(StackSlot slot) {
-        assert offsetForStackSlot(slot) % target.wordSize == 0;
-        return offsetForStackSlot(slot) / target.wordSize;
     }
 
     /**
@@ -368,7 +374,7 @@ public final class FrameMap {
             if (isRegister(location)) {
                 registerRefMap.set(asRegister(location).number);
             } else if (isStackSlot(location)) {
-                int index = frameRefMapIndex(asStackSlot(location));
+                int index = indexForStackSlot(asStackSlot(location));
                 frameRefMap.set(index);
             } else {
                 assert isConstant(location);

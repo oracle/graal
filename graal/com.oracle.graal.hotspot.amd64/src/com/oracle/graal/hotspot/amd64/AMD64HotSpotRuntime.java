@@ -29,9 +29,7 @@ import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewArraySlowStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewInstanceSlowStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
@@ -43,6 +41,9 @@ import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.Decryp
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
+import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
+import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
+import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -110,27 +111,36 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0:    hub */ rdx.asValue(word),
                 /* arg1: length */ rbx.asValue(Kind.Int));
 
-        addRuntimeCall(NEW_ARRAY_SLOW, config.newArrayStub,
+        addRuntimeCall(NEW_ARRAY_C, config.newArrayAddress,
                 /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word),
-                /* arg1: length */ rbx.asValue(Kind.Int));
+                /*          ret */ ret(Kind.Void),
+                /* arg0: thread */ nativeCallingConvention(word,
+                /* arg1:    hub */                         word,
+                /* arg2: length */                         Kind.Int));
 
         addStubCall(NEW_INSTANCE,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rdx.asValue(word));
 
-        addRuntimeCall(NEW_INSTANCE_SLOW, config.newInstanceStub,
+        addRuntimeCall(NEW_INSTANCE_C, config.newInstanceAddress,
                 /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word));
+                /*          ret */ ret(Kind.Void),
+                /* arg0: thread */ nativeCallingConvention(word,
+                /* arg1:    hub */                         word));
 
-        addRuntimeCall(NEW_MULTI_ARRAY, config.newMultiArrayStub,
-                /*        temps */ null,
+        addStubCall(NEW_MULTI_ARRAY,
                 /*          ret */ rax.asValue(Kind.Object),
                 /* arg0:    hub */ rax.asValue(word),
                 /* arg1:   rank */ rbx.asValue(Kind.Int),
                 /* arg2:   dims */ rcx.asValue(word));
+
+        addRuntimeCall(NEW_MULTI_ARRAY_C, config.newMultiArrayAddress,
+                /*        temps */ null,
+                /*          ret */ ret(Kind.Void),
+                /* arg0: thread */ nativeCallingConvention(word,
+                /* arg1:    hub */                         word,
+                /* arg2:   rank */                         Kind.Int,
+                /* arg3:   dims */                         word));
 
         addRuntimeCall(VERIFY_OOP, config.verifyOopStub,
                 /*        temps */ null,

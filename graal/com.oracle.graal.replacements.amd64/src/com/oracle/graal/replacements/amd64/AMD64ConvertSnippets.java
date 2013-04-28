@@ -57,8 +57,7 @@ public class AMD64ConvertSnippets implements Snippets {
      */
     @Snippet
     public static int f2i(float input, int result) {
-        if (result == Integer.MIN_VALUE) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
             if (Float.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -83,8 +82,7 @@ public class AMD64ConvertSnippets implements Snippets {
      */
     @Snippet
     public static long f2l(float input, long result) {
-        if (result == Long.MIN_VALUE) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
             if (Float.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -109,8 +107,7 @@ public class AMD64ConvertSnippets implements Snippets {
      */
     @Snippet
     public static int d2i(double input, int result) {
-        if (result == Integer.MIN_VALUE) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(SLOW_PATH_PROBABILITY, result == Integer.MIN_VALUE)) {
             if (Double.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;
@@ -135,8 +132,7 @@ public class AMD64ConvertSnippets implements Snippets {
      */
     @Snippet
     public static long d2l(double input, long result) {
-        if (result == Long.MIN_VALUE) {
-            probability(NOT_FREQUENT_PROBABILITY);
+        if (probability(SLOW_PATH_PROBABILITY, result == Long.MIN_VALUE)) {
             if (Double.isNaN(input)) {
                 // input is NaN -> return 0
                 return 0;

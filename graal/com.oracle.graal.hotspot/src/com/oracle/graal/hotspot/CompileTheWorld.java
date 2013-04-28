@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -50,7 +52,7 @@ public final class CompileTheWorld {
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
     // Some runtime instances we need.
-    private final HotSpotGraalRuntime graalRuntime = HotSpotGraalRuntime.getInstance();
+    private final HotSpotGraalRuntime graalRuntime = graalRuntime();
     private final VMToCompilerImpl vmToCompiler = (VMToCompilerImpl) graalRuntime.getVMToCompiler();
 
     /** List of Zip/Jar files to compile (see {@link GraalOptions#CompileTheWorld}. */

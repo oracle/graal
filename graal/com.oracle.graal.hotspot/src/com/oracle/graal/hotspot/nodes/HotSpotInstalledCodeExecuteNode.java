@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
@@ -68,11 +69,11 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         ResolvedJavaMethod method = null;
         ResolvedJavaField methodField = null;
         ResolvedJavaField metaspaceMethodField = null;
-        ResolvedJavaField nmethodField = null;
+        ResolvedJavaField codeBlobField = null;
         try {
             method = tool.lookupJavaMethod(HotSpotInstalledCodeExecuteNode.class.getMethod("placeholder", Object.class, Object.class, Object.class));
             methodField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("method"));
-            nmethodField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("nmethod"));
+            codeBlobField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("codeBlob"));
             metaspaceMethodField = tool.lookupJavaField(HotSpotResolvedJavaMethod.class.getDeclaredField("metaspaceMethod"));
         } catch (NoSuchMethodException | SecurityException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
@@ -85,8 +86,8 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
 
         StructuredGraph g = (StructuredGraph) graph();
 
-        LoadFieldNode loadnmethod = g.add(new LoadFieldNode(code, nmethodField));
-        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadnmethod, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), HotSpotGraalRuntime.getInstance().getTarget().wordKind));
+        LoadFieldNode loadCodeBlob = g.add(new LoadFieldNode(code, codeBlobField));
+        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadCodeBlob, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
 
         LoadFieldNode loadMethod = g.add(new LoadFieldNode(code, methodField));
         LoadFieldNode loadmetaspaceMethod = g.add(new LoadFieldNode(loadMethod, metaspaceMethodField));
@@ -101,7 +102,7 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         g.addBeforeFixed(invoke, loadmetaspaceMethod);
         g.addBeforeFixed(loadmetaspaceMethod, loadMethod);
         g.addBeforeFixed(invoke, load);
-        g.addBeforeFixed(load, loadnmethod);
+        g.addBeforeFixed(load, loadCodeBlob);
 
         return invoke;
     }

@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class InliningUtil {
 
@@ -254,6 +255,10 @@ public class InliningUtil {
             Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(replacements, concrete);
             StructuredGraph graph = (StructuredGraph) invoke.asNode().graph();
             if (macroNodeClass != null) {
+                if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
+                    assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
+                    InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
+                }
                 FixedWithNextNode macroNode;
                 try {
                     macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
@@ -294,12 +299,12 @@ public class InliningUtil {
                 }
             });
         }
+    }
 
-        protected void replaceInvokeCallTarget(StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
-            MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-            MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType()));
-            invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
-        }
+    public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
+        MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
+        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnType()));
+        invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
 
     /**
@@ -378,7 +383,7 @@ public class InliningUtil {
         @Override
         public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             createGuard(graph, runtime);
-            replaceInvokeCallTarget(graph, InvokeKind.Special, concrete);
+            replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }
 
         private void createGuard(StructuredGraph graph, MetaAccessProvider runtime) {
@@ -414,14 +419,17 @@ public class InliningUtil {
 
         public final List<ResolvedJavaMethod> concretes;
         public final ArrayList<ProfiledType> ptypes;
-        public final int[] typesToConcretes;
+        public final ArrayList<Integer> typesToConcretes;
         public final double notRecordedTypeProbability;
+        private final ArrayList<Double> concretesProbabilities;
 
-        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, int[] typesToConcretes, double notRecordedTypeProbability) {
+        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<Double> concretesProbabilities, ArrayList<ProfiledType> ptypes,
+                        ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability) {
             super(invoke);
-            assert concretes.size() > 0 && concretes.size() <= ptypes.size() : "must have at least one method but no more than types methods";
-            assert ptypes.size() == typesToConcretes.length : "array lengths must match";
+            assert concretes.size() > 0 : "must have at least one method";
+            assert ptypes.size() == typesToConcretes.size() : "array lengths must match";
 
+            this.concretesProbabilities = concretesProbabilities;
             this.concretes = concretes;
             this.ptypes = ptypes;
             this.typesToConcretes = typesToConcretes;
@@ -444,9 +452,9 @@ public class InliningUtil {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph, callback, replacements, assumptions);
+                inlineSingleMethod(graph, callback, replacements, assumptions, runtime);
             } else {
-                inlineMultipleMethods(graph, callback, replacements, assumptions);
+                inlineMultipleMethods(graph, callback, replacements, assumptions, runtime);
             }
         }
 
@@ -458,7 +466,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
+        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions, MetaAccessProvider runtime) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -513,7 +521,7 @@ public class InliningUtil {
             assert invoke.asNode().isAlive();
 
             // replace the invoke with a switch on the type of the actual receiver
-            createDispatchOnTypeBeforeInvoke(graph, successors, false);
+            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -528,9 +536,15 @@ public class InliningUtil {
                 BeginNode node = successors[i];
                 Invoke invokeForInlining = (Invoke) node.next();
 
-                ResolvedJavaType commonType = getLeastCommonType(i);
+                ResolvedJavaType commonType;
+                if (methodDispatch) {
+                    commonType = concretes.get(i).getDeclaringClass();
+                } else {
+                    commonType = getLeastCommonType(i);
+                }
+
                 ValueNode receiver = ((MethodCallTargetNode) invokeForInlining.callTarget()).receiver();
-                boolean exact = getTypeCount(i) == 1;
+                boolean exact = (getTypeCount(i) == 1 && !methodDispatch);
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
@@ -541,6 +555,7 @@ public class InliningUtil {
             if (shouldFallbackToInvoke()) {
                 replacementNodes.add(null);
             }
+
             if (GraalOptions.OptTailDuplication) {
                 /*
                  * We might want to perform tail duplication at the merge after a type switch, if
@@ -560,15 +575,15 @@ public class InliningUtil {
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes);
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new HighTierContext(runtime, assumptions, replacements));
                 }
             }
         }
 
         private int getTypeCount(int concreteMethodIndex) {
             int count = 0;
-            for (int i = 0; i < typesToConcretes.length; i++) {
-                if (typesToConcretes[i] == concreteMethodIndex) {
+            for (int i = 0; i < typesToConcretes.size(); i++) {
+                if (typesToConcretes.get(i) == concreteMethodIndex) {
                     count++;
                 }
             }
@@ -577,8 +592,8 @@ public class InliningUtil {
 
         private ResolvedJavaType getLeastCommonType(int concreteMethodIndex) {
             ResolvedJavaType commonType = null;
-            for (int i = 0; i < typesToConcretes.length; i++) {
-                if (typesToConcretes[i] == concreteMethodIndex) {
+            for (int i = 0; i < typesToConcretes.size(); i++) {
+                if (typesToConcretes.get(i) == concreteMethodIndex) {
                     if (commonType == null) {
                         commonType = ptypes.get(i).getType();
                     } else {
@@ -598,14 +613,14 @@ public class InliningUtil {
             return result;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
+        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions, MetaAccessProvider runtime) {
             assert concretes.size() == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             BeginNode calleeEntryNode = graph.add(new BeginNode());
 
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, false);
+            createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
 
             calleeEntryNode.setNext(invoke.asNode());
 
@@ -613,12 +628,49 @@ public class InliningUtil {
             inline(invoke, concrete, callback, replacements, assumptions, false);
         }
 
-        private void createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor) {
-            assert ptypes.size() > 1;
+        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider runtime) {
+            assert ptypes.size() >= 1;
 
             Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
             LoadHubNode hub = graph.add(new LoadHubNode(((MethodCallTargetNode) invoke.callTarget()).receiver(), hubKind));
             graph.addBeforeFixed(invoke.asNode(), hub);
+
+            if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
+                assert successors.length == concretes.size() + 1;
+                assert concretes.size() > 0;
+                Debug.log("Method check cascade with %d methods", concretes.size());
+
+                LoadMethodNode[] methods = new LoadMethodNode[concretes.size()];
+                ValueNode[] constantMethods = new ValueNode[concretes.size()];
+                double[] probability = new double[concretes.size()];
+                for (int i = 0; i < concretes.size(); ++i) {
+                    ResolvedJavaMethod firstMethod = concretes.get(i);
+                    Constant firstMethodConstant = firstMethod.getEncoding();
+
+                    ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, runtime, graph);
+                    constantMethods[i] = firstMethodConstantNode;
+                    probability[i] = concretesProbabilities.get(i);
+                    if (i > 0) {
+                        probability[i] /= (1.0 - probability[i - 1]);
+                    }
+                }
+
+                FixedNode lastSucc = successors[concretes.size()];
+                for (int i = concretes.size() - 1; i >= 0; --i) {
+                    LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), hub, constantMethods[i].kind()));
+                    methods[i] = method;
+                    CompareNode methodCheck = CompareNode.createCompareNode(Condition.EQ, methods[i], constantMethods[i]);
+                    IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
+                    method.setNext(ifNode);
+                    lastSucc = method;
+                }
+
+                FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
+                pred.setNext(lastSucc);
+                return true;
+            } else {
+                Debug.log("Type switch with %d types", concretes.size());
+            }
 
             ResolvedJavaType[] keys = new ResolvedJavaType[ptypes.size()];
             double[] keyProbabilities = new double[ptypes.size() + 1];
@@ -626,7 +678,7 @@ public class InliningUtil {
             for (int i = 0; i < ptypes.size(); i++) {
                 keys[i] = ptypes.get(i).getType();
                 keyProbabilities[i] = ptypes.get(i).getProbability();
-                keySuccessors[i] = invokeIsOnlySuccessor ? 0 : typesToConcretes[i];
+                keySuccessors[i] = invokeIsOnlySuccessor ? 0 : typesToConcretes.get(i);
                 assert keySuccessors[i] < successors.length - 1 : "last successor is the unknownTypeSux";
             }
             keyProbabilities[keyProbabilities.length - 1] = notRecordedTypeProbability;
@@ -635,6 +687,45 @@ public class InliningUtil {
             TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
             FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
             pred.setNext(typeSwitch);
+            return false;
+        }
+
+        private boolean chooseMethodDispatch() {
+            if (concretes.size() == 1 && this.notRecordedTypeProbability > 0) {
+                // Always chose method dispatch if there is a single concrete method and the call
+                // site is megamorphic.
+                return true;
+            }
+
+            if (concretes.size() == ptypes.size()) {
+                // Always prefer types over methods if the number of types is smaller than the
+                // number of methods.
+                return false;
+            }
+
+            return chooseMethodDispatchCostBased();
+        }
+
+        private boolean chooseMethodDispatchCostBased() {
+            double remainder = 1.0 - this.notRecordedTypeProbability;
+            double costEstimateMethodDispatch = remainder;
+            for (int i = 0; i < concretes.size(); ++i) {
+                if (i != 0) {
+                    costEstimateMethodDispatch += remainder;
+                }
+                remainder -= concretesProbabilities.get(i);
+            }
+
+            double costEstimateTypeDispatch = 0.0;
+            remainder = 1.0;
+            for (int i = 0; i < ptypes.size(); ++i) {
+                if (i != 0) {
+                    costEstimateTypeDispatch += remainder;
+                }
+                remainder -= ptypes.get(i).getProbability();
+            }
+            costEstimateTypeDispatch += notRecordedTypeProbability;
+            return costEstimateMethodDispatch < costEstimateTypeDispatch;
         }
 
         private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
@@ -691,17 +782,17 @@ public class InliningUtil {
         @Override
         public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                tryToDevirtualizeSingleMethod(graph);
+                tryToDevirtualizeSingleMethod(graph, runtime);
             } else {
-                tryToDevirtualizeMultipleMethods(graph);
+                tryToDevirtualizeMultipleMethods(graph, runtime);
             }
         }
 
-        private void tryToDevirtualizeSingleMethod(StructuredGraph graph) {
-            devirtualizeWithTypeSwitch(graph, InvokeKind.Special, concretes.get(0));
+        private void tryToDevirtualizeSingleMethod(StructuredGraph graph, MetaAccessProvider runtime) {
+            devirtualizeWithTypeSwitch(graph, InvokeKind.Special, concretes.get(0), runtime);
         }
 
-        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph) {
+        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime) {
             MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
             if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
@@ -712,25 +803,25 @@ public class InliningUtil {
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
-                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod));
+                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod), runtime);
                     }
                 }
             }
         }
 
-        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target) {
+        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider runtime) {
             InliningUtil.receiverNullCheck(invoke);
 
             BeginNode invocationEntry = graph.add(new BeginNode());
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, true);
+            createDispatchOnTypeBeforeInvoke(graph, successors, true, runtime);
 
             invocationEntry.setNext(invoke.asNode());
             ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             PiNode anchoredReceiver = createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
-            replaceInvokeCallTarget(graph, kind, target);
+            replaceInvokeCallTarget(invoke, graph, kind, target);
         }
 
         private static BeginNode createUnknownTypeSuccessor(StructuredGraph graph) {
@@ -775,15 +866,13 @@ public class InliningUtil {
         @Override
         public void inline(StructuredGraph graph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions) {
             assumptions.record(takenAssumption);
-            Debug.log("recording assumption: %s", takenAssumption);
-
             super.inline(graph, runtime, replacements, callback, assumptions);
         }
 
         @Override
         public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             assumptions.record(takenAssumption);
-            replaceInvokeCallTarget(graph, InvokeKind.Special, concrete);
+            replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }
 
         @Override
@@ -802,7 +891,6 @@ public class InliningUtil {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
-        ResolvedJavaMethod caller = getCaller(invoke);
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
@@ -845,7 +933,7 @@ public class InliningUtil {
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(replacements, invoke, caller, holder, targetMethod, optimisticOpts);
+        return getTypeCheckedInlineInfo(replacements, invoke, targetMethod, optimisticOpts);
     }
 
     private static InlineInfo getAssumptionInlineInfo(Replacements replacements, Invoke invoke, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete, Assumption takenAssumption) {
@@ -864,27 +952,28 @@ public class InliningUtil {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(Replacements replacements, Invoke invoke, ResolvedJavaMethod caller, ResolvedJavaType holder, ResolvedJavaMethod targetMethod,
-                    OptimisticOptimizations optimisticOpts) {
-        ProfilingInfo profilingInfo = caller.getProfilingInfo();
-        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
-        if (typeProfile == null) {
+    private static InlineInfo getTypeCheckedInlineInfo(Replacements replacements, Invoke invoke, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
+        JavaTypeProfile typeProfile = null;
+        ValueNode receiver = invoke.callTarget().arguments().get(0);
+        if (receiver instanceof TypeProfileProxyNode) {
+            TypeProfileProxyNode typeProfileProxyNode = (TypeProfileProxyNode) receiver;
+            typeProfile = typeProfileProxyNode.getProfile();
+        } else {
             return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no type profile exists");
         }
 
-        ProfiledType[] rawProfiledTypes = typeProfile.getTypes();
-        ArrayList<ProfiledType> ptypes = getCompatibleTypes(rawProfiledTypes, holder);
-        if (ptypes == null || ptypes.size() <= 0) {
-            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remained after filtering (%d types were recorded)", rawProfiledTypes.length);
+        ProfiledType[] ptypes = typeProfile.getTypes();
+        if (ptypes == null || ptypes.length <= 0) {
+            return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types in profile");
         }
 
         double notRecordedTypeProbability = typeProfile.getNotRecordedProbability();
-        if (ptypes.size() == 1 && notRecordedTypeProbability == 0) {
+        if (ptypes.length == 1 && notRecordedTypeProbability == 0) {
             if (!optimisticOpts.inlineMonomorphicCalls()) {
                 return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining monomorphic calls is disabled");
             }
 
-            ResolvedJavaType type = ptypes.get(0).getType();
+            ResolvedJavaType type = ptypes[0].getType();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -894,27 +983,68 @@ public class InliningUtil {
             invoke.setPolymorphic(true);
 
             if (!optimisticOpts.inlinePolymorphicCalls() && notRecordedTypeProbability == 0) {
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.size());
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining polymorphic calls is disabled (%d types)", ptypes.length);
             }
             if (!optimisticOpts.inlineMegamorphicCalls() && notRecordedTypeProbability > 0) {
                 // due to filtering impossible types, notRecordedTypeProbability can be > 0 although
                 // the number of types is lower than what can be recorded in a type profile
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.size(),
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "inlining megamorphic calls is disabled (%d types, %f %% not recorded types)", ptypes.length,
                                 notRecordedTypeProbability * 100);
             }
 
-            // determine concrete methods and map type to specific method
+            // Find unique methods and their probabilities.
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
-            int[] typesToConcretes = new int[ptypes.size()];
-            for (int i = 0; i < ptypes.size(); i++) {
-                ResolvedJavaMethod concrete = ptypes.get(i).getType().resolveMethod(targetMethod);
-
+            ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
+            for (int i = 0; i < ptypes.length; i++) {
+                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod);
                 int index = concreteMethods.indexOf(concrete);
+                double curProbability = ptypes[i].getProbability();
                 if (index < 0) {
                     index = concreteMethods.size();
                     concreteMethods.add(concrete);
+                    concreteMethodsProbabilities.add(curProbability);
+                } else {
+                    concreteMethodsProbabilities.set(index, concreteMethodsProbabilities.get(index) + curProbability);
                 }
-                typesToConcretes[i] = index;
+            }
+
+            // Clear methods that fall below the threshold.
+            if (notRecordedTypeProbability > 0) {
+                ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
+                ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
+                for (int i = 0; i < concreteMethods.size(); ++i) {
+                    if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability) {
+                        newConcreteMethods.add(concreteMethods.get(i));
+                        newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
+                    }
+                }
+
+                if (newConcreteMethods.size() == 0) {
+                    // No method left that is worth inlining.
+                    return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
+                }
+
+                concreteMethods = newConcreteMethods;
+                concreteMethodsProbabilities = newConcreteMethodsProbabilities;
+            }
+
+            // Clean out types whose methods are no longer available.
+            ArrayList<ProfiledType> usedTypes = new ArrayList<>();
+            ArrayList<Integer> typesToConcretes = new ArrayList<>();
+            for (ProfiledType type : ptypes) {
+                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod);
+                int index = concreteMethods.indexOf(concrete);
+                if (index == -1) {
+                    notRecordedTypeProbability += type.getProbability();
+                } else {
+                    usedTypes.add(type);
+                    typesToConcretes.add(index);
+                }
+            }
+
+            if (usedTypes.size() == 0) {
+                // No type left that is worth checking for.
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
@@ -922,25 +1052,8 @@ public class InliningUtil {
                     return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, ptypes, typesToConcretes, notRecordedTypeProbability);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, concreteMethodsProbabilities, usedTypes, typesToConcretes, notRecordedTypeProbability);
         }
-    }
-
-    private static ArrayList<ProfiledType> getCompatibleTypes(ProfiledType[] types, ResolvedJavaType holder) {
-        ArrayList<ProfiledType> result = new ArrayList<>();
-        for (int i = 0; i < types.length; i++) {
-            ProfiledType ptype = types[i];
-            ResolvedJavaType type = ptype.getType();
-            assert !type.isInterface() && (type.isArray() || !Modifier.isAbstract(type.getModifiers())) : type;
-            if (!GraalOptions.OptFilterProfiledTypes || holder.isAssignableFrom(type)) {
-                result.add(ptype);
-            }
-        }
-        return result;
-    }
-
-    private static ResolvedJavaMethod getCaller(Invoke invoke) {
-        return invoke.stateAfter().method();
     }
 
     private static PiNode createAnchoredReceiver(StructuredGraph graph, FixedNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {

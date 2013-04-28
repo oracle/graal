@@ -113,7 +113,7 @@ public class TargetMethodAssembler {
 
             Debug.metric("TargetMethods").increment();
             Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
-            Debug.metric("SafepointsEmitted").add(compilationResult.getInfopoints().size());
+            Debug.metric("InfopointsEmitted").add(compilationResult.getInfopoints().size());
             Debug.metric("DataPatches").add(ldp.size());
             Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         }

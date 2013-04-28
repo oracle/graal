@@ -49,7 +49,7 @@ public class HotSpotSnippetUtils {
     public static final Object FINAL_LOCATION = LocationNode.FINAL_LOCATION;
 
     public static HotSpotVMConfig config() {
-        return HotSpotGraalRuntime.getInstance().getConfig();
+        return graalRuntime().getConfig();
     }
 
     @Fold
@@ -97,6 +97,20 @@ public class HotSpotSnippetUtils {
         return config().threadTlabStartOffset;
     }
 
+    public static final Object PENDING_EXCEPTION_LOCATION = LocationNode.createLocation("PendingException");
+
+    @Fold
+    private static int threadPendingExceptionOffset() {
+        return config().pendingExceptionOffset;
+    }
+
+    public static final Object OBJECT_RESULT_LOCATION = LocationNode.createLocation("ObjectResult");
+
+    @Fold
+    private static int objectResultOffset() {
+        return config().threadObjectResultOffset;
+    }
+
     public static Object readExceptionOop(Word thread) {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
     }
@@ -131,6 +145,28 @@ public class HotSpotSnippetUtils {
         thread.writeWord(threadTlabEndOffset(), end, TLAB_END_LOCATION);
     }
 
+    /**
+     * Clears the pending exception if for the given thread.
+     * 
+     * @return {@code true} if there was a pending exception
+     */
+    public static boolean clearPendingException(Word thread) {
+        boolean result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION) != null;
+        thread.writeObject(threadPendingExceptionOffset(), null);
+        return result;
+    }
+
+    /**
+     * Gets and clears the object result from a runtime call stored in a thread local.
+     * 
+     * @return the object that was in the thread local
+     */
+    public static Object getAndClearObjectResult(Word thread) {
+        Object result = thread.readObject(objectResultOffset(), OBJECT_RESULT_LOCATION);
+        thread.writeObject(objectResultOffset(), null);
+        return result;
+    }
+
     @Fold
     public static int threadObjectOffset() {
         return config().threadObjectOffset;
@@ -148,22 +184,22 @@ public class HotSpotSnippetUtils {
 
     @Fold
     public static Kind wordKind() {
-        return HotSpotGraalRuntime.getInstance().getTarget().wordKind;
+        return graalRuntime().getTarget().wordKind;
     }
 
     @Fold
     public static Register threadRegister() {
-        return HotSpotGraalRuntime.getInstance().getRuntime().threadRegister();
+        return graalRuntime().getRuntime().threadRegister();
     }
 
     @Fold
     public static Register stackPointerRegister() {
-        return HotSpotGraalRuntime.getInstance().getRuntime().stackPointerRegister();
+        return graalRuntime().getRuntime().stackPointerRegister();
     }
 
     @Fold
     public static int wordSize() {
-        return HotSpotGraalRuntime.getInstance().getTarget().wordSize;
+        return graalRuntime().getTarget().wordSize;
     }
 
     @Fold
@@ -608,11 +644,9 @@ public class HotSpotSnippetUtils {
 
         // this code is independent from biased locking (although it does not look that way)
         final Word biasedLock = mark.and(biasedLockMaskInPlace());
-        if (biasedLock.equal(Word.unsigned(unlockedMask()))) {
-            probability(FAST_PATH_PROBABILITY);
+        if (probability(FAST_PATH_PROBABILITY, biasedLock.equal(Word.unsigned(unlockedMask())))) {
             int hash = (int) mark.unsignedShiftRight(identityHashCodeShift()).rawValue();
-            if (hash != uninitializedIdentityHashCodeValue()) {
-                probability(FAST_PATH_PROBABILITY);
+            if (probability(FAST_PATH_PROBABILITY, hash != uninitializedIdentityHashCodeValue())) {
                 return hash;
             }
         }

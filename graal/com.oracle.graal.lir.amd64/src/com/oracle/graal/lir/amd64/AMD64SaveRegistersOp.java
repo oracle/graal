@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,54 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.reflect;
+package com.oracle.graal.lir.amd64;
 
-import com.oracle.graal.jtt.*;
-import org.junit.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import sun.reflect.*;
+import java.util.*;
 
-/*
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.asm.*;
+
+/**
+ * Saves registers to stack slots.
  */
-public final class Reflection_getCallerClass01 extends JTTTest {
+@Opcode("SAVE_REGISTER")
+public final class AMD64SaveRegistersOp extends AMD64RegisterPreservationOp {
 
-    public static final class Caller1 {
+    @Use(REG) protected RegisterValue[] src;
+    @Def(STACK) protected StackSlot[] dst;
 
-        private Caller1() {
-        }
-
-        static String caller1(int depth) {
-            return Reflection.getCallerClass(depth).getName();
-        }
+    public AMD64SaveRegistersOp(RegisterValue[] src, StackSlot[] dst) {
+        this.src = src;
+        this.dst = dst;
     }
 
-    public static final class Caller2 {
-
-        private Caller2() {
-        }
-
-        static String caller2(int depth) {
-            return Caller1.caller1(depth);
-        }
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        emitCode(tasm, masm, dst, src);
     }
 
-    public static String test(int depth) {
-        return Caller2.caller2(depth);
-    }
-
-    @Test
-    public void run0() throws Throwable {
-        runTest("test", 0);
-    }
-
-    @Test
-    public void run1() throws Throwable {
-        runTest("test", 1);
-    }
-
-    @Test
-    public void run2() throws Throwable {
-        runTest("test", 2);
+    @Override
+    public void doNotPreserve(Set<Register> registers) {
+        doNotPreserve(registers, src, dst);
     }
 
 }

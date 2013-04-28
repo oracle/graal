@@ -42,6 +42,8 @@ public interface HotSpotLIRGenerator {
      */
     void emitTailcall(Value[] args, Value address);
 
+    void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+
     void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 
     /**

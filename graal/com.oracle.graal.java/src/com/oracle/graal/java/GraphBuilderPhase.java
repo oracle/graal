@@ -34,7 +34,6 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.bytecode.*;
@@ -798,12 +797,7 @@ public class GraphBuilderPhase extends Phase {
         if (!optimisticOpts.useTypeCheckHints() || !canHaveSubtype(type)) {
             return null;
         } else {
-            ResolvedJavaType uniqueSubtype = type.findUniqueConcreteSubtype();
-            if (uniqueSubtype != null) {
-                return new JavaTypeProfile(profilingInfo.getNullSeen(bci()), 0.0D, new ProfiledType(uniqueSubtype, 1.0D));
-            } else {
-                return profilingInfo.getTypeProfile(bci());
-            }
+            return profilingInfo.getTypeProfile(bci());
         }
     }
 
@@ -812,7 +806,8 @@ public class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, CHECKCAST);
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, getProfileForTypeCheck((ResolvedJavaType) type)));
+            JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, profileForTypeCheck));
             append(checkCast);
             frameState.apush(checkCast);
         } else {
@@ -1164,6 +1159,10 @@ public class GraphBuilderPhase extends Phase {
         JavaType returnType = targetMethod.getSignature().getReturnType(method.getDeclaringClass());
         if (graphBuilderConfig.eagerResolving()) {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
+        }
+        if (invokeKind != InvokeKind.Static && invokeKind != InvokeKind.Special) {
+            JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
+            args[0] = TypeProfileProxyNode.create(args[0], profile);
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
         createInvokeNode(callTarget, resultType);

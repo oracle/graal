@@ -47,7 +47,7 @@ public final class DimensionsNode extends FixedWithNextNode implements LIRGenLow
     public void generate(LIRGenerator gen) {
         int size = rank * 4;
         StackSlot array = gen.frameMap().allocateStackBlock(size, false);
-        Value result = gen.emitLea(array);
+        Value result = gen.emitAddress(array);
         gen.setResult(this, result);
     }
 

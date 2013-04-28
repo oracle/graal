@@ -67,7 +67,8 @@ public class FrameStateAssignmentPhase extends Phase {
                 if (node instanceof DeoptimizingNode) {
                     DeoptimizingNode deopt = (DeoptimizingNode) node;
                     if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
-                        deopt.setDeoptimizationState(currentState.getFramestate());
+                        FrameState state = currentState.getFramestate();
+                        deopt.setDeoptimizationState(state);
                     }
                 }
 
@@ -93,7 +94,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (merge.stateAfter() != null) {
                 return new FrameStateAssignmentState(merge.stateAfter());
             }
-            return new FrameStateAssignmentState(singleFrameState(states));
+            return new FrameStateAssignmentState(singleFrameState(merge, states));
         }
 
         @Override
@@ -125,15 +126,34 @@ public class FrameStateAssignmentPhase extends Phase {
         return true;
     }
 
-    private static FrameState singleFrameState(List<FrameStateAssignmentState> states) {
-        Iterator<FrameStateAssignmentState> it = states.iterator();
-        assert it.hasNext();
-        FrameState first = it.next().getFramestate();
-        while (it.hasNext()) {
-            if (first != it.next().getFramestate()) {
+    private static FrameState singleFrameState(@SuppressWarnings("unused") MergeNode merge, List<FrameStateAssignmentState> states) {
+        if (states.size() == 0) {
+            return null;
+        }
+        FrameState firstState = states.get(0).getFramestate();
+        FrameState singleState = firstState;
+        if (singleState == null) {
+            return null;
+        }
+        int singleBci = singleState.bci;
+        for (int i = 1; i < states.size(); ++i) {
+            FrameState cur = states.get(i).getFramestate();
+            if (cur == null) {
                 return null;
             }
+
+            if (cur != singleState) {
+                singleState = null;
+            }
+
+            if (cur.bci != singleBci) {
+                singleBci = FrameState.INVALID_FRAMESTATE_BCI;
+            }
+
         }
-        return first;
+        if (singleState != null) {
+            return singleState;
+        }
+        return null;
     }
 }

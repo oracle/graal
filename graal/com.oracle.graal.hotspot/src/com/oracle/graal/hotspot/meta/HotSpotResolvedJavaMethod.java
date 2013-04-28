@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.annotation.*;
@@ -66,7 +66,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;
-        HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeMethod(metaspaceMethod, this);
+        graalRuntime().getCompilerToVM().initializeMethod(metaspaceMethod, this);
     }
 
     @Override
@@ -82,12 +82,17 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * Gets the address of the C++ Method object for this method.
      */
     public Constant getMetaspaceMethodConstant() {
-        return Constant.forIntegerKind(HotSpotGraalRuntime.getInstance().getTarget().wordKind, metaspaceMethod, this);
+        return Constant.forIntegerKind(graalRuntime().getTarget().wordKind, metaspaceMethod, this);
+    }
+
+    @Override
+    public Constant getEncoding() {
+        return getMetaspaceMethodConstant();
     }
 
     @Override
     public int getModifiers() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        HotSpotVMConfig config = graalRuntime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodAccessFlagsOffset) & Modifier.methodModifiers();
     }
 
@@ -103,7 +108,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return null;
         }
         if (code == null) {
-            code = HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeBytecode(metaspaceMethod, new byte[codeSize]);
+            code = graalRuntime().getCompilerToVM().initializeBytecode(metaspaceMethod, new byte[codeSize]);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
         }
         return code;
@@ -123,12 +128,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         for (int i = 0; i < exceptionHandlerCount; i++) {
             handlers[i] = new ExceptionHandler(-1, -1, -1, -1, null);
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().initializeExceptionHandlers(metaspaceMethod, handlers);
+        return graalRuntime().getCompilerToVM().initializeExceptionHandlers(metaspaceMethod, handlers);
     }
 
     public boolean hasBalancedMonitors() {
         if (hasBalancedMonitors == null) {
-            hasBalancedMonitors = HotSpotGraalRuntime.getInstance().getCompilerToVM().hasBalancedMonitors(metaspaceMethod);
+            hasBalancedMonitors = graalRuntime().getCompilerToVM().hasBalancedMonitors(metaspaceMethod);
         }
         return hasBalancedMonitors;
     }
@@ -145,14 +150,14 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public int getMaxLocals() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        HotSpotVMConfig config = graalRuntime().getConfig();
         long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
         return unsafe.getShort(metaspaceConstMethod + config.methodMaxLocalsOffset) & 0xFFFF;
     }
 
     @Override
     public int getMaxStackSize() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        HotSpotVMConfig config = graalRuntime().getConfig();
         long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
         return config.extraStackEntries + (unsafe.getShort(metaspaceConstMethod + config.constMethodMaxStackOffset) & 0xFFFF);
     }
@@ -161,15 +166,15 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public StackTraceElement asStackTraceElement(int bci) {
         if (bci < 0 || bci >= codeSize) {
             // HotSpot code can only construct stack trace elements for valid bcis
-            StackTraceElement ste = HotSpotGraalRuntime.getInstance().getCompilerToVM().getStackTraceElement(metaspaceMethod, 0);
+            StackTraceElement ste = graalRuntime().getCompilerToVM().getStackTraceElement(metaspaceMethod, 0);
             return new StackTraceElement(ste.getClassName(), ste.getMethodName(), ste.getFileName(), -1);
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getStackTraceElement(metaspaceMethod, bci);
+        return graalRuntime().getCompilerToVM().getStackTraceElement(metaspaceMethod, bci);
     }
 
     public ResolvedJavaMethod uniqueConcreteMethod() {
         HotSpotResolvedObjectType[] resultHolder = {null};
-        long ucm = HotSpotGraalRuntime.getInstance().getCompilerToVM().getUniqueConcreteMethod(metaspaceMethod, resultHolder);
+        long ucm = graalRuntime().getCompilerToVM().getUniqueConcreteMethod(metaspaceMethod, resultHolder);
         if (ucm != 0L) {
             assert resultHolder[0] != null;
             return resultHolder[0].createMethod(ucm);
@@ -180,7 +185,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     @Override
     public HotSpotSignature getSignature() {
         if (signature == null) {
-            signature = new HotSpotSignature(HotSpotGraalRuntime.getInstance().getCompilerToVM().getSignature(metaspaceMethod));
+            signature = new HotSpotSignature(graalRuntime().getCompilerToVM().getSignature(metaspaceMethod));
         }
         return signature;
     }
@@ -191,11 +196,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     public int getCompiledCodeSize() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
+        return graalRuntime().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
     }
 
     public int invocationCount() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getInvocationCount(metaspaceMethod);
+        return graalRuntime().getCompilerToVM().getInvocationCount(metaspaceMethod);
     }
 
     @Override
@@ -219,7 +224,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         ProfilingInfo info;
 
         if (GraalOptions.UseProfilingInformation && methodData == null) {
-            long metaspaceMethodData = unsafeReadWord(metaspaceMethod + HotSpotGraalRuntime.getInstance().getConfig().methodDataOffset);
+            long metaspaceMethodData = unsafeReadWord(metaspaceMethod + graalRuntime().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);
             }
@@ -237,7 +242,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public void reprofile() {
-        HotSpotGraalRuntime.getInstance().getCompilerToVM().reprofile(metaspaceMethod);
+        graalRuntime().getCompilerToVM().reprofile(metaspaceMethod);
     }
 
     @Override
@@ -311,12 +316,12 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean canBeInlined() {
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().isMethodCompilable(metaspaceMethod);
+        return graalRuntime().getCompilerToVM().isMethodCompilable(metaspaceMethod);
     }
 
     @Override
     public LineNumberTable getLineNumberTable() {
-        long[] values = HotSpotGraalRuntime.getInstance().getCompilerToVM().getLineNumberTable(this);
+        long[] values = graalRuntime().getCompilerToVM().getLineNumberTable(this);
         assert values.length % 2 == 0;
         int[] bci = new int[values.length / 2];
         int[] line = new int[values.length / 2];
@@ -331,7 +336,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        Local[] locals = HotSpotGraalRuntime.getInstance().getCompilerToVM().getLocalVariableTable(this);
+        Local[] locals = graalRuntime().getCompilerToVM().getLocalVariableTable(this);
         return new LocalVariableTableImpl(locals);
     }
 
@@ -345,7 +350,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (!holder.isInitialized()) {
             return -1;
         }
-        return HotSpotGraalRuntime.getInstance().getCompilerToVM().getVtableEntryOffset(metaspaceMethod);
+        return graalRuntime().getCompilerToVM().getVtableEntryOffset(metaspaceMethod);
     }
 
     public void setCurrentTask(CompilationTask task) {
@@ -364,7 +369,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     public int intrinsicId() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.getInstance().getConfig();
+        HotSpotVMConfig config = graalRuntime().getConfig();
         return unsafe.getByte(metaspaceMethod + config.methodIntrinsicIdOffset) & 0xff;
     }
 

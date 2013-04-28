@@ -30,18 +30,19 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 
 public class AMD64AddressValue extends CompositeValue {
 
     private static final long serialVersionUID = -4444600052487578694L;
 
-    @Component({REG, UNUSED}) protected AllocatableValue base;
-    @Component({REG, UNUSED}) protected AllocatableValue index;
+    @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
+    @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
     protected final Scale scale;
     protected final int displacement;
 
     public AMD64AddressValue(Kind kind, AllocatableValue base, int displacement) {
-        this(kind, base, AllocatableValue.UNUSED, Scale.Times1, displacement);
+        this(kind, base, Value.ILLEGAL, Scale.Times1, displacement);
     }
 
     public AMD64AddressValue(Kind kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
@@ -53,7 +54,7 @@ public class AMD64AddressValue extends CompositeValue {
     }
 
     private static Register toRegister(AllocatableValue value) {
-        if (value == AllocatableValue.UNUSED) {
+        if (value == Value.ILLEGAL) {
             return Register.None;
         } else {
             RegisterValue reg = (RegisterValue) value;
@@ -67,8 +68,7 @@ public class AMD64AddressValue extends CompositeValue {
 
     @Override
     public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append(getKind().getJavaName()).append("[");
+        StringBuilder s = new StringBuilder("[");
         String sep = "";
         if (isLegal(base)) {
             s.append(base);
