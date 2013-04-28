@@ -164,6 +164,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
+        if (removeIntermediateMaterialization(tool)) {
+            return;
+        }
+
         if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
             BeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
@@ -397,7 +401,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * 
      * @return true if a transformation was made, false otherwise
      */
-    public boolean removeIntermediateMaterialization(SimplifierTool tool) {
+    private boolean removeIntermediateMaterialization(SimplifierTool tool) {
         if (!(condition() instanceof CompareNode)) {
             return false;
         }
@@ -449,6 +453,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        // Sanity check that both ends are not followed by a merge without frame state.
+        if (!checkFrameState(trueSuccessor()) && !checkFrameState(falseSuccessor())) {
+            return false;
+        }
+
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<EndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
@@ -485,6 +494,46 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return true;
     }
 
+    private static boolean checkFrameState(FixedNode start) {
+        FixedNode node = start;
+        while (true) {
+            if (node instanceof MergeNode) {
+                MergeNode mergeNode = (MergeNode) node;
+                if (mergeNode.stateAfter() == null) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else if (node instanceof StateSplit) {
+                StateSplit stateSplitNode = (StateSplit) node;
+                if (stateSplitNode.stateAfter() != null) {
+                    return true;
+                }
+            }
+
+            if (node instanceof ControlSplitNode) {
+                ControlSplitNode controlSplitNode = (ControlSplitNode) node;
+                for (Node succ : controlSplitNode.cfgSuccessors()) {
+                    if (checkFrameState((FixedNode) succ)) {
+                        return true;
+                    }
+                }
+                return false;
+            } else if (node instanceof FixedWithNextNode) {
+                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
+                node = fixedWithNextNode.next();
+            } else if (node instanceof EndNode) {
+                EndNode endNode = (EndNode) node;
+                node = endNode.merge();
+            } else if (node instanceof ControlSinkNode) {
+                return true;
+            } else {
+                TTY.println("node: " + node);
+                return false;
+            }
+        }
+    }
+
     /**
      * Connects a set of ends to a given successor, inserting a merge node if there is more than one
      * end. If {@code ends} is empty, then {@code successor} is
@@ -500,13 +549,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         } else {
             if (ends.size() == 1) {
                 EndNode end = ends.get(0);
-                FrameState stateAfter = oldMerge.stateAfter();
-                if (stateAfter != null) {
-                    stateAfter = stateAfter.duplicate();
-                    PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
-                    stateAfter.replaceFirstInput(oldPhi, phiValues.get(end));
-                    successor.setStateAfter(stateAfter);
-                }
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
