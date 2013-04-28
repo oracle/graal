@@ -45,8 +45,8 @@ public final class GraalOptions {
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
            static boolean InlineMegamorphicCalls             = true;
-    public static double  MegamorphicInliningMinTypeProbability = 0.1;
-    public static double  MegamorphicInliningMinMethodProbability = 0.25;
+    public static double  MegamorphicInliningMinTypeProbability = 0.05;
+    public static double  MegamorphicInliningMinMethodProbability = 0.20;
     public static int     MaximumDesiredSize                 = 5000;
     public static int     MaximumRecursiveInlining           = 1;
     public static float   BoostInliningForEscapeAnalysis     = 2f;

@@ -24,7 +24,6 @@ package com.oracle.graal.api.meta;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
-import java.lang.reflect.Method;
 import java.util.*;
 
 /**
@@ -202,4 +201,11 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * @return The newly created and initialized object.
      */
     Constant newInstance(Constant[] arguments);
+
+    /**
+     * Gets the encoding of (that is, a constant representing the value of) this method.
+     * 
+     * @return a constant representing a reference to this method
+     */
+    Constant getEncoding();
 }

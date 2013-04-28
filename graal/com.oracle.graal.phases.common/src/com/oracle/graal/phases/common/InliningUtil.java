@@ -421,12 +421,15 @@ public class InliningUtil {
         public final ArrayList<ProfiledType> ptypes;
         public final int[] typesToConcretes;
         public final double notRecordedTypeProbability;
+        private final ArrayList<Double> concretesProbabilities;
 
-        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, int[] typesToConcretes, double notRecordedTypeProbability) {
+        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<Double> concretesProbabilities, ArrayList<ProfiledType> ptypes, int[] typesToConcretes,
+                        double notRecordedTypeProbability) {
             super(invoke);
             assert concretes.size() > 0 && concretes.size() <= ptypes.size() : "must have at least one method but no more than types methods";
             assert ptypes.size() == typesToConcretes.length : "array lengths must match";
 
+            this.concretesProbabilities = concretesProbabilities;
             this.concretes = concretes;
             this.ptypes = ptypes;
             this.typesToConcretes = typesToConcretes;
@@ -449,7 +452,7 @@ public class InliningUtil {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph, callback, replacements, assumptions);
+                inlineSingleMethod(graph, callback, replacements, assumptions, runtime);
             } else {
                 inlineMultipleMethods(graph, callback, replacements, assumptions, runtime);
             }
@@ -518,7 +521,7 @@ public class InliningUtil {
             assert invoke.asNode().isAlive();
 
             // replace the invoke with a switch on the type of the actual receiver
-            createDispatchOnTypeBeforeInvoke(graph, successors, false);
+            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -533,9 +536,15 @@ public class InliningUtil {
                 BeginNode node = successors[i];
                 Invoke invokeForInlining = (Invoke) node.next();
 
-                ResolvedJavaType commonType = getLeastCommonType(i);
+                ResolvedJavaType commonType;
+                if (methodDispatch) {
+                    commonType = concretes.get(i).getDeclaringClass();
+                } else {
+                    commonType = getLeastCommonType(i);
+                }
+
                 ValueNode receiver = ((MethodCallTargetNode) invokeForInlining.callTarget()).receiver();
-                boolean exact = getTypeCount(i) == 1;
+                boolean exact = (getTypeCount(i) == 1 && !methodDispatch);
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
@@ -604,14 +613,14 @@ public class InliningUtil {
             return result;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
+        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions, MetaAccessProvider runtime) {
             assert concretes.size() == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             BeginNode calleeEntryNode = graph.add(new BeginNode());
 
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{calleeEntryNode, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, false);
+            createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
 
             calleeEntryNode.setNext(invoke.asNode());
 
@@ -619,12 +628,49 @@ public class InliningUtil {
             inline(invoke, concrete, callback, replacements, assumptions, false);
         }
 
-        private void createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor) {
+        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider runtime) {
             assert ptypes.size() >= 1;
 
             Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
             LoadHubNode hub = graph.add(new LoadHubNode(((MethodCallTargetNode) invoke.callTarget()).receiver(), hubKind));
             graph.addBeforeFixed(invoke.asNode(), hub);
+
+            if (!invokeIsOnlySuccessor && chooseMethodDispatch()) {
+                assert successors.length == concretes.size() + 1;
+                assert concretes.size() > 0;
+                Debug.log("Method check cascade with %d methods", concretes.size());
+
+                LoadMethodNode[] methods = new LoadMethodNode[concretes.size()];
+                ValueNode[] constantMethods = new ValueNode[concretes.size()];
+                double[] probability = new double[concretes.size()];
+                for (int i = 0; i < concretes.size(); ++i) {
+                    ResolvedJavaMethod firstMethod = concretes.get(i);
+                    Constant firstMethodConstant = firstMethod.getEncoding();
+
+                    ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, runtime, graph);
+                    constantMethods[i] = firstMethodConstantNode;
+                    probability[i] = concretesProbabilities.get(i);
+                    if (i > 0) {
+                        probability[i] /= (1.0 - probability[i - 1]);
+                    }
+                }
+
+                FixedNode lastSucc = successors[concretes.size()];
+                for (int i = concretes.size() - 1; i >= 0; --i) {
+                    LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), hub, constantMethods[i].kind()));
+                    methods[i] = method;
+                    CompareNode methodCheck = CompareNode.createCompareNode(Condition.EQ, methods[i], constantMethods[i]);
+                    IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
+                    method.setNext(ifNode);
+                    lastSucc = method;
+                }
+
+                FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
+                pred.setNext(lastSucc);
+                return true;
+            } else {
+                Debug.log("Type switch with %d types", concretes.size());
+            }
 
             ResolvedJavaType[] keys = new ResolvedJavaType[ptypes.size()];
             double[] keyProbabilities = new double[ptypes.size() + 1];
@@ -641,6 +687,45 @@ public class InliningUtil {
             TypeSwitchNode typeSwitch = graph.add(new TypeSwitchNode(hub, successors, keys, keyProbabilities, keySuccessors));
             FixedWithNextNode pred = (FixedWithNextNode) invoke.asNode().predecessor();
             pred.setNext(typeSwitch);
+            return false;
+        }
+
+        private boolean chooseMethodDispatch() {
+            if (concretes.size() == 1 && this.notRecordedTypeProbability > 0) {
+                // Always chose method dispatch if there is a single concrete method and the call
+                // site is megamorphic.
+                return true;
+            }
+
+            if (concretes.size() == ptypes.size()) {
+                // Always prefer types over methods if the number of types is smaller than the
+                // number of methods.
+                return false;
+            }
+
+            return chooseMethodDispatchCostBased();
+        }
+
+        private boolean chooseMethodDispatchCostBased() {
+            double remainder = 1.0 - this.notRecordedTypeProbability;
+            double costEstimateMethodDispatch = remainder;
+            for (int i = 0; i < concretes.size(); ++i) {
+                if (i != 0) {
+                    costEstimateMethodDispatch += remainder;
+                }
+                remainder -= concretesProbabilities.get(i);
+            }
+
+            double costEstimateTypeDispatch = 0.0;
+            remainder = 1.0;
+            for (int i = 0; i < ptypes.size(); ++i) {
+                if (i != 0) {
+                    costEstimateTypeDispatch += remainder;
+                }
+                remainder -= ptypes.get(i).getProbability();
+            }
+            costEstimateTypeDispatch += notRecordedTypeProbability;
+            return costEstimateMethodDispatch < costEstimateTypeDispatch;
         }
 
         private static BeginNode createInvocationBlock(StructuredGraph graph, Invoke invoke, MergeNode returnMerge, PhiNode returnValuePhi, MergeNode exceptionMerge, PhiNode exceptionObjectPhi,
@@ -697,17 +782,17 @@ public class InliningUtil {
         @Override
         public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                tryToDevirtualizeSingleMethod(graph);
+                tryToDevirtualizeSingleMethod(graph, runtime);
             } else {
-                tryToDevirtualizeMultipleMethods(graph);
+                tryToDevirtualizeMultipleMethods(graph, runtime);
             }
         }
 
-        private void tryToDevirtualizeSingleMethod(StructuredGraph graph) {
-            devirtualizeWithTypeSwitch(graph, InvokeKind.Special, concretes.get(0));
+        private void tryToDevirtualizeSingleMethod(StructuredGraph graph, MetaAccessProvider runtime) {
+            devirtualizeWithTypeSwitch(graph, InvokeKind.Special, concretes.get(0), runtime);
         }
 
-        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph) {
+        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime) {
             MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
             if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
@@ -718,19 +803,19 @@ public class InliningUtil {
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
-                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod));
+                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod), runtime);
                     }
                 }
             }
         }
 
-        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target) {
+        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider runtime) {
             InliningUtil.receiverNullCheck(invoke);
 
             BeginNode invocationEntry = graph.add(new BeginNode());
             BeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             BeginNode[] successors = new BeginNode[]{invocationEntry, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, true);
+            createDispatchOnTypeBeforeInvoke(graph, successors, true, runtime);
 
             invocationEntry.setNext(invoke.asNode());
             ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
@@ -949,9 +1034,11 @@ public class InliningUtil {
             if (notRecordedTypeProbability > 0) {
                 // Clean out uncommon methods.
                 ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
+                ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
                 for (int i = 0; i < concreteMethods.size(); ++i) {
                     if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability) {
                         newConcreteMethods.add(concreteMethods.get(i));
+                        newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
                     } else {
                         concreteMethods.set(i, null);
                     }
@@ -986,6 +1073,7 @@ public class InliningUtil {
                     usedTypes = newTypes;
                     typesToConcretes = newTypesToConcretesArray;
                     concreteMethods = newConcreteMethods;
+                    concreteMethodsProbabilities = newConcreteMethodsProbabilities;
                 }
             }
 
@@ -994,7 +1082,7 @@ public class InliningUtil {
                     return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                 }
             }
-            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, usedTypes, typesToConcretes, notRecordedTypeProbability);
+            return new MultiTypeGuardInlineInfo(invoke, concreteMethods, concreteMethodsProbabilities, usedTypes, typesToConcretes, notRecordedTypeProbability);
         }
     }
 
