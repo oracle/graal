@@ -627,8 +627,8 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 // First, the total number of expected barriers is checked.
                 final int barriers = graph.getNodes(SerialWriteBarrier.class).count();
-
                 Assert.assertTrue(expectedBarriers == barriers);
+
                 class State {
 
                     boolean removeBarrier = false;
