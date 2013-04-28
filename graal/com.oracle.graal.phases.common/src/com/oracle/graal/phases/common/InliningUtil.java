@@ -419,15 +419,15 @@ public class InliningUtil {
 
         public final List<ResolvedJavaMethod> concretes;
         public final ArrayList<ProfiledType> ptypes;
-        public final int[] typesToConcretes;
+        public final ArrayList<Integer> typesToConcretes;
         public final double notRecordedTypeProbability;
         private final ArrayList<Double> concretesProbabilities;
 
-        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<Double> concretesProbabilities, ArrayList<ProfiledType> ptypes, int[] typesToConcretes,
-                        double notRecordedTypeProbability) {
+        public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<Double> concretesProbabilities, ArrayList<ProfiledType> ptypes,
+                        ArrayList<Integer> typesToConcretes, double notRecordedTypeProbability) {
             super(invoke);
-            assert concretes.size() > 0 && concretes.size() <= ptypes.size() : "must have at least one method but no more than types methods";
-            assert ptypes.size() == typesToConcretes.length : "array lengths must match";
+            assert concretes.size() > 0 : "must have at least one method";
+            assert ptypes.size() == typesToConcretes.size() : "array lengths must match";
 
             this.concretesProbabilities = concretesProbabilities;
             this.concretes = concretes;
@@ -582,8 +582,8 @@ public class InliningUtil {
 
         private int getTypeCount(int concreteMethodIndex) {
             int count = 0;
-            for (int i = 0; i < typesToConcretes.length; i++) {
-                if (typesToConcretes[i] == concreteMethodIndex) {
+            for (int i = 0; i < typesToConcretes.size(); i++) {
+                if (typesToConcretes.get(i) == concreteMethodIndex) {
                     count++;
                 }
             }
@@ -592,8 +592,8 @@ public class InliningUtil {
 
         private ResolvedJavaType getLeastCommonType(int concreteMethodIndex) {
             ResolvedJavaType commonType = null;
-            for (int i = 0; i < typesToConcretes.length; i++) {
-                if (typesToConcretes[i] == concreteMethodIndex) {
+            for (int i = 0; i < typesToConcretes.size(); i++) {
+                if (typesToConcretes.get(i) == concreteMethodIndex) {
                     if (commonType == null) {
                         commonType = ptypes.get(i).getType();
                     } else {
@@ -678,7 +678,7 @@ public class InliningUtil {
             for (int i = 0; i < ptypes.size(); i++) {
                 keys[i] = ptypes.get(i).getType();
                 keyProbabilities[i] = ptypes.get(i).getProbability();
-                keySuccessors[i] = invokeIsOnlySuccessor ? 0 : typesToConcretes[i];
+                keySuccessors[i] = invokeIsOnlySuccessor ? 0 : typesToConcretes.get(i);
                 assert keySuccessors[i] < successors.length - 1 : "last successor is the unknownTypeSux";
             }
             keyProbabilities[keyProbabilities.length - 1] = notRecordedTypeProbability;
@@ -992,83 +992,59 @@ public class InliningUtil {
                                 notRecordedTypeProbability * 100);
             }
 
-            // Clean out uncommon types.
-            ArrayList<ProfiledType> usedTypes = new ArrayList<>();
-            for (ProfiledType type : ptypes) {
-                if (notRecordedTypeProbability > 0 && type.getProbability() < GraalOptions.MegamorphicInliningMinTypeProbability) {
-                    notRecordedTypeProbability += type.getProbability();
-                } else {
-                    usedTypes.add(type);
-                }
-            }
-
-            if (usedTypes.size() == 0) {
-                // No type left that is worth checking for.
-                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
-            }
-
-            // determine concrete methods and map type to specific method
+            // Find unique methods and their probabilities.
             ArrayList<ResolvedJavaMethod> concreteMethods = new ArrayList<>();
             ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
-            int[] typesToConcretes = new int[usedTypes.size()];
-            for (int i = 0; i < usedTypes.size(); i++) {
-                ResolvedJavaMethod concrete = usedTypes.get(i).getType().resolveMethod(targetMethod);
-
+            for (int i = 0; i < ptypes.length; i++) {
+                ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod);
                 int index = concreteMethods.indexOf(concrete);
+                double curProbability = ptypes[i].getProbability();
                 if (index < 0) {
                     index = concreteMethods.size();
                     concreteMethods.add(concrete);
-                    concreteMethodsProbabilities.add(usedTypes.get(i).getProbability());
+                    concreteMethodsProbabilities.add(curProbability);
                 } else {
-                    concreteMethodsProbabilities.set(index, concreteMethodsProbabilities.get(index) + usedTypes.get(i).getProbability());
+                    concreteMethodsProbabilities.set(index, concreteMethodsProbabilities.get(index) + curProbability);
                 }
-                typesToConcretes[i] = index;
             }
 
+            // Clear methods that fall below the threshold.
             if (notRecordedTypeProbability > 0) {
-                // Clean out uncommon methods.
                 ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
                 ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
                 for (int i = 0; i < concreteMethods.size(); ++i) {
                     if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability) {
                         newConcreteMethods.add(concreteMethods.get(i));
                         newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
-                    } else {
-                        concreteMethods.set(i, null);
                     }
                 }
 
-                if (concreteMethods.size() != newConcreteMethods.size()) {
-
-                    if (newConcreteMethods.size() == 0) {
-                        // No method left that is worth inlining.
-                        return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
-                    }
-
-                    // Clean all types that referred to cleaned methods.
-                    ArrayList<ProfiledType> newTypes = new ArrayList<>();
-                    ArrayList<Integer> newTypesToConcretes = new ArrayList<>();
-                    for (int i = 0; i < typesToConcretes.length; ++i) {
-                        ResolvedJavaMethod resolvedJavaMethod = concreteMethods.get(typesToConcretes[i]);
-                        if (resolvedJavaMethod != null) {
-                            newTypes.add(usedTypes.get(i));
-                            newTypesToConcretes.add(newConcreteMethods.indexOf(resolvedJavaMethod));
-                        } else {
-                            notRecordedTypeProbability += usedTypes.get(i).getProbability();
-                        }
-                    }
-
-                    int[] newTypesToConcretesArray = new int[newTypesToConcretes.size()];
-                    for (int i = 0; i < newTypesToConcretesArray.length; ++i) {
-                        newTypesToConcretesArray[i] = newTypesToConcretes.get(i);
-                        concreteMethods.get(typesToConcretes[i]);
-                    }
-
-                    usedTypes = newTypes;
-                    typesToConcretes = newTypesToConcretesArray;
-                    concreteMethods = newConcreteMethods;
-                    concreteMethodsProbabilities = newConcreteMethodsProbabilities;
+                if (newConcreteMethods.size() == 0) {
+                    // No method left that is worth inlining.
+                    return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no methods remaining after filtering less frequent methods (%d methods previously)", concreteMethods.size());
                 }
+
+                concreteMethods = newConcreteMethods;
+                concreteMethodsProbabilities = newConcreteMethodsProbabilities;
+            }
+
+            // Clean out types whose methods are no longer available.
+            ArrayList<ProfiledType> usedTypes = new ArrayList<>();
+            ArrayList<Integer> typesToConcretes = new ArrayList<>();
+            for (ProfiledType type : ptypes) {
+                ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod);
+                int index = concreteMethods.indexOf(concrete);
+                if (index == -1) {
+                    notRecordedTypeProbability += type.getProbability();
+                } else {
+                    usedTypes.add(type);
+                    typesToConcretes.add(index);
+                }
+            }
+
+            if (usedTypes.size() == 0) {
+                // No type left that is worth checking for.
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
