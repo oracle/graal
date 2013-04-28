@@ -154,6 +154,10 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
             if (this.anchored().isNotEmpty()) {
                 return;
             }
+            if (merge.stateAfter() == null && this.stateAfter() != null) {
+                // We hold a state, but the succeeding merge does not => do not combine.
+                return;
+            }
             for (PhiNode phi : phis()) {
                 for (Node usage : phi.usages().filter(isNotA(FrameState.class))) {
                     if (!merge.isPhiAtMerge(usage)) {
