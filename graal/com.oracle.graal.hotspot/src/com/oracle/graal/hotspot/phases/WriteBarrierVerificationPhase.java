@@ -68,14 +68,14 @@ public class WriteBarrierVerificationPhase extends Phase {
         while (!frontier.isEmpty()) {
             Node currentNode = frontier.removeFirst();
             assert !isSafepoint(currentNode) : "Write barrier must be present";
-            if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier(write, currentNode))) {
+            if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier(write, (SerialWriteBarrier) currentNode))) {
                 expandFrontier(frontier, currentNode);
             }
         }
     }
 
     private static boolean hasAttachedBarrier(Node node) {
-        return (((FixedWithNextNode) node).next() instanceof SerialWriteBarrier) && validateBarrier(node, ((FixedWithNextNode) node).next());
+        return (((FixedWithNextNode) node).next() instanceof SerialWriteBarrier) && validateBarrier(node, (SerialWriteBarrier) ((FixedWithNextNode) node).next());
     }
 
     private static boolean isObjectWrite(Node node) {
@@ -102,17 +102,16 @@ public class WriteBarrierVerificationPhase extends Phase {
         return ((node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize()) || (node instanceof LoopBeginNode);
     }
 
-    private static boolean validateBarrier(Node write, Node barrier) {
-        SerialWriteBarrier barrierNode = (SerialWriteBarrier) barrier;
+    private static boolean validateBarrier(Node write, SerialWriteBarrier barrier) {
         if (write instanceof WriteNode) {
             WriteNode writeNode = (WriteNode) write;
-            if ((barrierNode.getObject() == writeNode.object()) && (!barrierNode.usePrecise() || (barrierNode.usePrecise() && barrierNode.getLocation() == writeNode.location()))) {
+            if ((barrier.getObject() == writeNode.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == writeNode.location()))) {
                 return true;
             }
             return false;
         } else if (write instanceof CompareAndSwapNode) {
             CompareAndSwapNode casNode = (CompareAndSwapNode) write;
-            if ((barrierNode.getObject() == casNode.object()) && (!barrierNode.usePrecise() || (barrierNode.usePrecise() && barrierNode.getLocation() == casNode.getLocation()))) {
+            if ((barrier.getObject() == casNode.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == casNode.getLocation()))) {
                 return true;
             }
             return false;
