@@ -24,6 +24,8 @@ package com.oracle.graal.phases.common;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
@@ -67,7 +69,8 @@ public class FrameStateAssignmentPhase extends Phase {
                 if (node instanceof DeoptimizingNode) {
                     DeoptimizingNode deopt = (DeoptimizingNode) node;
                     if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
-                        deopt.setDeoptimizationState(currentState.getFramestate());
+                        FrameState state = currentState.getFramestate();
+                        deopt.setDeoptimizationState(state);
                     }
                 }
 
@@ -93,7 +96,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (merge.stateAfter() != null) {
                 return new FrameStateAssignmentState(merge.stateAfter());
             }
-            return new FrameStateAssignmentState(singleFrameState(states));
+            return new FrameStateAssignmentState(singleFrameState(merge, states));
         }
 
         @Override
@@ -125,15 +128,80 @@ public class FrameStateAssignmentPhase extends Phase {
         return true;
     }
 
-    private static FrameState singleFrameState(List<FrameStateAssignmentState> states) {
-        Iterator<FrameStateAssignmentState> it = states.iterator();
-        assert it.hasNext();
-        FrameState first = it.next().getFramestate();
-        while (it.hasNext()) {
-            if (first != it.next().getFramestate()) {
+    private static FrameState singleFrameState(MergeNode merge, List<FrameStateAssignmentState> states) {
+        if (states.size() == 0) {
+            return null;
+        }
+        FrameState firstState = states.get(0).getFramestate();
+        FrameState singleState = firstState;
+        if (singleState == null) {
+            return null;
+        }
+        int singleBci = singleState.bci;
+        for (int i = 1; i < states.size(); ++i) {
+            FrameState cur = states.get(i).getFramestate();
+            if (cur == null) {
                 return null;
             }
+
+            if (cur != singleState) {
+                singleState = null;
+            }
+
+            if (cur.bci != singleBci) {
+                singleBci = FrameState.INVALID_FRAMESTATE_BCI;
+            }
+
         }
-        return first;
+        if (singleState != null) {
+            return singleState;
+        }
+
+        if (singleBci != FrameState.INVALID_FRAMESTATE_BCI) {
+            FrameState outerState = firstState.outerFrameState();
+            boolean duringCall = firstState.duringCall();
+            boolean rethrowException = firstState.rethrowException();
+            int stackSize = firstState.stackSize();
+            int localsSize = firstState.localsSize();
+            ResolvedJavaMethod method = firstState.method();
+            FrameState newState = firstState.duplicate();
+            for (int i = 1; i < states.size(); ++i) {
+                FrameState curState = states.get(i).getFramestate();
+                assert curState.duringCall() == duringCall;
+                assert curState.rethrowException() == rethrowException;
+                assert curState.stackSize() == stackSize;
+                assert curState.localsSize() == localsSize;
+                assert curState.method() == method;
+                assert curState.outerFrameState() == outerState;
+
+                for (int j = 0; j < localsSize + stackSize; ++j) {
+                    ValueNode oldValue = newState.values().get(j);
+                    ValueNode curValue = curState.values().get(j);
+                    newState.values().set(j, merge(merge, oldValue, curValue, i));
+                }
+            }
+
+            Debug.log("Created artificial frame state with bci %d ", singleBci);
+            return newState;
+        }
+        return null;
+    }
+
+    private static ValueNode merge(MergeNode merge, ValueNode oldValue, ValueNode newValue, int processedPreds) {
+        if (oldValue == newValue) {
+            return oldValue;
+        }
+
+        if (oldValue instanceof PhiNode && ((PhiNode) oldValue).merge() == merge) {
+            ((PhiNode) oldValue).addInput(newValue);
+            return oldValue;
+        } else {
+            PhiNode newPhi = merge.graph().add(new PhiNode(oldValue.kind(), merge));
+            for (int i = 0; i < processedPreds; ++i) {
+                newPhi.addInput(oldValue);
+            }
+            newPhi.addInput(newValue);
+            return newPhi;
+        }
     }
 }
