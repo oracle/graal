@@ -119,7 +119,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             if (guard.dependencies().size() != 1) {
                 continue;
             }
-            for (EndNode end : merge.forwardEnds()) {
+            for (AbstractEndNode end : merge.forwardEnds()) {
                 BeginNode begin = BeginNode.prevBegin(end);
                 boolean found = false;
                 for (GuardNode predecessorGuard : begin.guards()) {
@@ -140,7 +140,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         Graph graph = merge.graph();
         for (GuardNode guard : hits) {
             PhiNode phi = graph.add(new PhiNode(PhiType.Guard, merge, null));
-            for (EndNode otherEnd : merge.forwardEnds()) {
+            for (AbstractEndNode otherEnd : merge.forwardEnds()) {
                 phi.addInput(graph.unique(new GuardNode(guard.condition(), BeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated())));
             }
             guard.replaceAndDelete(phi);

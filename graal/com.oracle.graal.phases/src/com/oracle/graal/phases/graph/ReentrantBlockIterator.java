@@ -115,16 +115,16 @@ public final class ReentrantBlockIterator {
                             current = successor;
                             continue;
                         } else {
-                            if (current.getEndNode() instanceof EndNode) {
+                            if (current.getEndNode() instanceof AbstractEndNode) {
                                 assert successor.getPredecessors().size() > 1 : "invalid block schedule at " + successor.getBeginNode();
-                                EndNode end = (EndNode) current.getEndNode();
+                                AbstractEndNode end = (AbstractEndNode) current.getEndNode();
 
                                 // add the end node and see if the merge is ready for processing
                                 assert !states.containsKey(end);
                                 states.put(end, state);
                                 MergeNode merge = end.merge();
                                 boolean endsVisited = true;
-                                for (EndNode forwardEnd : merge.forwardEnds()) {
+                                for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
                                     if (!states.containsKey(forwardEnd)) {
                                         endsVisited = false;
                                         break;
@@ -162,7 +162,7 @@ public final class ReentrantBlockIterator {
                     MergeNode merge = (MergeNode) current.getBeginNode();
                     ArrayList<StateT> mergedStates = new ArrayList<>(merge.forwardEndCount());
                     for (Block predecessor : current.getPredecessors()) {
-                        EndNode end = (EndNode) predecessor.getEndNode();
+                        AbstractEndNode end = (AbstractEndNode) predecessor.getEndNode();
                         mergedStates.add(states.get(end));
                     }
                     state = closure.merge(current, mergedStates);

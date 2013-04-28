@@ -27,7 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class LoopEndNode extends EndNode {
+public final class LoopEndNode extends AbstractEndNode {
 
     @Input(notDataflow = true) private LoopBeginNode loopBegin;
     private boolean canSafepoint;
@@ -81,7 +81,7 @@ public final class LoopEndNode extends EndNode {
 
     /**
      * Returns the 0-based index of this loop end. This is <b>not</b> the index into {@link PhiNode}
-     * values at the loop begin. Use {@link MergeNode#phiPredecessorIndex(EndNode)} for this
+     * values at the loop begin. Use {@link MergeNode#phiPredecessorIndex(AbstractEndNode)} for this
      * purpose.
      * 
      * @return The 0-based index of this loop end.

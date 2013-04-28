@@ -1493,7 +1493,7 @@ public class GraphBuilderPhase extends Phase {
             BlockPlaceholderNode placeholder = (BlockPlaceholderNode) block.firstInstruction;
 
             // The EndNode for the already existing edge.
-            EndNode end = currentGraph.add(new EndNode());
+            AbstractEndNode end = currentGraph.add(new EndNode());
             // The MergeNode that replaces the placeholder.
             MergeNode mergeNode = currentGraph.add(new MergeNode());
             FixedNode next = placeholder.next();
@@ -1508,7 +1508,7 @@ public class GraphBuilderPhase extends Phase {
         MergeNode mergeNode = (MergeNode) block.firstInstruction;
 
         // The EndNode for the newly merged edge.
-        EndNode newEnd = currentGraph.add(new EndNode());
+        AbstractEndNode newEnd = currentGraph.add(new EndNode());
         Target target = checkLoopExit(newEnd, block, state);
         FixedNode result = target.fixed;
         block.entryState.merge(mergeNode, target.state);
@@ -1705,7 +1705,7 @@ public class GraphBuilderPhase extends Phase {
         if (block.isLoopHeader) {
             // Create the loop header block, which later will merge the backward branches of the
             // loop.
-            EndNode preLoopEnd = currentGraph.add(new EndNode());
+            AbstractEndNode preLoopEnd = currentGraph.add(new EndNode());
             LoopBeginNode loopBegin = currentGraph.add(new LoopBeginNode());
             lastInstr.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.

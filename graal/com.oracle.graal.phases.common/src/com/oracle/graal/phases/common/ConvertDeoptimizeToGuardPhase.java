@@ -62,7 +62,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             MergeNode mergeNode = (MergeNode) deoptBegin;
             Debug.log("Visiting %s followed by %s", mergeNode, deopt);
             List<BeginNode> begins = new ArrayList<>();
-            for (EndNode end : mergeNode.forwardEnds()) {
+            for (AbstractEndNode end : mergeNode.forwardEnds()) {
                 BeginNode newBeginNode = findBeginNode(end);
                 assert !begins.contains(newBeginNode);
                 begins.add(newBeginNode);

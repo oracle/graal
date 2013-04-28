@@ -169,7 +169,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             fixedCount++;
         }
         if (fixedCount > 1) {
-            if (fixed instanceof EndNode && !(((EndNode) fixed).merge() instanceof LoopBeginNode)) {
+            if (fixed instanceof AbstractEndNode && !(((AbstractEndNode) fixed).merge() instanceof LoopBeginNode)) {
                 metricDuplicationEnd.increment();
                 if (decision.doTransform(merge, fixedCount)) {
                     metricDuplicationEndPerformed.increment();
@@ -246,18 +246,18 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 fixed = ((FixedWithNextNode) fixed).next();
             }
 
-            EndNode endAfter = createNewMerge(fixed, stateAfter);
+            AbstractEndNode endAfter = createNewMerge(fixed, stateAfter);
             MergeNode mergeAfter = endAfter.merge();
             fixedNodes.add(endAfter);
             final HashSet<Node> duplicatedNodes = buildDuplicatedNodeSet(fixedNodes, stateAfter);
             mergeAfter.clearEnds();
             expandDuplicated(duplicatedNodes, mergeAfter);
 
-            List<EndNode> endSnapshot = merge.forwardEnds().snapshot();
+            List<AbstractEndNode> endSnapshot = merge.forwardEnds().snapshot();
             List<PhiNode> phiSnapshot = merge.phis().snapshot();
 
             int endIndex = 0;
-            for (final EndNode forwardEnd : merge.forwardEnds()) {
+            for (final AbstractEndNode forwardEnd : merge.forwardEnds()) {
                 Map<Node, Node> duplicates;
                 if (replacements == null || replacements.get(endIndex) == null) {
                     duplicates = graph.addDuplicates(duplicatedNodes, (DuplicationReplacement) null);
@@ -269,7 +269,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 for (Map.Entry<ValueNode, PhiNode> phi : bottomPhis.entrySet()) {
                     phi.getValue().initializeValueAt(merge.forwardEndIndex(forwardEnd), (ValueNode) duplicates.get(phi.getKey()));
                 }
-                mergeAfter.addForwardEnd((EndNode) duplicates.get(endAfter));
+                mergeAfter.addForwardEnd((AbstractEndNode) duplicates.get(endAfter));
 
                 // re-wire the duplicated ValueAnchorNode to the predecessor of the corresponding
                 // EndNode
@@ -293,7 +293,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 endIndex++;
             }
             GraphUtil.killCFG(merge);
-            for (EndNode forwardEnd : endSnapshot) {
+            for (AbstractEndNode forwardEnd : endSnapshot) {
                 forwardEnd.safeDelete();
             }
             for (PhiNode phi : phiSnapshot) {
@@ -428,9 +428,9 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @param stateAfterMerge The frame state that should be used for the merge.
          * @return The newly created end node.
          */
-        private EndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
+        private AbstractEndNode createNewMerge(FixedNode successor, FrameState stateAfterMerge) {
             MergeNode newBottomMerge = graph.add(new MergeNode());
-            EndNode newBottomEnd = graph.add(new EndNode());
+            AbstractEndNode newBottomEnd = graph.add(new EndNode());
             newBottomMerge.addForwardEnd(newBottomEnd);
             newBottomMerge.setStateAfter(stateAfterMerge);
             ((FixedWithNextNode) successor.predecessor()).setNext(newBottomEnd);

@@ -116,7 +116,7 @@ public interface LIRGeneratorTool {
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
     void visitMerge(MergeNode i);
 
-    void visitEndNode(EndNode i);
+    void visitEndNode(AbstractEndNode i);
 
     void visitLoopEnd(LoopEndNode i);
 

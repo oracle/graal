@@ -71,8 +71,8 @@ public abstract class ScopedPostOrderNodeIterator {
                 queueSuccessors(current);
             } else if (current instanceof FixedWithNextNode) {
                 queueSuccessors(current);
-            } else if (current instanceof EndNode) {
-                queueMerge((EndNode) current);
+            } else if (current instanceof AbstractEndNode) {
+                queueMerge((AbstractEndNode) current);
             } else if (current instanceof ControlSinkNode) {
                 // nothing todo
             } else if (current instanceof ControlSplitNode) {
@@ -141,7 +141,7 @@ public abstract class ScopedPostOrderNodeIterator {
         return result;
     }
 
-    private void queueMerge(EndNode end) {
+    private void queueMerge(AbstractEndNode end) {
         MergeNode merge = end.merge();
         if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
             queue(merge);

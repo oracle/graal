@@ -70,7 +70,7 @@ public class ComputeInliningRelevanceClosure {
             if (scope.start instanceof LoopBeginNode) {
                 assert scope.parent != null;
                 double parentProbability = 0;
-                for (EndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
+                for (AbstractEndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
                     parentProbability += nodeProbabilities.get(end);
                 }
                 return parentProbability / scope.parent.minPathProbability;

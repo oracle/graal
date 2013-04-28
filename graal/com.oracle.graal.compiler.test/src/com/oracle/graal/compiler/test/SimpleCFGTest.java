@@ -35,8 +35,8 @@ public class SimpleCFGTest {
     public void testImplies() {
         StructuredGraph graph = new StructuredGraph();
 
-        EndNode trueEnd = graph.add(new EndNode());
-        EndNode falseEnd = graph.add(new EndNode());
+        AbstractEndNode trueEnd = graph.add(new EndNode());
+        AbstractEndNode falseEnd = graph.add(new EndNode());
 
         BeginNode trueBegin = graph.add(new BeginNode());
         trueBegin.setNext(trueEnd);

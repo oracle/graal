@@ -501,8 +501,8 @@ public class ConditionalEliminationPhase extends Phase {
                         GraphUtil.killWithUnusedFloatingInputs(compare);
                     }
                 }
-            } else if (node instanceof EndNode) {
-                EndNode endNode = (EndNode) node;
+            } else if (node instanceof AbstractEndNode) {
+                AbstractEndNode endNode = (AbstractEndNode) node;
                 for (PhiNode phi : endNode.merge().phis()) {
                     int index = endNode.merge().phiPredecessorIndex(endNode);
                     ValueNode value = phi.valueAt(index);

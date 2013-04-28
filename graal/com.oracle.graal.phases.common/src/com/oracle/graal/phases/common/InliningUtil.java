@@ -734,7 +734,7 @@ public class InliningUtil {
             BeginNode calleeEntryNode = graph.add(new BeginNode());
             calleeEntryNode.setNext(duplicatedInvoke.asNode());
 
-            EndNode endNode = graph.add(new EndNode());
+            AbstractEndNode endNode = graph.add(new EndNode());
             duplicatedInvoke.setNext(endNode);
             returnMerge.addForwardEnd(endNode);
 
@@ -769,7 +769,7 @@ public class InliningUtil {
                 // set new state (pop old exception object, push new one)
                 newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(stateAfterException.bci, stateAfterException.rethrowException(), Kind.Object, newExceptionEdge));
 
-                EndNode endNode = graph.add(new EndNode());
+                AbstractEndNode endNode = graph.add(new EndNode());
                 newExceptionEdge.setNext(endNode);
                 exceptionMerge.addForwardEnd(endNode);
                 exceptionObjectPhi.addInput(newExceptionEdge);

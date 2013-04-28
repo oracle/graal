@@ -476,7 +476,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public void visitEndNode(EndNode end) {
+    public void visitEndNode(AbstractEndNode end) {
         moveToPhi(end.merge(), end);
     }
 
@@ -487,7 +487,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(MergeNode merge, EndNode pred) {
+    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }

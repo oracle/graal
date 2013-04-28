@@ -28,9 +28,9 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class EndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
+public abstract class AbstractEndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
-    public EndNode() {
+    protected AbstractEndNode() {
         super(StampFactory.forVoid());
     }
 

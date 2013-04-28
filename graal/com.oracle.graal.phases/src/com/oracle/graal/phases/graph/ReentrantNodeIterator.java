@@ -94,9 +94,9 @@ public final class ReentrantNodeIterator {
                 if (!successors.hasNext()) {
                     if (current instanceof LoopEndNode) {
                         blockEndStates.put(current, state);
-                    } else if (current instanceof EndNode) {
+                    } else if (current instanceof AbstractEndNode) {
                         // add the end node and see if the merge is ready for processing
-                        MergeNode merge = ((EndNode) current).merge();
+                        MergeNode merge = ((AbstractEndNode) current).merge();
                         if (merge instanceof LoopBeginNode) {
                             Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
                             for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {
@@ -107,7 +107,7 @@ public final class ReentrantNodeIterator {
                             assert !blockEndStates.containsKey(current);
                             blockEndStates.put(current, state);
                             boolean endsVisited = true;
-                            for (EndNode forwardEnd : merge.forwardEnds()) {
+                            for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
                                 if (!blockEndStates.containsKey(forwardEnd)) {
                                     endsVisited = false;
                                     break;
@@ -116,7 +116,7 @@ public final class ReentrantNodeIterator {
                             if (endsVisited) {
                                 ArrayList<StateT> states = new ArrayList<>(merge.forwardEndCount());
                                 for (int i = 0; i < merge.forwardEndCount(); i++) {
-                                    EndNode forwardEnd = merge.forwardEndAt(i);
+                                    AbstractEndNode forwardEnd = merge.forwardEndAt(i);
                                     assert blockEndStates.containsKey(forwardEnd);
                                     StateT other = blockEndStates.get(forwardEnd);
                                     states.add(other);

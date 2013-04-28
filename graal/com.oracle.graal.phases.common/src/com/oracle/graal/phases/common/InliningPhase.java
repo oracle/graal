@@ -491,8 +491,8 @@ public class InliningPhase extends Phase implements InliningCallback {
                     queueSuccessors(current);
                 } else if (current instanceof FixedWithNextNode) {
                     queueSuccessors(current);
-                } else if (current instanceof EndNode) {
-                    queueMerge((EndNode) current);
+                } else if (current instanceof AbstractEndNode) {
+                    queueMerge((AbstractEndNode) current);
                 } else if (current instanceof ControlSinkNode) {
                     // nothing todo
                 } else if (current instanceof ControlSplitNode) {
@@ -532,7 +532,7 @@ public class InliningPhase extends Phase implements InliningCallback {
             return result;
         }
 
-        private void queueMerge(EndNode end) {
+        private void queueMerge(AbstractEndNode end) {
             MergeNode merge = end.merge();
             if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
                 queuedNodes.mark(merge);

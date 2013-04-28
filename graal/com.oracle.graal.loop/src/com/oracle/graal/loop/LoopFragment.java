@@ -248,8 +248,8 @@ public abstract class LoopFragment {
                 continue;
             }
             MergeNode merge = graph.add(new MergeNode());
-            EndNode originalEnd = graph.add(new EndNode());
-            EndNode newEnd = graph.add(new EndNode());
+            AbstractEndNode originalEnd = graph.add(new EndNode());
+            AbstractEndNode newEnd = graph.add(new EndNode());
             merge.addForwardEnd(originalEnd);
             merge.addForwardEnd(newEnd);
             earlyExit.setNext(originalEnd);
