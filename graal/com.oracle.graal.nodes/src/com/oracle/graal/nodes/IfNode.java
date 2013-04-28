@@ -528,7 +528,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             } else if (node instanceof ControlSinkNode) {
                 return true;
             } else {
-                TTY.println("node: " + node);
                 return false;
             }
         }
