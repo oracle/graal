@@ -44,7 +44,7 @@ public final class GraalOptions {
     public static boolean Intrinsify                         = true;
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
-           static boolean InlineMegamorphicCalls             = true;
+           static boolean InlineMegamorphicCalls             = false;
     public static double  MegamorphicInliningMinTypeProbability = 0.05;
     public static double  MegamorphicInliningMinMethodProbability = 0.20;
     public static int     MaximumDesiredSize                 = 5000;
