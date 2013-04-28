@@ -99,6 +99,11 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean isSafepoint(Node node) {
+        /*
+         * LoopBegin nodes are also treated as safepoints since a bottom-up analysis is performed
+         * and loop safepoints are placed before LoopEnd nodes. Possible elimination of write
+         * barriers inside loops, derived from writes, outside the loops can not be permitted.
+         */
         return ((node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize()) || (node instanceof LoopBeginNode);
     }
 
