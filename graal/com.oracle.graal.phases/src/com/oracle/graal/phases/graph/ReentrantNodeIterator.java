@@ -94,9 +94,9 @@ public final class ReentrantNodeIterator {
                 if (!successors.hasNext()) {
                     if (current instanceof LoopEndNode) {
                         blockEndStates.put(current, state);
-                    } else if (current instanceof AbstractEndNode) {
+                    } else if (current instanceof EndNode) {
                         // add the end node and see if the merge is ready for processing
-                        MergeNode merge = ((AbstractEndNode) current).merge();
+                        MergeNode merge = ((EndNode) current).merge();
                         if (merge instanceof LoopBeginNode) {
                             Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
                             for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {

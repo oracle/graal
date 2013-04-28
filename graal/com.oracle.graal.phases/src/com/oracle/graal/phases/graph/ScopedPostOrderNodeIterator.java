@@ -71,8 +71,8 @@ public abstract class ScopedPostOrderNodeIterator {
                 queueSuccessors(current);
             } else if (current instanceof FixedWithNextNode) {
                 queueSuccessors(current);
-            } else if (current instanceof AbstractEndNode) {
-                queueMerge((AbstractEndNode) current);
+            } else if (current instanceof EndNode) {
+                queueMerge((EndNode) current);
             } else if (current instanceof ControlSinkNode) {
                 // nothing todo
             } else if (current instanceof ControlSplitNode) {

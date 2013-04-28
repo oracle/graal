@@ -85,9 +85,9 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
                 assert next != null : current;
                 node(current);
                 current = next;
-            } else if (current instanceof AbstractEndNode) {
-                end((AbstractEndNode) current);
-                queueMerge((AbstractEndNode) current);
+            } else if (current instanceof EndNode) {
+                end((EndNode) current);
+                queueMerge((EndNode) current);
                 current = nextQueuedNode();
             } else if (current instanceof ControlSinkNode) {
                 node(current);
@@ -175,7 +175,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         }
     }
 
-    private void queueMerge(AbstractEndNode end) {
+    private void queueMerge(EndNode end) {
         assert !visitedEnds.isMarked(end);
         assert !nodeStates.containsKey(end);
         nodeStates.put(end, state);
@@ -195,7 +195,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
     protected abstract void node(FixedNode node);
 
-    protected void end(AbstractEndNode endNode) {
+    protected void end(EndNode endNode) {
         node(endNode);
     }
 
