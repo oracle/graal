@@ -135,7 +135,7 @@ public class ControlFlowGraph {
 
             last = cur;
             cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof BeginNode));
+        } while (cur != null && !(cur instanceof AbstractBeginNode));
 
         block.endNode = (FixedNode) last;
     }
@@ -144,8 +144,8 @@ public class ControlFlowGraph {
         // Find all block headers
         int numBlocks = 0;
         for (Node node : graph.getNodes()) {
-            if (node instanceof BeginNode) {
-                Block block = new Block((BeginNode) node);
+            if (node instanceof AbstractBeginNode) {
+                Block block = new Block((AbstractBeginNode) node);
                 numBlocks++;
                 identifyBlock(block);
             }
@@ -247,7 +247,7 @@ public class ControlFlowGraph {
                 for (Block b : loop.blocks) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
-                            BeginNode begin = sux.getBeginNode();
+                            AbstractBeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
                                 Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);

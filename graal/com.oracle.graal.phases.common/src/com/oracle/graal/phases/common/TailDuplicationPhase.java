@@ -276,7 +276,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 FixedNode anchorDuplicate = (FixedNode) duplicates.get(anchor);
                 ((FixedWithNextNode) forwardEnd.predecessor()).setNext(anchorDuplicate);
                 // move dependencies on the ValueAnchorNode to the previous BeginNode
-                BeginNode prevBegin = BeginNode.prevBegin(anchorDuplicate);
+                AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(anchorDuplicate);
                 anchorDuplicate.replaceAtUsages(prevBegin);
 
                 // re-wire the phi duplicates to the correct input

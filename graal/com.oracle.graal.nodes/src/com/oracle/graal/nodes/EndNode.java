@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,5 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.type.*;
-
-/**
- * Base class for {@link AbstractBeginNode}s that are associated with a frame state. TODO (dnsimon) this not
- * needed until {@link AbstractBeginNode} no longer implements {@link StateSplit} which is not possible
- * until loop peeling works without requiring begin nodes to have frames states
- */
-public abstract class BeginStateSplitNode extends AbstractBeginNode implements StateSplit {
-
-    public BeginStateSplitNode() {
-    }
-
-    protected BeginStateSplitNode(Stamp stamp) {
-        super(stamp);
-    }
-
-    /**
-     * A begin node has no side effect.
-     */
-    @Override
-    public boolean hasSideEffect() {
-        return false;
-    }
+public final class EndNode extends AbstractEndNode {
 }

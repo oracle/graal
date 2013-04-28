@@ -173,7 +173,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         // nothing yet
     }
 
-    public boolean isLoopExit(BeginNode begin) {
+    public boolean isLoopExit(AbstractBeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 

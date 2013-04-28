@@ -725,8 +725,8 @@ public class GraphBuilderPhase extends Phase {
         }
         condition = currentGraph.unique(condition);
 
-        BeginNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
-        BeginNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
+        AbstractBeginNode trueSuccessor = createBlockTarget(probability, trueBlock, frameState);
+        AbstractBeginNode falseSuccessor = createBlockTarget(1 - probability, falseBlock, frameState);
 
         IfNode ifNode = negate ? new IfNode(condition, falseSuccessor, trueSuccessor, 1 - probability) : new IfNode(condition, trueSuccessor, falseSuccessor, probability);
         append(currentGraph.add(ifNode));
@@ -1522,9 +1522,9 @@ public class GraphBuilderPhase extends Phase {
      * Returns a block begin node with the specified state. If the specified probability is 0, the
      * block deoptimizes immediately.
      */
-    private BeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
+    private AbstractBeginNode createBlockTarget(double probability, Block block, FrameStateBuilder stateAfter) {
         FixedNode target = createTarget(probability, block, stateAfter);
-        BeginNode begin = BeginNode.begin(target);
+        AbstractBeginNode begin = AbstractBeginNode.begin(target);
 
         assert !(target instanceof DeoptimizeNode && begin.stateAfter() != null) : "We are not allowed to set the stateAfter of the begin node, because we have to deoptimize "
                         + "to a bci _before_ the actual if, so that the interpreter can update the profiling information.";
@@ -1773,7 +1773,7 @@ public class GraphBuilderPhase extends Phase {
                 frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
             }
             if (lastInstr instanceof StateSplit) {
-                if (lastInstr.getClass() == BeginNode.class) {
+                if (lastInstr.getClass() == AbstractBeginNode.class) {
                     // BeginNodes do not need a frame state
                 } else {
                     StateSplit stateSplit = (StateSplit) lastInstr;

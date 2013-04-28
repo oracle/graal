@@ -170,7 +170,7 @@ public class ComputeInliningRelevanceClosure {
             int pathBeginCount = pathBeginNodes.size();
 
             for (Node sux : controlSplit.successors()) {
-                double probability = controlSplit.probability((BeginNode) sux);
+                double probability = controlSplit.probability((AbstractBeginNode) sux);
                 if (probability > maxProbability) {
                     maxProbability = probability;
                     maxSux = sux;

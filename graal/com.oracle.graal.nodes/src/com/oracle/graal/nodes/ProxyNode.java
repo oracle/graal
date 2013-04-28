@@ -37,12 +37,12 @@ import com.oracle.graal.nodes.type.*;
 @NodeInfo(nameTemplate = "{p#type/s}Proxy")
 public class ProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable {
 
-    @Input(notDataflow = true) private BeginNode proxyPoint;
+    @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
     @Input private ValueNode value;
     private final PhiType type;
     private final Object identity;
 
-    public ProxyNode(ValueNode value, BeginNode exit, PhiType type, Object identity) {
+    public ProxyNode(ValueNode value, AbstractBeginNode exit, PhiType type, Object identity) {
         super(type == PhiType.Value ? value.stamp() : type.stamp);
         this.type = type;
         this.identity = identity;
@@ -65,7 +65,7 @@ public class ProxyNode extends FloatingNode implements Node.IterableNodeType, Va
         return value().stamp();
     }
 
-    public BeginNode proxyPoint() {
+    public AbstractBeginNode proxyPoint() {
         return proxyPoint;
     }
 
@@ -108,11 +108,11 @@ public class ProxyNode extends FloatingNode implements Node.IterableNodeType, Va
         }
     }
 
-    public static ProxyNode forValue(ValueNode value, BeginNode exit, StructuredGraph graph) {
+    public static ProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
         return graph.unique(new ProxyNode(value, exit, PhiType.Value, null));
     }
 
-    public static ProxyNode forMemory(ValueNode value, BeginNode exit, Object location, StructuredGraph graph) {
+    public static ProxyNode forMemory(ValueNode value, AbstractBeginNode exit, Object location, StructuredGraph graph) {
         return graph.unique(new ProxyNode(value, exit, PhiType.Memory, location));
     }
 

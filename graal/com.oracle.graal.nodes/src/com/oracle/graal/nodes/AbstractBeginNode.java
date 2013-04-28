@@ -31,7 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType {
+public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType {
 
     @Input(notDataflow = true) private FrameState stateAfter;
 
@@ -49,19 +49,19 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         return false;
     }
 
-    public BeginNode() {
+    protected AbstractBeginNode() {
         super(StampFactory.dependency());
     }
 
-    protected BeginNode(Stamp stamp) {
+    protected AbstractBeginNode(Stamp stamp) {
         super(stamp);
     }
 
-    public static BeginNode begin(FixedNode with) {
-        if (with instanceof BeginNode) {
-            return (BeginNode) with;
+    public static AbstractBeginNode begin(FixedNode with) {
+        if (with instanceof AbstractBeginNode) {
+            return (AbstractBeginNode) with;
         }
-        BeginNode begin = with.graph().add(new BeginNode());
+        AbstractBeginNode begin = with.graph().add(new BeginNode());
         begin.setNext(with);
         return begin;
     }
@@ -81,11 +81,11 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
         }
     }
 
-    public static BeginNode prevBegin(FixedNode from) {
+    public static AbstractBeginNode prevBegin(FixedNode from) {
         Node prevBegin = from;
         while (prevBegin != null) {
-            if (prevBegin instanceof BeginNode) {
-                return (BeginNode) prevBegin;
+            if (prevBegin instanceof AbstractBeginNode) {
+                return (AbstractBeginNode) prevBegin;
             }
             prevBegin = prevBegin.predecessor();
         }
@@ -94,7 +94,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
 
     private void evacuateGuards(FixedNode evacuateFrom) {
         if (!usages().isEmpty()) {
-            BeginNode prevBegin = prevBegin(evacuateFrom);
+            AbstractBeginNode prevBegin = prevBegin(evacuateFrom);
             assert prevBegin != null;
             for (Node anchored : anchored().snapshot()) {
                 anchored.replaceFirstInput(this, prevBegin);
@@ -147,7 +147,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
 
             @Override
             public Iterator<FixedNode> iterator() {
-                return new BlockNodeIterator(BeginNode.this);
+                return new BlockNodeIterator(AbstractBeginNode.this);
             }
         };
     }
@@ -171,7 +171,7 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
             if (ret == null) {
                 throw new NoSuchElementException();
             }
-            if (!(current instanceof FixedWithNextNode) || (current instanceof BeginNode && current != BeginNode.this)) {
+            if (!(current instanceof FixedWithNextNode) || (current instanceof AbstractBeginNode && current != AbstractBeginNode.this)) {
                 current = null;
             } else {
                 current = ((FixedWithNextNode) current).next();
@@ -184,7 +184,4 @@ public class BeginNode extends FixedWithNextNode implements StateSplit, LIRLower
             throw new UnsupportedOperationException();
         }
     }
-
-    @NodeIntrinsic
-    public static native BeginNode anchor(@ConstantNodeParameter Stamp stamp);
 }

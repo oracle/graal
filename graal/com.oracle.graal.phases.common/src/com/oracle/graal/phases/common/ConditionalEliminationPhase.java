@@ -213,7 +213,7 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         @Override
-        public void afterSplit(BeginNode node) {
+        public void afterSplit(AbstractBeginNode node) {
         }
 
         @Override
@@ -355,7 +355,7 @@ public class ConditionalEliminationPhase extends Phase {
             }
         }
 
-        private void registerControlSplitInfo(Node pred, BeginNode begin) {
+        private void registerControlSplitInfo(Node pred, AbstractBeginNode begin) {
             assert pred != null && begin != null;
 
             if (pred instanceof IfNode) {
@@ -461,8 +461,8 @@ public class ConditionalEliminationPhase extends Phase {
 
         @Override
         protected void node(FixedNode node) {
-            if (node instanceof BeginNode) {
-                BeginNode begin = (BeginNode) node;
+            if (node instanceof AbstractBeginNode) {
+                AbstractBeginNode begin = (AbstractBeginNode) node;
                 Node pred = node.predecessor();
 
                 if (pred != null) {

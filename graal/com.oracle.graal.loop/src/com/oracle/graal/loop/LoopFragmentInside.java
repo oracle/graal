@@ -89,13 +89,13 @@ public class LoopFragmentInside extends LoopFragment {
 
         patchNodes(dataFixBefore);
 
-        BeginNode end = mergeEnds();
+        AbstractBeginNode end = mergeEnds();
 
         original().patchPeeling(this);
 
         mergeEarlyExits();
 
-        BeginNode entry = getDuplicatedNode(loop.loopBegin());
+        AbstractBeginNode entry = getDuplicatedNode(loop.loopBegin());
         FrameState state = entry.stateAfter();
         if (state != null) {
             entry.setStateAfter(null);
@@ -213,7 +213,7 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    private BeginNode mergeEnds() {
+    private AbstractBeginNode mergeEnds() {
         assert isDuplicate();
         List<AbstractEndNode> endsToMerge = new LinkedList<>();
         Map<AbstractEndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
@@ -227,7 +227,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mergedInitializers = new IdentityHashMap<>();
-        BeginNode newExit;
+        AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);

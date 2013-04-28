@@ -120,7 +120,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
                 continue;
             }
             for (AbstractEndNode end : merge.forwardEnds()) {
-                BeginNode begin = BeginNode.prevBegin(end);
+                AbstractBeginNode begin = AbstractBeginNode.prevBegin(end);
                 boolean found = false;
                 for (GuardNode predecessorGuard : begin.guards()) {
                     if (predecessorGuard.dependencies().size() != 1) {
@@ -141,7 +141,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         for (GuardNode guard : hits) {
             PhiNode phi = graph.add(new PhiNode(PhiType.Guard, merge, null));
             for (AbstractEndNode otherEnd : merge.forwardEnds()) {
-                phi.addInput(graph.unique(new GuardNode(guard.condition(), BeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated())));
+                phi.addInput(graph.unique(new GuardNode(guard.condition(), AbstractBeginNode.prevBegin(otherEnd), guard.reason(), guard.action(), guard.negated())));
             }
             guard.replaceAndDelete(phi);
             metricPRGuardsEliminatedAtMerge.increment();
@@ -152,7 +152,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
     private static boolean eliminateAtControlSplit(ControlSplitNode controlSplit) {
         Map<Condition, Collection<GuardNode>> conditionToGuard = new HashMap<>();
         for (Node successor : controlSplit.successors()) {
-            BeginNode begin = (BeginNode) successor;
+            AbstractBeginNode begin = (AbstractBeginNode) successor;
             for (GuardNode guard : begin.guards()) {
                 if (guard.dependencies().size() != 1) {
                     continue;
@@ -175,9 +175,9 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             }
             DeoptimizationReason reason = null;
             DeoptimizationAction action = DeoptimizationAction.None;
-            Set<BeginNode> begins = new HashSet<>(3);
+            Set<AbstractBeginNode> begins = new HashSet<>(3);
             for (GuardNode guard : guards) {
-                BeginNode begin = (BeginNode) guard.dependencies().first();
+                AbstractBeginNode begin = (AbstractBeginNode) guard.dependencies().first();
                 begins.add(begin);
                 if (guard.action().ordinal() > action.ordinal()) {
                     action = guard.action();
@@ -191,7 +191,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             if (begins.size() == controlSplit.successors().count()) {
                 hits = true;
                 Condition condition = entry.getKey();
-                GuardNode newGuard = controlSplit.graph().unique(new GuardNode(condition.conditionNode, BeginNode.prevBegin(controlSplit), reason, action, condition.negated));
+                GuardNode newGuard = controlSplit.graph().unique(new GuardNode(condition.conditionNode, AbstractBeginNode.prevBegin(controlSplit), reason, action, condition.negated));
                 for (GuardNode guard : guards) {
                     guard.replaceAndDelete(newGuard);
                     metricPRGuardsEliminatedAtSplit.increment();

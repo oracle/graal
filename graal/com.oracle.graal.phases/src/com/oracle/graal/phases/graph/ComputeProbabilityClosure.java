@@ -208,7 +208,7 @@ public class ComputeProbabilityClosure {
         }
 
         @Override
-        public void afterSplit(BeginNode node) {
+        public void afterSplit(AbstractBeginNode node) {
             assert node.predecessor() != null;
             Node pred = node.predecessor();
             if (pred instanceof Invoke) {
@@ -275,7 +275,7 @@ public class ComputeProbabilityClosure {
         }
 
         @Override
-        public void afterSplit(BeginNode node) {
+        public void afterSplit(AbstractBeginNode node) {
             // nothing to do...
         }
     }

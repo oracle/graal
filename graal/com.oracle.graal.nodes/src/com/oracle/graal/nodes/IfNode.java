@@ -43,8 +43,8 @@ import com.oracle.graal.nodes.util.*;
  */
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, Negatable {
 
-    @Successor private BeginNode trueSuccessor;
-    @Successor private BeginNode falseSuccessor;
+    @Successor private AbstractBeginNode trueSuccessor;
+    @Successor private AbstractBeginNode falseSuccessor;
     @Input private LogicNode condition;
     private double trueSuccessorProbability;
 
@@ -58,10 +58,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), trueSuccessorProbability);
+        this(condition, AbstractBeginNode.begin(trueSuccessor), AbstractBeginNode.begin(falseSuccessor), trueSuccessorProbability);
     }
 
-    public IfNode(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
+    public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
         super(StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
@@ -75,7 +75,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * 
      * @return the true successor
      */
-    public BeginNode trueSuccessor() {
+    public AbstractBeginNode trueSuccessor() {
         return trueSuccessor;
     }
 
@@ -84,16 +84,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * 
      * @return the false successor
      */
-    public BeginNode falseSuccessor() {
+    public AbstractBeginNode falseSuccessor() {
         return falseSuccessor;
     }
 
-    public void setTrueSuccessor(BeginNode node) {
+    public void setTrueSuccessor(AbstractBeginNode node) {
         updatePredecessor(trueSuccessor, node);
         trueSuccessor = node;
     }
 
-    public void setFalseSuccessor(BeginNode node) {
+    public void setFalseSuccessor(AbstractBeginNode node) {
         updatePredecessor(falseSuccessor, node);
         falseSuccessor = node;
     }
@@ -104,14 +104,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public BeginNode successor(boolean istrue) {
+    public AbstractBeginNode successor(boolean istrue) {
         return istrue ? trueSuccessor : falseSuccessor;
     }
 
     @Override
     public Negatable negate() {
-        BeginNode trueSucc = trueSuccessor();
-        BeginNode falseSucc = falseSuccessor();
+        AbstractBeginNode trueSucc = trueSuccessor();
+        AbstractBeginNode falseSucc = falseSuccessor();
         setTrueSuccessor(null);
         setFalseSuccessor(null);
         setTrueSuccessor(falseSucc);
@@ -125,7 +125,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         return successor == trueSuccessor ? trueSuccessorProbability : 1 - trueSuccessorProbability;
     }
 
@@ -169,7 +169,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
-            BeginNode intermediateBegin = falseSuccessor();
+            AbstractBeginNode intermediateBegin = falseSuccessor();
             IfNode nextIf = (IfNode) intermediateBegin.next();
             double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
             if (this.trueSuccessorProbability < probabilityB) {
@@ -178,7 +178,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 if (prepareForSwap(tool.runtime(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
                     // Reording is allowed from (if1 => begin => if2) to (if2 => begin => if1).
                     assert intermediateBegin.next() == nextIf;
-                    BeginNode bothFalseBegin = nextIf.falseSuccessor();
+                    AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
                     nextIf.setFalseSuccessor(null);
                     intermediateBegin.setNext(null);
                     this.setFalseSuccessor(null);
@@ -465,8 +465,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         List<AbstractEndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         Map<AbstractEndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
 
-        BeginNode oldFalseSuccessor = falseSuccessor();
-        BeginNode oldTrueSuccessor = trueSuccessor();
+        AbstractBeginNode oldFalseSuccessor = falseSuccessor();
+        AbstractBeginNode oldTrueSuccessor = trueSuccessor();
 
         setFalseSuccessor(null);
         setTrueSuccessor(null);
@@ -545,7 +545,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, BeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
         if (ends.isEmpty()) {
             GraphUtil.killCFG(successor);
         } else {
@@ -613,8 +613,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private void removeEmptyIf(SimplifierTool tool) {
-        BeginNode originalTrueSuccessor = trueSuccessor();
-        BeginNode originalFalseSuccessor = falseSuccessor();
+        AbstractBeginNode originalTrueSuccessor = trueSuccessor();
+        AbstractBeginNode originalFalseSuccessor = falseSuccessor();
         assert originalTrueSuccessor.next() instanceof AbstractEndNode && originalFalseSuccessor.next() instanceof AbstractEndNode;
 
         AbstractEndNode trueEnd = (AbstractEndNode) originalTrueSuccessor.next();
