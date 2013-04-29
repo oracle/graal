@@ -24,11 +24,8 @@ package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
 
@@ -36,49 +33,32 @@ import com.oracle.graal.lir.asm.*;
  * Restores registers from stack slots.
  */
 @Opcode("RESTORE_REGISTER")
-public final class AMD64RestoreRegistersOp extends AMD64RegisterPreservationOp {
+public final class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
 
-    @Use(STACK) protected StackSlot[] source;
-    @Def(REG) protected RegisterValue[] destination;
+    /**
+     * The slots from which the registers are restored.
+     */
+    @Use(STACK) protected final StackSlot[] slots;
 
-    public AMD64RestoreRegistersOp(StackSlot[] source, RegisterValue[] destination) {
-        this.source = source;
-        this.destination = destination;
+    /**
+     * The operation that saved the registers restored by this operation.
+     */
+    private final AMD64SaveRegistersOp save;
+
+    public AMD64RestoreRegistersOp(StackSlot[] source, AMD64SaveRegistersOp save) {
+        this.slots = source;
+        this.save = save;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        emitCode(tasm, masm, destination, source);
-    }
-
-    @Override
-    public void doNotPreserve(Set<Register> registers) {
-        doNotPreserve(registers, destination, source);
-    }
-
-    /**
-     * Updates {@code debugInfo} with a description of where each preserved register is saved.
-     */
-    public void describePreservation(DebugInfo debugInfo, FrameMap frameMap) {
-        int preserved = 0;
-        for (RegisterValue r : destination) {
-            if (r != null) {
-                preserved++;
+        Register[] savedRegisters = save.savedRegisters;
+        for (int i = 0; i < savedRegisters.length; i++) {
+            if (savedRegisters[i] != null) {
+                StackSlot input = slots[i];
+                RegisterValue result = savedRegisters[i].asValue(input.getKind());
+                AMD64Move.move(tasm, masm, result, input);
             }
-        }
-        if (preserved != 0) {
-            Register[] keys = new Register[preserved];
-            int[] values = new int[keys.length];
-            int mapIndex = 0;
-            for (int i = 0; i < source.length; i++) {
-                if (destination[i] != null) {
-                    keys[mapIndex] = destination[i].getRegister();
-                    values[mapIndex] = frameMap.indexForStackSlot(source[i]);
-                    mapIndex++;
-                }
-            }
-            assert mapIndex == preserved;
-            debugInfo.setCalleeSaveInfo(new RegisterSaveLayout(keys, values));
         }
     }
 }

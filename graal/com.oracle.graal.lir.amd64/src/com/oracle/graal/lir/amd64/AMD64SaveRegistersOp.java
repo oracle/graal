@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.asm.*;
 
@@ -35,24 +36,65 @@ import com.oracle.graal.lir.asm.*;
  * Saves registers to stack slots.
  */
 @Opcode("SAVE_REGISTER")
-public final class AMD64SaveRegistersOp extends AMD64RegisterPreservationOp {
+public final class AMD64SaveRegistersOp extends AMD64LIRInstruction {
 
-    @Use(REG) protected RegisterValue[] source;
-    @Def(STACK) protected StackSlot[] destination;
+    /**
+     * The registers (potentially) saved by this operation.
+     */
+    protected final Register[] savedRegisters;
 
-    public AMD64SaveRegistersOp(RegisterValue[] source, StackSlot[] destination) {
-        this.source = source;
-        this.destination = destination;
+    /**
+     * The slots to which the registers are saved.
+     */
+    @Def(STACK) protected final StackSlot[] slots;
+
+    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlot[] slots) {
+        this.savedRegisters = savedRegisters;
+        this.slots = slots;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        emitCode(tasm, masm, destination, source);
+        for (int i = 0; i < savedRegisters.length; i++) {
+            if (savedRegisters[i] != null) {
+                StackSlot result = slots[i];
+                RegisterValue input = savedRegisters[i].asValue(result.getKind());
+                AMD64Move.move(tasm, masm, result, input);
+            } else {
+                assert savedRegisters[i] == null;
+            }
+        }
     }
 
-    @Override
-    public void doNotPreserve(Set<Register> registers) {
-        doNotPreserve(registers, source, destination);
+    /**
+     * Prunes the set of registers saved by this operation to exclude those in {@code notSaved} and
+     * updates {@code debugInfo} with a {@linkplain DebugInfo#getCalleeSaveInfo() description} of
+     * where each preserved register is saved.
+     */
+    public void updateAndDescribePreservation(Set<Register> notSaved, DebugInfo debugInfo, FrameMap frameMap) {
+        int preserved = 0;
+        for (int i = 0; i < savedRegisters.length; i++) {
+            if (savedRegisters[i] != null) {
+                if (notSaved.contains(savedRegisters[i])) {
+                    savedRegisters[i] = null;
+                } else {
+                    preserved++;
+                }
+            }
+        }
+        if (preserved != 0) {
+            Register[] keys = new Register[preserved];
+            int[] values = new int[keys.length];
+            int mapIndex = 0;
+            for (int i = 0; i < savedRegisters.length; i++) {
+                if (savedRegisters[i] != null) {
+                    keys[mapIndex] = savedRegisters[i];
+                    values[mapIndex] = frameMap.indexForStackSlot(slots[i]);
+                    mapIndex++;
+                }
+            }
+            assert mapIndex == preserved;
+            debugInfo.setCalleeSaveInfo(new RegisterSaveLayout(keys, values));
+        }
     }
-
 }

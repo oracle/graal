@@ -176,7 +176,7 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    Map<LIRFrameState, AMD64RestoreRegistersOp> calleeSaveInfo = new HashMap<>();
+    Map<LIRFrameState, AMD64SaveRegistersOp> calleeSaveInfo = new HashMap<>();
 
     private LIRFrameState currentRuntimeCallInfo;
 
@@ -193,29 +193,16 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
         boolean needsCalleeSave = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
 
-        RegisterValue[] savedRegisters = null;
+        AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
         if (needsCalleeSave) {
-            Register returnReg = isRegister(cc.getReturn()) ? asRegister(cc.getReturn()) : null;
-            Set<Register> registers = new HashSet<>(Arrays.asList(frameMap.registerConfig.getAllocatableRegisters()));
-            if (returnReg != null) {
-                registers.remove(returnReg);
-            }
-
-            savedRegisters = new RegisterValue[registers.size()];
+            Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
             savedRegisterLocations = new StackSlot[savedRegisters.length];
-            int savedRegisterIndex = 0;
-            for (Register reg : registers) {
-                assert reg.isCpu() || reg.isFpu();
-                savedRegisters[savedRegisterIndex++] = reg.asValue(reg.isCpu() ? Kind.Long : Kind.Double);
-            }
-
-            append(new ParametersOp(savedRegisters));
             for (int i = 0; i < savedRegisters.length; i++) {
                 StackSlot spillSlot = frameMap.allocateSpillSlot(Kind.Long);
                 savedRegisterLocations[i] = spillSlot;
             }
-            AMD64SaveRegistersOp save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations);
+            save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations);
             append(save);
 
             Value thread = args[0];
@@ -231,8 +218,8 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
             AMD64HotSpotCRuntimeCallEpilogueOp op = new AMD64HotSpotCRuntimeCallEpilogueOp(thread);
             append(op);
 
-            AMD64RestoreRegistersOp restore = new AMD64RestoreRegistersOp(savedRegisterLocations.clone(), savedRegisters.clone());
-            AMD64RestoreRegistersOp oldValue = calleeSaveInfo.put(currentRuntimeCallInfo, restore);
+            AMD64RestoreRegistersOp restore = new AMD64RestoreRegistersOp(savedRegisterLocations.clone(), save);
+            AMD64SaveRegistersOp oldValue = calleeSaveInfo.put(currentRuntimeCallInfo, save);
             assert oldValue == null;
             append(restore);
         }
