@@ -665,7 +665,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(object, ConstantLocationNode.create(field, field.getKind(), field.offset(), graph), loadField.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp()));
             tool.createNullCheckGuard(memoryRead.dependencies(), object);
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
@@ -680,9 +680,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
-            LocationNode location = ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
             WriteBarrierType barrierType = getFieldStoreBarrierType(storeField);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location, barrierType));
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType));
             tool.createNullCheckGuard(memoryWrite.dependencies(), object);
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
@@ -879,6 +878,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             }
         }
         return barrierType;
+    }
+
+    private static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
+        return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
