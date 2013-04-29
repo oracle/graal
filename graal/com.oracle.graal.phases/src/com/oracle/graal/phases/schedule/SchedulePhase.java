@@ -171,7 +171,7 @@ public final class SchedulePhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        cfg = ControlFlowGraph.compute(graph, true, true, true, false);
+        cfg = ControlFlowGraph.compute(graph, true, true, true, true);
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
