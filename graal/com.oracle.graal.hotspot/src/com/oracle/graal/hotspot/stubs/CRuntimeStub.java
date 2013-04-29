@@ -22,34 +22,28 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
-
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.word.*;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
+import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 
-public class NewMultiArrayStub extends CRuntimeStub {
+/**
+ * Base class for a stub that saves registers around a C runtime call.
+ */
+public abstract class CRuntimeStub extends Stub {
 
-    public NewMultiArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public CRuntimeStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);
     }
 
-    @Snippet
-    private static Object newMultiArray(Word hub, int rank, Word dims) {
-        newMultiArrayC(NEW_MULTI_ARRAY_C, thread(), hub, rank, dims);
-        handlePendingException(true);
-        return verifyOop(getAndClearObjectResult(thread()));
+    @Override
+    protected Arguments makeArguments(SnippetInfo stub) {
+        Arguments args = new Arguments(stub);
+        for (int i = 0; i < stub.getParameterCount(); i++) {
+            args.add(stub.getParameterName(i), null);
+        }
+        return args;
     }
-
-    public static final Descriptor NEW_MULTI_ARRAY_C = new Descriptor("new_multi_array_c", false, void.class, Word.class, Word.class, int.class, Word.class);
-
-    @NodeIntrinsic(CRuntimeCall.class)
-    public static native void newMultiArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int rank, Word dims);
 }

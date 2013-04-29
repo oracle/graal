@@ -53,7 +53,7 @@ import com.oracle.graal.word.*;
 public class NewArrayStub extends Stub {
 
     public NewArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage, "newArray");
+        super(runtime, replacements, target, linkage);
     }
 
     @Override

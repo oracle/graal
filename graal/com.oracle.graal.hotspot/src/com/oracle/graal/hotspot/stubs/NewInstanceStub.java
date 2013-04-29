@@ -55,7 +55,7 @@ import com.oracle.graal.word.*;
 public class NewInstanceStub extends Stub {
 
     public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage, "newInstance");
+        super(runtime, replacements, target, linkage);
     }
 
     @Override
