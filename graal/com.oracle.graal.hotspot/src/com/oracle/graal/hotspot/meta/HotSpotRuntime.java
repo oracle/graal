@@ -33,11 +33,13 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
+import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
+import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -221,7 +223,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:    object */ javaCallingConvention(Kind.Object));
 
         addCRuntimeCall(REGISTER_FINALIZER_C, config.registerFinalizerAddress,
-                        /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    thread */ nativeCallingConvention(word,
                         /* arg1:    object */                         Kind.Object));
@@ -232,7 +233,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg1:    length */ Kind.Int));
 
         addCRuntimeCall(NEW_ARRAY_C, config.newArrayAddress,
-                        /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    thread */ nativeCallingConvention(word,
                         /* arg1:       hub */                         word,
@@ -243,7 +243,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:       hub */ javaCallingConvention(word));
 
         addCRuntimeCall(NEW_INSTANCE_C, config.newInstanceAddress,
-                        /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    thread */ nativeCallingConvention(word,
                         /* arg1:       hub */                         word));
@@ -255,7 +254,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:      dims */                       word));
 
         addCRuntimeCall(NEW_MULTI_ARRAY_C, config.newMultiArrayAddress,
-                        /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    thread */ nativeCallingConvention(word,
                         /* arg1:       hub */                         word,
@@ -322,6 +320,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ javaCallingConvention(Kind.Object,
                         /* arg1:     flags */                       Kind.Int));
+
+        addStubCall(THREAD_IS_INTERRUPTED,
+                        /*             ret */ ret(Kind.Boolean),
+                        /* arg0:    thread */ javaCallingConvention(Kind.Object,
+                 /* arg1: clearInterrupted */                       Kind.Boolean));
+
+        addCRuntimeCall(THREAD_IS_INTERRUPTED_C, config.threadIsInterruptedAddress,
+                        /*             ret */ ret(Kind.Boolean),
+                        /* arg0:    thread */ nativeCallingConvention(word,
+                   /* arg1: receiverThread */                         Kind.Object,
+              /* arg1: clearInterrupted */                            Kind.Boolean));
+
         // @formatter:on
     }
 
@@ -336,8 +346,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return addRuntimeCall(descriptor, 0L, null, ret, args);
     }
 
-    protected RuntimeCallTarget addCRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, AllocatableValue ret, AllocatableValue... args) {
-        return addRuntimeCall(descriptor, address, true, tempRegs, ret, args);
+    protected RuntimeCallTarget addCRuntimeCall(Descriptor descriptor, long address, AllocatableValue ret, AllocatableValue... args) {
+        return addRuntimeCall(descriptor, address, true, null, ret, args);
     }
 
     protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, AllocatableValue ret, AllocatableValue... args) {
@@ -415,6 +425,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
         registerStub(new NewMultiArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_MULTI_ARRAY)));
         registerStub(new RegisterFinalizerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(REGISTER_FINALIZER)));
+        registerStub(new ThreadIsInterruptedStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(THREAD_IS_INTERRUPTED)));
     }
 
     private void registerStub(Stub stub) {

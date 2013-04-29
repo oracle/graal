@@ -30,7 +30,6 @@ import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
-import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
@@ -117,12 +116,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*        temps */ null,
                 /*          ret */ rax.asValue(Kind.Int),
                 /* arg0:    obj */ javaCallingConvention(Kind.Object));
-
-        addRuntimeCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedStub,
-                /*        temps */ null,
-                /*          ret */ rax.asValue(Kind.Boolean),
-                /* arg0: thread */ javaCallingConvention(Kind.Object,
-      /* arg1: clearInterrupted */                       Kind.Boolean));
 
         addRuntimeCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub,
                 /*        temps */ null,

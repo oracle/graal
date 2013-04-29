@@ -193,6 +193,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                             if (Debug.isDumpEnabled()) {
                                 Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                             }
+                            // TTY.println(getMethod().toString());
+                            // TTY.println(runtime().disassemble(installedCode));
                             return installedCode;
                         }
                     });
