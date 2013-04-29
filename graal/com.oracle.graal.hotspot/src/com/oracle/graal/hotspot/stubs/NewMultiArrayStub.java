@@ -35,6 +35,9 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
+/**
+ * Stub called from {@link NewMultiArrayStubCall}.
+ */
 public class NewMultiArrayStub extends CRuntimeStub {
 
     public NewMultiArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
@@ -48,7 +51,7 @@ public class NewMultiArrayStub extends CRuntimeStub {
         return verifyOop(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_MULTI_ARRAY_C = new Descriptor("new_multi_array_c", false, void.class, Word.class, Word.class, int.class, Word.class);
+    public static final Descriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newMultiArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int rank, Word dims);

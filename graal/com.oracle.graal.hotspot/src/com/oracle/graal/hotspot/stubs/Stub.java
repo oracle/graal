@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -136,6 +137,28 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
             assert constant.getPrimitiveAnnotation() == null : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
         }
         return true;
+    }
+
+    /**
+     * Looks for a {@link CRuntimeCall} node intrinsic named {@code name} in {@code stubClass} and
+     * returns a {@link Descriptor} based on its signature and the value of {@code hasSideEffect}.
+     */
+    protected static <T extends Stub> Descriptor descriptorFor(Class<T> stubClass, String name, boolean hasSideEffect) {
+        Method found = null;
+        for (Method method : stubClass.getDeclaredMethods()) {
+            if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {
+                if (method.getAnnotation(NodeIntrinsic.class).value() == CRuntimeCall.class) {
+                    assert found == null : "found more than one C runtime call named " + name + " in " + stubClass;
+                    assert method.getParameterTypes().length != 0 && method.getParameterTypes()[0] == Descriptor.class : "first parameter of C runtime call '" + name + "' in " + stubClass +
+                                    " must be of type " + Descriptor.class.getSimpleName();
+                    found = method;
+                }
+            }
+        }
+        assert found != null : "could not find C runtime call named " + name + " in " + stubClass;
+        List<Class<?>> paramList = Arrays.asList(found.getParameterTypes());
+        Class[] cCallTypes = paramList.subList(1, paramList.size()).toArray(new Class[paramList.size() - 1]);
+        return new Descriptor(name, hasSideEffect, found.getReturnType(), cCallTypes);
     }
 
     /**

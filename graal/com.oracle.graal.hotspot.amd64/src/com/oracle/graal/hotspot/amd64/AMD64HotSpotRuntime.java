@@ -25,13 +25,11 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.amd64.AMD64DeoptimizeOp.*;
+import static com.oracle.graal.hotspot.amd64.AMD64HotSpotBackend.*;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
-import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
@@ -41,9 +39,6 @@ import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.Decryp
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
-import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
-import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
-import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
@@ -106,42 +101,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg0: object */ javaCallingConvention(Kind.Object,
                 /* arg1:   lock */                       word));
 
-        addStubCall(NEW_ARRAY,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word),
-                /* arg1: length */ rbx.asValue(Kind.Int));
-
-        addRuntimeCall(NEW_ARRAY_C, config.newArrayAddress,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0: thread */ nativeCallingConvention(word,
-                /* arg1:    hub */                         word,
-                /* arg2: length */                         Kind.Int));
-
-        addStubCall(NEW_INSTANCE,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rdx.asValue(word));
-
-        addRuntimeCall(NEW_INSTANCE_C, config.newInstanceAddress,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0: thread */ nativeCallingConvention(word,
-                /* arg1:    hub */                         word));
-
-        addStubCall(NEW_MULTI_ARRAY,
-                /*          ret */ rax.asValue(Kind.Object),
-                /* arg0:    hub */ rax.asValue(word),
-                /* arg1:   rank */ rbx.asValue(Kind.Int),
-                /* arg2:   dims */ rcx.asValue(word));
-
-        addRuntimeCall(NEW_MULTI_ARRAY_C, config.newMultiArrayAddress,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0: thread */ nativeCallingConvention(word,
-                /* arg1:    hub */                         word,
-                /* arg2:   rank */                         Kind.Int,
-                /* arg3:   dims */                         word));
-
         addRuntimeCall(VERIFY_OOP, config.verifyOopStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
@@ -197,15 +156,15 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg3:      r */                         word,
               /* arg4: inLength */                         Kind.Int));
 
-        addRuntimeCall(AMD64HotSpotBackend.EXCEPTION_HANDLER, config.handleExceptionStub,
+        addRuntimeCall(EXCEPTION_HANDLER, config.handleExceptionStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void));
 
-        addRuntimeCall(AMD64HotSpotBackend.DEOPT_HANDLER, config.handleDeoptStub,
+        addRuntimeCall(DEOPT_HANDLER, config.handleDeoptStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void));
 
-        addRuntimeCall(AMD64HotSpotBackend.IC_MISS_HANDLER, config.inlineCacheMissStub,
+        addRuntimeCall(IC_MISS_HANDLER, config.inlineCacheMissStub,
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void));
         // @formatter:on

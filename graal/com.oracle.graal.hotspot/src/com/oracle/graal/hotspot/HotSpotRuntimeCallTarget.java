@@ -57,8 +57,11 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     private final CompilerToVM vm;
 
-    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, CallingConvention cc, CompilerToVM vm) {
+    private final boolean isCRuntimeCall;
+
+    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, boolean isCRuntimeCall, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
+        this.isCRuntimeCall = isCRuntimeCall;
         this.descriptor = descriptor;
         this.cc = cc;
         this.vm = vm;
@@ -88,7 +91,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
-            assert stub != null : "linkage without an address must be a stub";
+            assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
             InstalledCode code = stub.getCode(backend);
 
             AllocatableValue[] argumentLocations = new AllocatableValue[cc.getArgumentCount()];
@@ -118,7 +121,6 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
      * Determines if this is a link to a C/C++ function in the HotSpot runtime.
      */
     public boolean isCRuntimeCall() {
-        HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
-        return address == config.newArrayAddress || address == config.newInstanceAddress || address == config.newMultiArrayAddress;
+        return isCRuntimeCall;
     }
 }

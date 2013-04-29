@@ -46,9 +46,9 @@ import com.oracle.graal.word.*;
 
 /**
  * Stub implementing the fast path for TLAB refill during instance class allocation. This stub is
- * called from the {@linkplain NewObjectSnippets inline} allocation code when TLAB allocation fails.
- * If this stub fails to refill the TLAB or allocate the object, it calls out to the HotSpot C++
- * runtime to complete the allocation.
+ * called via {@link NewArrayStubCall} from the {@linkplain NewObjectSnippets inline} allocation
+ * code when TLAB allocation fails. If this stub fails to refill the TLAB or allocate the object, it
+ * calls out to the HotSpot C++ runtime to complete the allocation.
  */
 public class NewArrayStub extends Stub {
 
@@ -116,7 +116,7 @@ public class NewArrayStub extends Stub {
         return verifyOop(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_ARRAY_C = new Descriptor("new_array_c", false, void.class, Word.class, Word.class, int.class);
+    public static final Descriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);
