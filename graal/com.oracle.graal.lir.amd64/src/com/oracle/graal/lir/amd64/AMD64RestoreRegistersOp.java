@@ -38,22 +38,22 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("RESTORE_REGISTER")
 public final class AMD64RestoreRegistersOp extends AMD64RegisterPreservationOp {
 
-    @Use(STACK) protected StackSlot[] src;
-    @Def(REG) protected RegisterValue[] dst;
+    @Use(STACK) protected StackSlot[] source;
+    @Def(REG) protected RegisterValue[] destination;
 
-    public AMD64RestoreRegistersOp(StackSlot[] src, RegisterValue[] dst) {
-        this.src = src;
-        this.dst = dst;
+    public AMD64RestoreRegistersOp(StackSlot[] source, RegisterValue[] destination) {
+        this.source = source;
+        this.destination = destination;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        emitCode(tasm, masm, dst, src);
+        emitCode(tasm, masm, destination, source);
     }
 
     @Override
     public void doNotPreserve(Set<Register> registers) {
-        doNotPreserve(registers, dst, src);
+        doNotPreserve(registers, destination, source);
     }
 
     /**
@@ -61,7 +61,7 @@ public final class AMD64RestoreRegistersOp extends AMD64RegisterPreservationOp {
      */
     public void describePreservation(DebugInfo debugInfo, FrameMap frameMap) {
         int preserved = 0;
-        for (RegisterValue r : dst) {
+        for (RegisterValue r : destination) {
             if (r != null) {
                 preserved++;
             }
@@ -70,10 +70,10 @@ public final class AMD64RestoreRegistersOp extends AMD64RegisterPreservationOp {
             Register[] keys = new Register[preserved];
             int[] values = new int[keys.length];
             int mapIndex = 0;
-            for (int i = 0; i < src.length; i++) {
-                if (dst[i] != null) {
-                    keys[mapIndex] = dst[i].getRegister();
-                    values[mapIndex] = frameMap.indexForStackSlot(src[i]);
+            for (int i = 0; i < source.length; i++) {
+                if (destination[i] != null) {
+                    keys[mapIndex] = destination[i].getRegister();
+                    values[mapIndex] = frameMap.indexForStackSlot(source[i]);
                     mapIndex++;
                 }
             }

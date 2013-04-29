@@ -35,12 +35,12 @@ import com.oracle.graal.lir.asm.*;
  */
 public abstract class AMD64RegisterPreservationOp extends AMD64LIRInstruction {
 
-    protected static void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value[] dst, Value[] src) {
-        for (int i = 0; i < dst.length; i++) {
-            if (dst[i] != null) {
-                AMD64Move.move(tasm, masm, dst[i], src[i]);
+    protected static void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value[] destination, Value[] source) {
+        for (int i = 0; i < destination.length; i++) {
+            if (destination[i] != null) {
+                AMD64Move.move(tasm, masm, destination[i], source[i]);
             } else {
-                assert src[i] == null;
+                assert source[i] == null;
             }
         }
     }

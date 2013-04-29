@@ -37,22 +37,22 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("SAVE_REGISTER")
 public final class AMD64SaveRegistersOp extends AMD64RegisterPreservationOp {
 
-    @Use(REG) protected RegisterValue[] src;
-    @Def(STACK) protected StackSlot[] dst;
+    @Use(REG) protected RegisterValue[] source;
+    @Def(STACK) protected StackSlot[] destination;
 
-    public AMD64SaveRegistersOp(RegisterValue[] src, StackSlot[] dst) {
-        this.src = src;
-        this.dst = dst;
+    public AMD64SaveRegistersOp(RegisterValue[] source, StackSlot[] destination) {
+        this.source = source;
+        this.destination = destination;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        emitCode(tasm, masm, dst, src);
+        emitCode(tasm, masm, destination, source);
     }
 
     @Override
     public void doNotPreserve(Set<Register> registers) {
-        doNotPreserve(registers, src, dst);
+        doNotPreserve(registers, source, destination);
     }
 
 }
