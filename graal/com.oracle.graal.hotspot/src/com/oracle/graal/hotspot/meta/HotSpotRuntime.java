@@ -349,6 +349,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSubstitutions(AESCryptSubstitutions.class);
             replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
+        if (GraalOptions.IntrinsifyReflectionMethods) {
+            replacements.registerSubstitutions(ReflectionSubstitutions.class);
+        }
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
