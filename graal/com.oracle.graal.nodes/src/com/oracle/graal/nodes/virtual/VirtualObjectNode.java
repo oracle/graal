@@ -22,41 +22,68 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(nameTemplate = "VirtualObject {p#type}")
 public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable {
 
     public VirtualObjectNode() {
         super(StampFactory.virtual());
     }
 
+    /**
+     * The type of object described by this {@link VirtualObjectNode}. In case of arrays, this is
+     * the array type (and not the component type).
+     */
     public abstract ResolvedJavaType type();
 
+    /**
+     * The number of entries this virtual object has. Either the number of fields or the number of
+     * array elements.
+     */
     public abstract int entryCount();
+
+    /**
+     * Returns the name of the entry at the given index. Only used for debugging purposes.
+     */
+    public abstract String entryName(int i);
+
+    /**
+     * If the given index denotes an entry in this virtual object, the index of this entry is
+     * returned. If no such entry can be found, this method returns -1.
+     */
+    public abstract int entryIndexForOffset(long constantOffset);
+
+    /**
+     * Returns the {@link Kind} of the entry at the given index.
+     */
+    public abstract Kind entryKind(int index);
+
+    /**
+     * Returns an exact duplicate of this virtual object node, which has not been added to the graph
+     * yet.
+     */
+    public abstract VirtualObjectNode duplicate();
+
+    /**
+     * Specifies whether this virtual object has an object identity. If not, then the result of a
+     * comparison of two virtual objects is determined by comparing their contents.
+     */
+    public boolean hasIdentity() {
+        return true;
+    }
+
+    /**
+     * Returns a node that can be used to materialize this virtual object. If this returns an
+     * {@link AllocatedObjectNode} then this node will be attached to a {@link CommitAllocationNode}
+     * , otherwise the node will just be added to the graph.
+     */
+    public abstract ValueNode getMaterializedRepresentation(ValueNode[] entries, int lockCount);
 
     @Override
     public void generate(LIRGeneratorTool gen) {
         // nothing to do...
-    }
-
-    public abstract String fieldName(int i);
-
-    public abstract void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount);
-
-    public abstract int entryIndexForOffset(long constantOffset);
-
-    public abstract Kind entryKind(int index);
-
-    public abstract VirtualObjectNode duplicate();
-
-    public boolean hasIdentity() {
-        return true;
     }
 }

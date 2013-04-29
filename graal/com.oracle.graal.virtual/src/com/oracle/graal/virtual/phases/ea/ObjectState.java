@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.virtual.*;
  */
 class ObjectState extends Virtualizable.State {
 
-    public final VirtualObjectNode virtual;
+    final VirtualObjectNode virtual;
 
     private EscapeState state;
     private ValueNode[] entries;
@@ -137,7 +137,7 @@ class ObjectState extends Virtualizable.State {
         }
         if (entries != null) {
             for (int i = 0; i < entries.length; i++) {
-                str.append(virtual.fieldName(i)).append('=').append(entries[i]).append(' ');
+                str.append(virtual.entryName(i)).append('=').append(entries[i]).append(' ');
             }
         }
         if (materializedValue != null) {

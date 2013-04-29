@@ -35,16 +35,15 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**
- * In these test cases the probability of all invokes is set to a high value, such that an
- * InliningPhase should inline them all. After that, the EscapeAnalysisPhase is expected to remove
- * all allocations and return the correct values.
+ * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct
+ * values.
  */
 public class EscapeAnalysisTest extends GraalCompilerTest {
 
@@ -230,7 +229,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                     Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
                     Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
                 }
-                int newInstanceCount = graph.getNodes(NewInstanceNode.class).count() + graph.getNodes(NewArrayNode.class).count() + graph.getNodes(MaterializeObjectNode.class).count();
+                int newInstanceCount = graph.getNodes(NewInstanceNode.class).count() + graph.getNodes(NewArrayNode.class).count() + graph.getNodes(CommitAllocationNode.class).count();
                 Assert.assertEquals(0, newInstanceCount);
                 return returnNode;
             }

@@ -22,14 +22,11 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 
-@NodeInfo(nameTemplate = "VirtualInstance {p#type}")
+@NodeInfo(nameTemplate = "VirtualInstance {p#type/s}")
 public class VirtualInstanceNode extends VirtualObjectNode {
 
     private final ResolvedJavaType type;
@@ -68,7 +65,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public String fieldName(int index) {
+    public String entryName(int index) {
         return fields[index].getName();
     }
 
@@ -99,16 +96,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public void materializeAt(FixedWithNextNode materializeNode, List<ValueNode> values, boolean defaultValuesOnly, int lockCount) {
-        StructuredGraph graph = (StructuredGraph) graph();
-        NewInstanceNode newInstance = graph.add(new NewInstanceNode(type(), defaultValuesOnly, lockCount > 0));
-        materializeNode.replaceAtUsages(newInstance);
-        graph.addBeforeFixed(materializeNode, newInstance);
-        if (!defaultValuesOnly) {
-            for (int i = 0; i < entryCount(); i++) {
-                graph.addBeforeFixed(materializeNode, graph.add(new StoreFieldNode(newInstance, field(i), values.get(i))));
-            }
-        }
-        graph.removeFixed(materializeNode);
+    public ValueNode getMaterializedRepresentation(ValueNode[] entries, int lockCount) {
+        return new AllocatedObjectNode(this);
     }
 }

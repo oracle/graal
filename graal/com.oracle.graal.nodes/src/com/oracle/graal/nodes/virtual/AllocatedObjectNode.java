@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,39 @@
  */
 package com.oracle.graal.nodes.virtual;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class VirtualBoxingNode extends VirtualInstanceNode {
+/**
+ * Selects one object from a {@link CommitAllocationNode}. The object is identified by its
+ * {@link VirtualObjectNode}.
+ */
+public class AllocatedObjectNode extends FloatingNode implements Virtualizable {
 
-    private final Kind boxingKind;
+    @Input private VirtualObjectNode virtualObject;
+    @Input private CommitAllocationNode commit;
 
-    public VirtualBoxingNode(ResolvedJavaType type, Kind boxingKind) {
-        super(type);
-        this.boxingKind = boxingKind;
+    public AllocatedObjectNode(VirtualObjectNode virtualObject) {
+        super(StampFactory.exactNonNull(virtualObject.type()));
+        this.virtualObject = virtualObject;
+    }
+
+    public VirtualObjectNode getVirtualObject() {
+        return virtualObject;
+    }
+
+    public CommitAllocationNode getCommit() {
+        return commit;
+    }
+
+    public void setCommit(CommitAllocationNode x) {
+        updateUsages(commit, x);
+        commit = x;
     }
 
     @Override
-    public VirtualBoxingNode duplicate() {
-        return new VirtualBoxingNode(type(), boxingKind);
-    }
-
-    @Override
-    public boolean hasIdentity() {
-        return false;
-    }
-
-    @Override
-    public ValueNode getMaterializedRepresentation(ValueNode[] entries, int lockCount) {
-        assert entries.length == 1;
-        assert lockCount == 0;
-        return new BoxNode(entries[0], type(), boxingKind);
+    public void virtualize(VirtualizerTool tool) {
+        tool.replaceWithVirtual(getVirtualObject());
     }
 }
