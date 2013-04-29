@@ -27,12 +27,13 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node implementing a call to HotSpot's {@code graal_identityhashcode} stub.
+ * Node implementing a call to {@link IdentityHashCodeStub}.
  */
 public class IdentityHashCodeStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
