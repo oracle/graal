@@ -46,17 +46,17 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     @Override
     public Register[] getAllocatableRegisters() {
-        return allocatable;
+        return allocatable.clone();
     }
 
     @Override
     public EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters() {
-        return categorized;
+        return categorized.clone();
     }
 
     @Override
     public RegisterAttributes[] getAttributesMap() {
-        return attributesMap;
+        return attributesMap.clone();
     }
 
     private final Register[] javaGeneralParameterRegisters;
