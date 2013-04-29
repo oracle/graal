@@ -54,6 +54,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private final HotSpotResolvedObjectType holder;
     private/* final */int codeSize;
     private/* final */int exceptionHandlerCount;
+    private boolean callerSensitive;
+    private boolean forceInline;
+    private boolean dontInline;
+    private boolean ignoredBySecurityStackWalk;
     private HotSpotSignature signature;
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
@@ -129,6 +133,43 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             handlers[i] = new ExceptionHandler(-1, -1, -1, -1, null);
         }
         return graalRuntime().getCompilerToVM().initializeExceptionHandlers(metaspaceMethod, handlers);
+    }
+
+    /**
+     * Returns true if this method has a CallerSensitive annotation.
+     * 
+     * @return true if CallerSensitive annotation present, false otherwise
+     */
+    public boolean isCallerSensitive() {
+        return callerSensitive;
+    }
+
+    /**
+     * Returns true if this method has a ForceInline annotation.
+     * 
+     * @return true if ForceInline annotation present, false otherwise
+     */
+    public boolean isForceInline() {
+        return forceInline;
+    }
+
+    /**
+     * Returns true if this method has a DontInline annotation.
+     * 
+     * @return true if DontInline annotation present, false otherwise
+     */
+    public boolean isDontInline() {
+        return dontInline;
+    }
+
+    /**
+     * Returns true if this method is one of the special methods that is ignored by security stack
+     * walks.
+     * 
+     * @return true if special method ignored by security stack walks, false otherwise
+     */
+    public boolean ignoredBySecurityStackWalk() {
+        return ignoredBySecurityStackWalk;
     }
 
     public boolean hasBalancedMonitors() {
