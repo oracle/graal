@@ -30,9 +30,9 @@ import com.oracle.graal.hotspot.meta.*;
 /**
  * AMD64 specific implementation of {@link HotSpotGraalRuntime}.
  */
-final class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
+public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
 
-    private AMD64HotSpotGraalRuntime() {
+    protected AMD64HotSpotGraalRuntime() {
     }
 
     /**
@@ -45,11 +45,15 @@ final class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
         return graalRuntime();
     }
 
+    protected Architecture createArchitecture() {
+        return new AMD64(config.useSSE, config.useAVX);
+    }
+
     @Override
     protected TargetDescription createTarget() {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
-        return new TargetDescription(new AMD64(config.useSSE, config.useAVX), true, stackFrameAlignment, implicitNullCheckLimit, true);
+        return new TargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, true);
     }
 
     @Override
