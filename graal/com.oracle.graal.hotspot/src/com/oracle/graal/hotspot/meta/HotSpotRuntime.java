@@ -777,7 +777,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CommitAllocationNode) {
             CommitAllocationNode commit = (CommitAllocationNode) n;
 
-            graph.addBeforeFixed(commit, graph.add(new RegionStartNode()));
             List<ValueNode> allocations = new ArrayList<>(commit.getVirtualObjects().size());
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
@@ -823,7 +822,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     }
                 }
             }
-            graph.addBeforeFixed(commit, graph.add(new RegionEndNode()));
             for (Node usage : commit.usages().snapshot()) {
                 AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
                 int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
