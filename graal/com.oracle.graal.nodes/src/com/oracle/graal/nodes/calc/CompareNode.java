@@ -101,6 +101,16 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         return this;
     }
 
+    protected void setX(ValueNode x) {
+        updateUsages(this.x, x);
+        this.x = x;
+    }
+
+    protected void setY(ValueNode y) {
+        updateUsages(this.y, y);
+        this.y = y;
+    }
+
     protected LogicNode optimizeNormalizeCmp(Constant constant, NormalizeCompareNode normalizeNode, boolean mirrored) {
         throw new GraalInternalError("NormalizeCompareNode connected to %s (%s %s %s)", this, constant, normalizeNode, mirrored);
     }
@@ -121,6 +131,14 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
                 return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.runtime(), condition());
             } else if (x() instanceof NormalizeCompareNode) {
                 return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompareNode) x(), false);
+            }
+        }
+        if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
+            ConvertNode convertX = (ConvertNode) x();
+            ConvertNode convertY = (ConvertNode) y();
+            if (convertX.opcode.isLossless() && convertY.opcode.isLossless()) {
+                setX(convertX.value());
+                setY(convertY.value());
             }
         }
         return this;

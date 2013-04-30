@@ -35,34 +35,40 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable, Lowerable {
 
-    public enum Op {
-        I2L(Int, Long),
-        L2I(Long, Int),
-        I2B(Int, Byte),
-        I2C(Int, Char),
-        I2S(Int, Short),
-        F2D(Float, Double),
-        D2F(Double, Float),
-        I2F(Int, Float),
-        I2D(Int, Double),
-        F2I(Float, Int),
-        D2I(Double, Int),
-        L2F(Long, Float),
-        L2D(Long, Double),
-        F2L(Float, Long),
-        D2L(Double, Long),
-        UNSIGNED_I2L(Int, Long),
-        MOV_I2F(Int, Float),
-        MOV_L2D(Long, Double),
-        MOV_F2I(Float, Int),
-        MOV_D2L(Double, Long);
+    public static enum Op {
+        I2L(Int, Long, true),
+        L2I(Long, Int, false),
+        I2B(Int, Byte, false),
+        I2C(Int, Char, false),
+        I2S(Int, Short, false),
+        F2D(Float, Double, false),
+        D2F(Double, Float, false),
+        I2F(Int, Float, false),
+        I2D(Int, Double, true),
+        F2I(Float, Int, false),
+        D2I(Double, Int, false),
+        L2F(Long, Float, false),
+        L2D(Long, Double, false),
+        F2L(Float, Long, false),
+        D2L(Double, Long, false),
+        UNSIGNED_I2L(Int, Long, true),
+        MOV_I2F(Int, Float, false),
+        MOV_L2D(Long, Double, false),
+        MOV_F2I(Float, Int, false),
+        MOV_D2L(Double, Long, false);
 
         public final Kind from;
         public final Kind to;
+        public final boolean lossless;
 
-        private Op(Kind from, Kind to) {
+        private Op(Kind from, Kind to, boolean lossless) {
             this.from = from;
             this.to = to;
+            this.lossless = lossless;
+        }
+
+        public boolean isLossless() {
+            return lossless;
         }
 
         public static Op getOp(Kind from, Kind to) {
