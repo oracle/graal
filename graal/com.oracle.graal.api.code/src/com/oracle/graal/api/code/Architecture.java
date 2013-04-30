@@ -24,6 +24,7 @@ package com.oracle.graal.api.code;
 
 import java.nio.*;
 
+import com.oracle.graal.api.code.Register.RegisterCategory;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -196,4 +197,8 @@ public abstract class Architecture {
                 return 0;
         }
     }
+
+    public abstract boolean canStoreValue(RegisterCategory category, PlatformKind kind);
+
+    public abstract PlatformKind getLargestStorableKind(RegisterCategory category);
 }

@@ -147,22 +147,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     @Override
     public Variable newVariable(PlatformKind platformKind) {
+        PlatformKind stackKind;
         if (platformKind instanceof Kind) {
-            Kind stackKind = ((Kind) platformKind).getStackKind();
-            switch (stackKind) {
-                case Int:
-                case Long:
-                case Object:
-                    return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.CPU);
-                case Float:
-                case Double:
-                    return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.FPU);
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+            stackKind = ((Kind) platformKind).getStackKind();
         } else {
-            return new Variable(platformKind, lir.nextVariable(), Register.RegisterFlag.FPU);
+            stackKind = platformKind;
         }
+        return new Variable(stackKind, lir.nextVariable());
     }
 
     @Override

@@ -27,6 +27,8 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import java.nio.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.Register.RegisterCategory;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the SPARC architecture.
@@ -38,5 +40,17 @@ public class SPARC extends Architecture {
     public SPARC() {
         super("AMD64", 8, ByteOrder.LITTLE_ENDIAN, null, LOAD_STORE | STORE_STORE, 1, 0, 8);
         // SPARC: Fix architecture parameters.
+    }
+
+    @Override
+    public boolean canStoreValue(RegisterCategory category, PlatformKind kind) {
+        // TODO Auto-generated method stub
+        return false;
+    }
+
+    @Override
+    public PlatformKind getLargestStorableKind(RegisterCategory category) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

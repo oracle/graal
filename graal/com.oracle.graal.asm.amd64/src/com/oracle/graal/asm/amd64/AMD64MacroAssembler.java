@@ -171,7 +171,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movflt(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         if (UseXmmRegToRegMoveAll) {
             movaps(dst, src);
         } else {
@@ -180,17 +180,17 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movflt(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         movss(dst, src);
     }
 
     public final void movflt(AMD64Address dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         movss(dst, src);
     }
 
     public final void movdbl(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         if (UseXmmRegToRegMoveAll) {
             movapd(dst, src);
         } else {
@@ -199,7 +199,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void movdbl(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         if (UseXmmLoadAndClearUpper) {
             movsd(dst, src);
         } else {
@@ -218,7 +218,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public final void flog(Register dest, Register value, boolean base10) {
-        assert dest.isFpu() && value.isFpu();
+        assert dest.getRegisterCategory() == AMD64.XMM && value.getRegisterCategory() == AMD64.XMM;
 
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
         if (base10) {
@@ -253,7 +253,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private AMD64Address trigPrologue(Register value) {
-        assert value.isFpu();
+        assert value.getRegisterCategory() == AMD64.XMM;
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
         subq(AMD64.rsp, 8);
         movsd(tmp, value);
@@ -262,7 +262,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private void trigEpilogue(Register dest, AMD64Address tmp) {
-        assert dest.isFpu();
+        assert dest.getRegisterCategory() == AMD64.XMM;
         fstp(tmp);
         movsd(dest, tmp);
         addq(AMD64.rsp, 8);

@@ -305,7 +305,7 @@ public final class LinearScan {
             intervals = Arrays.copyOf(intervals, intervals.length * 2);
         }
         intervalsSize++;
-        Variable variable = new Variable(source.kind(), ir.nextVariable(), asVariable(source.operand).flag);
+        Variable variable = new Variable(source.kind(), ir.nextVariable());
         assert variables.size() == variable.index;
         variables.add(variable);
 

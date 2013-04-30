@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
@@ -56,7 +55,6 @@ import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -192,8 +190,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         int currentStackOffset = 0;
         for (int i = 0; i < arguments.length; i++) {
             Kind kind = arguments[i];
-            RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
-            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, flag);
+            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, kind);
             if (i < ccRegs.length) {
                 result[i] = ccRegs[i].asValue(kind);
             } else {

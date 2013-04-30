@@ -23,17 +23,20 @@
 package com.oracle.graal.ptx;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 
 import java.nio.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.*;
+import com.oracle.graal.api.code.Register.RegisterCategory;
+import com.oracle.graal.api.meta.*;
 
 /**
  * Represents the PTX architecture.
  */
 public class PTX extends Architecture {
+
+    public static final RegisterCategory CPU = new RegisterCategory("CPU");
+    public static final RegisterCategory FPU = new RegisterCategory("FPU");
 
     // @formatter:off
 
@@ -49,23 +52,23 @@ public class PTX extends Architecture {
      */
 
     // General purpose registers
-    public static final Register r0  = new Register(0,  0,  8, "r0",  CPU, RegisterFlag.Byte);
-    public static final Register r1  = new Register(1,  1,  8, "r1",  CPU, RegisterFlag.Byte);
-    public static final Register r2  = new Register(2,  2,  8, "r2",  CPU, RegisterFlag.Byte);
-    public static final Register r3  = new Register(3,  3,  8, "r3",  CPU, RegisterFlag.Byte);
-    public static final Register r4  = new Register(4,  4,  8, "r4",  CPU, RegisterFlag.Byte);
-    public static final Register r5  = new Register(5,  5,  8, "r5",  CPU, RegisterFlag.Byte);
-    public static final Register r6  = new Register(6,  6,  8, "r6",  CPU, RegisterFlag.Byte);
-    public static final Register r7  = new Register(7,  7,  8, "r7",  CPU, RegisterFlag.Byte);
+    public static final Register r0  = new Register(0,  0,  8, "r0",  CPU);
+    public static final Register r1  = new Register(1,  1,  8, "r1",  CPU);
+    public static final Register r2  = new Register(2,  2,  8, "r2",  CPU);
+    public static final Register r3  = new Register(3,  3,  8, "r3",  CPU);
+    public static final Register r4  = new Register(4,  4,  8, "r4",  CPU);
+    public static final Register r5  = new Register(5,  5,  8, "r5",  CPU);
+    public static final Register r6  = new Register(6,  6,  8, "r6",  CPU);
+    public static final Register r7  = new Register(7,  7,  8, "r7",  CPU);
 
-    public static final Register r8  = new Register(8,  8,  8, "r8",  CPU, RegisterFlag.Byte);
-    public static final Register r9  = new Register(9,  9,  8, "r9",  CPU, RegisterFlag.Byte);
-    public static final Register r10 = new Register(10, 10, 8, "r10", CPU, RegisterFlag.Byte);
-    public static final Register r11 = new Register(11, 11, 8, "r11", CPU, RegisterFlag.Byte);
-    public static final Register r12 = new Register(12, 12, 8, "r12", CPU, RegisterFlag.Byte);
-    public static final Register r13 = new Register(13, 13, 8, "r13", CPU, RegisterFlag.Byte);
-    public static final Register r14 = new Register(14, 14, 8, "r14", CPU, RegisterFlag.Byte);
-    public static final Register r15 = new Register(15, 15, 8, "r15", CPU, RegisterFlag.Byte);
+    public static final Register r8  = new Register(8,  8,  8, "r8",  CPU);
+    public static final Register r9  = new Register(9,  9,  8, "r9",  CPU);
+    public static final Register r10 = new Register(10, 10, 8, "r10", CPU);
+    public static final Register r11 = new Register(11, 11, 8, "r11", CPU);
+    public static final Register r12 = new Register(12, 12, 8, "r12", CPU);
+    public static final Register r13 = new Register(13, 13, 8, "r13", CPU);
+    public static final Register r14 = new Register(14, 14, 8, "r14", CPU);
+    public static final Register r15 = new Register(15, 15, 8, "r15", CPU);
 
     public static final Register[] gprRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
@@ -116,4 +119,44 @@ public class PTX extends Architecture {
               8);
     }
     // @formatter:on
+
+    @Override
+    public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {
+        if (!(platformKind instanceof Kind)) {
+            return false;
+        }
+
+        Kind kind = (Kind) platformKind;
+        if (category == CPU) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                case Char:
+                case Short:
+                case Int:
+                case Long:
+                case Object:
+                    return true;
+            }
+        } else if (category == FPU) {
+            switch (kind) {
+                case Float:
+                case Double:
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public PlatformKind getLargestStorableKind(RegisterCategory category) {
+        if (category == CPU) {
+            return Kind.Long;
+        } else if (category == FPU) {
+            return Kind.Double;
+        } else {
+            return Kind.Illegal;
+        }
+    }
 }

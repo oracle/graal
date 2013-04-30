@@ -29,7 +29,6 @@ import java.util.*;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -38,9 +37,11 @@ import com.oracle.graal.phases.*;
 // @formatter:off
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
+    private final Architecture architecture;
+
     private final Register[] allocatable = initAllocatable();
 
-    private final EnumMap<RegisterFlag, Register[]> categorized = Register.categorize(allocatable);
+    private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
     private final RegisterAttributes[] attributesMap;
 
@@ -49,9 +50,21 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return allocatable.clone();
     }
 
-    @Override
-    public EnumMap<RegisterFlag, Register[]> getCategorizedAllocatableRegisters() {
-        return categorized.clone();
+    public Register[] getAllocatableRegisters(PlatformKind kind) {
+        if (categorized.containsKey(kind)) {
+            return categorized.get(kind);
+        }
+
+        ArrayList<Register> list = new ArrayList<>();
+        for (Register reg : getAllocatableRegisters()) {
+            if (architecture.canStoreValue(reg.getRegisterCategory(), kind)) {
+                list.add(reg);
+            }
+        }
+
+        Register[] ret = list.toArray(new Register[0]);
+        categorized.put(kind, ret);
+        return ret;
     }
 
     @Override
@@ -93,7 +106,9 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return allocatable;
     }
 
-    public AMD64HotSpotRegisterConfig(HotSpotVMConfig config, boolean globalStubConfig) {
+    public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config, boolean globalStubConfig) {
+        this.architecture = architecture;
+
         if (config.windowsOs) {
             javaGeneralParameterRegisters = new Register[] {rdx, r8, r9, rdi, rsi, rcx};
             nativeGeneralParameterRegisters = new Register[] {rcx, rdx, r8, r9};
@@ -135,10 +150,11 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return callingConvention(javaGeneralParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
     }
 
-    public Register[] getCallingConventionRegisters(Type type, RegisterFlag flag) {
-        if (flag == RegisterFlag.FPU) {
+    public Register[] getCallingConventionRegisters(Type type, Kind kind) {
+        if (architecture.canStoreValue(XMM, kind)) {
             return xmmParameterRegisters;
         }
+        assert architecture.canStoreValue(CPU, kind);
         return type == Type.NativeCall ? nativeGeneralParameterRegisters : javaGeneralParameterRegisters;
     }
 

@@ -39,21 +39,15 @@ public final class Variable extends AllocatableValue {
     public final int index;
 
     /**
-     * The type of register that this variable needs to get assigned.
-     */
-    public final Register.RegisterFlag flag;
-
-    /**
      * Creates a new variable.
      * 
      * @param kind
      * @param index
      */
-    public Variable(PlatformKind kind, int index, Register.RegisterFlag flag) {
+    public Variable(PlatformKind kind, int index) {
         super(kind);
         assert index >= 0;
         this.index = index;
-        this.flag = flag;
     }
 
     @Override
