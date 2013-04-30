@@ -39,6 +39,7 @@ public class LoopEx {
     private LoopFragmentWhole whole;
     private CountedLoopInfo counted; // TODO (gd) detect
     private LoopsData data;
+    private InductionVariables ivs;
 
     LoopEx(Loop lirLoop, LoopsData data) {
         this.lirLoop = lirLoop;
@@ -168,5 +169,12 @@ public class LoopEx {
             }
         }
         return LoopFragment.computeNodes(point.graph(), blocks, exits);
+    }
+
+    public InductionVariables getInductionVariables() {
+        if (ivs == null) {
+            ivs = new InductionVariables(this);
+        }
+        return ivs;
     }
 }

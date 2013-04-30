@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -62,6 +63,63 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
         private Op(Kind from, Kind to) {
             this.from = from;
             this.to = to;
+        }
+
+        public static Op getOp(Kind from, Kind to) {
+            switch (from) {
+                case Int:
+                    switch (to) {
+                        case Byte:
+                            return I2B;
+                        case Char:
+                            return I2C;
+                        case Short:
+                            return I2S;
+                        case Long:
+                            return I2L;
+                        case Float:
+                            return I2F;
+                        case Double:
+                            return I2D;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                case Long:
+                    switch (to) {
+                        case Int:
+                            return L2I;
+                        case Float:
+                            return L2F;
+                        case Double:
+                            return L2D;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                case Float:
+                    switch (to) {
+                        case Int:
+                            return F2I;
+                        case Long:
+                            return F2L;
+                        case Double:
+                            return F2D;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                case Double:
+                    switch (to) {
+                        case Int:
+                            return D2I;
+                        case Long:
+                            return D2L;
+                        case Float:
+                            return D2F;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
         }
     }
 
@@ -169,6 +227,14 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.setResult(this, gen.emitConvert(opcode, gen.operand(value())));
+    }
+
+    public static ValueNode convert(Kind toKind, ValueNode value) {
+        Kind fromKind = value.kind();
+        if (fromKind == toKind) {
+            return value;
+        }
+        return value.graph().unique(new ConvertNode(Op.getOp(fromKind, toKind), value));
     }
 
     @NodeIntrinsic
