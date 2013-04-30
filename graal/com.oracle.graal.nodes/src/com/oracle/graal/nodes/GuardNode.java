@@ -104,7 +104,8 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, No
     }
 
     @Override
-    public Negatable negate() {
+    public Negatable negate(LogicNode cond) {
+        assert cond == condition();
         negated = !negated;
         return this;
     }

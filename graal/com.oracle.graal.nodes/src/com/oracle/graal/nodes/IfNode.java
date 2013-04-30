@@ -109,7 +109,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @Override
-    public Negatable negate() {
+    public Negatable negate(LogicNode cond) {
+        assert cond == condition();
         BeginNode trueSucc = trueSuccessor();
         BeginNode falseSucc = falseSuccessor();
         setTrueSuccessor(null);
