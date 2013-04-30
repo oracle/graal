@@ -66,6 +66,6 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
         HotSpotGraalRuntime runtime = graalRuntime();
         Register thread = runtime.getRuntime().threadRegister();
         masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE));
+        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(UNCOMMON_TRAP));
     }
 }

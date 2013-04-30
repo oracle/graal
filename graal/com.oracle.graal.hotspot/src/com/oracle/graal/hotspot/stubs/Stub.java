@@ -149,7 +149,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
             Call call = (Call) infopoint;
             assert call.target instanceof HotSpotRuntimeCallTarget : format("%h.%n(%p): ", getMethod()) + "cannot have non runtime call: " + call.target;
             HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert callTarget.getAddress() == graalRuntime().getConfig().deoptimizeStub || callTarget.isCRuntimeCall() : format("%h.%n(%p): ", getMethod()) +
+            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : format("%h.%n(%p): ", getMethod()) +
                             "must only call C runtime or deoptimization stub, not " + call.target;
         }
         return true;

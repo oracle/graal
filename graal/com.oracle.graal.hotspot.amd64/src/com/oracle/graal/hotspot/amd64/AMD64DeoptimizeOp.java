@@ -37,7 +37,7 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("DEOPT")
 final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
 
-    public static final Descriptor DEOPTIMIZE = new Descriptor("deoptimize", true, void.class);
+    public static final Descriptor UNCOMMON_TRAP = new Descriptor("deoptimize", true, void.class);
 
     private DeoptimizationAction action;
     private DeoptimizationReason reason;
@@ -54,6 +54,6 @@ final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
         HotSpotGraalRuntime runtime = graalRuntime();
         Register thread = runtime.getRuntime().threadRegister();
         masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE), null, false, info);
+        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(UNCOMMON_TRAP), null, false, info);
     }
 }
