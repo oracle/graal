@@ -146,7 +146,7 @@ public class GraalCompiler {
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
+        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target, optimisticOpts);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
 
         final SchedulePhase schedule = new SchedulePhase();

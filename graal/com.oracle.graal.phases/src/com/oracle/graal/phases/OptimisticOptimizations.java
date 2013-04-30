@@ -34,7 +34,7 @@ public final class OptimisticOptimizations {
     private static final DebugMetric disabledOptimisticOptsMetric = Debug.metric("DisabledOptimisticOpts");
 
     public static enum Optimization {
-        RemoveNeverExecutedCode, UseTypeCheckedInlining, UseTypeCheckHints, UseExceptionProbabilityForOperations, UseExceptionProbability
+        RemoveNeverExecutedCode, UseTypeCheckedInlining, UseTypeCheckHints, UseExceptionProbabilityForOperations, UseExceptionProbability, UseLoopLimitChecks
     }
 
     private final Set<Optimization> enabledOpts;
@@ -47,6 +47,7 @@ public final class OptimisticOptimizations {
         addOptimization(method, DeoptimizationReason.TypeCheckedInliningViolated, Optimization.UseTypeCheckedInlining);
         addOptimization(method, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.UseTypeCheckHints);
         addOptimization(method, DeoptimizationReason.NotCompiledExceptionHandler, Optimization.UseExceptionProbability);
+        addOptimization(method, DeoptimizationReason.LoopLimitCheck, Optimization.UseLoopLimitChecks);
     }
 
     private void addOptimization(ResolvedJavaMethod method, DeoptimizationReason deoptReason, Optimization optimization) {
@@ -107,6 +108,10 @@ public final class OptimisticOptimizations {
 
     public boolean useExceptionProbabilityForOperations() {
         return GraalOptions.UseExceptionProbabilityForOperations && enabledOpts.contains(Optimization.UseExceptionProbabilityForOperations);
+    }
+
+    public boolean useLoopLimitChecks() {
+        return GraalOptions.UseLoopLimitChecks && enabledOpts.contains(Optimization.UseLoopLimitChecks);
     }
 
     public boolean lessOptimisticThan(OptimisticOptimizations other) {

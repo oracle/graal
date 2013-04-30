@@ -150,4 +150,8 @@ public class CountedLoopInfo {
         }
         return overflowGuard;
     }
+
+    public Kind getKind() {
+        return iv.valueNode().kind();
+    }
 }
