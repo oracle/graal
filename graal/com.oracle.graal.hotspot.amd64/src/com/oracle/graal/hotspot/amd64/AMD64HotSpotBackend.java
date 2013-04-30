@@ -100,13 +100,21 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     class HotSpotFrameContext implements FrameContext {
 
+        final boolean isStub;
+
+        HotSpotFrameContext(boolean isStub) {
+            this.isStub = isStub;
+        }
+
         @Override
         public void enter(TargetMethodAssembler tasm) {
             FrameMap frameMap = tasm.frameMap;
             int frameSize = frameMap.frameSize();
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-            emitStackOverflowCheck(tasm, false);
+            if (!isStub) {
+                emitStackOverflowCheck(tasm, false);
+            }
             asm.decrementq(rsp, frameSize);
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
@@ -151,16 +159,16 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         LIR lir = gen.lir;
         boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
+        Stub stub = runtime().asStub(lirGen.method());
         AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
-        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
+        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
-        if (deoptimizationRescueSlot != null) {
+        if (deoptimizationRescueSlot != null && stub == null) {
             tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
 
-        Stub stub = runtime().asStub(lirGen.method());
         if (stub != null) {
 
             final Set<Register> definedRegisters = gatherDefinedRegisters(lir);
@@ -239,8 +247,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // Emit code for the LIR
         lirGen.lir.emitCode(tasm);
 
-        boolean frameOmitted = tasm.frameContext == null;
-        if (!frameOmitted) {
+        HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
+        if (frameContext != null && !frameContext.isStub) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null, false, null);
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
