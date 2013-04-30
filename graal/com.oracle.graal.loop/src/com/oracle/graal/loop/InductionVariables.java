@@ -46,7 +46,7 @@ public class InductionVariables {
     private Collection<BasicInductionVariable> findBasic() {
         List<BasicInductionVariable> bivs = new LinkedList<>();
         LoopBeginNode loopBegin = loop.loopBegin();
-        EndNode forwardEnd = loopBegin.forwardEnd();
+        AbstractEndNode forwardEnd = loopBegin.forwardEnd();
         for (PhiNode phi : loopBegin.phis()) {
             ValueNode backValue = phi.singleBackValue();
             if (backValue == null) {

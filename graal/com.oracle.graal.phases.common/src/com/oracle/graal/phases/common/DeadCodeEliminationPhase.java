@@ -52,8 +52,8 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private static void iterateSuccessors(NodeFlood flood) {
         for (Node current : flood) {
-            if (current instanceof EndNode) {
-                EndNode end = (EndNode) current;
+            if (current instanceof AbstractEndNode) {
+                AbstractEndNode end = (AbstractEndNode) current;
                 flood.add(end.merge());
             } else {
                 for (Node successor : current.successors()) {
@@ -64,7 +64,7 @@ public class DeadCodeEliminationPhase extends Phase {
     }
 
     private static void disconnectCFGNodes(NodeFlood flood, StructuredGraph graph) {
-        for (EndNode node : graph.getNodes(EndNode.class)) {
+        for (AbstractEndNode node : graph.getNodes(AbstractEndNode.class)) {
             if (!flood.isMarked(node)) {
                 MergeNode merge = node.merge();
                 if (merge != null && flood.isMarked(merge)) {

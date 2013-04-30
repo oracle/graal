@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}")
 public class InvokeWithExceptionNode extends ControlSplitNode implements Node.IterableNodeType, Invoke, MemoryCheckpoint, LIRLowerable {
 
-    @Successor private BeginNode next;
+    @Successor private AbstractBeginNode next;
     @Successor private DispatchBeginNode exceptionEdge;
     @Input private final CallTargetNode callTarget;
     @Input private FrameState deoptState;
@@ -61,11 +61,11 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
         exceptionEdge = x;
     }
 
-    public BeginNode next() {
+    public AbstractBeginNode next() {
         return next;
     }
 
-    public void setNext(BeginNode x) {
+    public void setNext(AbstractBeginNode x) {
         updatePredecessor(next, x);
         next = x;
     }
@@ -121,7 +121,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public void setNext(FixedNode x) {
         if (x != null) {
-            this.setNext(BeginNode.begin(x));
+            this.setNext(AbstractBeginNode.begin(x));
         } else {
             this.setNext(null);
         }
@@ -170,7 +170,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     public void killExceptionEdge() {
-        BeginNode edge = exceptionEdge();
+        AbstractBeginNode edge = exceptionEdge();
         setExceptionEdge(null);
         GraphUtil.killCFG(edge);
     }
@@ -205,7 +205,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     private static final double EXCEPTION_PROBA = 1e-5;
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         return successor == next ? 1 - EXCEPTION_PROBA : EXCEPTION_PROBA;
     }
 

@@ -87,7 +87,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         return snapshot;
     }
 
-    public EndNode forwardEnd() {
+    public AbstractEndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
     }
@@ -98,7 +98,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    protected void deleteEnd(EndNode end) {
+    protected void deleteEnd(AbstractEndNode end) {
         if (end instanceof LoopEndNode) {
             LoopEndNode loopEnd = (LoopEndNode) end;
             loopEnd.setLoopBegin(null);
@@ -122,7 +122,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    public int phiPredecessorIndex(EndNode pred) {
+    public int phiPredecessorIndex(AbstractEndNode pred) {
         if (pred instanceof LoopEndNode) {
             LoopEndNode loopEnd = (LoopEndNode) pred;
             if (loopEnd.loopBegin() == this) {
@@ -136,7 +136,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    public EndNode phiPredecessorAt(int index) {
+    public AbstractEndNode phiPredecessorAt(int index) {
         if (index < forwardEndCount()) {
             return forwardEndAt(index);
         }
@@ -173,7 +173,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         // nothing yet
     }
 
-    public boolean isLoopExit(BeginNode begin) {
+    public boolean isLoopExit(AbstractBeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 

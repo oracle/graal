@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,35 @@
  */
 package com.oracle.graal.nodes;
 
+import java.util.*;
+
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class BeginNode extends AbstractBeginNode {
+public abstract class AbstractEndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
-    public BeginNode() {
-        super(StampFactory.dependency());
+    protected AbstractEndNode() {
+        super(StampFactory.forVoid());
     }
 
-    protected BeginNode(Stamp stamp) {
-        super(stamp);
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        gen.visitEndNode(this);
     }
 
-    @NodeIntrinsic
-    public static native BeginNode anchor(@ConstantNodeParameter Stamp stamp);
+    public MergeNode merge() {
+        return (MergeNode) usages().first();
+    }
+
+    @Override
+    public boolean verify() {
+        assertTrue(usages().count() <= 1, "at most one usage");
+        return super.verify();
+    }
+
+    @Override
+    public Iterable<? extends Node> cfgSuccessors() {
+        return Arrays.asList(merge());
+    }
 }

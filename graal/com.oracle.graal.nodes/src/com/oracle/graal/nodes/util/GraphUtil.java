@@ -44,9 +44,9 @@ public class GraphUtil {
 
     public static void killCFG(FixedNode node) {
         assert node.isAlive();
-        if (node instanceof EndNode) {
+        if (node instanceof AbstractEndNode) {
             // We reached a control flow end.
-            EndNode end = (EndNode) node;
+            AbstractEndNode end = (AbstractEndNode) node;
             killEnd(end);
         } else {
             // Normal control flow node.
@@ -63,7 +63,7 @@ public class GraphUtil {
         propagateKill(node);
     }
 
-    private static void killEnd(EndNode end) {
+    private static void killEnd(AbstractEndNode end) {
         MergeNode merge = end.merge();
         if (merge != null) {
             merge.removeEnd(end);
@@ -152,7 +152,7 @@ public class GraphUtil {
     }
 
     public static void checkRedundantProxy(ProxyNode vpn) {
-        BeginNode proxyPoint = vpn.proxyPoint();
+        AbstractBeginNode proxyPoint = vpn.proxyPoint();
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();
