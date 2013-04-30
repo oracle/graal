@@ -127,54 +127,6 @@ public class AMD64 extends Architecture {
     }
     // @formatter:on
 
-    @Override
-    public int getMaxVectorLength(Kind kind) {
-        if (supportedAVXVersion > 0) {
-            switch (kind) {
-                case Boolean:
-                    return 32;
-                case Byte:
-                    return 32;
-                case Short:
-                    return 16;
-                case Char:
-                    return 16;
-                case Int:
-                    return 8;
-                case Float:
-                    return 8;
-                case Long:
-                    return 4;
-                case Double:
-                    return 4;
-                case Object:
-                    return 4;
-            }
-        } else {
-            switch (kind) {
-                case Boolean:
-                    return 16;
-                case Byte:
-                    return 16;
-                case Short:
-                    return 8;
-                case Char:
-                    return 8;
-                case Int:
-                    return 4;
-                case Float:
-                    return 4;
-                case Long:
-                    return 2;
-                case Double:
-                    return 2;
-                case Object:
-                    return 2;
-            }
-        }
-        return 1;
-    }
-
     public int getSupportedSSEVersion() {
         return supportedSSEVersion;
     }
