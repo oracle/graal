@@ -777,34 +777,33 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CommitAllocationNode) {
             CommitAllocationNode commit = (CommitAllocationNode) n;
 
-            List<ValueNode> allocations = new ArrayList<>(commit.getVirtualObjects().size());
+            ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int lockCount = commit.getLockCounts().get(objIndex);
                 int entryCount = virtual.entryCount();
 
                 FixedWithNextNode newObject;
                 if (virtual instanceof VirtualInstanceNode) {
-                    newObject = graph.add(new NewInstanceNode(virtual.type(), true, lockCount > 0));
+                    newObject = graph.add(new NewInstanceNode(virtual.type(), true));
                 } else {
                     ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                    newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true, lockCount > 0));
+                    newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
                 }
                 graph.addBeforeFixed(commit, newObject);
-                allocations.add(newObject);
+                allocations[objIndex] = newObject;
             }
             int valuePos = 0;
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 int entryCount = virtual.entryCount();
 
-                ValueNode newObject = allocations.get(objIndex);
+                ValueNode newObject = allocations[objIndex];
                 if (virtual instanceof VirtualInstanceNode) {
                     VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
                     for (int i = 0; i < entryCount; i++) {
                         ValueNode value = commit.getValues().get(valuePos++);
                         if (value instanceof VirtualObjectNode) {
-                            value = allocations.get(commit.getVirtualObjects().indexOf(value));
+                            value = allocations[commit.getVirtualObjects().indexOf(value)];
                         }
                         graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
                     }
@@ -816,18 +815,27 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         if (value instanceof VirtualObjectNode) {
                             int indexOf = commit.getVirtualObjects().indexOf(value);
                             assert indexOf != -1 : commit + " " + value;
-                            value = allocations.get(indexOf);
+                            value = allocations[indexOf];
                         }
                         graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
                     }
                 }
             }
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
+                allocations[objIndex] = anchor;
+                graph.addBeforeFixed(commit, anchor);
+            }
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                for (int lockDepth : commit.getLocks().get(objIndex)) {
+                    MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+                    graph.addBeforeFixed(commit, enter);
+                }
+            }
             for (Node usage : commit.usages().snapshot()) {
                 AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
                 int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-                FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations.get(index)));
-                graph.addBeforeFixed(commit, anchor);
-                graph.replaceFloating(addObject, anchor);
+                graph.replaceFloating(addObject, allocations[index]);
             }
             graph.removeFixed(commit);
         } else if (n instanceof CheckCastNode) {

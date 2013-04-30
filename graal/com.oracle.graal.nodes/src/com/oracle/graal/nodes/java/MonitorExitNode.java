@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.graph.*;
 
 /**
  * The {@code MonitorEnterNode} represents a monitor release.
  */
-public final class MonitorExitNode extends AccessMonitorNode implements Lowerable, Node.IterableNodeType, MonitorExit, MonitorReference {
+public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, Node.IterableNodeType, MonitorExit, MonitorReference {
 
     private int lockDepth;
 
@@ -49,6 +49,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
         return new Object[]{LocationNode.ANY_LOCATION};
     }
 
+    @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
         tool.getRuntime().lower(this, tool);
     }
@@ -59,5 +60,15 @@ public final class MonitorExitNode extends AccessMonitorNode implements Lowerabl
 
     public void setLockDepth(int lockDepth) {
         this.lockDepth = lockDepth;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(object());
+        if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
+            int removedLock = state.removeLock();
+            assert removedLock == getLockDepth();
+            tool.delete();
+        }
     }
 }

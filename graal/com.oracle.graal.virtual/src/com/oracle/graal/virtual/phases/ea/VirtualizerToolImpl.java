@@ -148,7 +148,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     @Override
-    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount) {
+    public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks) {
         trace("{{%s}} ", current);
         if (virtualObject.isAlive()) {
             state.addAndMarkAlias(virtualObject, virtualObject, usages);
@@ -158,7 +158,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
         for (int i = 0; i < entryState.length; i++) {
             entryState[i] = state.getScalarAlias(entryState[i]);
         }
-        state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, lockCount));
+        state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, locks));
         state.addAndMarkAlias(virtualObject, virtualObject, usages);
         PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
     }

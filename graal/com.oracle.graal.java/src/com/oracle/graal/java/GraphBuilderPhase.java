@@ -828,7 +828,7 @@ public class GraphBuilderPhase extends Phase {
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
         if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
-            NewInstanceNode n = currentGraph.add(new NewInstanceNode((ResolvedJavaType) type, true, false));
+            NewInstanceNode n = currentGraph.add(new NewInstanceNode((ResolvedJavaType) type, true));
             frameState.apush(append(n));
         } else {
             handleUnresolvedNewInstance(type);
@@ -870,7 +870,7 @@ public class GraphBuilderPhase extends Phase {
     private void genNewPrimitiveArray(int typeCode) {
         Class<?> clazz = arrayTypeCodeToClass(typeCode);
         ResolvedJavaType elementType = runtime.lookupJavaType(clazz);
-        NewArrayNode nta = currentGraph.add(new NewArrayNode(elementType, frameState.ipop(), true, false));
+        NewArrayNode nta = currentGraph.add(new NewArrayNode(elementType, frameState.ipop(), true));
         frameState.apush(append(nta));
     }
 
@@ -878,7 +878,7 @@ public class GraphBuilderPhase extends Phase {
         JavaType type = lookupType(cpi, ANEWARRAY);
         ValueNode length = frameState.ipop();
         if (type instanceof ResolvedJavaType) {
-            NewArrayNode n = currentGraph.add(new NewArrayNode((ResolvedJavaType) type, length, true, false));
+            NewArrayNode n = currentGraph.add(new NewArrayNode((ResolvedJavaType) type, length, true));
             frameState.apush(append(n));
         } else {
             handleUnresolvedNewObjectArray(type, length);

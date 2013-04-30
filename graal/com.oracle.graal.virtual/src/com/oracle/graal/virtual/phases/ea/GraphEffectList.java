@@ -310,12 +310,12 @@ public class GraphEffectList extends EffectList {
      * 
      * @param position The fixed node before which the materialization node should be added.
      * @param objects The allocated objects.
-     * @param lockCounts The lock count for each object.
+     * @param locks The lock depths for each object.
      * @param values The values (field, elements) of all objects.
      * @param otherAllocations A list of allocations that need to be added before the rest (used for
      *            boxing allocations).
      */
-    public void addMaterializationBefore(final FixedNode position, final List<AllocatedObjectNode> objects, final List<Integer> lockCounts, final List<ValueNode> values,
+    public void addMaterializationBefore(final FixedNode position, final List<AllocatedObjectNode> objects, final List<int[]> locks, final List<ValueNode> values,
                     final List<ValueNode> otherAllocations) {
         add(new Effect() {
 
@@ -348,7 +348,7 @@ public class GraphEffectList extends EffectList {
                         obj.setCommit(commit);
                     }
                     commit.getValues().addAll(values);
-                    commit.getLockCounts().addAll(lockCounts);
+                    commit.getLocks().addAll(locks);
 
                     assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.usages().count();
                     HashSet<AllocatedObjectNode> materializedValues = new HashSet<>(commit.usages().filter(AllocatedObjectNode.class).snapshot());
