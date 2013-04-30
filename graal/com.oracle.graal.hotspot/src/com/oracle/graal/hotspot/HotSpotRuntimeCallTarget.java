@@ -111,6 +111,11 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         }
     }
 
+    public long getAddress() {
+        assert address != 0L : "address not yet finalized: " + this;
+        return address;
+    }
+
     @Override
     public boolean preservesRegisters() {
         assert address != 0;
