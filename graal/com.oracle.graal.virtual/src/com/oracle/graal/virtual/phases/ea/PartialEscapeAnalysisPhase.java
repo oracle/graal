@@ -126,8 +126,13 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
 
     private static boolean matches(StructuredGraph graph, String filter) {
         if (filter != null) {
-            ResolvedJavaMethod method = graph.method();
-            return method != null && MetaUtil.format("%H.%n", method).contains(filter);
+            if (filter.startsWith("~")) {
+                ResolvedJavaMethod method = graph.method();
+                return method == null || !MetaUtil.format("%H.%n", method).contains(filter.substring(1));
+            } else {
+                ResolvedJavaMethod method = graph.method();
+                return method != null && MetaUtil.format("%H.%n", method).contains(filter);
+            }
         }
         return true;
     }
