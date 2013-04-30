@@ -39,15 +39,15 @@ public final class Register implements Comparable<Register>, Serializable {
     /**
      * Invalid register.
      */
-    public static final Register None = new Register(-1, -1, 0, "noreg", SPECIAL);
+    public static final Register None = new Register(-1, -1, "noreg", SPECIAL);
 
     /**
      * Frame pointer of the current method. All spill slots and outgoing stack-based arguments are
      * addressed relative to this register.
      */
-    public static final Register Frame = new Register(-2, -2, 0, "framereg", SPECIAL);
+    public static final Register Frame = new Register(-2, -2, "framereg", SPECIAL);
 
-    public static final Register CallerFrame = new Register(-3, -3, 0, "callerframereg", SPECIAL);
+    public static final Register CallerFrame = new Register(-3, -3, "callerframereg", SPECIAL);
 
     /**
      * The identifier for this register that is unique across all the registers in a
@@ -72,11 +72,6 @@ public final class Register implements Comparable<Register>, Serializable {
     public int encoding() {
         return encoding;
     }
-
-    /**
-     * The size of the stack slot used to spill the value of this register.
-     */
-    public final int spillSlotSize;
 
     /**
      * A platform specific register category that describes which values can be stored in a
@@ -112,14 +107,12 @@ public final class Register implements Comparable<Register>, Serializable {
      * 
      * @param number unique identifier for the register
      * @param encoding the target machine encoding for the register
-     * @param spillSlotSize the size of the stack slot used to spill the value of the register
      * @param name the mnemonic name for the register
      * @param registerCategory the register category
      */
-    public Register(int number, int encoding, int spillSlotSize, String name, RegisterCategory registerCategory) {
+    public Register(int number, int encoding, String name, RegisterCategory registerCategory) {
         this.number = number;
         this.name = name;
-        this.spillSlotSize = spillSlotSize;
         this.registerCategory = registerCategory;
         this.encoding = encoding;
         this.values = new HashMap<>();

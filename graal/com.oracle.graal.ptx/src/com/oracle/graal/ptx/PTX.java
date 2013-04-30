@@ -52,23 +52,23 @@ public class PTX extends Architecture {
      */
 
     // General purpose registers
-    public static final Register r0  = new Register(0,  0,  8, "r0",  CPU);
-    public static final Register r1  = new Register(1,  1,  8, "r1",  CPU);
-    public static final Register r2  = new Register(2,  2,  8, "r2",  CPU);
-    public static final Register r3  = new Register(3,  3,  8, "r3",  CPU);
-    public static final Register r4  = new Register(4,  4,  8, "r4",  CPU);
-    public static final Register r5  = new Register(5,  5,  8, "r5",  CPU);
-    public static final Register r6  = new Register(6,  6,  8, "r6",  CPU);
-    public static final Register r7  = new Register(7,  7,  8, "r7",  CPU);
+    public static final Register r0  = new Register(0,  0,  "r0",  CPU);
+    public static final Register r1  = new Register(1,  1,  "r1",  CPU);
+    public static final Register r2  = new Register(2,  2,  "r2",  CPU);
+    public static final Register r3  = new Register(3,  3,  "r3",  CPU);
+    public static final Register r4  = new Register(4,  4,  "r4",  CPU);
+    public static final Register r5  = new Register(5,  5,  "r5",  CPU);
+    public static final Register r6  = new Register(6,  6,  "r6",  CPU);
+    public static final Register r7  = new Register(7,  7,  "r7",  CPU);
 
-    public static final Register r8  = new Register(8,  8,  8, "r8",  CPU);
-    public static final Register r9  = new Register(9,  9,  8, "r9",  CPU);
-    public static final Register r10 = new Register(10, 10, 8, "r10", CPU);
-    public static final Register r11 = new Register(11, 11, 8, "r11", CPU);
-    public static final Register r12 = new Register(12, 12, 8, "r12", CPU);
-    public static final Register r13 = new Register(13, 13, 8, "r13", CPU);
-    public static final Register r14 = new Register(14, 14, 8, "r14", CPU);
-    public static final Register r15 = new Register(15, 15, 8, "r15", CPU);
+    public static final Register r8  = new Register(8,  8,  "r8",  CPU);
+    public static final Register r9  = new Register(9,  9,  "r9",  CPU);
+    public static final Register r10 = new Register(10, 10, "r10", CPU);
+    public static final Register r11 = new Register(11, 11, "r11", CPU);
+    public static final Register r12 = new Register(12, 12, "r12", CPU);
+    public static final Register r13 = new Register(13, 13, "r13", CPU);
+    public static final Register r14 = new Register(14, 14, "r14", CPU);
+    public static final Register r15 = new Register(15, 15, "r15", CPU);
 
     public static final Register[] gprRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
@@ -76,23 +76,23 @@ public class PTX extends Architecture {
     };
 
     // Floating point registers
-    public static final Register f0  = new Register(16, 0,  8, "f0",  FPU);
-    public static final Register f1  = new Register(17, 1,  8, "f1",  FPU);
-    public static final Register f2  = new Register(18, 2,  8, "f2",  FPU);
-    public static final Register f3  = new Register(19, 3,  8, "f3",  FPU);
-    public static final Register f4  = new Register(20, 4,  8, "f4",  FPU);
-    public static final Register f5  = new Register(21, 5,  8, "f5",  FPU);
-    public static final Register f6  = new Register(22, 6,  8, "f6",  FPU);
-    public static final Register f7  = new Register(23, 7,  8, "f7",  FPU);
+    public static final Register f0  = new Register(16, 0,  "f0",  FPU);
+    public static final Register f1  = new Register(17, 1,  "f1",  FPU);
+    public static final Register f2  = new Register(18, 2,  "f2",  FPU);
+    public static final Register f3  = new Register(19, 3,  "f3",  FPU);
+    public static final Register f4  = new Register(20, 4,  "f4",  FPU);
+    public static final Register f5  = new Register(21, 5,  "f5",  FPU);
+    public static final Register f6  = new Register(22, 6,  "f6",  FPU);
+    public static final Register f7  = new Register(23, 7,  "f7",  FPU);
 
-    public static final Register f8  = new Register(24, 8,  8, "f8",  FPU);
-    public static final Register f9  = new Register(25, 9,  8, "f9",  FPU);
-    public static final Register f10 = new Register(26, 10, 8, "f10", FPU);
-    public static final Register f11 = new Register(27, 11, 8, "f11", FPU);
-    public static final Register f12 = new Register(28, 12, 8, "f12", FPU);
-    public static final Register f13 = new Register(29, 13, 8, "f13", FPU);
-    public static final Register f14 = new Register(30, 14, 8, "f14", FPU);
-    public static final Register f15 = new Register(31, 15, 8, "f15", FPU);
+    public static final Register f8  = new Register(24, 8,  "f8",  FPU);
+    public static final Register f9  = new Register(25, 9,  "f9",  FPU);
+    public static final Register f10 = new Register(26, 10, "f10", FPU);
+    public static final Register f11 = new Register(27, 11, "f11", FPU);
+    public static final Register f12 = new Register(28, 12, "f12", FPU);
+    public static final Register f13 = new Register(29, 13, "f13", FPU);
+    public static final Register f14 = new Register(30, 14, "f14", FPU);
+    public static final Register f15 = new Register(31, 15, "f15", FPU);
 
     public static final Register[] fpuRegisters = {
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
