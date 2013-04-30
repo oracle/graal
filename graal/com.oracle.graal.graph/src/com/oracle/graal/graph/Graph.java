@@ -477,7 +477,11 @@ public class Graph {
     }
 
     public <T> NodeMap<T> createNodeMap() {
-        return new NodeMap<>(this);
+        return createNodeMap(false);
+    }
+
+    public <T> NodeMap<T> createNodeMap(boolean autoGrow) {
+        return new NodeMap<>(this, autoGrow);
     }
 
     public NodeFlood createNodeFlood() {

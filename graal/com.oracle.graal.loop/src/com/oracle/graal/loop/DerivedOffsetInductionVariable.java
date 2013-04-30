@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.loop;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -86,8 +87,8 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
     }
 
     @Override
-    public ValueNode extremumNode() {
-        return op(offset, base.extremumNode());
+    public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
+        return op(base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(kind, offset));
     }
 
     @Override

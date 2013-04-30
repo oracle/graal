@@ -101,7 +101,8 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
     }
 
     @Override
-    public Negatable negate() {
+    public Negatable negate(LogicNode cond) {
+        assert cond == condition();
         negated = !negated;
         return this;
     }

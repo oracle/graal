@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,27 +23,50 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public abstract class LogicNode extends FloatingNode {
+public abstract class LogicBinaryNode extends LogicNode implements Negatable, Node.IterableNodeType {
 
-    public LogicNode(ValueNode... dependencies) {
-        super(StampFactory.condition(), dependencies);
+    @Input private LogicNode x;
+    @Input private LogicNode y;
+    private boolean xNegated;
+    private boolean yNegated;
+
+    public LogicBinaryNode(LogicNode x, LogicNode y) {
+        this(x, false, y, false);
     }
 
-    /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch
-     * their true and false successors.
-     */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate(this);
+    public LogicBinaryNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated) {
+        this.x = x;
+        this.xNegated = xNegated;
+        this.y = y;
+        this.yNegated = yNegated;
+    }
+
+    public LogicNode getX() {
+        return x;
+    }
+
+    public LogicNode getY() {
+        return y;
+    }
+
+    public boolean isXNegated() {
+        return xNegated;
+    }
+
+    public boolean isYNegated() {
+        return yNegated;
+    }
+
+    @Override
+    public Negatable negate(LogicNode condition) {
+        if (condition == x) {
+            xNegated = !xNegated;
         }
+        if (condition == y) {
+            yNegated = !yNegated;
+        }
+        return this;
     }
-
-    // forces all subclasses to canonicalize to BooleanNode instances
-    public abstract LogicNode canonical(CanonicalizerTool tool);
 }

@@ -139,8 +139,8 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
         IdentityHashMap<Node, Node> path = new IdentityHashMap<>();
         flood.add(graph.start());
         for (Node current : flood) {
-            if (current instanceof EndNode) {
-                EndNode end = (EndNode) current;
+            if (current instanceof AbstractEndNode) {
+                AbstractEndNode end = (AbstractEndNode) current;
                 flood.add(end.merge());
                 if (!path.containsKey(end.merge())) {
                     path.put(end.merge(), end);

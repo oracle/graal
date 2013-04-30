@@ -100,7 +100,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         if (permanent) {
             return;
         }
-        for (ValueNode node : dependencies().nonNull().and(isNotA(BeginNode.class))) {
+        for (ValueNode node : dependencies().nonNull().and(isNotA(AbstractBeginNode.class))) {
             State state = tool.getObjectState(node);
             if (state == null || state.getState() != EscapeState.Virtual) {
                 return;

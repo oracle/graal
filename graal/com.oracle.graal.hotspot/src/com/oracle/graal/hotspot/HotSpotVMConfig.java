@@ -394,6 +394,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int deoptReasonJsrMismatch;
     public int deoptReasonDiv0Check;
     public int deoptReasonConstraint;
+    public int deoptReasonLoopLimitCheck;
 
     public int deoptActionNone;
     public int deoptActionMaybeRecompile;

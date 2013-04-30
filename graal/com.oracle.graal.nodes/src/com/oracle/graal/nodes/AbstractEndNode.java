@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import java.util.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-    public LowTier() {
-        addPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+public abstract class AbstractEndNode extends FixedNode implements Node.IterableNodeType, LIRLowerable {
 
-        addPhase(new FrameStateAssignmentPhase());
+    protected AbstractEndNode() {
+        super(StampFactory.forVoid());
+    }
 
-        addPhase(new ExpandLogicPhase());
+    @Override
+    public void generate(LIRGeneratorTool gen) {
+        gen.visitEndNode(this);
+    }
 
-        addPhase(new DeadCodeEliminationPhase());
+    public MergeNode merge() {
+        return (MergeNode) usages().first();
+    }
+
+    @Override
+    public boolean verify() {
+        assertTrue(usages().count() <= 1, "at most one usage");
+        return super.verify();
+    }
+
+    @Override
+    public Iterable<? extends Node> cfgSuccessors() {
+        return Arrays.asList(merge());
     }
 }

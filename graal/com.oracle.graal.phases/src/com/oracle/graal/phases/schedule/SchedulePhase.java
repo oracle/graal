@@ -652,7 +652,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            if (instruction instanceof BeginNode) {
+            if (instruction instanceof AbstractBeginNode) {
                 ArrayList<ProxyNode> proxies = (instruction instanceof LoopExitNode) ? new ArrayList<ProxyNode>() : null;
                 for (ScheduledNode inBlock : blockToNodesMap.get(b)) {
                     if (!visited.isMarked(inBlock)) {
