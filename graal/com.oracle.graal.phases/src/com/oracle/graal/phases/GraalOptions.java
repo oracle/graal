@@ -37,6 +37,7 @@ public final class GraalOptions {
     public static int     Threads                            = 4;
 
     public static String  CompilerConfiguration              = "basic";
+    public static String  GraalRuntime                       = "basic";
 
     // inlining settings
     public static boolean Inline                             = true;

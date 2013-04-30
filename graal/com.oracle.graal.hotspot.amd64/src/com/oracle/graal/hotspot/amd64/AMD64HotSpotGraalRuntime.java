@@ -40,7 +40,12 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
      */
     public static HotSpotGraalRuntime makeInstance() {
         if (graalRuntime() == null) {
-            setInstance(new AMD64HotSpotGraalRuntime());
+            HotSpotGraalRuntimeFactory factory = findFactory("AMD64");
+            if (factory != null) {
+                setInstance(factory.createRuntime());
+            } else {
+                setInstance(new AMD64HotSpotGraalRuntime());
+            }
         }
         return graalRuntime();
     }

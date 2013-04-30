@@ -84,6 +84,15 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         runtime.compilerToVm = toVM;
     }
 
+    protected static HotSpotGraalRuntimeFactory findFactory(String architecture) {
+        for (HotSpotGraalRuntimeFactory factory : ServiceLoader.loadInstalled(HotSpotGraalRuntimeFactory.class)) {
+            if (factory.getArchitecture().equals(architecture) && factory.getName().equals(GraalOptions.GraalRuntime)) {
+                return factory;
+            }
+        }
+        return null;
+    }
+
     private static Kind wordKind;
 
     /**
