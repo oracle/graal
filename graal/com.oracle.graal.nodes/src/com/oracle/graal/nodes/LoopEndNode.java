@@ -60,9 +60,6 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     public boolean canSafepoint() {
-        if (!canSafepoint) {
-            return canSafepoint;
-        }
         return canSafepoint;
     }
 
