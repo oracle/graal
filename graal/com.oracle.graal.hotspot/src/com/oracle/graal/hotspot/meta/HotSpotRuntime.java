@@ -334,6 +334,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                    /* arg1: receiverThread */                         Kind.Object,
               /* arg1: clearInterrupted */                            Kind.Boolean));
 
+        addRuntimeCall(EXCEPTION_HANDLER, config.handleExceptionStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(DEOPT_HANDLER, config.handleDeoptStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(IC_MISS_HANDLER, config.inlineCacheMissStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
         // @formatter:on
     }
 
