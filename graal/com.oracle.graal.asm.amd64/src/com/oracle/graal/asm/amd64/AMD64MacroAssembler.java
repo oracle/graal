@@ -166,15 +166,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         }
     }
 
-    public final void signExtendByte(Register reg) {
-        if (reg.isByte()) {
-            movsxb(reg, reg);
-        } else {
-            shll(reg, 24);
-            sarl(reg, 24);
-        }
-    }
-
     public final void signExtendShort(Register reg) {
         movsxw(reg, reg);
     }
