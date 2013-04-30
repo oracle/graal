@@ -83,39 +83,6 @@ public class TargetDescription {
     }
 
     /**
-     * Gets the size in bytes of the specified kind for this target.
-     * 
-     * @param kind the kind for which to get the size
-     * @return the size in bytes of {@code kind}
-     */
-    public int sizeInBytes(PlatformKind kind) {
-        // Checkstyle: stop
-        switch ((Kind) kind) {
-            case Boolean:
-                return 1;
-            case Byte:
-                return 1;
-            case Char:
-                return 2;
-            case Short:
-                return 2;
-            case Int:
-                return 4;
-            case Long:
-                return 8;
-            case Float:
-                return 4;
-            case Double:
-                return 8;
-            case Object:
-                return wordSize;
-            default:
-                return 0;
-        }
-        // Checkstyle: resume
-    }
-
-    /**
      * Aligns the given frame size (without return instruction pointer) to the stack alignment size
      * and return the aligned size (without return instruction pointer).
      * 

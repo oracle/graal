@@ -261,7 +261,7 @@ public class NewObjectSnippets implements Snippets {
             final int alignment = target.wordSize;
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
-            int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
+            int log2ElementSize = CodeUtil.log2(target.arch.getSizeInBytes(elementKind));
             if (!useTLAB) {
                 ConstantNode zero = ConstantNode.defaultForKind(target.wordKind, graph);
                 /*
