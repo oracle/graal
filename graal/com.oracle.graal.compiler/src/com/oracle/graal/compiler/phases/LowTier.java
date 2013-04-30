@@ -34,6 +34,8 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         addPhase(new FrameStateAssignmentPhase());
 
+        addPhase(new ExpandLogicPhase());
+
         addPhase(new DeadCodeEliminationPhase());
     }
 }
