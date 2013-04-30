@@ -58,7 +58,7 @@ public class ControlFlowGraph {
 
     protected ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
-        this.nodeToBlock = graph.createNodeMap();
+        this.nodeToBlock = graph.createNodeMap(true);
     }
 
     public Block[] getBlocks() {
