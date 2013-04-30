@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class SwitchNode extends ControlSplitNode {
 
-    @Successor protected final NodeSuccessorList<BeginNode> successors;
+    @Successor protected final NodeSuccessorList<AbstractBeginNode> successors;
     @Input private ValueNode value;
     private double[] keyProbabilities;
     private int[] keySuccessors;
@@ -45,7 +45,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
-    public SwitchNode(ValueNode value, BeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
+    public SwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
         super(StampFactory.forVoid());
         assert keySuccessors.length == keyProbabilities.length;
         this.successors = new NodeSuccessorList<>(this, successors);
@@ -55,7 +55,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         double sum = 0;
         for (int i = 0; i < keySuccessors.length; i++) {
             if (successors.get(keySuccessors[i]) == successor) {
@@ -89,7 +89,7 @@ public abstract class SwitchNode extends ControlSplitNode {
     /**
      * Returns the successor for the key at the given index.
      */
-    public BeginNode keySuccessor(int i) {
+    public AbstractBeginNode keySuccessor(int i) {
         return successors.get(keySuccessors[i]);
     }
 
@@ -107,11 +107,11 @@ public abstract class SwitchNode extends ControlSplitNode {
         return keySuccessors[keySuccessors.length - 1];
     }
 
-    public BeginNode blockSuccessor(int i) {
+    public AbstractBeginNode blockSuccessor(int i) {
         return successors.get(i);
     }
 
-    public void setBlockSuccessor(int i, BeginNode s) {
+    public void setBlockSuccessor(int i, AbstractBeginNode s) {
         successors.set(i, s);
     }
 
@@ -124,7 +124,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * 
      * @return the default successor
      */
-    public BeginNode defaultSuccessor() {
+    public AbstractBeginNode defaultSuccessor() {
         if (defaultSuccessorIndex() == -1) {
             throw new GraalInternalError("unexpected");
         }

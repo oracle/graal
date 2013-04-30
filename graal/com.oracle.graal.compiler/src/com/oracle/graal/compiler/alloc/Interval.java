@@ -430,7 +430,7 @@ public final class Interval {
     /**
      * The kind of this interval.
      */
-    private Kind kind;
+    private PlatformKind kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by
@@ -501,15 +501,15 @@ public final class Interval {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getKind() == Kind.Illegal && kind != Kind.Illegal) {
+            if (newLocation.getPlatformKind() == Kind.Illegal && kind != Kind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.getKind() != Kind.Illegal;
-            assert newLocation.getKind() == this.kind;
+            assert newLocation.getPlatformKind() != Kind.Illegal;
+            assert newLocation.getPlatformKind() == this.kind;
         }
         this.location = newLocation;
     }
@@ -522,14 +522,13 @@ public final class Interval {
         return location;
     }
 
-    public Kind kind() {
+    public PlatformKind kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    void setKind(Kind kind) {
+    void setKind(PlatformKind kind) {
         assert isRegister(operand) || this.kind() == Kind.Illegal || this.kind() == kind : "overwriting existing type";
-        assert kind == kind.getStackKind() || kind == Kind.Short : "these kinds should have int type registers";
         this.kind = kind;
     }
 

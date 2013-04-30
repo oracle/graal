@@ -162,7 +162,7 @@ class CFGPrinter extends CompilationPrinter {
             PhiNode phi = (PhiNode) node;
             assert nodeBlock.getBeginNode() == phi.merge();
             for (Block pred : nodeBlock.getPredecessors()) {
-                schedule(phi.valueAt((EndNode) pred.getEndNode()), pred);
+                schedule(phi.valueAt((AbstractEndNode) pred.getEndNode()), pred);
             }
 
         } else {
@@ -471,7 +471,7 @@ class CFGPrinter extends CompilationPrinter {
             return "-";
         }
         String prefix;
-        if (node instanceof BeginNode && lir == null) {
+        if (node instanceof AbstractBeginNode && lir == null) {
             prefix = "B";
         } else if (node instanceof ValueNode) {
             ValueNode value = (ValueNode) node;

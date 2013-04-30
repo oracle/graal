@@ -253,7 +253,7 @@ public class FrameStateBuilder {
         }
     }
 
-    public void insertProxies(BeginNode begin) {
+    public void insertProxies(AbstractBeginNode begin) {
         for (int i = 0; i < localsSize(); i++) {
             ValueNode value = localAt(i);
             if (value != null) {

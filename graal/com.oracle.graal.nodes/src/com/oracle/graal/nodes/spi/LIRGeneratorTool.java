@@ -49,7 +49,7 @@ public interface LIRGeneratorTool {
 
     Value operand(ValueNode object);
 
-    AllocatableValue newVariable(Kind kind);
+    AllocatableValue newVariable(PlatformKind kind);
 
     Value setResult(ValueNode x, Value operand);
 
@@ -116,7 +116,7 @@ public interface LIRGeneratorTool {
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
     void visitMerge(MergeNode i);
 
-    void visitEndNode(EndNode i);
+    void visitEndNode(AbstractEndNode i);
 
     void visitLoopEnd(LoopEndNode i);
 

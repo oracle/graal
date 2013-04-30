@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
-import static com.oracle.graal.api.code.Register.RegisterFlag.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
@@ -41,7 +40,6 @@ import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
-import static com.oracle.graal.hotspot.stubs.Stub.*;
 import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
@@ -59,7 +57,6 @@ import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -195,13 +192,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         int currentStackOffset = 0;
         for (int i = 0; i < arguments.length; i++) {
             Kind kind = arguments[i];
-            RegisterFlag flag = kind == Kind.Float || kind == Kind.Double ? FPU : CPU;
-            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, flag);
+            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, kind);
             if (i < ccRegs.length) {
                 result[i] = ccRegs[i].asValue(kind);
             } else {
                 result[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, false);
-                currentStackOffset += Math.max(target.sizeInBytes(kind), target.wordSize);
+                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
             }
         }
         return result;
@@ -734,7 +730,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
             // An unsafe read must not floating outside its block as may float above an explicit
             // null check on its object.
-            memoryRead.dependencies().add(BeginNode.prevBegin(load));
+            memoryRead.dependencies().add(AbstractBeginNode.prevBegin(load));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
@@ -867,7 +863,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
-        int scale = this.graalRuntime.getTarget().sizeInBytes(elementKind);
+        int scale = this.graalRuntime.getTarget().arch.getSizeInBytes(elementKind);
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
@@ -998,6 +994,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return config.deoptReasonDiv0Check;
             case RuntimeConstraint:
                 return config.deoptReasonConstraint;
+            case LoopLimitCheck:
+                return config.deoptReasonLoopLimitCheck;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

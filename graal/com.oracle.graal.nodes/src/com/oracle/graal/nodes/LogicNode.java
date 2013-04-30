@@ -40,7 +40,7 @@ public abstract class LogicNode extends FloatingNode {
     public void negateUsages() {
         for (Node n : usages().snapshot()) {
             assert n instanceof Negatable;
-            ((Negatable) n).negate();
+            ((Negatable) n).negate(this);
         }
     }
 

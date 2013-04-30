@@ -142,23 +142,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     /**
      * Creates a new {@linkplain Variable variable}.
      * 
-     * @param kind The kind of the new variable.
+     * @param platformKind The kind of the new variable.
      * @return a new variable
      */
     @Override
-    public Variable newVariable(Kind kind) {
-        Kind stackKind = kind.getStackKind();
-        switch (stackKind) {
-            case Int:
-            case Long:
-            case Object:
-                return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.CPU);
-            case Float:
-            case Double:
-                return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.FPU);
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+    public Variable newVariable(PlatformKind platformKind) {
+        PlatformKind stackKind;
+        if (platformKind instanceof Kind) {
+            stackKind = ((Kind) platformKind).getStackKind();
+        } else {
+            stackKind = platformKind;
         }
+        return new Variable(stackKind, lir.nextVariable());
     }
 
     @Override
@@ -476,7 +471,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public void visitEndNode(EndNode end) {
+    public void visitEndNode(AbstractEndNode end) {
         moveToPhi(end.merge(), end);
     }
 
@@ -487,7 +482,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(MergeNode merge, EndNode pred) {
+    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }

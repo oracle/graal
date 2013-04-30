@@ -89,13 +89,13 @@ public class LoopFragmentInside extends LoopFragment {
 
         patchNodes(dataFixBefore);
 
-        BeginNode end = mergeEnds();
+        AbstractBeginNode end = mergeEnds();
 
         original().patchPeeling(this);
 
         mergeEarlyExits();
 
-        BeginNode entry = getDuplicatedNode(loop.loopBegin());
+        AbstractBeginNode entry = getDuplicatedNode(loop.loopBegin());
         FrameState state = entry.stateAfter();
         if (state != null) {
             entry.setStateAfter(null);
@@ -213,24 +213,24 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    private BeginNode mergeEnds() {
+    private AbstractBeginNode mergeEnds() {
         assert isDuplicate();
-        List<EndNode> endsToMerge = new LinkedList<>();
-        Map<EndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
-                                                                 // corresponding loop exits
+        List<AbstractEndNode> endsToMerge = new LinkedList<>();
+        Map<AbstractEndNode, LoopEndNode> reverseEnds = new HashMap<>(); // map peel's exit to the
+        // corresponding loop exits
         LoopBeginNode loopBegin = original().loop().loopBegin();
         for (LoopEndNode le : loopBegin.loopEnds()) {
-            EndNode duplicate = getDuplicatedNode(le);
+            AbstractEndNode duplicate = getDuplicatedNode(le);
             if (duplicate != null) {
                 endsToMerge.add(duplicate);
                 reverseEnds.put(duplicate, le);
             }
         }
         mergedInitializers = new IdentityHashMap<>();
-        BeginNode newExit;
+        AbstractBeginNode newExit;
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
-            EndNode end = endsToMerge.get(0);
+            AbstractEndNode end = endsToMerge.get(0);
             assert end.usages().count() == 0;
             newExit = graph.add(new BeginNode());
             end.replaceAtPredecessor(newExit);
@@ -245,13 +245,13 @@ public class LoopFragmentInside extends LoopFragment {
                 duplicateState = state.duplicateWithVirtualState();
                 newExitMerge.setStateAfter(duplicateState);
             }
-            for (EndNode end : endsToMerge) {
+            for (AbstractEndNode end : endsToMerge) {
                 newExitMerge.addForwardEnd(end);
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
                 final PhiNode firstPhi = graph.add(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), newExitMerge) : new PhiNode(phi.type(), newExitMerge, phi.getIdentity()));
-                for (EndNode end : newExitMerge.forwardEnds()) {
+                for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));
                     assert prim != null;

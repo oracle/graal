@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.loop;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
@@ -96,8 +97,8 @@ public class DerivedScaledInductionVariable extends InductionVariable {
     }
 
     @Override
-    public ValueNode extremumNode() {
-        return IntegerArithmeticNode.mul(base.extremumNode(), scale);
+    public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
+        return IntegerArithmeticNode.mul(base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(kind, scale));
     }
 
     @Override

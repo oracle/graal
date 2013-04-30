@@ -36,5 +36,5 @@ public interface MergeableState<T> {
 
     void loopEnds(LoopBeginNode loopBegin, List<T> loopEndStates);
 
-    void afterSplit(BeginNode node);
+    void afterSplit(AbstractBeginNode node);
 }

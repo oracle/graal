@@ -105,7 +105,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected Set<Object> afterSplit(BeginNode node, Set<Object> oldState) {
+        protected Set<Object> afterSplit(AbstractBeginNode node, Set<Object> oldState) {
             return new HashSet<>(oldState);
         }
 
@@ -214,7 +214,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         @Override
-        protected MemoryMap afterSplit(BeginNode node, MemoryMap oldState) {
+        protected MemoryMap afterSplit(AbstractBeginNode node, MemoryMap oldState) {
             MemoryMap result = new MemoryMap(oldState);
             if (node.predecessor() instanceof InvokeWithExceptionNode) {
                 /*

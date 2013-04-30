@@ -207,7 +207,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getKind() == toInterval.kind() : "move between different types";
+        assert fromOpr.getPlatformKind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;

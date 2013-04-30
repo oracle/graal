@@ -171,11 +171,11 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void lowerToIf(GuardNode guard) {
             StructuredGraph graph = (StructuredGraph) guard.graph();
-            BeginNode fastPath = graph.add(new BeginNode());
+            AbstractBeginNode fastPath = graph.add(new BeginNode());
             DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
-            BeginNode deoptBranch = BeginNode.begin(deopt);
-            BeginNode trueSuccessor;
-            BeginNode falseSuccessor;
+            AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
+            AbstractBeginNode trueSuccessor;
+            AbstractBeginNode falseSuccessor;
             insertLoopExits(deopt);
             if (guard.negated()) {
                 trueSuccessor = deoptBranch;

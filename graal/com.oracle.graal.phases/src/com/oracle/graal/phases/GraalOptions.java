@@ -37,6 +37,7 @@ public final class GraalOptions {
     public static int     Threads                            = 4;
 
     public static String  CompilerConfiguration              = "basic";
+    public static String  GraalRuntime                       = "basic";
 
     // inlining settings
     public static boolean Inline                             = true;
@@ -106,6 +107,7 @@ public final class GraalOptions {
     public static int     LoopMaxUnswitch                    = 3;
     public static int     LoopUnswitchMaxIncrease            = 50;
     public static int     LoopUnswitchUncertaintyBoost       = 5;
+    public static boolean UseLoopLimitChecks                 = true;
 
     // debugging settings
     public static boolean ZapStackOnMethodEntry              = ____;

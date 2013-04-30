@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -39,7 +38,7 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
      * initial LIR generation is finished. Until then, we use a placeholder variable so that LIR
      * verification is successful.
      */
-    private static final Variable PLACEHOLDER = new Variable(Kind.Long, Integer.MAX_VALUE, Register.RegisterFlag.CPU);
+    private static final Variable PLACEHOLDER = new Variable(Kind.Long, Integer.MAX_VALUE);
 
     @Use({REG, STACK}) protected AllocatableValue savedRbp = PLACEHOLDER;
 }

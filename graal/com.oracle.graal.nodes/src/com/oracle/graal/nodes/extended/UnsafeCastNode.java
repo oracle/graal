@@ -90,7 +90,7 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
     @Override
     public void generate(LIRGeneratorTool generator) {
         if (kind() != object().kind()) {
-            assert generator.target().sizeInBytes(kind()) == generator.target().sizeInBytes(object().kind()) : "unsafe cast cannot be used to change the size of a value";
+            assert generator.target().arch.getSizeInBytes(kind()) == generator.target().arch.getSizeInBytes(object().kind()) : "unsafe cast cannot be used to change the size of a value";
             AllocatableValue result = generator.newVariable(kind());
             generator.emitMove(result, generator.operand(object()));
             generator.setResult(this, result);

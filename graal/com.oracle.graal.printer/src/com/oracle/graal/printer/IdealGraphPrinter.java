@@ -165,9 +165,9 @@ class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
                     printProperty(bit, "true");
                 }
             }
-            if (node.getClass() == BeginNode.class) {
+            if (node.getClass() == AbstractBeginNode.class) {
                 printProperty("shortName", "B");
-            } else if (node.getClass() == EndNode.class) {
+            } else if (node.getClass() == AbstractEndNode.class) {
                 printProperty("shortName", "E");
             }
             if (node.predecessor() != null) {

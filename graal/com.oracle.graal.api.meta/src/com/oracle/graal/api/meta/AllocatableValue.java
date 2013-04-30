@@ -32,8 +32,7 @@ public abstract class AllocatableValue extends Value {
 
     public static final AllocatableValue[] NONE = {};
 
-    public AllocatableValue(Kind kind) {
-        super(kind);
+    public AllocatableValue(PlatformKind platformKind) {
+        super(platformKind);
     }
-
 }

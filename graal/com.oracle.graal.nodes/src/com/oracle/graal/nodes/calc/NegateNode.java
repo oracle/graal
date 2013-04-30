@@ -69,6 +69,10 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, L
         if (x() instanceof NegateNode) {
             return ((NegateNode) x()).x();
         }
+        if (x() instanceof IntegerSubNode) {
+            IntegerSubNode sub = (IntegerSubNode) x;
+            return IntegerArithmeticNode.sub(sub.y(), sub.x());
+        }
         return this;
     }
 

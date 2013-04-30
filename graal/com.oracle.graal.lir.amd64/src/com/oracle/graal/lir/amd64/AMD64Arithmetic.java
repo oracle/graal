@@ -255,8 +255,8 @@ public enum AMD64Arithmetic {
 
         public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
-            this.divResult = AMD64.rax.asValue(x.getKind());
-            this.remResult = AMD64.rdx.asValue(x.getKind());
+            this.divResult = AMD64.rax.asValue(x.getPlatformKind());
+            this.remResult = AMD64.rdx.asValue(x.getPlatformKind());
             this.x = x;
             this.y = y;
             this.state = state;

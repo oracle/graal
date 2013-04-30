@@ -93,7 +93,7 @@ public class SnippetFrameStateCleanupPhase extends Phase {
         }
 
         @Override
-        protected CleanupState afterSplit(BeginNode node, CleanupState oldState) {
+        protected CleanupState afterSplit(AbstractBeginNode node, CleanupState oldState) {
             return new CleanupState(oldState.containsFrameState);
         }
 

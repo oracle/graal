@@ -147,7 +147,7 @@ public final class ComputeImmediateDominator {
 
     private void processMerge(MergeNode merge, DominatorInfo info) {
         // TTY.println("processMerge(" + merge + ", " + info + ")");
-        for (EndNode end : merge.cfgPredecessors()) {
+        for (AbstractEndNode end : merge.cfgPredecessors()) {
             toExplore.add(end);
             infoMap.set(end, info.createChild(end));
             // TTY.println("  Enqueue end : " + end + " with " + infoMap.get(end));

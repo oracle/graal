@@ -30,7 +30,6 @@ import java.util.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.amd64.*;
@@ -71,7 +70,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                Register arg = getArgumentRegister(0, RegisterFlag.CPU);
+                Register arg = getArgumentRegister(0, Kind.Int);
                 asm.addl(arg, 5);
                 asm.movl(rax, arg);
                 asm.ret(0);
@@ -89,7 +88,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
-                Register arg = getArgumentRegister(0, RegisterFlag.CPU);
+                Register arg = getArgumentRegister(0, Kind.Long);
                 asm.addq(arg, 1);
                 asm.movq(rax, arg);
                 asm.ret(0);
@@ -117,8 +116,8 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         Assert.assertArrayEquals(expectedCode, actualCode);
     }
 
-    private Register getArgumentRegister(int index, RegisterFlag flag) {
-        Register[] regs = runtime.lookupRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, flag);
+    private Register getArgumentRegister(int index, Kind kind) {
+        Register[] regs = runtime.lookupRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, kind);
         return regs[index];
     }
 }
