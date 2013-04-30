@@ -138,7 +138,7 @@ public final class LIRVerifier {
                 curInstruction = op;
 
                 op.forEachInput(useProc);
-                if (op.hasCall()) {
+                if (op.destroysCallerSavedRegisters()) {
                     for (Register register : frameMap.registerConfig.getCallerSaveRegisters()) {
                         curRegistersLive[register.number] = null;
                     }

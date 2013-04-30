@@ -51,7 +51,7 @@ public class AMD64Call {
         }
 
         @Override
-        public boolean hasCall() {
+        public boolean destroysCallerSavedRegisters() {
             return true;
         }
     }
@@ -112,8 +112,8 @@ public class AMD64Call {
         }
 
         @Override
-        public boolean hasCall() {
-            return !callTarget.preservesRegisters();
+        public boolean destroysCallerSavedRegisters() {
+            return callTarget.destroysRegisters();
         }
     }
 

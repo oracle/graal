@@ -244,7 +244,7 @@ public abstract class LIRInstruction {
     }
 
     public final boolean hasOperands() {
-        return instructionClass.hasOperands() || hasState() || hasCall();
+        return instructionClass.hasOperands() || hasState() || destroysCallerSavedRegisters();
     }
 
     public final boolean hasState() {
@@ -252,10 +252,9 @@ public abstract class LIRInstruction {
     }
 
     /**
-     * Returns true when this instruction is a call instruction that destroys all caller-saved
-     * registers.
+     * Determines if this instruction destroys all caller-saved registers..
      */
-    public boolean hasCall() {
+    public boolean destroysCallerSavedRegisters() {
         return false;
     }
 

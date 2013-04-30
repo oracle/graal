@@ -413,7 +413,7 @@ public final class LinearScan {
      */
     boolean hasCall(int opId) {
         assert isEven(opId) : "opId not even";
-        return instructionForId(opId).hasCall();
+        return instructionForId(opId).destroysCallerSavedRegisters();
     }
 
     /**
@@ -1181,7 +1181,7 @@ public final class LinearScan {
                 final int opId = op.id();
 
                 // add a temp range for each register if operation destroys caller-save registers
-                if (op.hasCall()) {
+                if (op.destroysCallerSavedRegisters()) {
                     for (Register r : callerSaveRegs) {
                         if (attributes(r).isAllocatable()) {
                             addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
@@ -1681,7 +1681,7 @@ public final class LinearScan {
             // before we've consumed the inputs.
             if (op.id() < interval.currentTo()) {
                 // caller-save registers must not be included into oop-maps at calls
-                assert !op.hasCall() || !isRegister(operand) || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
+                assert !op.destroysCallerSavedRegisters() || !isRegister(operand) || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
 
                 frameMap.setReference(interval.location(), registerRefMap, frameRefMap);
 
@@ -1703,7 +1703,7 @@ public final class LinearScan {
     }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
-        BitSet registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
+        BitSet registerRefMap = op.destroysCallerSavedRegisters() ? null : frameMap.initRegisterRefMap();
         BitSet frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
 
