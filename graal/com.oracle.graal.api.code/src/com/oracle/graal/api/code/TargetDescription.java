@@ -88,9 +88,9 @@ public class TargetDescription {
      * @param kind the kind for which to get the size
      * @return the size in bytes of {@code kind}
      */
-    public int sizeInBytes(Kind kind) {
+    public int sizeInBytes(PlatformKind kind) {
         // Checkstyle: stop
-        switch (kind) {
+        switch ((Kind) kind) {
             case Boolean:
                 return 1;
             case Byte:

@@ -266,7 +266,7 @@ public final class FrameMap {
         hasOutgoingStackArguments = hasOutgoingStackArguments || argsSize > 0;
     }
 
-    private StackSlot getSlot(Kind kind, int additionalOffset) {
+    private StackSlot getSlot(PlatformKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
@@ -277,12 +277,12 @@ public final class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public StackSlot allocateSpillSlot(Kind kind) {
+    public StackSlot allocateSpillSlot(PlatformKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         if (freedSlots != null) {
             for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
                 StackSlot s = iter.next();
-                if (s.getKind() == kind) {
+                if (s.getPlatformKind() == kind) {
                     iter.remove();
                     if (freedSlots.isEmpty()) {
                         freedSlots = null;
@@ -299,8 +299,8 @@ public final class FrameMap {
     private Set<StackSlot> freedSlots;
 
     /**
-     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(Kind)} such that it can be
-     * reused for the next allocation request for the same kind of slot.
+     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(PlatformKind)} such that
+     * it can be reused for the next allocation request for the same kind of slot.
      */
     public void freeSpillSlot(StackSlot slot) {
         if (freedSlots == null) {

@@ -49,7 +49,7 @@ public interface LIRGeneratorTool {
 
     Value operand(ValueNode object);
 
-    AllocatableValue newVariable(Kind kind);
+    AllocatableValue newVariable(PlatformKind kind);
 
     Value setResult(ValueNode x, Value operand);
 

@@ -45,7 +45,7 @@ public abstract class CompositeValue extends Value {
 
     private final CompositeValueClass valueClass;
 
-    public CompositeValue(Kind kind) {
+    public CompositeValue(PlatformKind kind) {
         super(kind);
         valueClass = CompositeValueClass.get(getClass());
     }

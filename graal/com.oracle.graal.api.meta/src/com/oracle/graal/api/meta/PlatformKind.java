@@ -23,16 +23,9 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Common base class for values that are stored in some location that's managed by the register
- * allocator (e.g. register, stack slot).
+ * Represents a platform-specific low-level type for values.
  */
-public abstract class AllocatableValue extends Value {
+public interface PlatformKind {
 
-    private static final long serialVersionUID = 153019506717492133L;
-
-    public static final AllocatableValue[] NONE = {};
-
-    public AllocatableValue(PlatformKind platformKind) {
-        super(platformKind);
-    }
+    String name();
 }

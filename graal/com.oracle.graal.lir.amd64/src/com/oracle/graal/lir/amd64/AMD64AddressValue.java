@@ -41,11 +41,11 @@ public class AMD64AddressValue extends CompositeValue {
     protected final Scale scale;
     protected final int displacement;
 
-    public AMD64AddressValue(Kind kind, AllocatableValue base, int displacement) {
+    public AMD64AddressValue(PlatformKind kind, AllocatableValue base, int displacement) {
         this(kind, base, Value.ILLEGAL, Scale.Times1, displacement);
     }
 
-    public AMD64AddressValue(Kind kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
+    public AMD64AddressValue(PlatformKind kind, AllocatableValue base, AllocatableValue index, Scale scale, int displacement) {
         super(kind);
         this.base = base;
         this.index = index;
@@ -91,13 +91,13 @@ public class AMD64AddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof AMD64AddressValue) {
             AMD64AddressValue addr = (AMD64AddressValue) obj;
-            return getKind() == addr.getKind() && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
+            return getPlatformKind() == addr.getPlatformKind() && displacement == addr.displacement && base.equals(addr.base) && scale == addr.scale && index.equals(addr.index);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ (getKind().ordinal() << 12);
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ (scale.value << 8) ^ getPlatformKind().hashCode();
     }
 }

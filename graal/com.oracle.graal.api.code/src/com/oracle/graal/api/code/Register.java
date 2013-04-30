@@ -85,7 +85,7 @@ public final class Register implements Comparable<Register>, Serializable {
      * An array of {@link RegisterValue} objects, for this register, with one entry per {@link Kind}
      * , indexed by {@link Kind#ordinal}.
      */
-    private final RegisterValue[] values;
+    private final HashMap<PlatformKind, RegisterValue> values;
 
     /**
      * Attributes that characterize a register in a useful way.
@@ -125,11 +125,7 @@ public final class Register implements Comparable<Register>, Serializable {
         this.spillSlotSize = spillSlotSize;
         this.flags = createMask(flags);
         this.encoding = encoding;
-
-        values = new RegisterValue[Kind.values().length];
-        for (Kind kind : Kind.values()) {
-            values[kind.ordinal()] = new RegisterValue(kind, this);
-        }
+        this.values = new HashMap<>();
     }
 
     private static int createMask(RegisterFlag... flags) {
@@ -150,8 +146,14 @@ public final class Register implements Comparable<Register>, Serializable {
      * @param kind the specified kind
      * @return the {@link RegisterValue}
      */
-    public RegisterValue asValue(Kind kind) {
-        return values[kind.ordinal()];
+    public RegisterValue asValue(PlatformKind kind) {
+        if (values.containsKey(kind)) {
+            return values.get(kind);
+        } else {
+            RegisterValue ret = new RegisterValue(kind, this);
+            values.put(kind, ret);
+            return ret;
+        }
     }
 
     /**

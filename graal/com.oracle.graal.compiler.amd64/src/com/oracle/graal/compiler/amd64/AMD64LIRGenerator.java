@@ -525,7 +525,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private void emitDivRem(AMD64Arithmetic op, Value a, Value b, LIRFrameState state) {
-        AllocatableValue rax = AMD64.rax.asValue(a.getKind());
+        AllocatableValue rax = AMD64.rax.asValue(a.getPlatformKind());
         emitMove(rax, a);
         append(new DivRemOp(op, rax, asAllocatable(b), state));
     }
@@ -554,12 +554,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 emitDivRem(LDIV, a, b, state(deopting));
                 return emitMove(RAX_L);
             case Float: {
-                Variable result = newVariable(a.getKind());
+                Variable result = newVariable(a.getPlatformKind());
                 append(new BinaryRegStack(FDIV, result, asAllocatable(a), asAllocatable(b)));
                 return result;
             }
             case Double: {
-                Variable result = newVariable(a.getKind());
+                Variable result = newVariable(a.getPlatformKind());
                 append(new BinaryRegStack(DDIV, result, asAllocatable(a), asAllocatable(b)));
                 return result;
             }
@@ -657,7 +657,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private Variable emitShift(AMD64Arithmetic op, Value a, Value b) {
-        Variable result = newVariable(a.getKind());
+        Variable result = newVariable(a.getPlatformKind());
         AllocatableValue input = asAllocatable(a);
         if (isConstant(b)) {
             append(new BinaryRegConst(op, result, input, asConstant(b)));

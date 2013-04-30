@@ -968,7 +968,7 @@ public final class LinearScan {
         TTY.println(blockData.get(block).liveOut.toString());
     }
 
-    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, Kind kind) {
+    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -987,7 +987,7 @@ public final class LinearScan {
         interval.addUsePos(to & ~1, registerPriority);
     }
 
-    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, Kind kind) {
+    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1008,7 +1008,7 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
-    void addDef(AllocatableValue operand, int defPos, RegisterPriority registerPriority, Kind kind) {
+    void addDef(AllocatableValue operand, int defPos, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1197,7 +1197,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addDef((AllocatableValue) operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
+                            addDef((AllocatableValue) operand, opId, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, true);
                         }
                         return operand;
@@ -1208,7 +1208,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
+                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1220,7 +1220,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1232,7 +1232,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1247,7 +1247,7 @@ public final class LinearScan {
 
                     @Override
                     public Value doValue(Value operand) {
-                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
+                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
                         return operand;
                     }
                 });
