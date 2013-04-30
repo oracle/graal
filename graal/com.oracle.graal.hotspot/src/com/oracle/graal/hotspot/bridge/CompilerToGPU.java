@@ -20,42 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
+package com.oracle.graal.hotspot.bridge;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import com.oracle.graal.api.code.InvalidInstalledCodeException;
 
 /**
- * Test class for small Java methods compiled to PTX kernels.
+ * Calls from Java into the GPU.
  */
-public class BasicPTXTest extends PTXTestBase {
+public interface CompilerToGPU {
 
-    @Test
-    public void testAdd() {
-        compile("testAddConst1I");
-    }
+    /**
+     * Attempts to initialize and create a valid context with the GPU.
+     * 
+     * @return whether the GPU context has been initialized and is valid.
+     */
+    boolean deviceInit();
 
-    @Ignore
-    public void testAddInvoke() {
-        invoke(compile("testAddConst1I"), new Integer(42));
-    }
+    /**
+     * Attempts to detach from a valid GPU context.
+     * 
+     * @return whether the GPU context has been properly disposed.
+     */
+    boolean deviceDetach();
 
-    public int testAddConst1I(int a) {
-        return a + 1;
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
-    }
+    /**
+     * Attempts to generate and return a bound function to the
+     * loaded method kernel on the GPU.
+     * 
+     * @param code the text or binary values for a method kernel
+     * @return the value of the bound kernel in GPU space.
+     */
+    long generateKernel(byte[] code, String name) throws InvalidInstalledCodeException;
 }

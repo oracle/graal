@@ -50,9 +50,6 @@ public class PTXBackend extends Backend {
 
         @Override
         public void enter(TargetMethodAssembler tasm) {
-            Buffer codeBuffer = tasm.asm.codeBuffer;
-            codeBuffer.emitString(".version 1.4");
-            codeBuffer.emitString(".target sm_10");
             // codeBuffer.emitString(".address_size 32"); // PTX ISA version 2.3
         }
 
@@ -71,7 +68,7 @@ public class PTXBackend extends Backend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = new PTXAssembler(target, frameMap.registerConfig);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         return tasm;
     }
@@ -81,6 +78,8 @@ public class PTXBackend extends Backend {
         // Emit the prologue
         final String name = method.getName();
         Buffer codeBuffer = tasm.asm.codeBuffer;
+        codeBuffer.emitString(".version 1.4");
+        codeBuffer.emitString(".target sm_10");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 

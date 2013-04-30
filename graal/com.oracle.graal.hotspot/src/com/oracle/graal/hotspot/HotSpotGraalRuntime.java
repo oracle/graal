@@ -123,8 +123,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         return unsafe.getInt(object, offset);
     }
 
-    protected/* final */CompilerToVM compilerToVm;
-    protected/* final */VMToCompiler vmToCompiler;
+    protected/* final */CompilerToVM  compilerToVm;
+    protected/* final */CompilerToGPU compilerToGpu;
+    protected/* final */VMToCompiler  vmToCompiler;
 
     protected final HotSpotRuntime runtime;
     protected final TargetDescription target;
@@ -137,12 +138,14 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     private final HotSpotBackend backend;
 
     protected HotSpotGraalRuntime() {
-        CompilerToVM toVM = new CompilerToVMImpl();
+        CompilerToVM  toVM  = new CompilerToVMImpl();
+        CompilerToGPU toGPU = new CompilerToGPUImpl();
 
         // initialize VmToCompiler
         VMToCompiler toCompiler = new VMToCompilerImpl(this);
 
-        compilerToVm = toVM;
+        compilerToVm  = toVM;
+        compilerToGpu = toGPU;
         vmToCompiler = toCompiler;
         config = new HotSpotVMConfig();
         compilerToVm.initializeConfiguration(config);
@@ -222,6 +225,10 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public VMToCompiler getVMToCompiler() {
         return vmToCompiler;
+    }
+
+    public CompilerToGPU getCompilerToGPU() {
+        return compilerToGpu;
     }
 
     public JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve) {
