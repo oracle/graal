@@ -309,13 +309,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:     value */                       Kind.Long,
                         /* arg3:     value */                       Kind.Long));
 
-        addRuntimeCall(STUB_PRINTF, config.stubPrintfStub,
-                        /*           temps */ null,
+        addCRuntimeCall(STUB_PRINTF_C, config.stubPrintfAddress,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    format */ javaCallingConvention(Kind.Long,
-                        /* arg1:     value */                       Kind.Long,
-                        /* arg2:     value */                       Kind.Long,
-                        /* arg3:     value */                       Kind.Long));
+                        /* arg0:    format */ nativeCallingConvention(Kind.Long,
+                        /* arg1:     value */                         Kind.Long,
+                        /* arg2:     value */                         Kind.Long,
+                        /* arg3:     value */                         Kind.Long));
 
         addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
