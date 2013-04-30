@@ -32,9 +32,24 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public abstract class HotSpotBackend extends Backend {
 
+    /**
+     * Descriptor for SharedRuntime::deopt_blob()->uncommon_trap().
+     */
     public static final Descriptor UNCOMMON_TRAP = new Descriptor("deoptimize", true, void.class);
+
+    /**
+     * Descriptor for GraalRuntime::handle_exception_nofpu_id.
+     */
     public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class);
+
+    /**
+     * Descriptor for SharedRuntime::deopt_blob()->unpack().
+     */
     public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
+
+    /**
+     * Descriptor for SharedRuntime::get_ic_miss_stub().
+     */
     public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
 
     public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
