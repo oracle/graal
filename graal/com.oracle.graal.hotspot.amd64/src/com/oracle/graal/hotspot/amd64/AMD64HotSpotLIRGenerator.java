@@ -54,13 +54,13 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
+public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
     private HotSpotRuntime runtime() {
         return (HotSpotRuntime) runtime;
     }
 
-    AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
         super(graph, runtime, target, frameMap, method, lir);
     }
 
