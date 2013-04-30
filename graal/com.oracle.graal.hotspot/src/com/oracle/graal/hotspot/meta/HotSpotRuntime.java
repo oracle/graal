@@ -28,6 +28,7 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
@@ -214,6 +215,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:      long */ javaCallingConvention(Kind.Long));
+
+        addRuntimeCall(UNCOMMON_TRAP, config.uncommonTrapStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
 
         addStubCall(REGISTER_FINALIZER,
                         /*             ret */ ret(Kind.Void),

@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("DEOPT")
 final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
-
-    public static final Descriptor UNCOMMON_TRAP = new Descriptor("deoptimize", true, void.class);
 
     private DeoptimizationAction action;
     private DeoptimizationReason reason;

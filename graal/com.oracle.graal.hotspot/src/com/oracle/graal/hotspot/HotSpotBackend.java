@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -30,6 +31,8 @@ import com.oracle.graal.hotspot.meta.*;
  * HotSpot specific backend.
  */
 public abstract class HotSpotBackend extends Backend {
+
+    public static final Descriptor UNCOMMON_TRAP = new Descriptor("deoptimize", true, void.class);
 
     public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
