@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -51,6 +52,8 @@ public abstract class Backend {
     }
 
     public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
+
+    protected abstract AbstractAssembler createAssembler(FrameMap frameMap);
 
     public abstract TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult);
 
