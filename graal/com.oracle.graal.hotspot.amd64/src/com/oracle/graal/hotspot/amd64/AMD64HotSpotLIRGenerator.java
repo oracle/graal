@@ -54,13 +54,13 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * LIR generator specialized for AMD64 HotSpot.
  */
-final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
+public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
     private HotSpotRuntime runtime() {
         return (HotSpotRuntime) runtime;
     }
 
-    AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
         super(graph, runtime, target, frameMap, method, lir);
     }
 
@@ -198,13 +198,19 @@ final class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpo
         if (needsCalleeSave) {
             Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
             savedRegisterLocations = new StackSlot[savedRegisters.length];
+            AMD64LIRInstruction[] savingMoves = new AMD64LIRInstruction[savedRegisters.length];
+            AMD64LIRInstruction[] restoringMoves = new AMD64LIRInstruction[savedRegisters.length];
             for (int i = 0; i < savedRegisters.length; i++) {
                 PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
                 assert kind != Kind.Illegal;
                 StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
                 savedRegisterLocations[i] = spillSlot;
+
+                RegisterValue register = savedRegisters[i].asValue(kind);
+                savingMoves[i] = createMove(spillSlot, register);
+                restoringMoves[i] = createMove(register, spillSlot);
             }
-            save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations);
+            save = new AMD64SaveRegistersOp(savingMoves, restoringMoves, savedRegisterLocations);
             append(save);
 
             Value thread = args[0];

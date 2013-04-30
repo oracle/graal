@@ -144,6 +144,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+        return new AMD64MacroAssembler(target, frameMap.registerConfig);
+    }
+
+    @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
@@ -156,7 +161,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
         Stub stub = runtime().asStub(lirGen.method());
-        AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
+        AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());

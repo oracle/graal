@@ -52,12 +52,9 @@ public final class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        Register[] savedRegisters = save.savedRegisters;
-        for (int i = 0; i < savedRegisters.length; i++) {
-            if (savedRegisters[i] != null) {
-                StackSlot input = slots[i];
-                RegisterValue result = savedRegisters[i].asValue(input.getKind());
-                AMD64Move.move(tasm, masm, result, input);
+        for (AMD64LIRInstruction restoringMove : save.restoringMoves) {
+            if (restoringMove != null) {
+                restoringMove.emitCode(tasm, masm);
             }
         }
     }
