@@ -24,8 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
-import static com.oracle.graal.hotspot.amd64.AMD64DeoptimizeOp.*;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotBackend.*;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
@@ -60,10 +58,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                /*           temps */ null,
                /*             ret */ ret(Kind.Void),
                /* arg0: exception */ rax.asValue(Kind.Object));
-
-        addRuntimeCall(DEOPTIMIZE, config.deoptimizeStub,
-                /*           temps */ null,
-                /*             ret */ ret(Kind.Void));
 
         addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
                 /*           temps */ new Register[]{AMD64.rax},
@@ -142,18 +136,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /* arg2:    key */                         word,
                 /* arg3:      r */                         word,
               /* arg4: inLength */                         Kind.Int));
-
-        addRuntimeCall(EXCEPTION_HANDLER, config.handleExceptionStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void));
-
-        addRuntimeCall(DEOPT_HANDLER, config.handleDeoptStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void));
-
-        addRuntimeCall(IC_MISS_HANDLER, config.inlineCacheMissStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void));
         // @formatter:on
 
     }

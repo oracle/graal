@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.amd64.AMD64DeoptimizeOp.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -66,6 +66,6 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
         HotSpotGraalRuntime runtime = graalRuntime();
         Register thread = runtime.getRuntime().threadRegister();
         masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(DEOPTIMIZE));
+        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(UNCOMMON_TRAP));
     }
 }

@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
 
@@ -32,7 +34,9 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
+import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
@@ -46,7 +50,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -61,7 +64,8 @@ import com.oracle.graal.word.*;
 
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a
- * snippet. A concrete stub is defined a subclass of this class.
+ * snippet. A stub may make a direct call to a HotSpot C/C++ runtime function. Stubs are installed
+ * as an instance of the C++ RuntimeStub class (as opposed to nmethod).
  * <p>
  * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
  * purely for convenience (e.g., can re-use the {@link ReplacementsImpl}).
@@ -130,11 +134,22 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return linkage;
     }
 
-    private boolean checkCompilationResult(CompilationResult compResult) {
+    /**
+     * Checks the conditions a compilation must satisfy to be installed as a RuntimeStub.
+     */
+    private boolean checkStubInvariants(CompilationResult compResult) {
         for (DataPatch data : compResult.getDataReferences()) {
             Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
-            assert constant.getPrimitiveAnnotation() == null : MetaUtil.format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
+            assert constant.getKind() != Kind.Object : format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
+            assert constant.getPrimitiveAnnotation() == null : format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
+        }
+        for (Infopoint infopoint : compResult.getInfopoints()) {
+            assert infopoint instanceof Call : format("%h.%n(%p): ", getMethod()) + "cannot have non-call infopoint: " + infopoint;
+            Call call = (Call) infopoint;
+            assert call.target instanceof HotSpotRuntimeCallTarget : format("%h.%n(%p): ", getMethod()) + "cannot have non runtime call: " + call.target;
+            HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
+            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : format("%h.%n(%p): ", getMethod()) +
+                            "must only call C runtime or deoptimization stub, not " + call.target;
         }
         return true;
     }
@@ -181,7 +196,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog());
 
-                    assert checkCompilationResult(compResult);
+                    assert checkStubInvariants(compResult);
 
                     assert definedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
@@ -238,27 +253,29 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         }
     }
 
-    public static final Descriptor STUB_PRINTF = new Descriptor("stubPrintf", false, void.class, Word.class, long.class, long.class, long.class);
+    public static final Descriptor STUB_PRINTF_C = descriptorFor(Stub.class, "printfC", false);
 
-    @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void printf(@ConstantNodeParameter Descriptor stubPrintf, Word format, long v1, long v2, long v3);
+    @NodeIntrinsic(CRuntimeCall.class)
+    private static native void printfC(@ConstantNodeParameter Descriptor stubPrintf, Word format, long v1, long v2, long v3);
 
     /**
-     * Prints a formatted string to the log stream.
+     * Prints a formatted string to the log stream. This differs from {@link Log#LOG_PRINTF} in that
+     * the format string is a C string in the C heap which avoids having an embedded oop in a
+     * RuntimeStub.
      * 
      * @param format a C style printf format value that can contain at most one conversion specifier
      *            (i.e., a sequence of characters starting with '%').
      * @param value the value associated with the conversion specifier
      */
     public static void printf(String format, long value) {
-        printf(STUB_PRINTF, cstring(format), value, 0L, 0L);
+        printfC(STUB_PRINTF_C, cstring(format), value, 0L, 0L);
     }
 
     public static void printf(String format, long v1, long v2) {
-        printf(STUB_PRINTF, cstring(format), v1, v2, 0L);
+        printfC(STUB_PRINTF_C, cstring(format), v1, v2, 0L);
     }
 
     public static void printf(String format, long v1, long v2, long v3) {
-        printf(STUB_PRINTF, cstring(format), v1, v2, v3);
+        printfC(STUB_PRINTF_C, cstring(format), v1, v2, v3);
     }
 }

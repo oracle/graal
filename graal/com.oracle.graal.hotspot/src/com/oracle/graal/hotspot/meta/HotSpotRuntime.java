@@ -28,6 +28,7 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
@@ -217,6 +218,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*             ret */ ret(Kind.Void),
                         /* arg0:      long */ javaCallingConvention(Kind.Long));
 
+        addRuntimeCall(UNCOMMON_TRAP, config.uncommonTrapStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
+
         addStubCall(REGISTER_FINALIZER,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ javaCallingConvention(Kind.Object));
@@ -306,13 +311,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:     value */                       Kind.Long,
                         /* arg3:     value */                       Kind.Long));
 
-        addRuntimeCall(STUB_PRINTF, config.stubPrintfStub,
-                        /*           temps */ null,
+        addCRuntimeCall(STUB_PRINTF_C, config.stubPrintfAddress,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:    format */ javaCallingConvention(Kind.Long,
-                        /* arg1:     value */                       Kind.Long,
-                        /* arg2:     value */                       Kind.Long,
-                        /* arg3:     value */                       Kind.Long));
+                        /* arg0:    format */ nativeCallingConvention(Kind.Long,
+                        /* arg1:     value */                         Kind.Long,
+                        /* arg2:     value */                         Kind.Long,
+                        /* arg3:     value */                         Kind.Long));
 
         addRuntimeCall(LOG_OBJECT, config.logObjectStub,
                         /*           temps */ null,
@@ -330,6 +334,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:    thread */ nativeCallingConvention(word,
                    /* arg1: receiverThread */                         Kind.Object,
               /* arg1: clearInterrupted */                            Kind.Boolean));
+
+        addRuntimeCall(EXCEPTION_HANDLER, config.handleExceptionStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(DEOPT_HANDLER, config.handleDeoptStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
+
+        addRuntimeCall(IC_MISS_HANDLER, config.inlineCacheMissStub,
+                        /*           temps */ null,
+                        /*             ret */ ret(Kind.Void));
 
         addStubCall(IDENTITY_HASHCODE,
                         /*          ret */ ret(Kind.Int),

@@ -46,7 +46,6 @@ public class IdentityHashCodeStub extends CRuntimeStub {
 
     @Snippet
     private static int identityHashCode(Object object) {
-        printf("Calling identityHashCode\n", 0);
         int result = identityHashCodeC(IDENTITY_HASH_CODE_C, thread(), object);
         handlePendingException(false);
         return result;
