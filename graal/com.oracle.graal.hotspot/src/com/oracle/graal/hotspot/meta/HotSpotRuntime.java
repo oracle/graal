@@ -982,6 +982,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return config.deoptReasonDiv0Check;
             case RuntimeConstraint:
                 return config.deoptReasonConstraint;
+            case LoopLimitCheck:
+                return config.deoptReasonLoopLimitCheck;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
