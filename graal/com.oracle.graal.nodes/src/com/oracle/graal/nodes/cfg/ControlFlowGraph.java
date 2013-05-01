@@ -335,21 +335,29 @@ public class ControlFlowGraph {
     }
 
     private void computePostdominators() {
-        for (Block block : postOrder()) {
+        outer: for (Block block : postOrder()) {
             if (block.isLoopEnd()) {
                 // We do not want the loop header registered as the postdominator of the loop end.
                 continue;
             }
-            Block postdominator = null;
+            if (block.getSuccessorCount() == 0) {
+                // No successors => no postdominator.
+                continue;
+            }
+            Block firstSucc = block.getSuccessors().get(0);
+            if (block.getSuccessorCount() == 1) {
+                block.postdominator = firstSucc;
+                continue;
+            }
+            Block postdominator = firstSucc;
             for (Block sux : block.getSuccessors()) {
-                if (sux.isExceptionEntry()) {
-                    // We ignore exception handlers.
-                } else if (postdominator == null) {
-                    postdominator = sux;
-                } else {
-                    postdominator = commonPostdominator(postdominator, sux);
+                postdominator = commonPostdominator(postdominator, sux);
+                if (postdominator == null) {
+                    // There is a dead end => no postdominator available.
+                    continue outer;
                 }
             }
+            assert !block.getSuccessors().contains(postdominator) : "Block " + block + " has a wrong post dominator: " + postdominator;
             block.postdominator = postdominator;
         }
     }

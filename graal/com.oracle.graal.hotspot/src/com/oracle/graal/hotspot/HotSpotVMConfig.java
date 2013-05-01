@@ -369,7 +369,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logObjectStub;
     public long logPrintfStub;
     public int deoptReasonNone;
-    public long identityHashCodeStub;
     public long aescryptEncryptBlockStub;
     public long aescryptDecryptBlockStub;
     public long cipherBlockChainingEncryptAESCryptStub;
@@ -381,6 +380,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long registerFinalizerAddress;
     public long threadIsInterruptedAddress;
     public long stubPrintfAddress;
+    public long identityHashCodeAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

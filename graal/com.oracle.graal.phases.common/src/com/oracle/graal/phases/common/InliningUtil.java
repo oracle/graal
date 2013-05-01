@@ -649,9 +649,16 @@ public class InliningUtil {
 
                     ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, runtime, graph);
                     constantMethods[i] = firstMethodConstantNode;
-                    probability[i] = concretesProbabilities.get(i);
+                    double concretesProbability = concretesProbabilities.get(i);
+                    assert concretesProbability >= 0.0;
+                    probability[i] = concretesProbability;
                     if (i > 0) {
-                        probability[i] /= (1.0 - probability[i - 1]);
+                        double prevProbability = probability[i - 1];
+                        if (prevProbability == 1.0) {
+                            probability[i] = 1.0;
+                        } else {
+                            probability[i] = Math.min(1.0, Math.max(0.0, probability[i] / (1.0 - prevProbability)));
+                        }
                     }
                 }
 
