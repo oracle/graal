@@ -346,7 +346,7 @@ public class ControlFlowGraph {
             }
             Block firstSucc = block.getSuccessors().get(0);
             if (block.getSuccessorCount() == 1) {
-                block.postdominator = block;
+                block.postdominator = firstSucc;
                 continue;
             }
             Block postdominator = firstSucc;
