@@ -90,7 +90,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Object location, @ConstantNodeParameter boolean usePreciseWriteBarriers);
+    public static native void writeMemory(Object object, Object value, Object location, @ConstantNodeParameter WriteBarrierType barrierType);
 
     @Override
     public Object[] getLocationIdentities() {
