@@ -440,7 +440,7 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, runtime, null);
+                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions());
                     new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
