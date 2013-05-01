@@ -131,6 +131,7 @@ public class ComputeProbabilityClosure {
         public LoopInfo loopInfo;
 
         public Probability(double probability, HashSet<LoopInfo> loops) {
+            assert probability >= 0.0;
             this.probability = probability;
             this.loops = new HashSet<>(4);
             if (loops != null) {
@@ -174,7 +175,7 @@ public class ComputeProbabilityClosure {
                 }
                 loops = intersection;
                 mergeLoops.put(merge, new HashSet<>(intersection));
-                assert isRelativeProbability(probability) : probability;
+                probability = Math.max(0.0, probability);
             }
             return true;
         }
@@ -219,7 +220,10 @@ public class ComputeProbabilityClosure {
             } else {
                 assert pred instanceof ControlSplitNode;
                 ControlSplitNode x = (ControlSplitNode) pred;
-                probability *= x.probability(node);
+                double nodeProbability = x.probability(node);
+                assert nodeProbability >= 0.0 : "Node " + x + " provided negative probability for begin " + node + ": " + nodeProbability;
+                probability *= nodeProbability;
+                assert probability >= 0.0;
             }
         }
     }

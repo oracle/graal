@@ -52,6 +52,14 @@ public abstract class SwitchNode extends ControlSplitNode {
         this.value = value;
         this.keySuccessors = keySuccessors;
         this.keyProbabilities = keyProbabilities;
+        assert assertProbabilities();
+    }
+
+    private boolean assertProbabilities() {
+        for (double d : keyProbabilities) {
+            assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
+        }
+        return true;
     }
 
     @Override

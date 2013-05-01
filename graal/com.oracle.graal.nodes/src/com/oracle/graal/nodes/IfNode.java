@@ -65,8 +65,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         super(StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
-        this.trueSuccessorProbability = trueSuccessorProbability;
         this.trueSuccessor = trueSuccessor;
+        setTrueSuccessorProbability(trueSuccessorProbability);
 
     }
 
@@ -117,11 +117,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         setFalseSuccessor(null);
         setTrueSuccessor(falseSucc);
         setFalseSuccessor(trueSucc);
-        trueSuccessorProbability = 1 - trueSuccessorProbability;
+        setTrueSuccessorProbability(1 - trueSuccessorProbability);
         return this;
     }
 
     public void setTrueSuccessorProbability(double prob) {
+        assert prob >= 0.0 && prob <= 1.0;
         trueSuccessorProbability = prob;
     }
 
@@ -189,8 +190,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     intermediateBegin.setNext(this);
                     this.setFalseSuccessor(bothFalseBegin);
                     nextIf.setTrueSuccessorProbability(probabilityB);
-                    double newProbability = this.trueSuccessorProbability / (1.0 - probabilityB);
-                    this.setTrueSuccessorProbability(newProbability);
+                    if (probabilityB == 1.0) {
+                        this.setTrueSuccessorProbability(0.0);
+                    } else {
+                        double newProbability = this.trueSuccessorProbability / (1.0 - probabilityB);
+                        this.setTrueSuccessorProbability(Math.min(1.0, newProbability));
+                    }
                     return;
                 }
             }
