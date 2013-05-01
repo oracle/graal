@@ -234,7 +234,8 @@ public class NodeUtil {
         for (long fieldOffset : nodeClass.nodeArrayFieldOffsets) {
             Node[] children = (Node[]) unsafe.getObject(orig, fieldOffset);
             if (children != null) {
-                Node[] clonedChildren = new Node[children.length];
+                Node[] clonedChildren = children.clone();
+                Arrays.fill(clonedChildren, null);
                 for (int i = 0; i < children.length; i++) {
                     Node clonedChild = cloneNode(children[i]);
                     if (clonedChild == null) {
