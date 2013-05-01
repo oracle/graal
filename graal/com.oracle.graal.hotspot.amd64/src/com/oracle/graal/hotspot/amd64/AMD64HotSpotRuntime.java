@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
@@ -54,6 +55,11 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         Kind word = graalRuntime.getTarget().wordKind;
 
         // @formatter:off
+        addStubCall(EXCEPTION_HANDLER,
+               /*             ret */ ret(Kind.Void),
+               /* arg0: exception */ rax.asValue(Kind.Object),
+             /* arg1: exceptionPc */ rdx.asValue(word));
+
         addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
                /*           temps */ null,
                /*             ret */ ret(Kind.Void),

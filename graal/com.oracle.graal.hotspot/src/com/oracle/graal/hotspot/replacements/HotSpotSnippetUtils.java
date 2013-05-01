@@ -115,6 +115,10 @@ public class HotSpotSnippetUtils {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
     }
 
+    public static Word readExceptionPc(Word thread) {
+        return thread.readWord(threadExceptionOopOffset(), EXCEPTION_PC_LOCATION);
+    }
+
     public static void writeExceptionOop(Word thread, Object value) {
         thread.writeObject(threadExceptionOopOffset(), value, EXCEPTION_OOP_LOCATION);
     }
@@ -146,7 +150,7 @@ public class HotSpotSnippetUtils {
     }
 
     /**
-     * Clears the pending exception if for the given thread.
+     * Clears the pending exception for the given thread.
      * 
      * @return {@code true} if there was a pending exception
      */

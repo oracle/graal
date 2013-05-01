@@ -140,7 +140,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     private boolean checkStubInvariants(CompilationResult compResult) {
         for (DataPatch data : compResult.getDataReferences()) {
             Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : format("%h.%n(%p): ", getMethod()) + "cannot have embedded oop: " + constant;
+            assert constant.getKind() != Kind.Object : format("%h.%n(%p): ", getMethod()) + "cannot have embedded object constant: " + constant;
             assert constant.getPrimitiveAnnotation() == null : format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
@@ -220,6 +220,12 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return code;
     }
 
+    static void log(boolean enabled, String message) {
+        if (enabled) {
+            printf(message);
+        }
+    }
+
     static void log(boolean enabled, String format, long value) {
         if (enabled) {
             printf(format, value);
@@ -256,26 +262,113 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     public static final Descriptor STUB_PRINTF_C = descriptorFor(Stub.class, "printfC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    private static native void printfC(@ConstantNodeParameter Descriptor stubPrintf, Word format, long v1, long v2, long v3);
+    private static native void printfC(@ConstantNodeParameter Descriptor stubPrintfC, boolean vmError, Word format, long v1, long v2, long v3);
 
     /**
-     * Prints a formatted string to the log stream. This differs from {@link Log#LOG_PRINTF} in that
-     * the format string is a C string in the C heap which avoids having an embedded oop in a
-     * RuntimeStub.
+     * Prints a message to the log stream.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
+     * constant in a RuntimeStub.</b>
      * 
-     * @param format a C style printf format value that can contain at most one conversion specifier
-     *            (i.e., a sequence of characters starting with '%').
-     * @param value the value associated with the conversion specifier
+     * @param message a message string
+     */
+    public static void printf(String message) {
+        printfC(STUB_PRINTF_C, false, cstring(message), 0L, 0L, 0L);
+    }
+
+    /**
+     * Prints a message to the log stream.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
+     * constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param value the value associated with the first conversion specifier in {@code format}
      */
     public static void printf(String format, long value) {
-        printfC(STUB_PRINTF_C, cstring(format), value, 0L, 0L);
+        printfC(STUB_PRINTF_C, false, cstring(format), value, 0L, 0L);
     }
 
+    /**
+     * Prints a message to the log stream.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long, long)} to avoid an object
+     * constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param v1 the value associated with the first conversion specifier in {@code format}
+     * @param v2 the value associated with the second conversion specifier in {@code format}
+     */
     public static void printf(String format, long v1, long v2) {
-        printfC(STUB_PRINTF_C, cstring(format), v1, v2, 0L);
+        printfC(STUB_PRINTF_C, false, cstring(format), v1, v2, 0L);
     }
 
+    /**
+     * Prints a message to the log stream.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
+     * object constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param v1 the value associated with the first conversion specifier in {@code format}
+     * @param v2 the value associated with the second conversion specifier in {@code format}
+     * @param v3 the value associated with the third conversion specifier in {@code format}
+     */
     public static void printf(String format, long v1, long v2, long v3) {
-        printfC(STUB_PRINTF_C, cstring(format), v1, v2, v3);
+        printfC(STUB_PRINTF_C, false, cstring(format), v1, v2, v3);
+    }
+
+    /**
+     * Exits the VM with a given error message.
+     * <p>
+     * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
+     * object constant in a RuntimeStub.</b>
+     * 
+     * @param message an error message
+     */
+    public static void fatal(String message) {
+        printfC(STUB_PRINTF_C, true, cstring(message), 0L, 0L, 0L);
+    }
+
+    /**
+     * Exits the VM with a given error message.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
+     * object constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param value the value associated with the first conversion specifier in {@code format}
+     */
+    public static void fatal(String format, long value) {
+        printfC(STUB_PRINTF_C, true, cstring(format), value, 0L, 0L);
+    }
+
+    /**
+     * Exits the VM with a given error message.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
+     * object constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param v1 the value associated with the first conversion specifier in {@code format}
+     * @param v2 the value associated with the second conversion specifier in {@code format}
+     */
+    public static void fatal(String format, long v1, long v2) {
+        printfC(STUB_PRINTF_C, true, cstring(format), v1, v2, 0L);
+    }
+
+    /**
+     * Exits the VM with a given error message.
+     * <p>
+     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
+     * object constant in a RuntimeStub.</b>
+     * 
+     * @param format a C style printf format value
+     * @param v1 the value associated with the first conversion specifier in {@code format}
+     * @param v2 the value associated with the second conversion specifier in {@code format}
+     * @param v3 the value associated with the third conversion specifier in {@code format}
+     */
+    public static void fatal(String format, long v1, long v2, long v3) {
+        printfC(STUB_PRINTF_C, true, cstring(format), v1, v2, v3);
     }
 }
