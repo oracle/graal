@@ -52,9 +52,6 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         this.type = type;
         this.object = object;
         this.forStoreCheck = forStoreCheck;
-        assert type.kind() == Kind.Object;
-        assert type.objectStamp().isExactType();
-        assert type.objectStamp().type().getName().equals("Ljava/lang/Class;");
     }
 
     public boolean isForStoreCheck() {
@@ -82,7 +79,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (object().objectStamp().alwaysNull()) {
             return object();
         }
-        if (type().isConstant()) {
+        if (type().isConstant() && type().kind() == Kind.Object && type().asConstant().asObject() instanceof Class) {
             Class clazz = (Class) type().asConstant().asObject();
             ResolvedJavaType t = tool.runtime().lookupJavaType(clazz);
             return graph().add(new CheckCastNode(t, object(), null, forStoreCheck));
