@@ -706,7 +706,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 if (arrayType != null && array.objectStamp().isExactType()) {
                     ResolvedJavaType elementType = arrayType.getComponentType();
                     if (!MetaUtil.isJavaLangObject(elementType)) {
-                        CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null));
+                        CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null, true));
                         graph.addBeforeFixed(storeIndexed, checkcast);
                         value = checkcast;
                     }
@@ -714,7 +714,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array, wordKind));
                     LocationNode location = ConstantLocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind())));
-                    CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value));
+                    CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     graph.addBeforeFixed(checkcast, arrayClass);
                     value = checkcast;

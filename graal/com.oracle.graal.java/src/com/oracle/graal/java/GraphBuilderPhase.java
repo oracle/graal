@@ -803,7 +803,7 @@ public class GraphBuilderPhase extends Phase {
         ValueNode object = frameState.apop();
         if (type instanceof ResolvedJavaType) {
             JavaTypeProfile profileForTypeCheck = getProfileForTypeCheck((ResolvedJavaType) type);
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, profileForTypeCheck));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) type, object, profileForTypeCheck, false));
             append(checkCast);
             frameState.apush(checkCast);
         } else {
@@ -1661,7 +1661,7 @@ public class GraphBuilderPhase extends Phase {
         if (typeInstruction != null) {
             Block nextBlock = block.successors.size() == 1 ? unwindBlock(block.deoptBci) : block.successors.get(1);
             ValueNode exception = frameState.stackAt(0);
-            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null));
+            CheckCastNode checkCast = currentGraph.add(new CheckCastNode((ResolvedJavaType) catchType, exception, null, false));
             frameState.apop();
             frameState.push(Kind.Object, checkCast);
             FixedNode catchSuccessor = createTarget(block.successors.get(0), frameState);
