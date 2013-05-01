@@ -393,7 +393,10 @@ public class NodeUtil {
             if (clazz.isInstance(childNode)) {
                 return (T) childNode;
             } else {
-                return findFirstNodeInstance(childNode, clazz);
+                T node = findFirstNodeInstance(childNode, clazz);
+                if (node != null) {
+                    return node;
+                }
             }
         }
         return null;
