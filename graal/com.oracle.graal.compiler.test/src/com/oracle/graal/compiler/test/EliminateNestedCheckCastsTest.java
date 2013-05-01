@@ -28,6 +28,7 @@ import junit.framework.Assert;
 
 import org.junit.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -71,7 +72,7 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
             public StructuredGraph call() throws Exception {
                 StructuredGraph graph = parse(snippet);
                 Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
-                new CanonicalizerPhase.Instance(runtime(), null).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false)).apply(graph);
                 Assert.assertEquals(afterCanon, graph.getNodes(CheckCastNode.class).count());
                 return graph;
             }
