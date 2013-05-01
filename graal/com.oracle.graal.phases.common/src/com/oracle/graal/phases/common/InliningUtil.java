@@ -657,7 +657,7 @@ public class InliningUtil {
                         if (prevProbability == 1.0) {
                             probability[i] = 1.0;
                         } else {
-                            probability[i] = Math.max(0.0, probability[i] / (1.0 - prevProbability));
+                            probability[i] = Math.min(1.0, Math.max(0.0, probability[i] / (1.0 - prevProbability)));
                         }
                     }
                 }
