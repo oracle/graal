@@ -122,8 +122,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public void setTrueSuccessorProbability(double prob) {
-        assert prob >= 0.0 && prob <= 1.0 : "Probability out of bounds: " + prob;
-        trueSuccessorProbability = prob;
+        assert prob >= -0.000000001 && prob <= 1.000000001 : "Probability out of bounds: " + prob;
+        trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
     }
 
     @Override
