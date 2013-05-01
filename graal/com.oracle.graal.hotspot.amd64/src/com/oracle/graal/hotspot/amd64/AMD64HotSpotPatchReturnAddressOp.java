@@ -20,37 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.hotspot.amd64;
 
-import com.oracle.graal.api.code.*;
+import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.amd64.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * This interface defines the contract a HotSpot backend LIR generator needs to fulfill in addition
- * to abstract methods from {@link LIRGenerator} and {@link LIRGeneratorTool}.
+ * Patch the return address of the current frame.
  */
-public interface HotSpotLIRGenerator {
+@Opcode("PATCH_RETURN")
+final class AMD64HotSpotPatchReturnAddressOp extends AMD64LIRInstruction {
 
-    /**
-     * Emits an operation to make a tail call.
-     * 
-     * @param args the arguments of the call
-     * @param address the target address of the call
-     */
-    void emitTailcall(Value[] args, Value address);
+    @Use(REG) AllocatableValue address;
 
-    void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+    AMD64HotSpotPatchReturnAddressOp(AllocatableValue address) {
+        this.address = address;
+    }
 
-    void emitPatchReturnAddress(ValueNode address);
-
-    void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
-
-    /**
-     * Gets a stack slot for a lock at a given lock nesting depth.
-     */
-    StackSlot getLockSlot(int lockDepth);
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        int frameSize = tasm.frameMap.frameSize();
+        masm.movq(new AMD64Address(rsp, frameSize), asRegister(address));
+    }
 }

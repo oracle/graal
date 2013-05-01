@@ -64,6 +64,7 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
         }
 
         test("test1Snippet", "a string");
+        test("test1Snippet", (String) null);
     }
 
     public static String test1Snippet(String message) {
@@ -75,5 +76,52 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
             }
         }
         return null;
+    }
+
+    private static void raiseException(String m1, String m2, String m3, String m4, String m5) {
+        throw new RuntimeException(m1 + m2 + m3 + m4 + m5);
+    }
+
+    @Test
+    public void test2() {
+        // Ensure the profile shows a hot exception
+        for (int i = 0; i < 10000; i++) {
+            test2Snippet("m1", "m2", "m3", "m4", "m5");
+            test2Snippet(null, "m2", "m3", "m4", "m5");
+        }
+
+        test("test2Snippet", "m1", "m2", "m3", "m4", "m5");
+        test("test2Snippet", null, "m2", "m3", "m4", "m5");
+    }
+
+    public static String test2Snippet(String m1, String m2, String m3, String m4, String m5) {
+        if (m1 != null) {
+            try {
+                raiseException(m1, m2, m3, m4, m5);
+            } catch (Exception e) {
+                return m5 + m4 + m3 + m2 + m1;
+            }
+        }
+        return m4 + m3;
+    }
+
+    @Test
+    public void test3() {
+        // Ensure the profile shows a hot exception
+        for (int i = 0; i < 10000; i++) {
+            test3Snippet("object1", "object2");
+            test3Snippet(null, "object2");
+        }
+
+        test("test3Snippet", (Object) null, "object2");
+        test("test3Snippet", "object1", "object2");
+    }
+
+    public static String test3Snippet(Object o, Object o2) {
+        try {
+            return o.toString();
+        } catch (NullPointerException e) {
+            return String.valueOf(o2);
+        }
     }
 }

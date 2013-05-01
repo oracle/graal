@@ -22,11 +22,9 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
@@ -36,17 +34,13 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("CRUNTIME_CALL_EPILOGUE")
 final class AMD64HotSpotCRuntimeCallEpilogueOp extends AMD64LIRInstruction {
 
-    @Use({REG, ILLEGAL}) protected Value thread;
-
-    AMD64HotSpotCRuntimeCallEpilogueOp(Value thread) {
-        this.thread = thread;
-    }
-
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         // reset last Java frame:
         HotSpotVMConfig config = graalRuntime().getConfig();
-        masm.movslq(new AMD64Address(asRegister(thread), config.threadLastJavaSpOffset), 0);
-        masm.movslq(new AMD64Address(asRegister(thread), config.threadLastJavaFpOffset), 0);
+        Register thread = graalRuntime().getRuntime().threadRegister();
+
+        masm.movslq(new AMD64Address(thread, config.threadLastJavaSpOffset), 0);
+        masm.movslq(new AMD64Address(thread, config.threadLastJavaFpOffset), 0);
     }
 }
