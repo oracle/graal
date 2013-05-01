@@ -103,9 +103,27 @@ public class WordTypeRewriterPhase extends Phase {
             }
         }
 
-        for (LoadIndexedNode load : graph.getNodes().filter(LoadIndexedNode.class).snapshot()) {
-            if (isWord(load)) {
-                load.setStamp(StampFactory.forKind(wordKind));
+        for (AccessIndexedNode node : graph.getNodes().filter(AccessIndexedNode.class).snapshot()) {
+            ValueNode array = node.array();
+            if (array.objectStamp().type() == null) {
+                // There are cases where the array does not have a known type yet. Assume it is not
+                // a word type.
+                continue;
+            }
+            assert array.objectStamp().type().isArray();
+            if (isWord(array.objectStamp().type().getComponentType())) {
+                /*
+                 * The elementKind of the node is a final field, and other information such as the
+                 * stamp depends on elementKind. Therefore, just create a new node and replace the
+                 * old one.
+                 */
+                if (node instanceof LoadIndexedNode) {
+                    graph.replaceFixedWithFixed(node, graph.add(new LoadIndexedNode(node.array(), node.index(), wordKind)));
+                } else if (node instanceof StoreIndexedNode) {
+                    graph.replaceFixedWithFixed(node, graph.add(new StoreIndexedNode(node.array(), node.index(), wordKind, ((StoreIndexedNode) node).value())));
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
             }
         }
 
@@ -308,16 +326,6 @@ public class WordTypeRewriterPhase extends Phase {
     private boolean isWord0(ValueNode node) {
         if (node.stamp() == StampFactory.forWord()) {
             return true;
-        }
-        if (node instanceof LoadIndexedNode) {
-            ValueNode array = ((LoadIndexedNode) node).array();
-            if (array.objectStamp().type() == null) {
-                // There are cases where the array does not have a known type yet. Assume it is not
-                // a word type.
-                // TODO disallow LoadIndexedNode for word arrays?
-                return false;
-            }
-            return isWord(array.objectStamp().type().getComponentType());
         }
         if (node.kind() == Kind.Object) {
             return isWord(node.objectStamp().type());
