@@ -79,11 +79,6 @@ public class ComputeProbabilityClosure {
         }
     }
 
-    private static boolean isRelativeProbability(double prob) {
-        // 1.01 to allow for some rounding errors
-        return prob >= 0 && prob <= 1.01;
-    }
-
     public static class LoopInfo {
 
         public final LoopBeginNode loopBegin;
