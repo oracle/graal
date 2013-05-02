@@ -74,8 +74,8 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && object != null && object.isConstant()) {
-            if (location.locationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
-                long displacement = ((ConstantLocationNode) location).displacement();
+            if (location.getLocationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
+                long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
@@ -101,7 +101,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public boolean push(PiNode parent) {
-        Object locId = location().locationIdentity();
+        Object locId = location().getLocationIdentity();
         if (locId instanceof ResolvedJavaField) {
             ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
             ValueNode piValueStamp = parent.object();

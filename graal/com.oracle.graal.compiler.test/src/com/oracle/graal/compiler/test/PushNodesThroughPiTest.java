@@ -66,7 +66,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
                 StructuredGraph graph = compileTestSnippet(snippet);
 
                 for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
-                    Object locId = rn.location().locationIdentity();
+                    Object locId = rn.location().getLocationIdentity();
                     if (locId instanceof ResolvedJavaField) {
                         ResolvedJavaField field = (ResolvedJavaField) locId;
                         if (field.getName().equals("x")) {

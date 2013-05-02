@@ -45,18 +45,18 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     /**
      * Gets the index or offset of this location.
      */
-    public ValueNode index() {
+    public ValueNode getIndex() {
         return index;
     }
 
-    public long displacement() {
+    public long getDisplacement() {
         return displacement;
     }
 
     /**
      * @return Constant that is used to scale the index.
      */
-    public int indexScaling() {
+    public int getIndexScaling() {
         return indexScaling;
     }
 
@@ -80,22 +80,22 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Object locationIdentity() {
+    public Object getLocationIdentity() {
         return locationIdentity;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (index == null || indexScaling == 0) {
-            return ConstantLocationNode.create(locationIdentity(), getValueKind(), displacement, graph());
+            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), displacement, graph());
         } else if (index.isConstant()) {
-            return ConstantLocationNode.create(locationIdentity(), getValueKind(), index.asConstant().asLong() * indexScaling + displacement, graph());
+            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), index.asConstant().asLong() * indexScaling + displacement, graph());
         }
         return this;
     }
 
     @Override
     public Value generateAddress(LIRGeneratorTool gen, Value base) {
-        return gen.emitAddress(base, displacement, gen.operand(index()), indexScaling());
+        return gen.emitAddress(base, displacement, gen.operand(getIndex()), getIndexScaling());
     }
 }

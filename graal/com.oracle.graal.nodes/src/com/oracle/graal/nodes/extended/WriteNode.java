@@ -94,6 +94,6 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Override
     public Object[] getLocationIdentities() {
-        return new Object[]{location().locationIdentity()};
+        return new Object[]{location().getLocationIdentity()};
     }
 }

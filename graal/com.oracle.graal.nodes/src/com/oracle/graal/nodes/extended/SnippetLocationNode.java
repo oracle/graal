@@ -65,7 +65,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Object locationIdentity() {
+    public Object getLocationIdentity() {
         if (locationIdentity.isConstant()) {
             return locationIdentity.asConstant().asObject();
         }

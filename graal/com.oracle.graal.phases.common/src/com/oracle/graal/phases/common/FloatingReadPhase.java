@@ -156,7 +156,7 @@ public class FloatingReadPhase extends Phase {
         private static void processFloatable(FloatableAccessNode accessNode, MemoryMap state) {
             StructuredGraph graph = (StructuredGraph) accessNode.graph();
             assert accessNode.getNullCheck() == false;
-            Object locationIdentity = accessNode.location().locationIdentity();
+            Object locationIdentity = accessNode.location().getLocationIdentity();
             if (locationIdentity != LocationNode.ANY_LOCATION) {
                 ValueNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);

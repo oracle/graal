@@ -95,7 +95,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
                 for (FloatingReadNode node : graph.getNodes(LocalNode.class).first().usages().filter(FloatingReadNode.class)) {
                     // Checking that the parameter a is not directly used for the access to field
                     // x10 (because x10 must be guarded by the checkcast).
-                    Assert.assertTrue(node.location().locationIdentity() == LocationNode.FINAL_LOCATION);
+                    Assert.assertTrue(node.location().getLocationIdentity() == LocationNode.FINAL_LOCATION);
                 }
             }
         });

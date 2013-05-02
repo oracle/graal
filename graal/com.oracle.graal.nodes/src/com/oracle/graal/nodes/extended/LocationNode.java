@@ -87,7 +87,7 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
      * {@link #ANY_LOCATION} and {@link #FINAL_LOCATION}, a different location identity of two
      * memory accesses guarantees that the two accesses do not interfere.
      */
-    public abstract Object locationIdentity();
+    public abstract Object getLocationIdentity();
 
     @Override
     public final void generate(LIRGeneratorTool generator) {
