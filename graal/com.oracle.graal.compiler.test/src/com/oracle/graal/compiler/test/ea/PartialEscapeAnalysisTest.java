@@ -35,17 +35,16 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**
- * In these test cases the probability of all invokes is set to a high value, such that an
- * InliningPhase should inline them all. After that, the PartialEscapeAnalysisPhase is expected to
- * remove all allocations and return the correct values.
+ * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct
+ * values.
  */
 public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
@@ -137,9 +136,9 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
             NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(result).apply();
             double probabilitySum = 0;
             int materializeCount = 0;
-            for (MaterializeObjectNode materialize : result.getNodes(MaterializeObjectNode.class)) {
-                probabilitySum += nodeProbabilities.get(materialize);
-                materializeCount++;
+            for (CommitAllocationNode materialize : result.getNodes(CommitAllocationNode.class)) {
+                probabilitySum += nodeProbabilities.get(materialize) * materialize.getVirtualObjects().size();
+                materializeCount += materialize.getVirtualObjects().size();
             }
             Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
             Assert.assertEquals("unexpected probability of MaterializeObjectNodes", expectedProbability, probabilitySum, 0.01);

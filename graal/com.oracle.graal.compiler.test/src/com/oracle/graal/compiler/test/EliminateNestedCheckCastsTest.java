@@ -62,7 +62,33 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        compileSnippet("test2Snippet", 5, 2);
+        compileSnippet("test2Snippet", 5, 1);
+    }
+
+    public static long test3Snippet(A1 a1) {
+        long result = a1.x1;
+        A2 a2 = (A2) a1;
+        if (a1.x1 == 42) {
+            A3 a3 = (A3) a2;
+            result = a3.x3;
+        }
+        return result;
+    }
+
+    @Test
+    public void test3() {
+        compileSnippet("test3Snippet", 2, 2);
+    }
+
+    public static long test4Snippet(A1 a1, A1 b1) {
+        A2 a2 = (A2) a1;
+        A3 b3 = (A3) b1;
+        return a2.x2 + b3.x3;
+    }
+
+    @Test
+    public void test4() {
+        compileSnippet("test4Snippet", 2, 2);
     }
 
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
@@ -71,6 +97,7 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
             @Override
             public StructuredGraph call() throws Exception {
                 StructuredGraph graph = parse(snippet);
+                Debug.dump(graph, "After parsing: " + snippet);
                 Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
                 new CanonicalizerPhase.Instance(runtime(), new Assumptions(false)).apply(graph);
                 Assert.assertEquals(afterCanon, graph.getNodes(CheckCastNode.class).count());

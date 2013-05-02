@@ -38,8 +38,6 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
     private final ResolvedJavaType elementType;
     private final boolean fillContents;
 
-    private final boolean locked;
-
     @Override
     public ValueNode length() {
         return length;
@@ -52,14 +50,12 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
      *            the array itself).
      * @param length the node that produces the length for this allocation.
      * @param fillContents determines whether the array elements should be initialized to zero/null.
-     * @param locked determines whether the array should be locked immediately.
      */
-    public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents, boolean locked) {
+    public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.exactNonNull(elementType.getArrayClass()));
         this.length = length;
         this.elementType = elementType;
         this.fillContents = fillContents;
-        this.locked = locked;
     }
 
     /**
@@ -67,13 +63,6 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
      */
     public boolean fillContents() {
         return fillContents;
-    }
-
-    /**
-     * @return <code>true</code> if the array will be locked immediately.
-     */
-    public boolean locked() {
-        return locked;
     }
 
     /**
@@ -111,7 +100,9 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
+        if (loweringType == LoweringType.AFTER_GUARDS) {
+            tool.getRuntime().lower(this, tool);
+        }
     }
 
     @Override
@@ -125,7 +116,7 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
                     state[i] = defaultForKind;
                 }
                 VirtualObjectNode virtualObject = new VirtualArrayNode(elementType, constantLength);
-                tool.createVirtualObject(virtualObject, state, 0);
+                tool.createVirtualObject(virtualObject, state, null);
                 tool.replaceWithVirtual(virtualObject);
             }
         }
