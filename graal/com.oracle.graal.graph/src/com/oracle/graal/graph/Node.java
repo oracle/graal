@@ -458,7 +458,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the
      * ideal graph visualizer).
      */
-    public Map<Object, Object> getDebugProperties() {
+    public final Map<Object, Object> getDebugProperties() {
         return getDebugProperties(new HashMap<>());
     }
 

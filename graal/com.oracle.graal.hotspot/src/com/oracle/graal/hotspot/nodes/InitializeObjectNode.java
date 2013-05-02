@@ -37,14 +37,12 @@ public final class InitializeObjectNode extends FixedWithNextNode implements Low
     @Input private final ValueNode memory;
     private final ResolvedJavaType type;
     private final boolean fillContents;
-    private final boolean locked;
 
-    public InitializeObjectNode(ValueNode memory, ResolvedJavaType type, boolean fillContents, boolean locked) {
+    public InitializeObjectNode(ValueNode memory, ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type));
         this.memory = memory;
         this.type = type;
         this.fillContents = fillContents;
-        this.locked = locked;
     }
 
     public ValueNode memory() {
@@ -57,10 +55,6 @@ public final class InitializeObjectNode extends FixedWithNextNode implements Low
 
     public boolean fillContents() {
         return fillContents;
-    }
-
-    public boolean locked() {
-        return locked;
     }
 
     @Override

@@ -76,7 +76,7 @@ public class BoxNode extends FixedWithNextNode implements VirtualizableAllocatio
         VirtualBoxingNode newVirtual = new VirtualBoxingNode(type, boxingKind);
         assert newVirtual.getFields().length == 1;
 
-        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, 0);
+        tool.createVirtualObject(newVirtual, new ValueNode[]{v}, null);
         tool.replaceWithVirtual(newVirtual);
     }
 

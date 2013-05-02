@@ -78,6 +78,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
@@ -665,7 +666,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(object, ConstantLocationNode.create(field, field.getKind(), field.offset(), graph), loadField.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp()));
             tool.createNullCheckGuard(memoryRead.dependencies(), object);
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
@@ -680,9 +681,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             StoreFieldNode storeField = (StoreFieldNode) n;
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
-            LocationNode location = ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
             WriteBarrierType barrierType = getFieldStoreBarrierType(storeField);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), location, barrierType));
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType));
             tool.createNullCheckGuard(memoryWrite.dependencies(), object);
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
@@ -774,6 +774,70 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             FixedGuardNode node = (FixedGuardNode) n;
             ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated())));
             graph.replaceFixedWithFixed(node, newAnchor);
+        } else if (n instanceof CommitAllocationNode) {
+            CommitAllocationNode commit = (CommitAllocationNode) n;
+
+            ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                int entryCount = virtual.entryCount();
+
+                FixedWithNextNode newObject;
+                if (virtual instanceof VirtualInstanceNode) {
+                    newObject = graph.add(new NewInstanceNode(virtual.type(), true));
+                } else {
+                    ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                    newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                }
+                graph.addBeforeFixed(commit, newObject);
+                allocations[objIndex] = newObject;
+            }
+            int valuePos = 0;
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                int entryCount = virtual.entryCount();
+
+                ValueNode newObject = allocations[objIndex];
+                if (virtual instanceof VirtualInstanceNode) {
+                    VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+                    for (int i = 0; i < entryCount; i++) {
+                        ValueNode value = commit.getValues().get(valuePos++);
+                        if (value instanceof VirtualObjectNode) {
+                            value = allocations[commit.getVirtualObjects().indexOf(value)];
+                        }
+                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+                    }
+                } else {
+                    VirtualArrayNode array = (VirtualArrayNode) virtual;
+                    ResolvedJavaType element = array.componentType();
+                    for (int i = 0; i < entryCount; i++) {
+                        ValueNode value = commit.getValues().get(valuePos++);
+                        if (value instanceof VirtualObjectNode) {
+                            int indexOf = commit.getVirtualObjects().indexOf(value);
+                            assert indexOf != -1 : commit + " " + value;
+                            value = allocations[indexOf];
+                        }
+                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
+                    }
+                }
+            }
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
+                allocations[objIndex] = anchor;
+                graph.addBeforeFixed(commit, anchor);
+            }
+            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                for (int lockDepth : commit.getLocks().get(objIndex)) {
+                    MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+                    graph.addBeforeFixed(commit, enter);
+                }
+            }
+            for (Node usage : commit.usages().snapshot()) {
+                AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
+                int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+                graph.replaceFloating(addObject, allocations[index]);
+            }
+            graph.removeFixed(commit);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof CheckCastDynamicNode) {
@@ -879,6 +943,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             }
         }
         return barrierType;
+    }
+
+    private static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
+        return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
 
     private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {

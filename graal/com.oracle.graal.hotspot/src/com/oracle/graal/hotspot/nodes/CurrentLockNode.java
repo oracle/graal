@@ -28,26 +28,18 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
  * Intrinsic for getting the lock in the current {@linkplain BeginLockScopeNode lock scope}.
  */
-public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLowerable, MonitorReference {
+public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLowerable {
 
-    private int lockDepth = -1;
+    private int lockDepth;
 
-    public CurrentLockNode() {
+    public CurrentLockNode(int lockDepth) {
         super(StampFactory.forWord());
-    }
-
-    public int getLockDepth() {
-        return lockDepth;
-    }
-
-    public void setLockDepth(int lockDepth) {
         this.lockDepth = lockDepth;
     }
 
@@ -62,5 +54,5 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLo
     }
 
     @NodeIntrinsic
-    public static native Word currentLock();
+    public static native Word currentLock(@ConstantNodeParameter int lockDepth);
 }
