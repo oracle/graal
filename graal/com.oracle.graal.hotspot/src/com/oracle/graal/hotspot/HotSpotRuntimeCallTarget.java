@@ -99,10 +99,10 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
                 argumentLocations[i] = cc.getArgument(i);
             }
 
-            Set<Register> definedRegisters = stub.getDefinedRegisters();
-            AllocatableValue[] temporaryLocations = new AllocatableValue[definedRegisters.size()];
+            Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
+            AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
             int i = 0;
-            for (Register reg : definedRegisters) {
+            for (Register reg : destroyedRegisters) {
                 temporaryLocations[i++] = reg.asValue();
             }
             // Update calling convention with temporaries

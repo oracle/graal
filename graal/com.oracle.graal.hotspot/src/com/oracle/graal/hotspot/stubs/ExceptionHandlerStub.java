@@ -52,6 +52,16 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         super(runtime, replacements, target, linkage);
     }
 
+    /**
+     * This stub is called when returning to a method to handle an exception thrown by a callee. It
+     * is not used for routing implicit exceptions. Therefore, it does not need to save any
+     * registers as HotSpot uses a caller save convention.
+     */
+    @Override
+    public boolean preservesRegisters() {
+        return false;
+    }
+
     @Snippet
     private static void exceptionHandler(Object exception, Word exceptionPc) {
         checkNoExceptionInThread();
@@ -64,8 +74,6 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         // patch throwing pc into return address so that deoptimization finds the right debug info
         patchReturnAddress(exceptionPc);
 
-        // TODO (ds) add support for non-register-preserving C runtime calls and
-        // use it for this call as no registers need saving by this stub
         Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread());
 
         if (logging()) {

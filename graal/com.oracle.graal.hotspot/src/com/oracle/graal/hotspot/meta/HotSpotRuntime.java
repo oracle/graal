@@ -316,7 +316,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:     value */                       Kind.Long,
                         /* arg3:     value */                       Kind.Long));
 
-        addCRuntimeCall(STUB_PRINTF_C, config.vmMessageAddress,
+        addCRuntimeCall(VM_MESSAGE_C, config.vmMessageAddress,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:   vmError */ nativeCallingConvention(Kind.Boolean,
                         /* arg1:    format */                         word,

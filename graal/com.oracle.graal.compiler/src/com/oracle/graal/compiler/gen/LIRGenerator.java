@@ -825,6 +825,35 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public void beforeRegisterAllocation() {
     }
 
+    /**
+     * Gets an garbage vale for a given kind.
+     */
+    protected Constant zapValueForKind(PlatformKind kind) {
+        long dead = 0xDEADDEADDEADDEADL;
+        switch ((Kind) kind) {
+            case Boolean:
+                return Constant.FALSE;
+            case Byte:
+                return Constant.forByte((byte) dead);
+            case Char:
+                return Constant.forChar((char) dead);
+            case Short:
+                return Constant.forShort((short) dead);
+            case Int:
+                return Constant.forInt((int) dead);
+            case Double:
+                return Constant.forDouble(Double.longBitsToDouble(dead));
+            case Float:
+                return Constant.forFloat(Float.intBitsToFloat((int) dead));
+            case Long:
+                return Constant.forLong(dead);
+            case Object:
+                return Constant.NULL_OBJECT;
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
+    }
+
     public abstract void emitBitCount(Variable result, Value operand);
 
     public abstract void emitBitScanForward(Variable result, Value operand);

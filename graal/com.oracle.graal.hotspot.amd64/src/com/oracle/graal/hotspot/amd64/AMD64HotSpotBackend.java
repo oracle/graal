@@ -173,13 +173,13 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         if (stub != null) {
 
             final Set<Register> definedRegisters = gatherDefinedRegisters(lir);
-            stub.initDefinedRegisters(definedRegisters);
+            stub.initDestroyedRegisters(definedRegisters);
 
             // Eliminate unnecessary register preservation and
             // record where preserved registers are saved
-            for (Map.Entry<LIRFrameState, AMD64SaveRegistersOp> e : gen.calleeSaveInfo.entrySet()) {
-                AMD64SaveRegistersOp save = e.getValue();
-                save.updateAndDescribePreservation(definedRegisters, e.getKey().debugInfo(), frameMap);
+            for (Map.Entry<LIRFrameState, AMD64RegistersPreservationOp> e : gen.calleeSaveInfo.entrySet()) {
+                AMD64RegistersPreservationOp save = e.getValue();
+                save.update(definedRegisters, e.getKey().debugInfo(), frameMap);
             }
         }
 

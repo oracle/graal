@@ -37,7 +37,7 @@ import com.oracle.graal.lir.asm.*;
  * Saves registers to stack slots.
  */
 @Opcode("SAVE_REGISTER")
-public final class AMD64SaveRegistersOp extends AMD64LIRInstruction {
+public final class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
 
     /**
      * The move instructions for saving the registers.
@@ -70,16 +70,17 @@ public final class AMD64SaveRegistersOp extends AMD64LIRInstruction {
     }
 
     /**
-     * Prunes the set of registers saved by this operation to exclude those in {@code notSaved} and
+     * Prunes the set of registers saved by this operation to exclude those in {@code ignored} and
      * updates {@code debugInfo} with a {@linkplain DebugInfo#getCalleeSaveInfo() description} of
      * where each preserved register is saved.
      */
-    public void updateAndDescribePreservation(Set<Register> notSaved, DebugInfo debugInfo, FrameMap frameMap) {
+    @Override
+    public void update(Set<Register> ignored, DebugInfo debugInfo, FrameMap frameMap) {
         int preserved = 0;
         for (int i = 0; i < savingMoves.length; i++) {
             if (savingMoves[i] != null) {
                 Register register = ValueUtil.asRegister(((MoveOp) savingMoves[i]).getInput());
-                if (notSaved.contains(register)) {
+                if (ignored.contains(register)) {
                     savingMoves[i] = null;
                     restoringMoves[i] = null;
                 } else {

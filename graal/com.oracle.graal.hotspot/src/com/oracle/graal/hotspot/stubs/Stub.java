@@ -88,19 +88,31 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     protected InstalledCode code;
 
     /**
-     * The registers/temporaries defined by this stub.
+     * The registers destroyed by this stub.
      */
-    private Set<Register> definedRegisters;
+    private Set<Register> destroyedRegisters;
 
-    public void initDefinedRegisters(Set<Register> registers) {
+    public void initDestroyedRegisters(Set<Register> registers) {
         assert registers != null;
-        assert definedRegisters == null || registers.equals(definedRegisters) : "cannot redefine";
-        definedRegisters = registers;
+        assert destroyedRegisters == null || registers.equals(destroyedRegisters) : "cannot redefine";
+        destroyedRegisters = registers;
     }
 
-    public Set<Register> getDefinedRegisters() {
-        assert definedRegisters != null : "not yet initialized";
-        return definedRegisters;
+    /**
+     * Gets the registers defined by this stub. These are the temporaries of this stub and must thus
+     * be caller saved by a callers of this stub.
+     */
+    public Set<Register> getDestroyedRegisters() {
+        assert destroyedRegisters != null : "not yet initialized";
+        return destroyedRegisters;
+    }
+
+    /**
+     * Determines if this stub preserves all registers apart from those it
+     * {@linkplain #getDestroyedRegisters() destroys}.
+     */
+    public boolean preservesRegisters() {
+        return true;
     }
 
     /**
@@ -198,7 +210,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
 
                     assert checkStubInvariants(compResult);
 
-                    assert definedRegisters != null;
+                    assert destroyedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
 
                         @Override
@@ -259,10 +271,10 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         }
     }
 
-    public static final Descriptor STUB_PRINTF_C = descriptorFor(Stub.class, "printfC", false);
+    public static final Descriptor VM_MESSAGE_C = descriptorFor(Stub.class, "vmMessageC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    private static native void printfC(@ConstantNodeParameter Descriptor stubPrintfC, boolean vmError, Word format, long v1, long v2, long v3);
+    private static native void vmMessageC(@ConstantNodeParameter Descriptor stubPrintfC, boolean vmError, Word format, long v1, long v2, long v3);
 
     /**
      * Prints a message to the log stream.
@@ -273,7 +285,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param message a message string
      */
     public static void printf(String message) {
-        printfC(STUB_PRINTF_C, false, cstring(message), 0L, 0L, 0L);
+        vmMessageC(VM_MESSAGE_C, false, cstring(message), 0L, 0L, 0L);
     }
 
     /**
@@ -286,7 +298,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param value the value associated with the first conversion specifier in {@code format}
      */
     public static void printf(String format, long value) {
-        printfC(STUB_PRINTF_C, false, cstring(format), value, 0L, 0L);
+        vmMessageC(VM_MESSAGE_C, false, cstring(format), value, 0L, 0L);
     }
 
     /**
@@ -300,7 +312,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param v2 the value associated with the second conversion specifier in {@code format}
      */
     public static void printf(String format, long v1, long v2) {
-        printfC(STUB_PRINTF_C, false, cstring(format), v1, v2, 0L);
+        vmMessageC(VM_MESSAGE_C, false, cstring(format), v1, v2, 0L);
     }
 
     /**
@@ -315,7 +327,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param v3 the value associated with the third conversion specifier in {@code format}
      */
     public static void printf(String format, long v1, long v2, long v3) {
-        printfC(STUB_PRINTF_C, false, cstring(format), v1, v2, v3);
+        vmMessageC(VM_MESSAGE_C, false, cstring(format), v1, v2, v3);
     }
 
     /**
@@ -327,7 +339,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param message an error message
      */
     public static void fatal(String message) {
-        printfC(STUB_PRINTF_C, true, cstring(message), 0L, 0L, 0L);
+        vmMessageC(VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
     }
 
     /**
@@ -340,7 +352,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param value the value associated with the first conversion specifier in {@code format}
      */
     public static void fatal(String format, long value) {
-        printfC(STUB_PRINTF_C, true, cstring(format), value, 0L, 0L);
+        vmMessageC(VM_MESSAGE_C, true, cstring(format), value, 0L, 0L);
     }
 
     /**
@@ -354,7 +366,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param v2 the value associated with the second conversion specifier in {@code format}
      */
     public static void fatal(String format, long v1, long v2) {
-        printfC(STUB_PRINTF_C, true, cstring(format), v1, v2, 0L);
+        vmMessageC(VM_MESSAGE_C, true, cstring(format), v1, v2, 0L);
     }
 
     /**
@@ -369,6 +381,6 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      * @param v3 the value associated with the third conversion specifier in {@code format}
      */
     public static void fatal(String format, long v1, long v2, long v3) {
-        printfC(STUB_PRINTF_C, true, cstring(format), v1, v2, v3);
+        vmMessageC(VM_MESSAGE_C, true, cstring(format), v1, v2, v3);
     }
 }

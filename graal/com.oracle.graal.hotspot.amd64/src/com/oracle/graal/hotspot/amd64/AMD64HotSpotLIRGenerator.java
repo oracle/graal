@@ -176,57 +176,77 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      * Map from debug infos that need to be updated with callee save information to the operations
      * that provide the information.
      */
-    Map<LIRFrameState, AMD64SaveRegistersOp> calleeSaveInfo = new HashMap<>();
+    Map<LIRFrameState, AMD64RegistersPreservationOp> calleeSaveInfo = new HashMap<>();
 
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
     protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        boolean needsCalleeSave = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
-        if (needsCalleeSave) {
-            currentRuntimeCallInfo = info;
-        }
+        currentRuntimeCallInfo = info;
         super.emitCall(callTarget, result, arguments, temps, info);
     }
 
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
-        boolean needsCalleeSave = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
+        Stub stub = runtime().asStub(method);
+        boolean isCRuntimeCall = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
+        assert !isCRuntimeCall || stub != null : "direct call to C runtime can only be made from compiled stubs, not from " + method;
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
-        if (needsCalleeSave) {
-            Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
-            savedRegisterLocations = new StackSlot[savedRegisters.length];
-            AMD64LIRInstruction[] savingMoves = new AMD64LIRInstruction[savedRegisters.length];
-            AMD64LIRInstruction[] restoringMoves = new AMD64LIRInstruction[savedRegisters.length];
-            for (int i = 0; i < savedRegisters.length; i++) {
-                PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-                assert kind != Kind.Illegal;
-                StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
-                savedRegisterLocations[i] = spillSlot;
+        if (isCRuntimeCall) {
+            if (stub.preservesRegisters()) {
+                Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+                savedRegisterLocations = new StackSlot[savedRegisters.length];
+                AMD64LIRInstruction[] savingMoves = new AMD64LIRInstruction[savedRegisters.length];
+                AMD64LIRInstruction[] restoringMoves = new AMD64LIRInstruction[savedRegisters.length];
+                for (int i = 0; i < savedRegisters.length; i++) {
+                    PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
+                    assert kind != Kind.Illegal;
+                    StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
+                    savedRegisterLocations[i] = spillSlot;
 
-                RegisterValue register = savedRegisters[i].asValue(kind);
-                savingMoves[i] = createMove(spillSlot, register);
-                restoringMoves[i] = createMove(register, spillSlot);
+                    RegisterValue register = savedRegisters[i].asValue(kind);
+                    savingMoves[i] = createMove(spillSlot, register);
+                    restoringMoves[i] = createMove(register, spillSlot);
+                }
+                save = new AMD64SaveRegistersOp(savingMoves, restoringMoves, savedRegisterLocations);
+                append(save);
             }
-            save = new AMD64SaveRegistersOp(savingMoves, restoringMoves, savedRegisterLocations);
-            append(save);
-
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
         }
 
         Variable result = super.emitCall(callTarget, cc, info, args);
 
-        if (needsCalleeSave) {
-            assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-            calleeSaveInfo.put(currentRuntimeCallInfo, save);
-
+        if (isCRuntimeCall) {
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
-            append(new AMD64RestoreRegistersOp(savedRegisterLocations.clone(), save));
+            if (stub.preservesRegisters()) {
+                assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
+                calleeSaveInfo.put(currentRuntimeCallInfo, save);
+
+                append(new AMD64RestoreRegistersOp(savedRegisterLocations.clone(), save));
+            } else {
+                assert zapRegisters();
+            }
         }
 
         return result;
+    }
+
+    protected boolean zapRegisters() {
+        Register[] zappedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+        AMD64LIRInstruction[] zappingMoves = new AMD64LIRInstruction[zappedRegisters.length];
+        for (int i = 0; i < zappedRegisters.length; i++) {
+            PlatformKind kind = target.arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
+            assert kind != Kind.Illegal;
+
+            RegisterValue register = zappedRegisters[i].asValue(kind);
+            zappingMoves[i] = createMove(register, zapValueForKind(kind));
+        }
+        AMD64ZapRegistersOp zap = new AMD64ZapRegistersOp(zappingMoves);
+        append(zap);
+        calleeSaveInfo.put(currentRuntimeCallInfo, zap);
+        return true;
     }
 
     @Override
