@@ -64,6 +64,9 @@ public class HotSpotReplacementsUtil {
 
     public static final Object EXCEPTION_OOP_LOCATION = LocationNode.createLocation("ExceptionOop");
 
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     @Fold
     public static int threadExceptionOopOffset() {
         return config().threadExceptionOopOffset;
@@ -99,6 +102,9 @@ public class HotSpotReplacementsUtil {
 
     public static final Object PENDING_EXCEPTION_LOCATION = LocationNode.createLocation("PendingException");
 
+    /**
+     * @see HotSpotVMConfig#pendingExceptionOffset
+     */
     @Fold
     private static int threadPendingExceptionOffset() {
         return config().pendingExceptionOffset;
@@ -111,14 +117,20 @@ public class HotSpotReplacementsUtil {
         return config().threadObjectResultOffset;
     }
 
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     public static Object readExceptionOop(Word thread) {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
     }
 
     public static Word readExceptionPc(Word thread) {
-        return thread.readWord(threadExceptionOopOffset(), EXCEPTION_PC_LOCATION);
+        return thread.readWord(threadExceptionPcOffset(), EXCEPTION_PC_LOCATION);
     }
 
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     public static void writeExceptionOop(Word thread, Object value) {
         thread.writeObject(threadExceptionOopOffset(), value, EXCEPTION_OOP_LOCATION);
     }
