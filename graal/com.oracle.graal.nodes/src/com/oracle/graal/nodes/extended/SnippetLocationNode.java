@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.graal.nodes.extended;
+
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+
+/**
+ * Location node that can be used inside a snippet without having the elements (including the
+ * location identity and kind) as a snippet constant. Can represent locations in the form of [base +
+ * index * scale + disp]. When the location is created, all elements (base, index, scale, disp) are
+ * nodes. Both scale and disp must eventually canonicalize to {@link ConstantNode constants} so that
+ * this node can be canonicalized to a {@link IndexedLocationNode} or {@link ConstantLocationNode}.
+ */
+public final class SnippetLocationNode extends LocationNode implements Canonicalizable {
+
+    @Input private ValueNode valueKind;
+    @Input private ValueNode locationIdentity;
+    @Input private ValueNode displacement;
+    @Input private ValueNode index;
+    @Input private ValueNode indexScaling;
+
+    private SnippetLocationNode(ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
+        this(locationIdentity, kind, displacement, null, null);
+    }
+
+    private SnippetLocationNode(ValueNode locationIdentity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling) {
+        super(StampFactory.object());
+        this.valueKind = kind;
+        this.locationIdentity = locationIdentity;
+        this.displacement = displacement;
+        this.index = index;
+        this.indexScaling = indexScaling;
+    }
+
+    @Override
+    public Kind getValueKind() {
+        if (valueKind.isConstant()) {
+            return (Kind) valueKind.asConstant().asObject();
+        }
+        throw new GraalInternalError("Cannot access kind yet because it is not constant: " + valueKind);
+    }
+
+    @Override
+    public Object locationIdentity() {
+        if (locationIdentity.isConstant()) {
+            return locationIdentity.asConstant().asObject();
+        }
+        // We do not know our actual location identity yet, so be conservative.
+        return LocationNode.ANY_LOCATION;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
+            Kind constKind = (Kind) valueKind.asConstant().asObject();
+            Object constLocation = locationIdentity.asConstant().asObject();
+            long constDisplacement = displacement.asConstant().asLong();
+            int constIndexScaling = indexScaling == null ? 0 : indexScaling.asConstant().asInt();
+
+            if (index == null || constIndexScaling == 0) {
+                return ConstantLocationNode.create(constLocation, constKind, constDisplacement, graph());
+            } else if (index.isConstant()) {
+                return ConstantLocationNode.create(constLocation, constKind, index.asConstant().asLong() * constIndexScaling + constDisplacement, graph());
+            } else {
+                return IndexedLocationNode.create(constLocation, constKind, constDisplacement, index, graph(), constIndexScaling);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public Value generateAddress(LIRGeneratorTool gen, Value base) {
+        throw new GraalInternalError("locationIdentity must be a constant so that this node can be canonicalized: " + locationIdentity);
+    }
+
+    @NodeIntrinsic
+    public static native Location constantLocation(Object identity, Kind kind, long displacement);
+
+    @NodeIntrinsic
+    public static native Location indexedLocation(Object identity, Kind kind, long displacement, int index, int indexScaling);
+}

@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that has a displacement and a scaled index. Can represent locations in the form of
@@ -35,8 +36,10 @@ import com.oracle.graal.nodes.spi.*;
 @NodeInfo(nameTemplate = "IdxLoc {p#locationIdentity/s}")
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
-    @Input private ValueNode index;
+    private final Kind valueKind;
+    private final Object locationIdentity;
     private final long displacement;
+    @Input private ValueNode index;
     private final int indexScaling;
 
     /**
@@ -61,30 +64,32 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
     }
 
-    private IndexedLocationNode(Object identity, Kind kind, ValueNode index, int indexScaling) {
-        this(identity, kind, 0, index, indexScaling);
-    }
-
     private IndexedLocationNode(Object identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
-        super(identity, kind);
+        super(StampFactory.extension());
+        assert kind != Kind.Illegal && kind != Kind.Void;
+        this.valueKind = kind;
+        this.locationIdentity = identity;
         this.index = index;
         this.displacement = displacement;
         this.indexScaling = indexScaling;
     }
 
     @Override
-    protected LocationNode addDisplacement(long x) {
-        return create(locationIdentity(), getValueKind(), displacement + x, index, graph(), indexScaling);
+    public Kind getValueKind() {
+        return valueKind;
+    }
+
+    @Override
+    public Object locationIdentity() {
+        return locationIdentity;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        Constant constantIndex = index.asConstant();
-        if (constantIndex != null) {
-            long constantIndexLong = constantIndex.asLong();
-            constantIndexLong *= indexScaling;
-            constantIndexLong += displacement;
-            return ConstantLocationNode.create(locationIdentity(), getValueKind(), constantIndexLong, graph());
+        if (index == null || indexScaling == 0) {
+            return ConstantLocationNode.create(locationIdentity(), getValueKind(), displacement, graph());
+        } else if (index.isConstant()) {
+            return ConstantLocationNode.create(locationIdentity(), getValueKind(), index.asConstant().asLong() * indexScaling + displacement, graph());
         }
         return this;
     }
@@ -93,7 +98,4 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     public Value generateAddress(LIRGeneratorTool gen, Value base) {
         return gen.emitAddress(base, displacement, gen.operand(index()), indexScaling());
     }
-
-    @NodeIntrinsic
-    public static native Location indexedLocation(@ConstantNodeParameter Object identity, @ConstantNodeParameter Kind kind, int index, @ConstantNodeParameter int indexScaling);
 }
