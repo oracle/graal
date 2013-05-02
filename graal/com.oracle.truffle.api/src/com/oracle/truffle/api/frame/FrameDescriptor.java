@@ -50,7 +50,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     public FrameSlot addFrameSlot(Object identifier) {
-        return addFrameSlot(identifier, null);
+        return addFrameSlot(identifier, FrameSlotKind.Illegal);
     }
 
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
