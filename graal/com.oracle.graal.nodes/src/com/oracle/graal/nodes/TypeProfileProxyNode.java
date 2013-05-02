@@ -126,7 +126,8 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
 
     public static void cleanFromGraph(StructuredGraph graph) {
         for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
-            proxy.replaceAtUsages(proxy.getObject());
+            graph.replaceFloating(proxy, proxy.getObject());
         }
+        assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
     }
 }
