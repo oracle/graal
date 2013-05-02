@@ -152,17 +152,18 @@ class BlockState {
         List<ValueNode> values = new ArrayList<>(8);
         List<int[]> locks = new ArrayList<>(2);
         List<ValueNode> otherAllocations = new ArrayList<>(2);
-        materializeWithCommit(virtual, objects, locks, values, otherAllocations, state);
+        materializeWithCommit(fixed, virtual, objects, locks, values, otherAllocations, state);
 
         materializeEffects.addMaterializationBefore(fixed, objects, locks, values, otherAllocations);
     }
 
-    private void materializeWithCommit(VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations, EscapeState state) {
+    private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations,
+                    EscapeState state) {
         trace("materializing %s", virtual);
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
-        ValueNode representation = virtual.getMaterializedRepresentation(entries, obj.getLocks());
+        ValueNode representation = virtual.getMaterializedRepresentation(fixed, entries, obj.getLocks());
         obj.escape(representation, state);
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
@@ -175,7 +176,7 @@ class BlockState {
                 ObjectState entryObj = getObjectState(entries[i]);
                 if (entryObj != null) {
                     if (entryObj.isVirtual()) {
-                        materializeWithCommit(entryObj.getVirtualObject(), objects, locks, values, otherAllocations, state);
+                        materializeWithCommit(fixed, entryObj.getVirtualObject(), objects, locks, values, otherAllocations, state);
                     }
                     values.set(pos + i, entryObj.getMaterializedValue());
                 } else {

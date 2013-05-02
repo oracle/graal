@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -66,7 +67,8 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             addPhase(new CanonicalizerPhase());
         }
 
-        // Add safepoints to loops
+        addPhase(new LoopSafepointEliminationPhase());
+
         addPhase(new SafepointInsertionPhase());
 
         addPhase(new GuardLoweringPhase());

@@ -46,7 +46,7 @@ public class VirtualBoxingNode extends VirtualInstanceNode {
     }
 
     @Override
-    public ValueNode getMaterializedRepresentation(ValueNode[] entries, int[] locks) {
+    public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, int[] locks) {
         assert entries.length == 1;
         assert locks.length == 0;
         return new BoxNode(entries[0], type(), boxingKind);

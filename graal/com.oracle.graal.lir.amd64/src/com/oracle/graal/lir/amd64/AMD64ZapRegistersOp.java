@@ -22,13 +22,15 @@
  */
 package com.oracle.graal.lir.amd64;
 
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
-import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
 
 /**
@@ -38,19 +40,26 @@ import com.oracle.graal.lir.asm.*;
 public final class AMD64ZapRegistersOp extends AMD64RegistersPreservationOp {
 
     /**
-     * The move instructions for zapping the registers.
+     * The registers that are zapped.
      */
-    protected final AMD64LIRInstruction[] zappingMoves;
+    protected final Register[] zappedRegisters;
 
-    public AMD64ZapRegistersOp(AMD64LIRInstruction[] zappingMoves) {
-        this.zappingMoves = zappingMoves;
+    /**
+     * The garbage values that are written to the registers.
+     */
+    @Use({CONST}) protected Constant[] zapValues;
+
+    public AMD64ZapRegistersOp(Register[] zappedRegisters, Constant[] zapValues) {
+        this.zappedRegisters = zappedRegisters;
+        this.zapValues = zapValues;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        for (AMD64LIRInstruction zappingMove : zappingMoves) {
-            if (zappingMove != null) {
-                zappingMove.emitCode(tasm, masm);
+        for (int i = 0; i < zappedRegisters.length; i++) {
+            if (zappedRegisters[i] != null) {
+                RegisterValue registerValue = zappedRegisters[i].asValue(zapValues[i].getPlatformKind());
+                AMD64Move.move(tasm, masm, registerValue, zapValues[i]);
             }
         }
     }
@@ -60,11 +69,10 @@ public final class AMD64ZapRegistersOp extends AMD64RegistersPreservationOp {
      */
     @Override
     public void update(Set<Register> ignored, DebugInfo debugInfo, FrameMap frameMap) {
-        for (int i = 0; i < zappingMoves.length; i++) {
-            if (zappingMoves[i] != null) {
-                Register register = ValueUtil.asRegister(((MoveOp) zappingMoves[i]).getResult());
-                if (ignored.contains(register)) {
-                    zappingMoves[i] = null;
+        for (int i = 0; i < zappedRegisters.length; i++) {
+            if (zappedRegisters[i] != null) {
+                if (ignored.contains(zappedRegisters[i])) {
+                    zappedRegisters[i] = null;
                 }
             }
         }
