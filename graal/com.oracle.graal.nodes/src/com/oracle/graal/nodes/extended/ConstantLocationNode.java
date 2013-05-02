@@ -35,14 +35,14 @@ import com.oracle.graal.nodes.type.*;
 public final class ConstantLocationNode extends LocationNode {
 
     private final Kind valueKind;
-    private final Object locationIdentity;
+    private final LocationIdentity locationIdentity;
     private final long displacement;
 
-    public static ConstantLocationNode create(Object identity, Kind kind, long displacement, Graph graph) {
+    public static ConstantLocationNode create(LocationIdentity identity, Kind kind, long displacement, Graph graph) {
         return graph.unique(new ConstantLocationNode(identity, kind, displacement));
     }
 
-    private ConstantLocationNode(Object identity, Kind kind, long displacement) {
+    private ConstantLocationNode(LocationIdentity identity, Kind kind, long displacement) {
         super(StampFactory.extension());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;
@@ -56,7 +56,7 @@ public final class ConstantLocationNode extends LocationNode {
     }
 
     @Override
-    public Object getLocationIdentity() {
+    public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
 

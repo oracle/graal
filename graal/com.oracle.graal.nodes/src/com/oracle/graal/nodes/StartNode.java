@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 /**
  * The start node of a graph.
@@ -30,7 +31,7 @@ import com.oracle.graal.nodes.extended.*;
 public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint {
 
     @Override
-    public Object[] getLocationIdentities() {
-        return new Object[]{LocationNode.ANY_LOCATION};
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 }

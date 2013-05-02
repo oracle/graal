@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 public final class IndexedLocationNode extends LocationNode implements Canonicalizable {
 
     private final Kind valueKind;
-    private final Object locationIdentity;
+    private final LocationIdentity locationIdentity;
     private final long displacement;
     @Input private ValueNode index;
     private final int indexScaling;
@@ -60,11 +60,11 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         return indexScaling;
     }
 
-    public static IndexedLocationNode create(Object identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
+    public static IndexedLocationNode create(LocationIdentity identity, Kind kind, long displacement, ValueNode index, Graph graph, int indexScaling) {
         return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
     }
 
-    private IndexedLocationNode(Object identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    private IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.extension());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;
@@ -80,7 +80,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Object getLocationIdentity() {
+    public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
 

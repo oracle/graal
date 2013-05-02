@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -88,7 +89,7 @@ public final class SchedulePhase extends Phase {
                 if (node instanceof FloatingReadNode) {
                     currentState.add((FloatingReadNode) node);
                 } else if (node instanceof MemoryCheckpoint) {
-                    for (Object identity : ((MemoryCheckpoint) node).getLocationIdentities()) {
+                    for (LocationIdentity identity : ((MemoryCheckpoint) node).getLocationIdentities()) {
                         for (Iterator<FloatingReadNode> iter = currentState.iterator(); iter.hasNext();) {
                             FloatingReadNode read = iter.next();
                             FixedNode fixed = (FixedNode) node;

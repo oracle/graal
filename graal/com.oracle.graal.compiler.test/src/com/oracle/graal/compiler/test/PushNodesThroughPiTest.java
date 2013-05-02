@@ -31,8 +31,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -66,7 +67,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
                 StructuredGraph graph = compileTestSnippet(snippet);
 
                 for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
-                    Object locId = rn.location().getLocationIdentity();
+                    LocationIdentity locId = rn.location().getLocationIdentity();
                     if (locId instanceof ResolvedJavaField) {
                         ResolvedJavaField field = (ResolvedJavaField) locId;
                         if (field.getName().equals("x")) {

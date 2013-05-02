@@ -65,9 +65,9 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public Object getLocationIdentity() {
+    public LocationIdentity getLocationIdentity() {
         if (locationIdentity.isConstant()) {
-            return locationIdentity.asConstant().asObject();
+            return (LocationIdentity) locationIdentity.asConstant().asObject();
         }
         // We do not know our actual location identity yet, so be conservative.
         return LocationNode.ANY_LOCATION;
@@ -77,7 +77,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     public ValueNode canonical(CanonicalizerTool tool) {
         if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
             Kind constKind = (Kind) valueKind.asConstant().asObject();
-            Object constLocation = locationIdentity.asConstant().asObject();
+            LocationIdentity constLocation = (LocationIdentity) locationIdentity.asConstant().asObject();
             long constDisplacement = displacement.asConstant().asLong();
             int constIndexScaling = indexScaling == null ? 0 : indexScaling.asConstant().asInt();
 

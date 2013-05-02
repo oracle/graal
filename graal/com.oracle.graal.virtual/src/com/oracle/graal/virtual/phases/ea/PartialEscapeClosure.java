@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -158,18 +159,18 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     if (node instanceof StoreFieldNode) {
                         METRIC_STOREFIELD_RECORDED.increment();
                         StoreFieldNode store = (StoreFieldNode) node;
-                        ValueNode cachedValue = state.getReadCache(store.object(), store.field());
-                        state.killReadCache(store.field());
+                        ValueNode cachedValue = state.getReadCache(store.object(), (LocationIdentity) store.field());
+                        state.killReadCache((LocationIdentity) store.field());
 
                         if (cachedValue == store.value()) {
                             effects.deleteFixedNode(store);
                             changed = true;
                         } else {
-                            state.addReadCache(store.object(), store.field(), store.value());
+                            state.addReadCache(store.object(), (LocationIdentity) store.field(), store.value());
                         }
                     } else if (node instanceof LoadFieldNode) {
                         LoadFieldNode load = (LoadFieldNode) node;
-                        ValueNode cachedValue = state.getReadCache(load.object(), load.field());
+                        ValueNode cachedValue = state.getReadCache(load.object(), (LocationIdentity) load.field());
                         if (cachedValue != null) {
                             METRIC_LOADFIELD_ELIMINATED.increment();
                             effects.replaceAtUsages(load, cachedValue);
@@ -177,12 +178,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                             changed = true;
                         } else {
                             METRIC_LOADFIELD_NOT_ELIMINATED.increment();
-                            state.addReadCache(load.object(), load.field(), load);
+                            state.addReadCache(load.object(), (LocationIdentity) load.field(), load);
                         }
                     } else if (node instanceof MemoryCheckpoint) {
                         METRIC_MEMORYCHECKOINT.increment();
                         MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;
-                        for (Object identity : checkpoint.getLocationIdentities()) {
+                        for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
                             state.killReadCache(identity);
                         }
                     }
@@ -703,7 +704,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         }
 
-        private void mergeReadCachePhi(PhiNode phi, Object identity, List<BlockState> states) {
+        private void mergeReadCachePhi(PhiNode phi, LocationIdentity identity, List<BlockState> states) {
             ValueNode[] values = new ValueNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
