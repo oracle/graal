@@ -67,14 +67,14 @@ public interface RuntimeCallTarget extends InvokeTarget {
         /**
          * Gets the return kind of this runtime call.
          */
-        public Class getResultType() {
+        public Class<?> getResultType() {
             return resultType;
         }
 
         /**
          * Gets the argument kinds of this runtime call.
          */
-        public Class[] getArgumentTypes() {
+        public Class<?>[] getArgumentTypes() {
             return argumentTypes.clone();
         }
 
