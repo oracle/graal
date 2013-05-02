@@ -65,6 +65,22 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
         compileSnippet("test2Snippet", 5, 2);
     }
 
+    public static long test3Snippet(A1 a1) {
+        long result = a1.x1;
+        A2 a2 = (A2) a1;
+        if (a1.x1 == 42) {
+            A3 a3 = (A3) a2;
+            result = a3.x3;
+        }
+        return result;
+    }
+
+    @Ignore
+    @Test
+    public void test3() {
+        compileSnippet("test3Snippet", 2, 2);
+    }
+
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
         return Debug.scope(snippet, new Callable<StructuredGraph>() {
 
