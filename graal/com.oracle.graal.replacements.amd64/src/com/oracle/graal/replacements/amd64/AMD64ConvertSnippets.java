@@ -28,6 +28,7 @@ import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -148,7 +149,7 @@ public class AMD64ConvertSnippets implements Snippets {
 
         private final EnumMap<Op, SnippetInfo> snippets;
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
+        public Templates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target);
 
             snippets = new EnumMap<>(Op.class);
