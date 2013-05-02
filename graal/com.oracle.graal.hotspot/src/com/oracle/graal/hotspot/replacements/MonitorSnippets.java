@@ -150,7 +150,7 @@ public class MonitorSnippets implements Snippets {
                         Word biasedMark = unbiasedMark.or(thread);
                         trace(trace, "     unbiasedMark: 0x%016lx\n", unbiasedMark);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_DEOPT_PATH_PROBABILITY, compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(object, markOffset(), unbiasedMark, biasedMark, MARK_WORD_LOCATION).equal(unbiasedMark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:acquired}", object);
                             return;
@@ -170,7 +170,7 @@ public class MonitorSnippets implements Snippets {
                         // the bias from one thread to another directly in this situation.
                         Word biasedMark = prototypeMarkWord.or(thread);
                         trace(trace, "       biasedMark: 0x%016lx\n", biasedMark);
-                        if (probability(VERY_FAST_DEOPT_PATH_PROBABILITY, compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
+                        if (probability(VERY_FAST_PATH_PROBABILITY, compareAndSwap(object, markOffset(), mark, biasedMark, MARK_WORD_LOCATION).equal(mark))) {
                             // Object is now biased to current thread -> done
                             traceObject(trace, "+lock{bias:transfer}", object);
                             return;
