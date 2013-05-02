@@ -198,19 +198,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (stub.preservesRegisters()) {
                 Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
                 savedRegisterLocations = new StackSlot[savedRegisters.length];
-                AMD64LIRInstruction[] savingMoves = new AMD64LIRInstruction[savedRegisters.length];
-                AMD64LIRInstruction[] restoringMoves = new AMD64LIRInstruction[savedRegisters.length];
                 for (int i = 0; i < savedRegisters.length; i++) {
                     PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
                     assert kind != Kind.Illegal;
                     StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
                     savedRegisterLocations[i] = spillSlot;
-
-                    RegisterValue register = savedRegisters[i].asValue(kind);
-                    savingMoves[i] = createMove(spillSlot, register);
-                    restoringMoves[i] = createMove(register, spillSlot);
                 }
-                save = new AMD64SaveRegistersOp(savingMoves, restoringMoves, savedRegisterLocations);
+                save = new AMD64SaveRegistersOp(savedRegisters, savedRegisterLocations);
                 append(save);
             }
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
