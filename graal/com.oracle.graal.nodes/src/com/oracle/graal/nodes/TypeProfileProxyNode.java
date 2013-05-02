@@ -108,6 +108,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
             }
             if (type == lastCheckedType) {
                 // We have already incorporate the knowledge about this type => abort.
+                return this;
             }
             lastCheckedType = type;
             JavaTypeProfile newProfile = this.profile.restrict(type, object.objectStamp().nonNull());
