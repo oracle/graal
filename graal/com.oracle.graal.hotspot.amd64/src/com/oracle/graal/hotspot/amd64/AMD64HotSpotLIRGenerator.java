@@ -227,19 +227,21 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return result;
     }
 
+    protected AMD64ZapRegistersOp emitZapRegisters(Register[] zappedRegisters, Constant[] zapValues) {
+        AMD64ZapRegistersOp zap = new AMD64ZapRegistersOp(zappedRegisters, zapValues);
+        append(zap);
+        return zap;
+    }
+
     protected boolean zapRegisters() {
         Register[] zappedRegisters = frameMap.registerConfig.getAllocatableRegisters();
-        AMD64LIRInstruction[] zappingMoves = new AMD64LIRInstruction[zappedRegisters.length];
+        Constant[] zapValues = new Constant[zappedRegisters.length];
         for (int i = 0; i < zappedRegisters.length; i++) {
             PlatformKind kind = target.arch.getLargestStorableKind(zappedRegisters[i].getRegisterCategory());
             assert kind != Kind.Illegal;
-
-            RegisterValue register = zappedRegisters[i].asValue(kind);
-            zappingMoves[i] = createMove(register, zapValueForKind(kind));
+            zapValues[i] = zapValueForKind(kind);
         }
-        AMD64ZapRegistersOp zap = new AMD64ZapRegistersOp(zappingMoves);
-        append(zap);
-        calleeSaveInfo.put(currentRuntimeCallInfo, zap);
+        calleeSaveInfo.put(currentRuntimeCallInfo, emitZapRegisters(zappedRegisters, zapValues));
         return true;
     }
 
