@@ -36,7 +36,7 @@ import com.oracle.graal.lir.asm.*;
  * Saves registers to stack slots.
  */
 @Opcode("SAVE_REGISTER")
-public final class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
+public class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
 
     /**
      * The registers (potentially) saved by this operation.
@@ -53,17 +53,22 @@ public final class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
         this.slots = slots;
     }
 
+    protected void saveRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, StackSlot result, Register register) {
+        RegisterValue input = register.asValue(result.getKind());
+        AMD64Move.move(tasm, masm, result, input);
+    }
+
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
-                StackSlot result = slots[i];
-                RegisterValue input = savedRegisters[i].asValue(result.getKind());
-                AMD64Move.move(tasm, masm, result, input);
-            } else {
-                assert savedRegisters[i] == null;
+                saveRegister(tasm, masm, slots[i], savedRegisters[i]);
             }
         }
+    }
+
+    public StackSlot[] getSlots() {
+        return slots;
     }
 
     /**
