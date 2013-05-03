@@ -85,11 +85,15 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             // checkcast.
             return object();
         }
+
         // remove checkcast if next node is a more specific checkcast
-        if (next() instanceof CheckCastNode) {
-            CheckCastNode ccn = (CheckCastNode) next();
-            if (ccn != null && ccn.type() != null && this == ccn.object() && type.isAssignableFrom(ccn.type())) {
-                return object();
+        if (predecessor() instanceof CheckCastNode) {
+            CheckCastNode ccn = (CheckCastNode) predecessor();
+            if (ccn != null && ccn.type != null && ccn == object && ccn.forStoreCheck == forStoreCheck && ccn.type.isAssignableFrom(type)) {
+                StructuredGraph graph = (StructuredGraph) ccn.graph();
+                CheckCastNode newccn = graph.add(new CheckCastNode(type, ccn.object, ccn.profile, ccn.forStoreCheck));
+                graph.replaceFixedWithFixed(ccn, newccn);
+                return newccn;
             }
         }
 
