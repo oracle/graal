@@ -101,7 +101,7 @@ public class NewArrayStub extends Stub {
             if (memory.notEqual(0)) {
                 log(log, "newArray: allocated new array at %p\n", memory);
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
-                return verifyOop(memory.toObject());
+                return memory.toObject();
             }
         }
         log(log, "newArray: calling new_array_c\n", 0L);
@@ -113,7 +113,7 @@ public class NewArrayStub extends Stub {
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
-        return verifyOop(getAndClearObjectResult(thread()));
+        return getAndClearObjectResult(thread());
     }
 
     public static final Descriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC", false);

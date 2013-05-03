@@ -94,7 +94,7 @@ public class NewInstanceStub extends Stub {
                     for (int offset = 2 * wordSize(); offset < sizeInBytes; offset += wordSize()) {
                         memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                     }
-                    return verifyOop(memory.toObject());
+                    return memory.toObject();
                 }
             }
         }
@@ -108,7 +108,7 @@ public class NewInstanceStub extends Stub {
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
-        return verifyOop(getAndClearObjectResult(thread()));
+        return getAndClearObjectResult(thread());
     }
 
     /**
