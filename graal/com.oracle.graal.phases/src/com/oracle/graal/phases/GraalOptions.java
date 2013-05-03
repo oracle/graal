@@ -34,7 +34,10 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
-    public static int     Threads                            = 4;
+    public static int     Threads;
+    static {
+        Threads = Runtime.getRuntime().availableProcessors();
+    }
 
     public static String  CompilerConfiguration              = "basic";
     public static String  GraalRuntime                       = "basic";
