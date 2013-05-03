@@ -96,7 +96,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     @Override
-    public ValueNode getMaterializedRepresentation(ValueNode[] entries, int[] locks) {
+    public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, int[] locks) {
         return new AllocatedObjectNode(this);
     }
 }
