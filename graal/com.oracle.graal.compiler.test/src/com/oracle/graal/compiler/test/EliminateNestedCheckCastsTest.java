@@ -91,6 +91,23 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
         compileSnippet("test4Snippet", 2, 2);
     }
 
+    public static long test5Snippet(A1 a1) {
+        long sum = 0;
+        A2 a2 = (A2) a1;
+        A3 a3 = (A3) a2;
+        sum += a2.x2;
+        return sum + a3.x3;
+    }
+
+    @Ignore
+    @Test
+    public void test5() {
+        StructuredGraph graph = compileSnippet("test5Snippet", 2, 1);
+        for (LoadFieldNode lfn : graph.getNodes().filter(LoadFieldNode.class)) {
+            Assert.assertTrue(lfn.object() instanceof CheckCastNode);
+        }
+    }
+
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
         return Debug.scope(snippet, new Callable<StructuredGraph>() {
 
