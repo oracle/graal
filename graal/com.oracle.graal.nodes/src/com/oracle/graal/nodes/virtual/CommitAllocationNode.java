@@ -35,7 +35,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Input private final NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
-    private final List<Integer> lockCounts = new ArrayList<>();
+    private List<Integer> lockCounts = new ArrayList<>();
 
     public CommitAllocationNode() {
         super(StampFactory.forVoid());
@@ -69,6 +69,13 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
         if (loweringType == LoweringType.AFTER_GUARDS) {
             tool.getRuntime().lower(this, tool);
         }
+    }
+
+    @Override
+    public Node clone(Graph into) {
+        CommitAllocationNode clone = (CommitAllocationNode) super.clone(into);
+        clone.lockCounts = new ArrayList<>(lockCounts);
+        return clone;
     }
 
     @Override
