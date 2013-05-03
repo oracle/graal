@@ -22,49 +22,19 @@
  */
 package com.oracle.graal.hotspot.phases;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 public class OnStackReplacementPhase extends Phase {
-
-    public static final Descriptor OSR_MIGRATION_END = new Descriptor("OSR_migration_end", true, void.class, long.class);
-
-    public class OSREntryProxyNode extends FloatingNode implements LIRLowerable {
-
-        @Input private ValueNode object;
-        @Input(notDataflow = true) private final RuntimeCallNode anchor;
-
-        public OSREntryProxyNode(ValueNode object, RuntimeCallNode anchor) {
-            super(object.stamp());
-            this.object = object;
-            this.anchor = anchor;
-        }
-
-        public RuntimeCallNode getAnchor() {
-            return anchor;
-        }
-
-        @Override
-        public void generate(LIRGeneratorTool generator) {
-            generator.setResult(this, generator.operand(object));
-        }
-    }
 
     @Override
     protected void run(StructuredGraph graph) {
@@ -114,39 +84,25 @@ public class OnStackReplacementPhase extends Phase {
             Debug.dump(graph, "OnStackReplacement loop peeling result");
         } while (true);
 
-        LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
-        RuntimeCallNode migrationEnd = graph.add(new RuntimeCallNode(OSR_MIGRATION_END, buffer));
         FrameState osrState = osr.stateAfter();
-        migrationEnd.setStateAfter(osrState);
         osr.setStateAfter(null);
-
+        OSRStartNode osrStart = graph.add(new OSRStartNode());
         StartNode start = graph.start();
-        FixedNode rest = start.next();
-        start.setNext(migrationEnd);
         FixedNode next = osr.next();
         osr.setNext(null);
-        migrationEnd.setNext(next);
+        osrStart.setNext(next);
+        graph.setStart(osrStart);
+        osrStart.setStateAfter(osrState);
 
-        FrameState oldStartState = start.stateAfter();
-        start.setStateAfter(null);
-        GraphUtil.killWithUnusedFloatingInputs(oldStartState);
-
-        // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
-        int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
         for (int i = 0; i < osrState.localsSize(); i++) {
             ValueNode value = osrState.localAt(i);
             if (value != null) {
                 ProxyNode proxy = (ProxyNode) value;
-                int size = FrameStateBuilder.stackSlots(value.kind());
-                int offset = localsOffset - (i + size - 1) * 8;
-                UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), value.kind()));
-                OSREntryProxyNode newProxy = graph.add(new OSREntryProxyNode(load, migrationEnd));
-                proxy.replaceAndDelete(newProxy);
-                graph.addBeforeFixed(migrationEnd, load);
+                proxy.replaceAndDelete(graph.unique(new OSRLocalNode(i, value.stamp())));
             }
         }
 
-        GraphUtil.killCFG(rest);
+        GraphUtil.killCFG(start);
 
         Debug.dump(graph, "OnStackReplacement result");
         new DeadCodeEliminationPhase().apply(graph);

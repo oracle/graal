@@ -20,18 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-/**
- * The {@code Local} instruction is a placeholder for an incoming argument to a function call.
- */
-@NodeInfo(nameTemplate = "Local({p#index})")
-public final class LocalNode extends AbstractLocalNode implements Node.IterableNodeType {
+@NodeInfo(nameTemplate = "OSRLocal({p#index})")
+public class OSRLocalNode extends AbstractLocalNode implements Node.IterableNodeType {
 
-    public LocalNode(int index, Stamp stamp) {
+    public OSRLocalNode(int index, Stamp stamp) {
         super(index, stamp);
     }
+
 }
