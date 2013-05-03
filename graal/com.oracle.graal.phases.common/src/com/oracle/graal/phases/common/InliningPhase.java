@@ -144,9 +144,6 @@ public class InliningPhase extends Phase implements InliningCallback {
                 }
             }
         }
-
-        // Clean up type profiles.
-        TypeProfileProxyNode.cleanFromGraph(graph);
     }
 
     @Override

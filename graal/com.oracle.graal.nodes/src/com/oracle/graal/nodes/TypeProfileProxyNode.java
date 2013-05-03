@@ -108,6 +108,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
             }
             if (type == lastCheckedType) {
                 // We have already incorporate the knowledge about this type => abort.
+                return this;
             }
             lastCheckedType = type;
             JavaTypeProfile newProfile = this.profile.restrict(type, object.objectStamp().nonNull());
@@ -125,7 +126,8 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
 
     public static void cleanFromGraph(StructuredGraph graph) {
         for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
-            proxy.replaceAtUsages(proxy.getObject());
+            graph.replaceFloating(proxy, proxy.getObject());
         }
+        assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
     }
 }
