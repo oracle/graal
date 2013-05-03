@@ -55,6 +55,10 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         Kind word = graalRuntime.getTarget().wordKind;
 
         // @formatter:off
+
+        // The calling convention for the exception handler stub is (only?) defined in
+        // TemplateInterpreterGenerator::generate_throw_exception()
+        // in templateInterpreter_x86_64.cpp around line 1923 
         addStubCall(EXCEPTION_HANDLER,
                /*             ret */ ret(Kind.Void),
                /* arg0: exception */ rax.asValue(Kind.Object),
