@@ -33,6 +33,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     }
 
     // os information, register layout, code generation, ...
+    public boolean cAssertions;
     public boolean windowsOs;
     public int codeEntryAlignment;
     public boolean verifyOops;
@@ -179,7 +180,10 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int uninitializedIdentityHashCodeValue;
 
     /**
-     * Offset of the pending exception field.
+     * Offset of the _pending_exception field in ThreadShadow (defined in exceptions.hpp). This
+     * field is used to propagate exceptions through C/C++ calls.
+     * <p>
+     * <b>NOTE: This is not the same as {@link #threadExceptionOopOffset}.</b>
      */
     public int pendingExceptionOffset;
 
@@ -228,7 +232,15 @@ public final class HotSpotVMConfig extends CompilerObject {
      */
     public int klassHasFinalizerFlag;
 
+    /**
+     * Offset of the _exception_oop field in Thread (defined in thread.hpp). This field is used to
+     * pass exception objects into and out of the runtime system during exception handling for
+     * compiled code.
+     * <p>
+     * <b>NOTE: This is not the same as {@link #pendingExceptionOffset}.</b>
+     */
     public int threadExceptionOopOffset;
+
     public int threadExceptionPcOffset;
     public long cardtableStartAddress;
     public int cardtableShift;

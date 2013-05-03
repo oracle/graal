@@ -43,8 +43,8 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
     public static final double FAST_PATH_PROBABILITY = 0.99;
     public static final double SLOW_PATH_PROBABILITY = 1 - FAST_PATH_PROBABILITY;
 
-    public static final double VERY_FAST_DEOPT_PATH_PROBABILITY = 0.999;
-    public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_DEOPT_PATH_PROBABILITY;
+    public static final double VERY_FAST_PATH_PROBABILITY = 0.999;
+    public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_PATH_PROBABILITY;
 
     @Input private ValueNode probability;
     @Input private ValueNode condition;

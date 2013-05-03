@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
@@ -64,7 +65,7 @@ public class ExceptionHandlerStub extends CRuntimeStub {
 
     @Snippet
     private static void exceptionHandler(Object exception, Word exceptionPc) {
-        checkNoExceptionInThread();
+        checkNoExceptionInThread(exception, exceptionPc);
         writeExceptionOop(thread(), exception);
         writeExceptionPc(thread(), exceptionPc);
         if (logging()) {
@@ -84,13 +85,15 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         patchReturnAddress(handlerPc);
     }
 
-    private static void checkNoExceptionInThread() {
+    private static void checkNoExceptionInThread(Object exception, Word exceptionPc) {
         if (assertionsEnabled()) {
-            if (readExceptionOop(thread()) != null) {
-                fatal("exception oop must be null, not %p", Word.fromObject(readExceptionOop(thread())).rawValue());
+            Object currentException = readExceptionOop(thread());
+            if (currentException != null && currentException != exception) {
+                fatal("exception oop must be null or %p, not %p", Word.fromObject(exception).rawValue(), Word.fromObject(currentException).rawValue());
             }
-            if (readExceptionPc(thread()).notEqual(Word.zero())) {
-                fatal("exception pc must be zero, not %p", readExceptionPc(thread()).rawValue());
+            Word currentExceptionPc = readExceptionPc(thread());
+            if (currentExceptionPc.notEqual(Word.zero()) && currentExceptionPc.notEqual(exceptionPc)) {
+                fatal("exception pc must be zero or %p, not %p", exceptionPc.rawValue(), currentExceptionPc.rawValue());
             }
         }
     }
@@ -105,7 +108,7 @@ public class ExceptionHandlerStub extends CRuntimeStub {
     private static boolean assertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
-        return enabled;
+        return enabled || graalRuntime().getConfig().cAssertions;
     }
 
     public static final Descriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc", false);
