@@ -31,6 +31,7 @@ import sun.misc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -50,8 +51,8 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
     }
 
     @Override
-    public Object[] getLocationIdentities() {
-        return new Object[]{LocationNode.ANY_LOCATION};
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 
     @Override

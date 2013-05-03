@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.calc.*;
@@ -35,8 +37,25 @@ import com.oracle.graal.nodes.type.*;
  */
 public abstract class LocationNode extends FloatingNode implements LIRLowerable, ValueNumberable {
 
-    private Kind valueKind;
-    private Object locationIdentity;
+    /**
+     * Marker interface for location identities. Apart from the special values {@link #ANY_LOCATION}
+     * and {@link #FINAL_LOCATION}, a different location identity of two memory accesses guarantees
+     * that the two accesses do not interfere.
+     */
+    public interface LocationIdentity {
+    }
+
+    /**
+     * Denotes any location. A write to such a location kills all values in a memory map during an
+     * analysis of memory accesses in a graph. A read from this location cannot be moved or
+     * coalesced with other reads because its interaction with other reads is not known.
+     */
+    public static final LocationIdentity ANY_LOCATION = createLocation("ANY_LOCATION");
+
+    /**
+     * Denotes the location of a value that is guaranteed to be final.
+     */
+    public static final LocationIdentity FINAL_LOCATION = createLocation("FINAL_LOCATION");
 
     /**
      * Creates a new unique location identity for read and write operations.
@@ -44,8 +63,8 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
      * @param name the name of the new location identity, for debugging purposes
      * @return the new location identity
      */
-    public static Object createLocation(final String name) {
-        return new Object() {
+    public static LocationIdentity createLocation(final String name) {
+        return new LocationIdentity() {
 
             @Override
             public String toString() {
@@ -55,16 +74,23 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     }
 
     /**
-     * Denotes any location. A write to such a location kills all values in a memory map during an
-     * analysis of memory accesses in a graph. A read from this location cannot be moved or
-     * coalesced with other reads because its interaction with other reads is not known.
+     * Returns the location identity for an array of the given element kind. Array accesses of the
+     * same kind must have the same location identity unless an alias analysis guarantees that two
+     * distinct arrays are accessed.
      */
-    public static final Object ANY_LOCATION = createLocation("ANY_LOCATION");
+    public static LocationIdentity getArrayLocation(Kind elementKind) {
+        return ARRAY_LOCATIONS.get(elementKind);
+    }
 
-    /**
-     * Denotes the location of a value that is guaranteed to be final.
-     */
-    public static final Object FINAL_LOCATION = createLocation("FINAL_LOCATION");
+    private static final EnumMap<Kind, LocationIdentity> ARRAY_LOCATIONS = initArrayLocations();
+
+    private static EnumMap<Kind, LocationIdentity> initArrayLocations() {
+        EnumMap<Kind, LocationIdentity> result = new EnumMap<>(Kind.class);
+        for (Kind kind : Kind.values()) {
+            result.put(kind, createLocation("Array: " + kind.getJavaName()));
+        }
+        return result;
+    }
 
     /**
      * Marker interface for locations in snippets.
@@ -72,29 +98,22 @@ public abstract class LocationNode extends FloatingNode implements LIRLowerable,
     public interface Location {
     }
 
-    public static Object getArrayLocation(Kind elementKind) {
-        return elementKind;
+    protected LocationNode(Stamp stamp) {
+        super(stamp);
     }
 
-    protected LocationNode(Object identity, Kind kind) {
-        super(StampFactory.extension());
-        assert kind != Kind.Illegal && kind != Kind.Void;
-        this.valueKind = kind;
-        this.locationIdentity = identity;
-    }
+    /**
+     * Returns the kind of the accessed memory value.
+     */
+    public abstract Kind getValueKind();
 
-    public Kind getValueKind() {
-        return valueKind;
-    }
-
-    public Object locationIdentity() {
-        return locationIdentity;
-    }
-
-    protected abstract LocationNode addDisplacement(long displacement);
+    /**
+     * Returns the identity of the accessed memory location.
+     */
+    public abstract LocationIdentity getLocationIdentity();
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
+    public final void generate(LIRGeneratorTool generator) {
         // nothing to do...
     }
 

@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -43,7 +44,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
         super(object, location, stamp, dependencies);
     }
 
-    private ReadNode(ValueNode object, int displacement, Object locationIdentity, Kind kind) {
+    private ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
         super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
     }
 
@@ -74,8 +75,8 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
         if (runtime != null && object != null && object.isConstant()) {
-            if (location.locationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
-                long displacement = ((ConstantLocationNode) location).displacement();
+            if (location.getLocationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
+                long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
@@ -101,7 +102,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public boolean push(PiNode parent) {
-        Object locId = location().locationIdentity();
+        LocationIdentity locId = location().getLocationIdentity();
         if (locId instanceof ResolvedJavaField) {
             ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
             ValueNode piValueStamp = parent.object();
@@ -128,5 +129,5 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
      * @return the value read from memory
      */
     @NodeIntrinsic(setStampFromReturnType = true)
-    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter Object locationIdentity, @ConstantNodeParameter Kind kind);
+    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter LocationIdentity locationIdentity, @ConstantNodeParameter Kind kind);
 }

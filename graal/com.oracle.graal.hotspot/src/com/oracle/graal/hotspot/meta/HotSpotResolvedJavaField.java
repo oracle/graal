@@ -31,13 +31,14 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 
 /**
  * Represents a field in a HotSpot type.
  */
-public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField {
+public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField, LocationIdentity {
 
     // Must not conflict with any fields flags used by the VM - the assertion in the constructor
     // checks this assumption

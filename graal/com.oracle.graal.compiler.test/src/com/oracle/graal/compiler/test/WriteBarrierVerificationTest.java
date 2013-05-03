@@ -31,12 +31,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.graph.ReentrantNodeIterator.*;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import com.oracle.graal.phases.tiers.*;
 
 /**
@@ -643,7 +644,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     protected void processNode(FixedNode node, State currentState) {
                         if (node instanceof WriteNode) {
                             WriteNode write = (WriteNode) node;
-                            Object obj = write.getLocationIdentities()[0];
+                            LocationIdentity obj = write.getLocationIdentities()[0];
                             if (obj instanceof ResolvedJavaField) {
                                 if (((ResolvedJavaField) obj).getName().equals("barrierIndex")) {
                                     /*

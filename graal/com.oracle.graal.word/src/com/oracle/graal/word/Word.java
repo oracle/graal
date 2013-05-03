@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 
@@ -601,215 +602,215 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public byte readByte(WordBase offset, Object locationIdentity) {
+    public byte readByte(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getByte(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public char readChar(WordBase offset, Object locationIdentity) {
+    public char readChar(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getChar(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public short readShort(WordBase offset, Object locationIdentity) {
+    public short readShort(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getShort(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public int readInt(WordBase offset, Object locationIdentity) {
+    public int readInt(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getInt(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public long readLong(WordBase offset, Object locationIdentity) {
+    public long readLong(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getLong(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public float readFloat(WordBase offset, Object locationIdentity) {
+    public float readFloat(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getFloat(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public double readDouble(WordBase offset, Object locationIdentity) {
+    public double readDouble(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getDouble(add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public Word readWord(WordBase offset, Object locationIdentity) {
+    public Word readWord(WordBase offset, LocationIdentity locationIdentity) {
         return box(unsafe.getAddress(add((Word) offset).unbox()));
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public Object readObject(WordBase offset, Object locationIdentity) {
+    public Object readObject(WordBase offset, LocationIdentity locationIdentity) {
         return unsafe.getObject(null, add((Word) offset).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public byte readByte(int offset, Object locationIdentity) {
+    public byte readByte(int offset, LocationIdentity locationIdentity) {
         return readByte(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public char readChar(int offset, Object locationIdentity) {
+    public char readChar(int offset, LocationIdentity locationIdentity) {
         return readChar(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public short readShort(int offset, Object locationIdentity) {
+    public short readShort(int offset, LocationIdentity locationIdentity) {
         return readShort(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public int readInt(int offset, Object locationIdentity) {
+    public int readInt(int offset, LocationIdentity locationIdentity) {
         return readInt(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public long readLong(int offset, Object locationIdentity) {
+    public long readLong(int offset, LocationIdentity locationIdentity) {
         return readLong(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public float readFloat(int offset, Object locationIdentity) {
+    public float readFloat(int offset, LocationIdentity locationIdentity) {
         return readFloat(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public double readDouble(int offset, Object locationIdentity) {
+    public double readDouble(int offset, LocationIdentity locationIdentity) {
         return readDouble(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public Word readWord(int offset, Object locationIdentity) {
+    public Word readWord(int offset, LocationIdentity locationIdentity) {
         return readWord(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.READ)
-    public Object readObject(int offset, Object locationIdentity) {
+    public Object readObject(int offset, LocationIdentity locationIdentity) {
         return readObject(signed(offset), locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeByte(WordBase offset, byte val, Object locationIdentity) {
+    public void writeByte(WordBase offset, byte val, LocationIdentity locationIdentity) {
         unsafe.putByte(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeChar(WordBase offset, char val, Object locationIdentity) {
+    public void writeChar(WordBase offset, char val, LocationIdentity locationIdentity) {
         unsafe.putChar(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeShort(WordBase offset, short val, Object locationIdentity) {
+    public void writeShort(WordBase offset, short val, LocationIdentity locationIdentity) {
         unsafe.putShort(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeInt(WordBase offset, int val, Object locationIdentity) {
+    public void writeInt(WordBase offset, int val, LocationIdentity locationIdentity) {
         unsafe.putInt(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeLong(WordBase offset, long val, Object locationIdentity) {
+    public void writeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
         unsafe.putLong(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeFloat(WordBase offset, float val, Object locationIdentity) {
+    public void writeFloat(WordBase offset, float val, LocationIdentity locationIdentity) {
         unsafe.putFloat(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeDouble(WordBase offset, double val, Object locationIdentity) {
+    public void writeDouble(WordBase offset, double val, LocationIdentity locationIdentity) {
         unsafe.putDouble(add((Word) offset).unbox(), val);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeWord(WordBase offset, WordBase val, Object locationIdentity) {
+    public void writeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity) {
         unsafe.putAddress(add((Word) offset).unbox(), ((Word) val).unbox());
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public native void writeObject(WordBase offset, Object val, Object locationIdentity);
+    public native void writeObject(WordBase offset, Object val, LocationIdentity locationIdentity);
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeByte(int offset, byte val, Object locationIdentity) {
+    public void writeByte(int offset, byte val, LocationIdentity locationIdentity) {
         writeByte(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeChar(int offset, char val, Object locationIdentity) {
+    public void writeChar(int offset, char val, LocationIdentity locationIdentity) {
         writeChar(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeShort(int offset, short val, Object locationIdentity) {
+    public void writeShort(int offset, short val, LocationIdentity locationIdentity) {
         writeShort(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeInt(int offset, int val, Object locationIdentity) {
+    public void writeInt(int offset, int val, LocationIdentity locationIdentity) {
         writeInt(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeLong(int offset, long val, Object locationIdentity) {
+    public void writeLong(int offset, long val, LocationIdentity locationIdentity) {
         writeLong(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeFloat(int offset, float val, Object locationIdentity) {
+    public void writeFloat(int offset, float val, LocationIdentity locationIdentity) {
         writeFloat(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeDouble(int offset, double val, Object locationIdentity) {
+    public void writeDouble(int offset, double val, LocationIdentity locationIdentity) {
         writeDouble(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeWord(int offset, WordBase val, Object locationIdentity) {
+    public void writeWord(int offset, WordBase val, LocationIdentity locationIdentity) {
         writeWord(signed(offset), val, locationIdentity);
     }
 
     @Override
     @Operation(opcode = Opcode.WRITE)
-    public void writeObject(int offset, Object val, Object locationIdentity) {
+    public void writeObject(int offset, Object val, LocationIdentity locationIdentity) {
         writeObject(signed(offset), val, locationIdentity);
     }
 
