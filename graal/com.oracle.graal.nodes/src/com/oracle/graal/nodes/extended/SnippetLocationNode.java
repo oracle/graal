@@ -98,8 +98,8 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @NodeIntrinsic
-    public static native Location constantLocation(Object identity, Kind kind, long displacement);
+    public static native Location constantLocation(LocationIdentity identity, Kind kind, long displacement);
 
     @NodeIntrinsic
-    public static native Location indexedLocation(Object identity, Kind kind, long displacement, int index, int indexScaling);
+    public static native Location indexedLocation(LocationIdentity identity, Kind kind, long displacement, int index, int indexScaling);
 }
