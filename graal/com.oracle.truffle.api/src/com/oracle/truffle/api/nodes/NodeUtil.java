@@ -473,8 +473,16 @@ public class NodeUtil {
     }
 
     public static String printTreeToString(Node node) {
+        return printTreeToString(node, false);
+    }
+
+    private static String printTreeToString(Node node, boolean compact) {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        printTree(new PrintStream(byteOut), node);
+        if (compact) {
+            printCompactTree(new PrintStream(byteOut), node);
+        } else {
+            printTree(new PrintStream(byteOut), node);
+        }
         try {
             byteOut.flush();
         } catch (IOException e) {
@@ -491,6 +499,61 @@ public class NodeUtil {
      */
     public static void printTree(PrintStream p, Node node) {
         printTree(p, node, new NodeTreeResolver());
+    }
+
+    public static String printCompactTreeToString(Node node) {
+        return printTreeToString(node, true);
+    }
+
+    public static void printCompactTree(PrintStream p, Node node) {
+        printCompactTree(p, null, node, 1);
+    }
+
+    private static void printCompactTree(PrintStream p, Node parent, Node node, int level) {
+        if (node == null) {
+            return;
+        }
+        for (int i = 0; i < level; i++) {
+            p.print("  ");
+        }
+        if (parent == null) {
+            p.println(node.getClass().getSimpleName());
+        } else {
+            String fieldName = null;
+            Field[] fields = NodeUtil.getAllFields(parent.getClass());
+            try {
+                for (Field field : fields) {
+                    field.setAccessible(true);
+                    Object value = field.get(parent);
+                    if (value == node) {
+                        fieldName = field.getName();
+                        break;
+                    } else if (value instanceof Node[]) {
+                        int index = 0;
+                        for (Node arrayNode : (Node[]) value) {
+                            if (arrayNode == node) {
+                                fieldName = field.getName() + "[" + index + "]";
+                                break;
+                            }
+                            index++;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (fieldName == null) {
+                fieldName = "unknownField";
+            }
+            p.print(fieldName);
+            p.print(" = ");
+            p.println(node.getClass().getSimpleName());
+        }
+
+        for (Node child : node.getChildren()) {
+            printCompactTree(p, node, child, level + 1);
+        }
     }
 
     /**
