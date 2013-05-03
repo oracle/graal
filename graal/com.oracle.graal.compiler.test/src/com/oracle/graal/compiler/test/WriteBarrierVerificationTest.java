@@ -23,12 +23,14 @@
 package com.oracle.graal.compiler.test;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
@@ -615,9 +617,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet, final int expectedBarriers, final int... removedBarrierIndices) {
-        Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet), new Runnable() {
 
-            public void run() {
+        AssertionError expectedError = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet), new Callable<AssertionError>() {
+
+            public AssertionError call() {
                 final StructuredGraph graph = parse(snippet);
                 HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements);
                 MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
@@ -690,8 +693,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     }
                 };
 
+                DebugConfig config = DebugScope.getConfig();
                 try {
                     ReentrantNodeIterator.apply(closure, graph.start(), new State(), null);
+                    Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
                     new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {
                     /*
@@ -699,10 +704,15 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                      * test.
                      */
                     Assert.assertTrue(error.getMessage().equals("Write barrier must be present"));
-                    throw new AssertionError();
+                    return error;
+                } finally {
+                    Debug.setConfig(config);
                 }
-
+                return null;
             }
         });
+        if (expectedError != null) {
+            throw expectedError;
+        }
     }
 }
