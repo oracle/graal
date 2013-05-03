@@ -64,9 +64,9 @@ public interface VirtualizerTool {
      * 
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
-     * @param lockCount the initial locking depth.
+     * @param locks the initial locking depths.
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks);
 
     /**
      * Queries the current state of the given value: if it is virtualized (thread-local and the

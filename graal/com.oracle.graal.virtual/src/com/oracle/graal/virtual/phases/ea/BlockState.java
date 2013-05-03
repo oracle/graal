@@ -26,7 +26,6 @@ import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -151,26 +150,23 @@ class BlockState {
         PartialEscapeClosure.METRIC_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
         List<ValueNode> values = new ArrayList<>(8);
-        List<Integer> lockCounts = new ArrayList<>(2);
+        List<int[]> locks = new ArrayList<>(2);
         List<ValueNode> otherAllocations = new ArrayList<>(2);
-        materializeWithCommit(virtual, objects, lockCounts, values, otherAllocations, state);
+        materializeWithCommit(virtual, objects, locks, values, otherAllocations, state);
 
-        materializeEffects.addMaterializationBefore(fixed, objects, lockCounts, values, otherAllocations);
+        materializeEffects.addMaterializationBefore(fixed, objects, locks, values, otherAllocations);
     }
 
-    private void materializeWithCommit(VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<Integer> lockCounts, List<ValueNode> values, List<ValueNode> otherAllocations, EscapeState state) {
+    private void materializeWithCommit(VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations, EscapeState state) {
         trace("materializing %s", virtual);
         ObjectState obj = getObjectState(virtual);
-        if (obj.getLockCount() > 0 && obj.virtual.type().isArray()) {
-            throw new BailoutException("array materialized with lock");
-        }
 
         ValueNode[] entries = obj.getEntries();
-        ValueNode representation = virtual.getMaterializedRepresentation(entries, obj.getLockCount());
+        ValueNode representation = virtual.getMaterializedRepresentation(entries, obj.getLocks());
         obj.escape(representation, state);
         if (representation instanceof AllocatedObjectNode) {
             objects.add((AllocatedObjectNode) representation);
-            lockCounts.add(obj.getLockCount());
+            locks.add(obj.getLocks());
             int pos = values.size();
             while (values.size() < pos + entries.length) {
                 values.add(null);
@@ -179,7 +175,7 @@ class BlockState {
                 ObjectState entryObj = getObjectState(entries[i]);
                 if (entryObj != null) {
                     if (entryObj.isVirtual()) {
-                        materializeWithCommit(entryObj.getVirtualObject(), objects, lockCounts, values, otherAllocations, state);
+                        materializeWithCommit(entryObj.getVirtualObject(), objects, locks, values, otherAllocations, state);
                     }
                     values.set(pos + i, entryObj.getMaterializedValue());
                 } else {
@@ -194,7 +190,7 @@ class BlockState {
             }
         } else {
             otherAllocations.add(representation);
-            assert obj.getLockCount() == 0;
+            assert obj.getLocks().length == 0;
         }
     }
 

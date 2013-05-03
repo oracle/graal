@@ -140,8 +140,7 @@ public class VirtualArrayNode extends VirtualObjectNode {
     }
 
     @Override
-    public AllocatedObjectNode getMaterializedRepresentation(ValueNode[] entries, int lockCount) {
-        assert lockCount == 0;
+    public AllocatedObjectNode getMaterializedRepresentation(ValueNode[] entries, int[] locks) {
         return new AllocatedObjectNode(this);
     }
 }

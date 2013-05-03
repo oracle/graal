@@ -103,7 +103,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     newEntryState[i] = originalState.getEntry(i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, 0);
+                tool.createVirtualObject(newVirtual, newEntryState, null);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
@@ -134,7 +134,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                             }
                         }
                     });
-                    tool.createVirtualObject(newVirtual, state, 0);
+                    tool.createVirtualObject(newVirtual, state, null);
                     tool.replaceWithVirtual(newVirtual);
                 }
             }

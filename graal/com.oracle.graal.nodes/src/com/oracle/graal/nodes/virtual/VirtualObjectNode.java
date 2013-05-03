@@ -80,7 +80,7 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
      * {@link AllocatedObjectNode} then this node will be attached to a {@link CommitAllocationNode}
      * , otherwise the node will just be added to the graph.
      */
-    public abstract ValueNode getMaterializedRepresentation(ValueNode[] entries, int lockCount);
+    public abstract ValueNode getMaterializedRepresentation(ValueNode[] entries, int[] locks);
 
     @Override
     public void generate(LIRGeneratorTool gen) {

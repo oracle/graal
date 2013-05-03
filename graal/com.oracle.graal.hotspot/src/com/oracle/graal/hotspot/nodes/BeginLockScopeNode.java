@@ -38,22 +38,12 @@ import com.oracle.graal.word.*;
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter, MonitorReference {
+public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter {
 
-    private final boolean eliminated;
+    private int lockDepth;
 
-    private int lockDepth = -1;
-
-    public BeginLockScopeNode(boolean eliminated) {
+    public BeginLockScopeNode(int lockDepth) {
         super(StampFactory.forWord());
-        this.eliminated = eliminated;
-    }
-
-    public int getLockDepth() {
-        return lockDepth;
-    }
-
-    public void setLockDepth(int lockDepth) {
         this.lockDepth = lockDepth;
     }
 
@@ -72,12 +62,10 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
         assert lockDepth != -1;
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
         StackSlot slot = hsGen.getLockSlot(lockDepth);
-        if (!eliminated) {
-            Value result = gen.emitAddress(slot);
-            gen.setResult(this, result);
-        }
+        Value result = gen.emitAddress(slot);
+        gen.setResult(this, result);
     }
 
     @NodeIntrinsic
-    public static native Word beginLockScope(@ConstantNodeParameter boolean eliminated);
+    public static native Word beginLockScope(@ConstantNodeParameter int lockDepth);
 }
