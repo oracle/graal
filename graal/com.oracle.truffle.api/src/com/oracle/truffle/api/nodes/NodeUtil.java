@@ -29,6 +29,9 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
+
 /**
  * Utility class that manages the special access methods for node instances.
  */
@@ -73,15 +76,13 @@ public class NodeUtil {
                 }
 
                 // Node fields
-                if (Node.class.isAssignableFrom(field.getType())) {
-                    if (!field.getName().equals("parent")) {
-                        nodeFieldOffsetsList.add(unsafe.objectFieldOffset(field));
-                        nodeFieldClassesList.add(field.getType());
-                    } else {
-                        parentOffsetTemp = unsafe.objectFieldOffset(field);
-                        parentClassTmp = field.getType();
-                    }
-                } else if (field.getType().getComponentType() != null && Node.class.isAssignableFrom(field.getType().getComponentType())) {
+                if (Node.class.isAssignableFrom(field.getType()) && field.getName().equals("parent")) {
+                    parentOffsetTemp = unsafe.objectFieldOffset(field);
+                    parentClassTmp = field.getType();
+                } else if (Node.class.isAssignableFrom(field.getType()) && field.getAnnotation(Child.class) != null) {
+                    nodeFieldOffsetsList.add(unsafe.objectFieldOffset(field));
+                    nodeFieldClassesList.add(field.getType());
+                } else if (field.getType().getComponentType() != null && Node.class.isAssignableFrom(field.getType().getComponentType()) && field.getAnnotation(Children.class) != null) {
                     nodeArrayFieldOffsetsList.add(unsafe.objectFieldOffset(field));
                     nodeArrayFieldClassesList.add(field.getType());
                 } else {
@@ -251,18 +252,18 @@ public class NodeUtil {
         return (T) clone;
     }
 
-    public static List<Object> findNodeChildren(Object node) {
-        List<Object> nodes = new ArrayList<>();
+    public static List<Node> findNodeChildren(Node node) {
+        List<Node> nodes = new ArrayList<>();
         NodeClass nodeClass = NodeClass.get(node.getClass());
 
         for (long fieldOffset : nodeClass.nodeFieldOffsets) {
             Object child = unsafe.getObject(node, fieldOffset);
             if (child != null) {
-                nodes.add(child);
+                nodes.add((Node) child);
             }
         }
         for (long fieldOffset : nodeClass.nodeArrayFieldOffsets) {
-            Object[] children = (Object[]) unsafe.getObject(node, fieldOffset);
+            Node[] children = (Node[]) unsafe.getObject(node, fieldOffset);
             if (children != null) {
                 nodes.addAll(Arrays.asList(children));
             }
@@ -386,10 +387,8 @@ public class NodeUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T findFirstNodeInstance(Object root, Class<T> clazz) {
-        List<Object> childNodes = findNodeChildren(root);
-
-        for (Object childNode : childNodes) {
+    public static <T> T findFirstNodeInstance(Node root, Class<T> clazz) {
+        for (Node childNode : findNodeChildren(root)) {
             if (clazz.isInstance(childNode)) {
                 return (T) childNode;
             } else {
@@ -639,12 +638,12 @@ public class NodeUtil {
 
         @Override
         public boolean isChildObject(Field f) {
-            return Node.class.isAssignableFrom(f.getType());
+            return Node.class.isAssignableFrom(f.getType()) && f.getAnnotation(Child.class) != null;
         }
 
         @Override
         public boolean isChildArrayObject(Field f) {
-            return f.getType().getComponentType() != null && Node.class.isAssignableFrom(f.getType().getComponentType());
+            return f.getType().getComponentType() != null && Node.class.isAssignableFrom(f.getType().getComponentType()) && f.getAnnotation(Children.class) != null;
         }
 
         @Override

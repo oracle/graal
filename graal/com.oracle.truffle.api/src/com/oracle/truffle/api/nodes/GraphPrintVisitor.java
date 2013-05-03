@@ -334,7 +334,7 @@ public class GraphPrintVisitor {
         // default handler
         createElementForNode(node);
 
-        List<Object> children = NodeUtil.findNodeChildren(node);
+        List<Node> children = NodeUtil.findNodeChildren((Node) node);
         for (Object child : children) {
             if (child == null) {
                 continue;
