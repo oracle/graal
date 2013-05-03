@@ -30,10 +30,10 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class LoopSafepointEliminationPhase extends BasePhase<LowTierContext> {
+public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     @Override
-    protected void run(StructuredGraph graph, LowTierContext context) {
+    protected void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = new LoopsData(graph);
         if (context.getOptimisticOptimizations().useLoopLimitChecks()) {
             loops.detectedCountedLoops();

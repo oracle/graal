@@ -33,6 +33,7 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.*;
@@ -618,7 +619,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             public void run() {
                 final StructuredGraph graph = parse(snippet);
                 HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements);
-                MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget());
+                MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
 
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);

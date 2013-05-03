@@ -193,6 +193,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             IsNullNode isNull = (IsNullNode) guard.condition();
             NullCheckNode nullCheck = guard.graph().add(new NullCheckNode(isNull.object()));
             replaceCurrent(nullCheck);
+            if (isNull.usages().isEmpty()) {
+                isNull.safeDelete();
+            }
         }
 
         private void insertLoopExits(DeoptimizeNode deopt) {
