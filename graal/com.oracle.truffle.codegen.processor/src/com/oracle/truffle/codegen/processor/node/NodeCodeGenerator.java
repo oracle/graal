@@ -1460,8 +1460,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             List<ActualParameter> executeParameters = new ArrayList<>();
             for (ActualParameter sourceParameter : executable.getParameters()) {
-                NodeChildData field = specialization.getNode().findChild(sourceParameter.getSpecification().getName());
-                if (field == null) {
+                if (!sourceParameter.getSpecification().isSignature()) {
                     continue;
                 }
 
@@ -1645,21 +1644,24 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             for (ActualParameter targetParameter : targetParameters) {
                 NodeChildData field = sourceNode.findChild(targetParameter.getSpecification().getName());
-                if (field == null) {
+                if (!targetParameter.getSpecification().isSignature()) {
                     continue;
                 }
-                TypeData targetType = targetParameter.getTypeSystemType();
 
-                ExecutableTypeData targetExecutable = field.findExecutableType(getContext(), targetType);
+                TypeData targetType = targetParameter.getTypeSystemType();
+                ExecutableTypeData targetExecutable = null;
+                if (field != null) {
+                    targetExecutable = field.findExecutableType(getContext(), targetType);
+                }
 
                 ActualParameter sourceParameter = sourceExecutable.findParameter(targetParameter.getLocalName());
 
                 String targetVariableName = valueName(targetParameter);
                 CodeTree executionExpression = null;
-                if (cast || sourceParameter != null) {
+                if ((sourceParameter != null && cast) || sourceParameter != null) {
                     TypeData sourceType = sourceParameter.getTypeSystemType();
-                    if (!sourceType.needsCastTo(getContext(), targetType)) {
-                        if (field.isShortCircuit() && sourceParameter != null) {
+                    if (targetExecutable == null || !sourceType.needsCastTo(getContext(), targetType)) {
+                        if (field != null && field.isShortCircuit() && sourceParameter != null) {
                             builder.tree(createShortCircuitValue(builder, specialization, field, targetParameter.getPreviousParameter(), unexpectedParameter));
                         }
                         builder.startStatement();
@@ -1667,8 +1669,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         builder.string(valueName(targetParameter)).string(" = ");
                         builder.tree(CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter)));
                         builder.end();
+                        continue;
                     } else {
-                        executionExpression = createExpectExecutableType(sourceNode, sourceType, targetExecutable, CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter)));
+                        CodeTree valueTree = CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter));
+                        executionExpression = createExpectExecutableType(sourceNode, sourceType, targetExecutable, valueTree);
                     }
                 } else if (sourceParameter == null) {
                     executionExpression = createExecuteChildExpression(builder, field, targetParameter, unexpectedParameter);
