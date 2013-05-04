@@ -20,37 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.replacements.test;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import org.junit.*;
+
+import com.oracle.graal.compiler.test.*;
 
 /**
- * Unwinds the current frame to an exception handler in the caller frame.
+ * Tests exception throwing from Graal compiled code.
  */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public class UnwindExceptionToCallerTest extends GraalCompilerTest {
 
-    @Input private ValueNode exception;
-
-    public ValueNode exception() {
-        return exception;
+    @Test
+    public void test1() {
+        NullPointerException npe = new NullPointerException();
+        test("test1Snippet", "a string", npe);
+        test("test1Snippet", (String) null, npe);
     }
 
-    public UnwindNode(ValueNode exception) {
-        super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == Kind.Object;
-        this.exception = exception;
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitUnwind(gen.operand(exception()));
-    }
-
-    @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
+    public static String test1Snippet(String message, NullPointerException npe) {
+        if (message == null) {
+            throw npe;
+        }
+        return message;
     }
 }

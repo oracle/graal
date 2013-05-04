@@ -458,14 +458,14 @@ public class HotSpotReplacementsUtil {
      * Gets the value of the stack pointer register as a Word.
      */
     public static Word stackPointer() {
-        return HotSpotReplacementsUtil.registerAsWord(stackPointerRegister(), true, false);
+        return registerAsWord(stackPointerRegister(), true, false);
     }
 
     /**
      * Gets the value of the thread register as a Word.
      */
     public static Word thread() {
-        return HotSpotReplacementsUtil.registerAsWord(threadRegister(), true, false);
+        return registerAsWord(threadRegister(), true, false);
     }
 
     public static Word loadWordFromObject(Object object, int offset) {

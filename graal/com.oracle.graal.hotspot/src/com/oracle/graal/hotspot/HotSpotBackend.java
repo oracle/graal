@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -55,6 +56,17 @@ public abstract class HotSpotBackend extends Backend {
      * Descriptor for SharedRuntime::get_ic_miss_stub().
      */
     public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
+
+    /**
+     * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
+     * from {@link UnwindNode}.
+     */
+    public static final Descriptor UNWIND_EXCEPTION_TO_CALLER = new Descriptor("unwindExceptionToCaller", true, void.class, Object.class, Word.class);
+
+    /**
+     * Descriptor for the arguments when unwinding to an exception handler in a caller.
+     */
+    public static final Descriptor EXCEPTION_HANDLER_IN_CALLER = new Descriptor("exceptionHandlerInCaller", false, void.class, Object.class, Word.class);
 
     public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);

@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -339,11 +339,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitUnwind(Value exception) {
-        RegisterValue exceptionParameter = EXCEPTION.asValue();
+        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        CallingConvention cc = stub.getCallingConvention();
+        assert cc.getArgumentCount() == 2;
+        RegisterValue exceptionParameter = (RegisterValue) cc.getArgument(0);
         emitMove(exceptionParameter, exception);
-        AMD64HotSpotUnwindOp op = new AMD64HotSpotUnwindOp(exceptionParameter);
-        epilogueOps.add(op);
-        append(op);
+        append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
 
     @Override
@@ -359,6 +360,20 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitPatchReturnAddress(ValueNode address) {
         append(new AMD64HotSpotPatchReturnAddressOp(load(operand(address))));
+    }
+
+    @Override
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
+        Variable handler = load(operand(handlerInCallerPc));
+        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(EXCEPTION_HANDLER_IN_CALLER);
+        CallingConvention cc = stub.getCallingConvention();
+        assert cc.getArgumentCount() == 2;
+        RegisterValue exceptionFixed = (RegisterValue) cc.getArgument(0);
+        RegisterValue exceptionPcFixed = (RegisterValue) cc.getArgument(1);
+        emitMove(exceptionFixed, operand(exception));
+        emitMove(exceptionPcFixed, operand(exceptionPc));
+        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
+        append(op);
     }
 
     @Override

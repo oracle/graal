@@ -65,7 +65,8 @@ public class ExceptionHandlerStub extends CRuntimeStub {
 
     @Snippet
     private static void exceptionHandler(Object exception, Word exceptionPc) {
-        checkNoExceptionInThread(exception, exceptionPc);
+        checkNoExceptionInThread(assertionsEnabled());
+        checkExceptionNotNull(assertionsEnabled(), exception);
         writeExceptionOop(thread(), exception);
         writeExceptionPc(thread(), exceptionPc);
         if (logging()) {
@@ -85,16 +86,22 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         patchReturnAddress(handlerPc);
     }
 
-    private static void checkNoExceptionInThread(Object exception, Word exceptionPc) {
-        if (assertionsEnabled()) {
+    static void checkNoExceptionInThread(boolean enabled) {
+        if (enabled) {
             Object currentException = readExceptionOop(thread());
-            if (currentException != null && currentException != exception) {
-                fatal("exception oop must be null or %p, not %p", Word.fromObject(exception).rawValue(), Word.fromObject(currentException).rawValue());
+            if (currentException != null) {
+                fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
             }
             Word currentExceptionPc = readExceptionPc(thread());
-            if (currentExceptionPc.notEqual(Word.zero()) && currentExceptionPc.notEqual(exceptionPc)) {
-                fatal("exception pc must be zero or %p, not %p", exceptionPc.rawValue(), currentExceptionPc.rawValue());
+            if (currentExceptionPc.notEqual(Word.zero())) {
+                fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
             }
+        }
+    }
+
+    static void checkExceptionNotNull(boolean enabled, Object exception) {
+        if (enabled && exception == null) {
+            fatal("exception must not be null");
         }
     }
 
