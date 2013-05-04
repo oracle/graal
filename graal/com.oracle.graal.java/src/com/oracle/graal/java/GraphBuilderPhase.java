@@ -679,7 +679,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void genGoto() {
-        appendGoto(createTarget(1, currentBlock.successors.get(0), frameState));
+        appendGoto(createTarget(currentBlock.successors.get(0), frameState));
         assert currentBlock.numNormalSuccessors() == 1;
     }
 

@@ -48,7 +48,7 @@ public class NewMultiArrayStub extends CRuntimeStub {
     private static Object newMultiArray(Word hub, int rank, Word dims) {
         newMultiArrayC(NEW_MULTI_ARRAY_C, thread(), hub, rank, dims);
         handlePendingException(true);
-        return verifyOop(getAndClearObjectResult(thread()));
+        return getAndClearObjectResult(thread());
     }
 
     public static final Descriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC", false);

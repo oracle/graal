@@ -44,20 +44,22 @@ public class StructuredGraph extends Graph {
 
     private final Set<Long> leafGraphIds = new HashSet<>(4);
 
-    private final StartNode start;
+    private StartNode start;
     private final ResolvedJavaMethod method;
     private final long graphId;
     private final int entryBCI;
 
     /**
-     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph() {
         this(null, null);
     }
 
     /**
-     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method) {
         this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
@@ -73,7 +75,7 @@ public class StructuredGraph extends Graph {
 
     private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
         super(name);
-        this.start = add(new StartNode());
+        this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
@@ -114,6 +116,10 @@ public class StructuredGraph extends Graph {
 
     public long graphId() {
         return graphId;
+    }
+
+    public void setStart(StartNode start) {
+        this.start = start;
     }
 
     /**

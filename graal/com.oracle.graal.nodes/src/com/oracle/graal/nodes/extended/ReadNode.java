@@ -102,19 +102,27 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public boolean push(PiNode parent) {
-        LocationIdentity locId = location().getLocationIdentity();
-        if (locId instanceof ResolvedJavaField) {
-            ResolvedJavaType fieldType = ((ResolvedJavaField) locId).getDeclaringClass();
-            ValueNode piValueStamp = parent.object();
-            ResolvedJavaType beforePiType = piValueStamp.objectStamp().type();
-
-            if (beforePiType != null && fieldType.isAssignableFrom(beforePiType)) {
+        if (location() instanceof ConstantLocationNode) {
+            long displacement = ((ConstantLocationNode) location()).getDisplacement();
+            if (parent.stamp() instanceof ObjectStamp) {
                 ObjectStamp piStamp = parent.objectStamp();
-                if (piStamp.nonNull() == piValueStamp.objectStamp().nonNull() && piStamp.alwaysNull() == piValueStamp.objectStamp().alwaysNull()) {
-                    replaceFirstInput(parent, piValueStamp);
-                    return true;
+                ResolvedJavaType receiverType = piStamp.type();
+                if (receiverType != null) {
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement);
+
+                    if (field != null) {
+                        ResolvedJavaType declaringClass = field.getDeclaringClass();
+                        if (declaringClass.isAssignableFrom(receiverType) && declaringClass != receiverType) {
+                            ObjectStamp piValueStamp = parent.object().objectStamp();
+                            if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
+                                replaceFirstInput(parent, parent.object());
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
+
         }
         return false;
     }
