@@ -513,6 +513,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
+    public final void cmpl(AMD64Address dst, int imm32) {
+        prefix(dst);
+        emitByte(0x81);
+        emitOperandHelper(7, dst);
+        emitInt(imm32);
+    }
+
     // The 32-bit cmpxchg compares the value at adr with the contents of X86.rax,
     // and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
     // The ZF is set if the compared values were equal, and cleared otherwise.
