@@ -115,6 +115,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      */
     List<AMD64HotSpotEpilogueOp> epilogueOps = new ArrayList<>(2);
 
+    @Override
+    public void append(LIRInstruction op) {
+        super.append(op);
+        if (op instanceof AMD64HotSpotEpilogueOp) {
+            epilogueOps.add((AMD64HotSpotEpilogueOp) op);
+        }
+    }
+
     @SuppressWarnings("hiding")
     @Override
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
@@ -161,9 +169,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     protected void emitReturn(Value input) {
-        AMD64HotSpotReturnOp op = new AMD64HotSpotReturnOp(input);
-        epilogueOps.add(op);
-        append(op);
+        append(new AMD64HotSpotReturnOp(input));
     }
 
     @Override
@@ -347,16 +353,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        AMD64HotSpotDeoptimizeCallerOp op = new AMD64HotSpotDeoptimizeCallerOp(action, reason);
-        epilogueOps.add(op);
-        append(op);
+        append(new AMD64HotSpotDeoptimizeCallerOp(action, reason));
     }
 
     @Override
     public void emitPatchReturnAddress(ValueNode address) {
-        load(operand(address));
-        AMD64HotSpotPatchReturnAddressOp op = new AMD64HotSpotPatchReturnAddressOp(load(operand(address)));
-        append(op);
+        append(new AMD64HotSpotPatchReturnAddressOp(load(operand(address))));
     }
 
     @Override
