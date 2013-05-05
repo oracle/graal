@@ -39,7 +39,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
@@ -70,8 +70,12 @@ public class NewArrayStub extends Stub {
         args.add("hub", null);
         args.add("length", null);
         args.addConst("intArrayHub", intArrayHub);
-        args.addConst("log", Boolean.getBoolean("graal.logNewArrayStub"));
         return args;
+    }
+
+    @Fold
+    private static boolean logging() {
+        return Boolean.getBoolean("graal.logNewArrayStub");
     }
 
     /**
@@ -81,35 +85,42 @@ public class NewArrayStub extends Stub {
      * @param hub the hub of the object to be allocated
      * @param length the length of the array
      * @param intArrayHub the hub for {@code int[].class}
-     * @param log specifies if logging is enabled
      */
     @Snippet
-    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub, @ConstantParameter boolean log) {
+    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub) {
         int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
         int sizeInBytes = computeArrayAllocationSize(length, wordSize(), headerSize, log2ElementSize);
-        log(log, "newArray: element kind %d\n", elementKind);
-        log(log, "newArray: array length %d\n", length);
-        log(log, "newArray: array size %d\n", sizeInBytes);
-        log(log, "newArray: hub=%p\n", hub);
+        if (logging()) {
+            printf("newArray: element kind %d\n", elementKind);
+            printf("newArray: array length %d\n", length);
+            printf("newArray: array size %d\n", sizeInBytes);
+            printf("newArray: hub=%p\n", hub.rawValue());
+        }
 
         // check that array length is small enough for fast path.
         if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
-            Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
+            Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
-                log(log, "newArray: allocated new array at %p\n", memory);
+                if (logging()) {
+                    printf("newArray: allocated new array at %p\n", memory.rawValue());
+                }
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
                 return memory.toObject();
             }
         }
-        log(log, "newArray: calling new_array_c\n", 0L);
+        if (logging()) {
+            printf("newArray: calling new_array_c\n");
+        }
 
         newArrayC(NEW_ARRAY_C, thread(), hub, length);
 
         if (clearPendingException(thread())) {
-            log(log, "newArray: deoptimizing to caller\n", 0L);
+            if (logging()) {
+                printf("newArray: deoptimizing to caller\n");
+            }
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }

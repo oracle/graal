@@ -71,8 +71,12 @@ public class NewInstanceStub extends Stub {
         Arguments args = new Arguments(stub);
         args.add("hub", null);
         args.addConst("intArrayHub", intArrayHub);
-        args.addConst("log", Boolean.getBoolean("graal.logNewInstanceStub"));
         return args;
+    }
+
+    @Fold
+    private static boolean logging() {
+        return Boolean.getBoolean("graal.logNewInstanceStub");
     }
 
     /**
@@ -83,11 +87,11 @@ public class NewInstanceStub extends Stub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub, @ConstantParameter boolean log) {
+    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
-                Word memory = refillAllocate(intArrayHub, sizeInBytes, log);
+                Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     initializeObjectHeader(memory, prototypeMarkWord, hub);
@@ -99,12 +103,16 @@ public class NewInstanceStub extends Stub {
             }
         }
 
-        log(log, "newInstance: calling new_instance_c\n", 0L);
+        if (logging()) {
+            printf("newInstance: calling new_instance_c\n");
+        }
 
         newInstanceC(NEW_INSTANCE_C, thread(), hub);
 
         if (clearPendingException(thread())) {
-            log(log, "newInstance: deoptimizing to caller\n", 0L);
+            if (logging()) {
+                printf("newInstance: deoptimizing to caller\n");
+            }
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
@@ -134,10 +142,12 @@ public class NewInstanceStub extends Stub {
         // calculate amount of free space
         Word tlabFreeSpaceInBytes = end.subtract(top);
 
-        log(log, "refillTLAB: thread=%p\n", thread);
-        log(log, "refillTLAB: top=%p\n", top);
-        log(log, "refillTLAB: end=%p\n", end);
-        log(log, "refillTLAB: tlabFreeSpaceInBytes=%d\n", tlabFreeSpaceInBytes);
+        if (log) {
+            printf("refillTLAB: thread=%p\n", thread.rawValue());
+            printf("refillTLAB: top=%p\n", top.rawValue());
+            printf("refillTLAB: end=%p\n", end.rawValue());
+            printf("refillTLAB: tlabFreeSpaceInBytes=%d\n", tlabFreeSpaceInBytes.rawValue());
+        }
 
         Word tlabFreeSpaceInWords = tlabFreeSpaceInBytes.unsignedShiftRight(log2WordSize());
 
@@ -148,10 +158,14 @@ public class NewInstanceStub extends Stub {
             if (tlabStats()) {
                 // increment number of refills
                 thread.writeInt(tlabNumberOfRefillsOffset(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION) + 1, TLAB_NOF_REFILLS_LOCATION);
-                log(log, "thread: %p -- number_of_refills %d\n", thread, thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
+                if (log) {
+                    printf("thread: %p -- number_of_refills %d\n", thread.rawValue(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
+                }
                 // accumulate wastage
                 Word wastage = thread.readWord(tlabFastRefillWasteOffset(), TLAB_FAST_REFILL_WASTE_LOCATION).add(tlabFreeSpaceInWords);
-                log(log, "thread: %p -- accumulated wastage %d\n", thread, wastage);
+                if (log) {
+                    printf("thread: %p -- accumulated wastage %d\n", thread.rawValue(), wastage.rawValue());
+                }
                 thread.writeWord(tlabFastRefillWasteOffset(), wastage, TLAB_FAST_REFILL_WASTE_LOCATION);
             }
 
@@ -187,7 +201,9 @@ public class NewInstanceStub extends Stub {
             // Retain TLAB
             Word newRefillWasteLimit = refillWasteLimit.add(tlabRefillWasteIncrement());
             thread.writeWord(tlabRefillWasteLimitOffset(), newRefillWasteLimit, TLAB_REFILL_WASTE_LIMIT_LOCATION);
-            log(log, "refillTLAB: retaining TLAB - newRefillWasteLimit=%p\n", newRefillWasteLimit);
+            if (log) {
+                printf("refillTLAB: retaining TLAB - newRefillWasteLimit=%p\n", newRefillWasteLimit.rawValue());
+            }
 
             if (tlabStats()) {
                 thread.writeInt(tlabSlowAllocationsOffset(), thread.readInt(tlabSlowAllocationsOffset(), TLAB_SLOW_ALLOCATIONS_LOCATION) + 1, TLAB_SLOW_ALLOCATIONS_LOCATION);
