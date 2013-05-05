@@ -55,6 +55,9 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
 
+        // Discard the return address, thus completing restoration of caller frame
+        masm.incrementq(rsp, 8);
+
         // Restore rsp from rbp if the exception PC is a method handle call site.
         Register thread = graalRuntime().getRuntime().threadRegister();
         int isMethodHandleReturnOffset = graalRuntime().getConfig().threadIsMethodHandleReturnOffset;
