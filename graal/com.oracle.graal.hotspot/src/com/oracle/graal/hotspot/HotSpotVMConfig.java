@@ -369,8 +369,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     // runtime stubs
     public long inlineCacheMissStub;
     public long handleDeoptStub;
-    public long monitorEnterStub;
-    public long monitorExitStub;
     public long wbPreCallStub;
     public long wbPostCallStub;
 
@@ -403,6 +401,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long exceptionHandlerForPcAddress;
     public long exceptionHandlerForReturnAddressAddress;
     public long osrMigrationEndAddress;
+    public long monitorenterAddress;
+    public long monitorexitAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

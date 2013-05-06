@@ -36,23 +36,21 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**
- * Stub called from {@link ThreadIsInterruptedStubCall}.
+ * Stub called from {@link MonitorExitStubCall}.
  */
-public class ThreadIsInterruptedStub extends CRuntimeStub {
+public class MonitorExitStub extends CRuntimeStub {
 
-    public ThreadIsInterruptedStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public MonitorExitStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);
     }
 
     @Snippet
-    private static boolean threadIsInterrupted(Thread receiverThread, boolean clearIsInterrupted) {
-        boolean result = threadIsInterruptedC(THREAD_IS_INTERRUPTED_C, thread(), receiverThread, clearIsInterrupted);
-        handlePendingException(false);
-        return result;
+    private static void monitorexit(Object object, Word lock) {
+        monitorexitC(MONITOREXIT_C, thread(), object, lock);
     }
 
-    public static final Descriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC", false);
+    public static final Descriptor MONITOREXIT_C = descriptorFor(MonitorExitStub.class, "monitorexitC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native boolean threadIsInterruptedC(@ConstantNodeParameter Descriptor threadIsInterruptedC, Word thread, Thread receiverThread, boolean clearIsInterrupted);
+    public static native void monitorexitC(@ConstantNodeParameter Descriptor monitorexitC, Word thread, Object object, Word lock);
 }

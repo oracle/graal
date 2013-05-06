@@ -36,23 +36,22 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**
- * Stub called from {@link ThreadIsInterruptedStubCall}.
+ * Stub called from {@link MonitorEnterStubCall}.
  */
-public class ThreadIsInterruptedStub extends CRuntimeStub {
+public class MonitorEnterStub extends CRuntimeStub {
 
-    public ThreadIsInterruptedStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public MonitorEnterStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);
     }
 
     @Snippet
-    private static boolean threadIsInterrupted(Thread receiverThread, boolean clearIsInterrupted) {
-        boolean result = threadIsInterruptedC(THREAD_IS_INTERRUPTED_C, thread(), receiverThread, clearIsInterrupted);
+    private static void monitorenter(Object object, Word lock) {
+        monitorenterC(MONITORENTER_C, thread(), object, lock);
         handlePendingException(false);
-        return result;
     }
 
-    public static final Descriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC", false);
+    public static final Descriptor MONITORENTER_C = descriptorFor(MonitorEnterStub.class, "monitorenterC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native boolean threadIsInterruptedC(@ConstantNodeParameter Descriptor threadIsInterruptedC, Word thread, Thread receiverThread, boolean clearIsInterrupted);
+    public static native void monitorenterC(@ConstantNodeParameter Descriptor monitorenterC, Word thread, Object object, Word lock);
 }

@@ -31,6 +31,8 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.IdentityHashCodeStubCall.*;
+import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
+import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
@@ -39,6 +41,8 @@ import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.IdentityHashCodeStub.*;
+import static com.oracle.graal.hotspot.stubs.MonitorEnterStub.*;
+import static com.oracle.graal.hotspot.stubs.MonitorExitStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
@@ -378,6 +382,28 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:    thread */ nativeCallingConvention(word,
                         /* arg1:    object */                         Kind.Object));
 
+        addStubCall(MONITORENTER,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: object */ javaCallingConvention(Kind.Object,
+                        /* arg1:   lock */                       word));
+
+        addCRuntimeCall(MONITORENTER_C, config.monitorenterAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg1: object */                         Kind.Object,
+                        /* arg1:   lock */                         word));
+
+        addStubCall(MONITOREXIT,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: object */ javaCallingConvention(Kind.Object,
+                        /* arg1:   lock */                       word));
+
+        addCRuntimeCall(MONITOREXIT_C, config.monitorexitAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg1: object */                         Kind.Object,
+                        /* arg1:   lock */                         word));
+
         // @formatter:on
     }
 
@@ -497,6 +523,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
         registerStub(new VerifyOopStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VERIFY_OOP)));
         registerStub(new OSRMigrationEndStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(OSR_MIGRATION_END)));
+        registerStub(new MonitorEnterStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITORENTER)));
+        registerStub(new MonitorExitStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITOREXIT)));
     }
 
     private void registerStub(Stub stub) {
