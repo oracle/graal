@@ -380,9 +380,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long arithmeticSinStub;
     public long arithmeticCosStub;
     public long arithmeticTanStub;
-    public long logPrimitiveStub;
-    public long logObjectStub;
-    public long logPrintfStub;
     public int deoptReasonNone;
     public long aescryptEncryptBlockStub;
     public long aescryptDecryptBlockStub;
@@ -403,6 +400,9 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long monitorexitAddress;
     public long createNullPointerExceptionAddress;
     public long createOutOfBoundsExceptionAddress;
+    public long logPrimitiveAddress;
+    public long logObjectAddress;
+    public long logPrintfAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;
