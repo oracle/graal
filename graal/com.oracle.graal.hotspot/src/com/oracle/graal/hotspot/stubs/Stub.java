@@ -28,6 +28,7 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.word.Word.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -54,7 +55,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
@@ -301,6 +302,13 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     }
 
     /**
+     * Analyzes a given value and prints information about it to the log stream.
+     */
+    public static void decipher(long value) {
+        vmMessageC(VM_MESSAGE_C, false, Word.zero(), value, 0L, 0L);
+    }
+
+    /**
      * Exits the VM with a given error message.
      * <p>
      * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
@@ -352,5 +360,50 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      */
     public static void fatal(String format, long v1, long v2, long v3) {
         vmMessageC(VM_MESSAGE_C, true, cstring(format), v1, v2, v3);
+    }
+
+    /**
+     * Verifies that a given object value is well formed if {@code -XX:+VerifyOops} is enabled.
+     */
+    public static Object verifyObject(Object object) {
+        if (verifyOops()) {
+            // TODO (ds) The counter read is ok but the write causes a segv - find out why
+            // Word verifyOopCounter = Word.unsigned(verifyOopCounterAddress());
+            // verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
+
+            Pointer oop = Word.fromObject(object);
+            if (object != null) {
+                // make sure object is 'reasonable'
+                if (!oop.and(unsigned(verifyOopMask())).equal(unsigned(verifyOopBits()))) {
+                    fatal("oop not in heap: %p", oop.rawValue());
+                }
+
+                Word klass = oop.readWord(hubOffset());
+                if (klass.equal(Word.zero())) {
+                    fatal("klass for oop %p is null", oop.rawValue());
+                }
+            }
+        }
+        return object;
+    }
+
+    @Fold
+    private static long verifyOopCounterAddress() {
+        return config().verifyOopCounterAddress;
+    }
+
+    @Fold
+    private static long verifyOopMask() {
+        return config().verifyOopMask;
+    }
+
+    @Fold
+    private static long verifyOopBits() {
+        return config().verifyOopBits;
+    }
+
+    @Fold
+    private static int hubOffset() {
+        return config().hubOffset;
     }
 }

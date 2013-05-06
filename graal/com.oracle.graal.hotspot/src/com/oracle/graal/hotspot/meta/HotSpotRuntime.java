@@ -35,6 +35,7 @@ import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
+import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.IdentityHashCodeStub.*;
@@ -217,10 +218,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         // @formatter:off
 
-        addRuntimeCall(OSR_MIGRATION_END, config.osrMigrationEndStub,
-                        /*           temps */ null,
+        addStubCall(VERIFY_OOP,
+                        /*             ret */ ret(Kind.Object),
+                        /* arg0:    object */ javaCallingConvention(Kind.Object));
+
+        addStubCall(OSR_MIGRATION_END,
                         /*             ret */ ret(Kind.Void),
-                        /* arg0:      long */ javaCallingConvention(Kind.Long));
+                        /* arg0:    buffer */ javaCallingConvention(word));
+
+        addCRuntimeCall(OSRMigrationEndStub.OSR_MIGRATION_END_C, config.osrMigrationEndAddress,
+                        /*             ret */ ret(Kind.Void),
+                        /* arg0:    buffer */ nativeCallingConvention(word));
 
         addRuntimeCall(UNCOMMON_TRAP, config.uncommonTrapStub,
                         /*           temps */ null,
@@ -487,6 +495,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new IdentityHashCodeStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(IDENTITY_HASHCODE)));
         registerStub(new ExceptionHandlerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(EXCEPTION_HANDLER)));
         registerStub(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
+        registerStub(new VerifyOopStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VERIFY_OOP)));
+        registerStub(new OSRMigrationEndStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(OSR_MIGRATION_END)));
     }
 
     private void registerStub(Stub stub) {

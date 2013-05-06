@@ -240,6 +240,10 @@ public final class HotSpotVMConfig extends CompilerObject {
      */
     public int threadIsMethodHandleReturnOffset;
 
+    public long verifyOopCounterAddress;
+    public long verifyOopMask;
+    public long verifyOopBits;
+
     /**
      * Offset of the _exception_oop field in Thread (defined in thread.hpp). This field is used to
      * pass exception objects into and out of the runtime system during exception handling for
@@ -370,11 +374,9 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long wbPreCallStub;
     public long wbPostCallStub;
 
-    public long verifyOopStub;
     public long vmErrorStub;
     public long uncommonTrapStub;
     public long unwindExceptionStub;
-    public long osrMigrationEndStub;
     public long createNullPointerExceptionStub;
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;
@@ -402,6 +404,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long identityHashCodeAddress;
     public long exceptionHandlerForPcAddress;
     public long exceptionHandlerForReturnAddressAddress;
+    public long osrMigrationEndAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

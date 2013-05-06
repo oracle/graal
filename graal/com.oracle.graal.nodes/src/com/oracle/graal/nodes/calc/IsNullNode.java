@@ -83,12 +83,13 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
     @Override
     public boolean push(PiNode parent) {
         ObjectStamp piStamp = parent.objectStamp();
-        ObjectStamp piValueStamp = parent.object().objectStamp();
-        if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
-            replaceFirstInput(parent, parent.object());
-            return true;
-        } else {
-            return false;
+        if (parent.object().kind() == Kind.Object) {
+            ObjectStamp piValueStamp = parent.object().objectStamp();
+            if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
+                replaceFirstInput(parent, parent.object());
+                return true;
+            }
         }
+        return false;
     }
 }

@@ -70,7 +70,11 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         writeExceptionOop(thread(), exception);
         writeExceptionPc(thread(), exceptionPc);
         if (logging()) {
-            printf("handling exception %p at %p\n", Word.fromObject(exception).rawValue(), exceptionPc.rawValue());
+            printf("handling exception %p (", Word.fromObject(exception).rawValue());
+            decipher(Word.fromObject(exception).rawValue());
+            printf(") at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue());
+            decipher(exceptionPc.rawValue());
+            printf(")\n");
         }
 
         // patch throwing pc into return address so that deoptimization finds the right debug info
@@ -79,7 +83,9 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread());
 
         if (logging()) {
-            printf("handler for exception %p at %p is at %p\n", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
+            printf("handler for exception %p at %p is at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
+            decipher(handlerPc.rawValue());
+            printf(")\n");
         }
 
         // patch the return address so that this stub returns to the exception handler
