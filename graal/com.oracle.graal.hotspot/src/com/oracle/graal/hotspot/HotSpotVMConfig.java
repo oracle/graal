@@ -377,7 +377,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long vmErrorStub;
     public long uncommonTrapStub;
     public long unwindExceptionStub;
-    public long osrMigrationEndStub;
     public long createNullPointerExceptionStub;
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;
@@ -405,6 +404,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long identityHashCodeAddress;
     public long exceptionHandlerForPcAddress;
     public long exceptionHandlerForReturnAddressAddress;
+    public long osrMigrationEndAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;
