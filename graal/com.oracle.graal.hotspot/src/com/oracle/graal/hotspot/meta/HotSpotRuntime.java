@@ -40,6 +40,7 @@ import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.CreateNullPointerExceptionStub.*;
+import static com.oracle.graal.hotspot.stubs.CreateOutOfBoundsExceptionStub.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.IdentityHashCodeStub.*;
 import static com.oracle.graal.hotspot.stubs.MonitorEnterStub.*;
@@ -294,11 +295,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:      rank */                         Kind.Int,
                         /* arg3:      dims */                         word));
 
-        addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Object),
-                        /* arg0:     index */ javaCallingConvention(Kind.Int));
-
         addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
                         /*           temps */ this.regConfig.getCallerSaveRegisters(),
                         /*             ret */ ret(Kind.Long));
@@ -408,6 +404,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*          ret */ ret(Kind.Void),
                         /* arg0: thread */ nativeCallingConvention(word));
 
+        addStubCall(CREATE_OUT_OF_BOUNDS_EXCEPTION,
+                        /*             ret */ ret(Kind.Object),
+                        /* arg0:     index */ javaCallingConvention(Kind.Int));
+
+        addCRuntimeCall(CREATE_OUT_OF_BOUNDS_C, config.createOutOfBoundsExceptionAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg1:  index */                         Kind.Int));
         // @formatter:on
     }
 
@@ -532,6 +536,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new MonitorEnterStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITORENTER)));
         registerStub(new MonitorExitStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITOREXIT)));
         registerStub(new CreateNullPointerExceptionStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(CREATE_NULL_POINTER_EXCEPTION)));
+        registerStub(new CreateOutOfBoundsExceptionStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(CREATE_OUT_OF_BOUNDS_EXCEPTION)));
     }
 
     private void registerStub(Stub stub) {
