@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.DecryptBlockStubCall.*;
@@ -71,13 +70,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
                 /*        temps */ null,
                 /*          ret */ ret(Kind.Void),
                 /* arg0: object */ javaCallingConvention(Kind.Object, word));
-
-        addRuntimeCall(VM_ERROR, config.vmErrorStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0:  where */ javaCallingConvention(Kind.Object,
-                /* arg1: format */                       Kind.Object,
-                /* arg2:  value */                       Kind.Long));
 
         addRuntimeCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub,
                 /*        temps */ null,

@@ -37,6 +37,7 @@ import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
+import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.CreateNullPointerExceptionStub.*;
@@ -51,9 +52,11 @@ import static com.oracle.graal.hotspot.stubs.MonitorExitStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
+import static com.oracle.graal.hotspot.stubs.OSRMigrationEndStub.*;
 import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
 import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
+import static com.oracle.graal.hotspot.stubs.VMErrorStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -235,7 +238,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    buffer */ javaCallingConvention(word));
 
-        addCRuntimeCall(OSRMigrationEndStub.OSR_MIGRATION_END_C, config.osrMigrationEndAddress,
+        addCRuntimeCall(OSR_MIGRATION_END_C, config.osrMigrationEndAddress,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    buffer */ nativeCallingConvention(word));
 
@@ -433,6 +436,19 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*          ret */ ret(Kind.Void),
                         /* arg0: thread */ nativeCallingConvention(word,
                         /* arg1:  index */                         Kind.Int));
+
+        addStubCall(VM_ERROR,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0:  where */ javaCallingConvention(Kind.Object,
+                        /* arg1: format */                       Kind.Object,
+                        /* arg2:  value */                       Kind.Long));
+
+        addCRuntimeCall(VM_ERROR_C, config.vmErrorAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg0:  where */                         Kind.Object,
+                        /* arg1: format */                         Kind.Object,
+                        /* arg2:  value */                         Kind.Long));
         // @formatter:on
     }
 
@@ -558,9 +574,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new MonitorExitStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITOREXIT)));
         registerStub(new CreateNullPointerExceptionStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(CREATE_NULL_POINTER_EXCEPTION)));
         registerStub(new CreateOutOfBoundsExceptionStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(CREATE_OUT_OF_BOUNDS_EXCEPTION)));
-        registerStub(new LogPrimitiveStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(Log.LOG_PRIMITIVE)));
-        registerStub(new LogObjectStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(Log.LOG_OBJECT)));
-        registerStub(new LogPrintfStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(Log.LOG_PRINTF)));
+        registerStub(new LogPrimitiveStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRIMITIVE)));
+        registerStub(new LogObjectStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_OBJECT)));
+        registerStub(new LogPrintfStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRINTF)));
+        registerStub(new VMErrorStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VM_ERROR)));
     }
 
     private void registerStub(Stub stub) {

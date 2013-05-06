@@ -372,7 +372,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long wbPreCallStub;
     public long wbPostCallStub;
 
-    public long vmErrorStub;
     public long uncommonTrapStub;
     public long unwindExceptionStub;
     public long javaTimeMillisStub;
@@ -403,6 +402,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logPrimitiveAddress;
     public long logObjectAddress;
     public long logPrintfAddress;
+    public long vmErrorAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;
