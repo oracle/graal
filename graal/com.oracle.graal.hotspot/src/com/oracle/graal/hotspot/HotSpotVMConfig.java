@@ -369,8 +369,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     // runtime stubs
     public long inlineCacheMissStub;
     public long handleDeoptStub;
-    public long wbPreCallStub;
-    public long wbPostCallStub;
 
     public long uncommonTrapStub;
     public long unwindExceptionStub;
@@ -403,6 +401,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long logObjectAddress;
     public long logPrintfAddress;
     public long vmErrorAddress;
+    public long writeBarrierPreAddress;
+    public long writeBarrierPostAddress;
 
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;

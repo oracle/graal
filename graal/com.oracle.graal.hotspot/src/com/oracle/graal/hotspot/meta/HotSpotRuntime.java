@@ -39,6 +39,8 @@ import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
+import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
+import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.CreateNullPointerExceptionStub.*;
 import static com.oracle.graal.hotspot.stubs.CreateOutOfBoundsExceptionStub.*;
@@ -57,6 +59,8 @@ import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
 import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.hotspot.stubs.VMErrorStub.*;
+import static com.oracle.graal.hotspot.stubs.WriteBarrierPostStub.*;
+import static com.oracle.graal.hotspot.stubs.WriteBarrierPreStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -449,6 +453,26 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg0:  where */                         Kind.Object,
                         /* arg1: format */                         Kind.Object,
                         /* arg2:  value */                         Kind.Long));
+
+        addStubCall(WRITE_BARRIER_PRE,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: object */ javaCallingConvention(Kind.Object));
+
+        addCRuntimeCall(WRITE_BARRIER_PRE_C, config.writeBarrierPreAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg1: object */                         Kind.Object));
+
+        addStubCall(WRITE_BARRIER_POST,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: object */ javaCallingConvention(Kind.Object,
+                        /* arg1:   card */                       word));
+
+        addCRuntimeCall(WRITE_BARRIER_POST_C, config.writeBarrierPostAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word,
+                        /* arg1: object */                         Kind.Object,
+                        /* arg2:   card */                         word));
         // @formatter:on
     }
 
@@ -578,6 +602,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new LogObjectStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_OBJECT)));
         registerStub(new LogPrintfStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRINTF)));
         registerStub(new VMErrorStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VM_ERROR)));
+        registerStub(new WriteBarrierPreStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(WRITE_BARRIER_PRE)));
+        registerStub(new WriteBarrierPostStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(WRITE_BARRIER_POST)));
     }
 
     private void registerStub(Stub stub) {
