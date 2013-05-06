@@ -61,16 +61,23 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
 
     @Snippet
     private static void unwindExceptionToCaller(Object exception, Word returnAddress) {
+        Pointer exceptionOop = Word.fromObject(exception);
+        if (logging()) {
+            printf("unwinding exception %p (", exceptionOop.rawValue());
+            decipher(exceptionOop.rawValue());
+            printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
+            decipher(returnAddress.rawValue());
+            printf(")\n");
+        }
         checkNoExceptionInThread(assertionsEnabled());
         checkExceptionNotNull(assertionsEnabled(), exception);
-        if (logging()) {
-            printf("unwinding exception %p at return address %p\n", Word.fromObject(exception).rawValue(), returnAddress.rawValue());
-        }
 
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread(), returnAddress);
 
         if (logging()) {
-            printf("handler for exception %p at return address %p is at %p\n", Word.fromObject(exception).rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
+            printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
+            decipher(handlerInCallerPc.rawValue());
+            printf(")\n");
         }
 
         jumpToExceptionHandlerInCaller(handlerInCallerPc, exception, returnAddress);

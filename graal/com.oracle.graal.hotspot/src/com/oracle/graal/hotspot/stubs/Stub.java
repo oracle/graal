@@ -301,6 +301,13 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     }
 
     /**
+     * Analyzes a given value and prints information about it to the log stream.
+     */
+    public static void decipher(long value) {
+        vmMessageC(VM_MESSAGE_C, false, Word.zero(), value, 0L, 0L);
+    }
+
+    /**
      * Exits the VM with a given error message.
      * <p>
      * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
