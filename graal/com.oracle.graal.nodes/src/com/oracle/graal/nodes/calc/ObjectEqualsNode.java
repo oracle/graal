@@ -77,9 +77,16 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
         boolean xVirtual = stateX != null && stateX.getState() == EscapeState.Virtual;
         boolean yVirtual = stateY != null && stateY.getState() == EscapeState.Virtual;
 
-        if (xVirtual ^ yVirtual) {
-            // one of them is virtual: they can never be the same objects
-            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+        if (xVirtual && !yVirtual) {
+            if (stateX.getVirtualObject().hasIdentity()) {
+                // one of them is virtual: they can never be the same objects
+                tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+            }
+        } else if (!xVirtual && yVirtual) {
+            if (stateY.getVirtualObject().hasIdentity()) {
+                // one of them is virtual: they can never be the same objects
+                tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+            }
         } else if (xVirtual && yVirtual) {
             boolean xIdentity = stateX.getVirtualObject().hasIdentity();
             boolean yIdentity = stateY.getVirtualObject().hasIdentity();
