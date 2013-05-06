@@ -375,7 +375,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long vmErrorStub;
     public long uncommonTrapStub;
     public long unwindExceptionStub;
-    public long createNullPointerExceptionStub;
+    public long createNullPointerExceptionAddress;
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;
     public long javaTimeNanosStub;

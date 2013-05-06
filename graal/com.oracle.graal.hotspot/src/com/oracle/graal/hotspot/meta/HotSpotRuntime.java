@@ -39,6 +39,7 @@ import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
+import static com.oracle.graal.hotspot.stubs.CreateNullPointerExceptionStub.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.IdentityHashCodeStub.*;
 import static com.oracle.graal.hotspot.stubs.MonitorEnterStub.*;
@@ -293,10 +294,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg2:      rank */                         Kind.Int,
                         /* arg3:      dims */                         word));
 
-        addRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Object));
-
         addRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionStub,
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Object),
@@ -404,6 +401,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /* arg1: object */                         Kind.Object,
                         /* arg1:   lock */                         word));
 
+        addStubCall(CREATE_NULL_POINTER_EXCEPTION,
+                        /*             ret */ ret(Kind.Object));
+
+        addCRuntimeCall(CREATE_NULL_POINTER_EXCEPTION_C, config.createNullPointerExceptionAddress,
+                        /*          ret */ ret(Kind.Void),
+                        /* arg0: thread */ nativeCallingConvention(word));
+
         // @formatter:on
     }
 
@@ -436,6 +440,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param args where arguments are passed to the call
      */
     protected RuntimeCallTarget addCRuntimeCall(Descriptor descriptor, long address, AllocatableValue ret, AllocatableValue... args) {
+        assert descriptor.getResultType().isPrimitive() || Word.class.isAssignableFrom(descriptor.getResultType()) : "C runtime call cannot have Object return type - objects must be returned via thread local storage: " +
+                        descriptor;
         return addRuntimeCall(descriptor, address, true, null, ret, args);
     }
 
@@ -525,6 +531,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new OSRMigrationEndStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(OSR_MIGRATION_END)));
         registerStub(new MonitorEnterStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITORENTER)));
         registerStub(new MonitorExitStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITOREXIT)));
+        registerStub(new CreateNullPointerExceptionStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(CREATE_NULL_POINTER_EXCEPTION)));
     }
 
     private void registerStub(Stub stub) {
