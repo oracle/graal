@@ -140,7 +140,7 @@ public class CountedLoopInfo {
                 cond = graph.unique(new IntegerLessThanNode(v1, end));
             } else {
                 assert iv.direction() == Direction.Down;
-                IntegerArithmeticNode v1 = add(ConstantNode.forIntegerKind(kind, kind.getMinValue(), graph), add(iv.strideNode(), one));
+                IntegerArithmeticNode v1 = add(ConstantNode.forIntegerKind(kind, kind.getMinValue(), graph), sub(one, iv.strideNode()));
                 if (oneOff) {
                     v1 = add(v1, one);
                 }
