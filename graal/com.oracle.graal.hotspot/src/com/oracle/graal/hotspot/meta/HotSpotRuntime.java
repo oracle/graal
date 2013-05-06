@@ -35,6 +35,7 @@ import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.ThreadIsInterruptedStubCall.*;
+import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.IdentityHashCodeStub.*;
@@ -216,6 +217,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         Kind word = graalRuntime.getTarget().wordKind;
 
         // @formatter:off
+
+        addStubCall(VERIFY_OOP,
+                        /*             ret */ ret(Kind.Object),
+                        /* arg0:    object */ javaCallingConvention(Kind.Object));
 
         addRuntimeCall(OSR_MIGRATION_END, config.osrMigrationEndStub,
                         /*           temps */ null,
@@ -487,6 +492,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new IdentityHashCodeStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(IDENTITY_HASHCODE)));
         registerStub(new ExceptionHandlerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(EXCEPTION_HANDLER)));
         registerStub(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
+        registerStub(new VerifyOopStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VERIFY_OOP)));
     }
 
     private void registerStub(Stub stub) {

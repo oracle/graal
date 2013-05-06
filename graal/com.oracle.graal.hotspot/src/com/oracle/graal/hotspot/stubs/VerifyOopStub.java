@@ -20,35 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.stubs;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.*;
 
 /**
- * Call to {@link VerifyOopStub}.
+ * Stub called from {@link VerifyOopStubCall}.
  */
-public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+public class VerifyOopStub extends CRuntimeStub {
 
-    @Input private final ValueNode object;
-    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, Object.class, Object.class);
-
-    public VerifyOopStubCall(ValueNode object) {
-        super(StampFactory.objectNonNull());
-        this.object = object;
+    public VerifyOopStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+        super(runtime, replacements, target, linkage);
     }
 
-    @Override
-    public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
-        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object));
+    @Snippet
+    private static Object verifyOop(Object object) {
+        return verifyObject(object);
     }
-
-    @NodeIntrinsic
-    public static native Object call(Object object);
 }
