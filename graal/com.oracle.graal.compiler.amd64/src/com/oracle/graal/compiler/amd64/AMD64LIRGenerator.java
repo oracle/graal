@@ -31,7 +31,6 @@ import static com.oracle.graal.lir.amd64.AMD64MathIntrinsicOp.IntrinsicOpcode.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.AMD64Address.Scale;
@@ -48,6 +47,7 @@ import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegReg;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStack;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.BinaryRegStackConst;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.DivRemOp;
+import com.oracle.graal.lir.amd64.AMD64Arithmetic.FPDivRemOp;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary1Op;
 import com.oracle.graal.lir.amd64.AMD64Arithmetic.Unary2Op;
 import com.oracle.graal.lir.amd64.AMD64Compare.CompareOp;
@@ -77,9 +77,6 @@ import com.oracle.graal.phases.util.*;
  * This class implements the AMD64 specific portion of the LIR generator.
  */
 public abstract class AMD64LIRGenerator extends LIRGenerator {
-
-    public static final Descriptor ARITHMETIC_FREM = new Descriptor("arithmeticFrem", false, float.class, float.class, float.class);
-    public static final Descriptor ARITHMETIC_DREM = new Descriptor("arithmeticDrem", false, double.class, double.class, double.class);
 
     private static final RegisterValue RAX_I = AMD64.rax.asValue(Kind.Int);
     private static final RegisterValue RAX_L = AMD64.rax.asValue(Kind.Long);
@@ -578,12 +575,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 emitDivRem(LREM, a, b, state(deopting));
                 return emitMove(RDX_L);
             case Float: {
-                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_FREM);
-                return emitCall(stub, stub.getCallingConvention(), null, a, b);
+                Variable result = newVariable(a.getPlatformKind());
+                append(new FPDivRemOp(FREM, result, load(a), load(b)));
+                return result;
             }
             case Double: {
-                RuntimeCallTarget stub = runtime.lookupRuntimeCall(ARITHMETIC_DREM);
-                return emitCall(stub, stub.getCallingConvention(), null, a, b);
+                Variable result = newVariable(a.getPlatformKind());
+                append(new FPDivRemOp(DREM, result, load(a), load(b)));
+                return result;
             }
             default:
                 throw GraalInternalError.shouldNotReachHere();

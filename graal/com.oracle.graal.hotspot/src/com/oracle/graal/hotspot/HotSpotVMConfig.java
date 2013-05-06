@@ -381,8 +381,6 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long createOutOfBoundsExceptionStub;
     public long javaTimeMillisStub;
     public long javaTimeNanosStub;
-    public long arithmeticFremStub;
-    public long arithmeticDremStub;
     public long arithmeticSinStub;
     public long arithmeticCosStub;
     public long arithmeticTanStub;
