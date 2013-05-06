@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
 /**
- * Unwinds the current frame to an exception handler in the caller frame.
+ * Sets up the {@linkplain HotSpotBackend#EXCEPTION_HANDLER_IN_CALLER arguments} expected by an
+ * exception handler in the caller's frame, removes the current frame and jumps to said handler.
  */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public class JumpToExceptionHandlerInCallerNode extends ControlSinkNode implements LIRLowerable {
 
+    @Input private ValueNode handlerInCallerPc;
     @Input private ValueNode exception;
+    @Input private ValueNode exceptionPc;
 
-    public ValueNode exception() {
-        return exception;
-    }
-
-    public UnwindNode(ValueNode exception) {
+    public JumpToExceptionHandlerInCallerNode(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         super(StampFactory.forVoid());
-        assert exception == null || exception.kind() == Kind.Object;
+        this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
+        this.exceptionPc = exceptionPc;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitUnwind(gen.operand(exception()));
+        ((HotSpotLIRGenerator) gen).emitJumpToExceptionHandlerInCaller(handlerInCallerPc, exception, exceptionPc);
     }
 
-    @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
-    }
+    @NodeIntrinsic
+    public static native void jumpToExceptionHandlerInCaller(Word handlerInCallerPc, Object exception, Word exceptionPc);
 }

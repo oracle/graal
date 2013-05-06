@@ -25,7 +25,6 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.amd64.AMD64HotSpotUnwindOp.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
@@ -55,15 +54,18 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         Kind word = graalRuntime.getTarget().wordKind;
 
         // @formatter:off
+
+        // The calling convention for the exception handler stub is (only?) defined in
+        // TemplateInterpreterGenerator::generate_throw_exception()
+        // in templateInterpreter_x86_64.cpp around line 1923 
         addStubCall(EXCEPTION_HANDLER,
-               /*             ret */ ret(Kind.Void),
+                /*            ret */ ret(Kind.Void),
                /* arg0: exception */ rax.asValue(Kind.Object),
              /* arg1: exceptionPc */ rdx.asValue(word));
 
-        addRuntimeCall(UNWIND_EXCEPTION, config.unwindExceptionStub,
-               /*           temps */ null,
-               /*             ret */ ret(Kind.Void),
-               /* arg0: exception */ rax.asValue(Kind.Object));
+        addJump(EXCEPTION_HANDLER_IN_CALLER,
+                /* arg0: exception */ rax.asValue(Kind.Object),
+               /* arg1: exceptionPc */ rdx.asValue(word));
 
         addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
                 /*           temps */ new Register[]{AMD64.rax},

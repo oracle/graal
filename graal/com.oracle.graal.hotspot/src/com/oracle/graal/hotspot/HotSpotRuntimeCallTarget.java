@@ -36,6 +36,11 @@ import com.oracle.graal.hotspot.stubs.*;
 public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
 
     /**
+     * Sentinel marker for a computed jump address.
+     */
+    public static final long JUMP_ADDRESS = 0xDEADDEADBEEFBEEFL;
+
+    /**
      * The descriptor of the stub. This is for informational purposes only.
      */
     public final Descriptor descriptor;

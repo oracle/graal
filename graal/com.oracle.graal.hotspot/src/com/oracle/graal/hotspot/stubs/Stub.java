@@ -232,36 +232,6 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return code;
     }
 
-    static void log(boolean enabled, String message) {
-        if (enabled) {
-            printf(message);
-        }
-    }
-
-    static void log(boolean enabled, String format, long value) {
-        if (enabled) {
-            printf(format, value);
-        }
-    }
-
-    static void log(boolean enabled, String format, WordBase value) {
-        if (enabled) {
-            printf(format, value.rawValue());
-        }
-    }
-
-    static void log(boolean enabled, String format, Word v1, long v2) {
-        if (enabled) {
-            printf(format, v1.rawValue(), v2);
-        }
-    }
-
-    static void log(boolean enabled, String format, Word v1, Word v2) {
-        if (enabled) {
-            printf(format, v1.rawValue(), v2.rawValue());
-        }
-    }
-
     static void handlePendingException(boolean isObjectResult) {
         if (clearPendingException(thread())) {
             if (isObjectResult) {

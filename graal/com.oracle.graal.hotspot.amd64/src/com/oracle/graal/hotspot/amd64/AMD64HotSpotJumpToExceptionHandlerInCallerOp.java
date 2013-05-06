@@ -24,42 +24,47 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
-import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Removes the current frame and jumps to the {@link UnwindExceptionToCallerStub}.
+ * Sets up the arguments for an exception handler in the callers frame, removes the current frame
+ * and jumps to the handler.
  */
-@Opcode("UNWIND")
-final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
+@Opcode("JUMP_TO_EXCEPTION_HANDLER_IN_CALLER")
+final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpilogueOp {
 
-    @Use({REG}) protected RegisterValue exception;
+    @Use(REG) AllocatableValue handlerInCallerPc;
+    @Use(REG) AllocatableValue exception;
+    @Use(REG) AllocatableValue exceptionPc;
 
-    AMD64HotSpotUnwindOp(RegisterValue exception) {
+    AMD64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc) {
+        this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
+        this.exceptionPc = exceptionPc;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
 
-        RuntimeCallTarget stub = tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention cc = stub.getCallingConvention();
-        assert cc.getArgumentCount() == 2;
-        assert exception == cc.getArgument(0);
+        // Discard the return address, thus completing restoration of caller frame
+        masm.incrementq(rsp, 8);
 
-        // Get return address (is on top of stack after leave).
-        Register returnAddress = asRegister(cc.getArgument(1));
-        masm.movq(returnAddress, new AMD64Address(rsp, 0));
+        // Restore rsp from rbp if the exception PC is a method handle call site.
+        Register thread = graalRuntime().getRuntime().threadRegister();
+        int isMethodHandleReturnOffset = graalRuntime().getConfig().threadIsMethodHandleReturnOffset;
+        AMD64Address dst = new AMD64Address(thread, isMethodHandleReturnOffset);
+        masm.cmpl(dst, 0);
+        masm.cmovq(ConditionFlag.NotEqual, rsp, rbp);
 
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER));
+        masm.jmp(asRegister(handlerInCallerPc));
     }
 }

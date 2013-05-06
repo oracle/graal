@@ -43,6 +43,7 @@ import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
 import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
+import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -225,10 +226,19 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void));
 
-        addCRuntimeCall(EXCEPTION_HANDLER_FOR_PC, config.handleExceptionForPcAddress,
+        addCRuntimeCall(EXCEPTION_HANDLER_FOR_PC, config.exceptionHandlerForPcAddress,
                         /*             ret */ ret(word),
                         /* arg0:    thread */ nativeCallingConvention(word));
 
+        addStubCall(UNWIND_EXCEPTION_TO_CALLER,
+                        /*             ret */ ret(Kind.Void),
+                        /* arg0: exception */ javaCallingConvention(Kind.Object,
+                    /* arg1: returnAddress */                       word));
+
+        addCRuntimeCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, config.exceptionHandlerForReturnAddressAddress,
+                        /*             ret */ ret(word),
+                        /* arg0:    thread */ nativeCallingConvention(word,
+                    /* arg1: returnAddress */                         word));
         addStubCall(REGISTER_FINALIZER,
                         /*             ret */ ret(Kind.Void),
                         /* arg0:    object */ javaCallingConvention(Kind.Object));
@@ -374,6 +384,23 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return addRuntimeCall(descriptor, 0L, null, ret, args);
     }
 
+    /**
+     * Registers the details for a jump to a target that has a signature (i.e. expects arguments in
+     * specified locations).
+     * 
+     * @param descriptor name and signature of the jump target
+     * @param args where arguments are passed to the call
+     */
+    protected RuntimeCallTarget addJump(Descriptor descriptor, AllocatableValue... args) {
+        return addRuntimeCall(descriptor, HotSpotRuntimeCallTarget.JUMP_ADDRESS, null, ret(Kind.Void), args);
+    }
+
+    /**
+     * Registers the details for a call to a runtime C/C++ function.
+     * 
+     * @param descriptor name and signature of the call
+     * @param args where arguments are passed to the call
+     */
     protected RuntimeCallTarget addCRuntimeCall(Descriptor descriptor, long address, AllocatableValue ret, AllocatableValue... args) {
         return addRuntimeCall(descriptor, address, true, null, ret, args);
     }
@@ -459,6 +486,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStub(new ThreadIsInterruptedStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(THREAD_IS_INTERRUPTED)));
         registerStub(new IdentityHashCodeStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(IDENTITY_HASHCODE)));
         registerStub(new ExceptionHandlerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(EXCEPTION_HANDLER)));
+        registerStub(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
     }
 
     private void registerStub(Stub stub) {

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
-import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
@@ -51,18 +49,8 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        if (isStackSlot(savedRbp)) {
-            // Restoring RBP from the stack must be done before the frame is removed
-            masm.movq(rbp, (AMD64Address) tasm.asAddress(savedRbp));
-        } else {
-            Register framePointer = asRegister(savedRbp);
-            if (framePointer != rbp) {
-                masm.movq(rbp, framePointer);
-            }
-        }
-        if (tasm.frameContext != null) {
-            tasm.frameContext.leave(tasm);
-        }
+        leaveFrameAndRestoreRbp(tasm, masm);
+
         HotSpotGraalRuntime runtime = graalRuntime();
         Register thread = runtime.getRuntime().threadRegister();
         masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
