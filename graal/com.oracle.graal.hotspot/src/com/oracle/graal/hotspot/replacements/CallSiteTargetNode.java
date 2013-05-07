@@ -67,13 +67,12 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        StructuredGraph graph = (StructuredGraph) graph();
         ConstantNode target = getConstantCallTarget(tool.getRuntime(), tool.assumptions());
 
         if (target != null) {
-            graph.replaceFixedWithFloating(this, target);
+            graph().replaceFixedWithFloating(this, target);
         } else {
-            graph.replaceFixedWithFixed(this, createInvoke());
+            graph().replaceFixedWithFixed(this, createInvoke());
         }
     }
 }

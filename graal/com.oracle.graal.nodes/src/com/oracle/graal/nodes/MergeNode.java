@@ -167,14 +167,13 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
             }
             Debug.log("Split %s into ends for %s.", this, merge);
             int numEnds = this.forwardEndCount();
-            StructuredGraph graph = (StructuredGraph) graph();
             for (int i = 0; i < numEnds - 1; i++) {
                 AbstractEndNode end = forwardEndAt(numEnds - 1 - i);
                 AbstractEndNode newEnd;
                 if (merge instanceof LoopBeginNode) {
-                    newEnd = graph.add(new LoopEndNode((LoopBeginNode) merge));
+                    newEnd = graph().add(new LoopEndNode((LoopBeginNode) merge));
                 } else {
-                    newEnd = graph.add(new EndNode());
+                    newEnd = graph().add(new EndNode());
                     merge.addForwardEnd(newEnd);
                 }
                 for (PhiNode phi : merge.phis()) {
@@ -193,7 +192,7 @@ public class MergeNode extends BeginStateSplitNode implements Node.IterableNodeT
                 end.safeDelete();
                 tool.addToWorkList(newEnd.predecessor()); // ?
             }
-            graph.reduceTrivialMerge(this);
+            graph().reduceTrivialMerge(this);
         }
     }
 }

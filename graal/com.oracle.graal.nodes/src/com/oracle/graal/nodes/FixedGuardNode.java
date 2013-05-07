@@ -84,7 +84,7 @@ public final class FixedGuardNode extends FixedWithNextNode implements Simplifia
         if (condition instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition;
             if (c.getValue() != negated) {
-                ((StructuredGraph) graph()).removeFixed(this);
+                graph().removeFixed(this);
             } else {
                 FixedNode next = this.next();
                 if (next != null) {

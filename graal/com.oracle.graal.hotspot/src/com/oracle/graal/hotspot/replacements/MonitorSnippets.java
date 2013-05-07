@@ -398,7 +398,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         public void lower(MonitorEnterNode monitorenterNode, @SuppressWarnings("unused") LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) monitorenterNode.graph();
+            StructuredGraph graph = monitorenterNode.graph();
             checkBalancedMonitors(graph);
             FrameState stateAfter = monitorenterNode.stateAfter();
 
@@ -425,7 +425,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) monitorexitNode.graph();
+            StructuredGraph graph = monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
 
             Arguments args;

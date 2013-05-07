@@ -151,12 +151,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (c.getValue()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, trueSuccessor());
+                graph().removeSplit(this, trueSuccessor());
                 return;
             } else {
                 tool.deleteBranch(trueSuccessor());
                 tool.addToWorkList(falseSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
+                graph().removeSplit(this, falseSuccessor());
                 return;
             }
         } else if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
@@ -354,7 +354,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         }
                         if (trueValue.isConstant() && falseValue.isConstant()) {
                             ConditionalNode materialize = graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
-                            ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
+                            graph().replaceFloating(singlePhi, materialize);
                             removeEmptyIf(tool);
                             return true;
                         }

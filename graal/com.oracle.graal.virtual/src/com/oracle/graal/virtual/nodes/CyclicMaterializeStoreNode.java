@@ -69,16 +69,15 @@ public final class CyclicMaterializeStoreNode extends FixedWithNextNode implemen
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        StructuredGraph graph = (StructuredGraph) graph();
         ResolvedJavaType type = object.objectStamp().type();
         FixedWithNextNode store;
         if (target instanceof Integer) {
-            store = graph.add(new StoreIndexedNode(object, ConstantNode.forInt((int) target, graph), type.getComponentType().getKind(), value));
+            store = graph().add(new StoreIndexedNode(object, ConstantNode.forInt((int) target, graph()), type.getComponentType().getKind(), value));
         } else {
             assert target instanceof ResolvedJavaField;
-            store = graph.add(new StoreFieldNode(object, (ResolvedJavaField) target, value));
+            store = graph().add(new StoreFieldNode(object, (ResolvedJavaField) target, value));
         }
-        graph.replaceFixedWithFixed(this, store);
+        graph().replaceFixedWithFixed(this, store);
     }
 
     @Override

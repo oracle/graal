@@ -77,7 +77,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
             // This begin node can be removed and all guards moved up to the preceding begin node.
             prepareDelete();
             tool.addToWorkList(next());
-            ((StructuredGraph) graph()).removeFixed(this);
+            graph().removeFixed(this);
         }
     }
 
@@ -121,7 +121,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
 
     @Override
     public boolean verify() {
-        assertTrue(predecessor() != null || this == ((StructuredGraph) graph()).start() || this instanceof MergeNode, "begin nodes must be connected");
+        assertTrue(predecessor() != null || this == graph().start() || this instanceof MergeNode, "begin nodes must be connected");
         return super.verify();
     }
 

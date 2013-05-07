@@ -148,7 +148,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
-        StructuredGraph graph = (StructuredGraph) loopBegin.graph();
+        StructuredGraph graph = loopBegin.graph();
         List<PhiNode> newPhis = new LinkedList<>();
         for (PhiNode phi : loopBegin.phis().snapshot()) {
             ValueNode first;

@@ -209,7 +209,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         public DuplicationOperation(MergeNode merge, List<PiNode> replacements) {
             this.merge = merge;
             this.replacements = replacements;
-            this.graph = (StructuredGraph) merge.graph();
+            this.graph = merge.graph();
         }
 
         /**

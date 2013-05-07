@@ -1125,7 +1125,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     private static ValueNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
-        StructuredGraph graph = (StructuredGraph) n.graph();
+        StructuredGraph graph = n.graph();
         ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
         ValueNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
 

@@ -95,7 +95,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                 }
             }
             tool.addToWorkList(blockSuccessor(survivingEdge));
-            ((StructuredGraph) graph()).removeSplit(this, blockSuccessor(survivingEdge));
+            graph().removeSplit(this, blockSuccessor(survivingEdge));
         }
         if (value() instanceof LoadHubNode) {
             ObjectStamp stamp = ((LoadHubNode) value()).object().objectStamp();
@@ -108,7 +108,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                 }
                 if (validKeys == 0) {
                     tool.addToWorkList(defaultSuccessor());
-                    ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessor());
+                    graph().removeSplitPropagate(this, defaultSuccessor());
                 } else if (validKeys != keys.length) {
                     ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     ResolvedJavaType[] newKeys = new ResolvedJavaType[validKeys];

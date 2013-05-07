@@ -164,7 +164,7 @@ public class CheckCastSnippets implements Snippets {
          * Lowers a checkcast node.
          */
         public void lower(CheckCastNode checkcast, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) checkcast.graph();
+            StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
             TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
@@ -200,7 +200,7 @@ public class CheckCastSnippets implements Snippets {
          * Lowers a dynamic checkcast node.
          */
         public void lower(CheckCastDynamicNode checkcast) {
-            StructuredGraph graph = (StructuredGraph) checkcast.graph();
+            StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
 
             Arguments args = new Arguments(dynamic);

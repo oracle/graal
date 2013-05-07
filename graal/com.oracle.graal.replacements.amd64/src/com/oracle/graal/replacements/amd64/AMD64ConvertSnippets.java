@@ -165,7 +165,7 @@ public class AMD64ConvertSnippets implements Snippets {
                 return;
             }
 
-            StructuredGraph graph = (StructuredGraph) convert.graph();
+            StructuredGraph graph = convert.graph();
 
             // Insert a unique placeholder node in place of the Convert node so that the
             // Convert node can be used as an input to the snippet. All usage of the

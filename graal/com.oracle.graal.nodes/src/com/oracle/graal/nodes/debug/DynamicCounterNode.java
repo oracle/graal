@@ -150,27 +150,26 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when not enabled");
         }
-        StructuredGraph graph = (StructuredGraph) graph();
-        if (excludedClassPrefix == null || !graph.method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
-            int index = addContext ? getIndex(name + " @ " + MetaUtil.format("%h.%n", ((StructuredGraph) graph()).method())) : getIndex(name);
+        if (excludedClassPrefix == null || !graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
+            int index = addContext ? getIndex(name + " @ " + MetaUtil.format("%h.%n", graph().method())) : getIndex(name);
             STATIC_COUNTERS[index] += increment;
             GROUPS[index] = group;
 
-            ConstantNode arrayConstant = ConstantNode.forObject(COUNTERS, tool.getRuntime(), graph);
-            ConstantNode indexConstant = ConstantNode.forInt(index, graph);
-            LoadIndexedNode load = graph.add(new LoadIndexedNode(arrayConstant, indexConstant, Kind.Long));
-            IntegerAddNode add = graph.add(new IntegerAddNode(Kind.Long, load, ConstantNode.forLong(increment, graph)));
-            StoreIndexedNode store = graph.add(new StoreIndexedNode(arrayConstant, indexConstant, Kind.Long, add));
+            ConstantNode arrayConstant = ConstantNode.forObject(COUNTERS, tool.getRuntime(), graph());
+            ConstantNode indexConstant = ConstantNode.forInt(index, graph());
+            LoadIndexedNode load = graph().add(new LoadIndexedNode(arrayConstant, indexConstant, Kind.Long));
+            IntegerAddNode add = graph().add(new IntegerAddNode(Kind.Long, load, ConstantNode.forLong(increment, graph())));
+            StoreIndexedNode store = graph().add(new StoreIndexedNode(arrayConstant, indexConstant, Kind.Long, add));
 
-            graph.addBeforeFixed(this, load);
-            graph.addBeforeFixed(this, store);
+            graph().addBeforeFixed(this, load);
+            graph().addBeforeFixed(this, store);
         }
-        graph.removeFixed(this);
+        graph().removeFixed(this);
     }
 
     public static void addCounterBefore(String group, String name, long increment, boolean addContext, FixedNode position) {
         if (enabled) {
-            StructuredGraph graph = (StructuredGraph) position.graph();
+            StructuredGraph graph = position.graph();
             DynamicCounterNode counter = graph.add(new DynamicCounterNode(name, group, increment, addContext));
             graph.addBeforeFixed(position, counter);
         }

@@ -170,7 +170,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
 
         private void lowerToIf(GuardNode guard) {
-            StructuredGraph graph = (StructuredGraph) guard.graph();
+            StructuredGraph graph = guard.graph();
             AbstractBeginNode fastPath = graph.add(new BeginNode());
             DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
             AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
@@ -200,7 +200,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private void insertLoopExits(DeoptimizeNode deopt) {
             Loop loop = block.getLoop();
-            StructuredGraph graph = (StructuredGraph) deopt.graph();
+            StructuredGraph graph = deopt.graph();
             while (loop != null) {
                 LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));
                 graph.addBeforeFixed(deopt, exit);

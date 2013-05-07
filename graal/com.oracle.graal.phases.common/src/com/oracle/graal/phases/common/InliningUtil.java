@@ -253,7 +253,7 @@ public class InliningUtil {
 
         protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InliningCallback callback, Replacements replacements, Assumptions assumptions, boolean receiverNullCheck) {
             Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(replacements, concrete);
-            StructuredGraph graph = (StructuredGraph) invoke.asNode().graph();
+            StructuredGraph graph = invoke.asNode().graph();
             if (macroNodeClass != null) {
                 if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
                     assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
@@ -1154,7 +1154,7 @@ public class InliningUtil {
      */
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
         NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
-        StructuredGraph graph = (StructuredGraph) invoke.asNode().graph();
+        StructuredGraph graph = invoke.asNode().graph();
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter.isAlive();
@@ -1286,7 +1286,7 @@ public class InliningUtil {
 
     public static void receiverNullCheck(Invoke invoke) {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-        StructuredGraph graph = (StructuredGraph) callTarget.graph();
+        StructuredGraph graph = callTarget.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {

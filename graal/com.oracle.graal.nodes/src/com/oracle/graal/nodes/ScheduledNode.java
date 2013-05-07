@@ -36,4 +36,9 @@ public abstract class ScheduledNode extends Node {
         updatePredecessor(scheduledNext, x);
         scheduledNext = x;
     }
+
+    @Override
+    public StructuredGraph graph() {
+        return (StructuredGraph) super.graph();
+    }
 }

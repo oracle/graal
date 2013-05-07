@@ -374,7 +374,7 @@ public class WordTypeRewriterPhase extends Phase {
         if (valueNode.isConstant() && valueNode.asConstant().getKind() == Kind.Object) {
             WordBase value = (WordBase) valueNode.asConstant().asObject();
             ConstantNode newConstant = ConstantNode.forIntegerKind(wordKind, value.rawValue(), valueNode.graph());
-            ((StructuredGraph) valueNode.graph()).replaceFloating((ConstantNode) valueNode, newConstant);
+            valueNode.graph().replaceFloating((ConstantNode) valueNode, newConstant);
         } else {
             assert !(valueNode instanceof ConstantNode) : "boxed Word constants should not appear in a snippet graph: " + valueNode + ", stamp: " + valueNode.stamp();
             valueNode.setStamp(StampFactory.forKind(wordKind));

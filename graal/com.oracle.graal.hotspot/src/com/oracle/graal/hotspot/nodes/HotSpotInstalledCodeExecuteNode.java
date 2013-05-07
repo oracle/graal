@@ -85,25 +85,24 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         }
         final int verifiedEntryPointOffset = HotSpotReplacementsUtil.verifiedEntryPointOffset();
 
-        StructuredGraph g = (StructuredGraph) graph();
+        LoadFieldNode loadCodeBlob = graph().add(new LoadFieldNode(code, codeBlobField));
+        UnsafeLoadNode load = graph().add(new UnsafeLoadNode(loadCodeBlob, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
 
-        LoadFieldNode loadCodeBlob = g.add(new LoadFieldNode(code, codeBlobField));
-        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadCodeBlob, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
+        LoadFieldNode loadMethod = graph().add(new LoadFieldNode(code, methodField));
+        LoadFieldNode loadmetaspaceMethod = graph().add(new LoadFieldNode(loadMethod, metaspaceMethodField));
 
-        LoadFieldNode loadMethod = g.add(new LoadFieldNode(code, methodField));
-        LoadFieldNode loadmetaspaceMethod = g.add(new LoadFieldNode(loadMethod, metaspaceMethodField));
+        HotSpotIndirectCallTargetNode callTarget = graph().add(
+                        new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments, stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
 
-        HotSpotIndirectCallTargetNode callTarget = g.add(new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments, stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
-
-        InvokeNode invoke = g.add(new InvokeNode(callTarget, 0));
+        InvokeNode invoke = graph().add(new InvokeNode(callTarget, 0));
 
         invoke.setStateAfter(stateAfter());
-        g.replaceFixedWithFixed(this, invoke);
+        graph().replaceFixedWithFixed(this, invoke);
 
-        g.addBeforeFixed(invoke, loadmetaspaceMethod);
-        g.addBeforeFixed(loadmetaspaceMethod, loadMethod);
-        g.addBeforeFixed(invoke, load);
-        g.addBeforeFixed(load, loadCodeBlob);
+        graph().addBeforeFixed(invoke, loadmetaspaceMethod);
+        graph().addBeforeFixed(loadmetaspaceMethod, loadMethod);
+        graph().addBeforeFixed(invoke, load);
+        graph().addBeforeFixed(load, loadCodeBlob);
 
         return invoke;
     }

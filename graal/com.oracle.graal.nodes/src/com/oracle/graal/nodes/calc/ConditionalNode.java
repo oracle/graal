@@ -97,7 +97,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     public Negatable negate(LogicNode cond) {
         assert condition() == cond;
         ConditionalNode replacement = graph().unique(new ConditionalNode(condition, falseValue(), trueValue()));
-        ((StructuredGraph) graph()).replaceFloating(this, replacement);
+        graph().replaceFloating(this, replacement);
         return replacement;
     }
 

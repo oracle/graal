@@ -185,7 +185,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testArrayCopy() {
         SchedulePhase schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
-        StructuredGraph graph = (StructuredGraph) schedule.getCFG().getStartBlock().getBeginNode().graph();
+        StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
         ReturnNode ret = graph.getNodes(ReturnNode.class).first();
         assertTrue(ret.result() instanceof FloatingReadNode);
         assertEquals(schedule.getCFG().blockFor(ret), schedule.getCFG().blockFor(ret.result()));

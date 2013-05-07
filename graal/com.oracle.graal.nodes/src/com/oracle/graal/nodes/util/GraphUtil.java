@@ -67,7 +67,7 @@ public class GraphUtil {
         MergeNode merge = end.merge();
         if (merge != null) {
             merge.removeEnd(end);
-            StructuredGraph graph = (StructuredGraph) end.graph();
+            StructuredGraph graph = end.graph();
             if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { // dead loop
                 for (PhiNode phi : merge.phis().snapshot()) {
                     propagateKill(phi);
@@ -141,7 +141,7 @@ public class GraphUtil {
         if (singleValue != null) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
-            ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
+            phiNode.graph().replaceFloating(phiNode, singleValue);
             for (PhiNode phi : phiUsages) {
                 checkRedundantPhi(phi);
             }
@@ -165,7 +165,7 @@ public class GraphUtil {
                 if (vpnValue == v2) {
                     Collection<PhiNode> phiUsages = vpn.usages().filter(PhiNode.class).snapshot();
                     Collection<ProxyNode> proxyUsages = vpn.usages().filter(ProxyNode.class).snapshot();
-                    ((StructuredGraph) vpn.graph()).replaceFloating(vpn, vpnValue);
+                    vpn.graph().replaceFloating(vpn, vpnValue);
                     for (PhiNode phi : phiUsages) {
                         checkRedundantPhi(phi);
                     }

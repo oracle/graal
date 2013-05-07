@@ -178,10 +178,9 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     public void removeExits() {
-        StructuredGraph graph = (StructuredGraph) graph();
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
-            graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
+            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
         }
     }
 }

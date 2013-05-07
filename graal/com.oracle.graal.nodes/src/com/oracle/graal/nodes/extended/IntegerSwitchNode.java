@@ -94,7 +94,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
     public void simplify(SimplifierTool tool) {
         if (blockSuccessorCount() == 1) {
             tool.addToWorkList(defaultSuccessor());
-            ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessor());
+            graph().removeSplitPropagate(this, defaultSuccessor());
         } else if (value() instanceof ConstantNode) {
             int constant = value().asConstant().asInt();
 
@@ -110,7 +110,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 }
             }
             tool.addToWorkList(blockSuccessor(survivingEdge));
-            ((StructuredGraph) graph()).removeSplit(this, blockSuccessor(survivingEdge));
+            graph().removeSplit(this, blockSuccessor(survivingEdge));
         } else if (value() != null) {
             IntegerStamp stamp = value().integerStamp();
             if (!stamp.isUnrestricted()) {
@@ -122,7 +122,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 }
                 if (validKeys == 0) {
                     tool.addToWorkList(defaultSuccessor());
-                    ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessor());
+                    graph().removeSplitPropagate(this, defaultSuccessor());
                 } else if (validKeys != keys.length) {
                     ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     int[] newKeys = new int[validKeys];

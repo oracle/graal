@@ -155,7 +155,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         private static void processFloatable(FloatableAccessNode accessNode, MemoryMap state) {
-            StructuredGraph graph = (StructuredGraph) accessNode.graph();
+            StructuredGraph graph = accessNode.graph();
             assert accessNode.getNullCheck() == false;
             LocationIdentity locationIdentity = accessNode.location().getLocationIdentity();
             if (locationIdentity != LocationNode.ANY_LOCATION) {
@@ -266,7 +266,7 @@ public class FloatingReadPhase extends Phase {
                 for (LocationIdentity location : modifiedLocations) {
                     ValueNode lastAccessAtExit = state.lastMemorySnapshot.get(location);
                     if (lastAccessAtExit != null) {
-                        state.lastMemorySnapshot.put(location, ProxyNode.forMemory(lastAccessAtExit, exit, location, (StructuredGraph) loop.graph()));
+                        state.lastMemorySnapshot.put(location, ProxyNode.forMemory(lastAccessAtExit, exit, location, loop.graph()));
                     }
                 }
             }

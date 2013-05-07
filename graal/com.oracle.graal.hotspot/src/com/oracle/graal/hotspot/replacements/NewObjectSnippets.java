@@ -216,7 +216,7 @@ public class NewObjectSnippets implements Snippets {
          */
         @SuppressWarnings("unused")
         public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
+            StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = instanceSize(type);
@@ -239,7 +239,7 @@ public class NewObjectSnippets implements Snippets {
          */
         @SuppressWarnings("unused")
         public void lower(NewArrayNode newArrayNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newArrayNode.graph();
+            StructuredGraph graph = newArrayNode.graph();
             ValueNode lengthNode = newArrayNode.length();
             TLABAllocateNode tlabAllocateNode;
             ResolvedJavaType elementType = newArrayNode.elementType();
@@ -283,7 +283,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
+            StructuredGraph graph = tlabAllocateNode.graph();
             ValueNode size = tlabAllocateNode.size();
             Arguments args = new Arguments(allocate).add("size", size);
 
@@ -294,7 +294,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(InitializeObjectNode initializeNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) initializeNode.graph();
+            StructuredGraph graph = initializeNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
@@ -314,7 +314,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(InitializeArrayNode initializeNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) initializeNode.graph();
+            StructuredGraph graph = initializeNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             ResolvedJavaType elementType = type.getComponentType();
             assert elementType != null;
@@ -339,7 +339,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newmultiarrayNode.graph();
+            StructuredGraph graph = newmultiarrayNode.graph();
             int rank = newmultiarrayNode.dimensionCount();
             ValueNode[] dims = new ValueNode[rank];
             for (int i = 0; i < newmultiarrayNode.dimensionCount(); i++) {

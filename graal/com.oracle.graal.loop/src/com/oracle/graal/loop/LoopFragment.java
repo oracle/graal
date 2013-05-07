@@ -95,7 +95,7 @@ public abstract class LoopFragment {
         } else {
             l = loop();
         }
-        return (StructuredGraph) l.loopBegin().graph();
+        return l.loopBegin().graph();
     }
 
     protected abstract DuplicationReplacement getDuplicationReplacement();
