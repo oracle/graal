@@ -151,8 +151,7 @@ public interface CompilerToVM {
      * Installs the result of a compilation into the code cache.
      * 
      * @param compResult the result of a compilation
-     * @param code if not null, then the code is installed as the non-default compiled code for the
-     *            associated method and the details of the installation are written to this object
+     * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
     CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, SpeculationLog cache);
