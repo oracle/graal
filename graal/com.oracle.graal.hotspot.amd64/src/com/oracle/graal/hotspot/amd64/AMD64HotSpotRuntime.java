@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.compiler.amd64.AMD64LIRGenerator.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
@@ -35,7 +34,6 @@ import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.Encryp
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -65,18 +63,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         addJump(EXCEPTION_HANDLER_IN_CALLER,
                 /* arg0: exception */ rax.asValue(Kind.Object),
                /* arg1: exceptionPc */ rdx.asValue(word));
-
-        addRuntimeCall(ARITHMETIC_FREM, config.arithmeticFremStub,
-                /*           temps */ new Register[]{AMD64.rax},
-                /*             ret */ ret(Kind.Float),
-                /* arg0:         a */ javaCallingConvention(Kind.Float,
-                /* arg1:         b */                       Kind.Float));
-
-        addRuntimeCall(ARITHMETIC_DREM, config.arithmeticDremStub,
-                /*           temps */ new Register[]{AMD64.rax},
-                /*             ret */ ret(Kind.Double),
-                /* arg0:         a */ javaCallingConvention(Kind.Double,
-                /* arg1:         b */                       Kind.Double));
 
         addRuntimeCall(MONITORENTER, config.monitorEnterStub,
                 /*        temps */ null,

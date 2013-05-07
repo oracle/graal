@@ -84,16 +84,16 @@ public abstract class LIRInstruction {
         /**
          * The value must have been defined before. It is alive before the instruction until the
          * beginning of the instruction, but not necessarily throughout the instruction. A register
-         * assigned to it can also be assigend to a Temp or Output operand. The value can be used
-         * again after the instruction, so the instruction must not modify the register.
+         * assigned to it can also be assigned to a {@link #TEMP} or {@link #DEF} operand. The value
+         * can be used again after the instruction, so the instruction must not modify the register.
          */
         USE,
 
         /**
          * The value must have been defined before. It is alive before the instruction and
-         * throughout the instruction. A register assigned to it cannot be assigned to a Temp or
-         * Output operand. The value can be used again after the instruction, so the instruction
-         * must not modify the register.
+         * throughout the instruction. A register assigned to it cannot be assigned to a
+         * {@link #TEMP} or {@link #DEF} operand. The value can be used again after the instruction,
+         * so the instruction must not modify the register.
          */
         ALIVE,
 
