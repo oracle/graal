@@ -32,9 +32,14 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
- * Implementation of {@link InstalledCode} for HotSpot. Stores a reference to the nmethod which
- * contains the compiled code. The nmethod also stores a weak reference to the HotSpotCompiledMethod
- * instance which is necessary to keep the nmethod from being unloaded.
+ * Implementation of {@link InstalledCode} for HotSpot. If the code is installed as an nmethod (as
+ * opposed to some other subclass of CodeBlob such as RuntimeStub), then the nmethod stores a weak
+ * reference to an instance of this class. This is necessary to keep the nmethod from being unloaded
+ * while the associated {@link HotSpotInstalledCode} instance is alive.
+ * <p>
+ * Note that there is no (current) way for the reference from an nmethod to a
+ * {@link HotSpotInstalledCode} instance to be anything but weak. This is due to the fact that
+ * HotSpot does not treat nmethods as strong GC roots.
  */
 public class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
 
@@ -84,7 +89,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public String toString() {
-        return String.format("InstalledCode[method=%s, codeBlob=0x%x]", method, codeBlob);
+        return String.format("InstalledCode[method=%s, codeBlob=0x%x, isDefault=%b, isNmethod=%b]", method, codeBlob, isDefault, isNmethod);
     }
 
     @Override
