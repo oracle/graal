@@ -27,7 +27,6 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
@@ -38,11 +37,11 @@ import com.oracle.graal.replacements.*;
  */
 public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    @Input private ValueNode format;
+    private final String format;
     @Input private ValueNode value;
     public static final Descriptor VM_ERROR = new Descriptor("vm_error", false, void.class, Object.class, Object.class, long.class);
 
-    public VMErrorNode(ValueNode format, ValueNode value) {
+    private VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());
         this.format = format;
         this.value = value;
@@ -50,21 +49,19 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        String where = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
+        String whereString = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
 
-        HotSpotRuntime runtime = (HotSpotRuntime) gen.getRuntime();
-        Constant whereArg = Constant.forObject(runtime.registerGCRoot(where));
-        Value formatArg;
-        if (format.isConstant() && format.kind() == Kind.Object) {
-            formatArg = Constant.forObject(runtime.registerGCRoot(format.asConstant().asObject()));
-        } else {
-            formatArg = gen.operand(format);
-        }
+        // As these strings will end up embedded as oops in the code, they
+        // must be interned or else they will cause the nmethod to be unloaded
+        // (nmethods are a) weak GC roots and b) unloaded if any of their
+        // embedded oops become unreachable).
+        Constant whereArg = Constant.forObject(whereString.intern());
+        Constant formatArg = Constant.forObject(format.intern());
 
         RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
         gen.emitCall(stub, stub.getCallingConvention(), null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic
-    public static native void vmError(String format, long value);
+    public static native void vmError(@ConstantNodeParameter String format, long value);
 }

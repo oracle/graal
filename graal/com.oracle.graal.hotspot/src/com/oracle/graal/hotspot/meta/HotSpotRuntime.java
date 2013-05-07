@@ -126,13 +126,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private final Map<ResolvedJavaMethod, Stub> stubs = new HashMap<>();
 
     /**
-     * Holds onto objects that will be embedded in compiled code. HotSpot treats oops embedded in
-     * code as weak references so without an external strong root, such an embedded oop will quickly
-     * die. This in turn will cause the nmethod to be unloaded.
-     */
-    private final Map<Object, Object> gcRoots = new HashMap<>();
-
-    /**
      * The offset from the origin of an array to the first element.
      * 
      * @return the offset in bytes
@@ -1260,20 +1253,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public boolean needsDataPatch(Constant constant) {
         return constant.getPrimitiveAnnotation() != null;
-    }
-
-    /**
-     * Registers an object created by the compiler and referenced by some generated code. HotSpot
-     * treats oops embedded in code as weak references so without an external strong root, such an
-     * embedded oop will quickly die. This in turn will cause the nmethod to be unloaded.
-     */
-    public synchronized Object registerGCRoot(Object object) {
-        Object existing = gcRoots.get(object);
-        if (existing != null) {
-            return existing;
-        }
-        gcRoots.put(object, object);
-        return object;
     }
 
     @Override
