@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
 
@@ -29,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
@@ -157,7 +159,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                             graph = graph.copy();
                         }
                         InlinedBytecodes.add(method.getCodeSize());
-                        return GraalCompiler.compileMethod(graalRuntime.getRuntime(), replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, graalRuntime.getCache(), plan,
+                        HotSpotRuntime runtime = graalRuntime.getRuntime();
+                        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+                        return GraalCompiler.compileMethod(runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), method, graph, cc, graalRuntime.getCache(), plan,
                                         optimisticOpts, method.getSpeculationLog());
                     }
                 });

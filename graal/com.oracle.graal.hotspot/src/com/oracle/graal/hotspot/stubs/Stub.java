@@ -55,7 +55,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
@@ -206,7 +207,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     PhasePlan phasePlan = new PhasePlan();
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                    final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan,
+                    CallingConvention cc = linkage.getCallingConvention();
+                    final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, cc, null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog());
 
                     assert checkStubInvariants(compResult);

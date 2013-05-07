@@ -42,8 +42,8 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new PTXLIRGenerator(graph, runtime(), target, frameMap, method, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir) {
+        return new PTXLIRGenerator(graph, runtime(), target, frameMap, method, cc, lir);
     }
 
     class HotSpotFrameContext implements FrameContext {

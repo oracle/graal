@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
-import com.oracle.graal.api.code.CompilationResult;
-import com.oracle.graal.api.code.SpeculationLog;
-import com.oracle.graal.api.code.TargetDescription;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.*;
 import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.ptx.PTXBackend;
@@ -56,8 +56,9 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
+        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
         CompilationResult result = GraalCompiler.compileMethod(runtime, graalRuntime().getReplacements(),
-                                                               ptxBackend, target, graph.method(), graph, null, phasePlan,
+                                                               ptxBackend, target, graph.method(), graph, cc, null, phasePlan,
                                                                OptimisticOptimizations.NONE, new SpeculationLog());
         return result;
     }

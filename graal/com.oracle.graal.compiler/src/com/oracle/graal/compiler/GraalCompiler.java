@@ -50,8 +50,8 @@ import com.oracle.graal.virtual.phases.ea.*;
 public class GraalCompiler {
 
     public static CompilationResult compileMethod(final GraalCodeCacheProvider runtime, final Replacements replacements, final Backend backend, final TargetDescription target,
-                    final ResolvedJavaMethod method, final StructuredGraph graph, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog) {
+                    final ResolvedJavaMethod method, final StructuredGraph graph, final CallingConvention cc, final GraphCache cache, final PhasePlan plan,
+                    final OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
         assert (method.getModifiers() & Modifier.NATIVE) == 0 : "compiling native methods is not supported";
 
         final CompilationResult compilationResult = new CompilationResult();
@@ -68,7 +68,7 @@ public class GraalCompiler {
                 final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
 
                     public LIRGenerator call() {
-                        return emitLIR(backend, target, lir, graph, method);
+                        return emitLIR(backend, target, lir, graph, method, cc);
                     }
                 });
                 Debug.scope("CodeGen", lirGen, new Runnable() {
@@ -174,9 +174,9 @@ public class GraalCompiler {
 
     }
 
-    public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
+    public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, CallingConvention cc) {
         final FrameMap frameMap = backend.newFrameMap();
-        final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, method, lir);
+        final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, method, cc, lir);
 
         Debug.scope("LIRGen", lirGen, new Runnable() {
 

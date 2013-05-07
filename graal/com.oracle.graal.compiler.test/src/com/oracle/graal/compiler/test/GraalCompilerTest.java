@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -29,6 +31,7 @@ import java.util.concurrent.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
@@ -410,7 +413,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
                 editPhasePlan(method, graph, phasePlan);
-                CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), method, graph, null, phasePlan, OptimisticOptimizations.ALL,
+                CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+                CompilationResult compResult = GraalCompiler.compileMethod(runtime, replacements, backend, runtime().getTarget(), method, graph, cc, null, phasePlan, OptimisticOptimizations.ALL,
                                 new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
