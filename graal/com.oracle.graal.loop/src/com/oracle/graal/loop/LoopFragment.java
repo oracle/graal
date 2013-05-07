@@ -183,10 +183,11 @@ public abstract class LoopFragment {
             }
         }
 
+        final NodeBitMap notloopNodes = graph.createNodeBitMap(true);
         for (AbstractBeginNode b : blocks) {
             for (Node n : b.getBlockNodes()) {
                 for (Node usage : n.usages()) {
-                    markFloating(usage, nodes);
+                    markFloating(usage, nodes, notloopNodes);
                 }
             }
         }
@@ -194,9 +195,12 @@ public abstract class LoopFragment {
         return nodes;
     }
 
-    private static boolean markFloating(Node n, NodeBitMap loopNodes) {
+    private static boolean markFloating(Node n, NodeBitMap loopNodes, NodeBitMap notloopNodes) {
         if (loopNodes.isMarked(n)) {
             return true;
+        }
+        if (notloopNodes.isMarked(n)) {
+            return false;
         }
         if (n instanceof FixedNode) {
             return false;
@@ -208,11 +212,12 @@ public abstract class LoopFragment {
             if (mark) {
                 loopNodes.mark(n);
             } else {
+                notloopNodes.mark(n);
                 return false;
             }
         }
         for (Node usage : n.usages()) {
-            if (markFloating(usage, loopNodes)) {
+            if (markFloating(usage, loopNodes, notloopNodes)) {
                 mark = true;
             }
         }
@@ -220,6 +225,7 @@ public abstract class LoopFragment {
             loopNodes.mark(n);
             return true;
         }
+        notloopNodes.mark(n);
         return false;
     }
 
