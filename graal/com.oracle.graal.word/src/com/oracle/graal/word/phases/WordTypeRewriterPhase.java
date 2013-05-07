@@ -45,11 +45,13 @@ import com.oracle.graal.word.Word.Operation;
  */
 public class WordTypeRewriterPhase extends Phase {
 
+    private final MetaAccessProvider metaAccess;
     private final ResolvedJavaType wordBaseType;
     private final ResolvedJavaType wordImplType;
     private final Kind wordKind;
 
     public WordTypeRewriterPhase(MetaAccessProvider metaAccess, Kind wordKind) {
+        this.metaAccess = metaAccess;
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
@@ -157,20 +159,30 @@ public class WordTypeRewriterPhase extends Phase {
                         replace(invoke, graph.unique(new XorNode(wordKind, arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
                         break;
 
-                    case READ:
+                    case READ: {
                         assert arguments.size() == 2 || arguments.size() == 3;
                         Kind readKind = asKind(callTargetNode.returnType());
-                        LocationIdentity readLocation = arguments.size() == 2 ? LocationNode.ANY_LOCATION : (LocationIdentity) arguments.get(2).asConstant().asObject();
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, readLocation));
+                        LocationNode location;
+                        if (arguments.size() == 2) {
+                            location = makeLocation(graph, arguments.get(1), readKind, LocationNode.ANY_LOCATION);
+                        } else {
+                            location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                        }
+                        replace(invoke, readOp(graph, arguments.get(0), invoke, location));
                         break;
-
-                    case WRITE:
+                    }
+                    case WRITE: {
                         assert arguments.size() == 3 || arguments.size() == 4;
                         Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
-                        LocationIdentity writeLocation = arguments.size() == 3 ? LocationNode.ANY_LOCATION : (LocationIdentity) arguments.get(3).asConstant().asObject();
-                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, writeKind, writeLocation));
+                        LocationNode location;
+                        if (arguments.size() == 3) {
+                            location = makeLocation(graph, arguments.get(1), writeKind, LocationNode.ANY_LOCATION);
+                        } else {
+                            location = makeLocation(graph, arguments.get(1), writeKind, arguments.get(3));
+                        }
+                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location));
                         break;
-
+                    }
                     case ZERO:
                         assert arguments.size() == 0;
                         replace(invoke, ConstantNode.forIntegerKind(wordKind, 0L, graph));
@@ -285,8 +297,18 @@ public class WordTypeRewriterPhase extends Phase {
         return materialize;
     }
 
-    private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset, Invoke invoke, Kind readKind, LocationIdentity locationIdentity) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
+    private LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
+        if (locationIdentity.isConstant()) {
+            return makeLocation(graph, offset, readKind, (LocationIdentity) locationIdentity.asConstant().asObject());
+        }
+        return SnippetLocationNode.create(locationIdentity, ConstantNode.forObject(readKind, metaAccess, graph), ConstantNode.forLong(0, graph), offset, ConstantNode.forInt(1, graph), graph);
+    }
+
+    private static LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, LocationIdentity locationIdentity) {
+        return IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
+    }
+
+    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location) {
         ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp()));
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
@@ -295,8 +317,7 @@ public class WordTypeRewriterPhase extends Phase {
         return read;
     }
 
-    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset, ValueNode value, Invoke invoke, Kind writeKind, LocationIdentity locationIdentity) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, writeKind, 0, offset, graph, 1);
+    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location) {
         WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);

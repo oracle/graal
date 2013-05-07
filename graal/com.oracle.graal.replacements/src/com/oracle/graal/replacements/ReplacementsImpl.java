@@ -320,6 +320,10 @@ public class ReplacementsImpl implements Replacements {
             graphBuilder.apply(graph);
 
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
+            if (GraalOptions.OptCanonicalizer) {
+                new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
+                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+            }
 
             return graph;
         }

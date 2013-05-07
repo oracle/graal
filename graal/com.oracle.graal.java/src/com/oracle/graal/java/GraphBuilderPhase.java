@@ -1003,13 +1003,8 @@ public class GraphBuilderPhase extends Phase {
     private void genGetStatic(JavaField field) {
         Kind kind = field.getKind();
         if (field instanceof ResolvedJavaField && ((ResolvedJavaType) field.getDeclaringClass()).isInitialized()) {
-            Constant constantValue = ((ResolvedJavaField) field).readConstantValue(null);
-            if (constantValue != null) {
-                frameState.push(constantValue.getKind().getStackKind(), appendConstant(constantValue));
-            } else {
-                LoadFieldNode load = currentGraph.add(new LoadFieldNode(null, (ResolvedJavaField) field));
-                appendOptimizedLoadField(kind, load);
-            }
+            LoadFieldNode load = currentGraph.add(new LoadFieldNode(null, (ResolvedJavaField) field));
+            appendOptimizedLoadField(kind, load);
         } else {
             handleUnresolvedLoadField(field, null);
         }

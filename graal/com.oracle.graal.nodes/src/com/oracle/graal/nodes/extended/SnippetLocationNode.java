@@ -43,6 +43,10 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     @Input private ValueNode index;
     @Input private ValueNode indexScaling;
 
+    public static SnippetLocationNode create(ValueNode identity, ValueNode kind, ValueNode displacement, ValueNode index, ValueNode indexScaling, Graph graph) {
+        return graph.unique(new SnippetLocationNode(identity, kind, displacement, index, indexScaling));
+    }
+
     private SnippetLocationNode(ValueNode locationIdentity, ValueNode kind, ValueNode displacement) {
         this(locationIdentity, kind, displacement, null, null);
     }
