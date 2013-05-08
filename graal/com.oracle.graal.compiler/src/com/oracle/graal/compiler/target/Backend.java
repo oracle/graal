@@ -51,7 +51,7 @@ public abstract class Backend {
         return new FrameMap(runtime, target, runtime.lookupRegisterConfig());
     }
 
-    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir);
+    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);
 
     protected abstract AbstractAssembler createAssembler(FrameMap frameMap);
 

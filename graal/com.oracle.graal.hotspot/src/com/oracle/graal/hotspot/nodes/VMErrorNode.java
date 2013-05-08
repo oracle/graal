@@ -49,7 +49,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        String whereString = "in compiled code for " + MetaUtil.format("%H.%n(%p)", gen.method());
+        String whereString = "in compiled code for " + graph();
 
         // As these strings will end up embedded as oops in the code, they
         // must be interned or else they will cause the nmethod to be unloaded

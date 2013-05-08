@@ -176,7 +176,7 @@ public class GraalCompiler {
 
     public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, CallingConvention cc) {
         final FrameMap frameMap = backend.newFrameMap();
-        final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, method, cc, lir);
+        final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, cc, lir);
 
         Debug.scope("LIRGen", lirGen, new Runnable() {
 

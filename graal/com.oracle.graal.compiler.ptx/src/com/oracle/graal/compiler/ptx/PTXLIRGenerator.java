@@ -81,8 +81,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, method, cc, lir);
+    public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, runtime, target, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
     }
 

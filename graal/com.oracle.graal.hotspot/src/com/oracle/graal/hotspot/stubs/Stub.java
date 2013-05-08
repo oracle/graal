@@ -204,6 +204,11 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     SnippetTemplate template = template(args);
                     StructuredGraph graph = template.copySpecializedGraph();
 
+                    StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
+                    newStart.setStateAfter(graph.start().stateAfter());
+                    graph.replaceFixed(graph.start(), newStart);
+                    graph.setStart(newStart);
+
                     PhasePlan phasePlan = new PhasePlan();
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);

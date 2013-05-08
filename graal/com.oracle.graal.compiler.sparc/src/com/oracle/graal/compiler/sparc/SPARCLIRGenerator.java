@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.java.*;
  */
 public class SPARCLIRGenerator extends LIRGenerator {
 
-    public SPARCLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, method, cc, lir);
+    public SPARCLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, runtime, target, frameMap, cc, lir);
         // SPARC: Implement lir generator.
     }
 

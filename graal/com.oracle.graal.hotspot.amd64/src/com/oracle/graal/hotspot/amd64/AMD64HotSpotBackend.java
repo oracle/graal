@@ -64,8 +64,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir) {
-        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, method, cc, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
     }
 
     /**
@@ -160,7 +160,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         LIR lir = gen.lir;
         boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
-        Stub stub = runtime().asStub(lirGen.method());
+        Stub stub = gen.getStub();
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);

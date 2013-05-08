@@ -92,8 +92,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, method, cc, lir);
+    public AMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, runtime, target, frameMap, cc, lir);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
 
