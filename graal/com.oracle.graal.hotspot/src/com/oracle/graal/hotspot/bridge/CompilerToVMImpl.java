@@ -145,6 +145,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int getVtableEntryOffset(long metaspaceMethod);
 
     @Override
+    public native boolean hasVtableEntry(long metaspaceMethod);
+
+    @Override
     public native long[] getDeoptedLeafGraphIds();
 
     @Override

@@ -640,7 +640,6 @@ public class InliningUtil {
                 assert concretes.size() > 0;
                 Debug.log("Method check cascade with %d methods", concretes.size());
 
-                LoadMethodNode[] methods = new LoadMethodNode[concretes.size()];
                 ValueNode[] constantMethods = new ValueNode[concretes.size()];
                 double[] probability = new double[concretes.size()];
                 for (int i = 0; i < concretes.size(); ++i) {
@@ -665,8 +664,7 @@ public class InliningUtil {
                 FixedNode lastSucc = successors[concretes.size()];
                 for (int i = concretes.size() - 1; i >= 0; --i) {
                     LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), hub, constantMethods[i].kind()));
-                    methods[i] = method;
-                    CompareNode methodCheck = CompareNode.createCompareNode(Condition.EQ, methods[i], constantMethods[i]);
+                    CompareNode methodCheck = CompareNode.createCompareNode(Condition.EQ, method, constantMethods[i]);
                     IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
                     method.setNext(ifNode);
                     lastSucc = method;
@@ -698,6 +696,12 @@ public class InliningUtil {
         }
 
         private boolean chooseMethodDispatch() {
+            for (ResolvedJavaMethod concrete : concretes) {
+                if (!concrete.isInVirtualMethodTable()) {
+                    return false;
+                }
+            }
+
             if (concretes.size() == 1 && this.notRecordedTypeProbability > 0) {
                 // Always chose method dispatch if there is a single concrete method and the call
                 // site is megamorphic.
