@@ -52,7 +52,7 @@ import com.oracle.graal.word.*;
  * code when TLAB allocation fails. If this stub fails to refill the TLAB or allocate the object, it
  * calls out to the HotSpot C++ runtime for to complete the allocation.
  */
-public class NewInstanceStub extends Stub {
+public class NewInstanceStub extends SnippetStub {
 
     public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);

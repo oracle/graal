@@ -32,7 +32,7 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 /**
  * Base class for a stub that saves registers around a C runtime call.
  */
-public abstract class CRuntimeStub extends Stub {
+public abstract class CRuntimeStub extends SnippetStub {
 
     public CRuntimeStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);

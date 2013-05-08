@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -55,29 +54,17 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
 //JaCoCo Exclude
 
 /**
- * Base class for implementing some low level code providing the out-of-line slow path for a
- * snippet. A stub may make a direct call to a HotSpot C/C++ runtime function. Stubs are installed
- * as an instance of the C++ RuntimeStub class (as opposed to nmethod).
- * <p>
- * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
- * purely for convenience (e.g., can re-use the {@link ReplacementsImpl}).
+ * Base class for implementing some low level code providing the out-of-line slow path for a snippet
+ * and/or a callee saved call to a HotSpot C/C++ runtime function or even a another compiled Java
+ * method.
  */
-public abstract class Stub extends AbstractTemplates implements Snippets {
-
-    /**
-     * The method implementing the stub.
-     */
-    protected final SnippetInfo stubInfo;
+public abstract class Stub {
 
     /**
      * The linkage information for the stub.
@@ -117,31 +104,19 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return true;
     }
 
+    protected final HotSpotRuntime runtime;
+
+    protected final Replacements replacements;
+
     /**
-     * Creates a new stub container..
+     * Creates a new stub.
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public Stub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target);
-        this.stubInfo = snippet(getClass(), null);
+    public Stub(HotSpotRuntime runtime, Replacements replacements, HotSpotRuntimeCallTarget linkage) {
         this.linkage = linkage;
-    }
-
-    /**
-     * Adds the {@linkplain ConstantParameter constant} arguments of this stub.
-     */
-    protected abstract Arguments makeArguments(SnippetInfo stub);
-
-    protected HotSpotRuntime runtime() {
-        return (HotSpotRuntime) runtime;
-    }
-
-    /**
-     * Gets the method implementing this stub.
-     */
-    public ResolvedJavaMethod getMethod() {
-        return stubInfo.getMethod();
+        this.runtime = runtime;
+        this.replacements = replacements;
     }
 
     public HotSpotRuntimeCallTarget getLinkage() {
@@ -154,16 +129,15 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     private boolean checkStubInvariants(CompilationResult compResult) {
         for (DataPatch data : compResult.getDataReferences()) {
             Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : format("%h.%n(%p): ", getMethod()) + "cannot have embedded object constant: " + constant;
-            assert constant.getPrimitiveAnnotation() == null : format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
+            assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
+            assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
-            assert infopoint instanceof Call : format("%h.%n(%p): ", getMethod()) + "cannot have non-call infopoint: " + infopoint;
+            assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
             Call call = (Call) infopoint;
-            assert call.target instanceof HotSpotRuntimeCallTarget : format("%h.%n(%p): ", getMethod()) + "cannot have non runtime call: " + call.target;
+            assert call.target instanceof HotSpotRuntimeCallTarget : this + " cannot have non runtime call: " + call.target;
             HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : format("%h.%n(%p): ", getMethod()) +
-                            "must only call C runtime or deoptimization stub, not " + call.target;
+            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : this + "must only call C runtime or deoptimization stub, not " + call.target;
         }
         return true;
     }
@@ -190,19 +164,27 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return new Descriptor(name, hasSideEffect, found.getReturnType(), cCallTypes);
     }
 
+    protected abstract StructuredGraph getGraph();
+
+    @Override
+    public abstract String toString();
+
+    /**
+     * Gets the method under which the compiled code for this stub is
+     * {@linkplain CodeCacheProvider#addMethod(ResolvedJavaMethod, CompilationResult) installed}.
+     */
+    protected abstract ResolvedJavaMethod getInstallationMethod();
+
     /**
      * Gets the code for this stub, compiling it first if necessary.
      */
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
-            Debug.sandbox("CompilingStub", new Object[]{runtime(), getMethod()}, DebugScope.getConfig(), new Runnable() {
+            final StructuredGraph graph = getGraph();
+            Debug.sandbox("CompilingStub", new Object[]{runtime, graph}, DebugScope.getConfig(), new Runnable() {
 
                 @Override
                 public void run() {
-
-                    Arguments args = makeArguments(stubInfo);
-                    SnippetTemplate template = template(args);
-                    StructuredGraph graph = template.copySpecializedGraph();
 
                     StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
                     newStart.setStateAfter(graph.start().stateAfter());
@@ -213,7 +195,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     CallingConvention cc = linkage.getCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, runtime(), replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, runtime, replacements, backend, runtime.getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
                                     new SpeculationLog());
 
                     assert checkStubInvariants(compResult);
@@ -223,8 +205,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
 
                         @Override
                         public InstalledCode call() {
-                            InstalledCode installedCode = runtime().addMethod(getMethod(), compResult);
-                            assert installedCode != null : "error installing stub " + getMethod();
+                            InstalledCode installedCode = runtime.addMethod(getInstallationMethod(), compResult);
+                            assert installedCode != null : "error installing stub " + this;
                             if (Debug.isDumpEnabled()) {
                                 Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                             }
@@ -235,7 +217,7 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     });
                 }
             });
-            assert code != null : "error installing stub " + getMethod();
+            assert code != null : "error installing stub " + this;
         }
         return code;
     }
