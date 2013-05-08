@@ -68,7 +68,7 @@ public class GraalCompiler {
                 final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
 
                     public LIRGenerator call() {
-                        return emitLIR(backend, target, lir, graph, method, cc);
+                        return emitLIR(backend, target, lir, graph, cc);
                     }
                 });
                 Debug.scope("CodeGen", lirGen, new Runnable() {
@@ -174,7 +174,7 @@ public class GraalCompiler {
 
     }
 
-    public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method, CallingConvention cc) {
+    public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, CallingConvention cc) {
         final FrameMap frameMap = backend.newFrameMap();
         final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, cc, lir);
 
@@ -205,7 +205,7 @@ public class GraalCompiler {
         Debug.scope("Allocator", new Runnable() {
 
             public void run() {
-                new LinearScan(target, method, lir, lirGen, frameMap).allocate();
+                new LinearScan(target, lir, lirGen, frameMap).allocate();
             }
         });
         return lirGen;

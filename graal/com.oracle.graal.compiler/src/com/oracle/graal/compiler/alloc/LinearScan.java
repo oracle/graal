@@ -56,7 +56,6 @@ import com.oracle.graal.phases.util.*;
 public final class LinearScan {
 
     final TargetDescription target;
-    final JavaMethod method;
     final LIR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
@@ -156,9 +155,8 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(TargetDescription target, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
-        this.method = method;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
@@ -884,7 +882,7 @@ public final class LinearScan {
     }
 
     private void reportFailure(int numBlocks) {
-        TTY.println(method.toString());
+        TTY.println(gen.getGraph().toString());
         TTY.println("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined)");
         TTY.print("affected registers:");
         TTY.println(blockData.get(ir.cfg.getStartBlock()).liveIn.toString());

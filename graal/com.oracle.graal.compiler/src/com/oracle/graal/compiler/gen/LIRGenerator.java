@@ -118,6 +118,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return runtime;
     }
 
+    public StructuredGraph getGraph() {
+        return graph;
+    }
+
     /**
      * Returns the operand that has been previously initialized by
      * {@link #setResult(ValueNode, Value)} with the result of an instruction.
