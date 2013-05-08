@@ -53,7 +53,7 @@ public class ControlFlowGraph {
             cfg.computePostdominators();
         }
         // there's not much to verify when connectBlocks == false
-        assert !connectBlocks || CFGVerifier.verify(cfg);
+        assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
         return cfg;
     }
 
