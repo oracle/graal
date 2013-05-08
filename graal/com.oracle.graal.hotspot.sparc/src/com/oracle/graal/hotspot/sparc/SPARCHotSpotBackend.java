@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.sparc.*;
@@ -60,7 +59,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen) {
         // SPARC: Emit code
     }
 }

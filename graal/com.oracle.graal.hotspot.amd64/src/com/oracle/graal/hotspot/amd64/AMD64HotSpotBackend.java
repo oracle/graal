@@ -219,12 +219,13 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = runtime().config;
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
+        ResolvedJavaMethod method = lirGen.getGraph().method();
+        boolean isStatic = method == null || Modifier.isStatic(method.getModifiers());
         Label unverifiedStub = isStatic ? null : new Label();
 
         // Emit the prefix
@@ -257,7 +258,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame() : method;
+            assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
         }
 
         if (unverifiedStub != null) {

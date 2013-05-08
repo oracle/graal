@@ -79,8 +79,10 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen) {
         // Emit the prologue
+        ResolvedJavaMethod method = lirGen.getGraph().method();
+        assert method != null : lirGen.getGraph() + " is not associated wth a method";
         final String name = method.getName();
         Buffer codeBuffer = tasm.asm.codeBuffer;
         codeBuffer.emitString(".version 1.4");

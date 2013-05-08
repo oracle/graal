@@ -22,16 +22,14 @@
  */
 package com.oracle.graal.compiler.ptx;
 
-import com.oracle.graal.api.code.CodeCacheProvider;
-import com.oracle.graal.api.code.CompilationResult;
-import com.oracle.graal.api.code.TargetDescription;
-import com.oracle.graal.asm.AbstractAssembler;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
-import com.oracle.graal.hotspot.bridge.CompilerToGPU;
-import com.oracle.graal.hotspot.meta.HotSpotMethod;
-import com.oracle.graal.lir.FrameMap;
-import com.oracle.graal.lir.asm.FrameContext;
-import com.oracle.graal.lir.asm.TargetMethodAssembler;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.*;
 
 public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
@@ -40,20 +38,18 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
     // detach ??
 
-    public PTXTargetMethodAssembler(TargetDescription target,
-                                    CodeCacheProvider runtime, FrameMap frameMap,
-                                    AbstractAssembler asm, FrameContext frameContext,
-                                    CompilationResult compilationResult) {
+    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         super(target, runtime, frameMap, asm, frameContext, compilationResult);
     }
 
     @Override
-    public CompilationResult finishTargetMethod(Object name, boolean isStub) {
-        CompilationResult graalCompile = super.finishTargetMethod(name, isStub);
+    public CompilationResult finishTargetMethod(StructuredGraph graph) {
+        ResolvedJavaMethod method = graph.method();
+        assert method != null : graph + " is not associated wth a method";
+        CompilationResult graalCompile = super.finishTargetMethod(graph);
 
         try {
             if (validDevice) {
-                HotSpotMethod method = (HotSpotMethod) name;
                 toGPU.generateKernel(graalCompile.getTargetCode(), method.getName());
             }
         } catch (Throwable th) {

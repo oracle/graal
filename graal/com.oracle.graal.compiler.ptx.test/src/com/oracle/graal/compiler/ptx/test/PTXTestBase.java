@@ -57,9 +57,9 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-        CompilationResult result = GraalCompiler.compileMethod(runtime, graalRuntime().getReplacements(),
-                                                               ptxBackend, target, graph.method(), graph, cc, null, phasePlan,
-                                                               OptimisticOptimizations.NONE, new SpeculationLog());
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc,
+                                                               runtime, graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
+                                                               new SpeculationLog());
         return result;
     }
 

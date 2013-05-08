@@ -63,5 +63,5 @@ public abstract class Backend {
      * callee-save registers, stack overflow checking, handling multiple entry points etc. A suffix
      * may contain out-of-line stubs and method end guard instructions.
      */
-    public abstract void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen);
+    public abstract void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen);
 }

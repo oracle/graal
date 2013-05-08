@@ -213,8 +213,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     CallingConvention cc = linkage.getCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, cc, null, phasePlan,
-                                    OptimisticOptimizations.ALL, new SpeculationLog());
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, runtime(), replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                                    new SpeculationLog());
 
                     assert checkStubInvariants(compResult);
 
