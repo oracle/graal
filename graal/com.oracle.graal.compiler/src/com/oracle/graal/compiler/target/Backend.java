@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;

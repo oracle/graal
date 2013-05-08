@@ -30,9 +30,9 @@ import java.text.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 
@@ -182,13 +182,9 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private static List<String> getInlineContext() {
         List<String> result = new ArrayList<>();
         for (Object o : Debug.context()) {
-            if (o instanceof StructuredGraph) {
-                ResolvedJavaMethod method = ((StructuredGraph) o).method();
-                if (method != null) {
-                    result.add(MetaUtil.format("%H::%n(%p)", method));
-                } else {
-                    result.add(String.valueOf(o));
-                }
+            JavaMethod method = GraalDebugConfig.asJavaMethod(o);
+            if (method != null) {
+                result.add(MetaUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                 if (debugDumpScope.decorator && !result.isEmpty()) {
