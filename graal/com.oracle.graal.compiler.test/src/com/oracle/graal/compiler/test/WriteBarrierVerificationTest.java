@@ -634,17 +634,11 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 final int barriers = graph.getNodes(SerialWriteBarrier.class).count();
                 Assert.assertTrue(expectedBarriers == barriers);
 
-                class State {
-
-                    boolean removeBarrier = false;
-
-                }
-
                 // Iterate over all write nodes and remove barriers according to input indices.
-                NodeIteratorClosure<State> closure = new NodeIteratorClosure<State>() {
+                NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
 
                     @Override
-                    protected void processNode(FixedNode node, State currentState) {
+                    protected Boolean processNode(FixedNode node, Boolean currentState) {
                         if (node instanceof WriteNode) {
                             WriteNode write = (WriteNode) node;
                             LocationIdentity obj = write.getLocationIdentities()[0];
@@ -655,17 +649,18 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                                      * the input barrier array.
                                      */
                                     if (eliminateBarrier(write.value().asConstant().asInt(), removedBarrierIndices)) {
-                                        currentState.removeBarrier = true;
+                                        return true;
                                     }
                                 }
                             }
                         } else if (node instanceof SerialWriteBarrier) {
                             // Remove flagged write barriers.
-                            if (currentState.removeBarrier) {
+                            if (currentState) {
                                 graph.removeFixed(((SerialWriteBarrier) node));
-                                currentState.removeBarrier = false;
+                                return false;
                             }
                         }
+                        return currentState;
                     }
 
                     private boolean eliminateBarrier(int index, int[] map) {
@@ -678,24 +673,24 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     }
 
                     @Override
-                    protected Map<LoopExitNode, State> processLoop(LoopBeginNode loop, State initialState) {
+                    protected Map<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
                         return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
                     }
 
                     @Override
-                    protected State merge(MergeNode merge, List<State> states) {
-                        return new State();
+                    protected Boolean merge(MergeNode merge, List<Boolean> states) {
+                        return false;
                     }
 
                     @Override
-                    protected State afterSplit(AbstractBeginNode node, State oldState) {
-                        return new State();
+                    protected Boolean afterSplit(AbstractBeginNode node, Boolean oldState) {
+                        return false;
                     }
                 };
 
                 DebugConfig config = DebugScope.getConfig();
                 try {
-                    ReentrantNodeIterator.apply(closure, graph.start(), new State(), null);
+                    ReentrantNodeIterator.apply(closure, graph.start(), false, null);
                     Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
                     new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {

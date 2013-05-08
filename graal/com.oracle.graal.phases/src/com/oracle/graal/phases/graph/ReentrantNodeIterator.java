@@ -37,7 +37,7 @@ public final class ReentrantNodeIterator {
 
     public abstract static class NodeIteratorClosure<StateT> {
 
-        protected abstract void processNode(FixedNode node, StateT currentState);
+        protected abstract StateT processNode(FixedNode node, StateT currentState);
 
         protected abstract StateT merge(MergeNode merge, List<StateT> states);
 
@@ -82,13 +82,13 @@ public final class ReentrantNodeIterator {
                     current = null;
                 } else {
                     FixedNode next = ((FixedWithNextNode) current).next();
-                    closure.processNode(current, state);
+                    state = closure.processNode(current, state);
                     current = next;
                 }
             }
 
             if (current != null) {
-                closure.processNode(current, state);
+                state = closure.processNode(current, state);
 
                 NodeClassIterator successors = current.successors().iterator();
                 if (!successors.hasNext()) {

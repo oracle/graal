@@ -45,33 +45,24 @@ public class SnippetFrameStateCleanupPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        ReentrantNodeIterator.apply(new SnippetFrameStateCleanupClosure(), graph.start(), new CleanupState(false), null);
-    }
-
-    private static class CleanupState {
-
-        public boolean containsFrameState;
-
-        public CleanupState(boolean containsFrameState) {
-            this.containsFrameState = containsFrameState;
-        }
+        ReentrantNodeIterator.apply(new SnippetFrameStateCleanupClosure(), graph.start(), false, null);
     }
 
     /**
      * A proper (loop-aware) iteration over the graph is used to detect loops that contain invalid
      * frame states, so that they can be marked with an invalid frame state.
      */
-    private static class SnippetFrameStateCleanupClosure extends NodeIteratorClosure<CleanupState> {
+    private static class SnippetFrameStateCleanupClosure extends NodeIteratorClosure<Boolean> {
 
         @Override
-        protected void processNode(FixedNode node, CleanupState currentState) {
+        protected Boolean processNode(FixedNode node, Boolean currentState) {
             if (node instanceof StateSplit) {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
                 if (frameState != null) {
                     if (stateSplit.hasSideEffect()) {
-                        currentState.containsFrameState = true;
                         stateSplit.setStateAfter(node.graph().add(new FrameState(FrameState.INVALID_FRAMESTATE_BCI)));
+                        return true;
                     } else {
                         stateSplit.setStateAfter(null);
                     }
@@ -80,36 +71,37 @@ public class SnippetFrameStateCleanupPhase extends Phase {
                     }
                 }
             }
+            return currentState;
         }
 
         @Override
-        protected CleanupState merge(MergeNode merge, List<CleanupState> states) {
-            for (CleanupState state : states) {
-                if (state.containsFrameState) {
-                    return new CleanupState(true);
+        protected Boolean merge(MergeNode merge, List<Boolean> states) {
+            for (boolean state : states) {
+                if (state) {
+                    return true;
                 }
             }
-            return new CleanupState(false);
+            return false;
         }
 
         @Override
-        protected CleanupState afterSplit(AbstractBeginNode node, CleanupState oldState) {
-            return new CleanupState(oldState.containsFrameState);
+        protected Boolean afterSplit(AbstractBeginNode node, Boolean oldState) {
+            return oldState;
         }
 
         @Override
-        protected Map<LoopExitNode, CleanupState> processLoop(LoopBeginNode loop, CleanupState initialState) {
-            LoopInfo<CleanupState> info = ReentrantNodeIterator.processLoop(this, loop, new CleanupState(false));
+        protected Map<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
+            LoopInfo<Boolean> info = ReentrantNodeIterator.processLoop(this, loop, false);
             boolean containsFrameState = false;
-            for (CleanupState state : info.endStates.values()) {
-                containsFrameState |= state.containsFrameState;
+            for (Boolean state : info.endStates.values()) {
+                containsFrameState |= state;
             }
             if (containsFrameState) {
                 loop.setStateAfter(loop.graph().add(new FrameState(FrameState.INVALID_FRAMESTATE_BCI)));
             }
-            if (containsFrameState || initialState.containsFrameState) {
-                for (CleanupState state : info.exitStates.values()) {
-                    state.containsFrameState = true;
+            if (containsFrameState || initialState) {
+                for (Map.Entry<?, Boolean> entry : info.exitStates.entrySet()) {
+                    entry.setValue(true);
                 }
             }
             return info.exitStates;
