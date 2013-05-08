@@ -84,7 +84,7 @@ public final class SchedulePhase extends Phase {
     private class MemoryScheduleClosure extends BlockIteratorClosure<HashSet<FloatingReadNode>> {
 
         @Override
-        protected void processBlock(Block block, HashSet<FloatingReadNode> currentState) {
+        protected HashSet<FloatingReadNode> processBlock(Block block, HashSet<FloatingReadNode> currentState) {
             for (Node node : getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
                     currentState.add((FloatingReadNode) node);
@@ -100,6 +100,7 @@ public final class SchedulePhase extends Phase {
                     }
                 }
             }
+            return currentState;
         }
 
         public void addPhantomReference(FloatingReadNode read, FixedNode fixed) {

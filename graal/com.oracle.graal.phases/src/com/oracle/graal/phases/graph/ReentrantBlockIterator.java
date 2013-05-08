@@ -37,7 +37,7 @@ public final class ReentrantBlockIterator {
 
     public abstract static class BlockIteratorClosure<StateT> {
 
-        protected abstract void processBlock(Block block, StateT currentState);
+        protected abstract StateT processBlock(Block block, StateT currentState);
 
         protected abstract StateT merge(Block merge, List<StateT> states);
 
@@ -62,8 +62,8 @@ public final class ReentrantBlockIterator {
         }
         for (Block loopExit : loop.exits) {
             assert loopExit.getPredecessorCount() == 1;
+            assert blockEndStates.containsKey(loopExit.getBeginNode());
             StateT exitState = blockEndStates.get(loopExit.getBeginNode());
-            assert exitState != null;
             // make sure all exit states are unique objects
             info.exitStates.add(closure.cloneState(exitState));
         }
@@ -82,7 +82,7 @@ public final class ReentrantBlockIterator {
 
         while (true) {
             if (boundary == null || boundary.contains(current)) {
-                closure.processBlock(current, state);
+                state = closure.processBlock(current, state);
 
                 if (current.getSuccessors().isEmpty()) {
                     // nothing to do...
@@ -156,6 +156,7 @@ public final class ReentrantBlockIterator {
             } else {
                 current = blockQueue.removeFirst();
                 if (current.getPredecessors().size() == 1) {
+                    assert states.containsKey(current.getBeginNode());
                     state = states.get(current.getBeginNode());
                 } else {
                     assert current.getPredecessors().size() > 1;
@@ -167,7 +168,6 @@ public final class ReentrantBlockIterator {
                     }
                     state = closure.merge(current, mergedStates);
                 }
-                assert state != null;
             }
         }
     }

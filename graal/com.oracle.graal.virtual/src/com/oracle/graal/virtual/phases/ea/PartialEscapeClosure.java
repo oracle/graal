@@ -92,7 +92,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
 
     public List<Node> applyEffects(final StructuredGraph graph) {
         final ArrayList<Node> obsoleteNodes = new ArrayList<>();
-        BlockIteratorClosure<Object> closure = new BlockIteratorClosure<Object>() {
+        BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
 
             private void apply(GraphEffectList effects, Object context) {
                 if (!effects.isEmpty()) {
@@ -107,28 +107,29 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
 
             @Override
-            protected void processBlock(Block block, Object currentState) {
+            protected Void processBlock(Block block, Void currentState) {
                 apply(blockEffects.get(block), block);
+                return currentState;
             }
 
             @Override
-            protected Object merge(Block merge, List<Object> states) {
-                return new Object();
+            protected Void merge(Block merge, List<Void> states) {
+                return null;
             }
 
             @Override
-            protected Object cloneState(Object oldState) {
+            protected Void cloneState(Void oldState) {
                 return oldState;
             }
 
             @Override
-            protected List<Object> processLoop(Loop loop, Object initialState) {
-                LoopInfo<Object> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
+            protected List<Void> processLoop(Loop loop, Void initialState) {
+                LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
                 apply(loopMergeEffects.get(loop), loop);
                 return info.exitStates;
             }
         };
-        ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), new Object(), null);
+        ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock(), null, null);
         return obsoleteNodes;
     }
 
@@ -137,7 +138,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     @Override
-    protected void processBlock(Block block, BlockState state) {
+    protected BlockState processBlock(Block block, BlockState state) {
         GraphEffectList effects = blockEffects.get(block);
         tool.setEffects(effects);
 
@@ -194,6 +195,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             }
         }
         trace(")\n    end state: %s\n", state);
+        return state;
     }
 
     private boolean processNode(final ValueNode node, FixedNode insertBefore, final BlockState state, final GraphEffectList effects) {
