@@ -42,12 +42,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.InliningPhase.InliningData;
 
 public class InliningUtil {
 
     private static final DebugMetric metricInliningTailDuplication = Debug.metric("InliningTailDuplication");
     private static final String inliningDecisionsScopeString = "InliningDecisions";
-
     /**
      * Meters the size (in bytecodes) of all methods processed during compilation (i.e., top level
      * and all inlined methods), irrespective of how many bytecodes in each method are actually
@@ -55,22 +55,34 @@ public class InliningUtil {
      */
     public static final DebugMetric InlinedBytecodes = Debug.metric("InlinedBytecodes");
 
-    public interface InliningCallback {
-
-        StructuredGraph buildGraph(final ResolvedJavaMethod method);
-    }
-
     public interface InliningPolicy {
 
-        void initialize(StructuredGraph graph);
+        boolean continueInlining(InliningData data);
 
-        boolean continueInlining(StructuredGraph graph);
+        boolean isWorthInlining(InlineInfo info, double probability, double relevance);
+    }
 
-        InlineInfo next();
+    public static class InlineableMacroNode implements InlineableElement {
 
-        void scanInvokes(Iterable<? extends Node> newNodes);
+        private final Class<? extends FixedWithNextNode> macroNodeClass;
 
-        boolean isWorthInlining(InlineInfo info, NodesToDoubles nodeProbabilities, NodesToDoubles nodeRelevance);
+        public InlineableMacroNode(Class<? extends FixedWithNextNode> macroNodeClass) {
+            this.macroNodeClass = macroNodeClass;
+        }
+
+        @Override
+        public int getNodeCount() {
+            return 1;
+        }
+
+        @Override
+        public Iterable<Invoke> getInvokes() {
+            return Collections.emptyList();
+        }
+
+        public Class<? extends FixedWithNextNode> getMacroNodeClass() {
+            return macroNodeClass;
+        }
     }
 
     /**
@@ -211,25 +223,36 @@ public class InliningUtil {
      */
     public interface InlineInfo {
 
+        StructuredGraph graph();
+
         Invoke invoke();
 
-        int level();
-
+        /**
+         * Returns the number of invoked methods.
+         */
         int numberOfMethods();
 
         ResolvedJavaMethod methodAt(int index);
+
+        InlineableElement inlineableElementAt(int index);
+
+        double probabilityAt(int index);
+
+        double relevanceAt(int index);
+
+        void setInlinableElement(int index, InlineableElement inlineableElement);
 
         /**
          * Performs the inlining described by this object and returns the node that represents the
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
          **/
-        void inline(StructuredGraph graph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions);
+        void inline(MetaAccessProvider runtime, Assumptions assumptions);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
          */
-        void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions);
+        void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions);
     }
 
     public abstract static class AbstractInlineInfo implements InlineInfo {
@@ -241,29 +264,40 @@ public class InliningUtil {
         }
 
         @Override
+        public StructuredGraph graph() {
+            return (StructuredGraph) invoke.asNode().graph();
+        }
+
+        @Override
         public Invoke invoke() {
             return invoke;
         }
 
-        @Override
-        public int level() {
-            return computeInliningLevel(invoke);
-        }
-
-        protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InliningCallback callback, Replacements replacements, Assumptions assumptions, boolean receiverNullCheck) {
-            Class<? extends FixedWithNextNode> macroNodeClass = getMacroNodeClass(replacements, concrete);
+        protected static void inline(Invoke invoke, ResolvedJavaMethod concrete, InlineableElement inlineable, Assumptions assumptions, boolean receiverNullCheck) {
             StructuredGraph graph = (StructuredGraph) invoke.asNode().graph();
-            if (macroNodeClass != null) {
+            if (inlineable instanceof StructuredGraph) {
+                StructuredGraph calleeGraph = (StructuredGraph) inlineable;
+                InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
+
+                graph.getLeafGraphIds().add(calleeGraph.graphId());
+                // we might at some point cache already-inlined graphs, so add recursively:
+                graph.getLeafGraphIds().addAll(calleeGraph.getLeafGraphIds());
+            } else {
+                assert inlineable instanceof InlineableMacroNode;
+
+                Class<? extends FixedWithNextNode> macroNodeClass = ((InlineableMacroNode) inlineable).getMacroNodeClass();
                 if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
                     assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
                     InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
                 }
+
                 FixedWithNextNode macroNode;
                 try {
                     macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
                 } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
                     throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
                 }
+
                 CallTargetNode callTarget = invoke.callTarget();
                 if (invoke instanceof InvokeNode) {
                     graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
@@ -273,30 +307,10 @@ public class InliningUtil {
                     graph.replaceSplitWithFixed(invokeWithException, graph.add(macroNode), invokeWithException.next());
                 }
                 GraphUtil.killWithUnusedFloatingInputs(callTarget);
-            } else {
-                StructuredGraph calleeGraph = getIntrinsicGraph(replacements, concrete);
-                if (calleeGraph == null) {
-                    calleeGraph = getGraph(concrete, callback);
-                }
-                InlinedBytecodes.add(concrete.getCodeSize());
-                assumptions.recordMethodContents(concrete);
-                InliningUtil.inline(invoke, calleeGraph, receiverNullCheck);
-
-                graph.getLeafGraphIds().add(calleeGraph.graphId());
-                // we might at some point cache already-inlined graphs, so add recursively:
-                graph.getLeafGraphIds().addAll(calleeGraph.getLeafGraphIds());
             }
-        }
 
-        protected static StructuredGraph getGraph(final ResolvedJavaMethod concrete, final InliningCallback callback) {
-            return Debug.scope("GetInliningGraph", concrete, new Callable<StructuredGraph>() {
-
-                @Override
-                public StructuredGraph call() throws Exception {
-                    assert !Modifier.isNative(concrete.getModifiers());
-                    return callback.buildGraph(concrete);
-                }
-            });
+            InlinedBytecodes.add(concrete.getCodeSize());
+            assumptions.recordMethodContents(concrete);
         }
     }
 
@@ -312,7 +326,8 @@ public class InliningUtil {
      */
     private static class ExactInlineInfo extends AbstractInlineInfo {
 
-        public final ResolvedJavaMethod concrete;
+        protected final ResolvedJavaMethod concrete;
+        private InlineableElement inlineableElement;
 
         public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
             super(invoke);
@@ -320,12 +335,12 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph compilerGraph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions) {
-            inline(invoke, concrete, callback, replacements, assumptions, true);
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+            inline(invoke, concrete, inlineableElement, assumptions, true);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
             // nothing todo, can already be bound statically
         }
 
@@ -341,8 +356,32 @@ public class InliningUtil {
         }
 
         @Override
+        public double probabilityAt(int index) {
+            assert index == 0;
+            return 1.0;
+        }
+
+        @Override
+        public double relevanceAt(int index) {
+            assert index == 0;
+            return 1.0;
+        }
+
+        @Override
         public String toString() {
             return "exact " + MetaUtil.format("%H.%n(%p):%r", concrete);
+        }
+
+        @Override
+        public InlineableElement inlineableElementAt(int index) {
+            assert index == 0;
+            return inlineableElement;
+        }
+
+        @Override
+        public void setInlinableElement(int index, InlineableElement inlineableElement) {
+            assert index == 0;
+            this.inlineableElement = inlineableElement;
         }
     }
 
@@ -353,8 +392,9 @@ public class InliningUtil {
      */
     private static class TypeGuardInlineInfo extends AbstractInlineInfo {
 
-        public final ResolvedJavaMethod concrete;
-        public final ResolvedJavaType type;
+        private final ResolvedJavaMethod concrete;
+        private final ResolvedJavaType type;
+        private InlineableElement inlineableElement;
 
         public TypeGuardInlineInfo(Invoke invoke, ResolvedJavaMethod concrete, ResolvedJavaType type) {
             super(invoke);
@@ -374,15 +414,39 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions) {
-            createGuard(graph, runtime);
-            inline(invoke, concrete, callback, replacements, assumptions, false);
+        public InlineableElement inlineableElementAt(int index) {
+            assert index == 0;
+            return inlineableElement;
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
-            createGuard(graph, runtime);
-            replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
+        public double probabilityAt(int index) {
+            assert index == 0;
+            return 1.0;
+        }
+
+        @Override
+        public double relevanceAt(int index) {
+            assert index == 0;
+            return 1.0;
+        }
+
+        @Override
+        public void setInlinableElement(int index, InlineableElement inlineableElement) {
+            assert index == 0;
+            this.inlineableElement = inlineableElement;
+        }
+
+        @Override
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+            createGuard(graph(), runtime);
+            inline(invoke, concrete, inlineableElement, assumptions, false);
+        }
+
+        @Override
+        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
+            createGuard(graph(), runtime);
+            replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
         }
 
         private void createGuard(StructuredGraph graph, MetaAccessProvider runtime) {
@@ -416,10 +480,13 @@ public class InliningUtil {
      */
     private static class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
-        public final List<ResolvedJavaMethod> concretes;
-        public final ArrayList<ProfiledType> ptypes;
-        public final int[] typesToConcretes;
-        public final double notRecordedTypeProbability;
+        private final List<ResolvedJavaMethod> concretes;
+        private final double[] methodProbabilities;
+        private final double maximumMethodProbability;
+        private final ArrayList<ProfiledType> ptypes;
+        private final int[] typesToConcretes;
+        private final double notRecordedTypeProbability;
+        private final InlineableElement[] inlineableElements;
 
         public MultiTypeGuardInlineInfo(Invoke invoke, ArrayList<ResolvedJavaMethod> concretes, ArrayList<ProfiledType> ptypes, int[] typesToConcretes, double notRecordedTypeProbability) {
             super(invoke);
@@ -430,6 +497,28 @@ public class InliningUtil {
             this.ptypes = ptypes;
             this.typesToConcretes = typesToConcretes;
             this.notRecordedTypeProbability = notRecordedTypeProbability;
+            this.inlineableElements = new InlineableElement[concretes.size()];
+            this.methodProbabilities = computeMethodProbabilities();
+            this.maximumMethodProbability = maximumMethodProbability();
+            assert maximumMethodProbability > 0;
+        }
+
+        private double[] computeMethodProbabilities() {
+            double[] result = new double[concretes.size()];
+            for (int i = 0; i < typesToConcretes.length; i++) {
+                int concrete = typesToConcretes[i];
+                double probability = ptypes.get(i).getProbability();
+                result[concrete] += probability;
+            }
+            return result;
+        }
+
+        private double maximumMethodProbability() {
+            double max = 0;
+            for (int i = 0; i < methodProbabilities.length; i++) {
+                max = Math.max(max, methodProbabilities[i]);
+            }
+            return max;
         }
 
         @Override
@@ -444,13 +533,35 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions) {
+        public InlineableElement inlineableElementAt(int index) {
+            assert index >= 0 && index < concretes.size();
+            return inlineableElements[index];
+        }
+
+        @Override
+        public double probabilityAt(int index) {
+            return methodProbabilities[index];
+        }
+
+        @Override
+        public double relevanceAt(int index) {
+            return probabilityAt(index) / maximumMethodProbability;
+        }
+
+        @Override
+        public void setInlinableElement(int index, InlineableElement inlineableElement) {
+            assert index >= 0 && index < concretes.size();
+            inlineableElements[index] = inlineableElement;
+        }
+
+        @Override
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph, callback, replacements, assumptions);
+                inlineSingleMethod(graph(), assumptions);
             } else {
-                inlineMultipleMethods(graph, callback, replacements, assumptions);
+                inlineMultipleMethods(graph(), assumptions);
             }
         }
 
@@ -462,7 +573,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
+        private void inlineMultipleMethods(StructuredGraph graph, Assumptions assumptions) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -538,7 +649,7 @@ public class InliningUtil {
                 PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
-                inline(invokeForInlining, concretes.get(i), callback, replacements, assumptions, false);
+                inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false);
 
                 replacementNodes.add(anchoredReceiver);
             }
@@ -602,8 +713,8 @@ public class InliningUtil {
             return result;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, InliningCallback callback, Replacements replacements, Assumptions assumptions) {
-            assert concretes.size() == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
+        private void inlineSingleMethod(StructuredGraph graph, Assumptions assumptions) {
+            assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             BeginNode calleeEntryNode = graph.add(new BeginNode());
 
@@ -613,8 +724,7 @@ public class InliningUtil {
 
             calleeEntryNode.setNext(invoke.asNode());
 
-            ResolvedJavaMethod concrete = concretes.get(0);
-            inline(invoke, concrete, callback, replacements, assumptions, false);
+            inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
         }
 
         private void createDispatchOnTypeBeforeInvoke(StructuredGraph graph, BeginNode[] successors, boolean invokeIsOnlySuccessor) {
@@ -693,11 +803,11 @@ public class InliningUtil {
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                tryToDevirtualizeSingleMethod(graph);
+                tryToDevirtualizeSingleMethod(graph());
             } else {
-                tryToDevirtualizeMultipleMethods(graph);
+                tryToDevirtualizeMultipleMethods(graph());
             }
         }
 
@@ -777,15 +887,15 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(StructuredGraph graph, MetaAccessProvider runtime, Replacements replacements, InliningCallback callback, Assumptions assumptions) {
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
             assumptions.record(takenAssumption);
-            super.inline(graph, runtime, replacements, callback, assumptions);
+            super.inline(runtime, assumptions);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
             assumptions.record(takenAssumption);
-            replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
+            replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
         }
 
         @Override
@@ -800,7 +910,7 @@ public class InliningUtil {
      * @param invoke the invoke that should be inlined
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
-    public static InlineInfo getInlineInfo(Invoke invoke, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
+    public static InlineInfo getInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, Assumptions assumptions, OptimisticOptimizations optimisticOpts) {
         if (!checkInvokeConditions(invoke)) {
             return null;
         }
@@ -809,7 +919,7 @@ public class InliningUtil {
         ResolvedJavaMethod targetMethod = callTarget.targetMethod();
 
         if (callTarget.invokeKind() == InvokeKind.Special || targetMethod.canBeStaticallyBound()) {
-            return getExactInlineInfo(replacements, invoke, optimisticOpts, targetMethod);
+            return getExactInlineInfo(data, invoke, replacements, optimisticOpts, targetMethod);
         }
 
         assert callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;
@@ -824,50 +934,51 @@ public class InliningUtil {
                 holder = receiverType;
                 if (receiverStamp.isExactType()) {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    return getExactInlineInfo(replacements, invoke, optimisticOpts, holder.resolveMethod(targetMethod));
+                    return getExactInlineInfo(data, invoke, replacements, optimisticOpts, holder.resolveMethod(targetMethod));
                 }
             }
         }
 
         if (holder.isArray()) {
             // arrays can be treated as Objects
-            return getExactInlineInfo(replacements, invoke, optimisticOpts, holder.resolveMethod(targetMethod));
+            return getExactInlineInfo(data, invoke, replacements, optimisticOpts, holder.resolveMethod(targetMethod));
         }
 
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                return getAssumptionInlineInfo(replacements, invoke, optimisticOpts, uniqueSubtype.resolveMethod(targetMethod), new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                return getAssumptionInlineInfo(data, invoke, replacements, optimisticOpts, uniqueSubtype.resolveMethod(targetMethod), new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
             }
 
             ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
             if (concrete != null) {
-                return getAssumptionInlineInfo(replacements, invoke, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
+                return getAssumptionInlineInfo(data, invoke, replacements, optimisticOpts, concrete, new Assumptions.ConcreteMethod(targetMethod, holder, concrete));
             }
         }
 
         // type check based inlining
-        return getTypeCheckedInlineInfo(replacements, invoke, caller, holder, targetMethod, optimisticOpts);
+        return getTypeCheckedInlineInfo(data, invoke, maxNumberOfMethods, replacements, caller, holder, targetMethod, optimisticOpts);
     }
 
-    private static InlineInfo getAssumptionInlineInfo(Replacements replacements, Invoke invoke, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete, Assumption takenAssumption) {
+    private static InlineInfo getAssumptionInlineInfo(InliningData data, Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod concrete,
+                    Assumption takenAssumption) {
         assert !Modifier.isAbstract(concrete.getModifiers());
-        if (!checkTargetConditions(replacements, invoke, concrete, optimisticOpts)) {
+        if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
             return null;
         }
         return new AssumptionInlineInfo(invoke, concrete, takenAssumption);
     }
 
-    private static InlineInfo getExactInlineInfo(Replacements replacements, Invoke invoke, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
+    private static InlineInfo getExactInlineInfo(InliningData data, Invoke invoke, Replacements replacements, OptimisticOptimizations optimisticOpts, ResolvedJavaMethod targetMethod) {
         assert !Modifier.isAbstract(targetMethod.getModifiers());
-        if (!checkTargetConditions(replacements, invoke, targetMethod, optimisticOpts)) {
+        if (!checkTargetConditions(data, replacements, invoke, targetMethod, optimisticOpts)) {
             return null;
         }
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(Replacements replacements, Invoke invoke, ResolvedJavaMethod caller, ResolvedJavaType holder, ResolvedJavaMethod targetMethod,
-                    OptimisticOptimizations optimisticOpts) {
+    private static InlineInfo getTypeCheckedInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod caller, ResolvedJavaType holder,
+                    ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
         ProfilingInfo profilingInfo = caller.getProfilingInfo();
         JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(invoke.bci());
         if (typeProfile == null) {
@@ -888,7 +999,7 @@ public class InliningUtil {
 
             ResolvedJavaType type = ptypes.get(0).getType();
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
-            if (!checkTargetConditions(replacements, invoke, concrete, optimisticOpts)) {
+            if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
             }
             return new TypeGuardInlineInfo(invoke, concrete, type);
@@ -919,8 +1030,12 @@ public class InliningUtil {
                 typesToConcretes[i] = index;
             }
 
+            if (concreteMethods.size() > maxNumberOfMethods) {
+                return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "polymorphic call with more than %d target methods", maxNumberOfMethods);
+            }
+
             for (ResolvedJavaMethod concrete : concreteMethods) {
-                if (!checkTargetConditions(replacements, invoke, concrete, optimisticOpts)) {
+                if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                     return logNotInlinedMethodAndReturnNull(invoke, targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
                 }
             }
@@ -971,7 +1086,7 @@ public class InliningUtil {
         }
     }
 
-    private static boolean checkTargetConditions(Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
+    private static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         if (method == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the method is not resolved");
         } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify || !InliningUtil.canIntrinsify(replacements, method))) {
@@ -982,7 +1097,7 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the method's class is not initialized");
         } else if (!method.canBeInlined()) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it is marked non-inlinable");
-        } else if (computeRecursiveInliningLevel(invoke.stateAfter(), method) > GraalOptions.MaximumRecursiveInlining) {
+        } else if (data.countRecursiveInlining(method) > GraalOptions.MaximumRecursiveInlining) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "it exceeds the maximum recursive inlining depth");
         } else if (new OptimisticOptimizations(method).lessOptimisticThan(optimisticOpts)) {
             return logNotInlinedMethodAndReturnFalse(invoke, method, "the callee uses less optimistic optimizations than caller");
@@ -996,20 +1111,6 @@ public class InliningUtil {
         FrameState curState = invoke.stateAfter();
         while (curState != null) {
             count++;
-            curState = curState.outerFrameState();
-        }
-        return count;
-    }
-
-    private static int computeRecursiveInliningLevel(FrameState state, ResolvedJavaMethod method) {
-        assert state != null;
-
-        int count = 0;
-        FrameState curState = state;
-        while (curState != null) {
-            if (curState.method() == method) {
-                count++;
-            }
             curState = curState.outerFrameState();
         }
         return count;

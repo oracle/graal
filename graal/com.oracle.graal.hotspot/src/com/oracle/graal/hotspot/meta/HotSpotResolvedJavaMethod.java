@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.annotation.*;
@@ -34,7 +34,6 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
-import com.oracle.graal.bytecode.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.phases.*;
@@ -59,7 +58,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
     private byte[] code;
-    private int compilationComplexity;
     private CompilationTask currentTask;
     private SpeculationLog speculationLog;
 
@@ -196,22 +194,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     public int invocationCount() {
         return graalRuntime().getCompilerToVM().getInvocationCount(metaspaceMethod);
-    }
-
-    @Override
-    public int getCompilationComplexity() {
-        if (compilationComplexity <= 0 && getCodeSize() > 0) {
-            BytecodeStream s = new BytecodeStream(getCode());
-            int result = 0;
-            int currentBC;
-            while ((currentBC = s.currentBC()) != Bytecodes.END) {
-                result += Bytecodes.compilationComplexity(currentBC);
-                s.next();
-            }
-            assert result > 0;
-            compilationComplexity = result;
-        }
-        return compilationComplexity;
     }
 
     @Override

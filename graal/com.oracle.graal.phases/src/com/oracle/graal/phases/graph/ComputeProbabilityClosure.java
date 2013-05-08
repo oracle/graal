@@ -24,7 +24,6 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
@@ -65,9 +64,7 @@ public class ComputeProbabilityClosure {
 
     public NodesToDoubles apply() {
         new PropagateProbability(graph.start()).apply();
-        Debug.dump(graph, "After PropagateProbability");
         computeLoopFactors();
-        Debug.dump(graph, "After computeLoopFactors");
         new PropagateLoopFrequency(graph.start()).apply();
         return nodeProbabilities;
     }

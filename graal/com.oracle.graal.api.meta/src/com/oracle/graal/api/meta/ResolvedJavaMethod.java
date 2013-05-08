@@ -57,13 +57,6 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     int getCompiledCodeSize();
 
     /**
-     * Returns an estimate how complex it is to compile this method.
-     * 
-     * @return A value >= 0, where higher means more complex.
-     */
-    int getCompilationComplexity();
-
-    /**
      * Returns the {@link ResolvedJavaType} object representing the class or interface that declares
      * this method.
      */
