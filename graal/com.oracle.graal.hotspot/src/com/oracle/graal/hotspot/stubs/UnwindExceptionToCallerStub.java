@@ -63,11 +63,11 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
     private static void unwindExceptionToCaller(Object exception, Word returnAddress) {
         Pointer exceptionOop = Word.fromObject(exception);
         if (logging()) {
-            printf("unwinding exception %p (", exceptionOop.rawValue());
-            decipher(exceptionOop.rawValue());
-            printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
-            decipher(returnAddress.rawValue());
-            printf(")\n");
+            StubUtil.printf("unwinding exception %p (", exceptionOop.rawValue());
+            StubUtil.decipher(exceptionOop.rawValue());
+            StubUtil.printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
+            StubUtil.decipher(returnAddress.rawValue());
+            StubUtil.printf(")\n");
         }
         checkNoExceptionInThread(assertionsEnabled());
         checkExceptionNotNull(assertionsEnabled(), exception);
@@ -75,9 +75,9 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread(), returnAddress);
 
         if (logging()) {
-            printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
-            decipher(handlerInCallerPc.rawValue());
-            printf(")\n");
+            StubUtil.printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
+            StubUtil.decipher(handlerInCallerPc.rawValue());
+            StubUtil.printf(")\n");
         }
 
         jumpToExceptionHandlerInCaller(handlerInCallerPc, exception, returnAddress);
@@ -96,7 +96,7 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
         return enabled || graalRuntime().getConfig().cAssertions;
     }
 
-    public static final Descriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", false);
+    public static final Descriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = StubUtil.descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", false);
 
     @NodeIntrinsic(value = CRuntimeCall.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForReturnAddress(@ConstantNodeParameter Descriptor exceptionHandlerForReturnAddress, Word thread, Word returnAddress);

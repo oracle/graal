@@ -46,11 +46,11 @@ public class CreateOutOfBoundsExceptionStub extends CRuntimeStub {
     @Snippet
     private static Object createOutOfBoundsException(int index) {
         createOutOfBoundsExceptionC(CREATE_OUT_OF_BOUNDS_C, thread(), index);
-        handlePendingException(true);
-        return verifyObject(getAndClearObjectResult(thread()));
+        StubUtil.handlePendingException(true);
+        return StubUtil.verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor CREATE_OUT_OF_BOUNDS_C = descriptorFor(CreateOutOfBoundsExceptionStub.class, "createOutOfBoundsExceptionC", false);
+    public static final Descriptor CREATE_OUT_OF_BOUNDS_C = StubUtil.descriptorFor(CreateOutOfBoundsExceptionStub.class, "createOutOfBoundsExceptionC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void createOutOfBoundsExceptionC(@ConstantNodeParameter Descriptor createOutOfBoundsExceptionC, Word thread, int index);

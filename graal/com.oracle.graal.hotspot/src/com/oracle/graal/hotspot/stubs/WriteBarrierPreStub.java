@@ -49,7 +49,7 @@ public class WriteBarrierPreStub extends CRuntimeStub {
         writeBarrierPreC(WRITE_BARRIER_PRE_C, thread(), object);
     }
 
-    public static final Descriptor WRITE_BARRIER_PRE_C = descriptorFor(WriteBarrierPreStub.class, "writeBarrierPreC", false);
+    public static final Descriptor WRITE_BARRIER_PRE_C = StubUtil.descriptorFor(WriteBarrierPreStub.class, "writeBarrierPreC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void writeBarrierPreC(@ConstantNodeParameter Descriptor vmErrorC, Word thread, Object object);

@@ -49,7 +49,7 @@ public class MonitorExitStub extends CRuntimeStub {
         monitorexitC(MONITOREXIT_C, thread(), object, lock);
     }
 
-    public static final Descriptor MONITOREXIT_C = descriptorFor(MonitorExitStub.class, "monitorexitC", false);
+    public static final Descriptor MONITOREXIT_C = StubUtil.descriptorFor(MonitorExitStub.class, "monitorexitC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void monitorexitC(@ConstantNodeParameter Descriptor monitorexitC, Word thread, Object object, Word lock);

@@ -40,6 +40,6 @@ public class VerifyOopStub extends CRuntimeStub {
 
     @Snippet
     private static Object verifyOop(Object object) {
-        return verifyObject(object);
+        return StubUtil.verifyObject(object);
     }
 }

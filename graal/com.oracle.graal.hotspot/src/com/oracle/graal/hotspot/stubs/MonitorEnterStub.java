@@ -47,10 +47,10 @@ public class MonitorEnterStub extends CRuntimeStub {
     @Snippet
     private static void monitorenter(Object object, Word lock) {
         monitorenterC(MONITORENTER_C, thread(), object, lock);
-        handlePendingException(false);
+        StubUtil.handlePendingException(false);
     }
 
-    public static final Descriptor MONITORENTER_C = descriptorFor(MonitorEnterStub.class, "monitorenterC", false);
+    public static final Descriptor MONITORENTER_C = StubUtil.descriptorFor(MonitorEnterStub.class, "monitorenterC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void monitorenterC(@ConstantNodeParameter Descriptor monitorenterC, Word thread, Object object, Word lock);

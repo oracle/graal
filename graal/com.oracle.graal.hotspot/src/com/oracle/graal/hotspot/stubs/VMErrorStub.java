@@ -49,7 +49,7 @@ public class VMErrorStub extends CRuntimeStub {
         vmErrorC(VM_ERROR_C, thread(), where, format, value);
     }
 
-    public static final Descriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC", false);
+    public static final Descriptor VM_ERROR_C = StubUtil.descriptorFor(VMErrorStub.class, "vmErrorC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void vmErrorC(@ConstantNodeParameter Descriptor vmErrorC, Word thread, String where, String format, long value);
