@@ -27,6 +27,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -55,10 +56,14 @@ public class GraalCompiler {
      * 
      * @param graph the graph to be compiled
      * @param cc the calling convention for calls to the code compiled for {@code graph}
+     * @param installedCodeOwner the method the compiled code will be
+     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
+     *            argument can be null.
      * @return the result of the compilation
      */
-    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final GraalCodeCacheProvider runtime, final Replacements replacements, final Backend backend,
-                    final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
+    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
+                    final Replacements replacements, final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog) {
         final CompilationResult compilationResult = new CompilationResult();
         Debug.scope("GraalCompiler", new Object[]{graph, runtime}, new Runnable() {
 
@@ -79,7 +84,7 @@ public class GraalCompiler {
                 Debug.scope("CodeGen", lirGen, new Runnable() {
 
                     public void run() {
-                        emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult);
+                        emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
                     }
 
                 });
@@ -216,9 +221,9 @@ public class GraalCompiler {
         return lirGen;
     }
 
-    public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult) {
+    public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner) {
         TargetMethodAssembler tasm = backend.newAssembler(lirGen, compilationResult);
-        backend.emitCode(tasm, lirGen);
+        backend.emitCode(tasm, lirGen, installedCodeOwner);
         CompilationResult result = tasm.finishTargetMethod(lirGen.getGraph());
         if (!assumptions.isEmpty()) {
             result.setAssumptions(assumptions);

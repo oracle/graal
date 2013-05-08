@@ -26,8 +26,8 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
@@ -219,18 +219,16 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = runtime().config;
-        ResolvedJavaMethod method = lirGen.getGraph().method();
-        boolean isStatic = method == null || Modifier.isStatic(method.getModifiers());
-        Label unverifiedStub = isStatic ? null : new Label();
+        Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
 
         // Emit the prefix
 
-        if (!isStatic) {
+        if (unverifiedStub != null) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{runtime().lookupJavaType(Object.class)}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in

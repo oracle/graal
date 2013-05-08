@@ -136,13 +136,13 @@ public abstract class Stub {
     public abstract String toString();
 
     /**
-     * Gets the method under which the compiled code for this stub is
-     * {@linkplain CodeCacheProvider#addMethod(ResolvedJavaMethod, CompilationResult) installed}.
+     * Gets the method the stub's code will be {@linkplain InstalledCode#getMethod() associated}
+     * with once installed. This may be null.
      */
-    protected abstract ResolvedJavaMethod getInstallationMethod();
+    protected abstract ResolvedJavaMethod getInstalledCodeOwner();
 
     protected Object debugScopeContext() {
-        return getInstallationMethod();
+        return getInstalledCodeOwner();
     }
 
     /**
@@ -165,8 +165,8 @@ public abstract class Stub {
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     CallingConvention cc = linkage.getCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, runtime, replacements, backend, runtime.getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                                    new SpeculationLog());
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
+                                    OptimisticOptimizations.ALL, new SpeculationLog());
 
                     assert checkStubInvariants(compResult);
 
@@ -175,7 +175,7 @@ public abstract class Stub {
 
                         @Override
                         public InstalledCode call() {
-                            InstalledCode installedCode = runtime.addMethod(getInstallationMethod(), compResult);
+                            InstalledCode installedCode = runtime.addMethod(getInstalledCodeOwner(), compResult);
                             assert installedCode != null : "error installing stub " + this;
                             if (Debug.isDumpEnabled()) {
                                 Debug.dump(new Object[]{compResult, installedCode}, "After code installation");

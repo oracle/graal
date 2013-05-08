@@ -79,18 +79,17 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         // Emit the prologue
-        ResolvedJavaMethod method = lirGen.getGraph().method();
-        assert method != null : lirGen.getGraph() + " is not associated wth a method";
-        final String name = method.getName();
+        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+        final String name = codeCacheOwner.getName();
         Buffer codeBuffer = tasm.asm.codeBuffer;
         codeBuffer.emitString(".version 1.4");
         codeBuffer.emitString(".target sm_10");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 
-        Signature signature = method.getSignature();
+        Signature signature = codeCacheOwner.getSignature();
         for (int i = 0; i < signature.getParameterCount(false); i++) {
             String param = ".param .u32 param" + i;
             codeBuffer.emitString(param);

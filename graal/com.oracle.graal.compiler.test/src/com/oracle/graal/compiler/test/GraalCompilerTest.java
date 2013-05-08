@@ -414,7 +414,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
                 editPhasePlan(method, graph, phasePlan);
                 CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog());
+                CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                                new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

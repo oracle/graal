@@ -57,9 +57,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc,
-                                                               runtime, graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                                                               new SpeculationLog());
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
+                        new SpeculationLog());
         return result;
     }
 
@@ -72,7 +71,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         try {
             // not quite yet - need multi-architecture Method changes from JDK-8013168
             // Object[] executeArgs = argsWithReceiver(this, args);
-            // InstalledCode installedCode = runtime.addMethod(getStructuredGraph().method(), result);
+            // InstalledCode installedCode =
+            // runtime.addMethod(getStructuredGraph().method(), result);
             // installedCode.executeVarargs(executeArgs);
         } catch (Throwable th) {
             th.printStackTrace();
