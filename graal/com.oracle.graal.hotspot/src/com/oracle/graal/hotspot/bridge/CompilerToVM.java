@@ -210,6 +210,8 @@ public interface CompilerToVM {
 
     int getVtableEntryOffset(long metaspaceMethod);
 
+    boolean hasVtableEntry(long metaspaceMethod);
+
     long[] getDeoptedLeafGraphIds();
 
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);

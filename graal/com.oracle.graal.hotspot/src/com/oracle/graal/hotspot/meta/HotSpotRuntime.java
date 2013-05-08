@@ -772,8 +772,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {
-                        int vtableEntryOffset = hsMethod.vtableEntryOffset();
-                        if (vtableEntryOffset > 0) {
+                        if (hsMethod.hasVtableEntry()) {
+                            int vtableEntryOffset = hsMethod.vtableEntryOffset();
                             assert vtableEntryOffset > 0;
                             ReadNode hub = this.createReadHub(tool, graph, wordKind, receiver);
                             ReadNode metaspaceMethod = createReadVirtualMethod(graph, wordKind, hub, hsMethod);
@@ -1048,6 +1048,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         assert !hsMethod.getDeclaringClass().isInterface();
+        assert hsMethod.hasVtableEntry();
 
         int vtableEntryOffset = hsMethod.vtableEntryOffset();
         assert vtableEntryOffset > 0;
@@ -1107,11 +1108,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return barrierType;
     }
 
-    private static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
+    protected static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
         return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
 
-    private IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
+    protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
         int scale = this.graalRuntime.getTarget().arch.getSizeInBytes(elementKind);
         return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
