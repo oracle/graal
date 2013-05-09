@@ -100,7 +100,7 @@ public class AllocatorTest extends GraalCompilerTest {
                 Value def = move.getResult();
                 Value use = move.getInput();
                 if (ValueUtil.isRegister(def)) {
-                    if (ValueUtil.isRegister(use) && ValueUtil.asRegister(def) != ValueUtil.asRegister(use)) {
+                    if (ValueUtil.isRegister(use)) {
                         regRegMoves++;
                     }
                 } else if (ValueUtil.isStackSlot(def)) {

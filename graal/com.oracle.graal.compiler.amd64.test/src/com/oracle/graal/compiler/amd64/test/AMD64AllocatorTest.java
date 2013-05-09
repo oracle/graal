@@ -28,6 +28,7 @@ import com.oracle.graal.compiler.test.backend.*;
 
 public class AMD64AllocatorTest extends AllocatorTest {
 
+    @Ignore
     @Test
     public void test1() {
         test("test1snippet", 3, 1, 0);
@@ -37,6 +38,7 @@ public class AMD64AllocatorTest extends AllocatorTest {
         return x + 5;
     }
 
+    @Ignore
     @Test
     public void test2() {
         test("test2snippet", 3, 0, 0);
