@@ -49,7 +49,7 @@ public class LogPrintfStub extends CRuntimeStub {
         logPrintfC(LOG_PRINTF_C, thread(), format, v1, v2, v3);
     }
 
-    public static final Descriptor LOG_PRINTF_C = descriptorFor(LogPrintfStub.class, "logPrintfC", false);
+    public static final Descriptor LOG_PRINTF_C = StubUtil.descriptorFor(LogPrintfStub.class, "logPrintfC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void logPrintfC(@ConstantNodeParameter Descriptor logPrintfC, Word thread, String format, long v1, long v2, long v3);

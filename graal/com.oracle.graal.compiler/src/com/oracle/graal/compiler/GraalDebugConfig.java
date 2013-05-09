@@ -29,6 +29,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
@@ -94,6 +95,24 @@ public class GraalDebugConfig implements DebugConfig {
         return filter != null && filter.matches(currentScope);
     }
 
+    /**
+     * Extracts a {@link JavaMethod} from an opaque debug context.
+     * 
+     * @return the {@link JavaMethod} represented by {@code context} or null
+     */
+    public static JavaMethod asJavaMethod(Object context) {
+        if (context instanceof JavaMethod) {
+            return (JavaMethod) context;
+        }
+        if (context instanceof StructuredGraph) {
+            ResolvedJavaMethod method = ((StructuredGraph) context).method();
+            if (method != null) {
+                return method;
+            }
+        }
+        return null;
+    }
+
     private boolean checkMethodFilter() {
         if (methodFilter == null && extraFilters.isEmpty()) {
             return true;
@@ -102,9 +121,10 @@ public class GraalDebugConfig implements DebugConfig {
                 if (extraFilters.contains(o)) {
                     return true;
                 } else if (methodFilter != null) {
-                    if (o instanceof JavaMethod) {
+                    JavaMethod method = asJavaMethod(o);
+                    if (method != null) {
                         for (MethodFilter filter : methodFilter) {
-                            if (filter.matches((JavaMethod) o)) {
+                            if (filter.matches(method)) {
                                 return true;
                             }
                         }

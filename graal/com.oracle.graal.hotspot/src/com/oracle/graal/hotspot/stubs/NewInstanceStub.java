@@ -52,7 +52,7 @@ import com.oracle.graal.word.*;
  * code when TLAB allocation fails. If this stub fails to refill the TLAB or allocate the object, it
  * calls out to the HotSpot C++ runtime for to complete the allocation.
  */
-public class NewInstanceStub extends Stub {
+public class NewInstanceStub extends SnippetStub {
 
     public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);
@@ -98,25 +98,25 @@ public class NewInstanceStub extends Stub {
                     for (int offset = 2 * wordSize(); offset < sizeInBytes; offset += wordSize()) {
                         memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                     }
-                    return verifyObject(memory.toObject());
+                    return StubUtil.verifyObject(memory.toObject());
                 }
             }
         }
 
         if (logging()) {
-            printf("newInstance: calling new_instance_c\n");
+            StubUtil.printf("newInstance: calling new_instance_c\n");
         }
 
         newInstanceC(NEW_INSTANCE_C, thread(), hub);
 
         if (clearPendingException(thread())) {
             if (logging()) {
-                printf("newInstance: deoptimizing to caller\n");
+                StubUtil.printf("newInstance: deoptimizing to caller\n");
             }
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
-        return verifyObject(getAndClearObjectResult(thread()));
+        return StubUtil.verifyObject(getAndClearObjectResult(thread()));
     }
 
     /**
@@ -143,10 +143,10 @@ public class NewInstanceStub extends Stub {
         Word tlabFreeSpaceInBytes = end.subtract(top);
 
         if (log) {
-            printf("refillTLAB: thread=%p\n", thread.rawValue());
-            printf("refillTLAB: top=%p\n", top.rawValue());
-            printf("refillTLAB: end=%p\n", end.rawValue());
-            printf("refillTLAB: tlabFreeSpaceInBytes=%d\n", tlabFreeSpaceInBytes.rawValue());
+            StubUtil.printf("refillTLAB: thread=%p\n", thread.rawValue());
+            StubUtil.printf("refillTLAB: top=%p\n", top.rawValue());
+            StubUtil.printf("refillTLAB: end=%p\n", end.rawValue());
+            StubUtil.printf("refillTLAB: tlabFreeSpaceInBytes=%d\n", tlabFreeSpaceInBytes.rawValue());
         }
 
         Word tlabFreeSpaceInWords = tlabFreeSpaceInBytes.unsignedShiftRight(log2WordSize());
@@ -159,12 +159,12 @@ public class NewInstanceStub extends Stub {
                 // increment number of refills
                 thread.writeInt(tlabNumberOfRefillsOffset(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION) + 1, TLAB_NOF_REFILLS_LOCATION);
                 if (log) {
-                    printf("thread: %p -- number_of_refills %d\n", thread.rawValue(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
+                    StubUtil.printf("thread: %p -- number_of_refills %d\n", thread.rawValue(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
                 }
                 // accumulate wastage
                 Word wastage = thread.readWord(tlabFastRefillWasteOffset(), TLAB_FAST_REFILL_WASTE_LOCATION).add(tlabFreeSpaceInWords);
                 if (log) {
-                    printf("thread: %p -- accumulated wastage %d\n", thread.rawValue(), wastage.rawValue());
+                    StubUtil.printf("thread: %p -- accumulated wastage %d\n", thread.rawValue(), wastage.rawValue());
                 }
                 thread.writeWord(tlabFastRefillWasteOffset(), wastage, TLAB_FAST_REFILL_WASTE_LOCATION);
             }
@@ -202,7 +202,7 @@ public class NewInstanceStub extends Stub {
             Word newRefillWasteLimit = refillWasteLimit.add(tlabRefillWasteIncrement());
             thread.writeWord(tlabRefillWasteLimitOffset(), newRefillWasteLimit, TLAB_REFILL_WASTE_LIMIT_LOCATION);
             if (log) {
-                printf("refillTLAB: retaining TLAB - newRefillWasteLimit=%p\n", newRefillWasteLimit.rawValue());
+                StubUtil.printf("refillTLAB: retaining TLAB - newRefillWasteLimit=%p\n", newRefillWasteLimit.rawValue());
             }
 
             if (tlabStats()) {
@@ -247,7 +247,7 @@ public class NewInstanceStub extends Stub {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
-    public static final Descriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC", false);
+    public static final Descriptor NEW_INSTANCE_C = StubUtil.descriptorFor(NewInstanceStub.class, "newInstanceC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newInstanceC(@ConstantNodeParameter Descriptor newInstanceC, Word thread, Word hub);

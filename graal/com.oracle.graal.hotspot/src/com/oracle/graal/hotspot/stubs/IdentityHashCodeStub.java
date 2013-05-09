@@ -47,11 +47,11 @@ public class IdentityHashCodeStub extends CRuntimeStub {
     @Snippet
     private static int identityHashCode(Object object) {
         int result = identityHashCodeC(IDENTITY_HASH_CODE_C, thread(), object);
-        handlePendingException(false);
+        StubUtil.handlePendingException(false);
         return result;
     }
 
-    public static final Descriptor IDENTITY_HASH_CODE_C = descriptorFor(IdentityHashCodeStub.class, "identityHashCodeC", false);
+    public static final Descriptor IDENTITY_HASH_CODE_C = StubUtil.descriptorFor(IdentityHashCodeStub.class, "identityHashCodeC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native int identityHashCodeC(@ConstantNodeParameter Descriptor identityHashCodeC, Word thread, Object object);

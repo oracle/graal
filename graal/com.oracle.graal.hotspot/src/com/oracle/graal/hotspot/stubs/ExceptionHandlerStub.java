@@ -70,11 +70,11 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         writeExceptionOop(thread(), exception);
         writeExceptionPc(thread(), exceptionPc);
         if (logging()) {
-            printf("handling exception %p (", Word.fromObject(exception).rawValue());
-            decipher(Word.fromObject(exception).rawValue());
-            printf(") at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue());
-            decipher(exceptionPc.rawValue());
-            printf(")\n");
+            StubUtil.printf("handling exception %p (", Word.fromObject(exception).rawValue());
+            StubUtil.decipher(Word.fromObject(exception).rawValue());
+            StubUtil.printf(") at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue());
+            StubUtil.decipher(exceptionPc.rawValue());
+            StubUtil.printf(")\n");
         }
 
         // patch throwing pc into return address so that deoptimization finds the right debug info
@@ -83,9 +83,9 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread());
 
         if (logging()) {
-            printf("handler for exception %p at %p is at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
-            decipher(handlerPc.rawValue());
-            printf(")\n");
+            StubUtil.printf("handler for exception %p at %p is at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
+            StubUtil.decipher(handlerPc.rawValue());
+            StubUtil.printf(")\n");
         }
 
         // patch the return address so that this stub returns to the exception handler
@@ -96,18 +96,18 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         if (enabled) {
             Object currentException = readExceptionOop(thread());
             if (currentException != null) {
-                fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
+                StubUtil.fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
             }
             Word currentExceptionPc = readExceptionPc(thread());
             if (currentExceptionPc.notEqual(Word.zero())) {
-                fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
+                StubUtil.fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
             }
         }
     }
 
     static void checkExceptionNotNull(boolean enabled, Object exception) {
         if (enabled && exception == null) {
-            fatal("exception must not be null");
+            StubUtil.fatal("exception must not be null");
         }
     }
 
@@ -124,7 +124,7 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         return enabled || graalRuntime().getConfig().cAssertions;
     }
 
-    public static final Descriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc", false);
+    public static final Descriptor EXCEPTION_HANDLER_FOR_PC = StubUtil.descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc", false);
 
     @NodeIntrinsic(value = CRuntimeCall.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForPc(@ConstantNodeParameter Descriptor exceptionHandlerForPc, Word thread);

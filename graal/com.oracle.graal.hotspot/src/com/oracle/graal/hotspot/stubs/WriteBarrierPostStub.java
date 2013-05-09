@@ -49,7 +49,7 @@ public class WriteBarrierPostStub extends CRuntimeStub {
         writeBarrierPostC(WRITE_BARRIER_POST_C, thread(), object, card);
     }
 
-    public static final Descriptor WRITE_BARRIER_POST_C = descriptorFor(WriteBarrierPostStub.class, "writeBarrierPostC", false);
+    public static final Descriptor WRITE_BARRIER_POST_C = StubUtil.descriptorFor(WriteBarrierPostStub.class, "writeBarrierPostC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void writeBarrierPostC(@ConstantNodeParameter Descriptor vmErrorC, Word thread, Object object, Word card);

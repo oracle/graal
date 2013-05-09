@@ -383,7 +383,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     /**
      * Returns the offset of this method into the v-table. If the holder is not initialized, returns
-     * -1
+     * -1. If it is initialized the method must have a v-table entry has indicated by
+     * {@link #hasVtableEntry()}.
      * 
      * @return the offset of this method into the v-table
      */
@@ -392,6 +393,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return -1;
         }
         return graalRuntime().getCompilerToVM().getVtableEntryOffset(metaspaceMethod);
+    }
+
+    public boolean hasVtableEntry() {
+        return graalRuntime().getCompilerToVM().hasVtableEntry(metaspaceMethod);
     }
 
     public void setCurrentTask(CompilationTask task) {
@@ -454,5 +459,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);
         }
+    }
+
+    @Override
+    public boolean isInVirtualMethodTable() {
+        return hasVtableEntry();
     }
 }

@@ -30,6 +30,7 @@ import java.text.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.*;
@@ -181,8 +182,8 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     private static List<String> getInlineContext() {
         List<String> result = new ArrayList<>();
         for (Object o : Debug.context()) {
-            if (o instanceof ResolvedJavaMethod) {
-                ResolvedJavaMethod method = (ResolvedJavaMethod) o;
+            JavaMethod method = GraalDebugConfig.asJavaMethod(o);
+            if (method != null) {
                 result.add(MetaUtil.format("%H::%n(%p)", method));
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;

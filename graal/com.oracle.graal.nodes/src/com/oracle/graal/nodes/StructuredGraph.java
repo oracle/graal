@@ -106,6 +106,11 @@ public class StructuredGraph extends Graph {
         return start;
     }
 
+    /**
+     * Gets the method from which this graph was built.
+     * 
+     * @return null if this method was not built from a method or the method is not available
+     */
     public ResolvedJavaMethod method() {
         return method;
     }

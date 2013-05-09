@@ -43,8 +43,8 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new SPARCLIRGenerator(graph, this.runtime(), this.target, frameMap, method, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        return new SPARCLIRGenerator(graph, this.runtime(), this.target, frameMap, cc, lir);
     }
 
     @Override
@@ -60,7 +60,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         // SPARC: Emit code
     }
 }

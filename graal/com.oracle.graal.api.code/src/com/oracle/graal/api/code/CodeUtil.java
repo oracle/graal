@@ -326,9 +326,17 @@ public class CodeUtil {
     public static CallingConvention getCallingConvention(CodeCacheProvider codeCache, CallingConvention.Type type, ResolvedJavaMethod method, boolean stackOnly) {
         Signature sig = method.getSignature();
         JavaType retType = sig.getReturnType(null);
-        JavaType[] argTypes = new JavaType[sig.getParameterCount(!Modifier.isStatic(method.getModifiers()))];
-        for (int i = 0; i < argTypes.length; i++) {
-            argTypes[i] = sig.getParameterType(i, null);
+        int sigCount = sig.getParameterCount(false);
+        JavaType[] argTypes;
+        int argIndex = 0;
+        if (!Modifier.isStatic(method.getModifiers())) {
+            argTypes = new JavaType[sigCount + 1];
+            argTypes[argIndex++] = method.getDeclaringClass();
+        } else {
+            argTypes = new JavaType[sigCount];
+        }
+        for (int i = 0; i < sigCount; i++) {
+            argTypes[argIndex++] = sig.getParameterType(i, null);
         }
 
         RegisterConfig registerConfig = codeCache.lookupRegisterConfig();

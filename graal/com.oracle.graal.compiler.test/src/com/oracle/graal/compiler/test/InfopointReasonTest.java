@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.*;
@@ -29,6 +30,7 @@ import java.lang.reflect.*;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.compiler.*;
@@ -56,7 +58,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
     public void callInfopoints() {
         final Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        final CompilationResult cr = GraalCompiler.compileMethod(runtime, replacements, backend, runtime.getTarget(), runtime.lookupJavaMethod(method), graph, null, getDefaultPhasePlan(),
+        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, getDefaultPhasePlan(),
                         OptimisticOptimizations.ALL, new SpeculationLog());
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
@@ -77,7 +80,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
             }
         }
         assertTrue(graphLineSPs > 0);
-        final CompilationResult cr = GraalCompiler.compileMethod(runtime, replacements, backend, runtime.getTarget(), runtime.lookupJavaMethod(method), graph, null, getDefaultPhasePlan(true),
+        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, getDefaultPhasePlan(true),
                         OptimisticOptimizations.ALL, new SpeculationLog());
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {

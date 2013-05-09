@@ -74,7 +74,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     @Override
     public String toString() {
-        return (stub == null ? descriptor.toString() : MetaUtil.format("%h.%n", stub.getMethod())) + "@0x" + Long.toHexString(address) + ":" + cc;
+        return (stub == null ? descriptor.toString() : stub) + "@0x" + Long.toHexString(address) + ":" + cc;
     }
 
     public CallingConvention getCallingConvention() {

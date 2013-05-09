@@ -208,4 +208,11 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
      * @return a constant representing a reference to this method
      */
     Constant getEncoding();
+
+    /**
+     * Checks if this method is present in the virtual table.
+     * 
+     * @return true is this method is present in the virtual table
+     */
+    boolean isInVirtualMethodTable();
 }

@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 
@@ -60,8 +59,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return (HotSpotRuntime) runtime;
     }
 
-    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        super(graph, runtime, target, frameMap, method, lir);
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, runtime, target, frameMap, cc, lir);
     }
 
     /**
@@ -139,7 +138,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected void emitPrologue() {
 
-        CallingConvention incomingArguments = createCallingConvention();
+        CallingConvention incomingArguments = cc;
 
         RegisterValue rbpParam = rbp.asValue(Kind.Long);
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
@@ -175,7 +174,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     protected boolean needOnlyOopMaps() {
         // Stubs only need oop maps
-        return runtime().asStub(method) != null;
+        return graph.start() instanceof StubStartNode;
     }
 
     /**
@@ -202,11 +201,18 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64RestoreRegistersOp(save.getSlots().clone(), save));
     }
 
+    Stub getStub() {
+        if (graph.start() instanceof StubStartNode) {
+            return ((StubStartNode) graph.start()).getStub();
+        }
+        return null;
+    }
+
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
-        Stub stub = runtime().asStub(method);
+    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+        Stub stub = getStub();
         boolean isCRuntimeCall = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
-        assert !isCRuntimeCall || stub != null : "direct call to C runtime can only be made from compiled stubs, not from " + method;
+        assert !isCRuntimeCall || stub != null : "direct call to C runtime can only be made from compiled stubs, not from " + graph;
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
@@ -225,7 +231,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
         }
 
-        Variable result = super.emitCall(callTarget, cc, info, args);
+        Variable result = super.emitCall(callTarget, callCc, info, args);
 
         if (isCRuntimeCall) {
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
@@ -258,20 +264,6 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
         calleeSaveInfo.put(currentRuntimeCallInfo, emitZapRegisters(zappedRegisters, zapValues));
         return true;
-    }
-
-    @Override
-    protected CallingConvention createCallingConvention() {
-        Stub stub = runtime().asStub(method);
-        if (stub != null) {
-            return stub.getLinkage().getCallingConvention();
-        }
-
-        if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
-            return super.createCallingConvention();
-        } else {
-            return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnType(null), new JavaType[]{runtime.lookupJavaType(long.class)}, target, false);
-        }
     }
 
     @Override
@@ -340,9 +332,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitUnwind(Value exception) {
         RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention cc = stub.getCallingConvention();
-        assert cc.getArgumentCount() == 2;
-        RegisterValue exceptionParameter = (RegisterValue) cc.getArgument(0);
+        CallingConvention stubCc = stub.getCallingConvention();
+        assert stubCc.getArgumentCount() == 2;
+        RegisterValue exceptionParameter = (RegisterValue) stubCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
@@ -366,10 +358,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
         RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(EXCEPTION_HANDLER_IN_CALLER);
-        CallingConvention cc = stub.getCallingConvention();
-        assert cc.getArgumentCount() == 2;
-        RegisterValue exceptionFixed = (RegisterValue) cc.getArgument(0);
-        RegisterValue exceptionPcFixed = (RegisterValue) cc.getArgument(1);
+        CallingConvention stubCc = stub.getCallingConvention();
+        assert stubCc.getArgumentCount() == 2;
+        RegisterValue exceptionFixed = (RegisterValue) stubCc.getArgument(0);
+        RegisterValue exceptionPcFixed = (RegisterValue) stubCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
         AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);

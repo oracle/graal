@@ -50,7 +50,7 @@ import com.oracle.graal.word.*;
  * code when TLAB allocation fails. If this stub fails to refill the TLAB or allocate the object, it
  * calls out to the HotSpot C++ runtime to complete the allocation.
  */
-public class NewArrayStub extends Stub {
+public class NewArrayStub extends SnippetStub {
 
     public NewArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
         super(runtime, replacements, target, linkage);
@@ -94,10 +94,10 @@ public class NewArrayStub extends Stub {
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
         int sizeInBytes = computeArrayAllocationSize(length, wordSize(), headerSize, log2ElementSize);
         if (logging()) {
-            printf("newArray: element kind %d\n", elementKind);
-            printf("newArray: array length %d\n", length);
-            printf("newArray: array size %d\n", sizeInBytes);
-            printf("newArray: hub=%p\n", hub.rawValue());
+            StubUtil.printf("newArray: element kind %d\n", elementKind);
+            StubUtil.printf("newArray: array length %d\n", length);
+            StubUtil.printf("newArray: array size %d\n", sizeInBytes);
+            StubUtil.printf("newArray: hub=%p\n", hub.rawValue());
         }
 
         // check that array length is small enough for fast path.
@@ -105,29 +105,29 @@ public class NewArrayStub extends Stub {
             Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {
-                    printf("newArray: allocated new array at %p\n", memory.rawValue());
+                    StubUtil.printf("newArray: allocated new array at %p\n", memory.rawValue());
                 }
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
-                return verifyObject(memory.toObject());
+                return StubUtil.verifyObject(memory.toObject());
             }
         }
         if (logging()) {
-            printf("newArray: calling new_array_c\n");
+            StubUtil.printf("newArray: calling new_array_c\n");
         }
 
         newArrayC(NEW_ARRAY_C, thread(), hub, length);
 
         if (clearPendingException(thread())) {
             if (logging()) {
-                printf("newArray: deoptimizing to caller\n");
+                StubUtil.printf("newArray: deoptimizing to caller\n");
             }
             getAndClearObjectResult(thread());
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
-        return verifyObject(getAndClearObjectResult(thread()));
+        return StubUtil.verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC", false);
+    public static final Descriptor NEW_ARRAY_C = StubUtil.descriptorFor(NewArrayStub.class, "newArrayC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);

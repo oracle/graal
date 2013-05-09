@@ -22,15 +22,8 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.code.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.nodes.CStringNode.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.word.Word.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -38,14 +31,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.Node.ConstantNodeParameter;
-import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -54,29 +44,15 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
-import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.word.*;
 
 //JaCoCo Exclude
 
 /**
- * Base class for implementing some low level code providing the out-of-line slow path for a
- * snippet. A stub may make a direct call to a HotSpot C/C++ runtime function. Stubs are installed
- * as an instance of the C++ RuntimeStub class (as opposed to nmethod).
- * <p>
- * Implementation detail: The stub classes re-use some of the functionality for {@link Snippet}s
- * purely for convenience (e.g., can re-use the {@link ReplacementsImpl}).
+ * Base class for implementing some low level code providing the out-of-line slow path for a snippet
+ * and/or a callee saved call to a HotSpot C/C++ runtime function or even a another compiled Java
+ * method.
  */
-public abstract class Stub extends AbstractTemplates implements Snippets {
-
-    /**
-     * The method implementing the stub.
-     */
-    protected final SnippetInfo stubInfo;
+public abstract class Stub {
 
     /**
      * The linkage information for the stub.
@@ -116,31 +92,19 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
         return true;
     }
 
+    protected final HotSpotRuntime runtime;
+
+    protected final Replacements replacements;
+
     /**
-     * Creates a new stub container..
+     * Creates a new stub.
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public Stub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target);
-        this.stubInfo = snippet(getClass(), null);
+    public Stub(HotSpotRuntime runtime, Replacements replacements, HotSpotRuntimeCallTarget linkage) {
         this.linkage = linkage;
-    }
-
-    /**
-     * Adds the {@linkplain ConstantParameter constant} arguments of this stub.
-     */
-    protected abstract Arguments makeArguments(SnippetInfo stub);
-
-    protected HotSpotRuntime runtime() {
-        return (HotSpotRuntime) runtime;
-    }
-
-    /**
-     * Gets the method implementing this stub.
-     */
-    public ResolvedJavaMethod getMethod() {
-        return stubInfo.getMethod();
+        this.runtime = runtime;
+        this.replacements = replacements;
     }
 
     public HotSpotRuntimeCallTarget getLinkage() {
@@ -153,40 +117,32 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
     private boolean checkStubInvariants(CompilationResult compResult) {
         for (DataPatch data : compResult.getDataReferences()) {
             Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : format("%h.%n(%p): ", getMethod()) + "cannot have embedded object constant: " + constant;
-            assert constant.getPrimitiveAnnotation() == null : format("%h.%n(%p): ", getMethod()) + "cannot have embedded metadata: " + constant;
+            assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
+            assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
-            assert infopoint instanceof Call : format("%h.%n(%p): ", getMethod()) + "cannot have non-call infopoint: " + infopoint;
+            assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
             Call call = (Call) infopoint;
-            assert call.target instanceof HotSpotRuntimeCallTarget : format("%h.%n(%p): ", getMethod()) + "cannot have non runtime call: " + call.target;
+            assert call.target instanceof HotSpotRuntimeCallTarget : this + " cannot have non runtime call: " + call.target;
             HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : format("%h.%n(%p): ", getMethod()) +
-                            "must only call C runtime or deoptimization stub, not " + call.target;
+            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : this + "must only call C runtime or deoptimization stub, not " + call.target;
         }
         return true;
     }
 
+    protected abstract StructuredGraph getGraph();
+
+    @Override
+    public abstract String toString();
+
     /**
-     * Looks for a {@link CRuntimeCall} node intrinsic named {@code name} in {@code stubClass} and
-     * returns a {@link Descriptor} based on its signature and the value of {@code hasSideEffect}.
+     * Gets the method the stub's code will be {@linkplain InstalledCode#getMethod() associated}
+     * with once installed. This may be null.
      */
-    protected static <T extends Stub> Descriptor descriptorFor(Class<T> stubClass, String name, boolean hasSideEffect) {
-        Method found = null;
-        for (Method method : stubClass.getDeclaredMethods()) {
-            if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {
-                if (method.getAnnotation(NodeIntrinsic.class).value() == CRuntimeCall.class) {
-                    assert found == null : "found more than one C runtime call named " + name + " in " + stubClass;
-                    assert method.getParameterTypes().length != 0 && method.getParameterTypes()[0] == Descriptor.class : "first parameter of C runtime call '" + name + "' in " + stubClass +
-                                    " must be of type " + Descriptor.class.getSimpleName();
-                    found = method;
-                }
-            }
-        }
-        assert found != null : "could not find C runtime call named " + name + " in " + stubClass;
-        List<Class<?>> paramList = Arrays.asList(found.getParameterTypes());
-        Class[] cCallTypes = paramList.subList(1, paramList.size()).toArray(new Class[paramList.size() - 1]);
-        return new Descriptor(name, hasSideEffect, found.getReturnType(), cCallTypes);
+    protected abstract ResolvedJavaMethod getInstalledCodeOwner();
+
+    protected Object debugScopeContext() {
+        return getInstalledCodeOwner();
     }
 
     /**
@@ -194,19 +150,22 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
      */
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
-            Debug.sandbox("CompilingStub", new Object[]{runtime(), getMethod()}, DebugScope.getConfig(), new Runnable() {
+            Debug.sandbox("CompilingStub", new Object[]{runtime, debugScopeContext()}, DebugScope.getConfig(), new Runnable() {
 
                 @Override
                 public void run() {
 
-                    Arguments args = makeArguments(stubInfo);
-                    SnippetTemplate template = template(args);
-                    StructuredGraph graph = template.copySpecializedGraph();
+                    final StructuredGraph graph = getGraph();
+                    StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
+                    newStart.setStateAfter(graph.start().stateAfter());
+                    graph.replaceFixed(graph.start(), newStart);
+                    graph.setStart(newStart);
 
                     PhasePlan phasePlan = new PhasePlan();
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                    final CompilationResult compResult = GraalCompiler.compileMethod(runtime(), replacements, backend, runtime().getTarget(), getMethod(), graph, null, phasePlan,
+                    CallingConvention cc = linkage.getCallingConvention();
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog());
 
                     assert checkStubInvariants(compResult);
@@ -216,8 +175,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
 
                         @Override
                         public InstalledCode call() {
-                            InstalledCode installedCode = runtime().addMethod(getMethod(), compResult);
-                            assert installedCode != null : "error installing stub " + getMethod();
+                            InstalledCode installedCode = runtime.addMethod(getInstalledCodeOwner(), compResult);
+                            assert installedCode != null : "error installing stub " + this;
                             if (Debug.isDumpEnabled()) {
                                 Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                             }
@@ -228,181 +187,8 @@ public abstract class Stub extends AbstractTemplates implements Snippets {
                     });
                 }
             });
-            assert code != null : "error installing stub " + getMethod();
+            assert code != null : "error installing stub " + this;
         }
         return code;
-    }
-
-    static void handlePendingException(boolean isObjectResult) {
-        if (clearPendingException(thread())) {
-            if (isObjectResult) {
-                getAndClearObjectResult(thread());
-            }
-            DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
-        }
-    }
-
-    public static final Descriptor VM_MESSAGE_C = descriptorFor(Stub.class, "vmMessageC", false);
-
-    @NodeIntrinsic(CRuntimeCall.class)
-    private static native void vmMessageC(@ConstantNodeParameter Descriptor stubPrintfC, boolean vmError, Word format, long v1, long v2, long v3);
-
-    /**
-     * Prints a message to the log stream.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
-     * constant in a RuntimeStub.</b>
-     * 
-     * @param message a message string
-     */
-    public static void printf(String message) {
-        vmMessageC(VM_MESSAGE_C, false, cstring(message), 0L, 0L, 0L);
-    }
-
-    /**
-     * Prints a message to the log stream.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long)} to avoid an object
-     * constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param value the value associated with the first conversion specifier in {@code format}
-     */
-    public static void printf(String format, long value) {
-        vmMessageC(VM_MESSAGE_C, false, cstring(format), value, 0L, 0L);
-    }
-
-    /**
-     * Prints a message to the log stream.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long, long)} to avoid an object
-     * constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param v1 the value associated with the first conversion specifier in {@code format}
-     * @param v2 the value associated with the second conversion specifier in {@code format}
-     */
-    public static void printf(String format, long v1, long v2) {
-        vmMessageC(VM_MESSAGE_C, false, cstring(format), v1, v2, 0L);
-    }
-
-    /**
-     * Prints a message to the log stream.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param v1 the value associated with the first conversion specifier in {@code format}
-     * @param v2 the value associated with the second conversion specifier in {@code format}
-     * @param v3 the value associated with the third conversion specifier in {@code format}
-     */
-    public static void printf(String format, long v1, long v2, long v3) {
-        vmMessageC(VM_MESSAGE_C, false, cstring(format), v1, v2, v3);
-    }
-
-    /**
-     * Analyzes a given value and prints information about it to the log stream.
-     */
-    public static void decipher(long value) {
-        vmMessageC(VM_MESSAGE_C, false, Word.zero(), value, 0L, 0L);
-    }
-
-    /**
-     * Exits the VM with a given error message.
-     * <p>
-     * <b>Stubs must use this instead of {@link VMErrorNode#vmError(String, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
-     * 
-     * @param message an error message
-     */
-    public static void fatal(String message) {
-        vmMessageC(VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
-    }
-
-    /**
-     * Exits the VM with a given error message.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param value the value associated with the first conversion specifier in {@code format}
-     */
-    public static void fatal(String format, long value) {
-        vmMessageC(VM_MESSAGE_C, true, cstring(format), value, 0L, 0L);
-    }
-
-    /**
-     * Exits the VM with a given error message.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param v1 the value associated with the first conversion specifier in {@code format}
-     * @param v2 the value associated with the second conversion specifier in {@code format}
-     */
-    public static void fatal(String format, long v1, long v2) {
-        vmMessageC(VM_MESSAGE_C, true, cstring(format), v1, v2, 0L);
-    }
-
-    /**
-     * Exits the VM with a given error message.
-     * <p>
-     * <b>Stubs must use this instead of {@link Log#printf(String, long, long, long)} to avoid an
-     * object constant in a RuntimeStub.</b>
-     * 
-     * @param format a C style printf format value
-     * @param v1 the value associated with the first conversion specifier in {@code format}
-     * @param v2 the value associated with the second conversion specifier in {@code format}
-     * @param v3 the value associated with the third conversion specifier in {@code format}
-     */
-    public static void fatal(String format, long v1, long v2, long v3) {
-        vmMessageC(VM_MESSAGE_C, true, cstring(format), v1, v2, v3);
-    }
-
-    /**
-     * Verifies that a given object value is well formed if {@code -XX:+VerifyOops} is enabled.
-     */
-    public static Object verifyObject(Object object) {
-        if (verifyOops()) {
-            Word verifyOopCounter = Word.unsigned(verifyOopCounterAddress());
-            verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
-
-            Pointer oop = Word.fromObject(object);
-            if (object != null) {
-                // make sure object is 'reasonable'
-                if (!oop.and(unsigned(verifyOopMask())).equal(unsigned(verifyOopBits()))) {
-                    fatal("oop not in heap: %p", oop.rawValue());
-                }
-
-                Word klass = oop.readWord(hubOffset());
-                if (klass.equal(Word.zero())) {
-                    fatal("klass for oop %p is null", oop.rawValue());
-                }
-            }
-        }
-        return object;
-    }
-
-    @Fold
-    private static long verifyOopCounterAddress() {
-        return config().verifyOopCounterAddress;
-    }
-
-    @Fold
-    private static long verifyOopMask() {
-        return config().verifyOopMask;
-    }
-
-    @Fold
-    private static long verifyOopBits() {
-        return config().verifyOopBits;
-    }
-
-    @Fold
-    private static int hubOffset() {
-        return config().hubOffset;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.SnippetTemplate.Arguments;
-import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
+import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.nodes.*;
 
 /**
- * Base class for a stub that saves registers around a C runtime call.
+ * Start node for a {@link Stub}'s graph.
  */
-public abstract class CRuntimeStub extends SnippetStub {
+public class StubStartNode extends StartNode {
 
-    public CRuntimeStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage);
+    private final Stub stub;
+
+    public StubStartNode(Stub stub) {
+        this.stub = stub;
     }
 
-    @Override
-    protected Arguments makeArguments(SnippetInfo stub) {
-        Arguments args = new Arguments(stub);
-        for (int i = 0; i < stub.getParameterCount(); i++) {
-            args.add(stub.getParameterName(i), null);
-        }
-        return args;
+    public Stub getStub() {
+        return stub;
     }
 }
