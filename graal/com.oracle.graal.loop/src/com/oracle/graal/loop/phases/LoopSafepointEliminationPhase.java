@@ -39,7 +39,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             loops.detectedCountedLoops();
             for (LoopEx loop : loops.countedLoops()) {
                 if (loop.lirLoop().children.isEmpty() && loop.counted().getKind() == Kind.Int) {
-                    loop.loopBegin().dependencies().add(loop.counted().getOverFlowGuard());
+                    loop.counted().createOverFlowGuard();
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         loopEnd.disableSafepoint();
                     }

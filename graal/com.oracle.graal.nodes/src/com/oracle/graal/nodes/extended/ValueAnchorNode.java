@@ -36,13 +36,16 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable {
 
+    @Input private NodeInputList<ValueNode> anchored;
+
     public ValueAnchorNode(ValueNode... values) {
         this(false, values);
     }
 
     public ValueAnchorNode(boolean permanent, ValueNode... values) {
-        super(StampFactory.dependency(), values);
+        super(StampFactory.dependency());
         this.permanent = permanent;
+        this.anchored = new NodeInputList<>(this, values);
     }
 
     private final boolean permanent;
@@ -53,8 +56,8 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     }
 
     public void addAnchoredNode(ValueNode value) {
-        if (!this.dependencies().contains(value)) {
-            this.dependencies().add(value);
+        if (!anchored.contains(value)) {
+            this.anchored.add(value);
         }
     }
 
@@ -67,13 +70,13 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
             if (previousAnchor.usages().isEmpty()) { // avoid creating cycles
                 // transfer values and remove
-                for (ValueNode node : dependencies().nonNull().distinct()) {
+                for (ValueNode node : anchored.nonNull().distinct()) {
                     previousAnchor.addAnchoredNode(node);
                 }
                 return previousAnchor;
             }
         }
-        for (Node node : dependencies().nonNull().and(isNotA(FixedNode.class))) {
+        for (Node node : anchored.nonNull().and(isNotA(FixedNode.class))) {
             if (node instanceof ConstantNode) {
                 continue;
             }
@@ -100,7 +103,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         if (permanent) {
             return;
         }
-        for (ValueNode node : dependencies().nonNull().and(isNotA(AbstractBeginNode.class))) {
+        for (ValueNode node : anchored.nonNull().and(isNotA(AbstractBeginNode.class))) {
             State state = tool.getObjectState(node);
             if (state == null || state.getState() != EscapeState.Virtual) {
                 return;

@@ -35,6 +35,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
+    @Input private ValueNode overflowGuard;
 
     public LoopBeginNode() {
         loopFrequency = 1;
@@ -182,5 +183,14 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
             loopexit.removeProxies();
             graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
         }
+    }
+
+    public ValueNode getOverflowGuard() {
+        return overflowGuard;
+    }
+
+    public void setOverflowGuard(ValueNode overflowGuard) {
+        updateUsages(this.overflowGuard, overflowGuard);
+        this.overflowGuard = overflowGuard;
     }
 }
