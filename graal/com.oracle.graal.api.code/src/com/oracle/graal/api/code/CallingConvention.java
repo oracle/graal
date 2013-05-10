@@ -171,7 +171,7 @@ public class CallingConvention {
             sb.append(sep).append(op);
             sep = ", ";
         }
-        if (returnLocation != Value.ILLEGAL) {
+        if (!returnLocation.equals(Value.ILLEGAL)) {
             sb.append(" -> ").append(returnLocation);
         }
         if (temporaryLocations.length != 0) {

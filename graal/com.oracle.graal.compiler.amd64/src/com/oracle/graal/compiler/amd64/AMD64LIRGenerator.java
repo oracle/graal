@@ -174,7 +174,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
         AllocatableValue indexRegister;
         Scale scaleEnum;
-        if (index != Value.ILLEGAL && scale != 0) {
+        if (!index.equals(Value.ILLEGAL) && scale != 0) {
             scaleEnum = Scale.fromInt(scale);
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
@@ -193,7 +193,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else {
             displacementInt = 0;
             AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
-            if (baseRegister == Value.ILLEGAL) {
+            if (baseRegister.equals(Value.ILLEGAL)) {
                 baseRegister = displacementRegister;
             } else if (indexRegister == Value.ILLEGAL) {
                 indexRegister = displacementRegister;

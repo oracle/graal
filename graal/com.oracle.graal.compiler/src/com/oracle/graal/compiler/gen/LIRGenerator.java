@@ -138,7 +138,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public ValueNode valueForOperand(Value value) {
         for (Entry<Node, Value> entry : nodeOperands.entries()) {
-            if (entry.getValue() == value) {
+            if (entry.getValue().equals(value)) {
                 return (ValueNode) entry.getKey();
             }
         }

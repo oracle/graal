@@ -713,12 +713,12 @@ public final class Interval {
 
                 assert i1.splitParent() == this : "not a split child of this interval";
                 assert i1.kind() == kind() : "must be equal for all split children";
-                assert i1.spillSlot() == spillSlot() : "must be equal for all split children";
+                assert (i1.spillSlot() == null && spillSlot == null) || i1.spillSlot().equals(spillSlot()) : "must be equal for all split children";
 
                 for (int j = i + 1; j < splitChildren.size(); j++) {
                     Interval i2 = splitChildren.get(j);
 
-                    assert i1.operand != i2.operand : "same register number";
+                    assert !i1.operand.equals(i2.operand) : "same register number";
 
                     if (i1.from() < i2.from()) {
                         assert i1.to() <= i2.from() && i1.to() < i2.to() : "intervals overlapping";

@@ -54,7 +54,7 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
         RuntimeCallTarget stub = tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = stub.getCallingConvention();
         assert cc.getArgumentCount() == 2;
-        assert exception == cc.getArgument(0);
+        assert exception.equals(cc.getArgument(0));
 
         // Get return address (is on top of stack after leave).
         Register returnAddress = asRegister(cc.getArgument(1));

@@ -179,7 +179,7 @@ public final class LIRVerifier {
                 curRegistersDefined.set(regNum);
             }
 
-            if (beforeRegisterAllocation && curRegistersLive[regNum] != value) {
+            if (beforeRegisterAllocation && !curRegistersLive[regNum].equals(value)) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("live registers: %s", Arrays.toString(curRegistersLive));
                 TTY.println("ERROR: Use of fixed register %s that is not defined in this block", value);

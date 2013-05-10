@@ -54,7 +54,7 @@ public class AMD64AddressValue extends CompositeValue {
     }
 
     private static Register toRegister(AllocatableValue value) {
-        if (value == Value.ILLEGAL) {
+        if (value.equals(Value.ILLEGAL)) {
             return Register.None;
         } else {
             RegisterValue reg = (RegisterValue) value;
