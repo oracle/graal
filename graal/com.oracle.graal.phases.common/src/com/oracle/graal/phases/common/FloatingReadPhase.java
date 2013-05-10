@@ -165,12 +165,10 @@ public class FloatingReadPhase extends Phase {
                 FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
                 floatingNode.setNullCheck(accessNode.getNullCheck());
                 ValueAnchorNode anchor = null;
-                for (GuardNode guard : accessNode.dependencies().filter(GuardNode.class)) {
-                    if (anchor == null) {
-                        anchor = graph.add(new ValueAnchorNode());
-                        graph.addAfterFixed(accessNode, anchor);
-                    }
-                    anchor.addAnchoredNode(guard);
+                GuardingNode guard = accessNode.getGuard();
+                if (guard != null) {
+                    anchor = graph.add(new ValueAnchorNode(guard.asNode()));
+                    graph.addAfterFixed(accessNode, anchor);
                 }
                 graph.replaceFixedWithFloating(accessNode, floatingNode);
             }

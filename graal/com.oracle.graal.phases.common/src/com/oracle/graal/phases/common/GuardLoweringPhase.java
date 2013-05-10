@@ -114,8 +114,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private void processAccess(Access access) {
             GuardNode guard = nullGuarded.get(access.object());
             if (guard != null && isImplicitNullCheck(access.nullCheckLocation())) {
-                NodeInputList<ValueNode> dependencies = ((ValueNode) access).dependencies();
-                dependencies.remove(guard);
+                access.setGuard(guard.getGuard());
                 Access fixedAccess = access;
                 if (access instanceof FloatingAccessNode) {
                     fixedAccess = ((FloatingAccessNode) access).asFixedNode();

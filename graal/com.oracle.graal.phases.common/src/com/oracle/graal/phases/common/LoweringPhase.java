@@ -31,6 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
@@ -45,12 +46,12 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     final class LoweringToolImpl implements LoweringTool {
 
         private final PhaseContext context;
-        private final FixedNode guardAnchor;
+        private final GuardingNode guardAnchor;
         private final NodeBitMap activeGuards;
         private FixedWithNextNode lastFixedNode;
         private ControlFlowGraph cfg;
 
-        public LoweringToolImpl(PhaseContext context, FixedNode guardAnchor, NodeBitMap activeGuards, ControlFlowGraph cfg) {
+        public LoweringToolImpl(PhaseContext context, GuardingNode guardAnchor, NodeBitMap activeGuards, ControlFlowGraph cfg) {
             this.context = context;
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
@@ -68,18 +69,19 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public ValueNode createNullCheckGuard(NodeInputList<ValueNode> list, ValueNode object) {
+        public GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object) {
             if (object.objectStamp().nonNull()) {
                 // Short cut creation of null check guard if the object is known to be non-null.
                 return null;
             }
-            ValueNode guard = createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
-            list.add(guard);
+            GuardingNode guard = createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+            assert guardedNode.getGuard() == null;
+            guardedNode.setGuard(guard);
             return guard;
         }
 
         @Override
-        public ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+        public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
             return createGuard(condition, deoptReason, action, false);
         }
 
@@ -89,7 +91,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
+        public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (loweringType == LoweringType.AFTER_GUARDS) {
                 throw new GraalInternalError("Cannot create guards in after-guard lowering");
             }
@@ -100,7 +102,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     }
                 }
             }
-            GuardNode newGuard = guardAnchor.graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
+            GuardNode newGuard = guardAnchor.asNode().graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
             if (GraalOptions.OptEliminateGuards) {
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
@@ -179,9 +181,9 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             processBlock(schedule.getCFG().getStartBlock(), graph.createNodeBitMap(), null);
         }
 
-        private void processBlock(Block block, NodeBitMap activeGuards, FixedNode parentAnchor) {
+        private void processBlock(Block block, NodeBitMap activeGuards, GuardingNode parentAnchor) {
 
-            FixedNode anchor = parentAnchor;
+            GuardingNode anchor = parentAnchor;
             if (anchor == null) {
                 anchor = block.getBeginNode();
             }
@@ -202,13 +204,13 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
 
             if (parentAnchor == null && GraalOptions.OptEliminateGuards) {
-                for (GuardNode guard : anchor.usages().filter(GuardNode.class)) {
+                for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
                     activeGuards.clear(guard);
                 }
             }
         }
 
-        private void process(final Block b, final NodeBitMap activeGuards, final FixedNode anchor) {
+        private void process(final Block b, final NodeBitMap activeGuards, final GuardingNode anchor) {
 
             final LoweringToolImpl loweringTool = new LoweringToolImpl(context, anchor, activeGuards, schedule.getCFG());
 

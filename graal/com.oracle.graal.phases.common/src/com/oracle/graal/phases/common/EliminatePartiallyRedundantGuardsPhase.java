@@ -116,16 +116,10 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         }
         Collection<GuardNode> hits = new LinkedList<>();
         for (GuardNode guard : merge.guards()) {
-            if (guard.dependencies().size() != 1) {
-                continue;
-            }
             for (AbstractEndNode end : merge.forwardEnds()) {
                 AbstractBeginNode begin = AbstractBeginNode.prevBegin(end);
                 boolean found = false;
                 for (GuardNode predecessorGuard : begin.guards()) {
-                    if (predecessorGuard.dependencies().size() != 1) {
-                        continue;
-                    }
                     if (guard.condition() == predecessorGuard.condition() && guard.negated() == predecessorGuard.negated()) {
                         hits.add(guard);
                         found = true;
@@ -154,9 +148,6 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
         for (Node successor : controlSplit.successors()) {
             AbstractBeginNode begin = (AbstractBeginNode) successor;
             for (GuardNode guard : begin.guards()) {
-                if (guard.dependencies().size() != 1) {
-                    continue;
-                }
                 Condition condition = new Condition(guard.condition(), guard.negated());
                 Collection<GuardNode> guards = conditionToGuard.get(condition);
                 if (guards == null) {
@@ -177,7 +168,7 @@ public class EliminatePartiallyRedundantGuardsPhase extends Phase {
             DeoptimizationAction action = DeoptimizationAction.None;
             Set<AbstractBeginNode> begins = new HashSet<>(3);
             for (GuardNode guard : guards) {
-                AbstractBeginNode begin = (AbstractBeginNode) guard.dependencies().first();
+                AbstractBeginNode begin = (AbstractBeginNode) guard.getGuard();
                 begins.add(begin);
                 if (guard.action().ordinal() > action.ordinal()) {
                     action = guard.action();

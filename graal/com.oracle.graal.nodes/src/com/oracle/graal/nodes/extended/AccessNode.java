@@ -22,10 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -34,8 +31,9 @@ import com.oracle.graal.nodes.type.*;
  * {@linkplain #nullCheckLocation() location}. The access does not include a null check on the
  * object.
  */
-public abstract class AccessNode extends DeoptimizingFixedWithNextNode implements Access {
+public abstract class AccessNode extends DeoptimizingFixedWithNextNode implements Access, GuardingNode {
 
+    @Input private GuardingNode guard;
     @Input private ValueNode object;
     @Input private ValueNode location;
     private boolean nullCheck;
@@ -61,25 +59,18 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
     }
 
     public AccessNode(ValueNode object, ValueNode location, Stamp stamp) {
+        this(object, location, stamp, null);
+    }
+
+    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard) {
         super(stamp);
         this.object = object;
         this.location = location;
-    }
-
-    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
-        super(stamp, dependencies);
-        this.object = object;
-        this.location = location;
-    }
-
-    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, ValueNode... dependencies) {
-        super(stamp, dependencies);
-        this.object = object;
-        this.location = location;
+        this.guard = guard;
     }
 
     @Override
-    public Node asNode() {
+    public AccessNode asNode() {
         return this;
     }
 
@@ -91,5 +82,16 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
     @Override
     public DeoptimizationReason getDeoptimizationReason() {
         return DeoptimizationReason.NullCheckException;
+    }
+
+    @Override
+    public GuardingNode getGuard() {
+        return guard;
+    }
+
+    @Override
+    public void setGuard(GuardingNode guard) {
+        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        this.guard = guard;
     }
 }

@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The ValueAnchor instruction keeps non-CFG (floating) nodes above a certain point in the graph.
  */
-public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable {
+public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable, GuardingNode {
 
     @Input private NodeInputList<ValueNode> anchored;
 
@@ -110,5 +110,10 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
             }
         }
         tool.delete();
+    }
+
+    @Override
+    public ValueNode asNode() {
+        return this;
     }
 }

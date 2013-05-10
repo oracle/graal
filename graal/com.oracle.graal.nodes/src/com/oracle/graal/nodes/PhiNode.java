@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * variable.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Phi({i#values})")
-public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
+public final class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType, GuardingNode {
 
     public static enum PhiType {
         Value(null), // normal value phis
@@ -250,5 +251,10 @@ public final class PhiNode extends FloatingNode implements Canonicalizable, Node
 
     public boolean isLoopPhi() {
         return merge() instanceof LoopBeginNode;
+    }
+
+    @Override
+    public PhiNode asNode() {
+        return this;
     }
 }

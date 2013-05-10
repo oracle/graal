@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -42,14 +42,14 @@ import com.oracle.graal.nodes.type.*;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
-public final class GuardNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType, Negatable {
+public final class GuardNode extends FloatingGuardedNode implements Canonicalizable, Node.IterableNodeType, Negatable, GuardingNode, GuardedNode {
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
     private final DeoptimizationAction action;
     private boolean negated;
 
-    public GuardNode(LogicNode condition, FixedNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated) {
+    public GuardNode(LogicNode condition, GuardingNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated) {
         super(StampFactory.dependency(), anchor);
         this.condition = condition;
         this.reason = reason;
@@ -95,9 +95,7 @@ public final class GuardNode extends FloatingNode implements Canonicalizable, No
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {
-                if (dependencies().size() == 1) {
-                    return dependencies().get(0);
-                }
+                return getGuard().asNode();
             }
         }
         return this;

@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 
 public class CountedLoopInfo {
 
@@ -125,12 +126,12 @@ public class CountedLoopInfo {
         return iv.direction();
     }
 
-    public ValueNode getOverFlowGuard() {
+    public GuardingNode getOverFlowGuard() {
         return loop.loopBegin().getOverflowGuard();
     }
 
-    public ValueNode createOverFlowGuard() {
-        ValueNode overflowGuard = getOverFlowGuard();
+    public GuardingNode createOverFlowGuard() {
+        GuardingNode overflowGuard = getOverFlowGuard();
         if (overflowGuard != null) {
             return overflowGuard;
         }

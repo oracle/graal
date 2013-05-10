@@ -37,7 +37,7 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
     }
 
     public UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
-        super(object, stamp, anchor);
+        super(object, stamp, (FixedNode) anchor);
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {

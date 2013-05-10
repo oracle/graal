@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -40,20 +38,20 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
         super(object, location, stamp);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
-        super(object, location, stamp, dependencies);
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard) {
+        super(object, location, stamp, guard);
     }
 
     private ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
         super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
     }
 
-    private ReadNode(ValueNode object, ValueNode location, ValueNode dependency) {
+    private ReadNode(ValueNode object, ValueNode location, GuardingNode guard) {
         /*
          * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
          * LocalNode, the constructor cannot use the declared type LocationNode.
          */
-        super(object, location, StampFactory.forNodeIntrinsic(), dependency);
+        super(object, location, StampFactory.forNodeIntrinsic(), guard);
     }
 
     @Override
@@ -69,7 +67,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), dependencies()));
+        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard()));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {

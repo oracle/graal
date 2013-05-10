@@ -39,6 +39,7 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
 
     @Input private final CallTargetNode callTarget;
     @Input private FrameState deoptState;
+    @Input private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
@@ -187,5 +188,16 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public boolean isCallSiteDeoptimization() {
         return true;
+    }
+
+    @Override
+    public GuardingNode getGuard() {
+        return guard;
+    }
+
+    @Override
+    public void setGuard(GuardingNode guard) {
+        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        this.guard = guard;
     }
 }
