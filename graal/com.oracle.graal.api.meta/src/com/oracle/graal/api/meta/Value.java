@@ -78,4 +78,38 @@ public abstract class Value implements Serializable {
     public final PlatformKind getPlatformKind() {
         return platformKind;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((kind == null) ? 0 : kind.hashCode());
+        result = prime * result + ((platformKind == null) ? 0 : platformKind.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Value other = (Value) obj;
+        if (kind != other.kind) {
+            return false;
+        }
+        if (platformKind == null) {
+            if (other.platformKind != null) {
+                return false;
+            }
+        } else if (!platformKind.equals(other.platformKind)) {
+            return false;
+        }
+        return true;
+    }
 }

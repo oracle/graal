@@ -84,23 +84,6 @@ public final class StackSlot extends AllocatableValue {
     }
 
     @Override
-    public int hashCode() {
-        return getPlatformKind().hashCode() ^ (offset << 4) ^ (addFrameSize ? 15 : 0);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        }
-        if (o instanceof StackSlot) {
-            StackSlot l = (StackSlot) o;
-            return l.getPlatformKind().equals(getPlatformKind()) && l.offset == offset && l.addFrameSize == addFrameSize;
-        }
-        return false;
-    }
-
-    @Override
     public String toString() {
         if (!addFrameSize) {
             return "out:" + offset + getKindSuffix();
@@ -131,5 +114,35 @@ public final class StackSlot extends AllocatableValue {
             return get(getPlatformKind(), offset, true);
         }
         return this;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = super.hashCode();
+        result = prime * result + (addFrameSize ? 1231 : 1237);
+        result = prime * result + offset;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        StackSlot other = (StackSlot) obj;
+        if (addFrameSize != other.addFrameSize) {
+            return false;
+        }
+        if (offset != other.offset) {
+            return false;
+        }
+        return true;
     }
 }

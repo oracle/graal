@@ -51,12 +51,30 @@ public final class Variable extends AllocatableValue {
     }
 
     @Override
-    public int hashCode() {
-        return (index << 4) | getKind().ordinal();
+    public String toString() {
+        return "v" + index + getKindSuffix();
     }
 
     @Override
-    public String toString() {
-        return "v" + index + getKindSuffix();
+    public int hashCode() {
+        return 31 * super.hashCode() + index;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Variable other = (Variable) obj;
+        if (index != other.index) {
+            return false;
+        }
+        return true;
     }
 }

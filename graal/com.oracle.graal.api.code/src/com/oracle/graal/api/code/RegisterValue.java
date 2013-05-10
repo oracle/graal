@@ -45,11 +45,6 @@ public final class RegisterValue extends AllocatableValue {
     }
 
     @Override
-    public int hashCode() {
-        return (getRegister().number << 4) ^ getPlatformKind().hashCode();
-    }
-
-    @Override
     public String toString() {
         return getRegister().name + getKindSuffix();
     }
@@ -59,5 +54,32 @@ public final class RegisterValue extends AllocatableValue {
      */
     public Register getRegister() {
         return reg;
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * super.hashCode() + ((reg == null) ? 0 : reg.hashCode());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        RegisterValue other = (RegisterValue) obj;
+        if (reg == null) {
+            if (other.reg != null) {
+                return false;
+            }
+        } else if (!reg.equals(other.reg)) {
+            return false;
+        }
+        return true;
     }
 }

@@ -93,6 +93,33 @@ public final class Register implements Comparable<Register>, Serializable {
         public String toString() {
             return name;
         }
+
+        @Override
+        public int hashCode() {
+            return 31 + ((name == null) ? 0 : name.hashCode());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            RegisterCategory other = (RegisterCategory) obj;
+            if (name == null) {
+                if (other.name != null) {
+                    return false;
+                }
+            } else if (!name.equals(other.name)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     /**
@@ -143,16 +170,6 @@ public final class Register implements Comparable<Register>, Serializable {
     }
 
     /**
-     * Gets a hash code for this register.
-     * 
-     * @return the value of {@link #number}
-     */
-    @Override
-    public int hashCode() {
-        return number;
-    }
-
-    /**
      * Gets the maximum register {@linkplain #number number} in a given set of registers.
      * 
      * @param registers the set of registers to process
@@ -198,6 +215,52 @@ public final class Register implements Comparable<Register>, Serializable {
             return 1;
         }
         return 0;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + encoding;
+        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        result = prime * result + number;
+        result = prime * result + ((registerCategory == null) ? 0 : registerCategory.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Register other = (Register) obj;
+        if (encoding != other.encoding) {
+            return false;
+        }
+        if (name == null) {
+            if (other.name != null) {
+                return false;
+            }
+        } else if (!name.equals(other.name)) {
+            return false;
+        }
+        if (number != other.number) {
+            return false;
+        }
+        if (registerCategory == null) {
+            if (other.registerCategory != null) {
+                return false;
+            }
+        } else if (!registerCategory.equals(other.registerCategory)) {
+            return false;
+        }
+        return true;
     }
 
 }
