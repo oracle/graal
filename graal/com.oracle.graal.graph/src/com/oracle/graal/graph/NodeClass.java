@@ -192,7 +192,7 @@ public class NodeClass extends FieldIntrospection {
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                     inputListOffsets.add(offset);
                 } else {
-                    assert NODE_CLASS.isAssignableFrom(type) : "invalid input type: " + type;
+                    assert NODE_CLASS.isAssignableFrom(type) || type.isInterface() : "invalid input type: " + type;
                     inputOffsets.add(offset);
                 }
                 if (field.getAnnotation(Node.Input.class).notDataflow()) {
