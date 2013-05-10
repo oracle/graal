@@ -1780,7 +1780,7 @@ public final class LinearScan {
             // remove useless moves
             if (op instanceof MoveOp) {
                 MoveOp move = (MoveOp) op;
-                if (move.getInput() == move.getResult()) {
+                if (move.getInput().equals(move.getResult())) {
                     instructions.set(j, null);
                     hasDead = true;
                 }
