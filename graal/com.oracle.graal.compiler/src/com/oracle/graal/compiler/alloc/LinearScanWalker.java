@@ -816,7 +816,9 @@ final class LinearScanWalker extends IntervalWalker {
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            return isVariable(move.getInput()) && isVariable(move.getResult()) && move.getInput() == from.operand && move.getResult() == to.operand;
+            if (isVariable(move.getInput()) && isVariable(move.getResult())) {
+                return move.getInput() != null && move.getInput().equals(from.operand) && move.getResult() != null && move.getResult().equals(to.operand);
+            }
         }
         return false;
     }

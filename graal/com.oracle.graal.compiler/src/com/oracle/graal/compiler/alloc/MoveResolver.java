@@ -169,7 +169,7 @@ final class MoveResolver {
 
         Value reg = to.location();
         if (isRegister(reg)) {
-            if (registerBlocked(asRegister(reg).number) > 1 || (registerBlocked(asRegister(reg).number) == 1 && reg != fromReg)) {
+            if (registerBlocked(asRegister(reg).number) > 1 || (registerBlocked(asRegister(reg).number) == 1 && !reg.equals(fromReg))) {
                 return false;
             }
         }

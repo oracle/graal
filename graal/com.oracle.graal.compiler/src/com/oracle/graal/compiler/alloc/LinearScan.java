@@ -1481,7 +1481,7 @@ public final class LinearScan {
             Interval fromInterval = intervalAtBlockEnd(fromBlock, liveOperand);
             Interval toInterval = intervalAtBlockBegin(toBlock, liveOperand);
 
-            if (fromInterval != toInterval && (fromInterval.location() != toInterval.location())) {
+            if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
                 // need to insert move instruction
                 moveResolver.addMapping(fromInterval, toInterval);
             }
