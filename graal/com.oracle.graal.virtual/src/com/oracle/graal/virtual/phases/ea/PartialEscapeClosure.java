@@ -199,12 +199,12 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
     }
 
     private boolean processNode(final ValueNode node, FixedNode insertBefore, final BlockState state, final GraphEffectList effects) {
-        tool.reset(state, node);
+        tool.reset(state, node, insertBefore);
         if (node instanceof Virtualizable) {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            if (tool.isCustomAction() || !(node instanceof VirtualizableAllocation || node instanceof CyclicMaterializeStoreNode)) {
+            if (!(node instanceof VirtualizableAllocation || node instanceof CyclicMaterializeStoreNode)) {
                 changed = true;
             }
             return true;
@@ -282,9 +282,6 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     effects.addVirtualMapping(stateAfter, v);
                 }
             }
-        }
-        if (tool.isCustomAction()) {
-            return false;
         }
         for (ValueNode input : node.inputs().filter(ValueNode.class)) {
             ObjectState obj = state.getObjectState(input);

@@ -123,16 +123,8 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                     for (int i = 0; i < fields.length; i++) {
                         state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
+                        tool.addNode(loads[i]);
                     }
-
-                    tool.customAction(new Runnable() {
-
-                        public void run() {
-                            for (LoadFieldNode load : loads) {
-                                graph().addBeforeFixed(ObjectCloneNode.this, graph().add(load));
-                            }
-                        }
-                    });
                     tool.createVirtualObject(newVirtual, state, null);
                     tool.replaceWithVirtual(newVirtual);
                 }
