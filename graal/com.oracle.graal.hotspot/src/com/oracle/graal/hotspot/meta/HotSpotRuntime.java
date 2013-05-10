@@ -772,7 +772,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {
-                        if (hsMethod.hasVtableEntry()) {
+                        if (hsMethod.isInVirtualMethodTable()) {
                             int vtableEntryOffset = hsMethod.vtableEntryOffset();
                             assert vtableEntryOffset > 0;
                             ReadNode hub = this.createReadHub(tool, graph, wordKind, receiver);
@@ -1048,7 +1048,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, ResolvedJavaMethod method) {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
         assert !hsMethod.getDeclaringClass().isInterface();
-        assert hsMethod.hasVtableEntry();
+        assert hsMethod.isInVirtualMethodTable();
 
         int vtableEntryOffset = hsMethod.vtableEntryOffset();
         assert vtableEntryOffset > 0;

@@ -35,6 +35,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.bytecode.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.phases.*;
@@ -382,20 +383,20 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
-     * Returns the offset of this method into the v-table. If the holder is not initialized, returns
-     * -1. If it is initialized the method must have a v-table entry has indicated by
-     * {@link #hasVtableEntry()}.
+     * Returns the offset of this method into the v-table. The method must have a v-table entry has
+     * indicated by {@link #isInVirtualMethodTable()}, otherwise an exception is thrown.
      * 
      * @return the offset of this method into the v-table
      */
     public int vtableEntryOffset() {
-        if (!holder.isInitialized()) {
-            return -1;
+        if (!isInVirtualMethodTable() || !holder.isInitialized()) {
+            throw new GraalInternalError("%s does not have a vtable entry", this);
         }
         return graalRuntime().getCompilerToVM().getVtableEntryOffset(metaspaceMethod);
     }
 
-    public boolean hasVtableEntry() {
+    @Override
+    public boolean isInVirtualMethodTable() {
         return graalRuntime().getCompilerToVM().hasVtableEntry(metaspaceMethod);
     }
 
@@ -459,10 +460,5 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);
         }
-    }
-
-    @Override
-    public boolean isInVirtualMethodTable() {
-        return hasVtableEntry();
     }
 }
