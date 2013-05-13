@@ -46,8 +46,6 @@ import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.LogObjectStub.*;
 import static com.oracle.graal.hotspot.stubs.LogPrimitiveStub.*;
 import static com.oracle.graal.hotspot.stubs.LogPrintfStub.*;
-import static com.oracle.graal.hotspot.stubs.MonitorEnterStub.*;
-import static com.oracle.graal.hotspot.stubs.MonitorExitStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
@@ -375,28 +373,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*           temps */ null,
                         /*             ret */ ret(Kind.Void));
 
-        addStubCall(MONITORENTER,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0: object */ javaCallingConvention(Kind.Object,
-                        /* arg1:   lock */                       word));
-
-        addCRuntimeCall(MONITORENTER_C, config.monitorenterAddress,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0: thread */ nativeCallingConvention(word,
-                        /* arg1: object */                         Kind.Object,
-                        /* arg1:   lock */                         word));
-
-        addStubCall(MONITOREXIT,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0: object */ javaCallingConvention(Kind.Object,
-                        /* arg1:   lock */                       word));
-
-        addCRuntimeCall(MONITOREXIT_C, config.monitorexitAddress,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0: thread */ nativeCallingConvention(word,
-                        /* arg1: object */                         Kind.Object,
-                        /* arg1:   lock */                         word));
-
         addStubCall(VM_ERROR,
                         /*          ret */ ret(Kind.Void),
                         /* arg0:  where */ javaCallingConvention(Kind.Object,
@@ -548,8 +524,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
         link(new VerifyOopStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VERIFY_OOP)));
         link(new OSRMigrationEndStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(OSR_MIGRATION_END)));
-        link(new MonitorEnterStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITORENTER)));
-        link(new MonitorExitStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(MONITOREXIT)));
         link(new LogPrimitiveStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRIMITIVE)));
         link(new LogObjectStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_OBJECT)));
         link(new LogPrintfStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRINTF)));
@@ -561,6 +535,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
         linkRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements);
         linkRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements);
+        linkRuntimeCall(MONITORENTER, config.monitorenterAddress, replacements);
+        linkRuntimeCall(MONITOREXIT, config.monitorexitAddress, replacements);
     }
 
     private static void link(Stub stub) {

@@ -50,7 +50,7 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.phases.*;
 
 /**
- * Base class for a stub that calls into a HotSpot C/C++ runtime function using the native
+ * A stub that calls into a HotSpot C/C++ runtime function using the native
  * {@link CallingConvention}.
  */
 public class RuntimeCallStub extends Stub {
@@ -98,7 +98,11 @@ public class RuntimeCallStub extends Stub {
         Class<?>[] argumentTypes = d.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
-            parameterTypes[i] = runtime.lookupJavaType(argumentTypes[i]);
+            if (WordBase.class.isAssignableFrom(argumentTypes[i])) {
+                parameterTypes[i] = runtime.lookupJavaType(wordKind().toJavaClass());
+            } else {
+                parameterTypes[i] = runtime.lookupJavaType(argumentTypes[i]);
+            }
         }
         TargetDescription target = graalRuntime().getTarget();
         JavaType returnType = runtime.lookupJavaType(d.getResultType());
