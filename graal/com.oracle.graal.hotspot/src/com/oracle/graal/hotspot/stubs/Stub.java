@@ -28,15 +28,14 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.Call;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
@@ -111,29 +110,12 @@ public abstract class Stub {
         return linkage;
     }
 
-    /**
-     * Checks the conditions a compilation must satisfy to be installed as a RuntimeStub.
-     */
-    private boolean checkStubInvariants(CompilationResult compResult) {
-        for (DataPatch data : compResult.getDataReferences()) {
-            Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
-            assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
-        }
-        for (Infopoint infopoint : compResult.getInfopoints()) {
-            assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
-            Call call = (Call) infopoint;
-            assert call.target instanceof HotSpotRuntimeCallTarget : this + " cannot have non runtime call: " + call.target;
-            HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : this + "must only call C runtime or deoptimization stub, not " + call.target;
-        }
-        return true;
-    }
-
     protected abstract StructuredGraph getGraph();
 
     @Override
-    public abstract String toString();
+    public String toString() {
+        return "Stub<" + linkage.getDescriptor() + ">";
+    }
 
     /**
      * Gets the method the stub's code will be {@linkplain InstalledCode#getMethod() associated}
@@ -141,9 +123,10 @@ public abstract class Stub {
      */
     protected abstract ResolvedJavaMethod getInstalledCodeOwner();
 
-    protected Object debugScopeContext() {
-        return getInstalledCodeOwner();
-    }
+    /**
+     * Gets a context object for the debug scope created when producing the code for this stub.
+     */
+    protected abstract Object debugScopeContext();
 
     /**
      * Gets the code for this stub, compiling it first if necessary.
@@ -156,10 +139,11 @@ public abstract class Stub {
                 public void run() {
 
                     final StructuredGraph graph = getGraph();
-                    StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
-                    newStart.setStateAfter(graph.start().stateAfter());
-                    graph.replaceFixed(graph.start(), newStart);
-                    graph.setStart(newStart);
+                    if (!(graph.start() instanceof StubStartNode)) {
+                        StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
+                        newStart.setStateAfter(graph.start().stateAfter());
+                        graph.replaceFixed(graph.start(), newStart);
+                    }
 
                     PhasePlan phasePlan = new PhasePlan();
                     GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
@@ -168,23 +152,27 @@ public abstract class Stub {
                     final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog());
 
-                    assert checkStubInvariants(compResult);
-
                     assert destroyedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
 
                         @Override
                         public InstalledCode call() {
-                            InstalledCode installedCode = runtime.addMethod(getInstalledCodeOwner(), compResult);
-                            assert installedCode != null : "error installing stub " + this;
+                            Stub stub = Stub.this;
+                            HotSpotInstalledCode installedCode = new HotSpotInstalledCode(stub);
+                            HotSpotCompilationResult hsCompResult = new HotSpotCompilationResult(stub, compResult);
+                            CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
+                            if (result != CodeInstallResult.OK) {
+                                throw new GraalInternalError("Error installing stub %s: %s", Stub.this, result);
+                            }
                             if (Debug.isDumpEnabled()) {
                                 Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                             }
-                            // TTY.println(getMethod().toString());
-                            // TTY.println(runtime().disassemble(installedCode));
+                            // TTY.println(stub.toString());
+                            // TTY.println(runtime.disassemble(installedCode));
                             return installedCode;
                         }
                     });
+
                 }
             });
             assert code != null : "error installing stub " + this;

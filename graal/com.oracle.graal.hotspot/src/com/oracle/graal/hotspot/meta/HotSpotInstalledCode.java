@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
 
 /**
  * Implementation of {@link InstalledCode} for HotSpot. If the code is installed as an nmethod (as
@@ -46,16 +47,24 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
     private static final long serialVersionUID = 156632908220561612L;
 
     private final HotSpotResolvedJavaMethod method;
+    private final Stub stub;
     private final boolean isDefault;
     private final Graph graph;
     long codeBlob;
     long start;
-    boolean isNmethod;
 
     public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, Graph graph, boolean isDefault) {
         this.method = method;
+        this.stub = null;
         this.graph = graph;
         this.isDefault = isDefault;
+    }
+
+    public HotSpotInstalledCode(Stub stub) {
+        this.method = null;
+        this.stub = stub;
+        this.graph = null;
+        this.isDefault = false;
     }
 
     public boolean isDefault() {
@@ -77,24 +86,27 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public boolean isValid() {
-        return !isNmethod || graalRuntime().getCompilerToVM().isInstalledCodeValid(codeBlob);
+        return stub != null || graalRuntime().getCompilerToVM().isInstalledCodeValid(codeBlob);
     }
 
     @Override
     public void invalidate() {
-        if (isNmethod) {
+        if (stub == null) {
             graalRuntime().getCompilerToVM().invalidateInstalledCode(codeBlob);
         }
     }
 
     @Override
     public String toString() {
-        return String.format("InstalledCode[method=%s, codeBlob=0x%x, isDefault=%b, isNmethod=%b]", method, codeBlob, isDefault, isNmethod);
+        if (stub != null) {
+            return String.format("InstalledCode[stub=%s, codeBlob=0x%x]", stub, codeBlob);
+        }
+        return String.format("InstalledCode[method=%s, codeBlob=0x%x, isDefault=%b]", method, codeBlob, isDefault);
     }
 
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
-        assert isNmethod;
+        assert stub == null;
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
@@ -118,7 +130,7 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
-        assert isNmethod;
+        assert stub == null;
         assert checkArgs(args);
         return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, codeBlob);
     }
