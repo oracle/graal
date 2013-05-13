@@ -54,7 +54,7 @@ import com.oracle.graal.phases.PhasePlan.PhasePosition;
 public abstract class Stub {
 
     /**
-     * The linkage information for the stub.
+     * The linkage information for a call to this stub from compiled code.
      */
     protected final HotSpotRuntimeCallTarget linkage;
 
@@ -106,10 +106,16 @@ public abstract class Stub {
         this.replacements = replacements;
     }
 
+    /**
+     * Gets the linkage for a call to this stub from compiled code.
+     */
     public HotSpotRuntimeCallTarget getLinkage() {
         return linkage;
     }
 
+    /**
+     * Gets the graph that from which the code for this stub will be compiled.
+     */
     protected abstract StructuredGraph getGraph();
 
     @Override
