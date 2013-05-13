@@ -59,7 +59,7 @@ public abstract class AssemblerTest extends GraalTest {
         DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
         if (dis != null) {
             String disasm = dis.disassemble(code);
-            Assert.assertTrue(String.valueOf(code.getMethod()), disasm == null || disasm.length() > 0);
+            Assert.assertTrue(code.toString(), disasm == null || disasm.length() > 0);
         }
         return code;
     }
