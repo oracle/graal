@@ -51,9 +51,9 @@ public class VerifyValueUsage extends VerifyPhase {
     @Override
     protected boolean verify(StructuredGraph graph) {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
-            String desc = "VerifyValueUsage: " + cn.x() + " or " + cn.y() + " in " + graph.method() + " uses object identity. Should use equals() instead.";
             if (!graph.method().toString().endsWith("equals(Object)>")) {
-                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : desc;
+                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : "VerifyValueUsage: " + cn.x() + " or " + cn.y() +
+                                " in " + graph.method() + " uses object identity. Should use equals() instead.";
             }
         }
         return true;
