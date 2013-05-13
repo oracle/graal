@@ -251,6 +251,9 @@ public class StructuredGraph extends Graph {
         node.setNext(null);
         replacement.setNext(next);
         node.replaceAndDelete(replacement);
+        if (node == start) {
+            setStart((StartNode) replacement);
+        }
     }
 
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
