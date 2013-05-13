@@ -90,20 +90,29 @@ public class InliningPhase extends Phase {
     }
 
     public static void storeHighLevelStatistics(StructuredGraph graph) {
-        CompiledMethodInfo info = compiledMethodInfo(graph.method());
-        double summedUpProbabilityOfRemainingInvokes = sumUpInvokeProbabilities(graph);
-        info.setSummedUpProbabilityOfRemainingInvokes(summedUpProbabilityOfRemainingInvokes);
-        info.setHighLevelNodeCount(graph.getNodeCount());
+        ResolvedJavaMethod method = graph.method();
+        if (method != null) {
+            CompiledMethodInfo info = compiledMethodInfo(method);
+            double summedUpProbabilityOfRemainingInvokes = sumUpInvokeProbabilities(graph);
+            info.setSummedUpProbabilityOfRemainingInvokes(summedUpProbabilityOfRemainingInvokes);
+            info.setHighLevelNodeCount(graph.getNodeCount());
+        }
     }
 
     public static void storeMidLevelStatistics(StructuredGraph graph) {
-        CompiledMethodInfo info = compiledMethodInfo(graph.method());
-        info.setMidLevelNodeCount(graph.getNodeCount());
+        ResolvedJavaMethod method = graph.method();
+        if (method != null) {
+            CompiledMethodInfo info = compiledMethodInfo(graph.method());
+            info.setMidLevelNodeCount(graph.getNodeCount());
+        }
     }
 
     public static void storeLowLevelStatistics(StructuredGraph graph) {
-        CompiledMethodInfo info = compiledMethodInfo(graph.method());
-        info.setLowLevelNodeCount(graph.getNodeCount());
+        ResolvedJavaMethod method = graph.method();
+        if (method != null) {
+            CompiledMethodInfo info = compiledMethodInfo(graph.method());
+            info.setLowLevelNodeCount(graph.getNodeCount());
+        }
     }
 
     @Override

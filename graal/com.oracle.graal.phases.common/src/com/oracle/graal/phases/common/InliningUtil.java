@@ -42,8 +42,8 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.common.InliningPhase.InliningData;
+import com.oracle.graal.phases.tiers.*;
 
 public class InliningUtil {
 
@@ -267,7 +267,7 @@ public class InliningUtil {
 
         @Override
         public StructuredGraph graph() {
-            return (StructuredGraph) invoke.asNode().graph();
+            return invoke.asNode().graph();
         }
 
         @Override
@@ -510,8 +510,8 @@ public class InliningUtil {
 
         private double[] computeMethodProbabilities() {
             double[] result = new double[concretes.size()];
-            for (int i = 0; i < typesToConcretes.length; i++) {
-                int concrete = typesToConcretes[i];
+            for (int i = 0; i < typesToConcretes.size(); i++) {
+                int concrete = typesToConcretes.get(i);
                 double probability = ptypes.get(i).getProbability();
                 result[concrete] += probability;
             }
@@ -564,9 +564,9 @@ public class InliningUtil {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph(), assumptions);
+                inlineSingleMethod(graph(), runtime, assumptions);
             } else {
-                inlineMultipleMethods(graph(), assumptions);
+                inlineMultipleMethods(graph(), runtime, assumptions);
             }
         }
 
@@ -578,7 +578,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, Assumptions assumptions) {
+        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -684,11 +684,15 @@ public class InliningUtil {
                     }
                     current = ((FixedWithNextNode) current).next();
                 } while (current instanceof FixedWithNextNode);
-                if (opportunities > 0) {
-                    metricInliningTailDuplication.increment();
-                    Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new HighTierContext(runtime, assumptions, replacements));
-                }
+
+                // TEMP:
+// if (opportunities > 0) {
+// metricInliningTailDuplication.increment();
+// Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)",
+// opportunities);
+// TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION,
+// replacementNodes, new HighTierContext(runtime, assumptions, replacements));
+// }
             }
         }
 
@@ -725,7 +729,7 @@ public class InliningUtil {
             return result;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, Assumptions assumptions) {
+        private void inlineSingleMethod(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
             assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
@@ -904,9 +908,9 @@ public class InliningUtil {
         @Override
         public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                tryToDevirtualizeSingleMethod(graph());
+                tryToDevirtualizeSingleMethod(graph(), runtime);
             } else {
-                tryToDevirtualizeMultipleMethods(graph());
+                tryToDevirtualizeMultipleMethods(graph(), runtime);
             }
         }
 
@@ -1075,7 +1079,9 @@ public class InliningUtil {
         return new ExactInlineInfo(invoke, targetMethod);
     }
 
-    private static InlineInfo getTypeCheckedInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod, OptimisticOptimizations optimisticOpts) {
+    private static InlineInfo getTypeCheckedInlineInfo(InliningData data, Invoke invoke, int maxNumberOfMethods, Replacements replacements, ResolvedJavaMethod targetMethod,
+                    OptimisticOptimizations optimisticOpts) {
+        JavaTypeProfile typeProfile;
         ValueNode receiver = invoke.callTarget().arguments().get(0);
         if (receiver instanceof TypeProfileProxyNode) {
             TypeProfileProxyNode typeProfileProxyNode = (TypeProfileProxyNode) receiver;
