@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
@@ -121,7 +122,31 @@ public class RuntimeCallStub extends Stub {
 
     @Override
     protected Object debugScopeContext() {
-        return new DebugDumpScope(linkage.descriptor.getName());
+        return new JavaMethod() {
+
+            public Signature getSignature() {
+                Descriptor d = linkage.descriptor;
+                Class<?>[] arguments = d.getArgumentTypes();
+                JavaType[] parameters = new JavaType[arguments.length];
+                for (int i = 0; i < arguments.length; i++) {
+                    parameters[i] = runtime.lookupJavaType(arguments[i]);
+                }
+                return new HotSpotSignature(runtime.lookupJavaType(d.getResultType()), parameters);
+            }
+
+            public String getName() {
+                return linkage.descriptor.getName();
+            }
+
+            public JavaType getDeclaringClass() {
+                return runtime.lookupJavaType(RuntimeCallStub.class);
+            }
+
+            @Override
+            public String toString() {
+                return format("HotSpotStub<%n(%p)>", this);
+            }
+        };
     }
 
     @Override
@@ -164,8 +189,16 @@ public class RuntimeCallStub extends Stub {
         ReturnNode ret = graph.add(new ReturnNode(linkage.descriptor.getResultType() == void.class ? null : call));
         graph.addAfterFixed(hpeInvoke, ret);
 
+        if (Debug.isDumpEnabled()) {
+            Debug.dump(graph, "Initial stub graph");
+        }
+
         // Inline call to handlePendingException
         inline(hpeInvoke);
+
+        if (Debug.isDumpEnabled()) {
+            Debug.dump(graph, "Stub graph before compilation");
+        }
 
         return graph;
     }
