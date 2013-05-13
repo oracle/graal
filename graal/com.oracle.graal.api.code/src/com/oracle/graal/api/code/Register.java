@@ -96,29 +96,16 @@ public final class Register implements Comparable<Register>, Serializable {
 
         @Override
         public int hashCode() {
-            return 31 + ((name == null) ? 0 : name.hashCode());
+            return 23 + name.hashCode();
         }
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
+            if (obj instanceof RegisterCategory) {
+                RegisterCategory other = (RegisterCategory) obj;
+                return name.equals(other.name);
             }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            RegisterCategory other = (RegisterCategory) obj;
-            if (name == null) {
-                if (other.name != null) {
-                    return false;
-                }
-            } else if (!name.equals(other.name)) {
-                return false;
-            }
-            return true;
+            return false;
         }
     }
 
@@ -219,48 +206,21 @@ public final class Register implements Comparable<Register>, Serializable {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
+        final int prime = 17;
         int result = 1;
         result = prime * result + encoding;
-        result = prime * result + ((name == null) ? 0 : name.hashCode());
+        result = prime * result + name.hashCode();
         result = prime * result + number;
-        result = prime * result + ((registerCategory == null) ? 0 : registerCategory.hashCode());
+        result = prime * result + registerCategory.hashCode();
         return result;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof Register) {
+            Register other = (Register) obj;
+            return encoding == other.encoding && name.equals(other.name) && number == other.number && registerCategory.equals(registerCategory);
         }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        Register other = (Register) obj;
-        if (encoding != other.encoding) {
-            return false;
-        }
-        if (name == null) {
-            if (other.name != null) {
-                return false;
-            }
-        } else if (!name.equals(other.name)) {
-            return false;
-        }
-        if (number != other.number) {
-            return false;
-        }
-        if (registerCategory == null) {
-            if (other.registerCategory != null) {
-                return false;
-            }
-        } else if (!registerCategory.equals(other.registerCategory)) {
-            return false;
-        }
-        return true;
+        return false;
     }
-
 }

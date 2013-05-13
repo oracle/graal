@@ -44,6 +44,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.verify.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
 /**
@@ -124,6 +125,7 @@ public class GraalCompiler {
         } else {
             Debug.dump(graph, "initial state");
         }
+        new VerifyValueUsage(runtime).apply(graph);
 
         if (GraalOptions.OptCanonicalizer) {
             new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);

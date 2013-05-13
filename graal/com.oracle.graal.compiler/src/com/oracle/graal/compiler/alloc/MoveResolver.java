@@ -192,7 +192,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
-        assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
+        assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
@@ -331,7 +331,7 @@ final class MoveResolver {
             TTY.println("MoveResolver: adding mapping from interval %d (%s) to interval %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
         }
 
-        assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
+        assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind();
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(Value.ILLEGAL);

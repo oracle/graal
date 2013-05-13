@@ -58,28 +58,15 @@ public final class RegisterValue extends AllocatableValue {
 
     @Override
     public int hashCode() {
-        return 31 * super.hashCode() + ((reg == null) ? 0 : reg.hashCode());
+        return 29 * super.hashCode() + reg.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof RegisterValue) {
+            RegisterValue other = (RegisterValue) obj;
+            return super.equals(obj) && reg.equals(other.reg);
         }
-        if (!super.equals(obj)) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        RegisterValue other = (RegisterValue) obj;
-        if (reg == null) {
-            if (other.reg != null) {
-                return false;
-            }
-        } else if (!reg.equals(other.reg)) {
-            return false;
-        }
-        return true;
+        return false;
     }
 }

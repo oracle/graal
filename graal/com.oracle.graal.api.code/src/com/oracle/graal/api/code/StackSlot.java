@@ -118,7 +118,7 @@ public final class StackSlot extends AllocatableValue {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
+        final int prime = 37;
         int result = super.hashCode();
         result = prime * result + (addFrameSize ? 1231 : 1237);
         result = prime * result + offset;
@@ -127,22 +127,10 @@ public final class StackSlot extends AllocatableValue {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof StackSlot) {
+            StackSlot other = (StackSlot) obj;
+            return super.equals(obj) && addFrameSize == other.addFrameSize && offset == other.offset;
         }
-        if (!super.equals(obj)) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        StackSlot other = (StackSlot) obj;
-        if (addFrameSize != other.addFrameSize) {
-            return false;
-        }
-        if (offset != other.offset) {
-            return false;
-        }
-        return true;
+        return false;
     }
 }

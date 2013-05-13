@@ -57,24 +57,15 @@ public final class Variable extends AllocatableValue {
 
     @Override
     public int hashCode() {
-        return 31 * super.hashCode() + index;
+        return 71 * super.hashCode() + index;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof Variable) {
+            Variable other = (Variable) obj;
+            return super.equals(other) && index == other.index;
         }
-        if (!super.equals(obj)) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        Variable other = (Variable) obj;
-        if (index != other.index) {
-            return false;
-        }
-        return true;
+        return false;
     }
 }
