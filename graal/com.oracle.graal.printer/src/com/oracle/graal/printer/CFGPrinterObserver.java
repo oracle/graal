@@ -45,7 +45,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
     private File cfgFile;
-    private ResolvedJavaMethod curMethod;
+    private JavaMethod curMethod;
     private List<String> curDecorators = Collections.emptyList();
 
     @Override
@@ -64,17 +64,18 @@ public class CFGPrinterObserver implements DebugDumpHandler {
      * and decorator pair.
      */
     private boolean checkMethodScope() {
-        ResolvedJavaMethod method = null;
+        JavaMethod method = null;
         ArrayList<String> decorators = new ArrayList<>();
         for (Object o : Debug.context()) {
-            if (o instanceof ResolvedJavaMethod) {
-                method = (ResolvedJavaMethod) o;
+            if (o instanceof JavaMethod) {
+                method = (JavaMethod) o;
                 decorators.clear();
             } else if (o instanceof StructuredGraph) {
                 StructuredGraph graph = (StructuredGraph) o;
-                assert graph != null && graph.method() != null : "cannot find method context for CFG dump";
-                method = graph.method();
-                decorators.clear();
+                if (graph.method() != null) {
+                    method = graph.method();
+                    decorators.clear();
+                }
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                 if (debugDumpScope.decorator) {
