@@ -54,7 +54,6 @@ import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.NewMultiArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.OSRMigrationEndStub.*;
-import static com.oracle.graal.hotspot.stubs.RegisterFinalizerStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
@@ -255,14 +254,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         /*             ret */ ret(word),
                         /* arg0:    thread */ nativeCallingConvention(word,
                     /* arg1: returnAddress */                         word));
-        addStubCall(REGISTER_FINALIZER,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ javaCallingConvention(Kind.Object));
-
-        addCRuntimeCall(REGISTER_FINALIZER_C, config.registerFinalizerAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:    object */                         Kind.Object));
 
         addStubCall(NEW_ARRAY,
                         /*             ret */ ret(Kind.Object),
@@ -570,7 +561,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
         link(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
         link(new NewMultiArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_MULTI_ARRAY)));
-        link(new RegisterFinalizerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(REGISTER_FINALIZER)));
         link(new ThreadIsInterruptedStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(THREAD_IS_INTERRUPTED)));
         link(new ExceptionHandlerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(EXCEPTION_HANDLER)));
         link(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
@@ -587,15 +577,16 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new WriteBarrierPreStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(WRITE_BARRIER_PRE)));
         link(new WriteBarrierPostStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(WRITE_BARRIER_POST)));
 
-        CompilerToVM c2vm = graalRuntime.getCompilerToVM();
-        link(new RuntimeCallStub(config.identityHashCodeAddress, IDENTITY_HASHCODE, true, this, replacements, globalStubRegConfig, c2vm));
+        linkRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
+        linkRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
     }
 
     private static void link(Stub stub) {
         stub.getLinkage().setStub(stub);
     }
 
-    private void link(RuntimeCallStub stub) {
+    private void linkRuntimeCall(Descriptor descriptor, long address, Replacements replacements) {
+        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements, globalStubRegConfig, graalRuntime.getCompilerToVM());
         HotSpotRuntimeCallTarget linkage = stub.getLinkage();
         HotSpotRuntimeCallTarget targetLinkage = stub.getTargetLinkage();
         linkage.setStub(stub);
