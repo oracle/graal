@@ -313,7 +313,7 @@ public class WordTypeRewriterPhase extends Phase {
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
         // check on its base address
-        read.dependencies().add(AbstractBeginNode.prevBegin(invoke.asNode()));
+        read.setGuard(AbstractBeginNode.prevBegin(invoke.asNode()));
         return read;
     }
 

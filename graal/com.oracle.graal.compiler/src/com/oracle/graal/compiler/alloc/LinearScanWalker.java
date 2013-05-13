@@ -936,7 +936,7 @@ final class LinearScanWalker extends IntervalWalker {
         if (interval.insertMoveWhenActivated()) {
             assert interval.isSplitChild();
             assert interval.currentSplitChild() != null;
-            assert interval.currentSplitChild().operand != operand : "cannot insert move between same interval";
+            assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
             }

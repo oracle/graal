@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 
 public class CountedLoopInfo {
 
@@ -37,7 +38,6 @@ public class CountedLoopInfo {
     private InductionVariable iv;
     private ValueNode end;
     private boolean oneOff;
-    private ValueNode overflowGuard;
     private AbstractBeginNode body;
 
     CountedLoopInfo(LoopEx loop, InductionVariable iv, ValueNode end, boolean oneOff, AbstractBeginNode body) {
@@ -126,28 +126,35 @@ public class CountedLoopInfo {
         return iv.direction();
     }
 
-    public ValueNode getOverFlowGuard() {
-        if (overflowGuard == null) {
-            Kind kind = iv.valueNode().kind();
-            Graph graph = iv.valueNode().graph();
-            CompareNode cond; // we use a negated guard with a < condition to achieve a >=
-            ConstantNode one = ConstantNode.forIntegerKind(kind, 1, graph);
-            if (iv.direction() == Direction.Up) {
-                IntegerArithmeticNode v1 = sub(ConstantNode.forIntegerKind(kind, kind.getMaxValue(), graph), sub(iv.strideNode(), one));
-                if (oneOff) {
-                    v1 = sub(v1, one);
-                }
-                cond = graph.unique(new IntegerLessThanNode(v1, end));
-            } else {
-                assert iv.direction() == Direction.Down;
-                IntegerArithmeticNode v1 = add(ConstantNode.forIntegerKind(kind, kind.getMinValue(), graph), sub(one, iv.strideNode()));
-                if (oneOff) {
-                    v1 = add(v1, one);
-                }
-                cond = graph.unique(new IntegerLessThanNode(end, v1));
-            }
-            overflowGuard = graph.unique(new GuardNode(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true));
+    public GuardingNode getOverFlowGuard() {
+        return loop.loopBegin().getOverflowGuard();
+    }
+
+    public GuardingNode createOverFlowGuard() {
+        GuardingNode overflowGuard = getOverFlowGuard();
+        if (overflowGuard != null) {
+            return overflowGuard;
         }
+        Kind kind = iv.valueNode().kind();
+        Graph graph = iv.valueNode().graph();
+        CompareNode cond; // we use a negated guard with a < condition to achieve a >=
+        ConstantNode one = ConstantNode.forIntegerKind(kind, 1, graph);
+        if (iv.direction() == Direction.Up) {
+            IntegerArithmeticNode v1 = sub(ConstantNode.forIntegerKind(kind, kind.getMaxValue(), graph), sub(iv.strideNode(), one));
+            if (oneOff) {
+                v1 = sub(v1, one);
+            }
+            cond = graph.unique(new IntegerLessThanNode(v1, end));
+        } else {
+            assert iv.direction() == Direction.Down;
+            IntegerArithmeticNode v1 = add(ConstantNode.forIntegerKind(kind, kind.getMinValue(), graph), sub(one, iv.strideNode()));
+            if (oneOff) {
+                v1 = add(v1, one);
+            }
+            cond = graph.unique(new IntegerLessThanNode(end, v1));
+        }
+        overflowGuard = graph.unique(new GuardNode(cond, BeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true));
+        loop.loopBegin().setOverflowGuard(overflowGuard);
         return overflowGuard;
     }
 

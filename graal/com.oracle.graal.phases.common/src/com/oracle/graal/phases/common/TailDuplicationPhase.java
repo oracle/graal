@@ -282,11 +282,6 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                 // re-wire the phi duplicates to the correct input
                 for (PhiNode phi : phiSnapshot) {
                     PhiNode phiDuplicate = (PhiNode) duplicates.get(phi);
-                    for (Node usage : phiDuplicate.usages()) {
-                        if (usage instanceof ValueNode) {
-                            ((ValueNode) usage).dependencies().add(prevBegin);
-                        }
-                    }
                     phiDuplicate.replaceAtUsages(phi.valueAt(forwardEnd));
                     phiDuplicate.safeDelete();
                 }

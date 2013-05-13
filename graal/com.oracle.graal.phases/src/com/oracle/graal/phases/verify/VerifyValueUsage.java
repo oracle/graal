@@ -20,43 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.phases.verify;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 
-public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, GuardingNode {
+public class VerifyValueUsage extends VerifyPhase {
 
-    @Input public ValueNode object;
+    private MetaAccessProvider runtime;
 
-    public NullCheckNode(ValueNode object) {
-        super(StampFactory.dependency());
-        this.object = object;
+    public VerifyValueUsage(MetaAccessProvider runtime) {
+        this.runtime = runtime;
     }
 
-    public ValueNode getObject() {
-        return object;
+    private boolean checkType(ValueNode node) {
+        if (node.stamp() instanceof ObjectStamp) {
+            ResolvedJavaType valueType = runtime.lookupJavaType(Value.class);
+            ResolvedJavaType nodeType = node.objectStamp().type();
+
+            if (valueType.isAssignableFrom(nodeType)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitNullCheck(object, this);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
+    protected boolean verify(StructuredGraph graph) {
+        for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
+            String desc = "VerifyValueUsage: " + cn.x() + " or " + cn.y() + " in " + graph.method() + " uses object identity. Should use equals() instead.";
+            if (!graph.method().toString().endsWith("equals(Object)>")) {
+                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : desc;
+            }
+        }
         return true;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
-    }
-
-    @Override
-    public ValueNode asNode() {
-        return this;
     }
 }

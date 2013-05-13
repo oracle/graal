@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,37 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class LogicNode extends FloatingNode {
+public abstract class FloatingGuardedNode extends FloatingNode implements GuardedNode {
 
-    public LogicNode() {
-        super(StampFactory.condition());
+    @Input private GuardingNode guard;
+
+    public FloatingGuardedNode(Stamp stamp) {
+        super(stamp);
     }
 
-    /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch
-     * their true and false successors.
-     */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate(this);
-        }
+    public FloatingGuardedNode(Stamp stamp, GuardingNode guard) {
+        super(stamp);
+        this.guard = guard;
     }
 
-    // forces all subclasses to canonicalize to BooleanNode instances
-    public abstract LogicNode canonical(CanonicalizerTool tool);
+    @Override
+    public GuardingNode getGuard() {
+        return guard;
+    }
+
+    @Override
+    public void setGuard(GuardingNode guard) {
+        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        this.guard = guard;
+    }
+
+    @Override
+    public FloatingNode asNode() {
+        return this;
+    }
+
 }

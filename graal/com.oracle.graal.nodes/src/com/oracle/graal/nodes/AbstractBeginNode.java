@@ -28,10 +28,11 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType {
+public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType, GuardingNode {
 
     @Input(notDataflow = true) private FrameState stateAfter;
 
@@ -183,5 +184,10 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
         public void remove() {
             throw new UnsupportedOperationException();
         }
+    }
+
+    @Override
+    public AbstractBeginNode asNode() {
+        return this;
     }
 }

@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 
 public interface LoweringTool {
 
@@ -34,11 +35,11 @@ public interface LoweringTool {
 
     Replacements getReplacements();
 
-    ValueNode createNullCheckGuard(NodeInputList<ValueNode> dependencies, ValueNode object);
+    GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object);
 
-    ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
+    GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
 
-    ValueNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
+    GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
 
     Assumptions assumptions();
 

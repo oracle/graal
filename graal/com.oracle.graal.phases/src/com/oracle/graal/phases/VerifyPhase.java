@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,30 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.phases;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
 
-public abstract class LogicNode extends FloatingNode {
+public abstract class VerifyPhase extends Phase {
 
-    public LogicNode() {
-        super(StampFactory.condition());
+    @Override
+    protected final void run(StructuredGraph graph) {
+        assert verify(graph);
     }
 
-    /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch
-     * their true and false successors.
-     */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate(this);
-        }
-    }
-
-    // forces all subclasses to canonicalize to BooleanNode instances
-    public abstract LogicNode canonical(CanonicalizerTool tool);
+    protected abstract boolean verify(StructuredGraph graph);
 }

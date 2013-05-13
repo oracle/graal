@@ -40,6 +40,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Input private final CallTargetNode callTarget;
     @Input private FrameState deoptState;
     @Input private FrameState stateAfter;
+    @Input private GuardingNode guard;
     private final int bci;
     private boolean polymorphic;
     private boolean useForInlining;
@@ -238,5 +239,16 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public boolean isCallSiteDeoptimization() {
         return true;
+    }
+
+    @Override
+    public GuardingNode getGuard() {
+        return guard;
+    }
+
+    @Override
+    public void setGuard(GuardingNode guard) {
+        updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+        this.guard = guard;
     }
 }

@@ -61,31 +61,15 @@ public abstract class CompositeValue extends Value {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + ((valueClass == null) ? 0 : valueClass.hashCode());
-        return result;
+        return 53 * super.hashCode() + valueClass.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+        if (obj instanceof CompositeValue) {
+            CompositeValue other = (CompositeValue) obj;
+            return super.equals(other) && valueClass.equals(other.valueClass);
         }
-        if (!super.equals(obj)) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        CompositeValue other = (CompositeValue) obj;
-        if (valueClass == null) {
-            if (other.valueClass != null) {
-                return false;
-            }
-        } else if (!valueClass.equals(other.valueClass)) {
-            return false;
-        }
-        return true;
+        return false;
     }
 }
