@@ -164,7 +164,7 @@ public abstract class Stub {
                         @Override
                         public InstalledCode call() {
                             Stub stub = Stub.this;
-                            HotSpotInstalledCode installedCode = new HotSpotInstalledCode(stub);
+                            HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
                             HotSpotCompilationResult hsCompResult = new HotSpotCompilationResult(stub, compResult);
                             CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                             if (result != CodeInstallResult.OK) {
