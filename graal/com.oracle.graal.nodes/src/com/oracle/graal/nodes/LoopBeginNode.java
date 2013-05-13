@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, LIRLowerable {
@@ -35,6 +36,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     private double loopFrequency;
     private int nextEndIndex;
     private int unswitches;
+    @Input private GuardingNode overflowGuard;
 
     public LoopBeginNode() {
         loopFrequency = 1;
@@ -87,7 +89,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         return snapshot;
     }
 
-    public EndNode forwardEnd() {
+    public AbstractEndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
     }
@@ -98,7 +100,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    protected void deleteEnd(EndNode end) {
+    protected void deleteEnd(AbstractEndNode end) {
         if (end instanceof LoopEndNode) {
             LoopEndNode loopEnd = (LoopEndNode) end;
             loopEnd.setLoopBegin(null);
@@ -122,7 +124,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    public int phiPredecessorIndex(EndNode pred) {
+    public int phiPredecessorIndex(AbstractEndNode pred) {
         if (pred instanceof LoopEndNode) {
             LoopEndNode loopEnd = (LoopEndNode) pred;
             if (loopEnd.loopBegin() == this) {
@@ -136,7 +138,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     @Override
-    public EndNode phiPredecessorAt(int index) {
+    public AbstractEndNode phiPredecessorAt(int index) {
         if (index < forwardEndCount()) {
             return forwardEndAt(index);
         }
@@ -173,15 +175,23 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
         // nothing yet
     }
 
-    public boolean isLoopExit(BeginNode begin) {
+    public boolean isLoopExit(AbstractBeginNode begin) {
         return begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == this;
     }
 
     public void removeExits() {
-        StructuredGraph graph = (StructuredGraph) graph();
         for (LoopExitNode loopexit : loopExits().snapshot()) {
             loopexit.removeProxies();
-            graph.replaceFixedWithFixed(loopexit, graph.add(new BeginNode()));
+            graph().replaceFixedWithFixed(loopexit, graph().add(new BeginNode()));
         }
+    }
+
+    public GuardingNode getOverflowGuard() {
+        return overflowGuard;
+    }
+
+    public void setOverflowGuard(GuardingNode overflowGuard) {
+        updateUsages(this.overflowGuard == null ? null : this.overflowGuard.asNode(), overflowGuard == null ? null : overflowGuard.asNode());
+        this.overflowGuard = overflowGuard;
     }
 }

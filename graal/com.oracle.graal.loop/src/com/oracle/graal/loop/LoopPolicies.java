@@ -60,12 +60,12 @@ public abstract class LoopPolicies {
 
     public static boolean shouldUnswitch(LoopEx loop, ControlSplitNode controlSplit) {
         Block postDomBlock = loop.loopsData().controlFlowGraph().blockFor(controlSplit).getPostdominator();
-        BeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
+        AbstractBeginNode postDom = postDomBlock != null ? postDomBlock.getBeginNode() : null;
         int loopTotal = loop.size();
         int inBranchTotal = 0;
         double maxProbability = 0;
         for (Node successor : controlSplit.successors()) {
-            BeginNode branch = (BeginNode) successor;
+            AbstractBeginNode branch = (AbstractBeginNode) successor;
             inBranchTotal += loop.nodesInLoopFrom(branch, postDom).cardinality(); // this may count
                                                                                   // twice because
                                                                                   // of fall-through

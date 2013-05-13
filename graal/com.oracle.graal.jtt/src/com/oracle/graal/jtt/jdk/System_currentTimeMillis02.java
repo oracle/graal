@@ -36,8 +36,8 @@ public class System_currentTimeMillis02 extends JTTTest {
             delta = System.currentTimeMillis() - start;
             // do nothing.
         }
-        // better get at least 40 millisecond resolution.
-        return delta >= 1 && delta < 40;
+        // better get at least 100 millisecond resolution.
+        return delta >= 1 && delta < 100;
     }
 
     @Test

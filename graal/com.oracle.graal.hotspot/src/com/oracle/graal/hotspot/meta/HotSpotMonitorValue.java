@@ -63,4 +63,23 @@ public final class HotSpotMonitorValue extends Value {
     public String toString() {
         return "monitor[" + owner + (slot != null ? ", " + slot : "") + (eliminated ? ", eliminated" : "") + "]";
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 43;
+        int result = super.hashCode();
+        result = prime * result + (eliminated ? 1231 : 1237);
+        result = prime * result + owner.hashCode();
+        result = prime * result + slot.hashCode();
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof HotSpotMonitorValue) {
+            HotSpotMonitorValue other = (HotSpotMonitorValue) obj;
+            return super.equals(obj) && eliminated == other.eliminated && owner.equals(other.owner) && slot.equals(other.slot);
+        }
+        return false;
+    }
 }

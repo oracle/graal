@@ -44,9 +44,9 @@ public class GraphUtil {
 
     public static void killCFG(FixedNode node) {
         assert node.isAlive();
-        if (node instanceof EndNode) {
+        if (node instanceof AbstractEndNode) {
             // We reached a control flow end.
-            EndNode end = (EndNode) node;
+            AbstractEndNode end = (AbstractEndNode) node;
             killEnd(end);
         } else {
             // Normal control flow node.
@@ -63,11 +63,11 @@ public class GraphUtil {
         propagateKill(node);
     }
 
-    private static void killEnd(EndNode end) {
+    private static void killEnd(AbstractEndNode end) {
         MergeNode merge = end.merge();
         if (merge != null) {
             merge.removeEnd(end);
-            StructuredGraph graph = (StructuredGraph) end.graph();
+            StructuredGraph graph = end.graph();
             if (merge instanceof LoopBeginNode && merge.forwardEndCount() == 0) { // dead loop
                 for (PhiNode phi : merge.phis().snapshot()) {
                     propagateKill(phi);
@@ -141,7 +141,7 @@ public class GraphUtil {
         if (singleValue != null) {
             Collection<PhiNode> phiUsages = phiNode.usages().filter(PhiNode.class).snapshot();
             Collection<ProxyNode> proxyUsages = phiNode.usages().filter(ProxyNode.class).snapshot();
-            ((StructuredGraph) phiNode.graph()).replaceFloating(phiNode, singleValue);
+            phiNode.graph().replaceFloating(phiNode, singleValue);
             for (PhiNode phi : phiUsages) {
                 checkRedundantPhi(phi);
             }
@@ -152,7 +152,7 @@ public class GraphUtil {
     }
 
     public static void checkRedundantProxy(ProxyNode vpn) {
-        BeginNode proxyPoint = vpn.proxyPoint();
+        AbstractBeginNode proxyPoint = vpn.proxyPoint();
         if (proxyPoint instanceof LoopExitNode) {
             LoopExitNode exit = (LoopExitNode) proxyPoint;
             LoopBeginNode loopBegin = exit.loopBegin();
@@ -165,7 +165,7 @@ public class GraphUtil {
                 if (vpnValue == v2) {
                     Collection<PhiNode> phiUsages = vpn.usages().filter(PhiNode.class).snapshot();
                     Collection<ProxyNode> proxyUsages = vpn.usages().filter(ProxyNode.class).snapshot();
-                    ((StructuredGraph) vpn.graph()).replaceFloating(vpn, vpnValue);
+                    vpn.graph().replaceFloating(vpn, vpnValue);
                     for (PhiNode phi : phiUsages) {
                         checkRedundantPhi(phi);
                     }
@@ -229,7 +229,7 @@ public class GraphUtil {
     public static RuntimeException approxSourceException(Node node, Throwable cause) {
         final StackTraceElement[] elements = approxSourceStackTraceElement(node);
         @SuppressWarnings("serial")
-        RuntimeException exception = new RuntimeException(cause.getMessage(), cause) {
+        RuntimeException exception = new RuntimeException((cause == null) ? null : cause.getMessage(), cause) {
 
             @Override
             public final synchronized Throwable fillInStackTrace() {

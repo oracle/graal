@@ -141,7 +141,7 @@ public abstract class ScopedPostOrderNodeIterator {
         return result;
     }
 
-    private void queueMerge(EndNode end) {
+    private void queueMerge(AbstractEndNode end) {
         MergeNode merge = end.merge();
         if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
             queue(merge);

@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.test;
 
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
@@ -37,7 +36,7 @@ public class CheckCastTest extends TypeCheckTest {
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         CheckCastNode ccn = graph.getNodes(CheckCastNode.class).first();
         if (ccn != null) {
-            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.type(), ccn.object(), profile));
+            CheckCastNode ccnNew = graph.add(new CheckCastNode(ccn.type(), ccn.object(), profile, false));
             graph.replaceFixedWithFixed(ccn, ccnNew);
         }
     }

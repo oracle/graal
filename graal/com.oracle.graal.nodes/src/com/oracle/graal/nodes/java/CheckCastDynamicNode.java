@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,13 +38,24 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
     @Input private ValueNode type;
 
     /**
+     * Determines the exception thrown by this node if the check fails: {@link ClassCastException}
+     * if false; {@link ArrayStoreException} if true.
+     */
+    private final boolean forStoreCheck;
+
+    /**
      * @param type the type being cast to
      * @param object the instruction producing the object
      */
-    public CheckCastDynamicNode(ValueNode type, ValueNode object) {
+    public CheckCastDynamicNode(ValueNode type, ValueNode object, boolean forStoreCheck) {
         super(object.stamp());
         this.type = type;
         this.object = object;
+        this.forStoreCheck = forStoreCheck;
+    }
+
+    public boolean isForStoreCheck() {
+        return forStoreCheck;
     }
 
     @Override
@@ -67,6 +79,11 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         if (object().objectStamp().alwaysNull()) {
             return object();
         }
+        if (type().isConstant() && type().kind() == Kind.Object && type().asConstant().asObject() instanceof Class) {
+            Class clazz = (Class) type().asConstant().asObject();
+            ResolvedJavaType t = tool.runtime().lookupJavaType(clazz);
+            return graph().add(new CheckCastNode(t, object(), null, forStoreCheck));
+        }
         return this;
     }
 
@@ -80,4 +97,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
     public ValueNode type() {
         return type;
     }
+
+    @NodeIntrinsic
+    public static native <T> T checkCastDynamic(Class<T> type, Object object, @ConstantNodeParameter boolean forStoreCheck);
 }

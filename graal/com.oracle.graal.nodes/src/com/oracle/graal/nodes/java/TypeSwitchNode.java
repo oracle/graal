@@ -50,7 +50,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
      * @param keyProbabilities the probabilities of the keys
      * @param keySuccessors the successor index for each key
      */
-    public TypeSwitchNode(ValueNode value, BeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
+    public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, double[] keyProbabilities, int[] keySuccessors) {
         super(value, successors, keySuccessors, keyProbabilities);
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
@@ -95,7 +95,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                 }
             }
             tool.addToWorkList(blockSuccessor(survivingEdge));
-            ((StructuredGraph) graph()).removeSplit(this, blockSuccessor(survivingEdge));
+            graph().removeSplit(this, blockSuccessor(survivingEdge));
         }
         if (value() instanceof LoadHubNode) {
             ObjectStamp stamp = ((LoadHubNode) value()).object().objectStamp();
@@ -108,9 +108,9 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                 }
                 if (validKeys == 0) {
                     tool.addToWorkList(defaultSuccessor());
-                    ((StructuredGraph) graph()).removeSplitPropagate(this, defaultSuccessor());
+                    graph().removeSplitPropagate(this, defaultSuccessor());
                 } else if (validKeys != keys.length) {
-                    ArrayList<BeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
+                    ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>(blockSuccessorCount());
                     ResolvedJavaType[] newKeys = new ResolvedJavaType[validKeys];
                     int[] newKeySuccessors = new int[validKeys + 1];
                     double[] newKeyProbabilities = new double[validKeys + 1];
@@ -139,14 +139,14 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                     }
 
                     for (int i = 0; i < blockSuccessorCount(); i++) {
-                        BeginNode successor = blockSuccessor(i);
+                        AbstractBeginNode successor = blockSuccessor(i);
                         if (!newSuccessors.contains(successor)) {
                             tool.deleteBranch(successor);
                         }
                         setBlockSuccessor(i, null);
                     }
 
-                    BeginNode[] successorsArray = newSuccessors.toArray(new BeginNode[newSuccessors.size()]);
+                    AbstractBeginNode[] successorsArray = newSuccessors.toArray(new AbstractBeginNode[newSuccessors.size()]);
                     TypeSwitchNode newSwitch = graph().add(new TypeSwitchNode(value(), successorsArray, newKeys, newKeyProbabilities, newKeySuccessors));
                     ((FixedWithNextNode) predecessor()).setNext(newSwitch);
                     GraphUtil.killWithUnusedFloatingInputs(this);

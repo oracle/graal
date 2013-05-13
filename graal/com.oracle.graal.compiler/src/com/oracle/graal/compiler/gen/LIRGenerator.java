@@ -61,7 +61,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected final StructuredGraph graph;
     protected final CodeCacheProvider runtime;
     protected final TargetDescription target;
-    protected final ResolvedJavaMethod method;
+    protected final CallingConvention cc;
 
     protected final DebugInfoBuilder debugInfoBuilder;
 
@@ -85,12 +85,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(Constant c);
 
-    public LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
+    public LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         this.graph = graph;
         this.runtime = runtime;
         this.target = target;
         this.frameMap = frameMap;
-        this.method = method;
+        if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
+            this.cc = cc;
+        } else {
+            JavaType[] parameterTypes = new JavaType[]{runtime.lookupJavaType(long.class)};
+            CallingConvention tmp = frameMap.registerConfig.getCallingConvention(JavaCallee, runtime.lookupJavaType(void.class), parameterTypes, target, false);
+            this.cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
+        }
         this.nodeOperands = graph.createNodeMap();
         this.lir = lir;
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
@@ -112,8 +118,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return runtime;
     }
 
-    public ResolvedJavaMethod method() {
-        return method;
+    public StructuredGraph getGraph() {
+        return graph;
     }
 
     /**
@@ -132,7 +138,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public ValueNode valueForOperand(Value value) {
         for (Entry<Node, Value> entry : nodeOperands.entries()) {
-            if (entry.getValue() == value) {
+            if (entry.getValue().equals(value)) {
                 return (ValueNode) entry.getKey();
             }
         }
@@ -142,23 +148,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     /**
      * Creates a new {@linkplain Variable variable}.
      * 
-     * @param kind The kind of the new variable.
+     * @param platformKind The kind of the new variable.
      * @return a new variable
      */
     @Override
-    public Variable newVariable(Kind kind) {
-        Kind stackKind = kind.getStackKind();
-        switch (stackKind) {
-            case Int:
-            case Long:
-            case Object:
-                return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.CPU);
-            case Float:
-            case Double:
-                return new Variable(stackKind, lir.nextVariable(), Register.RegisterFlag.FPU);
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+    public Variable newVariable(PlatformKind platformKind) {
+        PlatformKind stackKind;
+        if (platformKind instanceof Kind) {
+            stackKind = ((Kind) platformKind).getStackKind();
+        } else {
+            stackKind = platformKind;
         }
+        return new Variable(stackKind, lir.nextVariable());
     }
 
     @Override
@@ -428,12 +429,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         ((LIRLowerable) node).generate(this);
     }
 
-    protected CallingConvention createCallingConvention() {
-        return frameMap.registerConfig.getCallingConvention(JavaCallee, method.getSignature().getReturnType(null), MetaUtil.signatureToTypes(method), target, false);
-    }
-
     protected void emitPrologue() {
-        CallingConvention incomingArguments = createCallingConvention();
+        CallingConvention incomingArguments = cc;
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
         for (int i = 0; i < params.length; i++) {
@@ -476,7 +473,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public void visitEndNode(EndNode end) {
+    public void visitEndNode(AbstractEndNode end) {
         moveToPhi(end.merge(), end);
     }
 
@@ -487,7 +484,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public void visitLoopEnd(LoopEndNode x) {
     }
 
-    private void moveToPhi(MergeNode merge, EndNode pred) {
+    private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
         if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
@@ -599,10 +596,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention cc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(runtime), callTarget.signature(), target(), false);
-        frameMap.callsMethod(cc);
+        CallingConvention invokeCc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(runtime), callTarget.signature(), target(), false);
+        frameMap.callsMethod(invokeCc);
 
-        Value[] parameters = visitInvokeArguments(cc, callTarget.arguments());
+        Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
 
         LabelRef exceptionEdge = null;
         if (x instanceof InvokeWithExceptionNode) {
@@ -610,11 +607,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
-        Value result = cc.getReturn();
+        Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, cc.getTemporaries(), callState);
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
         } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, cc.getTemporaries(), callState);
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -645,13 +642,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return value;
     }
 
-    public Value[] visitInvokeArguments(CallingConvention cc, Collection<ValueNode> arguments) {
+    public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
         // for each argument, load it into the correct location
         Value[] result = new Value[arguments.size()];
         int j = 0;
         for (ValueNode arg : arguments) {
             if (arg != null) {
-                AllocatableValue operand = toStackKind(cc.getArgument(j));
+                AllocatableValue operand = toStackKind(invokeCc.getArgument(j));
                 emitMove(operand, operand(arg));
                 result[j] = operand;
                 j++;
@@ -663,23 +660,23 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args) {
+    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         LIRFrameState state = info != null ? state(info) : null;
 
         // move the arguments into the correct location
-        frameMap.callsMethod(cc);
-        assert cc.getArgumentCount() == args.length : "argument count mismatch";
+        frameMap.callsMethod(callCc);
+        assert callCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
-            AllocatableValue loc = cc.getArgument(i);
+            AllocatableValue loc = callCc.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitCall(callTarget, cc.getReturn(), argLocations, cc.getTemporaries(), state);
+        emitCall(callTarget, callCc.getReturn(), argLocations, callCc.getTemporaries(), state);
 
-        if (isLegal(cc.getReturn())) {
-            return emitMove(cc.getReturn());
+        if (isLegal(callCc.getReturn())) {
+            return emitMove(callCc.getReturn());
         } else {
             return null;
         }
@@ -688,12 +685,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public void visitRuntimeCall(RuntimeCallNode x) {
         RuntimeCallTarget call = runtime.lookupRuntimeCall(x.getDescriptor());
-        CallingConvention cc = call.getCallingConvention();
-        frameMap.callsMethod(cc);
-        Value resultOperand = cc.getReturn();
-        Value[] args = visitInvokeArguments(cc, x.arguments());
+        CallingConvention callCc = call.getCallingConvention();
+        frameMap.callsMethod(callCc);
+        Value resultOperand = callCc.getReturn();
+        Value[] args = visitInvokeArguments(callCc, x.arguments());
 
-        emitCall(call, resultOperand, args, cc.getTemporaries(), state(x));
+        emitCall(call, resultOperand, args, callCc.getTemporaries(), state(x));
 
         if (isLegal(resultOperand)) {
             setResult(x, emitMove(resultOperand));
@@ -828,6 +825,35 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public void beforeRegisterAllocation() {
+    }
+
+    /**
+     * Gets an garbage vale for a given kind.
+     */
+    protected Constant zapValueForKind(PlatformKind kind) {
+        long dead = 0xDEADDEADDEADDEADL;
+        switch ((Kind) kind) {
+            case Boolean:
+                return Constant.FALSE;
+            case Byte:
+                return Constant.forByte((byte) dead);
+            case Char:
+                return Constant.forChar((char) dead);
+            case Short:
+                return Constant.forShort((short) dead);
+            case Int:
+                return Constant.forInt((int) dead);
+            case Double:
+                return Constant.forDouble(Double.longBitsToDouble(dead));
+            case Float:
+                return Constant.forFloat(Float.intBitsToFloat((int) dead));
+            case Long:
+                return Constant.forLong(dead);
+            case Object:
+                return Constant.NULL_OBJECT;
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
     }
 
     public abstract void emitBitCount(Variable result, Value operand);

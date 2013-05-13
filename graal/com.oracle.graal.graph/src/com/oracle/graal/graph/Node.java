@@ -25,7 +25,7 @@ package com.oracle.graal.graph;
 import java.lang.annotation.*;
 import java.util.*;
 
-import com.oracle.graal.graph.Graph.InputChangedListener;
+import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.NodeClass.*;
 import com.oracle.graal.graph.iterators.*;
 
@@ -193,12 +193,17 @@ public abstract class Node implements Cloneable, Formattable {
                 assert assertTrue(result, "not found in usages, old input: %s", oldInput);
             }
             if (newInput != null) {
-                InputChangedListener inputChanged = graph.inputChanged;
+                NodeChangedListener inputChanged = graph.inputChanged;
                 if (inputChanged != null) {
-                    inputChanged.inputChanged(this);
+                    inputChanged.nodeChanged(this);
                 }
                 assert newInput.usages != null : "not yet added? " + newInput;
                 newInput.usages.add(this);
+            } else if (oldInput != null && oldInput.usages().isEmpty()) {
+                NodeChangedListener nodeChangedListener = graph.usagesDroppedZero;
+                if (nodeChangedListener != null) {
+                    nodeChangedListener.nodeChanged(oldInput);
+                }
             }
         }
     }
@@ -253,9 +258,9 @@ public abstract class Node implements Cloneable, Formattable {
             boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
-                InputChangedListener inputChanged = graph.inputChanged;
+                NodeChangedListener inputChanged = graph.inputChanged;
                 if (inputChanged != null) {
-                    inputChanged.inputChanged(usage);
+                    inputChanged.nodeChanged(usage);
                 }
                 other.usages.add(usage);
             }
@@ -299,6 +304,12 @@ public abstract class Node implements Cloneable, Formattable {
 
         for (Node input : inputs()) {
             removeThisFromUsages(input);
+            if (input.usages().isEmpty()) {
+                NodeChangedListener nodeChangedListener = graph.usagesDroppedZero;
+                if (nodeChangedListener != null) {
+                    nodeChangedListener.nodeChanged(input);
+                }
+            }
         }
         getNodeClass().clearInputs(this);
     }
@@ -447,7 +458,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Provides a {@link Map} of properties of this node for use in debugging (e.g., to view in the
      * ideal graph visualizer).
      */
-    public Map<Object, Object> getDebugProperties() {
+    public final Map<Object, Object> getDebugProperties() {
         return getDebugProperties(new HashMap<>());
     }
 

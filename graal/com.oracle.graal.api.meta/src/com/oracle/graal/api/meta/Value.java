@@ -41,14 +41,20 @@ public abstract class Value implements Serializable {
     };
 
     private final Kind kind;
+    private final PlatformKind platformKind;
 
     /**
      * Initializes a new value of the specified kind.
      * 
-     * @param kind the kind
+     * @param platformKind the kind
      */
-    protected Value(Kind kind) {
-        this.kind = kind;
+    protected Value(PlatformKind platformKind) {
+        this.platformKind = platformKind;
+        if (platformKind instanceof Kind) {
+            this.kind = (Kind) platformKind;
+        } else {
+            this.kind = Kind.Illegal;
+        }
     }
 
     /**
@@ -64,5 +70,30 @@ public abstract class Value implements Serializable {
      */
     public final Kind getKind() {
         return kind;
+    }
+
+    /**
+     * Returns the platform specific kind used to store this value.
+     */
+    public final PlatformKind getPlatformKind() {
+        return platformKind;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 41;
+        int result = 1;
+        result = prime * result + kind.hashCode();
+        result = prime * result + platformKind.hashCode();
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Value) {
+            Value other = (Value) obj;
+            return kind.equals(other.kind) && platformKind.equals(platformKind);
+        }
+        return false;
     }
 }

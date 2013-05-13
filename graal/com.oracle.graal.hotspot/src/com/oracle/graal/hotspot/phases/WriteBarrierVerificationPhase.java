@@ -31,193 +31,94 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.graph.*;
 
+/**
+ * Verification phase that checks if, for every write, at least one write barrier is present at all
+ * paths leading to the previous safepoint. For every write, necessitating a write barrier, a
+ * bottom-up traversal of the graph is performed up to the previous safepoints via all possible
+ * paths. If, for a certain path, no write barrier satisfying the processed write is found, an
+ * assertion is generated.
+ */
 public class WriteBarrierVerificationPhase extends Phase {
-
-    private class MemoryMap implements MergeableState<MemoryMap> {
-
-        private IdentityHashMap<Object, LinkedList<LocationNode>> lastMemorySnapshot;
-        private IdentityHashMap<Object, LinkedList<SerialWriteBarrier>> lastWriteBarrierSnapshot;
-
-        public MemoryMap(MemoryMap memoryMap) {
-            lastMemorySnapshot = new IdentityHashMap<>(memoryMap.lastMemorySnapshot);
-            lastWriteBarrierSnapshot = new IdentityHashMap<>(memoryMap.lastWriteBarrierSnapshot);
-        }
-
-        public MemoryMap() {
-            lastMemorySnapshot = new IdentityHashMap<>();
-            lastWriteBarrierSnapshot = new IdentityHashMap<>();
-        }
-
-        @Override
-        public String toString() {
-            return "Map=" + lastMemorySnapshot.toString();
-        }
-
-        @Override
-        public boolean merge(MergeNode merge, List<MemoryMap> withStates) {
-            if (withStates.size() == 0) {
-                return true;
-            }
-
-            for (MemoryMap other : withStates) {
-                for (Object otherObject : other.lastMemorySnapshot.keySet()) {
-                    LinkedList<LocationNode> currentLocations = lastMemorySnapshot.get(otherObject);
-                    LinkedList<LocationNode> otherLocations = other.lastMemorySnapshot.get(otherObject);
-                    if (otherLocations != null) {
-                        if (currentLocations == null) {
-                            currentLocations = new LinkedList<>();
-                        }
-                        for (LocationNode location : otherLocations) {
-                            if (!currentLocations.contains(location)) {
-                                currentLocations.add(location);
-                            }
-                        }
-                    }
-                }
-                for (Object otherObject : other.lastWriteBarrierSnapshot.keySet()) {
-                    LinkedList<SerialWriteBarrier> currentWriteBarriers = lastWriteBarrierSnapshot.get(otherObject);
-                    LinkedList<SerialWriteBarrier> otherWriteBarriers = other.lastWriteBarrierSnapshot.get(otherObject);
-                    if (otherWriteBarriers != null) {
-                        if (currentWriteBarriers == null) {
-                            currentWriteBarriers = new LinkedList<>();
-                        }
-                        for (SerialWriteBarrier barrier : otherWriteBarriers) {
-                            if (!currentWriteBarriers.contains(barrier)) {
-                                currentWriteBarriers.add(barrier);
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public void loopBegin(LoopBeginNode loopBegin) {
-        }
-
-        @Override
-        public void loopEnds(LoopBeginNode loopBegin, List<MemoryMap> loopEndStates) {
-        }
-
-        @Override
-        public void afterSplit(BeginNode node) {
-        }
-
-        @Override
-        public MemoryMap clone() {
-            return new MemoryMap(this);
-        }
-    }
 
     @Override
     protected void run(StructuredGraph graph) {
-        new PostOrderNodeIterator<MemoryMap>(graph.start(), new MemoryMap()) {
-
-            @Override
-            protected void node(FixedNode node) {
-                processNode(node, state);
-            }
-        }.apply();
+        processWrites(graph);
     }
 
-    private static void processNode(FixedNode node, MemoryMap state) {
-        if (node instanceof WriteNode) {
-            processWriteNode((WriteNode) node, state);
-        } else if (node instanceof CompareAndSwapNode) {
-            processCASNode((CompareAndSwapNode) node, state);
-        } else if (node instanceof SerialWriteBarrier) {
-            processWriteBarrier((SerialWriteBarrier) node, state);
-        } else if ((node instanceof DeoptimizingNode)) {
-            if (((DeoptimizingNode) node).canDeoptimize()) {
-                validateWriteBarriers(state);
-                processSafepoint(state);
+    private static void processWrites(StructuredGraph graph) {
+        for (Node node : graph.getNodes()) {
+            if (isObjectWrite(node)) {
+                validateWrite(node);
             }
         }
     }
 
-    private static void processWriteNode(WriteNode node, MemoryMap state) {
-        if (node.getWriteBarrierType() != WriteBarrierType.NONE) {
-            LinkedList<LocationNode> locations = state.lastMemorySnapshot.get(node.object());
-            if (locations == null) {
-                locations = new LinkedList<>();
-                locations.add(node.location());
-                state.lastMemorySnapshot.put(node.object(), locations);
-            } else if ((node.getWriteBarrierType() == WriteBarrierType.PRECISE) && !locations.contains(node.location())) {
-                locations.add(node.location());
+    private static void validateWrite(Node write) {
+        /*
+         * The currently validated write is checked in order to discover if it has an appropriate
+         * attached write barrier.
+         */
+        if (hasAttachedBarrier(write)) {
+            return;
+        }
+        NodeFlood frontier = write.graph().createNodeFlood();
+        expandFrontier(frontier, write);
+        Iterator<Node> iterator = frontier.iterator();
+        while (iterator.hasNext()) {
+            Node currentNode = iterator.next();
+            assert !isSafepoint(currentNode) : "Write barrier must be present";
+            if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier(write, (SerialWriteBarrier) currentNode))) {
+                expandFrontier(frontier, currentNode);
             }
         }
     }
 
-    private static void processCASNode(CompareAndSwapNode node, MemoryMap state) {
-        if (node.getWriteBarrierType() != WriteBarrierType.NONE) {
-            LinkedList<LocationNode> locations = state.lastMemorySnapshot.get(node.object());
-            if (locations == null) {
-                locations = new LinkedList<>();
-                locations.add(node.getLocation());
-                state.lastMemorySnapshot.put(node.object(), locations);
-            } else if ((node.getWriteBarrierType() == WriteBarrierType.PRECISE) && !locations.contains(node.getLocation())) {
-                locations.add(node.getLocation());
+    private static boolean hasAttachedBarrier(Node node) {
+        return (((FixedWithNextNode) node).next() instanceof SerialWriteBarrier) && validateBarrier(node, (SerialWriteBarrier) ((FixedWithNextNode) node).next());
+    }
+
+    private static boolean isObjectWrite(Node node) {
+        if ((node instanceof WriteNode && (((WriteNode) node).getWriteBarrierType() != WriteBarrierType.NONE)) ||
+                        (node instanceof CompareAndSwapNode && (((CompareAndSwapNode) node).getWriteBarrierType() != WriteBarrierType.NONE))) {
+            return true;
+        }
+        return false;
+    }
+
+    private static void expandFrontier(NodeFlood frontier, Node node) {
+        for (Node previousNode : node.cfgPredecessors()) {
+            if (previousNode != null) {
+                frontier.add(previousNode);
             }
         }
     }
 
-    private static void processWriteBarrier(SerialWriteBarrier currentBarrier, MemoryMap state) {
-        LinkedList<SerialWriteBarrier> writeBarriers = state.lastWriteBarrierSnapshot.get(currentBarrier.getObject());
-        if (writeBarriers == null) {
-            writeBarriers = new LinkedList<>();
-            writeBarriers.add(currentBarrier);
-            state.lastWriteBarrierSnapshot.put(currentBarrier.getObject(), writeBarriers);
-        } else if (currentBarrier.usePrecise()) {
-            boolean found = false;
-            for (SerialWriteBarrier barrier : writeBarriers) {
-                if (barrier.getLocation() == currentBarrier.getLocation()) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                writeBarriers.add(currentBarrier);
-            }
-        }
+    private static boolean isSafepoint(Node node) {
+        /*
+         * LoopBegin nodes are also treated as safepoints since a bottom-up analysis is performed
+         * and loop safepoints are placed before LoopEnd nodes. Possible elimination of write
+         * barriers inside loops, derived from writes outside loops, can not be permitted.
+         */
+        return ((node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize()) || (node instanceof LoopBeginNode);
     }
 
-    private static void validateWriteBarriers(MemoryMap state) {
-        Set<Object> objects = state.lastMemorySnapshot.keySet();
-        for (Object write : objects) {
-            LinkedList<SerialWriteBarrier> writeBarriers = state.lastWriteBarrierSnapshot.get(write);
-            if (writeBarriers == null) {
-                throw new GraalInternalError("Failed to find any write barrier at safepoint for written object");
-            }
-            /*
-             * Check the first write barrier of the object to determine if it is precise or not. If
-             * it is not, the validation for this object has passed (since we had a hit in the write
-             * barrier hashmap), otherwise we have to ensure the presence of write barriers for
-             * every written location.
-             */
-            final boolean precise = writeBarriers.getFirst().usePrecise();
-            if (precise) {
-                LinkedList<LocationNode> locations = state.lastMemorySnapshot.get(write);
-                for (LocationNode location : locations) {
-                    boolean found = false;
-                    for (SerialWriteBarrier barrier : writeBarriers) {
-                        if (location == barrier.getLocation()) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        throw new GraalInternalError("Failed to find write barrier at safepoint for precise written object");
-                    }
-                }
-            }
+    private static boolean validateBarrier(Node write, SerialWriteBarrier barrier) {
+        ValueNode writtenObject = null;
+        LocationNode writtenLocation = null;
+        if (write instanceof WriteNode) {
+            writtenObject = ((WriteNode) write).object();
+            writtenLocation = ((WriteNode) write).location();
+        } else if (write instanceof CompareAndSwapNode) {
+            writtenObject = ((CompareAndSwapNode) write).object();
+            writtenLocation = ((CompareAndSwapNode) write).getLocation();
+        } else {
+            assert false : "Node must be of type requiring a write barrier";
         }
-    }
 
-    private static void processSafepoint(MemoryMap state) {
-        state.lastMemorySnapshot.clear();
-        state.lastWriteBarrierSnapshot.clear();
+        if ((barrier.getObject() == writtenObject) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == writtenLocation))) {
+            return true;
+        }
+        return false;
     }
 }

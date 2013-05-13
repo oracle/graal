@@ -22,15 +22,11 @@
  */
 package com.oracle.graal.compiler.test;
 
-import java.util.*;
-
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.phases.common.*;
@@ -96,36 +92,10 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
 
                 Debug.dump(graph, "After lowering");
 
-                ArrayList<MergeNode> merges = new ArrayList<>();
-                ArrayList<FloatingReadNode> reads = new ArrayList<>();
-                for (Node n : graph.getNodes()) {
-                    if (n instanceof MergeNode) {
-                        // check shape
-                        MergeNode merge = (MergeNode) n;
-
-                        if (merge.inputs().count() == 2) {
-                            for (EndNode m : merge.forwardEnds()) {
-                                if (m.predecessor() != null && m.predecessor() instanceof BeginNode && m.predecessor().predecessor() instanceof IfNode) {
-                                    IfNode o = (IfNode) m.predecessor().predecessor();
-                                    if (o.falseSuccessor().next() instanceof DeoptimizeNode) {
-                                        merges.add(merge);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (n instanceof IntegerAddNode) {
-                        IntegerAddNode ian = (IntegerAddNode) n;
-
-                        Assert.assertTrue(ian.y() instanceof ConstantNode);
-                        Assert.assertTrue(ian.x() instanceof FloatingReadNode);
-                        reads.add((FloatingReadNode) ian.x());
-                    }
-                }
-
-                Assert.assertTrue(merges.size() >= reads.size());
-                for (int i = 0; i < reads.size(); i++) {
-                    assertOrderedAfterSchedule(graph, merges.get(i), reads.get(i));
+                for (FloatingReadNode node : graph.getNodes(LocalNode.class).first().usages().filter(FloatingReadNode.class)) {
+                    // Checking that the parameter a is not directly used for the access to field
+                    // x10 (because x10 must be guarded by the checkcast).
+                    Assert.assertTrue(node.location().getLocationIdentity() == LocationNode.FINAL_LOCATION);
                 }
             }
         });

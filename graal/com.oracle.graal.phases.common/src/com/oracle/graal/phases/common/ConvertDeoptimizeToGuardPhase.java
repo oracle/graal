@@ -27,17 +27,16 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
 public class ConvertDeoptimizeToGuardPhase extends Phase {
 
-    private static BeginNode findBeginNode(Node startNode) {
+    private static AbstractBeginNode findBeginNode(Node startNode) {
         Node n = startNode;
         while (true) {
-            if (n instanceof BeginNode) {
-                return (BeginNode) n;
+            if (n instanceof AbstractBeginNode) {
+                return (AbstractBeginNode) n;
             } else {
                 n = n.predecessor();
             }
@@ -58,17 +57,17 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
         new DeadCodeEliminationPhase().apply(graph);
     }
 
-    private void visitDeoptBegin(BeginNode deoptBegin, DeoptimizeNode deopt, StructuredGraph graph) {
+    private void visitDeoptBegin(AbstractBeginNode deoptBegin, DeoptimizeNode deopt, StructuredGraph graph) {
         if (deoptBegin instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) deoptBegin;
             Debug.log("Visiting %s followed by %s", mergeNode, deopt);
-            List<BeginNode> begins = new ArrayList<>();
-            for (EndNode end : mergeNode.forwardEnds()) {
-                BeginNode newBeginNode = findBeginNode(end);
+            List<AbstractBeginNode> begins = new ArrayList<>();
+            for (AbstractEndNode end : mergeNode.forwardEnds()) {
+                AbstractBeginNode newBeginNode = findBeginNode(end);
                 assert !begins.contains(newBeginNode);
                 begins.add(newBeginNode);
             }
-            for (BeginNode begin : begins) {
+            for (AbstractBeginNode begin : begins) {
                 assert !begin.isDeleted();
                 visitDeoptBegin(begin, deopt, graph);
             }
@@ -76,24 +75,20 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             return;
         } else if (deoptBegin.predecessor() instanceof IfNode) {
             IfNode ifNode = (IfNode) deoptBegin.predecessor();
-            BeginNode otherBegin = ifNode.trueSuccessor();
+            AbstractBeginNode otherBegin = ifNode.trueSuccessor();
             LogicNode conditionNode = ifNode.condition();
-            if (!(conditionNode instanceof InstanceOfNode) && !(conditionNode instanceof InstanceOfDynamicNode)) {
-                // TODO The lowering currently does not support a FixedGuard as the usage of an
-                // InstanceOfNode. Relax this restriction.
-                FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
-                FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
-                if (deoptBegin == ifNode.trueSuccessor()) {
-                    graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
-                } else {
-                    graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
-                }
-                Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
-                FixedNode next = pred.next();
-                pred.setNext(guard);
-                guard.setNext(next);
-                return;
+            FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
+            FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
+            if (deoptBegin == ifNode.trueSuccessor()) {
+                graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
+            } else {
+                graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
             }
+            Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
+            FixedNode next = pred.next();
+            pred.setNext(guard);
+            guard.setNext(next);
+            return;
         }
 
         // We could not convert the control split - at least cut off control flow after the split.

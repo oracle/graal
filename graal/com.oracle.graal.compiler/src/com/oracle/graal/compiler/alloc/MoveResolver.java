@@ -134,7 +134,7 @@ final class MoveResolver {
         }
         for (i = 0; i < mappingTo.size(); i++) {
             Interval interval = mappingTo.get(i);
-            assert !usedRegs.contains(interval.location()) || interval.location() == mappingFrom.get(i).location() : "stack slots used in mappingFrom must be disjoint to mappingTo";
+            assert !usedRegs.contains(interval.location()) || interval.location().equals(mappingFrom.get(i).location()) : "stack slots used in mappingFrom must be disjoint to mappingTo";
         }
 
         return true;
@@ -169,7 +169,7 @@ final class MoveResolver {
 
         Value reg = to.location();
         if (isRegister(reg)) {
-            if (registerBlocked(asRegister(reg).number) > 1 || (registerBlocked(asRegister(reg).number) == 1 && reg != fromReg)) {
+            if (registerBlocked(asRegister(reg).number) > 1 || (registerBlocked(asRegister(reg).number) == 1 && !reg.equals(fromReg))) {
                 return false;
             }
         }
@@ -192,7 +192,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Interval fromInterval, Interval toInterval) {
-        assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
+        assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
@@ -207,7 +207,7 @@ final class MoveResolver {
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
-        assert fromOpr.getKind() == toInterval.kind() : "move between different types";
+        assert fromOpr.getPlatformKind() == toInterval.kind() : "move between different types";
         assert insertIdx != -1 : "must setup insert position first";
 
         AllocatableValue toOpr = toInterval.operand;
@@ -331,7 +331,7 @@ final class MoveResolver {
             TTY.println("MoveResolver: adding mapping from interval %d (%s) to interval %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
         }
 
-        assert fromInterval.operand != toInterval.operand : "from and to interval equal: " + fromInterval;
+        assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind();
         mappingFrom.add(fromInterval);
         mappingFromOpr.add(Value.ILLEGAL);

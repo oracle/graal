@@ -52,13 +52,14 @@ public class ControlFlowGraph {
         if (computePostdominators) {
             cfg.computePostdominators();
         }
-        assert CFGVerifier.verify(cfg);
+        // there's not much to verify when connectBlocks == false
+        assert !(connectBlocks || computeLoops || computeDominators || computePostdominators) || CFGVerifier.verify(cfg);
         return cfg;
     }
 
     protected ControlFlowGraph(StructuredGraph graph) {
         this.graph = graph;
-        this.nodeToBlock = graph.createNodeMap();
+        this.nodeToBlock = graph.createNodeMap(true);
     }
 
     public Block[] getBlocks() {
@@ -135,7 +136,7 @@ public class ControlFlowGraph {
 
             last = cur;
             cur = cur.successors().first();
-        } while (cur != null && !(cur instanceof BeginNode));
+        } while (cur != null && !(cur instanceof AbstractBeginNode));
 
         block.endNode = (FixedNode) last;
     }
@@ -144,8 +145,8 @@ public class ControlFlowGraph {
         // Find all block headers
         int numBlocks = 0;
         for (Node node : graph.getNodes()) {
-            if (node instanceof BeginNode) {
-                Block block = new Block((BeginNode) node);
+            if (node instanceof AbstractBeginNode) {
+                Block block = new Block((AbstractBeginNode) node);
                 numBlocks++;
                 identifyBlock(block);
             }
@@ -247,7 +248,7 @@ public class ControlFlowGraph {
                 for (Block b : loop.blocks) {
                     for (Block sux : b.getSuccessors()) {
                         if (sux.loop != loop) {
-                            BeginNode begin = sux.getBeginNode();
+                            AbstractBeginNode begin = sux.getBeginNode();
                             if (!(begin instanceof LoopExitNode && ((LoopExitNode) begin).loopBegin() == loopBegin)) {
                                 Debug.log("Unexpected loop exit with %s, including whole branch in the loop", sux);
                                 unexpected.add(sux);
@@ -335,21 +336,29 @@ public class ControlFlowGraph {
     }
 
     private void computePostdominators() {
-        for (Block block : postOrder()) {
+        outer: for (Block block : postOrder()) {
             if (block.isLoopEnd()) {
                 // We do not want the loop header registered as the postdominator of the loop end.
                 continue;
             }
-            Block postdominator = null;
+            if (block.getSuccessorCount() == 0) {
+                // No successors => no postdominator.
+                continue;
+            }
+            Block firstSucc = block.getSuccessors().get(0);
+            if (block.getSuccessorCount() == 1) {
+                block.postdominator = firstSucc;
+                continue;
+            }
+            Block postdominator = firstSucc;
             for (Block sux : block.getSuccessors()) {
-                if (sux.isExceptionEntry()) {
-                    // We ignore exception handlers.
-                } else if (postdominator == null) {
-                    postdominator = sux;
-                } else {
-                    postdominator = commonPostdominator(postdominator, sux);
+                postdominator = commonPostdominator(postdominator, sux);
+                if (postdominator == null) {
+                    // There is a dead end => no postdominator available.
+                    continue outer;
                 }
             }
+            assert !block.getSuccessors().contains(postdominator) : "Block " + block + " has a wrong post dominator: " + postdominator;
             block.postdominator = postdominator;
         }
     }

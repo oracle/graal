@@ -574,7 +574,7 @@ public class InliningPhase extends Phase {
             return result;
         }
 
-        private void queueMerge(EndNode end) {
+        private void queueMerge(AbstractEndNode end) {
             MergeNode merge = end.merge();
             if (!queuedNodes.isMarked(merge) && visitedAllEnds(merge)) {
                 queuedNodes.mark(merge);

@@ -56,7 +56,6 @@ import com.oracle.graal.phases.util.*;
 public final class LinearScan {
 
     final TargetDescription target;
-    final JavaMethod method;
     final LIR ir;
     final LIRGenerator gen;
     final FrameMap frameMap;
@@ -156,9 +155,8 @@ public final class LinearScan {
      */
     private final int firstVariableNumber;
 
-    public LinearScan(TargetDescription target, ResolvedJavaMethod method, LIR ir, LIRGenerator gen, FrameMap frameMap) {
+    public LinearScan(TargetDescription target, LIR ir, LIRGenerator gen, FrameMap frameMap) {
         this.target = target;
-        this.method = method;
         this.ir = ir;
         this.gen = gen;
         this.frameMap = frameMap;
@@ -305,7 +303,7 @@ public final class LinearScan {
             intervals = Arrays.copyOf(intervals, intervals.length * 2);
         }
         intervalsSize++;
-        Variable variable = new Variable(source.kind(), ir.nextVariable(), asVariable(source.operand).flag);
+        Variable variable = new Variable(source.kind(), ir.nextVariable());
         assert variables.size() == variable.index;
         variables.add(variable);
 
@@ -413,7 +411,7 @@ public final class LinearScan {
      */
     boolean hasCall(int opId) {
         assert isEven(opId) : "opId not even";
-        return instructionForId(opId).hasCall();
+        return instructionForId(opId).destroysCallerSavedRegisters();
     }
 
     /**
@@ -884,7 +882,7 @@ public final class LinearScan {
     }
 
     private void reportFailure(int numBlocks) {
-        TTY.println(method.toString());
+        TTY.println(gen.getGraph().toString());
         TTY.println("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined)");
         TTY.print("affected registers:");
         TTY.println(blockData.get(ir.cfg.getStartBlock()).liveIn.toString());
@@ -968,7 +966,7 @@ public final class LinearScan {
         TTY.println(blockData.get(block).liveOut.toString());
     }
 
-    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, Kind kind) {
+    void addUse(AllocatableValue operand, int from, int to, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -987,7 +985,7 @@ public final class LinearScan {
         interval.addUsePos(to & ~1, registerPriority);
     }
 
-    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, Kind kind) {
+    void addTemp(AllocatableValue operand, int tempPos, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1008,7 +1006,7 @@ public final class LinearScan {
         return !isRegister(operand) || attributes(asRegister(operand)).isAllocatable();
     }
 
-    void addDef(AllocatableValue operand, int defPos, RegisterPriority registerPriority, Kind kind) {
+    void addDef(AllocatableValue operand, int defPos, RegisterPriority registerPriority, PlatformKind kind) {
         if (!isProcessed(operand)) {
             return;
         }
@@ -1181,7 +1179,7 @@ public final class LinearScan {
                 final int opId = op.id();
 
                 // add a temp range for each register if operation destroys caller-save registers
-                if (op.hasCall()) {
+                if (op.destroysCallerSavedRegisters()) {
                     for (Register r : callerSaveRegs) {
                         if (attributes(r).isAllocatable()) {
                             addTemp(r.asValue(), opId, RegisterPriority.None, Kind.Illegal);
@@ -1197,7 +1195,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addDef((AllocatableValue) operand, opId, registerPriorityOfOutputOperand(op), operand.getKind().getStackKind());
+                            addDef((AllocatableValue) operand, opId, registerPriorityOfOutputOperand(op), operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, true);
                         }
                         return operand;
@@ -1208,7 +1206,7 @@ public final class LinearScan {
                     @Override
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
-                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getKind().getStackKind());
+                            addTemp((AllocatableValue) operand, opId, RegisterPriority.MustHaveRegister, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1220,7 +1218,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId + 1, p, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1232,7 +1230,7 @@ public final class LinearScan {
                     public Value doValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
                         if (isVariableOrRegister(operand)) {
                             RegisterPriority p = registerPriorityOfInputOperand(flags);
-                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getKind().getStackKind());
+                            addUse((AllocatableValue) operand, blockFrom, opId, p, operand.getPlatformKind());
                             addRegisterHint(op, operand, mode, flags, false);
                         }
                         return operand;
@@ -1247,7 +1245,7 @@ public final class LinearScan {
 
                     @Override
                     public Value doValue(Value operand) {
-                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getKind().getStackKind());
+                        addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getPlatformKind());
                         return operand;
                     }
                 });
@@ -1483,7 +1481,7 @@ public final class LinearScan {
             Interval fromInterval = intervalAtBlockEnd(fromBlock, liveOperand);
             Interval toInterval = intervalAtBlockBegin(toBlock, liveOperand);
 
-            if (fromInterval != toInterval && (fromInterval.location() != toInterval.location())) {
+            if (fromInterval != toInterval && !fromInterval.location().equals(toInterval.location())) {
                 // need to insert move instruction
                 moveResolver.addMapping(fromInterval, toInterval);
             }
@@ -1681,7 +1679,7 @@ public final class LinearScan {
             // before we've consumed the inputs.
             if (op.id() < interval.currentTo()) {
                 // caller-save registers must not be included into oop-maps at calls
-                assert !op.hasCall() || !isRegister(operand) || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
+                assert !op.destroysCallerSavedRegisters() || !isRegister(operand) || !isCallerSave(operand) : "interval is in a caller-save register at a call . register will be overwritten";
 
                 frameMap.setReference(interval.location(), registerRefMap, frameRefMap);
 
@@ -1703,7 +1701,7 @@ public final class LinearScan {
     }
 
     private void computeDebugInfo(IntervalWalker iw, final LIRInstruction op, LIRFrameState info) {
-        BitSet registerRefMap = op.hasCall() ? null : frameMap.initRegisterRefMap();
+        BitSet registerRefMap = op.destroysCallerSavedRegisters() ? null : frameMap.initRegisterRefMap();
         BitSet frameRefMap = frameMap.initFrameRefMap();
         computeOopMap(iw, op, registerRefMap, frameRefMap);
 
@@ -1782,7 +1780,7 @@ public final class LinearScan {
             // remove useless moves
             if (op instanceof MoveOp) {
                 MoveOp move = (MoveOp) op;
-                if (move.getInput() == move.getResult()) {
+                if (move.getInput().equals(move.getResult())) {
                     instructions.set(j, null);
                     hasDead = true;
                 }

@@ -27,8 +27,8 @@ import com.oracle.graal.api.meta.*;
 /**
  * Denotes a register that stores a value of a fixed kind. There is exactly one (canonical) instance
  * of {@link RegisterValue} for each ({@link Register}, {@link Kind}) pair. Use
- * {@link Register#asValue(Kind)} to retrieve the canonical {@link RegisterValue} instance for a
- * given (register,kind) pair.
+ * {@link Register#asValue(PlatformKind)} to retrieve the canonical {@link RegisterValue} instance
+ * for a given (register,kind) pair.
  */
 public final class RegisterValue extends AllocatableValue {
 
@@ -39,14 +39,9 @@ public final class RegisterValue extends AllocatableValue {
     /**
      * Should only be called from {@link Register#Register} to ensure canonicalization.
      */
-    protected RegisterValue(Kind kind, Register register) {
+    protected RegisterValue(PlatformKind kind, Register register) {
         super(kind);
         this.reg = register;
-    }
-
-    @Override
-    public int hashCode() {
-        return (getRegister().number << 4) ^ getKind().ordinal();
     }
 
     @Override
@@ -59,5 +54,19 @@ public final class RegisterValue extends AllocatableValue {
      */
     public Register getRegister() {
         return reg;
+    }
+
+    @Override
+    public int hashCode() {
+        return 29 * super.hashCode() + reg.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof RegisterValue) {
+            RegisterValue other = (RegisterValue) obj;
+            return super.equals(obj) && reg.equals(other.reg);
+        }
+        return false;
     }
 }

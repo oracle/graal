@@ -38,17 +38,28 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     private final JavaTypeProfile profile;
 
     /**
+     * Determines the exception thrown by this node if the check fails: {@link ClassCastException}
+     * if false; {@link ArrayStoreException} if true.
+     */
+    private final boolean forStoreCheck;
+
+    /**
      * Creates a new CheckCast instruction.
      * 
      * @param type the type being cast to
      * @param object the instruction producing the object
      */
-    public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile) {
+    public CheckCastNode(ResolvedJavaType type, ValueNode object, JavaTypeProfile profile, boolean forStoreCheck) {
         super(StampFactory.declared(type));
         assert type != null;
         this.type = type;
         this.object = object;
         this.profile = profile;
+        this.forStoreCheck = forStoreCheck;
+    }
+
+    public boolean isForStoreCheck() {
+        return forStoreCheck;
     }
 
     @Override
@@ -68,25 +79,34 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        if (type != null) {
-            ResolvedJavaType objectType = object().objectStamp().type();
-            if (objectType != null && type.isAssignableFrom(objectType)) {
-                // we don't have to check for null types here because they will also pass the
-                // checkcast.
-                return object();
-            }
+        ResolvedJavaType objectType = object().objectStamp().type();
+        if (objectType != null && type.isAssignableFrom(objectType)) {
+            // we don't have to check for null types here because they will also pass the
+            // checkcast.
+            return object();
+        }
 
-            // remove checkcast if the only usage is a more specific checkcast
-            if (usages().count() == 1) {
-                CheckCastNode ccn = usages().filter(CheckCastNode.class).first();
-                if (ccn != null && ccn.type() != null && type.isAssignableFrom(ccn.type())) {
-                    return object();
-                }
+        // remove checkcast if next node is a more specific checkcast
+        if (predecessor() instanceof CheckCastNode) {
+            CheckCastNode ccn = (CheckCastNode) predecessor();
+            if (ccn != null && ccn.type != null && ccn == object && ccn.forStoreCheck == forStoreCheck && ccn.type.isAssignableFrom(type)) {
+                StructuredGraph graph = ccn.graph();
+                CheckCastNode newccn = graph.add(new CheckCastNode(type, ccn.object, ccn.profile, ccn.forStoreCheck));
+                graph.replaceFixedWithFixed(ccn, newccn);
+                return newccn;
             }
         }
 
         if (object().objectStamp().alwaysNull()) {
             return object();
+        }
+        if (tool.assumptions().useOptimisticAssumptions()) {
+            ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
+            if (exactType != null && exactType != type) {
+                // Propagate more precise type information to usages of the checkcast.
+                tool.assumptions().recordConcreteSubtype(type, exactType);
+                return graph().add(new CheckCastNode(exactType, object, profile, forStoreCheck));
+            }
         }
 
         return this;

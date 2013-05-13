@@ -56,7 +56,7 @@ public abstract class LoopTransformations {
         // assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
         int iterations = 0;
         LoopBeginNode loopBegin = loop.loopBegin();
-        StructuredGraph graph = (StructuredGraph) loopBegin.graph();
+        StructuredGraph graph = loopBegin.graph();
         while (!loopBegin.isDeleted()) {
             int mark = graph.getMark();
             peel(loop);
@@ -78,19 +78,19 @@ public abstract class LoopTransformations {
         // original loop is used as first successor
         Position firstPosition = successors.nextPosition();
         NodeClass controlSplitClass = controlSplitNode.getNodeClass();
-        controlSplitClass.set(newControlSplit, firstPosition, BeginNode.begin(originalLoop.entryPoint()));
+        controlSplitClass.set(newControlSplit, firstPosition, AbstractBeginNode.begin(originalLoop.entryPoint()));
 
-        StructuredGraph graph = (StructuredGraph) controlSplitNode.graph();
+        StructuredGraph graph = controlSplitNode.graph();
         while (successors.hasNext()) {
             Position position = successors.nextPosition();
             // create a new loop duplicate, connect it and simplify it
             LoopFragmentWhole duplicateLoop = originalLoop.duplicate();
-            controlSplitClass.set(newControlSplit, position, BeginNode.begin(duplicateLoop.entryPoint()));
+            controlSplitClass.set(newControlSplit, position, AbstractBeginNode.begin(duplicateLoop.entryPoint()));
             ControlSplitNode duplicatedControlSplit = duplicateLoop.getDuplicatedNode(controlSplitNode);
-            graph.removeSplitPropagate(duplicatedControlSplit, (BeginNode) controlSplitClass.get(duplicatedControlSplit, position));
+            graph.removeSplitPropagate(duplicatedControlSplit, (AbstractBeginNode) controlSplitClass.get(duplicatedControlSplit, position));
         }
         // original loop is simplified last to avoid deleting controlSplitNode too early
-        graph.removeSplitPropagate(controlSplitNode, (BeginNode) controlSplitClass.get(controlSplitNode, firstPosition));
+        graph.removeSplitPropagate(controlSplitNode, (AbstractBeginNode) controlSplitClass.get(controlSplitNode, firstPosition));
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
     }
 

@@ -27,83 +27,51 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
+import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 public class FrameStateAssignmentPhase extends Phase {
 
-    private static class FrameStateAssignmentState {
-
-        private FrameState framestate;
-
-        public FrameStateAssignmentState(FrameState framestate) {
-            this.framestate = framestate;
-        }
-
-        public FrameState getFramestate() {
-            return framestate;
-        }
-
-        public void setFramestate(FrameState framestate) {
-            assert framestate != null;
-            this.framestate = framestate;
-        }
+    private static class FrameStateAssignementClosure extends NodeIteratorClosure<FrameState> {
 
         @Override
-        public String toString() {
-            return "FrameStateAssignementState: " + framestate;
-        }
-    }
-
-    private static class FrameStateAssignementClosure extends BlockIteratorClosure<FrameStateAssignmentState> {
-
-        @Override
-        protected void processBlock(Block block, FrameStateAssignmentState currentState) {
-            FixedNode node = block.getBeginNode();
-            while (node != null) {
-                if (node instanceof DeoptimizingNode) {
-                    DeoptimizingNode deopt = (DeoptimizingNode) node;
-                    if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
-                        deopt.setDeoptimizationState(currentState.getFramestate());
-                    }
-                }
-
-                if (node instanceof StateSplit) {
-                    StateSplit stateSplit = (StateSplit) node;
-                    if (stateSplit.stateAfter() != null) {
-                        currentState.setFramestate(stateSplit.stateAfter());
-                        stateSplit.setStateAfter(null);
-                    }
-                }
-
-                if (node instanceof FixedWithNextNode) {
-                    node = ((FixedWithNextNode) node).next();
-                } else {
-                    node = null;
+        protected FrameState processNode(FixedNode node, FrameState currentState) {
+            if (node instanceof DeoptimizingNode) {
+                DeoptimizingNode deopt = (DeoptimizingNode) node;
+                if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
+                    deopt.setDeoptimizationState(currentState);
                 }
             }
+
+            if (node instanceof StateSplit) {
+                StateSplit stateSplit = (StateSplit) node;
+                if (stateSplit.stateAfter() != null) {
+                    FrameState newState = stateSplit.stateAfter();
+                    stateSplit.setStateAfter(null);
+                    return newState;
+                }
+            }
+            return currentState;
         }
 
         @Override
-        protected FrameStateAssignmentState merge(Block mergeBlock, List<FrameStateAssignmentState> states) {
-            MergeNode merge = (MergeNode) mergeBlock.getBeginNode();
+        protected FrameState merge(MergeNode merge, List<FrameState> states) {
             if (merge.stateAfter() != null) {
-                return new FrameStateAssignmentState(merge.stateAfter());
+                return merge.stateAfter();
             }
-            return new FrameStateAssignmentState(singleFrameState(states));
+            return singleFrameState(merge, states);
         }
 
         @Override
-        protected FrameStateAssignmentState cloneState(FrameStateAssignmentState oldState) {
-            return new FrameStateAssignmentState(oldState.getFramestate());
+        protected FrameState afterSplit(AbstractBeginNode node, FrameState oldState) {
+            return oldState;
         }
 
         @Override
-        protected List<FrameStateAssignmentState> processLoop(Loop loop, FrameStateAssignmentState initialState) {
-            return ReentrantBlockIterator.processLoop(this, loop, initialState).exitStates;
+        protected Map<LoopExitNode, FrameState> processLoop(LoopBeginNode loop, FrameState initialState) {
+            return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
         }
 
     }
@@ -111,8 +79,7 @@ public class FrameStateAssignmentPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         assert checkFixedDeopts(graph);
-        ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, false, false);
-        ReentrantBlockIterator.apply(new FrameStateAssignementClosure(), cfg.getStartBlock(), new FrameStateAssignmentState(null), null);
+        ReentrantNodeIterator.apply(new FrameStateAssignementClosure(), graph.start(), null, null);
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {
@@ -125,15 +92,34 @@ public class FrameStateAssignmentPhase extends Phase {
         return true;
     }
 
-    private static FrameState singleFrameState(List<FrameStateAssignmentState> states) {
-        Iterator<FrameStateAssignmentState> it = states.iterator();
-        assert it.hasNext();
-        FrameState first = it.next().getFramestate();
-        while (it.hasNext()) {
-            if (first != it.next().getFramestate()) {
+    private static FrameState singleFrameState(@SuppressWarnings("unused") MergeNode merge, List<FrameState> states) {
+        if (states.size() == 0) {
+            return null;
+        }
+        FrameState firstState = states.get(0);
+        FrameState singleState = firstState;
+        if (singleState == null) {
+            return null;
+        }
+        int singleBci = singleState.bci;
+        for (int i = 1; i < states.size(); ++i) {
+            FrameState cur = states.get(i);
+            if (cur == null) {
                 return null;
             }
+
+            if (cur != singleState) {
+                singleState = null;
+            }
+
+            if (cur.bci != singleBci) {
+                singleBci = FrameState.INVALID_FRAMESTATE_BCI;
+            }
+
         }
-        return first;
+        if (singleState != null) {
+            return singleState;
+        }
+        return null;
     }
 }

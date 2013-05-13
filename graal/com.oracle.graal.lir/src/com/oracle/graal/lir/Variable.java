@@ -39,31 +39,33 @@ public final class Variable extends AllocatableValue {
     public final int index;
 
     /**
-     * The type of register that this variable needs to get assigned.
-     */
-    public final Register.RegisterFlag flag;
-
-    /**
      * Creates a new variable.
      * 
      * @param kind
      * @param index
      */
-    public Variable(Kind kind, int index, Register.RegisterFlag flag) {
+    public Variable(PlatformKind kind, int index) {
         super(kind);
-        assert kind == kind.getStackKind() : "Variables can be only created for stack kinds";
         assert index >= 0;
         this.index = index;
-        this.flag = flag;
-    }
-
-    @Override
-    public int hashCode() {
-        return (index << 4) | getKind().ordinal();
     }
 
     @Override
     public String toString() {
         return "v" + index + getKindSuffix();
+    }
+
+    @Override
+    public int hashCode() {
+        return 71 * super.hashCode() + index;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Variable) {
+            Variable other = (Variable) obj;
+            return super.equals(other) && index == other.index;
+        }
+        return false;
     }
 }

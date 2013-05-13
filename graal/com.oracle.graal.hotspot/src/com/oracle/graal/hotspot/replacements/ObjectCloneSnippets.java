@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.lang.reflect.*;
@@ -54,7 +54,7 @@ public class ObjectCloneSnippets implements Snippets {
         int instanceSize = layoutHelper;
         Pointer memory = NewObjectSnippets.allocate(instanceSize);
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-        Object result = NewObjectSnippets.initializeObject((Word) memory, hub, prototypeMarkWord, instanceSize, false, false);
+        Object result = NewObjectSnippets.initializeObject((Word) memory, hub, prototypeMarkWord, instanceSize, false);
 
         memory = Word.fromObject(result);
         for (int offset = 2 * wordSize(); offset < instanceSize; offset += wordSize()) {
@@ -72,7 +72,7 @@ public class ObjectCloneSnippets implements Snippets {
 
         Pointer memory = NewObjectSnippets.allocate(sizeInBytes);
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-        Object result = NewObjectSnippets.initializeArray((Word) memory, hub, arrayLength, sizeInBytes, prototypeMarkWord, headerSize, false, false);
+        Object result = NewObjectSnippets.initializeArray((Word) memory, hub, arrayLength, sizeInBytes, prototypeMarkWord, headerSize, false);
 
         memory = Word.fromObject(result);
         for (int offset = headerSize; offset < sizeInBytes; offset += wordSize()) {

@@ -103,7 +103,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     newEntryState[i] = originalState.getEntry(i);
                 }
                 VirtualObjectNode newVirtual = originalVirtual.duplicate();
-                tool.createVirtualObject(newVirtual, newEntryState, 0);
+                tool.createVirtualObject(newVirtual, newEntryState, null);
                 tool.replaceWithVirtual(newVirtual);
             }
         } else {
@@ -123,18 +123,9 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
                     for (int i = 0; i < fields.length; i++) {
                         state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
+                        tool.addNode(loads[i]);
                     }
-
-                    final StructuredGraph structuredGraph = (StructuredGraph) graph();
-                    tool.customAction(new Runnable() {
-
-                        public void run() {
-                            for (LoadFieldNode load : loads) {
-                                structuredGraph.addBeforeFixed(ObjectCloneNode.this, structuredGraph.add(load));
-                            }
-                        }
-                    });
-                    tool.createVirtualObject(newVirtual, state, 0);
+                    tool.createVirtualObject(newVirtual, state, null);
                     tool.replaceWithVirtual(newVirtual);
                 }
             }

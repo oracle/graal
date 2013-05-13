@@ -30,12 +30,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node implementing a call to HotSpot's ThreadIsInterrupted stub.
+ * Node implementing a call to {@link ThreadIsInterruptedStub}.
  */
 public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 

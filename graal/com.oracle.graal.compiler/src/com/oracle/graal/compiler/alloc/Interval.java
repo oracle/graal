@@ -430,7 +430,7 @@ public final class Interval {
     /**
      * The kind of this interval.
      */
-    private Kind kind;
+    private PlatformKind kind;
 
     /**
      * The head of the list of ranges describing this interval. This list is sorted by
@@ -501,15 +501,15 @@ public final class Interval {
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
-            if (newLocation.getKind() == Kind.Illegal && kind != Kind.Illegal) {
+            if (newLocation.getPlatformKind() == Kind.Illegal && kind != Kind.Illegal) {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
-            assert newLocation.getKind() != Kind.Illegal;
-            assert newLocation.getKind() == this.kind;
+            assert newLocation.getPlatformKind() != Kind.Illegal;
+            assert newLocation.getPlatformKind() == this.kind;
         }
         this.location = newLocation;
     }
@@ -522,14 +522,13 @@ public final class Interval {
         return location;
     }
 
-    public Kind kind() {
+    public PlatformKind kind() {
         assert !isRegister(operand) : "cannot access type for fixed interval";
         return kind;
     }
 
-    void setKind(Kind kind) {
+    void setKind(PlatformKind kind) {
         assert isRegister(operand) || this.kind() == Kind.Illegal || this.kind() == kind : "overwriting existing type";
-        assert kind == kind.getStackKind() || kind == Kind.Short : "these kinds should have int type registers";
         this.kind = kind;
     }
 
@@ -714,12 +713,12 @@ public final class Interval {
 
                 assert i1.splitParent() == this : "not a split child of this interval";
                 assert i1.kind() == kind() : "must be equal for all split children";
-                assert i1.spillSlot() == spillSlot() : "must be equal for all split children";
+                assert (i1.spillSlot() == null && spillSlot == null) || i1.spillSlot().equals(spillSlot()) : "must be equal for all split children";
 
                 for (int j = i + 1; j < splitChildren.size(); j++) {
                     Interval i2 = splitChildren.get(j);
 
-                    assert i1.operand != i2.operand : "same register number";
+                    assert !i1.operand.equals(i2.operand) : "same register number";
 
                     if (i1.from() < i2.from()) {
                         assert i1.to() <= i2.from() && i1.to() < i2.to() : "intervals overlapping";

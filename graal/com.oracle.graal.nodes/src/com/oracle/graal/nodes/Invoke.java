@@ -23,9 +23,10 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode {
+public interface Invoke extends StateSplit, Lowerable, DeoptimizingNode, GuardedNode {
 
     FixedNode next();
 

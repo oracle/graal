@@ -26,15 +26,14 @@ import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static java.lang.reflect.Modifier.*;
 
-import java.lang.reflect.*;
 import java.util.*;
 
 import sun.misc.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
@@ -45,7 +44,8 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -58,17 +58,14 @@ import com.oracle.graal.phases.*;
 public class AMD64HotSpotBackend extends HotSpotBackend {
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
-    public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class);
-    public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
-    public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
 
     public AMD64HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
     }
 
     @Override
-    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir) {
-        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, method, lir);
+    public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
     }
 
     /**
@@ -99,13 +96,21 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     class HotSpotFrameContext implements FrameContext {
 
+        final boolean isStub;
+
+        HotSpotFrameContext(boolean isStub) {
+            this.isStub = isStub;
+        }
+
         @Override
         public void enter(TargetMethodAssembler tasm) {
             FrameMap frameMap = tasm.frameMap;
             int frameSize = frameMap.frameSize();
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-            emitStackOverflowCheck(tasm, false);
+            if (!isStub) {
+                emitStackOverflowCheck(tasm, false);
+            }
             asm.decrementq(rsp, frameSize);
             if (GraalOptions.ZapStackOnMethodEntry) {
                 final int intSize = 4;
@@ -139,6 +144,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    protected AbstractAssembler createAssembler(FrameMap frameMap) {
+        return new AMD64MacroAssembler(target, frameMap.registerConfig);
+    }
+
+    @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame if the method:
         // - has no spill slots or other slots allocated during register allocation
@@ -150,53 +160,75 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         LIR lir = gen.lir;
         boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
-        AbstractAssembler masm = new AMD64MacroAssembler(target, frameMap.registerConfig);
-        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext();
+        Stub stub = gen.getStub();
+        AbstractAssembler masm = createAssembler(frameMap);
+        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
-        if (deoptimizationRescueSlot != null) {
+        if (deoptimizationRescueSlot != null && stub == null) {
             tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
 
-        Stub stub = runtime().asStub(lirGen.method());
         if (stub != null) {
-            final Set<Register> definedRegisters = new HashSet<>();
-            ValueProcedure defProc = new ValueProcedure() {
 
-                @Override
-                public Value doValue(Value value) {
-                    if (ValueUtil.isRegister(value)) {
-                        final Register reg = ValueUtil.asRegister(value);
-                        definedRegisters.add(reg);
-                    }
-                    return value;
-                }
-            };
-            for (Block block : lir.codeEmittingOrder()) {
-                for (LIRInstruction op : lir.lir(block)) {
-                    op.forEachTemp(defProc);
-                    op.forEachOutput(defProc);
-                }
+            final Set<Register> definedRegisters = gatherDefinedRegisters(lir);
+            stub.initDestroyedRegisters(definedRegisters);
+
+            // Eliminate unnecessary register preservation and
+            // record where preserved registers are saved
+            for (Map.Entry<LIRFrameState, AMD64RegistersPreservationOp> e : gen.calleeSaveInfo.entrySet()) {
+                AMD64RegistersPreservationOp save = e.getValue();
+                save.update(definedRegisters, e.getKey().debugInfo(), frameMap);
             }
-            stub.initDefinedRegisters(definedRegisters);
         }
 
         return tasm;
     }
 
+    /**
+     * Finds all the registers that are defined by some given LIR.
+     * 
+     * @param lir the LIR to examine
+     * @return the registers that are defined by or used as temps for any instruction in {@code lir}
+     */
+    private static Set<Register> gatherDefinedRegisters(LIR lir) {
+        final Set<Register> definedRegisters = new HashSet<>();
+        ValueProcedure defProc = new ValueProcedure() {
+
+            @Override
+            public Value doValue(Value value) {
+                if (ValueUtil.isRegister(value)) {
+                    final Register reg = ValueUtil.asRegister(value);
+                    definedRegisters.add(reg);
+                }
+                return value;
+            }
+        };
+        for (Block block : lir.codeEmittingOrder()) {
+            for (LIRInstruction op : lir.lir(block)) {
+                if (op instanceof ParametersOp) {
+                    // Don't consider this as a definition
+                } else {
+                    op.forEachTemp(defProc);
+                    op.forEachOutput(defProc);
+                }
+            }
+        }
+        return definedRegisters;
+    }
+
     @Override
-    public void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen) {
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = runtime().config;
-        boolean isStatic = Modifier.isStatic(method.getModifiers());
-        Label unverifiedStub = isStatic ? null : new Label();
+        Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
 
         // Emit the prefix
 
-        if (!isStatic) {
+        if (unverifiedStub != null) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{runtime().lookupJavaType(Object.class)}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
@@ -215,8 +247,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // Emit code for the LIR
         lirGen.lir.emitCode(tasm);
 
-        boolean frameOmitted = tasm.frameContext == null;
-        if (!frameOmitted) {
+        HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
+        if (frameContext != null && !frameContext.isStub) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null, false, null);
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
@@ -224,7 +256,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame() : method;
+            assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
         }
 
         if (unverifiedStub != null) {

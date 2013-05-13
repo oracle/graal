@@ -22,22 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
-
 import com.oracle.graal.nodes.type.*;
 
 public abstract class FixedNode extends ValueNode {
 
     public FixedNode(Stamp stamp) {
         super(stamp);
-    }
-
-    public FixedNode(Stamp stamp, List<ValueNode> dependencies) {
-        super(stamp, dependencies);
-    }
-
-    public FixedNode(Stamp stamp, ValueNode... dependencies) {
-        super(stamp, dependencies);
     }
 
     @Override

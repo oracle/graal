@@ -29,7 +29,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
+import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -44,11 +45,13 @@ import com.oracle.graal.word.Word.Operation;
  */
 public class WordTypeRewriterPhase extends Phase {
 
+    private final MetaAccessProvider metaAccess;
     private final ResolvedJavaType wordBaseType;
     private final ResolvedJavaType wordImplType;
     private final Kind wordKind;
 
     public WordTypeRewriterPhase(MetaAccessProvider metaAccess, Kind wordKind) {
+        this.metaAccess = metaAccess;
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
@@ -103,9 +106,27 @@ public class WordTypeRewriterPhase extends Phase {
             }
         }
 
-        for (LoadIndexedNode load : graph.getNodes().filter(LoadIndexedNode.class).snapshot()) {
-            if (isWord(load)) {
-                load.setStamp(StampFactory.forKind(wordKind));
+        for (AccessIndexedNode node : graph.getNodes().filter(AccessIndexedNode.class).snapshot()) {
+            ValueNode array = node.array();
+            if (array.objectStamp().type() == null) {
+                // There are cases where the array does not have a known type yet. Assume it is not
+                // a word type.
+                continue;
+            }
+            assert array.objectStamp().type().isArray();
+            if (isWord(array.objectStamp().type().getComponentType())) {
+                /*
+                 * The elementKind of the node is a final field, and other information such as the
+                 * stamp depends on elementKind. Therefore, just create a new node and replace the
+                 * old one.
+                 */
+                if (node instanceof LoadIndexedNode) {
+                    graph.replaceFixedWithFixed(node, graph.add(new LoadIndexedNode(node.array(), node.index(), wordKind)));
+                } else if (node instanceof StoreIndexedNode) {
+                    graph.replaceFixedWithFixed(node, graph.add(new StoreIndexedNode(node.array(), node.index(), wordKind, ((StoreIndexedNode) node).value())));
+                } else {
+                    throw GraalInternalError.shouldNotReachHere();
+                }
             }
         }
 
@@ -138,20 +159,30 @@ public class WordTypeRewriterPhase extends Phase {
                         replace(invoke, graph.unique(new XorNode(wordKind, arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
                         break;
 
-                    case READ:
+                    case READ: {
                         assert arguments.size() == 2 || arguments.size() == 3;
                         Kind readKind = asKind(callTargetNode.returnType());
-                        Object readLocation = arguments.size() == 2 ? LocationNode.ANY_LOCATION : arguments.get(2).asConstant().asObject();
-                        replace(invoke, readOp(graph, arguments.get(0), arguments.get(1), invoke, readKind, readLocation));
+                        LocationNode location;
+                        if (arguments.size() == 2) {
+                            location = makeLocation(graph, arguments.get(1), readKind, LocationNode.ANY_LOCATION);
+                        } else {
+                            location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                        }
+                        replace(invoke, readOp(graph, arguments.get(0), invoke, location));
                         break;
-
-                    case WRITE:
+                    }
+                    case WRITE: {
                         assert arguments.size() == 3 || arguments.size() == 4;
                         Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
-                        Object writeLocation = arguments.size() == 3 ? LocationNode.ANY_LOCATION : arguments.get(3).asConstant().asObject();
-                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(1), arguments.get(2), invoke, writeKind, writeLocation));
+                        LocationNode location;
+                        if (arguments.size() == 3) {
+                            location = makeLocation(graph, arguments.get(1), writeKind, LocationNode.ANY_LOCATION);
+                        } else {
+                            location = makeLocation(graph, arguments.get(1), writeKind, arguments.get(3));
+                        }
+                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location));
                         break;
-
+                    }
                     case ZERO:
                         assert arguments.size() == 0;
                         replace(invoke, ConstantNode.forIntegerKind(wordKind, 0L, graph));
@@ -266,18 +297,27 @@ public class WordTypeRewriterPhase extends Phase {
         return materialize;
     }
 
-    private static ValueNode readOp(StructuredGraph graph, ValueNode base, ValueNode offset, Invoke invoke, Kind readKind, Object locationIdentity) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
+    private LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, ValueNode locationIdentity) {
+        if (locationIdentity.isConstant()) {
+            return makeLocation(graph, offset, readKind, (LocationIdentity) locationIdentity.asConstant().asObject());
+        }
+        return SnippetLocationNode.create(locationIdentity, ConstantNode.forObject(readKind, metaAccess, graph), ConstantNode.forLong(0, graph), offset, ConstantNode.forInt(1, graph), graph);
+    }
+
+    private static LocationNode makeLocation(StructuredGraph graph, ValueNode offset, Kind readKind, LocationIdentity locationIdentity) {
+        return IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
+    }
+
+    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location) {
         ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp()));
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
         // check on its base address
-        read.dependencies().add(BeginNode.prevBegin(invoke.asNode()));
+        read.setGuard(AbstractBeginNode.prevBegin(invoke.asNode()));
         return read;
     }
 
-    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode offset, ValueNode value, Invoke invoke, Kind writeKind, Object locationIdentity) {
-        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, writeKind, 0, offset, graph, 1);
+    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location) {
         WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);
@@ -309,16 +349,6 @@ public class WordTypeRewriterPhase extends Phase {
         if (node.stamp() == StampFactory.forWord()) {
             return true;
         }
-        if (node instanceof LoadIndexedNode) {
-            ValueNode array = ((LoadIndexedNode) node).array();
-            if (array.objectStamp().type() == null) {
-                // There are cases where the array does not have a known type yet. Assume it is not
-                // a word type.
-                // TODO disallow LoadIndexedNode for word arrays?
-                return false;
-            }
-            return isWord(array.objectStamp().type().getComponentType());
-        }
         if (node.kind() == Kind.Object) {
             return isWord(node.objectStamp().type());
         }
@@ -344,7 +374,7 @@ public class WordTypeRewriterPhase extends Phase {
         if (valueNode.isConstant() && valueNode.asConstant().getKind() == Kind.Object) {
             WordBase value = (WordBase) valueNode.asConstant().asObject();
             ConstantNode newConstant = ConstantNode.forIntegerKind(wordKind, value.rawValue(), valueNode.graph());
-            ((StructuredGraph) valueNode.graph()).replaceFloating((ConstantNode) valueNode, newConstant);
+            valueNode.graph().replaceFloating((ConstantNode) valueNode, newConstant);
         } else {
             assert !(valueNode instanceof ConstantNode) : "boxed Word constants should not appear in a snippet graph: " + valueNode + ", stamp: " + valueNode.stamp();
             valueNode.setStamp(StampFactory.forKind(wordKind));

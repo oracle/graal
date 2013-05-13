@@ -48,7 +48,7 @@ public final class PTXAddressValue extends CompositeValue {
      * @param kind the kind of the value being addressed
      * @param base the base register
      */
-    public PTXAddressValue(Kind kind, AllocatableValue base) {
+    public PTXAddressValue(PlatformKind kind, AllocatableValue base) {
         this(kind, base, 0);
     }
 
@@ -60,7 +60,7 @@ public final class PTXAddressValue extends CompositeValue {
      * @param base the base register
      * @param displacement the displacement
      */
-    public PTXAddressValue(Kind kind, AllocatableValue base, long displacement) {
+    public PTXAddressValue(PlatformKind kind, AllocatableValue base, long displacement) {
         super(kind);
         this.base = base;
         this.displacement = displacement;
@@ -95,13 +95,13 @@ public final class PTXAddressValue extends CompositeValue {
     public boolean equals(Object obj) {
         if (obj instanceof PTXAddressValue) {
             PTXAddressValue addr = (PTXAddressValue) obj;
-            return getKind() == addr.getKind() && displacement == addr.displacement && base.equals(addr.base);
+            return getPlatformKind() == addr.getPlatformKind() && displacement == addr.displacement && base.equals(addr.base);
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return base.hashCode() ^ ((int) displacement << 4) ^ (getKind().ordinal() << 12);
+        return base.hashCode() ^ ((int) displacement << 4) ^ getPlatformKind().hashCode();
     }
 }

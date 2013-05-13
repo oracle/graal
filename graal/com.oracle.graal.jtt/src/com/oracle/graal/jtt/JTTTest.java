@@ -60,9 +60,9 @@ public class JTTTest extends GraalCompilerTest {
             Object[] args = argsWithReceiver(receiver, argsToBind);
             JavaType[] parameterTypes = signatureToTypes(runtime.lookupJavaMethod(m));
             assert parameterTypes.length == args.length;
-            for (int i = 0; i < argsToBind.length; i++) {
+            for (int i = 0; i < args.length; i++) {
                 LocalNode local = graph.getLocal(i);
-                Constant c = Constant.forBoxed(parameterTypes[i].getKind(), argsToBind[i]);
+                Constant c = Constant.forBoxed(parameterTypes[i].getKind(), args[i]);
                 ConstantNode replacement = ConstantNode.forConstant(c, runtime, graph);
                 local.replaceAtUsages(replacement);
             }
@@ -99,8 +99,10 @@ public class JTTTest extends GraalCompilerTest {
         Result expect = executeExpected(method, receiver, args);
 
         test(method, expect, receiver, args);
-        this.argsToBind = args;
-        test(method, expect, receiver, args);
-        this.argsToBind = null;
+        if (args.length > 0) {
+            this.argsToBind = args;
+            test(method, expect, receiver, args);
+            this.argsToBind = null;
+        }
     }
 }

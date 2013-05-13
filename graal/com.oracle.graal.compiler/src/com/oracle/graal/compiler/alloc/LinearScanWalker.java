@@ -29,7 +29,6 @@ import static com.oracle.graal.lir.LIRValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterFlag;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
@@ -811,14 +810,15 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     void initVarsForAlloc(Interval interval) {
-        EnumMap<RegisterFlag, Register[]> categorizedRegs = allocator.frameMap.registerConfig.getCategorizedAllocatableRegisters();
-        availableRegs = categorizedRegs.get(asVariable(interval.operand).flag);
+        availableRegs = allocator.frameMap.registerConfig.getAllocatableRegisters(interval.kind());
     }
 
     static boolean isMove(LIRInstruction op, Interval from, Interval to) {
         if (op instanceof MoveOp) {
             MoveOp move = (MoveOp) op;
-            return isVariable(move.getInput()) && isVariable(move.getResult()) && move.getInput() == from.operand && move.getResult() == to.operand;
+            if (isVariable(move.getInput()) && isVariable(move.getResult())) {
+                return move.getInput() != null && move.getInput().equals(from.operand) && move.getResult() != null && move.getResult().equals(to.operand);
+            }
         }
         return false;
     }
@@ -936,7 +936,7 @@ final class LinearScanWalker extends IntervalWalker {
         if (interval.insertMoveWhenActivated()) {
             assert interval.isSplitChild();
             assert interval.currentSplitChild() != null;
-            assert interval.currentSplitChild().operand != operand : "cannot insert move between same interval";
+            assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
             if (GraalOptions.TraceLinearScanLevel >= 4) {
                 TTY.println("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
             }

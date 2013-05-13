@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
@@ -33,16 +33,19 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
+
+//JaCoCo Exclude
 
 /**
  * Utilities and common code paths used by the type check snippets.
  */
 public class TypeCheckSnippetUtils {
 
-    public static final Object TYPE_DISPLAY_LOCATION = LocationNode.createLocation("TypeDisplay");
+    public static final LocationIdentity TYPE_DISPLAY_LOCATION = LocationNode.createLocation("TypeDisplay");
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true

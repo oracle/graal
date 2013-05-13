@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotSnippetUtils.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.UnsafeArrayCastNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
@@ -72,18 +72,14 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object initializeObject(Word memory, Word hub, Word prototypeMarkWord, @ConstantParameter int size, @ConstantParameter boolean fillContents, @ConstantParameter boolean locked) {
+    public static Object initializeObject(Word memory, Word hub, Word prototypeMarkWord, @ConstantParameter int size, @ConstantParameter boolean fillContents) {
 
         Object result;
         if (probability(SLOW_PATH_PROBABILITY, memory.equal(0))) {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         } else {
-            if (locked) {
-                formatObject(hub, size, memory, thread().or(biasedLockPattern()), fillContents);
-            } else {
-                formatObject(hub, size, memory, prototypeMarkWord, fillContents);
-            }
+            formatObject(hub, size, memory, prototypeMarkWord, fillContents);
             result = memory.toObject();
         }
         /*
@@ -95,16 +91,7 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter boolean fillContents,
-                    @ConstantParameter boolean locked) {
-        if (locked) {
-            return initializeArray(memory, hub, length, allocationSize, thread().or(biasedLockPattern()), headerSize, fillContents);
-        } else {
-            return initializeArray(memory, hub, length, allocationSize, prototypeMarkWord, headerSize, fillContents);
-        }
-    }
-
-    private static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, int headerSize, boolean fillContents) {
+    public static Object initializeArray(Word memory, Word hub, int length, int allocationSize, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter boolean fillContents) {
         Object result;
         if (probability(SLOW_PATH_PROBABILITY, memory.equal(0))) {
             newarray_stub.inc();
@@ -132,7 +119,7 @@ public class NewObjectSnippets implements Snippets {
         }
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
         Word memory = TLABAllocateNode.allocateVariableSize(allocationSize);
-        return InitializeArrayNode.initialize(memory, length, allocationSize, type, fillContents, false);
+        return InitializeArrayNode.initialize(memory, length, allocationSize, type, fillContents);
     }
 
     /**
@@ -229,7 +216,7 @@ public class NewObjectSnippets implements Snippets {
          */
         @SuppressWarnings("unused")
         public void lower(NewInstanceNode newInstanceNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newInstanceNode.graph();
+            StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = instanceSize(type);
@@ -243,7 +230,7 @@ public class NewObjectSnippets implements Snippets {
                 graph.addBeforeFixed(newInstanceNode, tlabAllocateNode);
                 memory = tlabAllocateNode;
             }
-            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type, newInstanceNode.fillContents(), newInstanceNode.locked()));
+            InitializeObjectNode initializeNode = graph.add(new InitializeObjectNode(memory, type, newInstanceNode.fillContents()));
             graph.replaceFixedWithFixed(newInstanceNode, initializeNode);
         }
 
@@ -252,7 +239,7 @@ public class NewObjectSnippets implements Snippets {
          */
         @SuppressWarnings("unused")
         public void lower(NewArrayNode newArrayNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newArrayNode.graph();
+            StructuredGraph graph = newArrayNode.graph();
             ValueNode lengthNode = newArrayNode.length();
             TLABAllocateNode tlabAllocateNode;
             ResolvedJavaType elementType = newArrayNode.elementType();
@@ -261,7 +248,7 @@ public class NewObjectSnippets implements Snippets {
             final int alignment = target.wordSize;
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             final Integer length = lengthNode.isConstant() ? Integer.valueOf(lengthNode.asConstant().asInt()) : null;
-            int log2ElementSize = CodeUtil.log2(target.sizeInBytes(elementKind));
+            int log2ElementSize = CodeUtil.log2(target.arch.getSizeInBytes(elementKind));
             if (!useTLAB) {
                 ConstantNode zero = ConstantNode.defaultForKind(target.wordKind, graph);
                 /*
@@ -269,7 +256,7 @@ public class NewObjectSnippets implements Snippets {
                  * anyway for both allocation and initialization - it just needs to be non-null
                  */
                 ConstantNode size = ConstantNode.forInt(-1, graph);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(zero, lengthNode, size, arrayType, newArrayNode.fillContents()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else if (length != null && belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
                 // Calculate aligned size
@@ -277,7 +264,7 @@ public class NewObjectSnippets implements Snippets {
                 ConstantNode sizeNode = ConstantNode.forInt(size, graph);
                 tlabAllocateNode = graph.add(new TLABAllocateNode(sizeNode));
                 graph.addBeforeFixed(newArrayNode, tlabAllocateNode);
-                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents(), newArrayNode.locked()));
+                InitializeArrayNode initializeNode = graph.add(new InitializeArrayNode(tlabAllocateNode, lengthNode, sizeNode, arrayType, newArrayNode.fillContents()));
                 graph.replaceFixedWithFixed(newArrayNode, initializeNode);
             } else {
                 Arguments args = new Arguments(allocateArrayAndInitialize);
@@ -296,7 +283,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(TLABAllocateNode tlabAllocateNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) tlabAllocateNode.graph();
+            StructuredGraph graph = tlabAllocateNode.graph();
             ValueNode size = tlabAllocateNode.size();
             Arguments args = new Arguments(allocate).add("size", size);
 
@@ -307,7 +294,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(InitializeObjectNode initializeNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) initializeNode.graph();
+            StructuredGraph graph = initializeNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
@@ -319,7 +306,6 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("size", size).addConst("fillContents", initializeNode.fillContents());
-            args.addConst("locked", initializeNode.locked());
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering initializeObject in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, args);
@@ -328,7 +314,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(InitializeArrayNode initializeNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) initializeNode.graph();
+            StructuredGraph graph = initializeNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) initializeNode.type();
             ResolvedJavaType elementType = type.getComponentType();
             assert elementType != null;
@@ -345,7 +331,6 @@ public class NewObjectSnippets implements Snippets {
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("fillContents", initializeNode.fillContents());
-            args.addConst("locked", initializeNode.locked());
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering initializeArray in %s: node=%s, template=%s, arguments=%s", graph, initializeNode, template, args);
@@ -354,7 +339,7 @@ public class NewObjectSnippets implements Snippets {
 
         @SuppressWarnings("unused")
         public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
-            StructuredGraph graph = (StructuredGraph) newmultiarrayNode.graph();
+            StructuredGraph graph = newmultiarrayNode.graph();
             int rank = newmultiarrayNode.dimensionCount();
             ValueNode[] dims = new ValueNode[rank];
             for (int i = 0; i < newmultiarrayNode.dimensionCount(); i++) {

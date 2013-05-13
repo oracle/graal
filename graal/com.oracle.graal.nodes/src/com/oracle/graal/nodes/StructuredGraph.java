@@ -44,20 +44,22 @@ public class StructuredGraph extends Graph implements InlineableElement {
 
     private final Set<Long> leafGraphIds = new HashSet<>(4);
 
-    private final StartNode start;
+    private StartNode start;
     private final ResolvedJavaMethod method;
     private final long graphId;
     private final int entryBCI;
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph() {
         this(null, null);
     }
 
     /**
-     * Creates a new Graph containing a single {@link BeginNode} as the {@link #start() start} node.
+     * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
+     * start} node.
      */
     public StructuredGraph(String name, ResolvedJavaMethod method) {
         this(name, method, uniqueGraphIds.incrementAndGet(), INVOCATION_ENTRY_BCI);
@@ -73,7 +75,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
 
     private StructuredGraph(String name, ResolvedJavaMethod method, long graphId, int entryBCI) {
         super(name);
-        this.start = add(new StartNode());
+        this.setStart(add(new StartNode()));
         this.method = method;
         this.graphId = graphId;
         this.entryBCI = entryBCI;
@@ -104,6 +106,11 @@ public class StructuredGraph extends Graph implements InlineableElement {
         return start;
     }
 
+    /**
+     * Gets the method from which this graph was built.
+     * 
+     * @return null if this method was not built from a method or the method is not available
+     */
     public ResolvedJavaMethod method() {
         return method;
     }
@@ -114,6 +121,10 @@ public class StructuredGraph extends Graph implements InlineableElement {
 
     public long graphId() {
         return graphId;
+    }
+
+    public void setStart(StartNode start) {
+        this.start = start;
     }
 
     /**
@@ -214,8 +225,8 @@ public class StructuredGraph extends Graph implements InlineableElement {
      */
     public void removeFixed(FixedWithNextNode node) {
         assert node != null;
-        if (node instanceof BeginNode) {
-            ((BeginNode) node).prepareDelete();
+        if (node instanceof AbstractBeginNode) {
+            ((AbstractBeginNode) node).prepareDelete();
         }
         assert node.usages().isEmpty() : node + " " + node.usages();
         FixedNode next = node.next();
@@ -240,6 +251,9 @@ public class StructuredGraph extends Graph implements InlineableElement {
         node.setNext(null);
         replacement.setNext(next);
         node.replaceAndDelete(replacement);
+        if (node == start) {
+            setStart((StartNode) replacement);
+        }
     }
 
     public void replaceFixedWithFloating(FixedWithNextNode node, FloatingNode replacement) {
@@ -251,7 +265,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
         node.safeDelete();
     }
 
-    public void removeSplit(ControlSplitNode node, BeginNode survivingSuccessor) {
+    public void removeSplit(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         assert node != null;
         assert node.usages().isEmpty();
         assert survivingSuccessor != null;
@@ -260,7 +274,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
         node.safeDelete();
     }
 
-    public void removeSplitPropagate(ControlSplitNode node, BeginNode survivingSuccessor) {
+    public void removeSplitPropagate(ControlSplitNode node, AbstractBeginNode survivingSuccessor) {
         assert node != null;
         assert node.usages().isEmpty();
         assert survivingSuccessor != null;
@@ -271,13 +285,13 @@ public class StructuredGraph extends Graph implements InlineableElement {
         for (Node successor : snapshot) {
             if (successor != null && successor.isAlive()) {
                 if (successor != survivingSuccessor) {
-                    GraphUtil.killCFG((BeginNode) successor);
+                    GraphUtil.killCFG((AbstractBeginNode) successor);
                 }
             }
         }
     }
 
-    public void replaceSplit(ControlSplitNode node, Node replacement, BeginNode survivingSuccessor) {
+    public void replaceSplit(ControlSplitNode node, Node replacement, AbstractBeginNode survivingSuccessor) {
         if (replacement instanceof FixedWithNextNode) {
             replaceSplitWithFixed(node, (FixedWithNextNode) replacement, survivingSuccessor);
         } else {
@@ -287,7 +301,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
         }
     }
 
-    public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, BeginNode survivingSuccessor) {
+    public void replaceSplitWithFixed(ControlSplitNode node, FixedWithNextNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
         node.clearSuccessors();
@@ -295,7 +309,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
         node.replaceAndDelete(replacement);
     }
 
-    public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, BeginNode survivingSuccessor) {
+    public void replaceSplitWithFloating(ControlSplitNode node, FloatingNode replacement, AbstractBeginNode survivingSuccessor) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         assert survivingSuccessor != null;
         node.clearSuccessors();
@@ -348,7 +362,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
         if (merge instanceof LoopBeginNode) {
             ((LoopBeginNode) merge).removeExits();
         }
-        EndNode singleEnd = merge.forwardEndAt(0);
+        AbstractEndNode singleEnd = merge.forwardEndAt(0);
         FixedNode sux = merge.next();
         FrameState stateAfter = merge.stateAfter();
         // evacuateGuards

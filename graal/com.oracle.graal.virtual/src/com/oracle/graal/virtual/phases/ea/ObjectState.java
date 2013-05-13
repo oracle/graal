@@ -36,32 +36,69 @@ import com.oracle.graal.nodes.virtual.*;
  */
 class ObjectState extends Virtualizable.State {
 
-    public final VirtualObjectNode virtual;
+    private static final int[] EMPTY_INT_ARRAY = new int[0];
+
+    public static final class LockState {
+
+        public final int depth;
+        public final LockState next;
+
+        private LockState(int depth, LockState next) {
+            this.depth = depth;
+            this.next = next;
+        }
+
+        @Override
+        public String toString() {
+            return next == null ? String.valueOf(depth) : depth + "," + next;
+        }
+
+        public static boolean equals(LockState a, LockState b) {
+            if ((a == null) != (b == null)) {
+                return false;
+            }
+            if (a != null) {
+                if (a.depth != b.depth) {
+                    return false;
+                }
+                return equals(a.next, b.next);
+            }
+            return true;
+        }
+    }
+
+    final VirtualObjectNode virtual;
 
     private EscapeState state;
     private ValueNode[] entries;
     private ValueNode materializedValue;
-    private int lockCount;
+    private LockState locks;
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, int lockCount) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode[] entries, EscapeState state, int[] locks) {
         this.virtual = virtual;
         this.entries = entries;
         this.state = state;
-        this.lockCount = lockCount;
+        if (locks == null) {
+            this.locks = null;
+        } else {
+            for (int i = locks.length - 1; i >= 0; i--) {
+                this.locks = new LockState(locks[i], this.locks);
+            }
+        }
     }
 
-    public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, EscapeState state, int lockCount) {
+    public ObjectState(VirtualObjectNode virtual, ValueNode materializedValue, EscapeState state, LockState locks) {
         this.virtual = virtual;
         this.materializedValue = materializedValue;
         this.state = state;
-        this.lockCount = lockCount;
+        this.locks = locks;
     }
 
     private ObjectState(ObjectState other) {
         virtual = other.virtual;
         entries = other.entries == null ? null : other.entries.clone();
         materializedValue = other.materializedValue;
-        lockCount = other.lockCount;
+        locks = other.locks;
         state = other.state;
     }
 
@@ -120,24 +157,56 @@ class ObjectState extends Virtualizable.State {
     }
 
     @Override
-    public int getLockCount() {
-        return lockCount;
+    public void addLock(int depth) {
+        locks = new LockState(depth, locks);
     }
 
     @Override
-    public void setLockCount(int lockCount) {
-        this.lockCount = lockCount;
+    public int removeLock() {
+        try {
+            return locks.depth;
+        } finally {
+            locks = locks.next;
+        }
+    }
+
+    public int[] getLocks() {
+        if (locks == null) {
+            return EMPTY_INT_ARRAY;
+        }
+        int cnt = 0;
+        LockState current = locks;
+        while (current != null) {
+            cnt++;
+            current = current.next;
+        }
+        int[] result = new int[cnt];
+        current = locks;
+        cnt = 0;
+        while (current != null) {
+            result[cnt++] = current.depth;
+            current = current.next;
+        }
+        return result;
+    }
+
+    public boolean hasLocks() {
+        return locks != null;
+    }
+
+    public boolean locksEqual(ObjectState other) {
+        return LockState.equals(locks, other.locks);
     }
 
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder().append('{');
-        if (lockCount > 0) {
-            str.append('l').append(lockCount).append(' ');
+        if (locks != null) {
+            str.append('l').append(locks).append(' ');
         }
         if (entries != null) {
             for (int i = 0; i < entries.length; i++) {
-                str.append(virtual.fieldName(i)).append('=').append(entries[i]).append(' ');
+                str.append(virtual.entryName(i)).append('=').append(entries[i]).append(' ');
             }
         }
         if (materializedValue != null) {
@@ -152,7 +221,7 @@ class ObjectState extends Virtualizable.State {
         final int prime = 31;
         int result = 1;
         result = prime * result + Arrays.hashCode(entries);
-        result = prime * result + lockCount;
+        result = prime * result + (locks != null ? locks.depth : 0);
         result = prime * result + ((materializedValue == null) ? 0 : materializedValue.hashCode());
         result = prime * result + ((state == null) ? 0 : state.hashCode());
         result = prime * result + ((virtual == null) ? 0 : virtual.hashCode());
@@ -171,7 +240,7 @@ class ObjectState extends Virtualizable.State {
         if (!Arrays.equals(entries, other.entries)) {
             return false;
         }
-        if (lockCount != other.lockCount) {
+        if (!LockState.equals(locks, other.locks)) {
             return false;
         }
         if (materializedValue == null) {

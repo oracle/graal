@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * Location node that is the sum of two other location nodes. Can represent locations in the form of
@@ -38,50 +39,69 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     @Input private ValueNode x;
     @Input private ValueNode y;
 
-    public LocationNode getX() {
+    protected LocationNode getX() {
         return (LocationNode) x;
     }
 
-    public LocationNode getY() {
+    protected LocationNode getY() {
         return (LocationNode) y;
     }
 
     public static AddLocationNode create(LocationNode x, LocationNode y, Graph graph) {
-        assert x.getValueKind().equals(y.getValueKind()) && x.locationIdentity() == y.locationIdentity();
-        return graph.unique(new AddLocationNode(x.locationIdentity(), x.getValueKind(), x, y));
+        assert x.getValueKind().equals(y.getValueKind()) && x.getLocationIdentity() == y.getLocationIdentity();
+        return graph.unique(new AddLocationNode(x, y));
     }
 
-    private AddLocationNode(Object identity, Kind kind, ValueNode x, ValueNode y) {
-        super(identity, kind);
+    private AddLocationNode(ValueNode x, ValueNode y) {
+        super(StampFactory.extension());
         this.x = x;
         this.y = y;
     }
 
     @Override
-    protected LocationNode addDisplacement(long displacement) {
-        LocationNode added = getX().addDisplacement(displacement);
-        return graph().unique(new AddLocationNode(locationIdentity(), getValueKind(), added, getY()));
+    public Kind getValueKind() {
+        return getX().getValueKind();
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return getX().getLocationIdentity();
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x instanceof ConstantLocationNode) {
-            return getY().addDisplacement(((ConstantLocationNode) x).displacement());
+            return canonical((ConstantLocationNode) x, getY());
         }
         if (y instanceof ConstantLocationNode) {
-            return getX().addDisplacement(((ConstantLocationNode) y).displacement());
+            return canonical((ConstantLocationNode) y, getX());
         }
-
         if (x instanceof IndexedLocationNode && y instanceof IndexedLocationNode) {
             IndexedLocationNode xIdx = (IndexedLocationNode) x;
             IndexedLocationNode yIdx = (IndexedLocationNode) y;
-            if (xIdx.indexScaling() == yIdx.indexScaling()) {
-                long displacement = xIdx.displacement() + yIdx.displacement();
-                ValueNode index = IntegerArithmeticNode.add(xIdx.index(), yIdx.index());
-                return IndexedLocationNode.create(locationIdentity(), getValueKind(), displacement, index, graph(), xIdx.indexScaling());
+            if (xIdx.getIndexScaling() == yIdx.getIndexScaling()) {
+                long displacement = xIdx.getDisplacement() + yIdx.getDisplacement();
+                ValueNode index = IntegerArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
+                return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, graph(), xIdx.getIndexScaling());
             }
         }
+        return this;
+    }
 
+    private LocationNode canonical(ConstantLocationNode constant, LocationNode other) {
+        if (other instanceof ConstantLocationNode) {
+            ConstantLocationNode otherConst = (ConstantLocationNode) other;
+            return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), otherConst.getDisplacement() + constant.getDisplacement(), graph());
+        } else if (other instanceof IndexedLocationNode) {
+            IndexedLocationNode otherIdx = (IndexedLocationNode) other;
+            return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), otherIdx.getDisplacement() + constant.getDisplacement(), otherIdx.getIndex(), graph(), otherIdx.getIndexScaling());
+        } else if (other instanceof AddLocationNode) {
+            AddLocationNode otherAdd = (AddLocationNode) other;
+            LocationNode newInner = otherAdd.canonical(constant, otherAdd.getX());
+            if (newInner != otherAdd) {
+                return AddLocationNode.create(newInner, otherAdd.getY(), graph());
+            }
+        }
         return this;
     }
 
@@ -92,5 +112,5 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     }
 
     @NodeIntrinsic
-    public static native Location addLocation(@ConstantNodeParameter Object identity, @ConstantNodeParameter Kind kind, Location x, Location y);
+    public static native Location addLocation(Location x, Location y);
 }

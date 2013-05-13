@@ -29,19 +29,23 @@ import java.util.Map.Entry;
 public final class NodeMap<T> {
 
     private final Graph graph;
+    private final boolean autogrow;
     private Object[] values;
-    private int size;
 
     public NodeMap(Graph graph) {
+        this(graph, false);
+    }
+
+    public NodeMap(Graph graph, boolean autogrow) {
         this.graph = graph;
-        values = new Object[graph.nodeIdCount()];
-        size = values.length;
+        this.values = new Object[graph.nodeIdCount()];
+        this.autogrow = autogrow;
     }
 
     public NodeMap(NodeMap<T> copyFrom) {
         this.graph = copyFrom.graph;
         this.values = Arrays.copyOf(copyFrom.values, copyFrom.values.length);
-        this.size = copyFrom.size;
+        this.autogrow = copyFrom.autogrow;
     }
 
     @SuppressWarnings("unchecked")
@@ -60,14 +64,21 @@ public final class NodeMap<T> {
     }
 
     public int size() {
-        return size;
+        return values.length;
     }
 
     public boolean isNew(Node node) {
-        return node.id() >= size;
+        return node.id() >= size();
+    }
+
+    public void grow() {
+        this.values = Arrays.copyOf(values, graph.nodeIdCount());
     }
 
     private void check(Node node) {
+        if (autogrow && isNew(node)) {
+            grow();
+        }
         assert node.graph() == graph : "this node is not part of the graph";
         assert !isNew(node) : "this node was added to the graph after creating the node map : " + node;
     }

@@ -91,7 +91,7 @@ public final class EdgeMoveOptimizer {
         if (op1 instanceof MoveOp && op2 instanceof MoveOp) {
             MoveOp move1 = (MoveOp) op1;
             MoveOp move2 = (MoveOp) op2;
-            if (move1.getInput() == move2.getInput() && move1.getResult() == move2.getResult()) {
+            if (move1.getInput().equals(move2.getInput()) && move1.getResult().equals(move2.getResult())) {
                 // these moves are exactly equal and can be optimized
                 return true;
             }

@@ -25,10 +25,14 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -39,8 +43,8 @@ import com.oracle.graal.nodes.util.*;
  */
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, Negatable {
 
-    @Successor private BeginNode trueSuccessor;
-    @Successor private BeginNode falseSuccessor;
+    @Successor private AbstractBeginNode trueSuccessor;
+    @Successor private AbstractBeginNode falseSuccessor;
     @Input private LogicNode condition;
     private double trueSuccessorProbability;
 
@@ -54,15 +58,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     public IfNode(LogicNode condition, FixedNode trueSuccessor, FixedNode falseSuccessor, double trueSuccessorProbability) {
-        this(condition, BeginNode.begin(trueSuccessor), BeginNode.begin(falseSuccessor), trueSuccessorProbability);
+        this(condition, AbstractBeginNode.begin(trueSuccessor), AbstractBeginNode.begin(falseSuccessor), trueSuccessorProbability);
     }
 
-    public IfNode(LogicNode condition, BeginNode trueSuccessor, BeginNode falseSuccessor, double trueSuccessorProbability) {
+    public IfNode(LogicNode condition, AbstractBeginNode trueSuccessor, AbstractBeginNode falseSuccessor, double trueSuccessorProbability) {
         super(StampFactory.forVoid());
         this.condition = condition;
         this.falseSuccessor = falseSuccessor;
-        this.trueSuccessorProbability = trueSuccessorProbability;
         this.trueSuccessor = trueSuccessor;
+        setTrueSuccessorProbability(trueSuccessorProbability);
 
     }
 
@@ -71,7 +75,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * 
      * @return the true successor
      */
-    public BeginNode trueSuccessor() {
+    public AbstractBeginNode trueSuccessor() {
         return trueSuccessor;
     }
 
@@ -80,16 +84,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * 
      * @return the false successor
      */
-    public BeginNode falseSuccessor() {
+    public AbstractBeginNode falseSuccessor() {
         return falseSuccessor;
     }
 
-    public void setTrueSuccessor(BeginNode node) {
+    public void setTrueSuccessor(AbstractBeginNode node) {
         updatePredecessor(trueSuccessor, node);
         trueSuccessor = node;
     }
 
-    public void setFalseSuccessor(BeginNode node) {
+    public void setFalseSuccessor(AbstractBeginNode node) {
         updatePredecessor(falseSuccessor, node);
         falseSuccessor = node;
     }
@@ -100,28 +104,30 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param istrue {@code true} if the true successor is requested, {@code false} otherwise
      * @return the corresponding successor
      */
-    public BeginNode successor(boolean istrue) {
+    public AbstractBeginNode successor(boolean istrue) {
         return istrue ? trueSuccessor : falseSuccessor;
     }
 
     @Override
-    public Negatable negate() {
-        BeginNode trueSucc = trueSuccessor();
-        BeginNode falseSucc = falseSuccessor();
+    public Negatable negate(LogicNode cond) {
+        assert cond == condition();
+        AbstractBeginNode trueSucc = trueSuccessor();
+        AbstractBeginNode falseSucc = falseSuccessor();
         setTrueSuccessor(null);
         setFalseSuccessor(null);
         setTrueSuccessor(falseSucc);
         setFalseSuccessor(trueSucc);
-        trueSuccessorProbability = 1 - trueSuccessorProbability;
+        setTrueSuccessorProbability(1 - trueSuccessorProbability);
         return this;
     }
 
     public void setTrueSuccessorProbability(double prob) {
-        trueSuccessorProbability = prob;
+        assert prob >= -0.000000001 && prob <= 1.000000001 : "Probability out of bounds: " + prob;
+        trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
     }
 
     @Override
-    public double probability(BeginNode successor) {
+    public double probability(AbstractBeginNode successor) {
         return successor == trueSuccessor ? trueSuccessorProbability : 1 - trueSuccessorProbability;
     }
 
@@ -145,17 +151,175 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (c.getValue()) {
                 tool.deleteBranch(falseSuccessor());
                 tool.addToWorkList(trueSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, trueSuccessor());
+                graph().removeSplit(this, trueSuccessor());
+                return;
             } else {
                 tool.deleteBranch(trueSuccessor());
                 tool.addToWorkList(falseSuccessor());
-                ((StructuredGraph) graph()).removeSplit(this, falseSuccessor());
+                graph().removeSplit(this, falseSuccessor());
+                return;
             }
-        } else if (trueSuccessor().guards().isEmpty() && falseSuccessor().guards().isEmpty()) {
-            if (!removeOrMaterializeIf(tool)) {
-                removeIntermediateMaterialization(tool);
+        } else if (trueSuccessor().usages().isEmpty() && falseSuccessor().usages().isEmpty()) {
+
+            if (removeOrMaterializeIf(tool)) {
+                return;
             }
         }
+
+        if (removeIntermediateMaterialization(tool)) {
+            return;
+        }
+
+        if (falseSuccessor().usages().isEmpty() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode) {
+            AbstractBeginNode intermediateBegin = falseSuccessor();
+            IfNode nextIf = (IfNode) intermediateBegin.next();
+            double probabilityB = (1.0 - this.trueSuccessorProbability) * nextIf.trueSuccessorProbability;
+            if (this.trueSuccessorProbability < probabilityB) {
+                // Reordering of those two if statements is beneficial from the point of view of
+                // their probabilities.
+                if (prepareForSwap(tool.runtime(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
+                    // Reording is allowed from (if1 => begin => if2) to (if2 => begin => if1).
+                    assert intermediateBegin.next() == nextIf;
+                    AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
+                    nextIf.setFalseSuccessor(null);
+                    intermediateBegin.setNext(null);
+                    this.setFalseSuccessor(null);
+
+                    this.replaceAtPredecessor(nextIf);
+                    nextIf.setFalseSuccessor(intermediateBegin);
+                    intermediateBegin.setNext(this);
+                    this.setFalseSuccessor(bothFalseBegin);
+                    nextIf.setTrueSuccessorProbability(probabilityB);
+                    if (probabilityB == 1.0) {
+                        this.setTrueSuccessorProbability(0.0);
+                    } else {
+                        double newProbability = this.trueSuccessorProbability / (1.0 - probabilityB);
+                        this.setTrueSuccessorProbability(Math.min(1.0, newProbability));
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    private static boolean prepareForSwap(MetaAccessProvider runtime, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
+        if (a instanceof InstanceOfNode) {
+            InstanceOfNode instanceOfA = (InstanceOfNode) a;
+            if (b instanceof IsNullNode) {
+                IsNullNode isNullNode = (IsNullNode) b;
+                if (isNullNode.object() == instanceOfA.object()) {
+                    if (instanceOfA.profile() != null && instanceOfA.profile().getNullSeen() != TriState.FALSE) {
+                        instanceOfA.setProfile(new JavaTypeProfile(TriState.FALSE, instanceOfA.profile().getNotRecordedProbability(), instanceOfA.profile().getTypes()));
+                    }
+                    Debug.log("Can swap instanceof and isnull if");
+                    return true;
+                }
+            } else if (b instanceof InstanceOfNode) {
+                InstanceOfNode instanceOfB = (InstanceOfNode) b;
+                if (instanceOfA.object() == instanceOfB.object() && !instanceOfA.type().isAssignableFrom(instanceOfB.type()) && !instanceOfB.type().isAssignableFrom(instanceOfA.type())) {
+                    // Two instanceof on the same value with mutually exclusive types.
+                    JavaTypeProfile profileA = instanceOfA.profile();
+                    JavaTypeProfile profileB = instanceOfB.profile();
+
+                    Debug.log("Can swap instanceof for types %s and %s", instanceOfA.type(), instanceOfB.type());
+                    JavaTypeProfile newProfile = null;
+                    if (profileA != null && profileB != null) {
+                        double remainder = 1.0;
+                        ArrayList<ProfiledType> profiledTypes = new ArrayList<>();
+                        for (ProfiledType type : profileB.getTypes()) {
+                            if (instanceOfB.type().isAssignableFrom(type.getType())) {
+                                // Do not add to profile.
+                            } else {
+                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() * (1.0 - probabilityA) / (1.0 - probabilityB)));
+                                profiledTypes.add(newType);
+                                remainder -= newType.getProbability();
+                            }
+                        }
+
+                        for (ProfiledType type : profileA.getTypes()) {
+                            if (instanceOfA.type().isAssignableFrom(type.getType())) {
+                                ProfiledType newType = new ProfiledType(type.getType(), Math.min(1.0, type.getProbability() / (1.0 - probabilityB)));
+                                profiledTypes.add(newType);
+                                remainder -= newType.getProbability();
+                            }
+                        }
+                        Collections.sort(profiledTypes);
+
+                        if (remainder < 0.0) {
+                            // Can happen due to round-off errors.
+                            remainder = 0.0;
+                        }
+                        newProfile = new JavaTypeProfile(profileB.getNullSeen(), remainder, profiledTypes.toArray(new ProfiledType[profiledTypes.size()]));
+                        Debug.log("First profile: %s", profileA);
+                        Debug.log("Original second profile: %s", profileB);
+                        Debug.log("New second profile: %s", newProfile);
+                    }
+                    instanceOfB.setProfile(profileA);
+                    instanceOfA.setProfile(newProfile);
+                    return true;
+                }
+            }
+        } else if (a instanceof CompareNode) {
+            CompareNode compareA = (CompareNode) a;
+            Condition conditionA = compareA.condition();
+            if (compareA.unorderedIsTrue()) {
+                return false;
+            }
+            if (b instanceof CompareNode) {
+                CompareNode compareB = (CompareNode) b;
+                if (compareA == compareB) {
+                    Debug.log("Same conditions => do not swap and leave the work for global value numbering.");
+                    return false;
+                }
+                if (compareB.unorderedIsTrue()) {
+                    return false;
+                }
+                Condition comparableCondition = null;
+                Condition conditionB = compareB.condition();
+                if (compareB.x() == compareA.x() && compareB.y() == compareA.y()) {
+                    comparableCondition = conditionB;
+                } else if (compareB.x() == compareA.y() && compareB.y() == compareA.x()) {
+                    comparableCondition = conditionB.mirror();
+                }
+
+                if (comparableCondition != null) {
+                    Condition combined = conditionA.join(comparableCondition);
+                    if (combined == null) {
+                        // The two conditions are disjoint => can reorder.
+                        Debug.log("Can swap disjoint coditions on same values: %s and %s", conditionA, comparableCondition);
+                        return true;
+                    }
+                } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {
+                    boolean canSwap = false;
+                    if ((compareA.x() == compareB.x() && valuesDistinct(runtime, compareA.y(), compareB.y()))) {
+                        canSwap = true;
+                    } else if ((compareA.x() == compareB.y() && valuesDistinct(runtime, compareA.y(), compareB.x()))) {
+                        canSwap = true;
+                    } else if ((compareA.y() == compareB.x() && valuesDistinct(runtime, compareA.x(), compareB.y()))) {
+                        canSwap = true;
+                    } else if ((compareA.y() == compareB.y() && valuesDistinct(runtime, compareA.x(), compareB.x()))) {
+                        canSwap = true;
+                    }
+
+                    if (canSwap) {
+                        Debug.log("Can swap equality condition with one shared and one disjoint value.");
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean valuesDistinct(MetaAccessProvider runtime, ValueNode a, ValueNode b) {
+        if (a.isConstant() && b.isConstant()) {
+            return !runtime.constantEquals(a.asConstant(), b.asConstant());
+        }
+
+        Stamp stampA = a.stamp();
+        Stamp stampB = b.stamp();
+        return stampA.alwaysDistinct(stampB);
     }
 
     /**
@@ -164,16 +328,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return true if a transformation was made, false otherwise
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
-        if (trueSuccessor().next() instanceof EndNode && falseSuccessor().next() instanceof EndNode) {
-            EndNode trueEnd = (EndNode) trueSuccessor().next();
-            EndNode falseEnd = (EndNode) falseSuccessor().next();
+        if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
+            AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
+            AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
             MergeNode merge = trueEnd.merge();
             if (merge == falseEnd.merge() && merge.forwardEndCount() == 2 && trueSuccessor().anchored().isEmpty() && falseSuccessor().anchored().isEmpty()) {
                 Iterator<PhiNode> phis = merge.phis().iterator();
                 if (!phis.hasNext()) {
                     // empty if construct with no phis: remove it
                     removeEmptyIf(tool);
-                    return false;
+                    return true;
                 } else {
                     PhiNode singlePhi = phis.next();
                     if (!phis.hasNext()) {
@@ -190,7 +354,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         }
                         if (trueValue.isConstant() && falseValue.isConstant()) {
                             ConditionalNode materialize = graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
-                            ((StructuredGraph) graph()).replaceFloating(singlePhi, materialize);
+                            graph().replaceFloating(singlePhi, materialize);
                             removeEmptyIf(tool);
                             return true;
                         }
@@ -260,10 +424,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        MergeNode merge = (MergeNode) predecessor();
-        if (!merge.anchored().isEmpty()) {
+        if (predecessor() instanceof LoopBeginNode) {
             return false;
         }
+
+        MergeNode merge = (MergeNode) predecessor();
 
         // Only consider merges with a single usage that is both a phi and an operand of the
         // comparison
@@ -288,11 +453,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
-        if (phi.valueCount() != merge.forwardEndCount()) {
-            // Handles a loop begin merge
-            return false;
-        }
+        List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
+        assert phi.valueCount() == merge.forwardEndCount();
 
         Constant[] xs = constantValues(compare.x(), merge);
         Constant[] ys = constantValues(compare.y(), merge);
@@ -300,19 +462,24 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
-        List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
-        Map<EndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
+        // Sanity check that both ends are not followed by a merge without frame state.
+        if (!checkFrameState(trueSuccessor()) && !checkFrameState(falseSuccessor())) {
+            return false;
+        }
 
-        BeginNode oldFalseSuccessor = falseSuccessor();
-        BeginNode oldTrueSuccessor = trueSuccessor();
+        List<AbstractEndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
+        List<AbstractEndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
+        Map<AbstractEndNode, ValueNode> phiValues = new HashMap<>(mergePredecessors.size());
+
+        AbstractBeginNode oldFalseSuccessor = falseSuccessor();
+        AbstractBeginNode oldTrueSuccessor = trueSuccessor();
 
         setFalseSuccessor(null);
         setTrueSuccessor(null);
 
-        Iterator<EndNode> ends = mergePredecessors.iterator();
+        Iterator<AbstractEndNode> ends = mergePredecessors.iterator();
         for (int i = 0; i < xs.length; i++) {
-            EndNode end = ends.next();
+            AbstractEndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
             if (compare.condition().foldCondition(xs[i], ys[i], tool.runtime(), compare.unorderedIsTrue())) {
                 trueEnds.add(end);
@@ -336,6 +503,45 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return true;
     }
 
+    private static boolean checkFrameState(FixedNode start) {
+        FixedNode node = start;
+        while (true) {
+            if (node instanceof MergeNode) {
+                MergeNode mergeNode = (MergeNode) node;
+                if (mergeNode.stateAfter() == null) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else if (node instanceof StateSplit) {
+                StateSplit stateSplitNode = (StateSplit) node;
+                if (stateSplitNode.stateAfter() != null) {
+                    return true;
+                }
+            }
+
+            if (node instanceof ControlSplitNode) {
+                ControlSplitNode controlSplitNode = (ControlSplitNode) node;
+                for (Node succ : controlSplitNode.cfgSuccessors()) {
+                    if (checkFrameState((FixedNode) succ)) {
+                        return true;
+                    }
+                }
+                return false;
+            } else if (node instanceof FixedWithNextNode) {
+                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
+                node = fixedWithNextNode.next();
+            } else if (node instanceof AbstractEndNode) {
+                AbstractEndNode endNode = (AbstractEndNode) node;
+                node = endNode.merge();
+            } else if (node instanceof ControlSinkNode) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
     /**
      * Connects a set of ends to a given successor, inserting a merge node if there is more than one
      * end. If {@code ends} is empty, then {@code successor} is
@@ -345,12 +551,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
-    private void connectEnds(List<EndNode> ends, Map<EndNode, ValueNode> phiValues, BeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
         if (ends.isEmpty()) {
             GraphUtil.killCFG(successor);
         } else {
             if (ends.size() == 1) {
-                EndNode end = ends.get(0);
+                AbstractEndNode end = ends.get(0);
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
@@ -361,7 +567,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().add(new PhiNode(oldPhi.stamp(), newMerge));
 
-                for (EndNode end : ends) {
+                for (AbstractEndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));
                     newMerge.addForwardEnd(end);
                 }
@@ -413,12 +619,12 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     private void removeEmptyIf(SimplifierTool tool) {
-        BeginNode originalTrueSuccessor = trueSuccessor();
-        BeginNode originalFalseSuccessor = falseSuccessor();
-        assert originalTrueSuccessor.next() instanceof EndNode && originalFalseSuccessor.next() instanceof EndNode;
+        AbstractBeginNode originalTrueSuccessor = trueSuccessor();
+        AbstractBeginNode originalFalseSuccessor = falseSuccessor();
+        assert originalTrueSuccessor.next() instanceof AbstractEndNode && originalFalseSuccessor.next() instanceof AbstractEndNode;
 
-        EndNode trueEnd = (EndNode) originalTrueSuccessor.next();
-        EndNode falseEnd = (EndNode) originalFalseSuccessor.next();
+        AbstractEndNode trueEnd = (AbstractEndNode) originalTrueSuccessor.next();
+        AbstractEndNode falseEnd = (AbstractEndNode) originalFalseSuccessor.next();
         assert trueEnd.merge() == falseEnd.merge();
 
         FixedWithNextNode pred = (FixedWithNextNode) predecessor();

@@ -67,14 +67,14 @@ public interface RuntimeCallTarget extends InvokeTarget {
         /**
          * Gets the return kind of this runtime call.
          */
-        public Class getResultType() {
+        public Class<?> getResultType() {
             return resultType;
         }
 
         /**
          * Gets the argument kinds of this runtime call.
          */
-        public Class[] getArgumentTypes() {
+        public Class<?>[] getArgumentTypes() {
             return argumentTypes.clone();
         }
 
@@ -115,5 +115,11 @@ public interface RuntimeCallTarget extends InvokeTarget {
 
     Descriptor getDescriptor();
 
-    boolean preservesRegisters();
+    /**
+     * Determines if the target routine destroys all registers.
+     * 
+     * @return {@code true} if the register allocator must save all live registers around a call to
+     *         this target
+     */
+    boolean destroysRegisters();
 }

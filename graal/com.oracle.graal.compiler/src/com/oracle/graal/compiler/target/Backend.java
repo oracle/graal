@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.target;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -50,15 +51,18 @@ public abstract class Backend {
         return new FrameMap(runtime, target, runtime.lookupRegisterConfig());
     }
 
-    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, ResolvedJavaMethod method, LIR lir);
+    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);
+
+    protected abstract AbstractAssembler createAssembler(FrameMap frameMap);
 
     public abstract TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult);
 
     /**
-     * Emits the code for a given method. This includes any architecture/runtime specific
-     * prefix/suffix. A prefix typically contains the code for setting up the frame, spilling
-     * callee-save registers, stack overflow checking, handling multiple entry points etc. A suffix
-     * may contain out-of-line stubs and method end guard instructions.
+     * Emits the code for a given graph.
+     * 
+     * @param installedCodeOwner the method the compiled code will be
+     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
+     *            argument can be null.
      */
-    public abstract void emitCode(TargetMethodAssembler tasm, ResolvedJavaMethod method, LIRGenerator lirGen);
+    public abstract void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner);
 }

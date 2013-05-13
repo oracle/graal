@@ -45,7 +45,7 @@ public abstract class CompositeValue extends Value {
 
     private final CompositeValueClass valueClass;
 
-    public CompositeValue(Kind kind) {
+    public CompositeValue(PlatformKind kind) {
         super(kind);
         valueClass = CompositeValueClass.get(getClass());
     }
@@ -57,5 +57,19 @@ public abstract class CompositeValue extends Value {
     @Override
     public String toString() {
         return valueClass.toString(this);
+    }
+
+    @Override
+    public int hashCode() {
+        return 53 * super.hashCode() + valueClass.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof CompositeValue) {
+            CompositeValue other = (CompositeValue) obj;
+            return super.equals(other) && valueClass.equals(other.valueClass);
+        }
+        return false;
     }
 }

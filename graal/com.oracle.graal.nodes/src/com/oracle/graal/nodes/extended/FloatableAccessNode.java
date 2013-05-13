@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import java.util.*;
-
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -36,12 +34,8 @@ public abstract class FloatableAccessNode extends AccessNode {
         super(object, location, stamp);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, List<ValueNode> dependencies) {
-        super(object, location, stamp, dependencies);
-    }
-
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, ValueNode... dependencies) {
-        super(object, location, stamp, dependencies);
+    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard) {
+        super(object, location, stamp, guard);
     }
 
     public abstract FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess);

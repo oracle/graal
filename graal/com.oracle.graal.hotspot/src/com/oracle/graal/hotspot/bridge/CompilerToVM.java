@@ -151,8 +151,7 @@ public interface CompilerToVM {
      * Installs the result of a compilation into the code cache.
      * 
      * @param compResult the result of a compilation
-     * @param code if not null, then the code is installed as the non-default compiled code for the
-     *            associated method and the details of the installation are written to this object
+     * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
     CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, SpeculationLog cache);
@@ -192,24 +191,26 @@ public interface CompilerToVM {
 
     HotSpotResolvedJavaField getJavaField(Field reflectionField);
 
-    long getMaxCallTargetOffset(long stub);
+    long getMaxCallTargetOffset(long address);
 
-    String disassembleNMethod(long nmethod);
+    String disassembleCodeBlob(long codeBlob);
 
     /**
-     * Gets a copy of the machine code for an nmethod.
+     * Gets a copy of the machine code for a CodeBlob.
      * 
-     * @return the machine code for {@code nmethod} if it is valid, null otherwise
+     * @return the machine code for {@code codeBlob} if it is valid, null otherwise
      */
-    byte[] getCode(long nmethod);
+    byte[] getCode(long codeBlob);
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nativeMethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nmethod) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, long nativeMethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethodVarargs(Object[] args, long nmethod) throws InvalidInstalledCodeException;
 
     int getVtableEntryOffset(long metaspaceMethod);
+
+    boolean hasVtableEntry(long metaspaceMethod);
 
     long[] getDeoptedLeafGraphIds();
 

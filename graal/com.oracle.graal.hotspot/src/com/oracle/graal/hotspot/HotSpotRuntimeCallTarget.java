@@ -36,6 +36,11 @@ import com.oracle.graal.hotspot.stubs.*;
 public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
 
     /**
+     * Sentinel marker for a computed jump address.
+     */
+    public static final long JUMP_ADDRESS = 0xDEADDEADBEEFBEEFL;
+
+    /**
      * The descriptor of the stub. This is for informational purposes only.
      */
     public final Descriptor descriptor;
@@ -46,7 +51,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     private long address;
 
     /**
-     * Non-null (eventually) iff this is a call to a snippet-based {@linkplain Stub stub}.
+     * Non-null (eventually) iff this is a call to a compiled {@linkplain Stub stub}.
      */
     private Stub stub;
 
@@ -57,8 +62,11 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     private final CompilerToVM vm;
 
-    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, CallingConvention cc, CompilerToVM vm) {
+    private final boolean isCRuntimeCall;
+
+    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, boolean isCRuntimeCall, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
+        this.isCRuntimeCall = isCRuntimeCall;
         this.descriptor = descriptor;
         this.cc = cc;
         this.vm = vm;
@@ -66,7 +74,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     @Override
     public String toString() {
-        return (stub == null ? descriptor.toString() : MetaUtil.format("%h.%n", stub.getMethod())) + "@0x" + Long.toHexString(address) + ":" + cc;
+        return (stub == null ? descriptor.toString() : stub) + "@0x" + Long.toHexString(address) + ":" + cc;
     }
 
     public CallingConvention getCallingConvention() {
@@ -88,7 +96,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
-            assert stub != null : "linkage without an address must be a stub";
+            assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
             InstalledCode code = stub.getCode(backend);
 
             AllocatableValue[] argumentLocations = new AllocatableValue[cc.getArgumentCount()];
@@ -96,10 +104,10 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
                 argumentLocations[i] = cc.getArgument(i);
             }
 
-            Set<Register> definedRegisters = stub.getDefinedRegisters();
-            AllocatableValue[] temporaryLocations = new AllocatableValue[definedRegisters.size()];
+            Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
+            AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
             int i = 0;
-            for (Register reg : definedRegisters) {
+            for (Register reg : destroyedRegisters) {
                 temporaryLocations[i++] = reg.asValue();
             }
             // Update calling convention with temporaries
@@ -108,9 +116,30 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         }
     }
 
+    public long getAddress() {
+        assert address != 0L : "address not yet finalized: " + this;
+        return address;
+    }
+
     @Override
-    public boolean preservesRegisters() {
-        assert address != 0;
-        return true;
+    public boolean destroysRegisters() {
+        if (isCRuntimeCall) {
+            // Even though most native ABIs define some callee saved registers,
+            // for simplicity we force the register allocator to save all live
+            // registers across a C runtime call as such calls are only made from
+            // compiled stubs which a) are slow path and b) will typically only
+            // have very few live registers across a C runtime call
+            return true;
+        }
+        // This is a call to a compiled (or assembler) stub which saves
+        // all registers (apart from its temporaries)
+        return false;
+    }
+
+    /**
+     * Determines if this is a link to a C/C++ function in the HotSpot runtime.
+     */
+    public boolean isCRuntimeCall() {
+        return isCRuntimeCall;
     }
 }

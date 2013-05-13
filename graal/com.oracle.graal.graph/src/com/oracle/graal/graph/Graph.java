@@ -47,7 +47,8 @@ public class Graph {
     private int deletedNodeCount;
     private GraphEventLog eventLog;
 
-    InputChangedListener inputChanged;
+    NodeChangedListener inputChanged;
+    NodeChangedListener usagesDroppedZero;
     private final HashMap<CacheEntry, Node> cachedNodes = new HashMap<>();
 
     private static final class CacheEntry {
@@ -152,17 +153,25 @@ public class Graph {
         return node;
     }
 
-    public interface InputChangedListener {
+    public interface NodeChangedListener {
 
-        void inputChanged(Node node);
+        void nodeChanged(Node node);
     }
 
-    public void trackInputChange(InputChangedListener inputChangedListener) {
+    public void trackInputChange(NodeChangedListener inputChangedListener) {
         this.inputChanged = inputChangedListener;
     }
 
     public void stopTrackingInputChange() {
         inputChanged = null;
+    }
+
+    public void trackUsagesDroppedZero(NodeChangedListener usagesDroppedZeroListener) {
+        this.usagesDroppedZero = usagesDroppedZeroListener;
+    }
+
+    public void stopTrackingUsagesDroppedZero() {
+        usagesDroppedZero = null;
     }
 
     /**
@@ -468,7 +477,11 @@ public class Graph {
     }
 
     public <T> NodeMap<T> createNodeMap() {
-        return new NodeMap<>(this);
+        return createNodeMap(false);
+    }
+
+    public <T> NodeMap<T> createNodeMap(boolean autoGrow) {
+        return new NodeMap<>(this, autoGrow);
     }
 
     public NodeFlood createNodeFlood() {

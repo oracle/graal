@@ -30,6 +30,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -47,8 +48,8 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
     }
 
     @Override
-    public Object[] getLocationIdentities() {
-        return new Object[]{LocationNode.ANY_LOCATION};
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 
     @Override
@@ -69,11 +70,11 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         ResolvedJavaMethod method = null;
         ResolvedJavaField methodField = null;
         ResolvedJavaField metaspaceMethodField = null;
-        ResolvedJavaField nmethodField = null;
+        ResolvedJavaField codeBlobField = null;
         try {
             method = tool.lookupJavaMethod(HotSpotInstalledCodeExecuteNode.class.getMethod("placeholder", Object.class, Object.class, Object.class));
             methodField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("method"));
-            nmethodField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("nmethod"));
+            codeBlobField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("codeBlob"));
             metaspaceMethodField = tool.lookupJavaField(HotSpotResolvedJavaMethod.class.getDeclaredField("metaspaceMethod"));
         } catch (NoSuchMethodException | SecurityException | NoSuchFieldException e) {
             throw new IllegalStateException(e);
@@ -82,27 +83,26 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         for (int i = 0; i < signature.length; i++) {
             signatureTypes[i] = tool.lookupJavaType(signature[i]);
         }
-        final int verifiedEntryPointOffset = HotSpotSnippetUtils.verifiedEntryPointOffset();
+        final int verifiedEntryPointOffset = HotSpotReplacementsUtil.verifiedEntryPointOffset();
 
-        StructuredGraph g = (StructuredGraph) graph();
+        LoadFieldNode loadCodeBlob = graph().add(new LoadFieldNode(code, codeBlobField));
+        UnsafeLoadNode load = graph().add(new UnsafeLoadNode(loadCodeBlob, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
 
-        LoadFieldNode loadnmethod = g.add(new LoadFieldNode(code, nmethodField));
-        UnsafeLoadNode load = g.add(new UnsafeLoadNode(loadnmethod, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
+        LoadFieldNode loadMethod = graph().add(new LoadFieldNode(code, methodField));
+        LoadFieldNode loadmetaspaceMethod = graph().add(new LoadFieldNode(loadMethod, metaspaceMethodField));
 
-        LoadFieldNode loadMethod = g.add(new LoadFieldNode(code, methodField));
-        LoadFieldNode loadmetaspaceMethod = g.add(new LoadFieldNode(loadMethod, metaspaceMethodField));
+        HotSpotIndirectCallTargetNode callTarget = graph().add(
+                        new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments, stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
 
-        HotSpotIndirectCallTargetNode callTarget = g.add(new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments, stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
-
-        InvokeNode invoke = g.add(new InvokeNode(callTarget, 0));
+        InvokeNode invoke = graph().add(new InvokeNode(callTarget, 0));
 
         invoke.setStateAfter(stateAfter());
-        g.replaceFixedWithFixed(this, invoke);
+        graph().replaceFixedWithFixed(this, invoke);
 
-        g.addBeforeFixed(invoke, loadmetaspaceMethod);
-        g.addBeforeFixed(loadmetaspaceMethod, loadMethod);
-        g.addBeforeFixed(invoke, load);
-        g.addBeforeFixed(load, loadnmethod);
+        graph().addBeforeFixed(invoke, loadmetaspaceMethod);
+        graph().addBeforeFixed(loadmetaspaceMethod, loadMethod);
+        graph().addBeforeFixed(invoke, load);
+        graph().addBeforeFixed(load, loadCodeBlob);
 
         return invoke;
     }

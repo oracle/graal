@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,36 +23,33 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node implementing a call to HotSpot's {@code graal_identityhashcode} stub.
+ * Removes the current frame and tail calls the uncommon trap routine.
  */
-public class IdentityHashCodeStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+@NodeInfo(shortName = "DeoptCaller", nameTemplate = "DeoptCaller {p#reason/s}")
+public class DeoptimizeCallerNode extends ControlSinkNode implements LIRLowerable {
 
-    @Input private final ValueNode object;
-    public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, int.class, Object.class);
+    private final DeoptimizationAction action;
+    private final DeoptimizationReason reason;
 
-    public IdentityHashCodeStubCall(ValueNode object) {
-        super(StampFactory.forKind(Kind.Int));
-        this.object = object;
+    public DeoptimizeCallerNode(DeoptimizationAction action, DeoptimizationReason reason) {
+        super(StampFactory.forVoid());
+        this.action = action;
+        this.reason = reason;
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(IdentityHashCodeStubCall.IDENTITY_HASHCODE);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object));
-        gen.setResult(this, result);
+    public void generate(LIRGeneratorTool gen) {
+        ((HotSpotLIRGenerator) gen).emitDeoptimizeCaller(action, reason);
     }
 
     @NodeIntrinsic
-    public static int call(Object object) {
-        return System.identityHashCode(object);
-    }
+    public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
 }

@@ -380,7 +380,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void addsd(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -389,7 +389,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void addsd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -398,7 +398,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void addss(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -407,7 +407,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void addss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -513,6 +513,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitOperandHelper(dst, src);
     }
 
+    public final void cmpl(AMD64Address dst, int imm32) {
+        prefix(dst);
+        emitByte(0x81);
+        emitOperandHelper(7, dst);
+        emitInt(imm32);
+    }
+
     // The 32-bit cmpxchg compares the value at adr with the contents of X86.rax,
     // and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
     // The ZF is set if the compared values were equal, and cleared otherwise.
@@ -540,7 +547,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsd2ss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -549,8 +556,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsd2ss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -559,7 +566,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2sdl(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -568,7 +575,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2sdl(Register dst, Register src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -577,7 +584,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2ssl(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -586,7 +593,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2ssl(Register dst, Register src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -595,7 +602,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtss2sd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -604,8 +611,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtss2sd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -622,7 +629,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvttsd2sil(Register dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -639,7 +646,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvttss2sil(Register dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -654,7 +661,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void divsd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -663,8 +670,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void divsd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -673,7 +680,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void divss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -682,8 +689,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void divss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -862,8 +869,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movapd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         int dstenc = dst.encoding;
         int srcenc = src.encoding;
         emitByte(0x66);
@@ -887,8 +894,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movaps(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         int dstenc = dst.encoding;
         int srcenc = src.encoding;
         if (dstenc < 8) {
@@ -918,22 +925,22 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movb(AMD64Address dst, Register src) {
-        assert src.isByte() : "must have byte register";
+        assert src.getRegisterCategory() == AMD64.CPU : "must have byte register";
         prefix(dst, src); // , true)
         emitByte(0x88);
         emitOperandHelper(src, dst);
     }
 
     public final void movdl(Register dst, Register src) {
-        if (dst.isFpu()) {
-            assert !src.isFpu() : "does this hold?";
+        if (dst.getRegisterCategory() == AMD64.XMM) {
+            assert src.getRegisterCategory() != AMD64.XMM : "does this hold?";
             emitByte(0x66);
             int encode = prefixAndEncode(dst.encoding, src.encoding);
             emitByte(0x0F);
             emitByte(0x6E);
             emitByte(0xC0 | encode);
-        } else if (src.isFpu()) {
-            assert !dst.isFpu();
+        } else if (src.getRegisterCategory() == AMD64.XMM) {
+            assert dst.getRegisterCategory() != AMD64.XMM;
             emitByte(0x66);
             // swap src/dst to get correct prefix
             int encode = prefixAndEncode(src.encoding, dst.encoding);
@@ -981,7 +988,7 @@ public class AMD64Assembler extends AbstractAssembler {
      * {@link AMD64MacroAssembler#movflt(Register, Register)}.
      */
     public final void movlpd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0x66);
         prefix(src, dst);
         emitByte(0x0F);
@@ -990,7 +997,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movq(Register dst, AMD64Address src) {
-        if (dst.isFpu()) {
+        if (dst.getRegisterCategory() == AMD64.XMM) {
             emitByte(0xF3);
             prefixq(src, dst);
             emitByte(0x0F);
@@ -1010,7 +1017,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movq(AMD64Address dst, Register src) {
-        if (src.isFpu()) {
+        if (src.getRegisterCategory() == AMD64.XMM) {
             emitByte(0x66);
             prefixq(dst, src);
             emitByte(0x0F);
@@ -1038,8 +1045,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movsd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1048,7 +1055,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movsd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -1057,7 +1064,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movsd(AMD64Address dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(dst, src);
         emitByte(0x0F);
@@ -1066,8 +1073,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1076,7 +1083,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -1085,7 +1092,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void movss(AMD64Address dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefix(dst, src);
         emitByte(0x0F);
@@ -1137,7 +1144,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void mulsd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefix(src, dst);
         emitByte(0x0F);
@@ -1146,8 +1153,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void mulsd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
 
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
@@ -1157,7 +1164,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void mulss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
 
         emitByte(0xF3);
         prefix(src, dst);
@@ -1167,8 +1174,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void mulss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1512,8 +1519,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void sqrtsd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         // HMM Table D-1 says sse2
         // assert is64 || target.supportsSSE();
         emitByte(0xF2);
@@ -1545,8 +1552,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void subsd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1555,7 +1562,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void subsd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
 
         emitByte(0xF2);
         prefix(src, dst);
@@ -1565,8 +1572,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void subss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1575,7 +1582,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void subss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
 
         emitByte(0xF3);
         prefix(src, dst);
@@ -1611,20 +1618,20 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void ucomisd(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0x66);
         ucomiss(dst, src);
     }
 
     public final void ucomisd(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0x66);
         ucomiss(dst, src);
     }
 
     public final void ucomiss(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
 
         prefix(src, dst);
         emitByte(0x0F);
@@ -1633,8 +1640,8 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void ucomiss(Register dst, Register src) {
-        assert dst.isFpu();
-        assert src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        assert src.getRegisterCategory() == AMD64.XMM;
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0x2E);
@@ -1668,7 +1675,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void andps(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0x54);
@@ -1676,7 +1683,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void andps(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0x54);
@@ -1694,7 +1701,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void orps(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0x56);
@@ -1702,7 +1709,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void orps(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0x56);
@@ -1720,7 +1727,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void xorps(Register dst, Register src) {
-        assert dst.isFpu() && src.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM && src.getRegisterCategory() == AMD64.XMM;
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0x57);
@@ -1728,7 +1735,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void xorps(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0x57);
@@ -2014,7 +2021,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2sdq(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         prefixq(src, dst);
         emitByte(0x0F);
@@ -2023,7 +2030,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2sdq(Register dst, Register src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -2032,7 +2039,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2ssq(Register dst, AMD64Address src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         prefixq(src, dst);
         emitByte(0x0F);
@@ -2041,7 +2048,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvtsi2ssq(Register dst, Register src) {
-        assert dst.isFpu();
+        assert dst.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -2058,7 +2065,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvttsd2siq(Register dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF2);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -2075,7 +2082,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void cvttss2siq(Register dst, Register src) {
-        assert src.isFpu();
+        assert src.getRegisterCategory() == AMD64.XMM;
         emitByte(0xF3);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -2127,7 +2134,7 @@ public class AMD64Assembler extends AbstractAssembler {
         if (isByte(value)) {
             emitByte(0x6B);
             emitByte(0xC0 | encode);
-            emitByte(value);
+            emitByte(value & 0xFF);
         } else {
             emitByte(0x69);
             emitByte(0xC0 | encode);
@@ -2154,13 +2161,12 @@ public class AMD64Assembler extends AbstractAssembler {
         // table D-1 says MMX/SSE2
         emitByte(0x66);
 
-        if (dst.isFpu()) {
-            assert dst.isFpu();
+        if (dst.getRegisterCategory() == AMD64.XMM) {
             int encode = prefixqAndEncode(dst.encoding, src.encoding);
             emitByte(0x0F);
             emitByte(0x6E);
             emitByte(0xC0 | encode);
-        } else if (src.isFpu()) {
+        } else if (src.getRegisterCategory() == AMD64.XMM) {
 
             // swap src/dst to get correct prefix
             int encode = prefixqAndEncode(src.encoding, dst.encoding);
@@ -2414,8 +2420,13 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(b2 + i);
     }
 
-    public final void fld(AMD64Address src) {
+    public final void fld_d(AMD64Address src) {
         emitByte(0xDD);
+        emitOperandHelper(0, src);
+    }
+
+    public final void fld_s(AMD64Address src) {
+        emitByte(0xD9);
         emitOperandHelper(0, src);
     }
 
@@ -2434,9 +2445,47 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xF1);
     }
 
-    public final void fstp(AMD64Address src) {
+    public final void fstp_s(AMD64Address src) {
+        emitByte(0xD9);
+        emitOperandHelper(3, src);
+    }
+
+    public final void fstp_d(AMD64Address src) {
         emitByte(0xDD);
         emitOperandHelper(3, src);
+    }
+
+    private void emitFPUArith(int b1, int b2, int i) {
+        assert 0 <= i && i < 8 : "illegal FPU register: " + i;
+        emitByte(b1);
+        emitByte(b2 + i);
+    }
+
+    public void ffree(int i) {
+        emitFPUArith(0xDD, 0xC0, i);
+    }
+
+    public void fincstp() {
+        emitByte(0xD9);
+        emitByte(0xF7);
+    }
+
+    public void fxch(int i) {
+        emitFPUArith(0xD9, 0xC8, i);
+    }
+
+    public void fnstsw_ax() {
+        emitByte(0xDF);
+        emitByte(0xE0);
+    }
+
+    public void fwait() {
+        emitByte(0x9B);
+    }
+
+    public void fprem() {
+        emitByte(0xD9);
+        emitByte(0xF8);
     }
 
     public final void fsin() {

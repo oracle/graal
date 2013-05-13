@@ -192,7 +192,7 @@ public class NodeClass extends FieldIntrospection {
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
                     inputListOffsets.add(offset);
                 } else {
-                    assert NODE_CLASS.isAssignableFrom(type) : "invalid input type: " + type;
+                    assert NODE_CLASS.isAssignableFrom(type) || type.isInterface() : "invalid input type: " + type;
                     inputOffsets.add(offset);
                 }
                 if (field.getAnnotation(Node.Input.class).notDataflow()) {
@@ -759,8 +759,11 @@ public class NodeClass extends FieldIntrospection {
     }
 
     public boolean edgesEqual(Node node, Node other) {
-        assert node.getClass() == clazz && other.getClass() == clazz;
+        return inputsEqual(node, other) && successorsEqual(node, other);
+    }
 
+    public boolean inputsEqual(Node node, Node other) {
+        assert node.getClass() == clazz && other.getClass() == clazz;
         int index = 0;
         while (index < directInputCount) {
             if (getNode(other, inputOffsets[index]) != getNode(node, inputOffsets[index])) {
@@ -775,8 +778,12 @@ public class NodeClass extends FieldIntrospection {
             }
             index++;
         }
+        return true;
+    }
 
-        index = 0;
+    public boolean successorsEqual(Node node, Node other) {
+        assert node.getClass() == clazz && other.getClass() == clazz;
+        int index = 0;
         while (index < directSuccessorCount) {
             if (getNode(other, successorOffsets[index]) != getNode(node, successorOffsets[index])) {
                 return false;

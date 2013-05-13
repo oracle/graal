@@ -29,8 +29,8 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class LogicNode extends FloatingNode {
 
-    public LogicNode(ValueNode... dependencies) {
-        super(StampFactory.condition(), dependencies);
+    public LogicNode() {
+        super(StampFactory.condition());
     }
 
     /**
@@ -40,7 +40,7 @@ public abstract class LogicNode extends FloatingNode {
     public void negateUsages() {
         for (Node n : usages().snapshot()) {
             assert n instanceof Negatable;
-            ((Negatable) n).negate();
+            ((Negatable) n).negate(this);
         }
     }
 

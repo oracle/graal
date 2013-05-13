@@ -23,11 +23,12 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 /**
- * This interface marks is used for subclasses of {@link FixedNode} that kill a set of memory
- * locations represented by location identities (i.e. change a value at one or more locations that
- * belong to these location identities).
+ * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations
+ * represented by location identities (i.e. change a value at one or more locations that belong to
+ * these location identities).
  */
 public interface MemoryCheckpoint {
 
@@ -37,6 +38,6 @@ public interface MemoryCheckpoint {
      * 
      * @return the identities of all locations killed by this node.
      */
-    Object[] getLocationIdentities();
+    LocationIdentity[] getLocationIdentities();
 
 }

@@ -165,7 +165,6 @@ public class DebugInfoBuilder {
                 throw new GraalInternalError("no mapping found for virtual object %s", obj);
             }
             if (state instanceof MaterializedObjectState) {
-                assert !(((MaterializedObjectState) state).materializedValue() instanceof VirtualObjectNode);
                 return toValue(((MaterializedObjectState) state).materializedValue());
             } else {
                 assert obj.entryCount() == 0 || state instanceof VirtualObjectState;

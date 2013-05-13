@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -41,6 +42,12 @@ public interface HotSpotLIRGenerator {
      * @param address the target address of the call
      */
     void emitTailcall(Value[] args, Value address);
+
+    void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+
+    void emitPatchReturnAddress(ValueNode address);
+
+    void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc);
 
     void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 

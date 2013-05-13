@@ -24,53 +24,42 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Performs an unwind to throw an exception.
+ * Removes the current frame and jumps to the {@link UnwindExceptionToCallerStub}.
  */
 @Opcode("UNWIND")
 final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
 
-    public static final Descriptor UNWIND_EXCEPTION = new Descriptor("unwindException", true, void.class, Object.class);
+    @Use({REG}) protected RegisterValue exception;
 
-    /**
-     * Unwind stub expects the exception in RAX.
-     */
-    public static final Register EXCEPTION = AMD64.rax;
-
-    @Use({REG}) protected AllocatableValue exception;
-
-    AMD64HotSpotUnwindOp(AllocatableValue exception) {
+    AMD64HotSpotUnwindOp(RegisterValue exception) {
         this.exception = exception;
-        assert asRegister(exception) == EXCEPTION;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        // Copy the saved RBP value into the slot just below the return address
-        // so that the stub can pick it up from there.
-        AMD64Address rbpSlot;
-        int rbpSlotOffset = tasm.frameMap.frameSize() - 8;
-        if (isStackSlot(savedRbp)) {
-            rbpSlot = (AMD64Address) tasm.asAddress(savedRbp);
-            assert rbpSlot.getDisplacement() == rbpSlotOffset;
-        } else {
-            rbpSlot = new AMD64Address(rsp, rbpSlotOffset);
-            masm.movq(rbpSlot, asRegister(savedRbp));
-        }
+        leaveFrameAndRestoreRbp(tasm, masm);
 
-        // Pass the address of the RBP slot in RBP itself
-        masm.leaq(rbp, rbpSlot);
-        AMD64Call.directCall(tasm, masm, tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION), AMD64.r10, false, null);
+        RuntimeCallTarget stub = tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION_TO_CALLER);
+        CallingConvention cc = stub.getCallingConvention();
+        assert cc.getArgumentCount() == 2;
+        assert exception.equals(cc.getArgument(0));
+
+        // Get return address (is on top of stack after leave).
+        Register returnAddress = asRegister(cc.getArgument(1));
+        masm.movq(returnAddress, new AMD64Address(rsp, 0));
+
+        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER));
     }
 }

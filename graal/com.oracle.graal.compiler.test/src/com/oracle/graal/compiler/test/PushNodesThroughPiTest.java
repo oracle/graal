@@ -32,7 +32,8 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -65,17 +66,24 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
             public void run() {
                 StructuredGraph graph = compileTestSnippet(snippet);
 
+                int counter = 0;
                 for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
-                    Object locId = rn.location().locationIdentity();
-                    if (locId instanceof ResolvedJavaField) {
-                        ResolvedJavaField field = (ResolvedJavaField) locId;
-                        if (field.getName().equals("x")) {
-                            Assert.assertTrue(rn.object() instanceof LocalNode);
-                        } else {
-                            Assert.assertTrue(rn.object() instanceof UnsafeCastNode);
+                    if (rn.location() instanceof ConstantLocationNode && rn.object().stamp() instanceof ObjectStamp) {
+                        long disp = ((ConstantLocationNode) rn.location()).getDisplacement();
+                        ResolvedJavaType receiverType = rn.object().objectStamp().type();
+                        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp);
+
+                        if (field != null) {
+                            if (field.getName().equals("x")) {
+                                Assert.assertTrue(rn.object() instanceof LocalNode);
+                            } else {
+                                Assert.assertTrue(rn.object() instanceof UnsafeCastNode);
+                            }
+                            counter++;
                         }
                     }
                 }
+                Assert.assertEquals(2, counter);
 
                 Assert.assertTrue(graph.getNodes().filter(IsNullNode.class).count() == 1);
             }

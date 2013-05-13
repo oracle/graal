@@ -22,35 +22,60 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.ptx.*;
-import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.runtime.Graal;
+import com.oracle.graal.compiler.GraalCompiler;
+import com.oracle.graal.compiler.ptx.PTXBackend;
+import com.oracle.graal.compiler.test.GraalCompilerTest;
+import com.oracle.graal.debug.Debug;
+import com.oracle.graal.java.GraphBuilderConfiguration;
+import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.nodes.StructuredGraph;
+import com.oracle.graal.nodes.spi.GraalCodeCacheProvider;
+import com.oracle.graal.phases.OptimisticOptimizations;
+import com.oracle.graal.phases.PhasePlan;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.ptx.*;
+import com.oracle.graal.ptx.PTX;
 
 public abstract class PTXTestBase extends GraalCompilerTest {
 
+    private StructuredGraph sg;
+
     protected CompilationResult compile(String test) {
         StructuredGraph graph = parse(test);
+        sg = graph;
         Debug.dump(graph, "Graph");
         TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
-        PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(CodeCacheProvider.class), target);
+        PTXBackend ptxBackend = new PTXBackend(Graal.getRequiredCapability(GraalCodeCacheProvider.class), target);
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
         new PTXPhase().apply(graph);
-        CompilationResult result = GraalCompiler.compileMethod(runtime, graalRuntime().getReplacements(), ptxBackend, target, graph.method(), graph, null, phasePlan, OptimisticOptimizations.NONE,
+        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
                         new SpeculationLog());
         return result;
     }
 
+    protected StructuredGraph getStructuredGraph() {
+        return sg;
+    }
+
+    @SuppressWarnings("unused")
+    protected void invoke(CompilationResult result, Object... args) {
+        try {
+            // not quite yet - need multi-architecture Method changes from JDK-8013168
+            // Object[] executeArgs = argsWithReceiver(this, args);
+            // InstalledCode installedCode =
+            // runtime.addMethod(getStructuredGraph().method(), result);
+            // installedCode.executeVarargs(executeArgs);
+        } catch (Throwable th) {
+            th.printStackTrace();
+        }
+    }
 }

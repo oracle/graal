@@ -162,6 +162,13 @@ public class MetaUtil {
         return (type == null) ? null : internalNameToJava(type.getName(), true, false);
     }
 
+    /**
+     * Returns the type name in the same format as {@link Class#getName()}.
+     */
+    public static String toClassName(JavaType type) {
+        return internalNameToJava(type.getName(), true, true);
+    }
+
     private static String internalNameToJava(String name, boolean qualified, boolean classForNameCompatible) {
         switch (name.charAt(0)) {
             case 'L': {

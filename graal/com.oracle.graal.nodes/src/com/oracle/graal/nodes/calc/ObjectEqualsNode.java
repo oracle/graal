@@ -70,6 +70,20 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
         return super.canonical(tool);
     }
 
+    private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
+        if (!state.getVirtualObject().hasIdentity() && state.getVirtualObject().entryKind(0) == Kind.Boolean) {
+            if (other.isConstant()) {
+                int expectedValue = ((Boolean) other.asConstant().asObject()) ? 1 : 0;
+                IntegerEqualsNode equals = new IntegerEqualsNode(state.getEntry(0), ConstantNode.forInt(expectedValue, graph()));
+                tool.addNode(equals);
+                tool.replaceWithValue(equals);
+            }
+        } else {
+            // one of them is virtual: they can never be the same objects
+            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+        }
+    }
+
     @Override
     public void virtualize(VirtualizerTool tool) {
         State stateX = tool.getObjectState(x());
@@ -77,9 +91,10 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
         boolean xVirtual = stateX != null && stateX.getState() == EscapeState.Virtual;
         boolean yVirtual = stateY != null && stateY.getState() == EscapeState.Virtual;
 
-        if (xVirtual ^ yVirtual) {
-            // one of them is virtual: they can never be the same objects
-            tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+        if (xVirtual && !yVirtual) {
+            virtualizeNonVirtualComparison(stateX, stateY != null ? stateY.getMaterializedValue() : y(), tool);
+        } else if (!xVirtual && yVirtual) {
+            virtualizeNonVirtualComparison(stateY, stateX != null ? stateX.getMaterializedValue() : x(), tool);
         } else if (xVirtual && yVirtual) {
             boolean xIdentity = stateX.getVirtualObject().hasIdentity();
             boolean yIdentity = stateY.getVirtualObject().hasIdentity();
@@ -97,14 +112,8 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
                 assert stateX.getVirtualObject().entryCount() == 1 && stateY.getVirtualObject().entryCount() == 1;
                 assert stateX.getVirtualObject().type() == stateY.getVirtualObject().type();
                 assert stateX.getVirtualObject().entryKind(0) == Kind.Int || stateX.getVirtualObject().entryKind(0) == Kind.Long;
-                final IntegerEqualsNode equals = new IntegerEqualsNode(stateX.getEntry(0), stateY.getEntry(0));
-                tool.customAction(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        graph().add(equals);
-                    }
-                });
+                IntegerEqualsNode equals = new IntegerEqualsNode(stateX.getEntry(0), stateY.getEntry(0));
+                tool.addNode(equals);
                 tool.replaceWithValue(equals);
             } else {
                 // both are virtual with identity: check if they refer to the same object

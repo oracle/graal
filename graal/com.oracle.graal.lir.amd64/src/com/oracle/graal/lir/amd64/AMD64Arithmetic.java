@@ -27,7 +27,9 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -36,8 +38,8 @@ import com.oracle.graal.lir.asm.*;
 public enum AMD64Arithmetic {
     IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
     LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
-    FADD, FSUB, FMUL, FDIV, FAND, FOR, FXOR,
-    DADD, DSUB, DMUL, DDIV, DAND, DOR, DXOR,
+    FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
+    DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
@@ -255,8 +257,8 @@ public enum AMD64Arithmetic {
 
         public DivRemOp(AMD64Arithmetic opcode, AllocatableValue x, AllocatableValue y, LIRFrameState state) {
             this.opcode = opcode;
-            this.divResult = AMD64.rax.asValue(x.getKind());
-            this.remResult = AMD64.rdx.asValue(x.getKind());
+            this.divResult = AMD64.rax.asValue(x.getPlatformKind());
+            this.remResult = AMD64.rdx.asValue(x.getPlatformKind());
             this.x = x;
             this.y = y;
             this.state = state;
@@ -278,6 +280,64 @@ public enum AMD64Arithmetic {
         }
     }
 
+    public static class FPDivRemOp extends AMD64LIRInstruction {
+        @Opcode private final AMD64Arithmetic opcode;
+        @Def protected AllocatableValue result;
+        @Use protected AllocatableValue x;
+        @Use protected AllocatableValue y;
+        @Temp protected AllocatableValue raxTemp;
+
+        public FPDivRemOp(AMD64Arithmetic opcode, AllocatableValue result, AllocatableValue x, AllocatableValue y) {
+            this.opcode = opcode;
+            this.result = result;
+            this.raxTemp = AMD64.rax.asValue(Kind.Int);
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+            AMD64Address tmp = new AMD64Address(AMD64.rsp);
+            masm.subq(AMD64.rsp, 8);
+            if (opcode == FREM) {
+                masm.movflt(tmp, asRegister(y));
+                masm.fld_s(tmp);
+                masm.movflt(tmp, asRegister(x));
+                masm.fld_s(tmp);
+            } else {
+                assert opcode == DREM;
+                masm.movsd(tmp, asRegister(y));
+                masm.fld_d(tmp);
+                masm.movsd(tmp, asRegister(x));
+                masm.fld_d(tmp);
+            }
+
+            Label label = new Label();
+            masm.bind(label);
+            masm.fprem();
+            masm.fwait();
+            masm.fnstsw_ax();
+            masm.testl(AMD64.rax, 0x400);
+            masm.jcc(ConditionFlag.NotZero, label);
+            masm.fxch(1);
+            masm.fpop();
+
+            if (opcode == FREM) {
+                masm.fstp_s(tmp);
+                masm.movflt(asRegister(result), tmp);
+            } else {
+                masm.fstp_d(tmp);
+                masm.movsd(asRegister(result), tmp);
+            }
+            masm.addq(AMD64.rsp, 8);
+        }
+
+        @Override
+        protected void verify() {
+            super.verify();
+            verifyKind(opcode, result, x, y);
+        }
+    }
 
     @SuppressWarnings("unused")
     protected static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AMD64Arithmetic opcode, AllocatableValue result) {

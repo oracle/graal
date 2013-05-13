@@ -30,34 +30,49 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.stubs.*;
 
 /**
- * Implementation of {@link InstalledCode} for HotSpot. Stores a reference to the nmethod which
- * contains the compiled code. The nmethod also stores a weak reference to the HotSpotCompiledMethod
- * instance which is necessary to keep the nmethod from being unloaded.
+ * Implementation of {@link InstalledCode} for HotSpot. If the code is installed as an nmethod (as
+ * opposed to some other subclass of CodeBlob such as RuntimeStub), then the nmethod stores a weak
+ * reference to an instance of this class. This is necessary to keep the nmethod from being unloaded
+ * while the associated {@link HotSpotInstalledCode} instance is alive.
+ * <p>
+ * Note that there is no (current) way for the reference from an nmethod to a
+ * {@link HotSpotInstalledCode} instance to be anything but weak. This is due to the fact that
+ * HotSpot does not treat nmethods as strong GC roots.
  */
 public class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
 
     private static final long serialVersionUID = 156632908220561612L;
 
     private final HotSpotResolvedJavaMethod method;
+    private final Stub stub;
     private final boolean isDefault;
     private final Graph graph;
-    long nmethod;
+    long codeBlob;
     long start;
 
     public HotSpotInstalledCode(HotSpotResolvedJavaMethod method, Graph graph, boolean isDefault) {
         this.method = method;
+        this.stub = null;
         this.graph = graph;
         this.isDefault = isDefault;
+    }
+
+    public HotSpotInstalledCode(Stub stub) {
+        this.method = null;
+        this.stub = stub;
+        this.graph = null;
+        this.isDefault = false;
     }
 
     public boolean isDefault() {
         return isDefault;
     }
 
-    public long getMethodAddress() {
-        return nmethod;
+    public long getCodeBlob() {
+        return codeBlob;
     }
 
     public Graph getGraph() {
@@ -71,26 +86,32 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public boolean isValid() {
-        return graalRuntime().getCompilerToVM().isInstalledCodeValid(nmethod);
+        return stub != null || graalRuntime().getCompilerToVM().isInstalledCodeValid(codeBlob);
     }
 
     @Override
     public void invalidate() {
-        graalRuntime().getCompilerToVM().invalidateInstalledCode(nmethod);
+        if (stub == null) {
+            graalRuntime().getCompilerToVM().invalidateInstalledCode(codeBlob);
+        }
     }
 
     @Override
     public String toString() {
-        return String.format("InstalledCode[method=%s, nmethod=0x%x]", method, nmethod);
+        if (stub != null) {
+            return String.format("InstalledCode[stub=%s, codeBlob=0x%x]", stub, codeBlob);
+        }
+        return String.format("InstalledCode[method=%s, codeBlob=0x%x, isDefault=%b]", method, codeBlob, isDefault);
     }
 
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
+        assert stub == null;
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, nmethod);
+        return graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, codeBlob);
     }
 
     private boolean checkArgs(Object... args) {
@@ -109,8 +130,9 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
+        assert stub == null;
         assert checkArgs(args);
-        return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, nmethod);
+        return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, codeBlob);
     }
 
     @Override
@@ -120,6 +142,6 @@ public class HotSpotInstalledCode extends CompilerObject implements InstalledCod
 
     @Override
     public byte[] getCode() {
-        return graalRuntime().getCompilerToVM().getCode(nmethod);
+        return graalRuntime().getCompilerToVM().getCode(codeBlob);
     }
 }

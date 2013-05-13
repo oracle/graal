@@ -198,7 +198,7 @@ public final class FrameMap {
             // Without this, frameNeedsAllocating() would never return true.
             int total = 0;
             for (StackSlot s : freedSlots) {
-                total += target.sizeInBytes(s.getKind());
+                total += target.arch.getSizeInBytes(s.getKind());
             }
             int initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
             if (total == spillSize - initialSpillSize) {
@@ -211,8 +211,7 @@ public final class FrameMap {
     }
 
     /**
-     * Computes the offset of a stack slot relative to the frame register. This is also the bit
-     * index of stack slots in the reference map.
+     * Computes the offset of a stack slot relative to the frame register.
      * 
      * @param slot a stack slot
      * @return the offset of the stack slot
@@ -224,6 +223,18 @@ public final class FrameMap {
             accessesCallerFrame = true;
         }
         return slot.getOffset(totalFrameSize());
+    }
+
+    /**
+     * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
+     * slots in the reference map.
+     * 
+     * @param slot a stack slot
+     * @return the index of the stack slot
+     */
+    public int indexForStackSlot(StackSlot slot) {
+        assert offsetForStackSlot(slot) % target.wordSize == 0;
+        return offsetForStackSlot(slot) / target.wordSize;
     }
 
     /**
@@ -256,7 +267,7 @@ public final class FrameMap {
         hasOutgoingStackArguments = hasOutgoingStackArguments || argsSize > 0;
     }
 
-    private StackSlot getSlot(Kind kind, int additionalOffset) {
+    private StackSlot getSlot(PlatformKind kind, int additionalOffset) {
         return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 
@@ -267,12 +278,12 @@ public final class FrameMap {
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
-    public StackSlot allocateSpillSlot(Kind kind) {
+    public StackSlot allocateSpillSlot(PlatformKind kind) {
         assert frameSize == -1 : "frame size must not yet be fixed";
         if (freedSlots != null) {
             for (Iterator<StackSlot> iter = freedSlots.iterator(); iter.hasNext();) {
                 StackSlot s = iter.next();
-                if (s.getKind() == kind) {
+                if (s.getPlatformKind() == kind) {
                     iter.remove();
                     if (freedSlots.isEmpty()) {
                         freedSlots = null;
@@ -281,20 +292,20 @@ public final class FrameMap {
                 }
             }
         }
-        int size = target.sizeInBytes(kind);
+        int size = target.arch.getSizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
         return getSlot(kind, 0);
     }
 
-    private List<StackSlot> freedSlots;
+    private Set<StackSlot> freedSlots;
 
     /**
-     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(Kind)} such that it can be
-     * reused for the next allocation request for the same kind of slot.
+     * Frees a spill slot that was obtained via {@link #allocateSpillSlot(PlatformKind)} such that
+     * it can be reused for the next allocation request for the same kind of slot.
      */
     public void freeSpillSlot(StackSlot slot) {
         if (freedSlots == null) {
-            freedSlots = new ArrayList<>();
+            freedSlots = new HashSet<>();
         }
         freedSlots.add(slot);
     }
@@ -328,11 +339,6 @@ public final class FrameMap {
         } else {
             return getSlot(target.wordKind, 0);
         }
-    }
-
-    private int frameRefMapIndex(StackSlot slot) {
-        assert offsetForStackSlot(slot) % target.wordSize == 0;
-        return offsetForStackSlot(slot) / target.wordSize;
     }
 
     /**
@@ -369,7 +375,7 @@ public final class FrameMap {
             if (isRegister(location)) {
                 registerRefMap.set(asRegister(location).number);
             } else if (isStackSlot(location)) {
-                int index = frameRefMapIndex(asStackSlot(location));
+                int index = indexForStackSlot(asStackSlot(location));
                 frameRefMap.set(index);
             } else {
                 assert isConstant(location);

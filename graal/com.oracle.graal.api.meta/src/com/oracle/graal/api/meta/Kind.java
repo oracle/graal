@@ -29,7 +29,7 @@ import java.lang.reflect.*;
  * {@link Kind#Int} for {@code int} and {@link Kind#Object} for all object types. A kind has a
  * single character short name, a Java name, and a set of flags further describing its behavior.
  */
-public enum Kind {
+public enum Kind implements PlatformKind {
     /** The primitive boolean kind, represented as an int on the stack. */
     Boolean('z', "boolean", true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
 

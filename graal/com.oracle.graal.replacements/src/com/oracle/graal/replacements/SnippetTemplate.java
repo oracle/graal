@@ -116,6 +116,10 @@ public class SnippetTemplate {
         public boolean isVarargsParameter(int paramIdx) {
             return varargsParameters[paramIdx];
         }
+
+        public String getParameterName(int paramIdx) {
+            return names[paramIdx];
+        }
     }
 
     /**
@@ -283,16 +287,20 @@ public class SnippetTemplate {
             this.templates = new ConcurrentHashMap<>();
         }
 
+        /**
+         * Finds the method in {@code declaringClass} annotated with {@link Snippet} named
+         * {@code methodName}. If {@code methodName} is null, then there must be exactly one snippet
+         * method in {@code declaringClass}.
+         */
         protected SnippetInfo snippet(Class<? extends Snippets> declaringClass, String methodName) {
             Method found = null;
             for (Method method : declaringClass.getDeclaredMethods()) {
-                if (method.getAnnotation(Snippet.class) != null && method.getName().equals(methodName)) {
-                    assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method " + methodName + " in " + declaringClass;
+                if (method.getAnnotation(Snippet.class) != null && (methodName == null || method.getName().equals(methodName))) {
+                    assert found == null : "found more than one @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
                     found = method;
                 }
             }
-            assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method " + methodName + " in " + declaringClass;
-
+            assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
             return new SnippetInfo(runtime.lookupJavaMethod(found));
         }
 
@@ -432,7 +440,7 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, runtime, null);
+                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions());
                     new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
@@ -680,7 +688,7 @@ public class SnippetTemplate {
         StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
         StartNode entryPointNode = snippet.start();
         FixedNode firstCFGNode = entryPointNode.next();
-        StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
+        StructuredGraph replaceeGraph = replacee.graph();
         IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
         Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
         Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
@@ -756,7 +764,7 @@ public class SnippetTemplate {
         StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
         StartNode entryPointNode = snippet.start();
         FixedNode firstCFGNode = entryPointNode.next();
-        StructuredGraph replaceeGraph = (StructuredGraph) replacee.graph();
+        StructuredGraph replaceeGraph = replacee.graph();
         IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
         Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
         Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());

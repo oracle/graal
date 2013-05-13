@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
@@ -42,28 +40,8 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     private Stamp stamp;
 
-    @Input(notDataflow = true) private final NodeInputList<ValueNode> dependencies;
-
-    /**
-     * This collection keeps dependencies that should be observed while scheduling (guards, etc.).
-     */
-    public NodeInputList<ValueNode> dependencies() {
-        return dependencies;
-    }
-
     public ValueNode(Stamp stamp) {
         this.stamp = stamp;
-        this.dependencies = new NodeInputList<>(this);
-    }
-
-    public ValueNode(Stamp stamp, ValueNode... dependencies) {
-        this.stamp = stamp;
-        this.dependencies = new NodeInputList<>(this, dependencies);
-    }
-
-    public ValueNode(Stamp stamp, List<ValueNode> dependencies) {
-        this.stamp = stamp;
-        this.dependencies = new NodeInputList<>(this, dependencies);
     }
 
     public Stamp stamp() {
@@ -176,18 +154,5 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         assertTrue(kind() != null, "Should have a valid kind");
         assertTrue(kind() == kind().getStackKind(), "Should have a stack kind : %s", kind());
         return super.verify();
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        Map<Object, Object> properties = super.getDebugProperties(map);
-        if (!dependencies.isEmpty()) {
-            StringBuilder str = new StringBuilder();
-            for (int i = 0; i < dependencies.size(); i++) {
-                str.append(i == 0 ? "" : ", ").append(dependencies.get(i) == null ? "null" : dependencies.get(i).toString(Verbosity.Id));
-            }
-            properties.put("dependencies", str.toString());
-        }
-        return properties;
     }
 }

@@ -57,7 +57,7 @@ public class NodeIntrinsificationVerificationPhase extends Phase {
     }
 
     private static void error(MethodCallTargetNode n, String failedAction) throws GraalInternalError {
-        String context = MetaUtil.format("%H.%n", ((StructuredGraph) n.graph()).method());
+        String context = MetaUtil.format("%H.%n", n.graph().method());
         String target = n.invoke().callTarget().targetName();
         throw new GraalInternalError(failedAction + " of call to '" + target + "' in '" + context + "' failed, most likely due to a parameter annotated with @" +
                         ConstantNodeParameter.class.getSimpleName() + " not being resolvable to a constant during compilation");

@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -39,8 +40,8 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
     }
 
     @Override
-    public Object[] getLocationIdentities() {
-        return new Object[]{LocationNode.ANY_LOCATION};
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 
     @Override
@@ -57,11 +58,10 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         if (isLowered()) {
             return;
         }
-        StructuredGraph graph = (StructuredGraph) graph();
-        LoadExceptionObjectNode loadException = graph.add(new LoadExceptionObjectNode(stamp()));
+        LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp()));
         loadException.setStateAfter(stateAfter());
         replaceAtUsages(loadException);
-        graph.addAfterFixed(this, loadException);
+        graph().addAfterFixed(this, loadException);
         tool.setLastFixedNode(loadException);
         setStateAfter(null);
         setStamp(StampFactory.forVoid());

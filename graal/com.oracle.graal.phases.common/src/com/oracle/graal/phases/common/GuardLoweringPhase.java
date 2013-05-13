@@ -114,8 +114,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private void processAccess(Access access) {
             GuardNode guard = nullGuarded.get(access.object());
             if (guard != null && isImplicitNullCheck(access.nullCheckLocation())) {
-                NodeInputList<ValueNode> dependencies = ((ValueNode) access).dependencies();
-                dependencies.remove(guard);
+                access.setGuard(guard.getGuard());
                 Access fixedAccess = access;
                 if (access instanceof FloatingAccessNode) {
                     fixedAccess = ((FloatingAccessNode) access).asFixedNode();
@@ -142,7 +141,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
         private boolean isImplicitNullCheck(LocationNode location) {
             if (location instanceof ConstantLocationNode) {
-                return ((ConstantLocationNode) location).displacement() < implicitNullCheckLimit;
+                return ((ConstantLocationNode) location).getDisplacement() < implicitNullCheckLimit;
             } else {
                 return false;
             }
@@ -170,12 +169,12 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         }
 
         private void lowerToIf(GuardNode guard) {
-            StructuredGraph graph = (StructuredGraph) guard.graph();
-            BeginNode fastPath = graph.add(new BeginNode());
+            StructuredGraph graph = guard.graph();
+            AbstractBeginNode fastPath = graph.add(new BeginNode());
             DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
-            BeginNode deoptBranch = BeginNode.begin(deopt);
-            BeginNode trueSuccessor;
-            BeginNode falseSuccessor;
+            AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
+            AbstractBeginNode trueSuccessor;
+            AbstractBeginNode falseSuccessor;
             insertLoopExits(deopt);
             if (guard.negated()) {
                 trueSuccessor = deoptBranch;
@@ -193,11 +192,14 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             IsNullNode isNull = (IsNullNode) guard.condition();
             NullCheckNode nullCheck = guard.graph().add(new NullCheckNode(isNull.object()));
             replaceCurrent(nullCheck);
+            if (isNull.usages().isEmpty()) {
+                isNull.safeDelete();
+            }
         }
 
         private void insertLoopExits(DeoptimizeNode deopt) {
             Loop loop = block.getLoop();
-            StructuredGraph graph = (StructuredGraph) deopt.graph();
+            StructuredGraph graph = deopt.graph();
             while (loop != null) {
                 LoopExitNode exit = graph.add(new LoopExitNode(loop.loopBegin()));
                 graph.addBeforeFixed(deopt, exit);

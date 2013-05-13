@@ -24,46 +24,49 @@ package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
 /**
- * Node implementing a call to HotSpot's {@code new_instance} stub.
+ * Implements a direct call to a C/C++ HotSpot function.
  */
-public class NewInstanceSlowStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+public class CRuntimeCall extends DeoptimizingFixedWithNextNode implements LIRGenLowerable {
 
-    private static final Stamp defaultStamp = StampFactory.objectNonNull();
+    @Input protected final NodeInputList<ValueNode> arguments;
 
-    @Input private final ValueNode hub;
+    private final Descriptor descriptor;
 
-    public static final Descriptor NEW_INSTANCE_SLOW = new Descriptor("new_instance_slow", false, Object.class, Word.class);
-
-    public NewInstanceSlowStubCall(ValueNode hub) {
-        super(defaultStamp);
-        this.hub = hub;
-    }
-
-    @Override
-    public boolean inferStamp() {
-        if (stamp() == defaultStamp && hub.isConstant()) {
-            updateStamp(StampFactory.exactNonNull(HotSpotResolvedObjectType.fromMetaspaceKlass(hub.asConstant())));
-            return true;
-        }
-        return false;
+    public CRuntimeCall(Descriptor descriptor, ValueNode... arguments) {
+        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        this.arguments = new NodeInputList<>(this, arguments);
+        this.descriptor = descriptor;
     }
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE_SLOW);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub));
-        gen.setResult(this, result);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
+        Value[] args = new Value[arguments.size()];
+        for (int i = 0; i < args.length; i++) {
+            args[i] = gen.operand(arguments.get(i));
+        }
+        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, args);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
     }
 
-    @NodeIntrinsic
-    public static native Object call(Word hub);
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return null;
+    }
 }

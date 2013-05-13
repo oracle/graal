@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -31,9 +32,10 @@ import com.oracle.graal.nodes.type.*;
  * A node that changes the type of its input, usually narrowing it. For example, a PI node refines
  * the type of a receiver during type-guarded inlining to be the type tested by the guard.
  */
-public class PiNode extends FloatingNode implements LIRLowerable, Virtualizable, Node.IterableNodeType {
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Node.IterableNodeType, GuardingNode {
 
     @Input private ValueNode object;
+    @Input private FixedNode anchor;
 
     public ValueNode object() {
         return object;
@@ -44,20 +46,22 @@ public class PiNode extends FloatingNode implements LIRLowerable, Virtualizable,
         this.object = object;
     }
 
-    public PiNode(ValueNode object, Stamp stamp, ValueNode anchor) {
-        super(stamp, anchor);
-        assert anchor instanceof FixedNode;
+    public PiNode(ValueNode object, Stamp stamp, FixedNode anchor) {
+        super(stamp);
         this.object = object;
+        this.anchor = anchor;
     }
 
     @Override
     public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(object));
+        if (object.kind() != Kind.Void && object.kind() != Kind.Illegal) {
+            generator.setResult(this, generator.operand(object));
+        }
     }
 
     @Override
     public boolean inferStamp() {
-        if (object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
+        if (stamp() instanceof ObjectStamp && object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
             // a null value flowing into a nonNull PiNode should be guarded by a type/isNull guard,
             // but the
             // compiler might see this situation before the branch is deleted

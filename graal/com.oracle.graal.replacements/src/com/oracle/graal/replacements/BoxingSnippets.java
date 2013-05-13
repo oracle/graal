@@ -205,7 +205,7 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
         private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
+        public Templates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target);
             for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
@@ -216,7 +216,7 @@ public class BoxingSnippets implements Snippets {
         public void lower(BoxNode box) {
             FloatingNode canonical = canonicalizeBoxing(box, runtime);
             if (canonical != null) {
-                ((StructuredGraph) box.graph()).replaceFixedWithFloating(box, canonical);
+                box.graph().replaceFixedWithFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()));
                 args.add("value", box.getValue());

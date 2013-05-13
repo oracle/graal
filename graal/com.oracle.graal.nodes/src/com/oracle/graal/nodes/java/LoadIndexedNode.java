@@ -53,6 +53,11 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Node.Ite
     }
 
     @Override
+    public boolean inferStamp() {
+        return updateStamp(createStamp(array(), elementKind()));
+    }
+
+    @Override
     public void virtualize(VirtualizerTool tool) {
         State arrayState = tool.getObjectState(array());
         if (arrayState != null && arrayState.getState() == EscapeState.Virtual) {

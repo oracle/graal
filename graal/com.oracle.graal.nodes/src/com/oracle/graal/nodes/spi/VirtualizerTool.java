@@ -64,9 +64,9 @@ public interface VirtualizerTool {
      * 
      * @param virtualObject the new virtual object.
      * @param entryState the initial state of the virtual object's fields.
-     * @param lockCount the initial locking depth.
+     * @param locks the initial locking depths.
      */
-    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int lockCount);
+    void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks);
 
     /**
      * Queries the current state of the given value: if it is virtualized (thread-local and the
@@ -138,12 +138,12 @@ public interface VirtualizerTool {
     void replaceFirstInput(Node oldInput, Node replacement);
 
     /**
-     * Performs a custom action on the current node. This action will only be performed when, and
-     * if, the changes are committed. Custom actions must not modify inputs of nodes.
+     * Adds the given node to the graph.This action will only be performed when, and if, the changes
+     * are committed.
      * 
-     * @param action the custom action.
+     * @param node the node to add.
      */
-    void customAction(Runnable action);
+    void addNode(ValueNode node);
 
     /**
      * This method performs either {@link #replaceWithValue(ValueNode)} or

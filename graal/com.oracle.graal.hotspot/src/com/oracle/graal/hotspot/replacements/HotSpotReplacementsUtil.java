@@ -27,6 +27,7 @@ import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -34,6 +35,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -41,12 +43,12 @@ import com.oracle.graal.word.*;
 //JaCoCo Exclude
 
 /**
- * A collection of methods used in HotSpot snippets and substitutions.
+ * A collection of methods used in HotSpot snippets, substitutions and stubs.
  */
-public class HotSpotSnippetUtils {
+public class HotSpotReplacementsUtil {
 
-    public static final Object ANY_LOCATION = LocationNode.ANY_LOCATION;
-    public static final Object FINAL_LOCATION = LocationNode.FINAL_LOCATION;
+    public static final LocationIdentity ANY_LOCATION = LocationNode.ANY_LOCATION;
+    public static final LocationIdentity FINAL_LOCATION = LocationNode.FINAL_LOCATION;
 
     public static HotSpotVMConfig config() {
         return graalRuntime().getConfig();
@@ -62,45 +64,75 @@ public class HotSpotSnippetUtils {
         return config().verifyOops;
     }
 
-    public static final Object EXCEPTION_OOP_LOCATION = LocationNode.createLocation("ExceptionOop");
+    public static final LocationIdentity EXCEPTION_OOP_LOCATION = LocationNode.createLocation("ExceptionOop");
 
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     @Fold
     public static int threadExceptionOopOffset() {
         return config().threadExceptionOopOffset;
     }
 
-    public static final Object EXCEPTION_PC_LOCATION = LocationNode.createLocation("ExceptionPc");
+    public static final LocationIdentity EXCEPTION_PC_LOCATION = LocationNode.createLocation("ExceptionPc");
 
     @Fold
     public static int threadExceptionPcOffset() {
         return config().threadExceptionPcOffset;
     }
 
-    public static final Object TLAB_TOP_LOCATION = LocationNode.createLocation("TlabTop");
+    public static final LocationIdentity TLAB_TOP_LOCATION = LocationNode.createLocation("TlabTop");
 
     @Fold
     public static int threadTlabTopOffset() {
         return config().threadTlabTopOffset;
     }
 
-    public static final Object TLAB_END_LOCATION = LocationNode.createLocation("TlabEnd");
+    public static final LocationIdentity TLAB_END_LOCATION = LocationNode.createLocation("TlabEnd");
 
     @Fold
     private static int threadTlabEndOffset() {
         return config().threadTlabEndOffset;
     }
 
-    public static final Object TLAB_START_LOCATION = LocationNode.createLocation("TlabStart");
+    public static final LocationIdentity TLAB_START_LOCATION = LocationNode.createLocation("TlabStart");
 
     @Fold
     private static int threadTlabStartOffset() {
         return config().threadTlabStartOffset;
     }
 
+    public static final LocationIdentity PENDING_EXCEPTION_LOCATION = LocationNode.createLocation("PendingException");
+
+    /**
+     * @see HotSpotVMConfig#pendingExceptionOffset
+     */
+    @Fold
+    private static int threadPendingExceptionOffset() {
+        return config().pendingExceptionOffset;
+    }
+
+    public static final LocationIdentity OBJECT_RESULT_LOCATION = LocationNode.createLocation("ObjectResult");
+
+    @Fold
+    private static int objectResultOffset() {
+        return config().threadObjectResultOffset;
+    }
+
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     public static Object readExceptionOop(Word thread) {
         return thread.readObject(threadExceptionOopOffset(), EXCEPTION_OOP_LOCATION);
     }
 
+    public static Word readExceptionPc(Word thread) {
+        return thread.readWord(threadExceptionPcOffset(), EXCEPTION_PC_LOCATION);
+    }
+
+    /**
+     * @see HotSpotVMConfig#threadExceptionOopOffset
+     */
     public static void writeExceptionOop(Word thread, Object value) {
         thread.writeObject(threadExceptionOopOffset(), value, EXCEPTION_OOP_LOCATION);
     }
@@ -129,6 +161,28 @@ public class HotSpotSnippetUtils {
         thread.writeWord(threadTlabStartOffset(), start, TLAB_START_LOCATION);
         thread.writeWord(threadTlabTopOffset(), start, TLAB_TOP_LOCATION);
         thread.writeWord(threadTlabEndOffset(), end, TLAB_END_LOCATION);
+    }
+
+    /**
+     * Clears the pending exception for the given thread.
+     * 
+     * @return {@code true} if there was a pending exception
+     */
+    public static boolean clearPendingException(Word thread) {
+        boolean result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION) != null;
+        thread.writeObject(threadPendingExceptionOffset(), null);
+        return result;
+    }
+
+    /**
+     * Gets and clears the object result from a runtime call stored in a thread local.
+     * 
+     * @return the object that was in the thread local
+     */
+    public static Object getAndClearObjectResult(Word thread) {
+        Object result = thread.readObject(objectResultOffset(), OBJECT_RESULT_LOCATION);
+        thread.writeObject(objectResultOffset(), null);
+        return result;
     }
 
     @Fold
@@ -171,7 +225,7 @@ public class HotSpotSnippetUtils {
         return Unsafe.getUnsafe().pageSize();
     }
 
-    public static final Object PROTOTYPE_MARK_WORD_LOCATION = LocationNode.createLocation("PrototypeMarkWord");
+    public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = LocationNode.createLocation("PrototypeMarkWord");
 
     @Fold
     public static int prototypeMarkWordOffset() {
@@ -212,14 +266,14 @@ public class HotSpotSnippetUtils {
         return config().klassSuperKlassOffset;
     }
 
-    public static final Object MARK_WORD_LOCATION = LocationNode.createLocation("MarkWord");
+    public static final LocationIdentity MARK_WORD_LOCATION = LocationNode.createLocation("MarkWord");
 
     @Fold
     public static int markOffset() {
         return config().markOffset;
     }
 
-    public static final Object HUB_LOCATION = LocationNode.createLocation("Hub");
+    public static final LocationIdentity HUB_LOCATION = LocationNode.createLocation("Hub");
 
     @Fold
     private static int hubOffset() {
@@ -346,21 +400,21 @@ public class HotSpotSnippetUtils {
         return config().superCheckOffsetOffset;
     }
 
-    public static final Object SECONDARY_SUPER_CACHE_LOCATION = LocationNode.createLocation("SecondarySuperCache");
+    public static final LocationIdentity SECONDARY_SUPER_CACHE_LOCATION = LocationNode.createLocation("SecondarySuperCache");
 
     @Fold
     public static int secondarySuperCacheOffset() {
         return config().secondarySuperCacheOffset;
     }
 
-    public static final Object SECONDARY_SUPERS_LOCATION = LocationNode.createLocation("SecondarySupers");
+    public static final LocationIdentity SECONDARY_SUPERS_LOCATION = LocationNode.createLocation("SecondarySupers");
 
     @Fold
     public static int secondarySupersOffset() {
         return config().secondarySupersOffset;
     }
 
-    public static final Object DISPLACED_MARK_WORD_LOCATION = LocationNode.createLocation("DisplacedMarkWord");
+    public static final LocationIdentity DISPLACED_MARK_WORD_LOCATION = LocationNode.createLocation("DisplacedMarkWord");
 
     @Fold
     public static int lockDisplacedMarkOffset() {
@@ -405,14 +459,14 @@ public class HotSpotSnippetUtils {
      * Gets the value of the stack pointer register as a Word.
      */
     public static Word stackPointer() {
-        return HotSpotSnippetUtils.registerAsWord(stackPointerRegister(), true, false);
+        return registerAsWord(stackPointerRegister(), true, false);
     }
 
     /**
      * Gets the value of the thread register as a Word.
      */
     public static Word thread() {
-        return HotSpotSnippetUtils.registerAsWord(threadRegister(), true, false);
+        return registerAsWord(threadRegister(), true, false);
     }
 
     public static Word loadWordFromObject(Object object, int offset) {
@@ -439,7 +493,7 @@ public class HotSpotSnippetUtils {
         return CodeUtil.log2(wordSize());
     }
 
-    public static final Object CLASS_STATE_LOCATION = LocationNode.createLocation("ClassState");
+    public static final LocationIdentity CLASS_STATE_LOCATION = LocationNode.createLocation("ClassState");
 
     @Fold
     public static int klassStateOffset() {
@@ -471,14 +525,14 @@ public class HotSpotSnippetUtils {
         return config().klassInstanceSizeOffset;
     }
 
-    public static final Object HEAP_TOP_LOCATION = LocationNode.createLocation("HeapTop");
+    public static final LocationIdentity HEAP_TOP_LOCATION = LocationNode.createLocation("HeapTop");
 
     @Fold
     public static long heapTopAddress() {
         return config().heapTopAddress;
     }
 
-    public static final Object HEAP_END_LOCATION = LocationNode.createLocation("HeapEnd");
+    public static final LocationIdentity HEAP_END_LOCATION = LocationNode.createLocation("HeapEnd");
 
     @Fold
     public static long heapEndAddress() {
@@ -500,42 +554,42 @@ public class HotSpotSnippetUtils {
         return config().tlabAlignmentReserve;
     }
 
-    public static final Object TLAB_SIZE_LOCATION = LocationNode.createLocation("TlabSize");
+    public static final LocationIdentity TLAB_SIZE_LOCATION = LocationNode.createLocation("TlabSize");
 
     @Fold
     public static int threadTlabSizeOffset() {
         return config().threadTlabSizeOffset;
     }
 
-    public static final Object TLAB_THREAD_ALLOCATED_BYTES_LOCATION = LocationNode.createLocation("TlabThreadAllocatedBytes");
+    public static final LocationIdentity TLAB_THREAD_ALLOCATED_BYTES_LOCATION = LocationNode.createLocation("TlabThreadAllocatedBytes");
 
     @Fold
     public static int threadAllocatedBytesOffset() {
         return config().threadAllocatedBytesOffset;
     }
 
-    public static final Object TLAB_REFILL_WASTE_LIMIT_LOCATION = LocationNode.createLocation("RefillWasteLimit");
+    public static final LocationIdentity TLAB_REFILL_WASTE_LIMIT_LOCATION = LocationNode.createLocation("RefillWasteLimit");
 
     @Fold
     public static int tlabRefillWasteLimitOffset() {
         return config().tlabRefillWasteLimitOffset;
     }
 
-    public static final Object TLAB_NOF_REFILLS_LOCATION = LocationNode.createLocation("TlabNOfRefills");
+    public static final LocationIdentity TLAB_NOF_REFILLS_LOCATION = LocationNode.createLocation("TlabNOfRefills");
 
     @Fold
     public static int tlabNumberOfRefillsOffset() {
         return config().tlabNumberOfRefillsOffset;
     }
 
-    public static final Object TLAB_FAST_REFILL_WASTE_LOCATION = LocationNode.createLocation("TlabFastRefillWaste");
+    public static final LocationIdentity TLAB_FAST_REFILL_WASTE_LOCATION = LocationNode.createLocation("TlabFastRefillWaste");
 
     @Fold
     public static int tlabFastRefillWasteOffset() {
         return config().tlabFastRefillWasteOffset;
     }
 
-    public static final Object TLAB_SLOW_ALLOCATIONS_LOCATION = LocationNode.createLocation("TlabSlowAllocations");
+    public static final LocationIdentity TLAB_SLOW_ALLOCATIONS_LOCATION = LocationNode.createLocation("TlabSlowAllocations");
 
     @Fold
     public static int tlabSlowAllocationsOffset() {
@@ -615,7 +669,15 @@ public class HotSpotSnippetUtils {
             }
         }
 
-        return IdentityHashCodeStubCall.call(x);
+        return identityHashCode(IDENTITY_HASHCODE, x);
+    }
+
+    public static final Descriptor IDENTITY_HASHCODE = new Descriptor("identity_hashcode", false, int.class, Object.class);
+
+    @SuppressWarnings("unused")
+    @NodeIntrinsic(RuntimeCallNode.class)
+    public static int identityHashCode(@ConstantNodeParameter Descriptor descriptor, Object object) {
+        return System.identityHashCode(object);
     }
 
     @Fold

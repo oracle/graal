@@ -25,6 +25,8 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.Location;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -90,10 +92,10 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Object location, @ConstantNodeParameter boolean usePreciseWriteBarriers);
+    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType);
 
     @Override
-    public Object[] getLocationIdentities() {
-        return new Object[]{location().locationIdentity()};
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{location().getLocationIdentity()};
     }
 }
