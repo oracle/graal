@@ -191,7 +191,7 @@ public interface CompilerToVM {
 
     HotSpotResolvedJavaField getJavaField(Field reflectionField);
 
-    long getMaxCallTargetOffset(long stub);
+    long getMaxCallTargetOffset(long address);
 
     String disassembleCodeBlob(long codeBlob);
 

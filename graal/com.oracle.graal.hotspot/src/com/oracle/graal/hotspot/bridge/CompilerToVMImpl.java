@@ -127,7 +127,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native int getCompiledCodeSize(long metaspaceMethod);
 
     @Override
-    public native long getMaxCallTargetOffset(long stub);
+    public native long getMaxCallTargetOffset(long address);
 
     @Override
     public native String disassembleCodeBlob(long codeBlob);
