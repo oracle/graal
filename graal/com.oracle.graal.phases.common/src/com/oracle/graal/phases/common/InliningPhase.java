@@ -89,11 +89,21 @@ public class InliningPhase extends Phase {
         return inliningCount;
     }
 
-    public static void saveGraphStatistics(StructuredGraph graph) {
+    public static void storeHighLevelStatistics(StructuredGraph graph) {
         CompiledMethodInfo info = compiledMethodInfo(graph.method());
         double summedUpProbabilityOfRemainingInvokes = sumUpInvokeProbabilities(graph);
         info.setSummedUpProbabilityOfRemainingInvokes(summedUpProbabilityOfRemainingInvokes);
         info.setHighLevelNodeCount(graph.getNodeCount());
+    }
+
+    public static void storeMidLevelStatistics(StructuredGraph graph) {
+        CompiledMethodInfo info = compiledMethodInfo(graph.method());
+        info.setMidLevelNodeCount(graph.getNodeCount());
+    }
+
+    public static void storeLowLevelStatistics(StructuredGraph graph) {
+        CompiledMethodInfo info = compiledMethodInfo(graph.method());
+        info.setLowLevelNodeCount(graph.getNodeCount());
     }
 
     @Override
@@ -368,10 +378,26 @@ public class InliningPhase extends Phase {
             return true;
         }
 
-        protected static int previousHIRSize(InlineInfo info) {
+        protected static int previousHighLevelGraphSize(InlineInfo info) {
             int size = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                size += compiledMethodInfo(info.methodAt(i)).highLevelNodes();
+                size += compiledMethodInfo(info.methodAt(i)).highLevelNodeCount();
+            }
+            return size;
+        }
+
+        protected static int previousMidLevelGraphSize(InlineInfo info) {
+            int size = 0;
+            for (int i = 0; i < info.numberOfMethods(); i++) {
+                size += compiledMethodInfo(info.methodAt(i)).midLevelNodeCount();
+            }
+            return size;
+        }
+
+        protected static int previousLowLevelGraphSize(InlineInfo info) {
+            int size = 0;
+            for (int i = 0; i < info.numberOfMethods(); i++) {
+                size += compiledMethodInfo(info.methodAt(i)).lowLevelNodeCount();
             }
             return size;
         }
@@ -432,9 +458,19 @@ public class InliningPhase extends Phase {
 
             double inliningBonus = getInliningBonus(info);
 
-            int hirSize = previousHIRSize(info);
-            if (hirSize > GraalOptions.SmallCompiledGraphSize * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, "too large HIR graph: %s", hirSize);
+            int highLevelGraphSize = previousHighLevelGraphSize(info);
+            if (GraalOptions.SmallCompiledHighLevelGraphSize > 0 && highLevelGraphSize > GraalOptions.SmallCompiledHighLevelGraphSize * inliningBonus) {
+                return InliningUtil.logNotInlinedMethod(info, "too large previous high-level graph: %d", highLevelGraphSize);
+            }
+
+            int midLevelGraphSize = previousMidLevelGraphSize(info);
+            if (GraalOptions.SmallCompiledMidLevelGraphSize > 0 && midLevelGraphSize > GraalOptions.SmallCompiledMidLevelGraphSize * inliningBonus) {
+                return InliningUtil.logNotInlinedMethod(info, "too large previous mid-level graph: %d", midLevelGraphSize);
+            }
+
+            int lowLevelGraphSize = previousLowLevelGraphSize(info);
+            if (GraalOptions.SmallCompiledLowLevelGraphSize > 0 && lowLevelGraphSize > GraalOptions.SmallCompiledLowLevelGraphSize * inliningBonus) {
+                return InliningUtil.logNotInlinedMethod(info, "too large previous low-level graph: %d", lowLevelGraphSize);
             }
 
             /*
@@ -445,7 +481,7 @@ public class InliningPhase extends Phase {
              */
 
             int nodes = determineNodeCount(info);
-            if (nodes < GraalOptions.TrivialHighLevelGraphSize * inliningBonus) {
+            if (nodes < GraalOptions.TrivialInliningSize * inliningBonus) {
                 return InliningUtil.logInlinedMethod(info, fullyProcessed, "trivial (nodes=%d)", nodes);
             }
 
@@ -454,7 +490,7 @@ public class InliningPhase extends Phase {
                 return InliningUtil.logNotInlinedMethod(info, "invoke probability is too high (%f)", invokes);
             }
 
-            double maximumNodes = computeMaximumSize(relevance, (int) (GraalOptions.NormalHighLevelGraphSize * inliningBonus));
+            double maximumNodes = computeMaximumSize(relevance, (int) (GraalOptions.MaximumInliningSize * inliningBonus));
             if (nodes < maximumNodes) {
                 return InliningUtil.logInlinedMethod(info, fullyProcessed, "relevance-based (relevance=%f, nodes=%d)", relevance, nodes);
             }
@@ -766,24 +802,42 @@ public class InliningPhase extends Phase {
         }
 
         public double invokeRelevance(Invoke invoke) {
-            return relevance * nodeRelevance.get(invoke.asNode());
+            return Math.min(GraalOptions.CapInheritedRelevance, relevance) * nodeRelevance.get(invoke.asNode());
         }
     }
 
     private static class CompiledMethodInfo {
 
         private int highLevelNodes;
+        private int midLevelNodes;
+        private int lowLevelNodes;
         private double summedUpProbabilityOfRemainingInvokes;
 
         public CompiledMethodInfo() {
         }
 
-        public int highLevelNodes() {
+        public int highLevelNodeCount() {
             return highLevelNodes;
         }
 
         public void setHighLevelNodeCount(int highLevelNodes) {
             this.highLevelNodes = highLevelNodes;
+        }
+
+        public int midLevelNodeCount() {
+            return midLevelNodes;
+        }
+
+        public void setMidLevelNodeCount(int midLevelNodes) {
+            this.midLevelNodes = midLevelNodes;
+        }
+
+        public int lowLevelNodeCount() {
+            return lowLevelNodes;
+        }
+
+        public void setLowLevelNodeCount(int lowLevelNodes) {
+            this.lowLevelNodes = lowLevelNodes;
         }
 
         public double summedUpProbabilityOfRemainingInvokes() {

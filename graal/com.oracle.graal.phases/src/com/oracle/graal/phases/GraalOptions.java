@@ -49,11 +49,14 @@ public final class GraalOptions {
     public static int     MaximumRecursiveInlining           = 1;
     public static float   BoostInliningForEscapeAnalysis     = 2f;
     public static float   RelevanceCapForInlining            = 1f;
+    public static float   CapInheritedRelevance              = 1f;
     public static boolean IterativeInlining                  = ____;
 
-    public static int     TrivialHighLevelGraphSize          = 10;
-    public static int     NormalHighLevelGraphSize           = 300;
-    public static int     SmallCompiledGraphSize             = 300;
+    public static int     TrivialInliningSize                = 10;
+    public static int     MaximumInliningSize                = 180;
+    public static int     SmallCompiledHighLevelGraphSize    = 0;
+    public static int     SmallCompiledMidLevelGraphSize     = 0;
+    public static int     SmallCompiledLowLevelGraphSize     = 250;
     public static double  LimitInlinedInvokes                = 10.0;
     public static boolean PropagateArgumentsDuringInlining   = true;
 
