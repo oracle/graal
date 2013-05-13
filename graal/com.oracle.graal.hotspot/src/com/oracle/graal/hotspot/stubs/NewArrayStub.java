@@ -22,24 +22,25 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.api.code.DeoptimizationAction.*;
-import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
@@ -94,10 +95,10 @@ public class NewArrayStub extends SnippetStub {
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
         int sizeInBytes = computeArrayAllocationSize(length, wordSize(), headerSize, log2ElementSize);
         if (logging()) {
-            StubUtil.printf("newArray: element kind %d\n", elementKind);
-            StubUtil.printf("newArray: array length %d\n", length);
-            StubUtil.printf("newArray: array size %d\n", sizeInBytes);
-            StubUtil.printf("newArray: hub=%p\n", hub.rawValue());
+            printf("newArray: element kind %d\n", elementKind);
+            printf("newArray: array length %d\n", length);
+            printf("newArray: array size %d\n", sizeInBytes);
+            printf("newArray: hub=%p\n", hub.rawValue());
         }
 
         // check that array length is small enough for fast path.
@@ -105,29 +106,22 @@ public class NewArrayStub extends SnippetStub {
             Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {
-                    StubUtil.printf("newArray: allocated new array at %p\n", memory.rawValue());
+                    printf("newArray: allocated new array at %p\n", memory.rawValue());
                 }
                 formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
-                return StubUtil.verifyObject(memory.toObject());
+                return verifyObject(memory.toObject());
             }
         }
         if (logging()) {
-            StubUtil.printf("newArray: calling new_array_c\n");
+            printf("newArray: calling new_array_c\n");
         }
 
         newArrayC(NEW_ARRAY_C, thread(), hub, length);
-
-        if (clearPendingException(thread())) {
-            if (logging()) {
-                StubUtil.printf("newArray: deoptimizing to caller\n");
-            }
-            getAndClearObjectResult(thread());
-            DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
-        }
-        return StubUtil.verifyObject(getAndClearObjectResult(thread()));
+        handlePendingException(true);
+        return verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_ARRAY_C = StubUtil.descriptorFor(NewArrayStub.class, "newArrayC", false);
+    public static final Descriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int length);

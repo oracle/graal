@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.*;
@@ -46,11 +47,11 @@ public class CreateNullPointerExceptionStub extends CRuntimeStub {
     @Snippet
     private static Object createNullPointerException() {
         createNullPointerExceptionC(CREATE_NULL_POINTER_EXCEPTION_C, thread());
-        StubUtil.handlePendingException(true);
-        return StubUtil.verifyObject(getAndClearObjectResult(thread()));
+        handlePendingException(true);
+        return verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION_C = StubUtil.descriptorFor(CreateNullPointerExceptionStub.class, "createNullPointerExceptionC", false);
+    public static final Descriptor CREATE_NULL_POINTER_EXCEPTION_C = descriptorFor(CreateNullPointerExceptionStub.class, "createNullPointerExceptionC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void createNullPointerExceptionC(@ConstantNodeParameter Descriptor createNullPointerExceptionC, Word thread);

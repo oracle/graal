@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
@@ -49,7 +50,7 @@ public class LogPrimitiveStub extends CRuntimeStub {
         logPrimitivefC(LOG_PRIMITIVE_C, thread(), typeChar, value, newline);
     }
 
-    public static final Descriptor LOG_PRIMITIVE_C = StubUtil.descriptorFor(LogPrimitiveStub.class, "logPrimitivefC", false);
+    public static final Descriptor LOG_PRIMITIVE_C = descriptorFor(LogPrimitiveStub.class, "logPrimitivefC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void logPrimitivefC(@ConstantNodeParameter Descriptor logPrimitivefC, Word thread, char typeChar, long value, boolean newline);
