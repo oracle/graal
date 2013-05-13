@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,35 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+@ClassSubstitution(HotSpotNmethod.class)
+public class HotSpotNmethodSubstitutions {
 
-/**
- * Implementation of {@link InstalledCode} for HotSpot.
- */
-public abstract class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
-
-    private static final long serialVersionUID = 156632908220561612L;
-
-    long codeBlob;
-    long start;
-
-    public long getCodeBlob() {
-        return codeBlob;
+    @MethodSubstitution(isStatic = false)
+    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
+        return HotSpotNmethodExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
     }
 
-    @Override
-    public abstract String toString();
-
-    public long getStart() {
-        return start;
+    @Fold
+    private static Class[] getSignature() {
+        return new Class[]{Object.class, Object.class, Object.class};
     }
 
-    public byte[] getCode() {
-        return graalRuntime().getCompilerToVM().getCode(codeBlob);
-    }
 }

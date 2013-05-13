@@ -206,20 +206,18 @@ public final class Register implements Comparable<Register>, Serializable {
 
     @Override
     public int hashCode() {
-        final int prime = 17;
-        int result = 1;
-        result = prime * result + encoding;
-        result = prime * result + name.hashCode();
-        result = prime * result + number;
-        result = prime * result + registerCategory.hashCode();
-        return result;
+        return 17 + name.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Register) {
             Register other = (Register) obj;
-            return encoding == other.encoding && name.equals(other.name) && number == other.number && registerCategory.equals(registerCategory);
+            if (number == other.number && name.equals(other.name)) {
+                assert encoding == other.encoding;
+                assert registerCategory == other.registerCategory;
+                return true;
+            }
         }
         return false;
     }

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.cfg;
 
+import java.util.*;
+
 public class CFGVerifier {
 
     public static boolean verify(ControlFlowGraph cfg) {
@@ -46,6 +48,36 @@ public class CFGVerifier {
             for (Block dominated : block.getDominated()) {
                 assert dominated.getId() > block.getId();
                 assert dominated.getDominator() == block;
+            }
+
+            Block postDominatorBlock = block.getPostdominator();
+            if (postDominatorBlock != null) {
+                assert block.getSuccessorCount() > 0 : "block has post-dominator block, but no successors";
+
+                BlockMap<Boolean> visitedBlocks = new BlockMap<>(cfg);
+                visitedBlocks.put(block, true);
+
+                Deque<Block> stack = new ArrayDeque<>();
+                for (Block sux : block.getSuccessors()) {
+                    visitedBlocks.put(sux, true);
+                    stack.push(sux);
+                }
+
+                while (stack.size() > 0) {
+                    Block tos = stack.pop();
+                    assert tos.getId() <= postDominatorBlock.getId();
+                    if (tos == postDominatorBlock) {
+                        continue; // found a valid path
+                    }
+                    assert tos.getSuccessorCount() > 0 : "no path found";
+
+                    for (Block sux : tos.getSuccessors()) {
+                        if (visitedBlocks.get(sux) == null) {
+                            visitedBlocks.put(sux, true);
+                            stack.push(sux);
+                        }
+                    }
+                }
             }
 
             assert cfg.getLoops() == null || !block.isLoopHeader() || block.getLoop().header == block : block.beginNode;

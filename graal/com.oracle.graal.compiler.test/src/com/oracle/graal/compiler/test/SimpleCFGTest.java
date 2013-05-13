@@ -22,14 +22,23 @@
  */
 package com.oracle.graal.compiler.test;
 
-import static org.junit.Assert.*;
-
 import org.junit.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
-public class SimpleCFGTest {
+public class SimpleCFGTest extends GraalCompilerTest {
+
+    private static void dumpGraph(final StructuredGraph graph) {
+        Debug.scope("SimpleCFGTest", new Runnable() {
+
+            @Override
+            public void run() {
+                Debug.dump(graph, "Graph");
+            }
+        });
+    }
 
     @Test
     public void testImplies() {
@@ -51,6 +60,8 @@ public class SimpleCFGTest {
         merge.addForwardEnd(falseEnd);
         ReturnNode returnNode = graph.add(new ReturnNode(null));
         merge.setNext(returnNode);
+
+        dumpGraph(graph);
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
 
@@ -88,15 +99,15 @@ public class SimpleCFGTest {
     }
 
     public static void assertDominator(Block block, Block expectedDominator) {
-        assertEquals("dominator of " + block, expectedDominator, block.getDominator());
+        Assert.assertEquals("dominator of " + block, expectedDominator, block.getDominator());
     }
 
     public static void assertDominatedSize(Block block, int size) {
-        assertEquals("number of dominated blocks of " + block, size, block.getDominated().size());
+        Assert.assertEquals("number of dominated blocks of " + block, size, block.getDominated().size());
     }
 
     public static void assertPostdominator(Block block, Block expectedPostdominator) {
-        assertEquals("postdominator of " + block, expectedPostdominator, block.getPostdominator());
+        Assert.assertEquals("postdominator of " + block, expectedPostdominator, block.getPostdominator());
     }
 
 }

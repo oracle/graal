@@ -36,12 +36,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 
-public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements Lowerable {
+public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lowerable {
 
     @Input private final ValueNode code;
     private final Class[] signature;
 
-    public HotSpotInstalledCodeExecuteNode(Kind kind, Class[] signature, ValueNode code, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
+    public HotSpotNmethodExecuteNode(Kind kind, Class[] signature, ValueNode code, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
         super(StampFactory.forKind(kind), new ValueNode[]{arg1, arg2, arg3});
         this.code = code;
         this.signature = signature;
@@ -54,12 +54,12 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (code.isConstant() && code.asConstant().asObject() instanceof HotSpotInstalledCode) {
-            HotSpotInstalledCode hsCode = (HotSpotInstalledCode) code.asConstant().asObject();
+        if (code.isConstant() && code.asConstant().asObject() instanceof HotSpotNmethod) {
+            HotSpotNmethod nmethod = (HotSpotNmethod) code.asConstant().asObject();
             InvokeNode invoke = replaceWithInvoke(tool.getRuntime());
-            StructuredGraph graph = (StructuredGraph) hsCode.getGraph();
+            StructuredGraph graph = (StructuredGraph) nmethod.getGraph();
             if (graph != null) {
-                InliningUtil.inline(invoke, (StructuredGraph) hsCode.getGraph(), false);
+                InliningUtil.inline(invoke, (StructuredGraph) nmethod.getGraph(), false);
             }
         } else {
             replaceWithInvoke(tool.getRuntime());
@@ -72,8 +72,8 @@ public class HotSpotInstalledCodeExecuteNode extends AbstractCallNode implements
         ResolvedJavaField metaspaceMethodField = null;
         ResolvedJavaField codeBlobField = null;
         try {
-            method = tool.lookupJavaMethod(HotSpotInstalledCodeExecuteNode.class.getMethod("placeholder", Object.class, Object.class, Object.class));
-            methodField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("method"));
+            method = tool.lookupJavaMethod(HotSpotNmethodExecuteNode.class.getMethod("placeholder", Object.class, Object.class, Object.class));
+            methodField = tool.lookupJavaField(HotSpotNmethod.class.getDeclaredField("method"));
             codeBlobField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("codeBlob"));
             metaspaceMethodField = tool.lookupJavaField(HotSpotResolvedJavaMethod.class.getDeclaredField("metaspaceMethod"));
         } catch (NoSuchMethodException | SecurityException | NoSuchFieldException e) {

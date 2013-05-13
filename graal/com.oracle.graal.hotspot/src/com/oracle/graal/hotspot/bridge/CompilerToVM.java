@@ -150,11 +150,11 @@ public interface CompilerToVM {
     /**
      * Installs the result of a compilation into the code cache.
      * 
-     * @param compResult the result of a compilation
+     * @param compiledCode the result of a compilation
      * @param code the details of the installed CodeBlob are written to this object
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
-    CodeInstallResult installCode(HotSpotCompilationResult compResult, HotSpotInstalledCode code, SpeculationLog cache);
+    CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog cache);
 
     void initializeConfiguration(HotSpotVMConfig config);
 
