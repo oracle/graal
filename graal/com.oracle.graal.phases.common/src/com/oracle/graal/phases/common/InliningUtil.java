@@ -59,7 +59,7 @@ public class InliningUtil {
 
         boolean continueInlining(InliningData data);
 
-        boolean isWorthInlining(InlineInfo info, double probability, double relevance);
+        boolean isWorthInlining(InlineInfo info, double probability, double relevance, boolean fullyProcessed);
     }
 
     public static class InlineableMacroNode implements InlineableElement {
@@ -114,21 +114,22 @@ public class InliningUtil {
         }
     }
 
-    public static boolean logInlinedMethod(InlineInfo info, String msg, Object... args) {
-        logInliningDecision(info, true, msg, args);
-        return true;
+    public static boolean logInlinedMethod(InlineInfo info, boolean allowLogging, String msg, Object... args) {
+        return logInliningDecision(info, allowLogging, true, msg, args);
     }
 
     public static boolean logNotInlinedMethod(InlineInfo info, String msg, Object... args) {
-        logInliningDecision(info, false, msg, args);
-        return false;
+        return logInliningDecision(info, true, false, msg, args);
     }
 
-    public static void logInliningDecision(InlineInfo info, boolean success, String msg, final Object... args) {
-        printInlining(info, success, msg, args);
-        if (shouldLogInliningDecision()) {
-            logInliningDecision(methodName(info), success, msg, args);
+    public static boolean logInliningDecision(InlineInfo info, boolean allowLogging, boolean success, String msg, final Object... args) {
+        if (allowLogging) {
+            printInlining(info, success, msg, args);
+            if (shouldLogInliningDecision()) {
+                logInliningDecision(methodName(info), success, msg, args);
+            }
         }
+        return success;
     }
 
     public static void logInliningDecision(final String msg, final Object... args) {
@@ -140,7 +141,7 @@ public class InliningUtil {
         });
     }
 
-    private static boolean logNotInlinedMethodAndReturnFalse(Invoke invoke, String msg) {
+    private static boolean logNotInlinedMethod(Invoke invoke, String msg) {
         if (shouldLogInliningDecision()) {
             String methodString = invoke.toString() + (invoke.callTarget() == null ? " callTarget=null" : invoke.callTarget().targetName());
             logInliningDecision(methodString, false, msg, new Object[0]);
@@ -1068,19 +1069,19 @@ public class InliningUtil {
     // TODO (chaeubl): cleanup this method
     private static boolean checkInvokeConditions(Invoke invoke) {
         if (invoke.predecessor() == null || !invoke.asNode().isAlive()) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is dead code");
+            return logNotInlinedMethod(invoke, "the invoke is dead code");
         } else if (!(invoke.callTarget() instanceof MethodCallTargetNode)) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has already been lowered, or has been created as a low-level node");
+            return logNotInlinedMethod(invoke, "the invoke has already been lowered, or has been created as a low-level node");
         } else if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() == null) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "target method is null");
+            return logNotInlinedMethod(invoke, "target method is null");
         } else if (invoke.stateAfter() == null) {
             // TODO (chaeubl): why should an invoke not have a state after?
-            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke has no after state");
+            return logNotInlinedMethod(invoke, "the invoke has no after state");
         } else if (!invoke.useForInlining()) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "the invoke is marked to be not used for inlining");
+            return logNotInlinedMethod(invoke, "the invoke is marked to be not used for inlining");
         } else if (((MethodCallTargetNode) invoke.callTarget()).receiver() != null && ((MethodCallTargetNode) invoke.callTarget()).receiver().isConstant() &&
                         ((MethodCallTargetNode) invoke.callTarget()).receiver().asConstant().isNull()) {
-            return logNotInlinedMethodAndReturnFalse(invoke, "receiver is null");
+            return logNotInlinedMethod(invoke, "receiver is null");
         } else {
             return true;
         }

@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.InliningPhase.CompiledMethodInfo;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
@@ -134,25 +133,20 @@ public class GraalCompiler {
                     new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
                 }
             }
+            InliningPhase.saveGraphStatistics(graph);
         }
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
 
-        CompiledMethodInfo info = InliningPhase.compiledMethodInfo(graph.method());
-        analyzeInvokes(graph, info);
-
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
-        info.setHighLevelNodes(graph.getNodeCount());
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
-        info.setMidLevelNodes(graph.getNodeCount());
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
         LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
-        info.setLowLevelNodes(graph.getNodeCount());
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
@@ -178,21 +172,6 @@ public class GraalCompiler {
             }
         });
 
-    }
-
-    private static void analyzeInvokes(final StructuredGraph graph, CompiledMethodInfo info) {
-        NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-        double summedUpProbabilityOfRemainingInvokes = 0;
-        double maxProbabilityOfRemainingInvokes = 0;
-        int invokes = 0;
-        for (Invoke invoke : graph.getInvokes()) {
-            summedUpProbabilityOfRemainingInvokes += nodeProbabilities.get(invoke.asNode());
-            maxProbabilityOfRemainingInvokes = Math.max(maxProbabilityOfRemainingInvokes, nodeProbabilities.get(invoke.asNode()));
-            invokes++;
-        }
-        info.setSummedUpProbabilityOfRemainingInvokes(summedUpProbabilityOfRemainingInvokes);
-        info.setMaxProbabilityOfRemainingInvokes(maxProbabilityOfRemainingInvokes);
-        info.setNumberOfRemainingInvokes(invokes);
     }
 
     public static LIRGenerator emitLIR(Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, final ResolvedJavaMethod method) {
@@ -236,7 +215,6 @@ public class GraalCompiler {
         TargetMethodAssembler tasm = backend.newAssembler(lirGen, compilationResult);
         backend.emitCode(tasm, method, lirGen);
         CompilationResult result = tasm.finishTargetMethod(method, false);
-        InliningPhase.compiledMethodInfo(method).setCompiledCodeSize(result.getTargetCodeSize());
         if (!assumptions.isEmpty()) {
             result.setAssumptions(assumptions);
         }
