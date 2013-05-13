@@ -181,10 +181,18 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private static List<String> getInlineContext() {
         List<String> result = new ArrayList<>();
+        Object last = null;
         for (Object o : Debug.context()) {
             JavaMethod method = GraalDebugConfig.asJavaMethod(o);
             if (method != null) {
-                result.add(MetaUtil.format("%H::%n(%p)", method));
+                if (last != method) {
+                    result.add(MetaUtil.format("%H::%n(%p)", method));
+                } else {
+                    // This prevents multiple adjacent method context objects for the same method
+                    // from resulting in multiple IGV tree levels. This works on the
+                    // assumption that real inlining debug scopes will have a graph
+                    // context object between the inliner and inlinee context objects.
+                }
             } else if (o instanceof DebugDumpScope) {
                 DebugDumpScope debugDumpScope = (DebugDumpScope) o;
                 if (debugDumpScope.decorator && !result.isEmpty()) {
@@ -193,6 +201,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                     result.add(debugDumpScope.name);
                 }
             }
+            last = o;
         }
         if (result.isEmpty()) {
             result.add("Top Scope");
