@@ -206,7 +206,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return new AMD64AddressValue(target().wordKind, baseRegister, indexRegister, scaleEnum, displacementInt);
     }
 
-    private AMD64AddressValue asAddress(Value address) {
+    protected AMD64AddressValue asAddressValue(Value address) {
         if (address instanceof AMD64AddressValue) {
             return (AMD64AddressValue) address;
         } else {
@@ -216,7 +216,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
-        AMD64AddressValue loadAddress = asAddress(address);
+        AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
         append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
         return result;
@@ -224,7 +224,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
-        AMD64AddressValue storeAddress = asAddress(address);
+        AMD64AddressValue storeAddress = asAddressValue(address);
         LIRFrameState state = deopting != null ? state(deopting) : null;
 
         if (isConstant(inputVal)) {
