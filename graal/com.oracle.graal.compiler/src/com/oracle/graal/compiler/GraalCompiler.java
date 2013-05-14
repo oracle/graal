@@ -145,7 +145,6 @@ public class GraalCompiler {
                     new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
                 }
             }
-            InliningPhase.storeStatisticsAfterInlining(graph);
         }
         TypeProfileProxyNode.cleanFromGraph(graph);
 

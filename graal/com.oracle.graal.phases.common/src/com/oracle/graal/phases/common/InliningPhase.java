@@ -89,15 +89,6 @@ public class InliningPhase extends Phase {
         return inliningCount;
     }
 
-    public static void storeStatisticsAfterInlining(StructuredGraph graph) {
-        ResolvedJavaMethod method = graph.method();
-        if (method != null) {
-            CompiledMethodInfo info = compiledMethodInfo(method);
-            double summedUpProbabilityOfRemainingInvokes = sumUpInvokeProbabilities(graph);
-            info.setSummedUpProbabilityOfRemainingInvokes(summedUpProbabilityOfRemainingInvokes);
-        }
-    }
-
     public static void storeStatisticsAfterLowTier(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         if (method != null) {
@@ -314,15 +305,6 @@ public class InliningPhase extends Phase {
             m.getCompilerStorage().put(CompiledMethodInfo.class, info);
         }
         return info;
-    }
-
-    private static double sumUpInvokeProbabilities(StructuredGraph graph) {
-        NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-        double summedUpProbabilityOfRemainingInvokes = 0;
-        for (Invoke invoke : graph.getInvokes()) {
-            summedUpProbabilityOfRemainingInvokes += nodeProbabilities.get(invoke.asNode());
-        }
-        return summedUpProbabilityOfRemainingInvokes;
     }
 
     private abstract static class AbstractInliningPolicy implements InliningPolicy {
@@ -781,7 +763,6 @@ public class InliningPhase extends Phase {
     private static class CompiledMethodInfo {
 
         private int lowLevelNodes;
-        private double summedUpProbabilityOfRemainingInvokes;
 
         public CompiledMethodInfo() {
         }
@@ -794,12 +775,5 @@ public class InliningPhase extends Phase {
             this.lowLevelNodes = lowLevelNodes;
         }
 
-        public double summedUpProbabilityOfRemainingInvokes() {
-            return summedUpProbabilityOfRemainingInvokes;
-        }
-
-        public void setSummedUpProbabilityOfRemainingInvokes(double summedUpProbabilityOfRemainingInvokes) {
-            this.summedUpProbabilityOfRemainingInvokes = summedUpProbabilityOfRemainingInvokes;
-        }
     }
 }
