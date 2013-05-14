@@ -46,7 +46,7 @@ public class SPARCHotSpotRuntime extends HotSpotRuntime {
     }
 
     @Override
-    protected RegisterConfig createRegisterConfig(boolean isNative) {
+    protected RegisterConfig createRegisterConfig() {
         // SPARC: Create register configuration.
         return null;
     }

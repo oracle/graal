@@ -34,7 +34,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.phases.*;
 
-// @formatter:off
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final Architecture architecture;
@@ -88,11 +87,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
     }
 
     private static Register[] initAllocatable() {
+        // @formatter:off
         Register[] allocatable = {
                         rax, rbx, rcx, rdx, /*rsp,*/ rbp, rsi, rdi, r8, r9,  r10, r11, r12, r13, r14, /*r15, */
                         xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
                         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
                     };
+        // @formatter:on
 
         if (GraalOptions.RegisterPressure != null) {
             String[] names = GraalOptions.RegisterPressure.split(",");
@@ -106,29 +107,18 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         return allocatable;
     }
 
-    public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config, boolean isNative) {
+    public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
         this.architecture = architecture;
 
         if (config.windowsOs) {
-            javaGeneralParameterRegisters = new Register[] {rdx, r8, r9, rdi, rsi, rcx};
-            nativeGeneralParameterRegisters = new Register[] {rcx, rdx, r8, r9};
+            javaGeneralParameterRegisters = new Register[]{rdx, r8, r9, rdi, rsi, rcx};
+            nativeGeneralParameterRegisters = new Register[]{rcx, rdx, r8, r9};
         } else {
-            javaGeneralParameterRegisters = new Register[] {rsi, rdx, rcx, r8, r9, rdi};
-            nativeGeneralParameterRegisters = new Register[] {rdi, rsi, rdx, rcx, r8, r9};
+            javaGeneralParameterRegisters = new Register[]{rsi, rdx, rcx, r8, r9, rdi};
+            nativeGeneralParameterRegisters = new Register[]{rdi, rsi, rdx, rcx, r8, r9};
         }
 
-        if (isNative) {
-            Register[] regs = {
-                rax,  rcx,  rdx,   rbx,   rsp,   rbp,   rsi,   rdi,
-                r8,   r9,   r10,   r11,   r12,   r13,   r14,   r15,
-                xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
-                xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
-            };
-            csl = new CalleeSaveLayout(architecture, 0, -1, 8, regs);
-        } else {
-            csl = null;
-        }
-
+        csl = null;
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
     }
 
@@ -147,7 +137,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         if (type == Type.NativeCall) {
             return callingConvention(nativeGeneralParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
         }
-        // On x64, parameter locations are the same whether viewed from the caller or callee perspective   
+        // On x64, parameter locations are the same whether viewed
+        // from the caller or callee perspective
         return callingConvention(javaGeneralParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
     }
 
@@ -237,10 +228,6 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     @Override
     public String toString() {
-        String res = String.format(
-             "Allocatable: " + Arrays.toString(getAllocatableRegisters()) + "%n" +
-             "CallerSave:  " + Arrays.toString(getCallerSaveRegisters()) + "%n" +
-             "CalleeSave:  " + getCalleeSaveLayout() + "%n");
-        return res;
+        return String.format("Allocatable: " + Arrays.toString(getAllocatableRegisters()) + "%n" + "CallerSave:  " + Arrays.toString(getCallerSaveRegisters()) + "%n");
     }
 }

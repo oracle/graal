@@ -104,8 +104,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public final HotSpotVMConfig config;
 
-    protected final RegisterConfig javaABI;
-    protected final RegisterConfig nativeABI;
+    protected final RegisterConfig regConfig;
     protected final HotSpotGraalRuntime graalRuntime;
 
     private CheckCastSnippets.Templates checkcastSnippets;
@@ -181,8 +180,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     public HotSpotRuntime(HotSpotVMConfig c, HotSpotGraalRuntime graalRuntime) {
         this.config = c;
         this.graalRuntime = graalRuntime;
-        javaABI = createRegisterConfig(false);
-        nativeABI = createRegisterConfig(true);
+        regConfig = createRegisterConfig();
     }
 
     protected HotSpotRuntimeCallTarget register(HotSpotRuntimeCallTarget call) {
@@ -195,7 +193,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * Registers the details for linking a call to a {@link Stub}.
      */
     protected RuntimeCallTarget registerStubCall(Descriptor descriptor) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, javaABI, this, graalRuntime.getCompilerToVM()));
+        return register(HotSpotRuntimeCallTarget.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, regConfig, this, graalRuntime.getCompilerToVM()));
     }
 
     /**
@@ -204,14 +202,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected RuntimeCallTarget registerCRuntimeCall(Descriptor descriptor, long address) {
         Class<?> resultType = descriptor.getResultType();
         assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "C runtime call must return object thread local storage: " + descriptor;
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, nativeABI, this, graalRuntime.getCompilerToVM()));
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, regConfig, this, graalRuntime.getCompilerToVM()));
     }
 
     /**
      * Registers the details for a call to a stub that never returns.
      */
     protected RuntimeCallTarget registerNoReturnStub(Descriptor descriptor, long address, CallingConvention.Type ccType) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, PRESERVES_REGISTERS, ccType, javaABI, this, graalRuntime.getCompilerToVM()));
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, PRESERVES_REGISTERS, ccType, regConfig, this, graalRuntime.getCompilerToVM()));
     }
 
     /**
@@ -220,10 +218,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * another thread.
      */
     protected RuntimeCallTarget registerLeafCall(Descriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, effect, ccType, javaABI, this, graalRuntime.getCompilerToVM()));
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, effect, ccType, regConfig, this, graalRuntime.getCompilerToVM()));
     }
 
-    protected abstract RegisterConfig createRegisterConfig(boolean isNative);
+    protected abstract RegisterConfig createRegisterConfig();
 
     public void registerReplacements(Replacements replacements) {
         registerStubCall(VERIFY_OOP);
@@ -322,7 +320,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     private void linkRuntimeCall(Descriptor descriptor, long address, Replacements replacements) {
-        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements, nativeABI, graalRuntime.getCompilerToVM());
+        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements, regConfig, graalRuntime.getCompilerToVM());
         HotSpotRuntimeCallTarget linkage = stub.getLinkage();
         HotSpotRuntimeCallTarget targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
@@ -353,7 +351,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         if (compResult != null) {
             HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
             addExceptionHandlersComment(compResult, hcf);
-            Register fp = javaABI.getFrameRegister();
+            Register fp = regConfig.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
             for (Infopoint infopoint : compResult.getInfopoints()) {
                 if (infopoint instanceof Call) {
@@ -457,7 +455,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     @Override
     public RegisterConfig lookupRegisterConfig() {
-        return javaABI;
+        return regConfig;
     }
 
     @Override

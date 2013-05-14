@@ -93,7 +93,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     }
 
     @Override
-    protected RegisterConfig createRegisterConfig(boolean isNative) {
-        return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config, isNative);
+    protected RegisterConfig createRegisterConfig() {
+        return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config);
     }
 }
