@@ -130,6 +130,9 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     public static int referenceLoopSnippet(int n, int a) {
+        @SuppressWarnings("unused")
+        // temporary fix because ordering of ConstantNodes may differ because inlining copies nodes
+        int temp = 1;
         int sum = a;
         for (int i = 0; i < n; i++) {
             sum += i;
@@ -341,6 +344,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(referenceGraph);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
                 new CanonicalizerPhase().apply(referenceGraph, context);
+
                 assertEquals(referenceGraph, graph, excludeVirtual);
             }
         });
