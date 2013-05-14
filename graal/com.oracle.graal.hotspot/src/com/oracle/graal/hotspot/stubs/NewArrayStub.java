@@ -108,8 +108,7 @@ public class NewArrayStub extends SnippetStub {
                 if (logging()) {
                     printf("newArray: allocated new array at %p\n", memory.rawValue());
                 }
-                formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true);
-                return verifyObject(memory.toObject());
+                return verifyObject(formatArray(hub, sizeInBytes, length, headerSize, memory, Word.unsigned(arrayPrototypeMarkWord()), true));
             }
         }
         if (logging()) {
