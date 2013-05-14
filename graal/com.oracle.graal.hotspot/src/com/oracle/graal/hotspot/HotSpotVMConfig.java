@@ -366,18 +366,10 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int bciProfileWidth;
     public int typeProfileWidth;
 
-    // runtime stubs
     public long inlineCacheMissStub;
     public long handleDeoptStub;
-
     public long uncommonTrapStub;
-    public long unwindExceptionStub;
-    public long javaTimeMillisStub;
-    public long javaTimeNanosStub;
-    public long arithmeticSinStub;
-    public long arithmeticCosStub;
-    public long arithmeticTanStub;
-    public int deoptReasonNone;
+
     public long aescryptEncryptBlockStub;
     public long aescryptDecryptBlockStub;
     public long cipherBlockChainingEncryptAESCryptStub;
@@ -403,7 +395,13 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long vmErrorAddress;
     public long writeBarrierPreAddress;
     public long writeBarrierPostAddress;
+    public long javaTimeMillisAddress;
+    public long javaTimeNanosAddress;
+    public long arithmeticSinAddress;
+    public long arithmeticCosAddress;
+    public long arithmeticTanAddress;
 
+    public int deoptReasonNone;
     public int deoptReasonNullCheck;
     public int deoptReasonRangeCheck;
     public int deoptReasonClassCheck;

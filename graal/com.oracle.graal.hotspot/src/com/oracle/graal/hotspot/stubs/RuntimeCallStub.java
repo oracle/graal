@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
@@ -79,12 +80,11 @@ public class RuntimeCallStub extends Stub {
      * @param vm the Java to HotSpot C/C++ runtime interface
      */
     public RuntimeCallStub(long address, Descriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements, RegisterConfig regConfig, CompilerToVM vm) {
-        super(runtime, replacements, new HotSpotRuntimeCallTarget(sig, 0L, false, createCallingConvention(runtime, regConfig, sig), vm));
+        super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, regConfig, runtime, vm));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
         Descriptor targetSig = new Descriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
-        CallingConvention targetCc = createCallingConvention(runtime, regConfig, targetSig);
-        target = new HotSpotRuntimeCallTarget(targetSig, address, true, targetCc, vm);
+        target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, regConfig, runtime, vm);
     }
 
     /**
@@ -92,21 +92,6 @@ public class RuntimeCallStub extends Stub {
      */
     public HotSpotRuntimeCallTarget getTargetLinkage() {
         return target;
-    }
-
-    private static CallingConvention createCallingConvention(HotSpotRuntime runtime, RegisterConfig regConfig, Descriptor d) {
-        Class<?>[] argumentTypes = d.getArgumentTypes();
-        JavaType[] parameterTypes = new JavaType[argumentTypes.length];
-        for (int i = 0; i < parameterTypes.length; ++i) {
-            if (WordBase.class.isAssignableFrom(argumentTypes[i])) {
-                parameterTypes[i] = runtime.lookupJavaType(wordKind().toJavaClass());
-            } else {
-                parameterTypes[i] = runtime.lookupJavaType(argumentTypes[i]);
-            }
-        }
-        TargetDescription target = graalRuntime().getTarget();
-        JavaType returnType = runtime.lookupJavaType(d.getResultType());
-        return regConfig.getCallingConvention(Type.NativeCall, returnType, parameterTypes, target, false);
     }
 
     private Class[] createTargetParameters(Descriptor sig) {
@@ -130,7 +115,7 @@ public class RuntimeCallStub extends Stub {
         return new JavaMethod() {
 
             public Signature getSignature() {
-                Descriptor d = linkage.descriptor;
+                Descriptor d = linkage.getDescriptor();
                 Class<?>[] arguments = d.getArgumentTypes();
                 JavaType[] parameters = new JavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
@@ -140,7 +125,7 @@ public class RuntimeCallStub extends Stub {
             }
 
             public String getName() {
-                return linkage.descriptor.getName();
+                return linkage.getDescriptor().getName();
             }
 
             public JavaType getDeclaringClass() {
@@ -199,7 +184,7 @@ public class RuntimeCallStub extends Stub {
             InvokeNode object = createInvoke(builder, HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
             result = createInvoke(builder, StubUtil.class, "verifyObject", object);
         }
-        builder.add(new ReturnNode(linkage.descriptor.getResultType() == void.class ? null : result));
+        builder.add(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(builder.graph, "Initial stub graph");
@@ -255,9 +240,9 @@ public class RuntimeCallStub extends Stub {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.add(new CRuntimeCall(target.descriptor, targetArguments));
+            return builder.add(new CRuntimeCall(target.getDescriptor(), targetArguments));
         } else {
-            return builder.add(new CRuntimeCall(target.descriptor, locals));
+            return builder.add(new CRuntimeCall(target.getDescriptor(), locals));
         }
     }
 

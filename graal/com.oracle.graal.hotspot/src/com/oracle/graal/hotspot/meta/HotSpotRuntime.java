@@ -26,10 +26,10 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
-import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.wordKind;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
@@ -40,7 +40,7 @@ import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.VerifyOopStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.IDENTITY_HASHCODE;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.LogObjectStub.*;
@@ -74,6 +74,7 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.nodes.*;
@@ -103,8 +104,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public final HotSpotVMConfig config;
 
-    protected final RegisterConfig regConfig;
-    protected final RegisterConfig globalStubRegConfig;
+    protected final RegisterConfig javaABI;
+    protected final RegisterConfig nativeABI;
     protected final HotSpotGraalRuntime graalRuntime;
 
     private CheckCastSnippets.Templates checkcastSnippets;
@@ -177,292 +178,90 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    protected AllocatableValue ret(Kind kind) {
-        if (kind == Kind.Void) {
-            return ILLEGAL;
-        }
-        return globalStubRegConfig.getReturnRegister(kind).asValue(kind);
-    }
-
-    protected AllocatableValue[] javaCallingConvention(Kind... arguments) {
-        return callingConvention(arguments, RuntimeCall);
-    }
-
-    protected AllocatableValue[] nativeCallingConvention(Kind... arguments) {
-        return callingConvention(arguments, NativeCall);
-    }
-
-    private AllocatableValue[] callingConvention(Kind[] arguments, CallingConvention.Type type) {
-        AllocatableValue[] result = new AllocatableValue[arguments.length];
-
-        TargetDescription target = graalRuntime.getTarget();
-        int currentStackOffset = 0;
-        for (int i = 0; i < arguments.length; i++) {
-            Kind kind = arguments[i];
-            Register[] ccRegs = globalStubRegConfig.getCallingConventionRegisters(type, kind);
-            if (i < ccRegs.length) {
-                result[i] = ccRegs[i].asValue(kind);
-            } else {
-                result[i] = StackSlot.get(kind.getStackKind(), currentStackOffset, false);
-                currentStackOffset += Math.max(target.arch.getSizeInBytes(kind), target.wordSize);
-            }
-        }
-        return result;
-    }
-
-    public HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
-        this.config = config;
+    public HotSpotRuntime(HotSpotVMConfig c, HotSpotGraalRuntime graalRuntime) {
+        this.config = c;
         this.graalRuntime = graalRuntime;
-        regConfig = createRegisterConfig(false);
-        globalStubRegConfig = createRegisterConfig(true);
-        Kind word = graalRuntime.getTarget().wordKind;
+        javaABI = createRegisterConfig(false);
+        nativeABI = createRegisterConfig(true);
+    }
 
-        // @formatter:off
-
-        addStubCall(VERIFY_OOP,
-                        /*             ret */ ret(Kind.Object),
-                        /* arg0:    object */ javaCallingConvention(Kind.Object));
-
-        addStubCall(OSR_MIGRATION_END,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    buffer */ javaCallingConvention(word));
-
-        addCRuntimeCall(OSR_MIGRATION_END_C, config.osrMigrationEndAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    buffer */ nativeCallingConvention(word));
-
-        addRuntimeCall(UNCOMMON_TRAP, config.uncommonTrapStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void));
-
-        addCRuntimeCall(EXCEPTION_HANDLER_FOR_PC, config.exceptionHandlerForPcAddress,
-                        /*             ret */ ret(word),
-                        /* arg0:    thread */ nativeCallingConvention(word));
-
-        addStubCall(UNWIND_EXCEPTION_TO_CALLER,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0: exception */ javaCallingConvention(Kind.Object,
-                    /* arg1: returnAddress */                       word));
-
-        addCRuntimeCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, config.exceptionHandlerForReturnAddressAddress,
-                        /*             ret */ ret(word),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                    /* arg1: returnAddress */                         word));
-
-        addStubCall(NEW_ARRAY,
-                        /*             ret */ ret(Kind.Object),
-                        /* arg0:       hub */ javaCallingConvention(word,
-                        /* arg1:    length */ Kind.Int));
-
-        addCRuntimeCall(NEW_ARRAY_C, config.newArrayAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:       hub */                         word,
-                        /* arg2:    length */                         Kind.Int));
-
-        addStubCall(NEW_INSTANCE,
-                        /*             ret */ ret(Kind.Object),
-                        /* arg0:       hub */ javaCallingConvention(word));
-
-        addCRuntimeCall(NEW_INSTANCE_C, config.newInstanceAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:       hub */                         word));
-
-        addStubCall(NEW_MULTI_ARRAY,
-                        /*             ret */ ret(Kind.Object),
-                        /* arg0:       hub */ javaCallingConvention(word,
-                        /* arg1:      rank */                       Kind.Int,
-                        /* arg2:      dims */                       word));
-
-        addCRuntimeCall(NEW_MULTI_ARRAY_C, config.newMultiArrayAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:       hub */                         word,
-                        /* arg2:      rank */                         Kind.Int,
-                        /* arg3:      dims */                         word));
-
-        addRuntimeCall(JAVA_TIME_MILLIS, config.javaTimeMillisStub,
-                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
-                        /*             ret */ ret(Kind.Long));
-
-        addRuntimeCall(JAVA_TIME_NANOS, config.javaTimeNanosStub,
-                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
-                        /*             ret */ ret(Kind.Long));
-
-        addRuntimeCall(ARITHMETIC_SIN, config.arithmeticSinStub,
-                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
-                        /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ javaCallingConvention(Kind.Double));
-
-        addRuntimeCall(ARITHMETIC_COS, config.arithmeticCosStub,
-                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
-                        /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ javaCallingConvention(Kind.Double));
-
-        addRuntimeCall(ARITHMETIC_TAN, config.arithmeticTanStub,
-                        /*           temps */ this.regConfig.getCallerSaveRegisters(),
-                        /*             ret */ ret(Kind.Double),
-                        /* arg0:     index */ javaCallingConvention(Kind.Double));
-
-        addStubCall(LOG_PRIMITIVE,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:  typeChar */ javaCallingConvention(Kind.Int,
-                        /* arg1:     value */                       Kind.Long,
-                        /* arg2:   newline */                       Kind.Boolean));
-
-        addCRuntimeCall(LOG_PRIMITIVE_C, config.logPrimitiveAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:  typeChar */                         Kind.Char,
-                        /* arg2:     value */                         Kind.Long,
-                        /* arg3:   newline */                         Kind.Boolean));
-
-        addStubCall(LOG_PRINTF,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    format */ javaCallingConvention(Kind.Object,
-                        /* arg1:     value */                       Kind.Long,
-                        /* arg2:     value */                       Kind.Long,
-                        /* arg3:     value */                       Kind.Long));
-
-        addCRuntimeCall(LOG_PRINTF_C, config.logObjectAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:    format */                         Kind.Object,
-                        /* arg2:        v1 */                         Kind.Long,
-                        /* arg3:        v2 */                         Kind.Long,
-                        /* arg4:        v3 */                         Kind.Long));
-
-        addCRuntimeCall(VM_MESSAGE_C, config.vmMessageAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:   vmError */ nativeCallingConvention(Kind.Boolean,
-                        /* arg1:    format */                         word,
-                        /* arg2:     value */                         Kind.Long,
-                        /* arg3:     value */                         Kind.Long,
-                        /* arg4:     value */                         Kind.Long));
-
-        addStubCall(LOG_OBJECT,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    object */ javaCallingConvention(Kind.Object,
-                        /* arg1:     flags */                       Kind.Int));
-
-        addCRuntimeCall(LOG_OBJECT_C, config.logObjectAddress,
-                        /*             ret */ ret(Kind.Void),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                        /* arg1:    object */                         Kind.Object,
-                        /* arg2:     flags */                         Kind.Int));
-
-        addStubCall(THREAD_IS_INTERRUPTED,
-                        /*             ret */ ret(Kind.Boolean),
-                        /* arg0:    thread */ javaCallingConvention(Kind.Object,
-                 /* arg1: clearInterrupted */                       Kind.Boolean));
-
-        addCRuntimeCall(THREAD_IS_INTERRUPTED_C, config.threadIsInterruptedAddress,
-                        /*             ret */ ret(Kind.Boolean),
-                        /* arg0:    thread */ nativeCallingConvention(word,
-                   /* arg1: receiverThread */                         Kind.Object,
-              /* arg1: clearInterrupted */                            Kind.Boolean));
-
-        addRuntimeCall(DEOPT_HANDLER, config.handleDeoptStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void));
-
-        addRuntimeCall(IC_MISS_HANDLER, config.inlineCacheMissStub,
-                        /*           temps */ null,
-                        /*             ret */ ret(Kind.Void));
-
-        addStubCall(VM_ERROR,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0:  where */ javaCallingConvention(Kind.Object,
-                        /* arg1: format */                       Kind.Object,
-                        /* arg2:  value */                       Kind.Long));
-
-        addCRuntimeCall(VM_ERROR_C, config.vmErrorAddress,
-                        /*          ret */ ret(Kind.Void),
-                        /* arg0: thread */ nativeCallingConvention(word,
-                        /* arg0:  where */                         Kind.Object,
-                        /* arg1: format */                         Kind.Object,
-                        /* arg2:  value */                         Kind.Long));
-        // @formatter:on
+    protected HotSpotRuntimeCallTarget register(HotSpotRuntimeCallTarget call) {
+        HotSpotRuntimeCallTarget oldValue = runtimeCalls.put(call.getDescriptor(), call);
+        assert oldValue == null;
+        return call;
     }
 
     /**
-     * Registers the details for linking a call to a compiled {@link Stub}.
-     * 
-     * @param descriptor name and signature of the call
-     * @param ret where the call returns its result
-     * @param args where arguments are passed to the call
+     * Registers the details for linking a call to a {@link Stub}.
      */
-    protected RuntimeCallTarget addStubCall(Descriptor descriptor, AllocatableValue ret, AllocatableValue... args) {
-        return addRuntimeCall(descriptor, 0L, null, ret, args);
-    }
-
-    /**
-     * Registers the details for a jump to a target that has a signature (i.e. expects arguments in
-     * specified locations).
-     * 
-     * @param descriptor name and signature of the jump target
-     * @param args where arguments are passed to the call
-     */
-    protected RuntimeCallTarget addJump(Descriptor descriptor, AllocatableValue... args) {
-        return addRuntimeCall(descriptor, HotSpotRuntimeCallTarget.JUMP_ADDRESS, null, ret(Kind.Void), args);
+    protected RuntimeCallTarget registerStubCall(Descriptor descriptor) {
+        return register(HotSpotRuntimeCallTarget.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, javaABI, this, graalRuntime.getCompilerToVM()));
     }
 
     /**
      * Registers the details for a call to a runtime C/C++ function.
-     * 
-     * @param descriptor name and signature of the call
-     * @param args where arguments are passed to the call
      */
-    protected RuntimeCallTarget addCRuntimeCall(Descriptor descriptor, long address, AllocatableValue ret, AllocatableValue... args) {
-        assert descriptor.getResultType().isPrimitive() || Word.class.isAssignableFrom(descriptor.getResultType()) : "C runtime call cannot have Object return type - objects must be returned via thread local storage: " +
-                        descriptor;
-        return addRuntimeCall(descriptor, address, true, null, ret, args);
-    }
-
-    protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, Register[] tempRegs, AllocatableValue ret, AllocatableValue... args) {
-        return addRuntimeCall(descriptor, address, false, tempRegs, ret, args);
+    protected RuntimeCallTarget registerCRuntimeCall(Descriptor descriptor, long address) {
+        Class<?> resultType = descriptor.getResultType();
+        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "C runtime call must return object thread local storage: " + descriptor;
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, nativeABI, this, graalRuntime.getCompilerToVM()));
     }
 
     /**
-     * Registers the details for linking a runtime call.
-     * 
-     * @param descriptor name and signature of the call
-     * @param address target address of the call
-     * @param tempRegs temporary registers used (and killed) by the call (null if none)
-     * @param ret where the call returns its result
-     * @param args where arguments are passed to the call
+     * Registers the details for a call to a stub that never returns.
      */
-    protected RuntimeCallTarget addRuntimeCall(Descriptor descriptor, long address, boolean isCRuntimeCall, Register[] tempRegs, AllocatableValue ret, AllocatableValue... args) {
-        AllocatableValue[] temps = tempRegs == null || tempRegs.length == 0 ? AllocatableValue.NONE : new AllocatableValue[tempRegs.length];
-        for (int i = 0; i < temps.length; i++) {
-            temps[i] = tempRegs[i].asValue();
-        }
-        assert checkAssignable(descriptor.getResultType(), ret) : descriptor + " incompatible with result location " + ret;
-        Class[] argTypes = descriptor.getArgumentTypes();
-        assert argTypes.length == args.length : descriptor + " incompatible with number of argument locations: " + args.length;
-        for (int i = 0; i < argTypes.length; i++) {
-            assert checkAssignable(argTypes[i], args[i]) : descriptor + " incompatible with argument location " + i + ": " + args[i];
-        }
-        HotSpotRuntimeCallTarget runtimeCall = new HotSpotRuntimeCallTarget(descriptor, address, isCRuntimeCall, new CallingConvention(temps, 0, ret, args), graalRuntime.getCompilerToVM());
-        runtimeCalls.put(descriptor, runtimeCall);
-        return runtimeCall;
+    protected RuntimeCallTarget registerNoReturnStub(Descriptor descriptor, long address, CallingConvention.Type ccType) {
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, PRESERVES_REGISTERS, ccType, javaABI, this, graalRuntime.getCompilerToVM()));
     }
 
-    private boolean checkAssignable(Class spec, Value value) {
-        Kind kind = value.getKind();
-        if (kind == Kind.Illegal) {
-            kind = Kind.Void;
-        }
-        if (WordBase.class.isAssignableFrom(spec)) {
-            return kind == graalRuntime.getTarget().wordKind;
-        }
-        return kind == Kind.fromJavaClass(spec);
+    /**
+     * Registers the details for a call to a leaf function. A leaf function does not lock, GC or
+     * throw exceptions. That is, the thread's execution state during the call is never inspected by
+     * another thread.
+     */
+    protected RuntimeCallTarget registerLeafCall(Descriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
+        return register(HotSpotRuntimeCallTarget.create(descriptor, address, effect, ccType, javaABI, this, graalRuntime.getCompilerToVM()));
     }
 
-    protected abstract RegisterConfig createRegisterConfig(boolean globalStubConfig);
+    protected abstract RegisterConfig createRegisterConfig(boolean isNative);
 
     public void registerReplacements(Replacements replacements) {
+        registerStubCall(VERIFY_OOP);
+        registerStubCall(OSR_MIGRATION_END);
+        registerStubCall(NEW_ARRAY);
+        registerStubCall(UNWIND_EXCEPTION_TO_CALLER);
+        registerStubCall(NEW_INSTANCE);
+        registerStubCall(NEW_MULTI_ARRAY);
+        registerStubCall(LOG_PRIMITIVE);
+        registerStubCall(LOG_PRINTF);
+        registerStubCall(LOG_OBJECT);
+        registerStubCall(THREAD_IS_INTERRUPTED);
+        registerStubCall(VM_ERROR);
+
+        HotSpotVMConfig c = config;
+        registerNoReturnStub(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall);
+        registerNoReturnStub(DEOPT_HANDLER, c.handleDeoptStub, NativeCall);
+        registerNoReturnStub(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall);
+
+        registerLeafCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS);
+        registerLeafCall(JAVA_TIME_NANOS, c.javaTimeNanosAddress, NativeCall, DESTROYS_REGISTERS);
+        registerLeafCall(ARITHMETIC_SIN, c.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS);
+        registerLeafCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS);
+        registerLeafCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS);
+
+        registerCRuntimeCall(OSR_MIGRATION_END_C, c.osrMigrationEndAddress);
+        registerCRuntimeCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress);
+        registerCRuntimeCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress);
+        registerCRuntimeCall(NEW_ARRAY_C, c.newArrayAddress);
+        registerCRuntimeCall(NEW_INSTANCE_C, c.newInstanceAddress);
+        registerCRuntimeCall(NEW_MULTI_ARRAY_C, c.newMultiArrayAddress);
+        registerCRuntimeCall(LOG_PRIMITIVE_C, c.logPrimitiveAddress);
+        registerCRuntimeCall(LOG_PRINTF_C, c.logObjectAddress);
+        registerCRuntimeCall(VM_MESSAGE_C, c.vmMessageAddress);
+        registerCRuntimeCall(LOG_OBJECT_C, c.logObjectAddress);
+        registerCRuntimeCall(THREAD_IS_INTERRUPTED_C, c.threadIsInterruptedAddress);
+        registerCRuntimeCall(VM_ERROR_C, c.vmErrorAddress);
+
         if (GraalOptions.IntrinsifyObjectMethods) {
             replacements.registerSubstitutions(ObjectSubstitutions.class);
         }
@@ -486,26 +285,27 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             replacements.registerSubstitutions(ReflectionSubstitutions.class);
         }
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);
-        monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        TargetDescription target = graalRuntime.getTarget();
+        checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, target);
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, target);
+        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, target, config.useTLAB);
+        monitorSnippets = new MonitorSnippets.Templates(this, replacements, target, config.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, target);
+        boxingSnippets = new BoxingSnippets.Templates(this, replacements, target);
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, target);
 
-        link(new NewInstanceStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_INSTANCE)));
-        link(new NewArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_ARRAY)));
-        link(new NewMultiArrayStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(NEW_MULTI_ARRAY)));
-        link(new ThreadIsInterruptedStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(THREAD_IS_INTERRUPTED)));
-        link(new ExceptionHandlerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
-        link(new VerifyOopStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VERIFY_OOP)));
-        link(new OSRMigrationEndStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(OSR_MIGRATION_END)));
-        link(new LogPrimitiveStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRIMITIVE)));
-        link(new LogObjectStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_OBJECT)));
-        link(new LogPrintfStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(LOG_PRINTF)));
-        link(new VMErrorStub(this, replacements, graalRuntime.getTarget(), runtimeCalls.get(VM_ERROR)));
+        link(new NewInstanceStub(this, replacements, target, runtimeCalls.get(NEW_INSTANCE)));
+        link(new NewArrayStub(this, replacements, target, runtimeCalls.get(NEW_ARRAY)));
+        link(new NewMultiArrayStub(this, replacements, target, runtimeCalls.get(NEW_MULTI_ARRAY)));
+        link(new ThreadIsInterruptedStub(this, replacements, target, runtimeCalls.get(THREAD_IS_INTERRUPTED)));
+        link(new ExceptionHandlerStub(this, replacements, target, runtimeCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(this, replacements, target, runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
+        link(new VerifyOopStub(this, replacements, target, runtimeCalls.get(VERIFY_OOP)));
+        link(new OSRMigrationEndStub(this, replacements, target, runtimeCalls.get(OSR_MIGRATION_END)));
+        link(new LogPrimitiveStub(this, replacements, target, runtimeCalls.get(LOG_PRIMITIVE)));
+        link(new LogObjectStub(this, replacements, target, runtimeCalls.get(LOG_OBJECT)));
+        link(new LogPrintfStub(this, replacements, target, runtimeCalls.get(LOG_PRINTF)));
+        link(new VMErrorStub(this, replacements, target, runtimeCalls.get(VM_ERROR)));
 
         linkRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
         linkRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
@@ -518,14 +318,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     private static void link(Stub stub) {
-        stub.getLinkage().setStub(stub);
+        stub.getLinkage().setCompiledStub(stub);
     }
 
     private void linkRuntimeCall(Descriptor descriptor, long address, Replacements replacements) {
-        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements, globalStubRegConfig, graalRuntime.getCompilerToVM());
+        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements, nativeABI, graalRuntime.getCompilerToVM());
         HotSpotRuntimeCallTarget linkage = stub.getLinkage();
         HotSpotRuntimeCallTarget targetLinkage = stub.getTargetLinkage();
-        linkage.setStub(stub);
+        linkage.setCompiledStub(stub);
         runtimeCalls.put(linkage.getDescriptor(), linkage);
         runtimeCalls.put(targetLinkage.getDescriptor(), targetLinkage);
     }
@@ -553,7 +353,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         if (compResult != null) {
             HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
             addExceptionHandlersComment(compResult, hcf);
-            Register fp = regConfig.getFrameRegister();
+            Register fp = javaABI.getFrameRegister();
             RefMapFormatter slotFormatter = new RefMapFormatter(target.arch, target.wordSize, fp, 0);
             for (Infopoint infopoint : compResult.getInfopoints()) {
                 if (infopoint instanceof Call) {
@@ -657,7 +457,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     @Override
     public RegisterConfig lookupRegisterConfig() {
-        return regConfig;
+        return javaABI;
     }
 
     @Override
