@@ -23,6 +23,8 @@
 // Checkstyle: stop
 package com.oracle.graal.jtt.hotpath;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.jtt.*;
 import org.junit.*;
 
@@ -48,7 +50,7 @@ public class HP_field01 extends JTTTest {
     }
 
     @Override
-    public void before() {
+    public void before(Method m) {
         a = 0;
         b = 0;
         c = 0;
