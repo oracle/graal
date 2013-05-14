@@ -892,7 +892,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         if (value instanceof VirtualObjectNode) {
                             value = allocations[commit.getVirtualObjects().indexOf(value)];
                         }
-                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+                        }
                     }
                 } else {
                     VirtualArrayNode array = (VirtualArrayNode) virtual;
@@ -904,7 +906,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             assert indexOf != -1 : commit + " " + value;
                             value = allocations[indexOf];
                         }
-                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
+                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            graph.addBeforeFixed(commit,
+                                            graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
+                        }
                     }
                 }
             }
