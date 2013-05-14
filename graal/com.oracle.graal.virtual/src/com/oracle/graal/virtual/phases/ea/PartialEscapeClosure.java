@@ -204,7 +204,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            if (!(node instanceof VirtualizableAllocation)) {
+            if (!(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode)) {
                 changed = true;
             }
             return true;
