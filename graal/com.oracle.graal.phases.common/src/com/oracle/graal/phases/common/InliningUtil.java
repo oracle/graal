@@ -249,7 +249,7 @@ public class InliningUtil {
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
          **/
-        void inline(MetaAccessProvider runtime, Assumptions assumptions);
+        void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
@@ -337,7 +337,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
             inline(invoke, concrete, inlineableElement, assumptions, true);
         }
 
@@ -440,7 +440,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
             createGuard(graph(), runtime);
             inline(invoke, concrete, inlineableElement, assumptions, false);
         }
@@ -560,13 +560,13 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
             // receiver null check must be the first node
             InliningUtil.receiverNullCheck(invoke);
             if (hasSingleMethod()) {
                 inlineSingleMethod(graph(), runtime, assumptions);
             } else {
-                inlineMultipleMethods(graph(), runtime, assumptions);
+                inlineMultipleMethods(graph(), runtime, assumptions, replacements);
             }
         }
 
@@ -578,7 +578,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
+        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -685,14 +685,11 @@ public class InliningUtil {
                     current = ((FixedWithNextNode) current).next();
                 } while (current instanceof FixedWithNextNode);
 
-                // TEMP:
-// if (opportunities > 0) {
-// metricInliningTailDuplication.increment();
-// Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)",
-// opportunities);
-// TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION,
-// replacementNodes, new HighTierContext(runtime, assumptions, replacements));
-// }
+                if (opportunities > 0) {
+                    metricInliningTailDuplication.increment();
+                    Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new HighTierContext(runtime, assumptions, replacements));
+                }
             }
         }
 
@@ -990,9 +987,9 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
             assumptions.record(takenAssumption);
-            super.inline(runtime, assumptions);
+            super.inline(runtime, assumptions, replacements);
         }
 
         @Override

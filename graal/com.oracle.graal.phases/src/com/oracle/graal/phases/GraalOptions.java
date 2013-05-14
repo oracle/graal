@@ -58,12 +58,9 @@ public final class GraalOptions {
     public static boolean IterativeInlining                  = ____;
 
     public static int     TrivialInliningSize                = 10;
-    public static int     MaximumInliningSize                = 180;
-    public static int     SmallCompiledHighLevelGraphSize    = 0;
-    public static int     SmallCompiledMidLevelGraphSize     = 0;
-    public static int     SmallCompiledLowLevelGraphSize     = 250;
+    public static int     MaximumInliningSize                = 300;
+    public static int     SmallCompiledLowLevelGraphSize     = 300;
     public static double  LimitInlinedInvokes                = 10.0;
-    public static boolean PropagateArgumentsDuringInlining   = true;
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;
