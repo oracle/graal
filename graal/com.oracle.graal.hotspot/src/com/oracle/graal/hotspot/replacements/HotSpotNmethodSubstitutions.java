@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
+package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
-
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 
-/**
- * Stub called from {@link VerifyOopStubCall}.
- */
-public class VerifyOopStub extends CRuntimeStub {
+@ClassSubstitution(HotSpotNmethod.class)
+public class HotSpotNmethodSubstitutions {
 
-    public VerifyOopStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
-        super(runtime, replacements, target, linkage);
+    @MethodSubstitution(isStatic = false)
+    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
+        return HotSpotNmethodExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
     }
 
-    @Snippet
-    private static Object verifyOop(Object object) {
-        return verifyObject(object);
+    @Fold
+    private static Class[] getSignature() {
+        return new Class[]{Object.class, Object.class, Object.class};
     }
+
 }

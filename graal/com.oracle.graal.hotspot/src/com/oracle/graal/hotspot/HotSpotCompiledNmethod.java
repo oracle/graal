@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.replacements.Snippet.Fold;
 
-@ClassSubstitution(HotSpotInstalledCode.class)
-public class HotSpotInstalledCodeSubstitutions {
+/**
+ * {@link HotSpotCompiledCode} destined for installation as an nmethod.
+ */
+public final class HotSpotCompiledNmethod extends HotSpotCompiledCode {
 
-    @MethodSubstitution(isStatic = false)
-    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
-        return HotSpotInstalledCodeExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
+    private static final long serialVersionUID = 1492412603674834024L;
+    public final HotSpotResolvedJavaMethod method;
+    public final int entryBCI;
+
+    public HotSpotCompiledNmethod(HotSpotResolvedJavaMethod method, int entryBCI, CompilationResult compResult) {
+        super(compResult);
+        this.method = method;
+        this.entryBCI = entryBCI;
     }
-
-    @Fold
-    private static Class[] getSignature() {
-        return new Class[]{Object.class, Object.class, Object.class};
-    }
-
 }

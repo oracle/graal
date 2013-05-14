@@ -198,7 +198,19 @@ public abstract class Architecture {
         }
     }
 
+    /**
+     * Determine whether a kind can be stored in a register of a given category.
+     * 
+     * @param category the category of the register
+     * @param kind the kind that should be stored in the register
+     */
     public abstract boolean canStoreValue(RegisterCategory category, PlatformKind kind);
 
+    /**
+     * Return the largest kind that can be stored in a register of a given category.
+     * 
+     * @param category the category of the register
+     * @return the largest kind that can be stored in a register {@code category}
+     */
     public abstract PlatformKind getLargestStorableKind(RegisterCategory category);
 }

@@ -30,7 +30,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 
-public class HotSpotInstalledCodeTest extends GraalCompilerTest {
+public class HotSpotNmethodTest extends GraalCompilerTest {
 
     private static final int ITERATION_COUNT = 100000;
 
@@ -38,35 +38,35 @@ public class HotSpotInstalledCodeTest extends GraalCompilerTest {
     public void testInstallCodeInvalidation() {
         final ResolvedJavaMethod testJavaMethod = runtime.lookupJavaMethod(getMethod("foo"));
         final StructuredGraph graph = parse("otherFoo");
-        final HotSpotInstalledCode installedCode = (HotSpotInstalledCode) getCode(testJavaMethod, graph);
-        Assert.assertTrue(installedCode.isValid());
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        Assert.assertTrue(nmethod.isValid());
         Object result;
         try {
-            result = installedCode.execute("a", "b", "c");
+            result = nmethod.execute("a", "b", "c");
             assertEquals(43, result);
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");
         }
-        Assert.assertTrue(installedCode.isValid());
-        installedCode.invalidate();
-        Assert.assertFalse(installedCode.isValid());
+        Assert.assertTrue(nmethod.isValid());
+        nmethod.invalidate();
+        Assert.assertFalse(nmethod.isValid());
         try {
-            result = installedCode.execute(null, null, null);
+            result = nmethod.execute(null, null, null);
             Assert.fail("Code was not invalidated");
         } catch (InvalidInstalledCodeException e) {
         }
-        Assert.assertFalse(installedCode.isValid());
+        Assert.assertFalse(nmethod.isValid());
     }
 
     @Test
     public void testInstalledCodeCalledFromCompiledCode() {
         final ResolvedJavaMethod testJavaMethod = runtime.lookupJavaMethod(getMethod("foo"));
         final StructuredGraph graph = parse("otherFoo");
-        final HotSpotInstalledCode installedCode = (HotSpotInstalledCode) getCode(testJavaMethod, graph);
-        Assert.assertTrue(installedCode.isValid());
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        Assert.assertTrue(nmethod.isValid());
         try {
             for (int i = 0; i < ITERATION_COUNT; ++i) {
-                installedCode.execute("a", "b", "c");
+                nmethod.execute("a", "b", "c");
             }
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");

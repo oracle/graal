@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * Node implementing a call to HotSpot's {@code graal_monitorenter} stub.
+ * Node implementing a call to {@code GraalRuntime::monitorenter}.
  */
 public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
@@ -52,5 +52,5 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
     }
 
     @NodeIntrinsic
-    public static native void call(Object hub, Word lock);
+    public static native void call(Object object, Word lock);
 }

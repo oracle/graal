@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
@@ -63,11 +64,11 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
     private static void unwindExceptionToCaller(Object exception, Word returnAddress) {
         Pointer exceptionOop = Word.fromObject(exception);
         if (logging()) {
-            StubUtil.printf("unwinding exception %p (", exceptionOop.rawValue());
-            StubUtil.decipher(exceptionOop.rawValue());
-            StubUtil.printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
-            StubUtil.decipher(returnAddress.rawValue());
-            StubUtil.printf(")\n");
+            printf("unwinding exception %p (", exceptionOop.rawValue());
+            decipher(exceptionOop.rawValue());
+            printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
+            decipher(returnAddress.rawValue());
+            printf(")\n");
         }
         checkNoExceptionInThread(assertionsEnabled());
         checkExceptionNotNull(assertionsEnabled(), exception);
@@ -75,9 +76,9 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
         Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread(), returnAddress);
 
         if (logging()) {
-            StubUtil.printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
-            StubUtil.decipher(handlerInCallerPc.rawValue());
-            StubUtil.printf(")\n");
+            printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());
+            decipher(handlerInCallerPc.rawValue());
+            printf(")\n");
         }
 
         jumpToExceptionHandlerInCaller(handlerInCallerPc, exception, returnAddress);
@@ -96,7 +97,7 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
         return enabled || graalRuntime().getConfig().cAssertions;
     }
 
-    public static final Descriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = StubUtil.descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", false);
+    public static final Descriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress", false);
 
     @NodeIntrinsic(value = CRuntimeCall.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForReturnAddress(@ConstantNodeParameter Descriptor exceptionHandlerForReturnAddress, Word thread, Word returnAddress);

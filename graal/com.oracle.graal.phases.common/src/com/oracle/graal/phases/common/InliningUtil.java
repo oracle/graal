@@ -1265,7 +1265,7 @@ public class InliningUtil {
         StructuredGraph graph = invoke.asNode().graph();
 
         FrameState stateAfter = invoke.stateAfter();
-        assert stateAfter.isAlive();
+        assert stateAfter == null || stateAfter.isAlive();
 
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
         ArrayList<Node> nodes = new ArrayList<>();
@@ -1338,39 +1338,40 @@ public class InliningUtil {
             }
         }
 
-        FrameState outerFrameState = null;
-        int callerLockDepth = stateAfter.nestedLockDepth();
-        for (Node node : duplicates.values()) {
-            if (node instanceof FrameState) {
-                FrameState frameState = (FrameState) node;
-                assert frameState.bci != FrameState.BEFORE_BCI : frameState;
-                if (frameState.bci == FrameState.AFTER_BCI) {
-                    frameState.replaceAndDelete(stateAfter);
-                } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
-                    if (frameState.isAlive()) {
-                        assert stateAtExceptionEdge != null;
-                        frameState.replaceAndDelete(stateAtExceptionEdge);
-                    } else {
-                        assert stateAtExceptionEdge == null;
-                    }
-                } else {
-                    // only handle the outermost frame states
-                    if (frameState.outerFrameState() == null) {
-                        assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
-                        if (outerFrameState == null) {
-                            outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.asNode().kind());
-                            outerFrameState.setDuringCall(true);
+        if (stateAfter != null) {
+            FrameState outerFrameState = null;
+            int callerLockDepth = stateAfter.nestedLockDepth();
+            for (Node node : duplicates.values()) {
+                if (node instanceof FrameState) {
+                    FrameState frameState = (FrameState) node;
+                    assert frameState.bci != FrameState.BEFORE_BCI : frameState;
+                    if (frameState.bci == FrameState.AFTER_BCI) {
+                        frameState.replaceAndDelete(stateAfter);
+                    } else if (frameState.bci == FrameState.AFTER_EXCEPTION_BCI) {
+                        if (frameState.isAlive()) {
+                            assert stateAtExceptionEdge != null;
+                            frameState.replaceAndDelete(stateAtExceptionEdge);
+                        } else {
+                            assert stateAtExceptionEdge == null;
                         }
-                        frameState.setOuterFrameState(outerFrameState);
+                    } else {
+                        // only handle the outermost frame states
+                        if (frameState.outerFrameState() == null) {
+                            assert frameState.bci == FrameState.INVALID_FRAMESTATE_BCI || frameState.method() == inlineGraph.method();
+                            if (outerFrameState == null) {
+                                outerFrameState = stateAfter.duplicateModified(invoke.bci(), stateAfter.rethrowException(), invoke.asNode().kind());
+                                outerFrameState.setDuringCall(true);
+                            }
+                            frameState.setOuterFrameState(outerFrameState);
+                        }
                     }
                 }
-            }
-            if (callerLockDepth != 0 && node instanceof MonitorReference) {
-                MonitorReference monitor = (MonitorReference) node;
-                monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
+                if (callerLockDepth != 0 && node instanceof MonitorReference) {
+                    MonitorReference monitor = (MonitorReference) node;
+                    monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
+                }
             }
         }
-
         Node returnValue = null;
         if (returnNode != null) {
             if (returnNode.result() instanceof LocalNode) {

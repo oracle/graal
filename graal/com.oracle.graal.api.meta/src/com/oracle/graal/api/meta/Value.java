@@ -81,11 +81,7 @@ public abstract class Value implements Serializable {
 
     @Override
     public int hashCode() {
-        final int prime = 41;
-        int result = 1;
-        result = prime * result + kind.hashCode();
-        result = prime * result + platformKind.hashCode();
-        return result;
+        return 41 + platformKind.hashCode();
     }
 
     @Override

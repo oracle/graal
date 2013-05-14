@@ -29,12 +29,12 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 
 @ServiceProvider(ReplacementsProvider.class)
-public class HotSpotInstalledCodeIntrinsics implements ReplacementsProvider {
+public class HotSpotNmethodIntrinsics implements ReplacementsProvider {
 
     @Override
     public void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
         if (GraalOptions.IntrinsifyInstalledCodeMethods) {
-            replacements.registerSubstitutions(HotSpotInstalledCodeSubstitutions.class);
+            replacements.registerSubstitutions(HotSpotNmethodSubstitutions.class);
         }
     }
 }

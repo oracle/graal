@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
@@ -47,11 +48,11 @@ public class ThreadIsInterruptedStub extends CRuntimeStub {
     @Snippet
     private static boolean threadIsInterrupted(Thread receiverThread, boolean clearIsInterrupted) {
         boolean result = threadIsInterruptedC(THREAD_IS_INTERRUPTED_C, thread(), receiverThread, clearIsInterrupted);
-        StubUtil.handlePendingException(false);
+        handlePendingException(false);
         return result;
     }
 
-    public static final Descriptor THREAD_IS_INTERRUPTED_C = StubUtil.descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC", false);
+    public static final Descriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native boolean threadIsInterruptedC(@ConstantNodeParameter Descriptor threadIsInterruptedC, Word thread, Thread receiverThread, boolean clearIsInterrupted);

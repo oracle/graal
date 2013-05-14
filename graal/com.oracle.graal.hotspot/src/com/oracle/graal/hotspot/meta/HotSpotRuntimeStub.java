@@ -22,33 +22,45 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.stubs.*;
 
 /**
- * Implementation of {@link InstalledCode} for HotSpot.
+ * Implementation of {@link InstalledCode} for code installed as a RuntimeStub.
  */
-public abstract class HotSpotInstalledCode extends CompilerObject implements InstalledCode {
+public class HotSpotRuntimeStub extends HotSpotInstalledCode {
 
-    private static final long serialVersionUID = 156632908220561612L;
+    private static final long serialVersionUID = -6388648408298441748L;
 
-    long codeBlob;
-    long start;
+    private final Stub stub;
 
-    public long getCodeBlob() {
-        return codeBlob;
+    public HotSpotRuntimeStub(Stub stub) {
+        this.stub = stub;
+    }
+
+    public ResolvedJavaMethod getMethod() {
+        return null;
+    }
+
+    public boolean isValid() {
+        return true;
+    }
+
+    public void invalidate() {
     }
 
     @Override
-    public abstract String toString();
-
-    public long getStart() {
-        return start;
+    public String toString() {
+        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, codeBlob);
     }
 
-    public byte[] getCode() {
-        return graalRuntime().getCompilerToVM().getCode(codeBlob);
+    public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
+        throw new GraalInternalError("Cannot call stub %s", stub);
+    }
+
+    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
+        throw new GraalInternalError("Cannot call stub %s", stub);
     }
 }
