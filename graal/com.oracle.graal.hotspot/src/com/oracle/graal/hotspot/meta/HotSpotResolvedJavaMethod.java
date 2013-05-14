@@ -358,6 +358,9 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public boolean canBeInlined() {
+        if (dontInline) {
+            return false;
+        }
         return graalRuntime().getCompilerToVM().isMethodCompilable(metaspaceMethod);
     }
 
