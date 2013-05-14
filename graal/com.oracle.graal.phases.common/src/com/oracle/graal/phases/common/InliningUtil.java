@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -1371,6 +1372,8 @@ public class InliningUtil {
                     monitor.setLockDepth(monitor.getLockDepth() + callerLockDepth);
                 }
             }
+        } else {
+            assert checkContainsOnlyInvalidOrAfterFrameState(duplicates);
         }
         Node returnValue = null;
         if (returnNode != null) {
@@ -1391,6 +1394,16 @@ public class InliningUtil {
         GraphUtil.killCFG(invoke.asNode());
 
         return duplicates;
+    }
+
+    private static boolean checkContainsOnlyInvalidOrAfterFrameState(Map<Node, Node> duplicates) {
+        for (Node node : duplicates.values()) {
+            if (node instanceof FrameState) {
+                FrameState frameState = (FrameState) node;
+                assert frameState.bci == FrameState.AFTER_BCI || frameState.bci == FrameState.INVALID_FRAMESTATE_BCI : node.toString(Verbosity.Debugger);
+            }
+        }
+        return true;
     }
 
     public static void receiverNullCheck(Invoke invoke) {

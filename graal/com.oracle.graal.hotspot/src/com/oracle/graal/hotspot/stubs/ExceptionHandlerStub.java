@@ -73,7 +73,7 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         if (logging()) {
             printf("handling exception %p (", Word.fromObject(exception).rawValue());
             decipher(Word.fromObject(exception).rawValue());
-            printf(") at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue());
+            printf(") at %p (", exceptionPc.rawValue());
             decipher(exceptionPc.rawValue());
             printf(")\n");
         }

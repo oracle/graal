@@ -510,7 +510,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useTLAB);
+        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
         monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
         boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
@@ -892,7 +892,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         if (value instanceof VirtualObjectNode) {
                             value = allocations[commit.getVirtualObjects().indexOf(value)];
                         }
-                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+                        }
                     }
                 } else {
                     VirtualArrayNode array = (VirtualArrayNode) virtual;
@@ -904,7 +906,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             assert indexOf != -1 : commit + " " + value;
                             value = allocations[indexOf];
                         }
-                        graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
+                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            graph.addBeforeFixed(commit,
+                                            graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
+                        }
                     }
                 }
             }
@@ -958,9 +963,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof InstanceOfDynamicNode) {
             instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
         } else if (n instanceof NewInstanceNode) {
-            newObjectSnippets.lower((NewInstanceNode) n, tool);
+            newObjectSnippets.lower((NewInstanceNode) n);
         } else if (n instanceof NewArrayNode) {
-            newObjectSnippets.lower((NewArrayNode) n, tool);
+            newObjectSnippets.lower((NewArrayNode) n);
         } else if (n instanceof MonitorEnterNode) {
             monitorSnippets.lower((MonitorEnterNode) n, tool);
         } else if (n instanceof MonitorExitNode) {
@@ -969,14 +974,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
             writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
-        } else if (n instanceof TLABAllocateNode) {
-            newObjectSnippets.lower((TLABAllocateNode) n, tool);
-        } else if (n instanceof InitializeObjectNode) {
-            newObjectSnippets.lower((InitializeObjectNode) n, tool);
-        } else if (n instanceof InitializeArrayNode) {
-            newObjectSnippets.lower((InitializeArrayNode) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            newObjectSnippets.lower((NewMultiArrayNode) n, tool);
+            newObjectSnippets.lower((NewMultiArrayNode) n);
         } else if (n instanceof LoadExceptionObjectNode) {
             exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
