@@ -32,13 +32,13 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -165,19 +165,19 @@ public class RuntimeCallStub extends Stub {
         final StructuredGraph graph;
         private FixedWithNextNode lastFixedNode;
 
-        <T extends Node> T add(T node) {
+        <T extends FloatingNode> T add(T node) {
+            return graph.unique(node);
+        }
+
+        <T extends FixedNode> T append(T node) {
             T result = graph.add(node);
-            assert node == result;
-            if (result instanceof FixedNode) {
-                assert lastFixedNode != null;
-                FixedNode fixed = (FixedNode) result;
-                assert fixed.predecessor() == null;
-                graph.addAfterFixed(lastFixedNode, fixed);
-                if (fixed instanceof FixedWithNextNode) {
-                    lastFixedNode = (FixedWithNextNode) fixed;
-                } else {
-                    lastFixedNode = null;
-                }
+            assert lastFixedNode != null;
+            assert result.predecessor() == null;
+            graph.addAfterFixed(lastFixedNode, result);
+            if (result instanceof FixedWithNextNode) {
+                lastFixedNode = (FixedWithNextNode) result;
+            } else {
+                lastFixedNode = null;
             }
             return result;
         }
@@ -187,19 +187,17 @@ public class RuntimeCallStub extends Stub {
     protected StructuredGraph getGraph() {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = linkage.getCallingConvention().getReturn().getKind() == Kind.Object;
-
         GraphBuilder builder = new GraphBuilder(this);
-
         LocalNode[] locals = createLocals(builder, args);
 
-        ReadRegisterNode thread = prependThread || isObjectResult ? builder.add(new ReadRegisterNode(runtime.threadRegister(), true, false)) : null;
+        ReadRegisterNode thread = prependThread || isObjectResult ? builder.append(new ReadRegisterNode(runtime.threadRegister(), true, false)) : null;
         ValueNode result = createTargetCall(builder, locals, thread);
         createInvoke(builder, StubUtil.class, "handlePendingException", ConstantNode.forBoolean(isObjectResult, builder.graph));
         if (isObjectResult) {
             InvokeNode object = createInvoke(builder, HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
             result = createInvoke(builder, StubUtil.class, "verifyObject", object);
         }
-        builder.add(new ReturnNode(linkage.descriptor.getResultType() == void.class ? null : result));
+        builder.append(new ReturnNode(linkage.descriptor.getResultType() == void.class ? null : result));
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(builder.graph, "Initial stub graph");
@@ -245,8 +243,8 @@ public class RuntimeCallStub extends Stub {
         }
         assert method != null : "did not find method in " + declaringClass + " named " + name;
         JavaType returnType = method.getSignature().getReturnType(null);
-        MethodCallTargetNode callTarget = builder.add(new MethodCallTargetNode(InvokeKind.Static, method, hpeArgs, returnType));
-        InvokeNode invoke = builder.add(new InvokeNode(callTarget, FrameState.UNKNOWN_BCI));
+        MethodCallTargetNode callTarget = builder.graph.add(new MethodCallTargetNode(InvokeKind.Static, method, hpeArgs, returnType));
+        InvokeNode invoke = builder.append(new InvokeNode(callTarget, FrameState.UNKNOWN_BCI));
         return invoke;
     }
 
@@ -255,9 +253,9 @@ public class RuntimeCallStub extends Stub {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.add(new CRuntimeCall(target.descriptor, targetArguments));
+            return builder.append(new CRuntimeCall(target.descriptor, targetArguments));
         } else {
-            return builder.add(new CRuntimeCall(target.descriptor, locals));
+            return builder.append(new CRuntimeCall(target.descriptor, locals));
         }
     }
 
