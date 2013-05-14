@@ -66,7 +66,7 @@ public class UnwindExceptionToCallerStub extends CRuntimeStub {
         if (logging()) {
             printf("unwinding exception %p (", exceptionOop.rawValue());
             decipher(exceptionOop.rawValue());
-            printf(") at %p (", exceptionOop.rawValue(), returnAddress.rawValue());
+            printf(") at %p (", returnAddress.rawValue());
             decipher(returnAddress.rawValue());
             printf(")\n");
         }
