@@ -77,8 +77,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected final Backend backend;
 
     public GraalCompilerTest() {
-        this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.replacements = Graal.getRequiredCapability(Replacements.class);
+        this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
     }
 
@@ -247,12 +247,17 @@ public abstract class GraalCompilerTest extends GraalTest {
             this.returnValue = returnValue;
             this.exception = exception;
         }
+
+        @Override
+        public String toString() {
+            return exception == null ? returnValue == null ? "null" : returnValue.toString() : "!" + exception;
+        }
     }
 
     /**
      * Called before a test is executed.
      */
-    protected void before() {
+    protected void before(@SuppressWarnings("unused") Method method) {
     }
 
     /**
@@ -262,7 +267,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result executeExpected(Method method, Object receiver, Object... args) {
-        before();
+        before(method);
         try {
             // This gives us both the expected return value as well as ensuring that the method to
             // be compiled is fully resolved
@@ -277,7 +282,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected Result executeActual(Method method, Object receiver, Object... args) {
-        before();
+        before(method);
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
@@ -347,11 +352,24 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void test(Method method, Result expect, Object receiver, Object... args) {
+        test(method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+    }
+
+    protected void test(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+        Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
+        ProfilingInfo profile = runtime.lookupJavaMethod(method).getProfilingInfo();
+        for (DeoptimizationReason reason : shouldNotDeopt) {
+            deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
+        }
         Result actual = executeActual(method, receiver, args);
+        for (DeoptimizationReason reason : shouldNotDeopt) {
+            Assert.assertEquals((int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
+        }
 
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
+            Assert.assertEquals(expect.exception.getMessage(), actual.exception.getMessage());
         } else {
             if (actual.exception != null) {
                 actual.exception.printStackTrace();
