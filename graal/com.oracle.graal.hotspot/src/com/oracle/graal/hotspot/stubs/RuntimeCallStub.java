@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
 
 import java.lang.reflect.*;
 
@@ -34,7 +35,6 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -74,17 +74,13 @@ public class RuntimeCallStub extends Stub {
      * @param sig the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
-     * @param regConfig used to get the calling convention for the call to this stub from Graal
-     *            compiled Java code as well as the calling convention for the call to
-     *            {@code address}
-     * @param vm the Java to HotSpot C/C++ runtime interface
      */
-    public RuntimeCallStub(long address, Descriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements, RegisterConfig regConfig, CompilerToVM vm) {
-        super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, regConfig, runtime, vm));
+    public RuntimeCallStub(long address, Descriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
+        super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
         Descriptor targetSig = new Descriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
-        target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, regConfig, runtime, vm);
+        target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 
     /**

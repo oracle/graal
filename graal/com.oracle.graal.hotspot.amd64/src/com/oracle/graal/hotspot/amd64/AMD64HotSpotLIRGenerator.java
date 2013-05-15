@@ -211,37 +211,46 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        boolean destroysRegisters = ((HotSpotRuntimeCallTarget) callTarget).destroysRegisters();
-        assert !destroysRegisters || stub != null : "foreign call that destroys registers can only be made from compiled stub, not from " + graph;
+        HotSpotRuntimeCallTarget hsCallTarget = (HotSpotRuntimeCallTarget) callTarget;
+        boolean destroysRegisters = hsCallTarget.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
         if (destroysRegisters) {
-            if (stub.preservesRegisters()) {
-                Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
-                savedRegisterLocations = new StackSlot[savedRegisters.length];
-                for (int i = 0; i < savedRegisters.length; i++) {
-                    PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-                    assert kind != Kind.Illegal;
-                    StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
-                    savedRegisterLocations[i] = spillSlot;
+            if (stub != null) {
+                if (stub.preservesRegisters()) {
+                    Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+                    savedRegisterLocations = new StackSlot[savedRegisters.length];
+                    for (int i = 0; i < savedRegisters.length; i++) {
+                        PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
+                        assert kind != Kind.Illegal;
+                        StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
+                        savedRegisterLocations[i] = spillSlot;
+                    }
+                    save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
                 }
-                save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
             }
+        }
+        if (!hsCallTarget.isLeaf()) {
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
         }
 
         Variable result = super.emitCall(callTarget, callCc, info, args);
 
-        if (destroysRegisters) {
+        if (!hsCallTarget.isLeaf()) {
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
-            if (stub.preservesRegisters()) {
-                assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-                calleeSaveInfo.put(currentRuntimeCallInfo, save);
+        }
 
-                emitRestoreRegisters(save);
-            } else {
-                assert zapRegisters();
+        if (destroysRegisters) {
+            if (stub != null) {
+                if (stub.preservesRegisters()) {
+                    assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
+                    calleeSaveInfo.put(currentRuntimeCallInfo, save);
+
+                    emitRestoreRegisters(save);
+                } else {
+                    assert zapRegisters();
+                }
             }
         }
 
