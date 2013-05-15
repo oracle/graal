@@ -36,7 +36,7 @@ import com.oracle.graal.word.*;
  */
 public class MonitorExitStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    @Input private final ValueNode object;
+    @Input private ValueNode object;
     private int lockDepth;
     public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", true, void.class, Object.class, Word.class);
 

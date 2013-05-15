@@ -60,7 +60,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
     // Replacement method data
     private ResolvedJavaMethod replacementTargetMethod;
     private JavaType replacementReturnType;
-    @Input private NodeInputList<ValueNode> replacementArguments;
+    @Input private final NodeInputList<ValueNode> replacementArguments;
 
     /**
      * Search for an instance field with the given name in a class.

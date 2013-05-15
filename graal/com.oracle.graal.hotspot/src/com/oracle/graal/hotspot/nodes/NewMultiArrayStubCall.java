@@ -41,8 +41,8 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
-    @Input private final ValueNode hub;
-    @Input private final ValueNode dims;
+    @Input private ValueNode hub;
+    @Input private ValueNode dims;
     private final int rank;
 
     public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);

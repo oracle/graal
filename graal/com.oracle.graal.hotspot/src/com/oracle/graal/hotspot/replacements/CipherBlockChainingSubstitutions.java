@@ -98,11 +98,11 @@ public class CipherBlockChainingSubstitutions {
 
     abstract static class AESCryptStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-        @Input private final ValueNode in;
-        @Input private final ValueNode out;
-        @Input private final ValueNode key;
-        @Input private final ValueNode r;
-        @Input private final ValueNode inLength;
+        @Input private ValueNode in;
+        @Input private ValueNode out;
+        @Input private ValueNode key;
+        @Input private ValueNode r;
+        @Input private ValueNode inLength;
 
         private final Descriptor descriptor;
 

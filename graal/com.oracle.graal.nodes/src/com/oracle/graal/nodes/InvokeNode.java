@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
 public final class InvokeNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint {
 
-    @Input private final CallTargetNode callTarget;
+    @Input private CallTargetNode callTarget;
     @Input private FrameState deoptState;
     @Input private GuardingNode guard;
     private final int bci;

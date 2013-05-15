@@ -40,8 +40,8 @@ import com.oracle.graal.nodes.type.*;
  */
 public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    @Input private final ValueNode thread;
-    @Input private final ValueNode clearIsInterrupted;
+    @Input private ValueNode thread;
+    @Input private ValueNode clearIsInterrupted;
     public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, boolean.class, Object.class, boolean.class);
 
     public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
