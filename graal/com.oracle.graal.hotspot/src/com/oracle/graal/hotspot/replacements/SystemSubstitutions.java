@@ -29,7 +29,7 @@ import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -63,7 +63,7 @@ public class SystemSubstitutions {
         return computeHashCode(x);
     }
 
-    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
+    @NodeIntrinsic(value = CRuntimeCall.class, setStampFromReturnType = true)
     public static long callLong(@ConstantNodeParameter Descriptor descriptor) {
         if (descriptor == JAVA_TIME_MILLIS) {
             return System.currentTimeMillis();

@@ -674,7 +674,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @SuppressWarnings("unused")
-    @NodeIntrinsic(RuntimeCallNode.class)
+    @NodeIntrinsic(CRuntimeCall.class)
     public static int identityHashCode(@ConstantNodeParameter Descriptor descriptor, Object object) {
         return System.identityHashCode(object);
     }
