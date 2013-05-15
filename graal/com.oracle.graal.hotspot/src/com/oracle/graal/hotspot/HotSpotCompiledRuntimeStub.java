@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.Call;
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
@@ -61,7 +59,7 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
             Call call = (Call) infopoint;
             assert call.target instanceof HotSpotRuntimeCallTarget : this + " cannot have non runtime call: " + call.target;
             HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert callTarget.getAddress() == graalRuntime().getConfig().uncommonTrapStub || callTarget.isCRuntimeCall() : this + "must only call C runtime or deoptimization stub, not " + call.target;
+            assert !callTarget.isCompiledStub() : this + " cannot call compiled stub " + callTarget;
         }
         return true;
     }

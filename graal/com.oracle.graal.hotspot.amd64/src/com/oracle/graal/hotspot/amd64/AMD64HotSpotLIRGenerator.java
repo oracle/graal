@@ -211,12 +211,12 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        boolean isCRuntimeCall = ((HotSpotRuntimeCallTarget) callTarget).isCRuntimeCall();
-        assert !isCRuntimeCall || stub != null : "direct call to C runtime can only be made from compiled stubs, not from " + graph;
+        boolean destroysRegisters = ((HotSpotRuntimeCallTarget) callTarget).destroysRegisters();
+        assert !destroysRegisters || stub != null : "foreign call that destroys registers can only be made from compiled stub, not from " + graph;
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
-        if (isCRuntimeCall) {
+        if (destroysRegisters) {
             if (stub.preservesRegisters()) {
                 Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
                 savedRegisterLocations = new StackSlot[savedRegisters.length];
@@ -233,7 +233,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         Variable result = super.emitCall(callTarget, callCc, info, args);
 
-        if (isCRuntimeCall) {
+        if (destroysRegisters) {
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
             if (stub.preservesRegisters()) {
                 assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);

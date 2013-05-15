@@ -23,7 +23,10 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.*;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.DecryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
@@ -43,61 +46,29 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
 
-        Kind word = graalRuntime.getTarget().wordKind;
-
-        // @formatter:off
-
-        // The calling convention for the exception handler stub is (only?) defined in
-        // TemplateInterpreterGenerator::generate_throw_exception()
-        // in templateInterpreter_x86_64.cpp around line 1923 
-        addStubCall(EXCEPTION_HANDLER,
-                /*            ret */ ret(Kind.Void),
-               /* arg0: exception */ rax.asValue(Kind.Object),
-             /* arg1: exceptionPc */ rdx.asValue(word));
-
-        addJump(EXCEPTION_HANDLER_IN_CALLER,
-                /* arg0: exception */ rax.asValue(Kind.Object),
-               /* arg1: exceptionPc */ rdx.asValue(word));
-
-        addRuntimeCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0:     in */ nativeCallingConvention(word,
-                /* arg1:    out */                         word,
-                /* arg2:    key */                         word));
-
-        addRuntimeCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0:     in */ nativeCallingConvention(word,
-                /* arg1:    out */                         word,
-                /* arg2:    key */                         word));
-
-        addRuntimeCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0:     in */ nativeCallingConvention(word,
-                /* arg1:    out */                         word,
-                /* arg2:    key */                         word,
-                /* arg3:      r */                         word,
-              /* arg4: inLength */                         Kind.Int));
-
-        addRuntimeCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub,
-                /*        temps */ null,
-                /*          ret */ ret(Kind.Void),
-                /* arg0:     in */ nativeCallingConvention(word,
-                /* arg1:    out */                         word,
-                /* arg2:    key */                         word,
-                /* arg3:      r */                         word,
-              /* arg4: inLength */                         Kind.Int));
-        // @formatter:on
-
     }
 
     private AMD64ConvertSnippets.Templates convertSnippets;
 
     @Override
     public void registerReplacements(Replacements replacements) {
+        Kind word = graalRuntime.getTarget().wordKind;
+
+        // The calling convention for the exception handler stub is (only?) defined in
+        // TemplateInterpreterGenerator::generate_throw_exception()
+        // in templateInterpreter_x86_64.cpp around line 1923
+        RegisterValue exception = rax.asValue(Kind.Object);
+        RegisterValue exceptionPc = rdx.asValue(word);
+        CallingConvention exceptionCc = new CallingConvention(0, Value.ILLEGAL, exception, exceptionPc);
+        register(new HotSpotRuntimeCallTarget(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, exceptionCc, graalRuntime.getCompilerToVM()));
+        register(new HotSpotRuntimeCallTarget(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, exceptionCc, graalRuntime.getCompilerToVM()));
+
+        // The crypto stubs do callee saving
+        registerLeafCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS);
+        registerLeafCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS);
+        registerLeafCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS);
+        registerLeafCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS);
+
         convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements, graalRuntime.getTarget());
         super.registerReplacements(replacements);
     }
@@ -122,7 +93,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     }
 
     @Override
-    protected RegisterConfig createRegisterConfig(boolean globalStubConfig) {
-        return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config, globalStubConfig);
+    protected RegisterConfig createRegisterConfig(boolean isNative) {
+        return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config, isNative);
     }
 }

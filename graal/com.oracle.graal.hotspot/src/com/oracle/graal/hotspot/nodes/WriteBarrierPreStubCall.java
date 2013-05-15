@@ -26,12 +26,11 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node implementing a call to {@link WriteBarrierPreStub}.
+ * A call to {@code GraalRuntime::write_barrier_pre}.
  */
 public class WriteBarrierPreStubCall extends FixedWithNextNode implements LIRGenLowerable {
 

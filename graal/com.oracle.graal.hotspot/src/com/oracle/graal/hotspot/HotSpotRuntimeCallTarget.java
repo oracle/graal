@@ -22,13 +22,19 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.word.*;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
@@ -36,17 +42,26 @@ import com.oracle.graal.hotspot.stubs.*;
 public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
 
     /**
+     * Constants for specifying whether a call destroys or preserves registers. A call will always
+     * destroy {@link HotSpotRuntimeCallTarget#getCallingConvention() its}
+     * {@linkplain CallingConvention#getTemporaries() temporary} registers.
+     */
+    public enum RegisterEffect {
+        DESTROYS_REGISTERS, PRESERVES_REGISTERS
+    }
+
+    /**
      * Sentinel marker for a computed jump address.
      */
     public static final long JUMP_ADDRESS = 0xDEADDEADBEEFBEEFL;
 
     /**
-     * The descriptor of the stub. This is for informational purposes only.
+     * The descriptor of the call.
      */
-    public final Descriptor descriptor;
+    private final Descriptor descriptor;
 
     /**
-     * The entry point address of the stub.
+     * The entry point address of this call's target.
      */
     private long address;
 
@@ -56,17 +71,55 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     private Stub stub;
 
     /**
-     * Where the stub gets its arguments and where it places its result.
+     * The calling convention for this call.
      */
     private CallingConvention cc;
 
     private final CompilerToVM vm;
 
-    private final boolean isCRuntimeCall;
+    private final RegisterEffect effect;
 
-    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, boolean isCRuntimeCall, CallingConvention cc, CompilerToVM vm) {
+    /**
+     * Creates a {@link HotSpotRuntimeCallTarget}.
+     * 
+     * @param descriptor the descriptor of the call
+     * @param address the address of the code to call
+     * @param effect specifies if the call destroys or preserves all registers (apart from
+     *            temporaries which are always destroyed)
+     * @param ccType calling convention type
+     * @param ccProvider calling convention provider
+     * @param vm the Java to HotSpot C/C++ runtime interface
+     */
+    public static HotSpotRuntimeCallTarget create(Descriptor descriptor, long address, RegisterEffect effect, Type ccType, RegisterConfig ccProvider, HotSpotRuntime runtime, CompilerToVM vm) {
+        CallingConvention targetCc = createCallingConvention(descriptor, ccType, ccProvider, runtime);
+        return new HotSpotRuntimeCallTarget(descriptor, address, effect, targetCc, vm);
+    }
+
+    /**
+     * Gets a calling convention for a given descriptor and call type.
+     */
+    public static CallingConvention createCallingConvention(Descriptor descriptor, Type ccType, RegisterConfig ccProvider, HotSpotRuntime runtime) {
+        Class<?>[] argumentTypes = descriptor.getArgumentTypes();
+        JavaType[] parameterTypes = new JavaType[argumentTypes.length];
+        for (int i = 0; i < parameterTypes.length; ++i) {
+            parameterTypes[i] = asJavaType(argumentTypes[i], runtime);
+        }
+        TargetDescription target = graalRuntime().getTarget();
+        JavaType returnType = asJavaType(descriptor.getResultType(), runtime);
+        return ccProvider.getCallingConvention(ccType, returnType, parameterTypes, target, false);
+    }
+
+    private static JavaType asJavaType(Class type, HotSpotRuntime runtime) {
+        if (WordBase.class.isAssignableFrom(type)) {
+            return runtime.lookupJavaType(wordKind().toJavaClass());
+        } else {
+            return runtime.lookupJavaType(type);
+        }
+    }
+
+    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, RegisterEffect effect, CallingConvention cc, CompilerToVM vm) {
         this.address = address;
-        this.isCRuntimeCall = isCRuntimeCall;
+        this.effect = effect;
         this.descriptor = descriptor;
         this.cc = cc;
         this.vm = vm;
@@ -89,20 +142,22 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         return descriptor;
     }
 
-    public void setStub(Stub stub) {
+    public void setCompiledStub(Stub stub) {
         assert address == 0L : "cannot set stub for linkage that already has an address: " + this;
         this.stub = stub;
+    }
+
+    /**
+     * Determines if this is a call to a compiled {@linkplain Stub stub}.
+     */
+    public boolean isCompiledStub() {
+        return address == 0L || stub != null;
     }
 
     public void finalizeAddress(Backend backend) {
         if (address == 0) {
             assert stub != null : "linkage without an address must be a stub - forgot to register a Stub associated with " + descriptor + "?";
             InstalledCode code = stub.getCode(backend);
-
-            AllocatableValue[] argumentLocations = new AllocatableValue[cc.getArgumentCount()];
-            for (int i = 0; i < argumentLocations.length; i++) {
-                argumentLocations[i] = cc.getArgument(i);
-            }
 
             Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
             AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
@@ -111,7 +166,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
                 temporaryLocations[i++] = reg.asValue();
             }
             // Update calling convention with temporaries
-            cc = new CallingConvention(temporaryLocations, cc.getStackSize(), cc.getReturn(), argumentLocations);
+            cc = new CallingConvention(temporaryLocations, cc.getStackSize(), cc.getReturn(), cc.getArguments());
             address = code.getStart();
         }
     }
@@ -123,23 +178,6 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
 
     @Override
     public boolean destroysRegisters() {
-        if (isCRuntimeCall) {
-            // Even though most native ABIs define some callee saved registers,
-            // for simplicity we force the register allocator to save all live
-            // registers across a C runtime call as such calls are only made from
-            // compiled stubs which a) are slow path and b) will typically only
-            // have very few live registers across a C runtime call
-            return true;
-        }
-        // This is a call to a compiled (or assembler) stub which saves
-        // all registers (apart from its temporaries)
-        return false;
-    }
-
-    /**
-     * Determines if this is a link to a C/C++ function in the HotSpot runtime.
-     */
-    public boolean isCRuntimeCall() {
-        return isCRuntimeCall;
+        return effect == DESTROYS_REGISTERS;
     }
 }
