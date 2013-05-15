@@ -362,4 +362,9 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         count++;
     }
 
+    public void record(Assumptions assumptions) {
+        for (int i = 0; i < assumptions.count; i++) {
+            record(assumptions.list[i]);
+        }
+    }
 }

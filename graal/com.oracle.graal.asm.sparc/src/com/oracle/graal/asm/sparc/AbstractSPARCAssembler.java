@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,43 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.asm.sparc;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.api.code.AbstractAddress;
+import com.oracle.graal.api.code.Register;
+import com.oracle.graal.api.code.TargetDescription;
+import com.oracle.graal.asm.AbstractAssembler;
+import com.oracle.graal.asm.Label;
 
-public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, GuardingNode {
+public abstract class AbstractSPARCAssembler extends AbstractAssembler {
 
-    @Input private ValueNode object;
-
-    public NullCheckNode(ValueNode object) {
-        super(StampFactory.dependency());
-        this.object = object;
-    }
-
-    public ValueNode getObject() {
-        return object;
+    public AbstractSPARCAssembler(TargetDescription target) {
+        super(target);
     }
 
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.emitNullCheck(object, this);
+    public void align(int modulus) {
+        // SPARC: Implement alignment.
     }
 
     @Override
-    public boolean canDeoptimize() {
-        return true;
+    public void jmp(Label l) {
+        // SPARC: Implement jump.
     }
 
     @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
+    protected void patchJumpTarget(int branch, int jumpTarget) {
+        // SPARC: Implement patching of jump target.
     }
 
     @Override
-    public ValueNode asNode() {
-        return this;
+    public AbstractAddress makeAddress(Register base, int displacement) {
+        // SPARC: Implement address calculation.
+        return null;
+    }
+
+    @Override
+    public AbstractAddress getPlaceholder() {
+        // SPARC: Implement address patching.
+        return null;
     }
 }

@@ -116,6 +116,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         return constantBoxedShort();
     }
 
+    @Ignore
     @Test
     public void testLoop() {
         compareGraphs("testLoopSnippet", "referenceLoopSnippet", false, true);
@@ -341,6 +342,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(referenceGraph);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
                 new CanonicalizerPhase().apply(referenceGraph, context);
+
                 assertEquals(referenceGraph, graph, excludeVirtual);
             }
         });

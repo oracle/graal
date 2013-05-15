@@ -38,7 +38,7 @@ import com.oracle.graal.phases.common.*;
 
 public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lowerable {
 
-    @Input private final ValueNode code;
+    @Input private ValueNode code;
     private final Class[] signature;
 
     public HotSpotNmethodExecuteNode(Kind kind, Class[] signature, ValueNode code, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
@@ -92,7 +92,7 @@ public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lower
         LoadFieldNode loadmetaspaceMethod = graph().add(new LoadFieldNode(loadMethod, metaspaceMethodField));
 
         HotSpotIndirectCallTargetNode callTarget = graph().add(
-                        new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments, stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
+                        new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments(), stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
 
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, 0));
 

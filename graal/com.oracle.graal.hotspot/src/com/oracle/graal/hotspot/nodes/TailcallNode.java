@@ -42,8 +42,8 @@ import com.oracle.graal.nodes.type.*;
  */
 public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
 
-    @Input private final FrameState frameState;
-    @Input private final ValueNode target;
+    @Input private FrameState frameState;
+    @Input private ValueNode target;
 
     /**
      * Creates a TailcallNode.

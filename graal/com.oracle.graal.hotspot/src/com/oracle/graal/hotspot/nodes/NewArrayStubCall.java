@@ -40,8 +40,8 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
-    @Input private final ValueNode hub;
-    @Input private final ValueNode length;
+    @Input private ValueNode hub;
+    @Input private ValueNode length;
 
     public static final Descriptor NEW_ARRAY = new Descriptor("new_array", false, Object.class, Word.class, int.class);
 

@@ -40,7 +40,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRGenL
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
-    @Input private final ValueNode hub;
+    @Input private ValueNode hub;
 
     public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Object.class, Word.class);
 

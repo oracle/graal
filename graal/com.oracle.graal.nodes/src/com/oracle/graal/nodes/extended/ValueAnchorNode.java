@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, Node.IterableNodeType, Virtualizable, GuardingNode {
 
-    @Input private NodeInputList<ValueNode> anchored;
+    @Input private final NodeInputList<ValueNode> anchored;
 
     public ValueAnchorNode(ValueNode... values) {
         this(false, values);

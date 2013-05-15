@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    @Input private final ValueNode object;
+    @Input private ValueNode object;
     public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, Object.class, Object.class);
 
     public VerifyOopStubCall(ValueNode object) {

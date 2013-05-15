@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
  */
 public class CRuntimeCall extends DeoptimizingFixedWithNextNode implements LIRGenLowerable {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    @Input private final NodeInputList<ValueNode> arguments;
 
     private final Descriptor descriptor;
 

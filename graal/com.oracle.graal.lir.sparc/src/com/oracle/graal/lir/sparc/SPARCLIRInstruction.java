@@ -27,7 +27,7 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Convenience class to provide AMD64MacroAssembler for the {@link #emitCode} method.
+ * Convenience class to provide SPARCAssembler for the {@link #emitCode} method.
  */
 public abstract class SPARCLIRInstruction extends LIRInstruction {
 

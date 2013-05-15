@@ -190,9 +190,13 @@ public class NodeClass extends FieldIntrospection {
             if (field.isAnnotationPresent(Node.Input.class)) {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
+                    assert Modifier.isFinal(field.getModifiers()) : "NodeInputList input field " + field + " should be final";
+                    assert !Modifier.isPublic(field.getModifiers()) : "NodeInputList input field " + field + " should not be public";
                     inputListOffsets.add(offset);
                 } else {
                     assert NODE_CLASS.isAssignableFrom(type) || type.isInterface() : "invalid input type: " + type;
+                    assert !Modifier.isFinal(field.getModifiers()) : "Node input field " + field + " should not be final";
+                    assert Modifier.isPrivate(field.getModifiers()) : "Node input field " + field + " should be private";
                     inputOffsets.add(offset);
                 }
                 if (field.getAnnotation(Node.Input.class).notDataflow()) {
@@ -200,9 +204,13 @@ public class NodeClass extends FieldIntrospection {
                 }
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
                 if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
+                    assert Modifier.isFinal(field.getModifiers()) : "NodeSuccessorList successor field " + field + " should be final";
+                    assert !Modifier.isPublic(field.getModifiers()) : "NodeSuccessorList successor field " + field + " should not be public";
                     successorListOffsets.add(offset);
                 } else {
                     assert NODE_CLASS.isAssignableFrom(type) : "invalid successor type: " + type;
+                    assert !Modifier.isFinal(field.getModifiers()) : "Node successor field " + field + " should not be final";
+                    assert Modifier.isPrivate(field.getModifiers()) : "Node successor field " + field + " should be private";
                     successorOffsets.add(offset);
                 }
             } else {

@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
 
-    @Input protected final NodeInputList<ValueNode> arguments;
+    @Input private final NodeInputList<ValueNode> arguments;
 
     public CallTargetNode(ValueNode[] arguments) {
         super(StampFactory.extension());

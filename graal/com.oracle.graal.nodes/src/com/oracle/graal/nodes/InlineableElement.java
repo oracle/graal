@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.sparc;
+package com.oracle.graal.nodes;
 
-import static com.oracle.graal.api.code.MemoryBarriers.*;
+public interface InlineableElement {
 
-import java.nio.*;
+    int getNodeCount();
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.Register.RegisterCategory;
-import com.oracle.graal.api.meta.*;
-
-/**
- * Represents the SPARC architecture.
- */
-public class SPARC extends Architecture {
-
-    // SPARC: Define registers.
-
-    public SPARC() {
-        super("SPARC", 8, ByteOrder.LITTLE_ENDIAN, null, LOAD_STORE | STORE_STORE, 1, 0, 8);
-        // SPARC: Fix architecture parameters.
-    }
-
-    @Override
-    public boolean canStoreValue(RegisterCategory category, PlatformKind kind) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        // TODO Auto-generated method stub
-        return null;
-    }
+    Iterable<Invoke> getInvokes();
 }

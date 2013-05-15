@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
 public final class InvokeNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint {
 
-    @Input private final CallTargetNode callTarget;
+    @Input private CallTargetNode callTarget;
     @Input private FrameState deoptState;
     @Input private GuardingNode guard;
     private final int bci;
@@ -85,7 +85,9 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> debugProperties = super.getDebugProperties(map);
-        debugProperties.put("targetMethod", callTarget.targetName());
+        if (callTarget != null) {
+            debugProperties.put("targetMethod", callTarget.targetName());
+        }
         return debugProperties;
     }
 

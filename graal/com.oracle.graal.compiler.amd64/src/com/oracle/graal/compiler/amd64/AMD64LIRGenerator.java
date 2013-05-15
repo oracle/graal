@@ -912,12 +912,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-        JavaType[] sig = new JavaType[node.arguments.size()];
+        JavaType[] sig = new JavaType[node.arguments().size()];
         for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments.get(i).stamp().javaType(runtime);
+            sig[i] = node.arguments().get(i).stamp().javaType(runtime);
         }
 
-        Value[] parameters = visitInvokeArguments(frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments);
+        Value[] parameters = visitInvokeArguments(frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
         append(new AMD64BreakpointOp(parameters));
     }
 
