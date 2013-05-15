@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
@@ -72,6 +73,10 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
+        if (read.usages().count() == 0) {
+            // Read without usages can be savely removed.
+            return null;
+        }
         if (runtime != null && object != null && object.isConstant()) {
             if (location.getLocationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
                 long displacement = ((ConstantLocationNode) location).getDisplacement();
