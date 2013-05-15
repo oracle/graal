@@ -114,6 +114,16 @@ public class WordTypeVerificationPhase extends Phase {
     }
 
     private boolean isWord(ValueNode node) {
+        if (node instanceof ProxyNode) {
+            /*
+             * The proxy node will eventually get the same stamp as the value it is proxying.
+             * However, since we cannot guarantee the order in which isWord is called during the
+             * verification phase, the stamp assignment for the value might not have happened yet.
+             * Therefore, we check the proxied value directly instead of the proxy.
+             */
+            return isWord(((ProxyNode) node).value());
+        }
+
         return wordAccess.isWord(node);
     }
 
