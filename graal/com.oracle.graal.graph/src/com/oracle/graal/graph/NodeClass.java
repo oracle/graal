@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,13 +37,22 @@ public class NodeClass extends FieldIntrospection {
             return clazz;
         }
 
-        // We can have a race of multiple threads creating the LIRInstructionClass at the same time.
-        // However, only one will be put into the map, and this is the one returned by all threads.
-        clazz = new NodeClass(c);
-        NodeClass oldClazz = (NodeClass) allClasses.putIfAbsent(c, clazz);
-        if (oldClazz != null) {
-            return oldClazz;
-        } else {
+        /*
+         * Using putIfAbsent doesn't work here, because the creation of NodeClass needs to be
+         * serialized. (the NodeClass constructor looks at allClasses, and it also uses the static
+         * field nextIterableId)
+         * 
+         * The fact that ConcurrentHashMap.put and .get are used should make the double-checked
+         * locking idiom work, since it internally uses volatile.
+         */
+
+        synchronized (allClasses) {
+            clazz = (NodeClass) allClasses.get(c);
+            if (clazz == null) {
+                clazz = new NodeClass(c);
+                NodeClass oldClass = (NodeClass) allClasses.putIfAbsent(c, clazz);
+                assert oldClass == null;
+            }
             return clazz;
         }
     }
