@@ -52,7 +52,13 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.phases.*;
 
 /**
- * A stub for a {@link Transition non-leaf} foreign call from compiled code.
+ * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
+ * compiled code. A stub is required for such calls as the caller may be scheduled for
+ * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
+ * paths, we don't want to force the register allocator to spill around the call. As such, this stub
+ * saves and restores all allocatable registers. It also
+ * {@linkplain StubUtil#handlePendingException(boolean) handles} any exceptions raised during the
+ * foreign call.
  */
 public class ForeignCallStub extends Stub {
 
@@ -130,7 +136,7 @@ public class ForeignCallStub extends Stub {
 
             @Override
             public String toString() {
-                return format("HotSpotStub<%n(%p)>", this);
+                return format("ForeignCallStub<%n(%p)>", this);
             }
         };
     }
@@ -164,6 +170,49 @@ public class ForeignCallStub extends Stub {
         }
     }
 
+    /**
+     * Creates a graph for this stub.
+     * <p>
+     * If the stub returns an object, the graph created corresponds to this pseudo code:
+     * 
+     * <pre>
+     *     Object foreignFunctionStub(args...) {
+     *         foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             getAndClearObjectResult(thread());
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *         return verifyObject(getAndClearObjectResult(thread()));
+     *     }
+     * </pre>
+     * 
+     * If the stub returns a primitive or word, the graph created corresponds to this pseudo code
+     * (using {@code int} as the primitive return type):
+     * 
+     * <pre>
+     *     int foreignFunctionStub(args...) {
+     *         int result = foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *         return result;
+     *     }
+     * </pre>
+     * 
+     * If the stub is void, the graph created corresponds to this pseudo code:
+     * 
+     * <pre>
+     *     void foreignFunctionStub(args...) {
+     *         foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *     }
+     * </pre>
+     * 
+     * In each example above, the {@code currentThread} argument is the C++ JavaThread value (i.e.,
+     * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
+     */
     @Override
     protected StructuredGraph getGraph() {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();

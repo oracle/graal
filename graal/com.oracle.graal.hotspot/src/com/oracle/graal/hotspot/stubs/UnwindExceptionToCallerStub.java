@@ -45,7 +45,7 @@ import com.oracle.graal.word.*;
  * Stub called by an {@link UnwindNode}. This stub executes in the frame of the method throwing an
  * exception and completes by jumping to the exception handler in the calling frame.
  */
-public class UnwindExceptionToCallerStub extends CRuntimeStub {
+public class UnwindExceptionToCallerStub extends SnippetStub {
 
     public UnwindExceptionToCallerStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);

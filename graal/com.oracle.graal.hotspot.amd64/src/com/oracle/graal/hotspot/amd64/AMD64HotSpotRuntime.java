@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
@@ -60,11 +61,11 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         // in templateInterpreter_x86_64.cpp around line 1923
         RegisterValue exception = rax.asValue(Kind.Object);
         RegisterValue exceptionPc = rdx.asValue(word);
-        CallingConvention exceptionCc = new CallingConvention(0, Value.ILLEGAL, exception, exceptionPc);
+        CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc));
 
-        // The crypto stubs do callee saving
+        // The x86 crypto stubs do callee saving
         registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF);
         registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF);
         registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF);

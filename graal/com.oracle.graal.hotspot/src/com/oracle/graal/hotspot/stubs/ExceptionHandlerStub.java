@@ -48,7 +48,7 @@ import com.oracle.graal.word.*;
  * <p>
  * The descriptor for a call to this stub is {@link HotSpotBackend#EXCEPTION_HANDLER}.
  */
-public class ExceptionHandlerStub extends CRuntimeStub {
+public class ExceptionHandlerStub extends SnippetStub {
 
     public ExceptionHandlerStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);

@@ -47,7 +47,6 @@ import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
-import static com.oracle.graal.hotspot.stubs.VMErrorStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -178,40 +177,57 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         regConfig = createRegisterConfig();
     }
 
+    protected abstract RegisterConfig createRegisterConfig();
+
+    /**
+     * Registers the linkage for a foreign call.
+     */
     protected HotSpotForeignCallLinkage register(HotSpotForeignCallLinkage linkage) {
-        HotSpotForeignCallLinkage oldValue = foreignCalls.put(linkage.getDescriptor(), linkage);
-        assert oldValue == null : "already registered linkage for " + linkage.getDescriptor();
+        assert !foreignCalls.containsKey(linkage.getDescriptor()) : "already registered linkage for " + linkage.getDescriptor();
+        foreignCalls.put(linkage.getDescriptor(), linkage);
         return linkage;
     }
 
     /**
-     * Registers the details for linking a call to a {@link Stub}.
+     * Creates and registers the details for linking a foreign call to a {@link Stub}.
      */
-    protected ForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor) {
+    protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor) {
         return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
     }
 
     /**
-     * Registers the details for a call to a leaf function. A leaf function does not lock, GC or
-     * throw exceptions. That is, the thread's execution state during the call is never inspected by
-     * another thread.
+     * Creates and registers the linkage for a foreign call.
      */
-    protected ForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition) {
+    protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition) {
         Class<?> resultType = descriptor.getResultType();
-        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "foreign call must return object thread local storage: " + descriptor;
+        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "foreign calls must return objects in thread local storage: " + descriptor;
         return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition));
     }
 
-    protected abstract RegisterConfig createRegisterConfig();
+    private static void link(Stub stub) {
+        stub.getLinkage().setCompiledStub(stub);
+    }
+
+    /**
+     * Creates a {@linkplain ForeignCallStub stub} for a non-leaf foreign call.
+     * 
+     * @param descriptor the signature of the call to this stub
+     * @param address the address of the code to call
+     * @param prependThread true if the JavaThread value for the current thread is to be prepended
+     *            to the arguments for the call to {@code address}
+     */
+    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, boolean prependThread, Replacements replacements) {
+        ForeignCallStub stub = new ForeignCallStub(address, descriptor, prependThread, this, replacements);
+        HotSpotForeignCallLinkage linkage = stub.getLinkage();
+        HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
+        linkage.setCompiledStub(stub);
+        register(linkage);
+        register(targetLinkage);
+    }
 
     public void registerReplacements(Replacements replacements) {
         HotSpotVMConfig c = config;
-
-        registerStubCall(VERIFY_OOP);
-        registerStubCall(NEW_ARRAY);
-        registerStubCall(UNWIND_EXCEPTION_TO_CALLER);
-        registerStubCall(NEW_INSTANCE);
-        registerStubCall(VM_ERROR);
+        TargetDescription target = getTarget();
 
         registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF);
         registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
@@ -228,7 +244,28 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
         registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
-        registerForeignCall(VM_ERROR_C, c.vmErrorAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+
+        link(new NewInstanceStub(this, replacements, target, registerStubCall(NEW_INSTANCE)));
+        link(new NewArrayStub(this, replacements, target, registerStubCall(NEW_ARRAY)));
+        link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(this, replacements, target, registerStubCall(UNWIND_EXCEPTION_TO_CALLER)));
+        link(new VerifyOopStub(this, replacements, target, registerStubCall(VERIFY_OOP)));
+
+        linkForeignCall(IDENTITY_HASHCODE, c.identityHashCodeAddress, true, replacements);
+        linkForeignCall(REGISTER_FINALIZER, c.registerFinalizerAddress, true, replacements);
+        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, true, replacements);
+        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, true, replacements);
+        linkForeignCall(MONITORENTER, c.monitorenterAddress, true, replacements);
+        linkForeignCall(MONITOREXIT, c.monitorexitAddress, true, replacements);
+        linkForeignCall(WRITE_BARRIER_PRE, c.writeBarrierPreAddress, true, replacements);
+        linkForeignCall(WRITE_BARRIER_POST, c.writeBarrierPostAddress, true, replacements);
+        linkForeignCall(NEW_MULTI_ARRAY, c.newMultiArrayAddress, true, replacements);
+        linkForeignCall(LOG_PRINTF, c.logPrintfAddress, true, replacements);
+        linkForeignCall(LOG_OBJECT, c.logObjectAddress, true, replacements);
+        linkForeignCall(LOG_PRIMITIVE, c.logPrimitiveAddress, true, replacements);
+        linkForeignCall(THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, true, replacements);
+        linkForeignCall(VM_ERROR, c.vmErrorAddress, true, replacements);
+        linkForeignCall(OSR_MIGRATION_END, c.osrMigrationEndAddress, false, replacements);
 
         if (GraalOptions.IntrinsifyObjectMethods) {
             replacements.registerSubstitutions(ObjectSubstitutions.class);
@@ -256,46 +293,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), config.useFastLocking);
+        monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), c.useFastLocking);
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
         boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
-
-        TargetDescription target = getTarget();
-        link(new NewInstanceStub(this, replacements, target, foreignCalls.get(NEW_INSTANCE)));
-        link(new NewArrayStub(this, replacements, target, foreignCalls.get(NEW_ARRAY)));
-        link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(this, replacements, target, foreignCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
-        link(new VerifyOopStub(this, replacements, target, foreignCalls.get(VERIFY_OOP)));
-        link(new VMErrorStub(this, replacements, target, foreignCalls.get(VM_ERROR)));
-
-        linkForeignCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements, true);
-        linkForeignCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements, true);
-        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements, true);
-        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements, true);
-        linkForeignCall(MONITORENTER, config.monitorenterAddress, replacements, true);
-        linkForeignCall(MONITOREXIT, config.monitorexitAddress, replacements, true);
-        linkForeignCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements, true);
-        linkForeignCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements, true);
-        linkForeignCall(NEW_MULTI_ARRAY, config.newMultiArrayAddress, replacements, true);
-        linkForeignCall(LOG_PRINTF, config.logPrintfAddress, replacements, true);
-        linkForeignCall(LOG_OBJECT, config.logObjectAddress, replacements, true);
-        linkForeignCall(LOG_PRIMITIVE, config.logPrimitiveAddress, replacements, true);
-        linkForeignCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedAddress, replacements, true);
-        linkForeignCall(OSR_MIGRATION_END, config.osrMigrationEndAddress, replacements, false);
-    }
-
-    private static void link(Stub stub) {
-        stub.getLinkage().setCompiledStub(stub);
-    }
-
-    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, Replacements replacements, boolean prependThread) {
-        ForeignCallStub stub = new ForeignCallStub(address, descriptor, prependThread, this, replacements);
-        HotSpotForeignCallLinkage linkage = stub.getLinkage();
-        HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
-        linkage.setCompiledStub(stub);
-        register(linkage);
-        register(targetLinkage);
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.*;
 /**
  * Stub called from {@link VerifyOopStubCall}.
  */
-public class VerifyOopStub extends CRuntimeStub {
+public class VerifyOopStub extends SnippetStub {
 
     public VerifyOopStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
