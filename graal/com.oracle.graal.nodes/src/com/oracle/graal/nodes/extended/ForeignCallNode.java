@@ -46,12 +46,14 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
         this.descriptor = descriptor;
     }
 
-    public ForeignCallDescriptor getDescriptor() {
-        return descriptor;
+    protected ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
+        super(stamp);
+        this.arguments = new NodeInputList<>(this);
+        this.descriptor = descriptor;
     }
 
-    public NodeInputList<ValueNode> arguments() {
-        return arguments;
+    public ForeignCallDescriptor getDescriptor() {
+        return descriptor;
     }
 
     @Override
@@ -59,14 +61,19 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
         return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 
+    protected Value[] operands(LIRGeneratorTool gen) {
+        Value[] operands = new Value[arguments.size()];
+        for (int i = 0; i < operands.length; i++) {
+            operands[i] = gen.operand(arguments.get(i));
+        }
+        return operands;
+    }
+
     @Override
     public void generate(LIRGeneratorTool gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
-        Value[] args = new Value[arguments.size()];
-        for (int i = 0; i < args.length; i++) {
-            args[i] = gen.operand(arguments.get(i));
-        }
-        Value result = gen.emitForeignCall(linkage, this, args);
+        Value[] operands = operands(gen);
+        Value result = gen.emitForeignCall(linkage, this, operands);
         if (result != null) {
             gen.setResult(this, result);
         }

@@ -71,15 +71,15 @@ public class ForeignCallStub extends Stub {
      * Creates a stub for a call to code at a given address.
      * 
      * @param address the address of the code to call
-     * @param sig the signature of the call to this stub
+     * @param descriptor the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
      */
-    public ForeignCallStub(long address, ForeignCallDescriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
-        super(runtime, replacements, HotSpotForeignCallLinkage.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+    public ForeignCallStub(long address, ForeignCallDescriptor descriptor, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
-        Class[] targetParameterTypes = createTargetParameters(sig);
-        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(sig.getName() + ":C", sig.getResultType(), targetParameterTypes);
+        Class[] targetParameterTypes = createTargetParameters(descriptor);
+        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
         target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 
@@ -90,8 +90,8 @@ public class ForeignCallStub extends Stub {
         return target;
     }
 
-    private Class[] createTargetParameters(ForeignCallDescriptor sig) {
-        Class[] parameters = sig.getArgumentTypes();
+    private Class[] createTargetParameters(ForeignCallDescriptor descriptor) {
+        Class[] parameters = descriptor.getArgumentTypes();
         if (prependThread) {
             Class[] newParameters = new Class[parameters.length + 1];
             System.arraycopy(parameters, 0, newParameters, 1, parameters.length);
