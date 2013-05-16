@@ -69,6 +69,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.nodes.*;
@@ -192,28 +193,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     /**
-     * Registers the details for a call to a runtime C/C++ function.
-     */
-    protected ForeignCallLinkage registerCRuntimeCall(ForeignCallDescriptor descriptor, long address) {
-        Class<?> resultType = descriptor.getResultType();
-        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "C runtime call must return object thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF));
-    }
-
-    /**
-     * Registers the details for a call to a stub that never returns.
-     */
-    protected ForeignCallLinkage registerNoReturnStub(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType) {
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, PRESERVES_REGISTERS, ccType, NOT_LEAF));
-    }
-
-    /**
      * Registers the details for a call to a leaf function. A leaf function does not lock, GC or
      * throw exceptions. That is, the thread's execution state during the call is never inspected by
      * another thread.
      */
-    protected ForeignCallLinkage registerLeafCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, LEAF));
+    protected ForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition) {
+        Class<?> resultType = descriptor.getResultType();
+        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "foreign call must return object thread local storage: " + descriptor;
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition));
     }
 
     protected abstract RegisterConfig createRegisterConfig();
@@ -227,23 +214,23 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStubCall(VM_ERROR);
 
         HotSpotVMConfig c = config;
-        registerNoReturnStub(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall);
-        registerNoReturnStub(DEOPT_HANDLER, c.handleDeoptStub, NativeCall);
-        registerNoReturnStub(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall);
+        registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall, PRESERVES_REGISTERS, LEAF);
 
-        registerLeafCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS);
-        registerLeafCall(JAVA_TIME_NANOS, c.javaTimeNanosAddress, NativeCall, DESTROYS_REGISTERS);
-        registerLeafCall(ARITHMETIC_SIN, c.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS);
-        registerLeafCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS);
-        registerLeafCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS);
+        registerForeignCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
+        registerForeignCall(JAVA_TIME_NANOS, c.javaTimeNanosAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
+        registerForeignCall(ARITHMETIC_SIN, c.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
+        registerForeignCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
+        registerForeignCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
 
-        registerCRuntimeCall(OSR_MIGRATION_END_C, c.osrMigrationEndAddress);
-        registerCRuntimeCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress);
-        registerCRuntimeCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress);
-        registerCRuntimeCall(NEW_ARRAY_C, c.newArrayAddress);
-        registerCRuntimeCall(NEW_INSTANCE_C, c.newInstanceAddress);
-        registerCRuntimeCall(VM_MESSAGE_C, c.vmMessageAddress);
-        registerCRuntimeCall(VM_ERROR_C, c.vmErrorAddress);
+        registerForeignCall(OSR_MIGRATION_END_C, c.osrMigrationEndAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(VM_ERROR_C, c.vmErrorAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
 
         if (GraalOptions.IntrinsifyObjectMethods) {
             replacements.registerSubstitutions(ObjectSubstitutions.class);

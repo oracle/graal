@@ -65,10 +65,10 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc));
 
         // The crypto stubs do callee saving
-        registerLeafCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS);
-        registerLeafCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS);
-        registerLeafCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS);
-        registerLeafCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS);
+        registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
 
         convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements, graalRuntime.getTarget());
         super.registerReplacements(replacements);
