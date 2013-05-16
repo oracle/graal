@@ -47,7 +47,6 @@ import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.OSRMigrationEndStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
-import static com.oracle.graal.hotspot.stubs.ThreadIsInterruptedStub.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.hotspot.stubs.VMErrorStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
@@ -225,7 +224,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStubCall(NEW_ARRAY);
         registerStubCall(UNWIND_EXCEPTION_TO_CALLER);
         registerStubCall(NEW_INSTANCE);
-        registerStubCall(THREAD_IS_INTERRUPTED);
         registerStubCall(VM_ERROR);
 
         HotSpotVMConfig c = config;
@@ -245,7 +243,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerCRuntimeCall(NEW_ARRAY_C, c.newArrayAddress);
         registerCRuntimeCall(NEW_INSTANCE_C, c.newInstanceAddress);
         registerCRuntimeCall(VM_MESSAGE_C, c.vmMessageAddress);
-        registerCRuntimeCall(THREAD_IS_INTERRUPTED_C, c.threadIsInterruptedAddress);
         registerCRuntimeCall(VM_ERROR_C, c.vmErrorAddress);
 
         if (GraalOptions.IntrinsifyObjectMethods) {
@@ -282,7 +279,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         TargetDescription target = getTarget();
         link(new NewInstanceStub(this, replacements, target, foreignCalls.get(NEW_INSTANCE)));
         link(new NewArrayStub(this, replacements, target, foreignCalls.get(NEW_ARRAY)));
-        link(new ThreadIsInterruptedStub(this, replacements, target, foreignCalls.get(THREAD_IS_INTERRUPTED)));
         link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
         link(new UnwindExceptionToCallerStub(this, replacements, target, foreignCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
         link(new VerifyOopStub(this, replacements, target, foreignCalls.get(VERIFY_OOP)));
@@ -301,6 +297,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(LOG_PRINTF, config.logPrintfAddress, replacements);
         linkForeignCall(LOG_OBJECT, config.logObjectAddress, replacements);
         linkForeignCall(LOG_PRIMITIVE, config.logPrimitiveAddress, replacements);
+        linkForeignCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedAddress, replacements);
     }
 
     private static void link(Stub stub) {
