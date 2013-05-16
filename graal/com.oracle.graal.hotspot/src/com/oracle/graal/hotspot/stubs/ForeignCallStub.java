@@ -34,6 +34,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -50,10 +51,9 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.phases.*;
 
 /**
- * A stub that calls into a HotSpot C/C++ runtime function using the native
- * {@link CallingConvention}.
+ * A stub for a {@link Transition non-leaf} foreign call from compiled code.
  */
-public class RuntimeCallStub extends Stub {
+public class ForeignCallStub extends Stub {
 
     /**
      * The target of the call.
@@ -74,7 +74,7 @@ public class RuntimeCallStub extends Stub {
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
      */
-    public RuntimeCallStub(long address, ForeignCallDescriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
+    public ForeignCallStub(long address, ForeignCallDescriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
         super(runtime, replacements, HotSpotForeignCallLinkage.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
@@ -83,7 +83,7 @@ public class RuntimeCallStub extends Stub {
     }
 
     /**
-     * Gets the linkage information for the HotSpot runtime call.
+     * Gets the linkage information for the call from this stub.
      */
     public HotSpotForeignCallLinkage getTargetLinkage() {
         return target;
@@ -124,7 +124,7 @@ public class RuntimeCallStub extends Stub {
             }
 
             public JavaType getDeclaringClass() {
-                return runtime.lookupJavaType(RuntimeCallStub.class);
+                return runtime.lookupJavaType(ForeignCallStub.class);
             }
 
             @Override

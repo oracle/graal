@@ -305,22 +305,22 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new LogPrintfStub(this, replacements, target, foreignCalls.get(LOG_PRINTF)));
         link(new VMErrorStub(this, replacements, target, foreignCalls.get(VM_ERROR)));
 
-        linkRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
-        linkRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
-        linkRuntimeCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements);
-        linkRuntimeCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements);
-        linkRuntimeCall(MONITORENTER, config.monitorenterAddress, replacements);
-        linkRuntimeCall(MONITOREXIT, config.monitorexitAddress, replacements);
-        linkRuntimeCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements);
-        linkRuntimeCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements);
+        linkForeignCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
+        linkForeignCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
+        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements);
+        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements);
+        linkForeignCall(MONITORENTER, config.monitorenterAddress, replacements);
+        linkForeignCall(MONITOREXIT, config.monitorexitAddress, replacements);
+        linkForeignCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements);
+        linkForeignCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements);
     }
 
     private static void link(Stub stub) {
         stub.getLinkage().setCompiledStub(stub);
     }
 
-    private void linkRuntimeCall(ForeignCallDescriptor descriptor, long address, Replacements replacements) {
-        RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements);
+    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, Replacements replacements) {
+        ForeignCallStub stub = new ForeignCallStub(address, descriptor, true, this, replacements);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
