@@ -43,9 +43,6 @@ import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
-import static com.oracle.graal.hotspot.stubs.LogObjectStub.*;
-import static com.oracle.graal.hotspot.stubs.LogPrimitiveStub.*;
-import static com.oracle.graal.hotspot.stubs.LogPrintfStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.OSRMigrationEndStub.*;
@@ -228,9 +225,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerStubCall(NEW_ARRAY);
         registerStubCall(UNWIND_EXCEPTION_TO_CALLER);
         registerStubCall(NEW_INSTANCE);
-        registerStubCall(LOG_PRIMITIVE);
-        registerStubCall(LOG_PRINTF);
-        registerStubCall(LOG_OBJECT);
         registerStubCall(THREAD_IS_INTERRUPTED);
         registerStubCall(VM_ERROR);
 
@@ -250,10 +244,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerCRuntimeCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress);
         registerCRuntimeCall(NEW_ARRAY_C, c.newArrayAddress);
         registerCRuntimeCall(NEW_INSTANCE_C, c.newInstanceAddress);
-        registerCRuntimeCall(LOG_PRIMITIVE_C, c.logPrimitiveAddress);
-        registerCRuntimeCall(LOG_PRINTF_C, c.logObjectAddress);
         registerCRuntimeCall(VM_MESSAGE_C, c.vmMessageAddress);
-        registerCRuntimeCall(LOG_OBJECT_C, c.logObjectAddress);
         registerCRuntimeCall(THREAD_IS_INTERRUPTED_C, c.threadIsInterruptedAddress);
         registerCRuntimeCall(VM_ERROR_C, c.vmErrorAddress);
 
@@ -296,9 +287,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new UnwindExceptionToCallerStub(this, replacements, target, foreignCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
         link(new VerifyOopStub(this, replacements, target, foreignCalls.get(VERIFY_OOP)));
         link(new OSRMigrationEndStub(this, replacements, target, foreignCalls.get(OSR_MIGRATION_END)));
-        link(new LogPrimitiveStub(this, replacements, target, foreignCalls.get(LOG_PRIMITIVE)));
-        link(new LogObjectStub(this, replacements, target, foreignCalls.get(LOG_OBJECT)));
-        link(new LogPrintfStub(this, replacements, target, foreignCalls.get(LOG_PRINTF)));
         link(new VMErrorStub(this, replacements, target, foreignCalls.get(VM_ERROR)));
 
         linkForeignCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
@@ -310,6 +298,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements);
         linkForeignCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements);
         linkForeignCall(NEW_MULTI_ARRAY, config.newMultiArrayAddress, replacements);
+        linkForeignCall(LOG_PRINTF, config.logPrintfAddress, replacements);
+        linkForeignCall(LOG_OBJECT, config.logObjectAddress, replacements);
+        linkForeignCall(LOG_PRIMITIVE, config.logPrimitiveAddress, replacements);
     }
 
     private static void link(Stub stub) {
