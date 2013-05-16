@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -33,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode {
+public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint {
 
     @Input private final NodeInputList<ValueNode> arguments;
 
@@ -51,6 +52,11 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
 
     public NodeInputList<ValueNode> arguments() {
         return arguments;
+    }
+
+    @Override
+    public LocationIdentity[] getLocationIdentities() {
+        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
     }
 
     @Override
