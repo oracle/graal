@@ -608,9 +608,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -673,7 +673,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkageCc.getTemporaries(), state);
+        emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
         if (isLegal(linkageCc.getReturn())) {
             return emitMove(linkageCc.getReturn());

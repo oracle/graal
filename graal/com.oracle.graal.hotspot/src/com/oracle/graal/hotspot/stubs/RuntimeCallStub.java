@@ -83,7 +83,7 @@ public class RuntimeCallStub extends Stub {
     }
 
     /**
-     * Gets the linkage information for the runtime call.
+     * Gets the linkage information for the HotSpot runtime call.
      */
     public HotSpotForeignCallLinkage getTargetLinkage() {
         return target;

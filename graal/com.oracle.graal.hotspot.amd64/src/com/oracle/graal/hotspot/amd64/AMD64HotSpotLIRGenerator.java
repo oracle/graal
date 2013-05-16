@@ -186,9 +186,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitForeignCall(ForeignCallLinkage callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
-        super.emitForeignCall(callTarget, result, arguments, temps, info);
+        super.emitForeignCall(linkage, result, arguments, temps, info);
     }
 
     protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations) {

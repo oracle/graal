@@ -44,6 +44,11 @@ public interface ForeignCallLinkage extends InvokeTarget {
     ForeignCallDescriptor getDescriptor();
 
     /**
+     * Gets the values used/killed by this foreign call.
+     */
+    Value[] getTemporaries();
+
+    /**
      * Determines if the foreign call target destroys all registers.
      * 
      * @return {@code true} if the register allocator must save all live registers around a call to

@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
@@ -41,9 +42,9 @@ import com.oracle.graal.word.*;
 public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarget {
 
     /**
-     * Constants for specifying whether a call destroys or preserves registers. A call will always
-     * destroy {@link HotSpotForeignCallLinkage#getCallingConvention() its}
-     * {@linkplain CallingConvention#getTemporaries() temporary} registers.
+     * Constants for specifying whether a foreign call destroys or preserves registers. A foreign
+     * call will always destroy {@link HotSpotForeignCallLinkage#getCallingConvention() its}
+     * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     public enum RegisterEffect {
         DESTROYS_REGISTERS, PRESERVES_REGISTERS
@@ -81,11 +82,16 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     /**
      * The calling convention for this call.
      */
-    private CallingConvention cc;
+    private final CallingConvention cc;
 
     private final RegisterEffect effect;
 
     private final Transition transition;
+
+    /**
+     * The locations defined/killed by the call.
+     */
+    private Value[] temporaries = AllocatableValue.NONE;
 
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
@@ -135,11 +141,28 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
 
     @Override
     public String toString() {
-        return (stub == null ? descriptor.toString() : stub) + "@0x" + Long.toHexString(address) + ":" + cc;
+        StringBuilder sb = new StringBuilder(stub == null ? descriptor.toString() : stub.toString());
+        sb.append("@0x").append(Long.toHexString(address)).append(':').append(cc);
+        if (temporaries != null && temporaries.length != 0) {
+            sb.append("; temps=");
+            String sep = "";
+            for (Value op : temporaries) {
+                sb.append(sep).append(op);
+                sep = ",";
+            }
+        }
+        return sb.toString();
     }
 
     public CallingConvention getCallingConvention() {
         return cc;
+    }
+
+    public Value[] getTemporaries() {
+        if (temporaries.length == 0) {
+            return temporaries;
+        }
+        return temporaries.clone();
     }
 
     public long getMaxCallTargetOffset() {
@@ -168,13 +191,14 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
             InstalledCode code = stub.getCode(backend);
 
             Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
-            AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
-            int i = 0;
-            for (Register reg : destroyedRegisters) {
-                temporaryLocations[i++] = reg.asValue();
+            if (!destroyedRegisters.isEmpty()) {
+                AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
+                int i = 0;
+                for (Register reg : destroyedRegisters) {
+                    temporaryLocations[i++] = reg.asValue();
+                }
+                temporaries = temporaryLocations;
             }
-            // Update calling convention with temporaries
-            cc = new CallingConvention(temporaryLocations, cc.getStackSize(), cc.getReturn(), cc.getArguments());
             address = code.getStart();
         }
     }
