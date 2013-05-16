@@ -306,7 +306,7 @@ public class GraphBuilderPhase extends Phase {
      */
     protected void handleUnresolvedLoadConstant(JavaType type) {
         append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
-        frameState.push(Kind.Object, append(ConstantNode.forObject(null, runtime, currentGraph)));
+        frameState.push(Kind.Object, appendConstant(Constant.NULL_OBJECT));
     }
 
     /**
@@ -364,7 +364,7 @@ public class GraphBuilderPhase extends Phase {
     protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
         Kind kind = field.getKind();
         append(currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved)));
-        frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+        frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
     }
 
     /**
@@ -390,7 +390,7 @@ public class GraphBuilderPhase extends Phase {
         frameState.popArguments(javaMethod.getSignature().getParameterSlots(withReceiver), javaMethod.getSignature().getParameterCount(withReceiver));
         Kind kind = javaMethod.getSignature().getReturnKind();
         if (kind != Kind.Void) {
-            frameState.push(kind.getStackKind(), append(ConstantNode.defaultForKind(kind, currentGraph)));
+            frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
         }
     }
 
@@ -433,7 +433,7 @@ public class GraphBuilderPhase extends Phase {
             // this is a load of class constant which might be unresolved
             JavaType type = (JavaType) con;
             if (type instanceof ResolvedJavaType) {
-                frameState.push(Kind.Object, append(ConstantNode.forConstant(((ResolvedJavaType) type).getEncoding(Representation.JavaClass), runtime, currentGraph)));
+                frameState.push(Kind.Object, appendConstant(((ResolvedJavaType) type).getEncoding(Representation.JavaClass)));
             } else {
                 handleUnresolvedLoadConstant(type);
             }
@@ -675,7 +675,7 @@ public class GraphBuilderPhase extends Phase {
         int index = stream().readLocalIndex();
         int delta = stream().readIncrement();
         ValueNode x = frameState.loadLocal(index);
-        ValueNode y = append(ConstantNode.forInt(delta, currentGraph));
+        ValueNode y = appendConstant(Constant.forInt(delta));
         frameState.storeLocal(index, append(currentGraph.unique(new IntegerAddNode(Kind.Int, x, y))));
     }
 
@@ -1350,6 +1350,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private static ValueNode append(ValueNode v) {
+        assert !(v instanceof ConstantNode);
         return v;
     }
 
@@ -1525,7 +1526,7 @@ public class GraphBuilderPhase extends Phase {
 
     private ValueNode synchronizedObject(FrameStateBuilder state, ResolvedJavaMethod target) {
         if (isStatic(target.getModifiers())) {
-            return append(ConstantNode.forConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass), runtime, currentGraph));
+            return appendConstant(target.getDeclaringClass().getEncoding(Representation.JavaClass));
         } else {
             return state.loadLocal(0);
         }
