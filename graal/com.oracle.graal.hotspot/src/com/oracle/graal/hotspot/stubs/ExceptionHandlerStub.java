@@ -27,8 +27,8 @@ import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;

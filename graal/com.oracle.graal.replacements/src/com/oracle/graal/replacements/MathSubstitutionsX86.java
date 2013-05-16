@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;

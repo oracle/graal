@@ -29,7 +29,6 @@ import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.gen.LIRGenerator;

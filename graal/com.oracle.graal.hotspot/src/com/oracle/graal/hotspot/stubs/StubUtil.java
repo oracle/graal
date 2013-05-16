@@ -31,7 +31,7 @@ import static com.oracle.graal.word.Word.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;

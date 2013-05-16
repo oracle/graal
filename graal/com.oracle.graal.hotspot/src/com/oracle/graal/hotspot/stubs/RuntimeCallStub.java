@@ -31,7 +31,6 @@ import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;

@@ -26,7 +26,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.gen.*;

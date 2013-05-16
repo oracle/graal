@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.api.code;
 
-import java.util.*;
-
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -31,78 +29,6 @@ import com.oracle.graal.api.meta.*;
  * target of such a call may be a leaf stub or a call into the runtime code proper.
  */
 public interface RuntimeCallTarget extends InvokeTarget {
-
-    /**
-     * The name and signature of a runtime call.
-     */
-    public static class ForeignCallDescriptor {
-
-        private final String name;
-        private final boolean hasSideEffect;
-        private final Class resultType;
-        private final Class[] argumentTypes;
-
-        public ForeignCallDescriptor(String name, boolean hasSideEffect, Class resultType, Class... argumentTypes) {
-            this.name = name;
-            this.hasSideEffect = hasSideEffect;
-            this.resultType = resultType;
-            this.argumentTypes = argumentTypes;
-        }
-
-        /**
-         * Gets the name of this runtime call.
-         */
-        public String getName() {
-            return name;
-        }
-
-        /**
-         * Determines if this call changes state visible to other threads. Such calls denote
-         * boundaries across which deoptimization points cannot be moved.
-         */
-        public boolean hasSideEffect() {
-            return hasSideEffect;
-        }
-
-        /**
-         * Gets the return kind of this runtime call.
-         */
-        public Class<?> getResultType() {
-            return resultType;
-        }
-
-        /**
-         * Gets the argument kinds of this runtime call.
-         */
-        public Class<?>[] getArgumentTypes() {
-            return argumentTypes.clone();
-        }
-
-        @Override
-        public int hashCode() {
-            return name.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ForeignCallDescriptor) {
-                ForeignCallDescriptor nas = (ForeignCallDescriptor) obj;
-                return nas.name.equals(name) && nas.resultType.equals(resultType) && Arrays.equals(nas.argumentTypes, argumentTypes);
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder(name).append('(');
-            String sep = "";
-            for (Class arg : argumentTypes) {
-                sb.append(sep).append(arg.getSimpleName());
-                sep = ",";
-            }
-            return sb.append(')').append(resultType.getSimpleName()).toString();
-        }
-    }
 
     CallingConvention getCallingConvention();
 
