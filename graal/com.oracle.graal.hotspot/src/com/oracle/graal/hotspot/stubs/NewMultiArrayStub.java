@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
  */
 public class NewMultiArrayStub extends CRuntimeStub {
 
-    public NewMultiArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public NewMultiArrayStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

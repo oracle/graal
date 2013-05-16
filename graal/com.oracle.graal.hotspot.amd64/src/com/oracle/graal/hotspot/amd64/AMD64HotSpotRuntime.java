@@ -25,9 +25,9 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.DecryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.EncryptBlockStubCall.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
@@ -61,8 +61,8 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         RegisterValue exception = rax.asValue(Kind.Object);
         RegisterValue exceptionPc = rdx.asValue(word);
         CallingConvention exceptionCc = new CallingConvention(0, Value.ILLEGAL, exception, exceptionPc);
-        register(new HotSpotRuntimeCallTarget(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc));
-        register(new HotSpotRuntimeCallTarget(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc));
+        register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc));
+        register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc));
 
         // The crypto stubs do callee saving
         registerLeafCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS);

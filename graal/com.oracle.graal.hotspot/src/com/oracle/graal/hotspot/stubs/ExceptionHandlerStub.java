@@ -50,7 +50,7 @@ import com.oracle.graal.word.*;
  */
 public class ExceptionHandlerStub extends CRuntimeStub {
 
-    public ExceptionHandlerStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public ExceptionHandlerStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

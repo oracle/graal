@@ -57,9 +57,9 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
             Call call = (Call) infopoint;
-            assert call.target instanceof HotSpotRuntimeCallTarget : this + " cannot have non runtime call: " + call.target;
-            HotSpotRuntimeCallTarget callTarget = (HotSpotRuntimeCallTarget) call.target;
-            assert !callTarget.isCompiledStub() : this + " cannot call compiled stub " + callTarget;
+            assert call.target instanceof HotSpotForeignCallLinkage : this + " cannot have non runtime call: " + call.target;
+            HotSpotForeignCallLinkage linkage = (HotSpotForeignCallLinkage) call.target;
+            assert !linkage.isCompiledStub() : this + " cannot call compiled stub " + linkage;
         }
         return true;
     }

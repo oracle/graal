@@ -56,7 +56,7 @@ public abstract class Stub {
     /**
      * The linkage information for a call to this stub from compiled code.
      */
-    protected final HotSpotRuntimeCallTarget linkage;
+    protected final HotSpotForeignCallLinkage linkage;
 
     /**
      * The code installed for the stub.
@@ -100,7 +100,7 @@ public abstract class Stub {
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public Stub(HotSpotRuntime runtime, Replacements replacements, HotSpotRuntimeCallTarget linkage) {
+    public Stub(HotSpotRuntime runtime, Replacements replacements, HotSpotForeignCallLinkage linkage) {
         this.linkage = linkage;
         this.runtime = runtime;
         this.replacements = replacements;
@@ -109,7 +109,7 @@ public abstract class Stub {
     /**
      * Gets the linkage for a call to this stub from compiled code.
      */
-    public HotSpotRuntimeCallTarget getLinkage() {
+    public HotSpotForeignCallLinkage getLinkage() {
         return linkage;
     }
 

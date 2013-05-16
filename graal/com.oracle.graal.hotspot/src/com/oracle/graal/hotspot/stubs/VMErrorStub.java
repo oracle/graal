@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
  */
 public class VMErrorStub extends CRuntimeStub {
 
-    public VMErrorStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public VMErrorStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

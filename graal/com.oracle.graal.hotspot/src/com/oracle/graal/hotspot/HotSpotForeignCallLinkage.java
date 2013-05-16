@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 
 import java.util.*;
 
@@ -38,11 +38,11 @@ import com.oracle.graal.word.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotRuntimeCallTarget implements ForeignCallLinkage, InvokeTarget {
+public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarget {
 
     /**
      * Constants for specifying whether a call destroys or preserves registers. A call will always
-     * destroy {@link HotSpotRuntimeCallTarget#getCallingConvention() its}
+     * destroy {@link HotSpotForeignCallLinkage#getCallingConvention() its}
      * {@linkplain CallingConvention#getTemporaries() temporary} registers.
      */
     public enum RegisterEffect {
@@ -88,7 +88,7 @@ public class HotSpotRuntimeCallTarget implements ForeignCallLinkage, InvokeTarge
     private final Transition transition;
 
     /**
-     * Creates a {@link HotSpotRuntimeCallTarget}.
+     * Creates a {@link HotSpotForeignCallLinkage}.
      * 
      * @param descriptor the descriptor of the call
      * @param address the address of the code to call
@@ -97,9 +97,9 @@ public class HotSpotRuntimeCallTarget implements ForeignCallLinkage, InvokeTarge
      * @param ccType calling convention type
      * @param transition specifies if this is a {@linkplain #isLeaf() leaf} call
      */
-    public static HotSpotRuntimeCallTarget create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
+    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
         CallingConvention targetCc = createCallingConvention(descriptor, ccType);
-        return new HotSpotRuntimeCallTarget(descriptor, address, effect, transition, targetCc);
+        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, targetCc);
     }
 
     /**
@@ -125,7 +125,7 @@ public class HotSpotRuntimeCallTarget implements ForeignCallLinkage, InvokeTarge
         }
     }
 
-    public HotSpotRuntimeCallTarget(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
+    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
         this.address = address;
         this.effect = effect;
         this.transition = transition;

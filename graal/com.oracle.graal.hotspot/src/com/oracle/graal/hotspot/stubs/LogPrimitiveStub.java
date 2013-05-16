@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
  */
 public class LogPrimitiveStub extends CRuntimeStub {
 
-    public LogPrimitiveStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public LogPrimitiveStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

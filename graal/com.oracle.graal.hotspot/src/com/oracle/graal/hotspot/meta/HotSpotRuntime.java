@@ -29,8 +29,8 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.nodes.MonitorEnterStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
@@ -73,7 +73,7 @@ import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.nodes.*;
@@ -115,7 +115,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private BoxingSnippets.Templates boxingSnippets;
     private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
 
-    private final Map<ForeignCallDescriptor, HotSpotRuntimeCallTarget> runtimeCalls = new HashMap<>();
+    private final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
 
     /**
      * The offset from the origin of an array to the first element.
@@ -183,17 +183,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         regConfig = createRegisterConfig();
     }
 
-    protected HotSpotRuntimeCallTarget register(HotSpotRuntimeCallTarget call) {
-        HotSpotRuntimeCallTarget oldValue = runtimeCalls.put(call.getDescriptor(), call);
+    protected HotSpotForeignCallLinkage register(HotSpotForeignCallLinkage linkage) {
+        HotSpotForeignCallLinkage oldValue = foreignCalls.put(linkage.getDescriptor(), linkage);
         assert oldValue == null;
-        return call;
+        return linkage;
     }
 
     /**
      * Registers the details for linking a call to a {@link Stub}.
      */
     protected ForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
     }
 
     /**
@@ -202,14 +202,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected ForeignCallLinkage registerCRuntimeCall(ForeignCallDescriptor descriptor, long address) {
         Class<?> resultType = descriptor.getResultType();
         assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "C runtime call must return object thread local storage: " + descriptor;
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF));
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF));
     }
 
     /**
      * Registers the details for a call to a stub that never returns.
      */
     protected ForeignCallLinkage registerNoReturnStub(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, PRESERVES_REGISTERS, ccType, NOT_LEAF));
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, PRESERVES_REGISTERS, ccType, NOT_LEAF));
     }
 
     /**
@@ -218,7 +218,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * another thread.
      */
     protected ForeignCallLinkage registerLeafCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
-        return register(HotSpotRuntimeCallTarget.create(descriptor, address, effect, ccType, LEAF));
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, LEAF));
     }
 
     protected abstract RegisterConfig createRegisterConfig();
@@ -292,18 +292,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
 
         TargetDescription target = getTarget();
-        link(new NewInstanceStub(this, replacements, target, runtimeCalls.get(NEW_INSTANCE)));
-        link(new NewArrayStub(this, replacements, target, runtimeCalls.get(NEW_ARRAY)));
-        link(new NewMultiArrayStub(this, replacements, target, runtimeCalls.get(NEW_MULTI_ARRAY)));
-        link(new ThreadIsInterruptedStub(this, replacements, target, runtimeCalls.get(THREAD_IS_INTERRUPTED)));
-        link(new ExceptionHandlerStub(this, replacements, target, runtimeCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(this, replacements, target, runtimeCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
-        link(new VerifyOopStub(this, replacements, target, runtimeCalls.get(VERIFY_OOP)));
-        link(new OSRMigrationEndStub(this, replacements, target, runtimeCalls.get(OSR_MIGRATION_END)));
-        link(new LogPrimitiveStub(this, replacements, target, runtimeCalls.get(LOG_PRIMITIVE)));
-        link(new LogObjectStub(this, replacements, target, runtimeCalls.get(LOG_OBJECT)));
-        link(new LogPrintfStub(this, replacements, target, runtimeCalls.get(LOG_PRINTF)));
-        link(new VMErrorStub(this, replacements, target, runtimeCalls.get(VM_ERROR)));
+        link(new NewInstanceStub(this, replacements, target, foreignCalls.get(NEW_INSTANCE)));
+        link(new NewArrayStub(this, replacements, target, foreignCalls.get(NEW_ARRAY)));
+        link(new NewMultiArrayStub(this, replacements, target, foreignCalls.get(NEW_MULTI_ARRAY)));
+        link(new ThreadIsInterruptedStub(this, replacements, target, foreignCalls.get(THREAD_IS_INTERRUPTED)));
+        link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(this, replacements, target, foreignCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
+        link(new VerifyOopStub(this, replacements, target, foreignCalls.get(VERIFY_OOP)));
+        link(new OSRMigrationEndStub(this, replacements, target, foreignCalls.get(OSR_MIGRATION_END)));
+        link(new LogPrimitiveStub(this, replacements, target, foreignCalls.get(LOG_PRIMITIVE)));
+        link(new LogObjectStub(this, replacements, target, foreignCalls.get(LOG_OBJECT)));
+        link(new LogPrintfStub(this, replacements, target, foreignCalls.get(LOG_PRINTF)));
+        link(new VMErrorStub(this, replacements, target, foreignCalls.get(VM_ERROR)));
 
         linkRuntimeCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
         linkRuntimeCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
@@ -321,11 +321,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     private void linkRuntimeCall(ForeignCallDescriptor descriptor, long address, Replacements replacements) {
         RuntimeCallStub stub = new RuntimeCallStub(address, descriptor, true, this, replacements);
-        HotSpotRuntimeCallTarget linkage = stub.getLinkage();
-        HotSpotRuntimeCallTarget targetLinkage = stub.getTargetLinkage();
+        HotSpotForeignCallLinkage linkage = stub.getLinkage();
+        HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
-        runtimeCalls.put(linkage.getDescriptor(), linkage);
-        runtimeCalls.put(targetLinkage.getDescriptor(), targetLinkage);
+        foreignCalls.put(linkage.getDescriptor(), linkage);
+        foreignCalls.put(targetLinkage.getDescriptor(), targetLinkage);
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {
@@ -854,9 +854,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return HotSpotResolvedObjectType.fromClass(clazz);
     }
 
-    public HotSpotRuntimeCallTarget lookupForeignCall(ForeignCallDescriptor descriptor) {
-        HotSpotRuntimeCallTarget callTarget = runtimeCalls.get(descriptor);
-        assert runtimeCalls != null : descriptor;
+    public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        HotSpotForeignCallLinkage callTarget = foreignCalls.get(descriptor);
+        assert foreignCalls != null : descriptor;
         callTarget.finalizeAddress(graalRuntime.getBackend());
         return callTarget;
     }

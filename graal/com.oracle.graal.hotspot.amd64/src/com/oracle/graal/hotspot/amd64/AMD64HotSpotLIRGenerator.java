@@ -211,7 +211,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        HotSpotRuntimeCallTarget hsLinkage = (HotSpotRuntimeCallTarget) linkage;
+        HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
         boolean destroysRegisters = hsLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;

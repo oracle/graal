@@ -41,7 +41,7 @@ import com.oracle.graal.word.*;
  */
 public class ThreadIsInterruptedStub extends CRuntimeStub {
 
-    public ThreadIsInterruptedStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public ThreadIsInterruptedStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

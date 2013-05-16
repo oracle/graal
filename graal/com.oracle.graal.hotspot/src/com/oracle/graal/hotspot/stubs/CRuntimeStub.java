@@ -34,7 +34,7 @@ import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
  */
 public abstract class CRuntimeStub extends SnippetStub {
 
-    public CRuntimeStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public CRuntimeStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

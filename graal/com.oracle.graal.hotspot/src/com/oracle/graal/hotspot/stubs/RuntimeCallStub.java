@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 
 import java.lang.reflect.*;
 
@@ -58,7 +58,7 @@ public class RuntimeCallStub extends Stub {
     /**
      * The target of the call.
      */
-    private final HotSpotRuntimeCallTarget target;
+    private final HotSpotForeignCallLinkage target;
 
     /**
      * Specifies if the JavaThread value for the current thread is to be prepended to the arguments
@@ -75,17 +75,17 @@ public class RuntimeCallStub extends Stub {
      *            to the arguments for the call to {@code address}
      */
     public RuntimeCallStub(long address, ForeignCallDescriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
-        super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(sig.getName() + ":C", sig.getResultType(), targetParameterTypes);
-        target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
+        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 
     /**
      * Gets the linkage information for the runtime call.
      */
-    public HotSpotRuntimeCallTarget getTargetLinkage() {
+    public HotSpotForeignCallLinkage getTargetLinkage() {
         return target;
     }
 

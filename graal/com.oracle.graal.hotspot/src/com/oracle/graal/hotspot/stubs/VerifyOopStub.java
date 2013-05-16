@@ -36,7 +36,7 @@ import com.oracle.graal.replacements.*;
  */
 public class VerifyOopStub extends CRuntimeStub {
 
-    public VerifyOopStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public VerifyOopStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, target, linkage);
     }
 

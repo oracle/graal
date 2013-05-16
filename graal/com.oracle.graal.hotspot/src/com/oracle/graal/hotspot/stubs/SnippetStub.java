@@ -66,7 +66,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public SnippetStub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, linkage);
         this.snippet = new Template(runtime, replacements, target, getClass());
     }
