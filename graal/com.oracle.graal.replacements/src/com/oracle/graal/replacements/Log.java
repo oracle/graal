@@ -36,9 +36,9 @@ import com.oracle.graal.nodes.extended.*;
  */
 public final class Log {
 
-    public static final ForeignCallDescriptor LOG_PRIMITIVE = new ForeignCallDescriptor("logPrimitive", false, void.class, int.class, long.class, boolean.class);
-    public static final ForeignCallDescriptor LOG_OBJECT = new ForeignCallDescriptor("logObject", false, void.class, Object.class, int.class);
-    public static final ForeignCallDescriptor LOG_PRINTF = new ForeignCallDescriptor("logPrintf", false, void.class, Object.class, long.class, long.class, long.class);
+    public static final ForeignCallDescriptor LOG_PRIMITIVE = new ForeignCallDescriptor("logPrimitive", void.class, int.class, long.class, boolean.class);
+    public static final ForeignCallDescriptor LOG_OBJECT = new ForeignCallDescriptor("logObject", void.class, Object.class, int.class);
+    public static final ForeignCallDescriptor LOG_PRINTF = new ForeignCallDescriptor("logPrintf", void.class, Object.class, long.class, long.class, long.class);
 
     // Note: Must be kept in sync with constants in graalRuntime.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;

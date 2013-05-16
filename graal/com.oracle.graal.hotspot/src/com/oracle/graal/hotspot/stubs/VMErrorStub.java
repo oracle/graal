@@ -50,7 +50,7 @@ public class VMErrorStub extends CRuntimeStub {
         vmErrorC(VM_ERROR_C, thread(), where, format, value);
     }
 
-    public static final ForeignCallDescriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC", false);
+    public static final ForeignCallDescriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void vmErrorC(@ConstantNodeParameter ForeignCallDescriptor vmErrorC, Word thread, String where, String format, long value);

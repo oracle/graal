@@ -50,7 +50,7 @@ public class LogPrimitiveStub extends CRuntimeStub {
         logPrimitivefC(LOG_PRIMITIVE_C, thread(), typeChar, value, newline);
     }
 
-    public static final ForeignCallDescriptor LOG_PRIMITIVE_C = descriptorFor(LogPrimitiveStub.class, "logPrimitivefC", false);
+    public static final ForeignCallDescriptor LOG_PRIMITIVE_C = descriptorFor(LogPrimitiveStub.class, "logPrimitivefC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void logPrimitivefC(@ConstantNodeParameter ForeignCallDescriptor logPrimitivefC, Word thread, char typeChar, long value, boolean newline);

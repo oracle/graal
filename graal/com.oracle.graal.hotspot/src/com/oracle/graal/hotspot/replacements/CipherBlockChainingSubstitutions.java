@@ -124,7 +124,7 @@ public class CipherBlockChainingSubstitutions {
 
     public static class EncryptAESCryptStubCall extends AESCryptStubCall {
 
-        public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", false, void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+        public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
         public EncryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
             super(in, out, key, r, inLength, ENCRYPT);
@@ -136,7 +136,7 @@ public class CipherBlockChainingSubstitutions {
 
     public static class DecryptAESCryptStubCall extends AESCryptStubCall {
 
-        public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", false, void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+        public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
         public DecryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
             super(in, out, key, r, inLength, DECRYPT);

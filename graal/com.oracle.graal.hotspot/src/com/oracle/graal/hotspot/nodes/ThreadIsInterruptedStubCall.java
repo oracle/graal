@@ -41,7 +41,7 @@ public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements
 
     @Input private ValueNode thread;
     @Input private ValueNode clearIsInterrupted;
-    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", false, boolean.class, Object.class, boolean.class);
+    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", boolean.class, Object.class, boolean.class);
 
     public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
         super(StampFactory.forInteger(Kind.Int, 0, 1));

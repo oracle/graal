@@ -42,7 +42,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRGenL
 
     @Input private ValueNode hub;
 
-    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", false, Object.class, Word.class);
+    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);

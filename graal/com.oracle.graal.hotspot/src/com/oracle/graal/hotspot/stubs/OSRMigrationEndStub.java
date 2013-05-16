@@ -50,7 +50,7 @@ public class OSRMigrationEndStub extends CRuntimeStub {
         osrMigrationEndC(OSR_MIGRATION_END_C, buffer);
     }
 
-    public static final ForeignCallDescriptor OSR_MIGRATION_END_C = descriptorFor(OSRMigrationEndStub.class, "osrMigrationEndC", false);
+    public static final ForeignCallDescriptor OSR_MIGRATION_END_C = descriptorFor(OSRMigrationEndStub.class, "osrMigrationEndC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void osrMigrationEndC(@ConstantNodeParameter ForeignCallDescriptor osrMigrationEndC, Word buffer);

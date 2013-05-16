@@ -44,7 +44,7 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
     @Input private ValueNode dims;
     private final int rank;
 
-    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
         super(defaultStamp);

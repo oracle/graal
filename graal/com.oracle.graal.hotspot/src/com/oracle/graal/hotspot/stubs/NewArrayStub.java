@@ -119,7 +119,7 @@ public class NewArrayStub extends SnippetStub {
         return verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final ForeignCallDescriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC", false);
+    public static final ForeignCallDescriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int length);

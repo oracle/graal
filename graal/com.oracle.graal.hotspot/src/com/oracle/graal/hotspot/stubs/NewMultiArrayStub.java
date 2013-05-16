@@ -52,7 +52,7 @@ public class NewMultiArrayStub extends CRuntimeStub {
         return verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final ForeignCallDescriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC", false);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void newMultiArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int rank, Word dims);

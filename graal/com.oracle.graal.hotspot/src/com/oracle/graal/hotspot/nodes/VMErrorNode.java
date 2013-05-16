@@ -38,7 +38,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     private final String format;
     @Input private ValueNode value;
-    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", false, void.class, Object.class, Object.class, long.class);
+    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", void.class, Object.class, Object.class, long.class);
 
     private VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());

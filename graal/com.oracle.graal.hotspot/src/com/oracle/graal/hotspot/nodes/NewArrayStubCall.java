@@ -43,7 +43,7 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
     @Input private ValueNode hub;
     @Input private ValueNode length;
 
-    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", false, Object.class, Word.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", Object.class, Word.class, int.class);
 
     public NewArrayStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);

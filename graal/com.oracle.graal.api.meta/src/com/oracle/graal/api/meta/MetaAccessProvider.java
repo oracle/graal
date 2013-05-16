@@ -94,4 +94,10 @@ public interface MetaAccessProvider {
      *         value cannot be read.
      */
     Constant readUnsafeConstant(Kind kind, Object base, long displacement);
+
+    /**
+     * Determines if a given foreign call has a side-effect. Deoptimization cannot return execution
+     * to a point before a foreign call that has a side effect.
+     */
+    boolean hasSideEffect(ForeignCallDescriptor descriptor);
 }

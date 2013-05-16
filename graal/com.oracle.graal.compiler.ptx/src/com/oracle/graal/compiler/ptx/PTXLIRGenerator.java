@@ -69,8 +69,8 @@ import com.oracle.graal.nodes.java.CompareAndSwapNode;
  */
 public class PTXLIRGenerator extends LIRGenerator {
 
-    public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", false, float.class, float.class, float.class);
-    public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", false, double.class, double.class, double.class);
+    public static final ForeignCallDescriptor ARITHMETIC_FREM = new ForeignCallDescriptor("arithmeticFrem", float.class, float.class, float.class);
+    public static final ForeignCallDescriptor ARITHMETIC_DREM = new ForeignCallDescriptor("arithmeticDrem", double.class, double.class, double.class);
 
     public static class PTXSpillMoveFactory implements LIR.SpillMoveFactory {
 

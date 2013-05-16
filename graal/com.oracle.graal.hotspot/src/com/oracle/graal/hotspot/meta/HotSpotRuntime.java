@@ -99,8 +99,8 @@ import com.oracle.graal.word.*;
  */
 public abstract class HotSpotRuntime implements GraalCodeCacheProvider, DisassemblerProvider, BytecodeDisassemblerProvider {
 
-    public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", true, void.class, long.class);
-    public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", false, int.class, Object.class);
+    public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
+    public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
 
     public final HotSpotVMConfig config;
 
@@ -993,6 +993,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    @Override
+    public boolean hasSideEffect(ForeignCallDescriptor descriptor) {
+        // Only these two foreign calls are expected to be made with
+        // a node that implements StateSplit. They need to be a state
+        // split so that the stack trace they produce is accurate.
+        assert descriptor == CREATE_NULL_POINTER_EXCEPTION || descriptor == CREATE_OUT_OF_BOUNDS_EXCEPTION : descriptor;
+        return false;
     }
 
     @Override

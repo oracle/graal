@@ -34,9 +34,11 @@ import com.oracle.graal.nodes.spi.*;
 public class RuntimeCallStateSplitNode extends RuntimeCallNode implements LIRLowerable, StateSplit, DeoptimizingNode {
 
     @Input(notDataflow = true) private FrameState stateAfter;
+    private MetaAccessProvider runtime;
 
-    public RuntimeCallStateSplitNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public RuntimeCallStateSplitNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(descriptor, arguments);
+        this.runtime = runtime;
     }
 
     public FrameState stateAfter() {
@@ -50,7 +52,7 @@ public class RuntimeCallStateSplitNode extends RuntimeCallNode implements LIRLow
     }
 
     public boolean hasSideEffect() {
-        return getDescriptor().hasSideEffect();
+        return runtime.hasSideEffect(getDescriptor());
     }
 
     @Override

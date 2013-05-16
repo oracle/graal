@@ -38,8 +38,8 @@ import com.oracle.graal.nodes.spi.*;
 @ClassSubstitution(java.lang.System.class)
 public class SystemSubstitutions {
 
-    public static final ForeignCallDescriptor JAVA_TIME_MILLIS = new ForeignCallDescriptor("javaTimeMillis", false, long.class);
-    public static final ForeignCallDescriptor JAVA_TIME_NANOS = new ForeignCallDescriptor("javaTimeNanos", false, long.class);
+    public static final ForeignCallDescriptor JAVA_TIME_MILLIS = new ForeignCallDescriptor("javaTimeMillis", long.class);
+    public static final ForeignCallDescriptor JAVA_TIME_NANOS = new ForeignCallDescriptor("javaTimeNanos", long.class);
 
     @MacroSubstitution(macro = ArrayCopyNode.class)
     public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length);

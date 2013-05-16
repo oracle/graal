@@ -52,7 +52,7 @@ public class ThreadIsInterruptedStub extends CRuntimeStub {
         return result;
     }
 
-    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC", false);
+    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native boolean threadIsInterruptedC(@ConstantNodeParameter ForeignCallDescriptor threadIsInterruptedC, Word thread, Thread receiverThread, boolean clearIsInterrupted);

@@ -38,13 +38,11 @@ import java.util.*;
 public class ForeignCallDescriptor {
 
     private final String name;
-    private final boolean hasSideEffect;
     private final Class resultType;
     private final Class[] argumentTypes;
 
-    public ForeignCallDescriptor(String name, boolean hasSideEffect, Class resultType, Class... argumentTypes) {
+    public ForeignCallDescriptor(String name, Class resultType, Class... argumentTypes) {
         this.name = name;
-        this.hasSideEffect = hasSideEffect;
         this.resultType = resultType;
         this.argumentTypes = argumentTypes;
     }
@@ -54,14 +52,6 @@ public class ForeignCallDescriptor {
      */
     public String getName() {
         return name;
-    }
-
-    /**
-     * Determines if this call changes state visible to other threads. Such calls denote boundaries
-     * across which deoptimization points cannot be moved.
-     */
-    public boolean hasSideEffect() {
-        return hasSideEffect;
     }
 
     /**

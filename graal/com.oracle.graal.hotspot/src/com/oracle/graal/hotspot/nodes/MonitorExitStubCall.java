@@ -38,7 +38,7 @@ public class MonitorExitStubCall extends DeoptimizingStubCall implements LIRGenL
 
     @Input private ValueNode object;
     private int lockDepth;
-    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", void.class, Object.class, Word.class);
 
     public MonitorExitStubCall(ValueNode object, int lockDepth) {
         super(StampFactory.forVoid());

@@ -46,13 +46,13 @@ import com.oracle.graal.word.*;
  */
 public class StubUtil {
 
-    public static final ForeignCallDescriptor VM_MESSAGE_C = descriptorFor(StubUtil.class, "vmMessageC", false);
+    public static final ForeignCallDescriptor VM_MESSAGE_C = descriptorFor(StubUtil.class, "vmMessageC");
 
     /**
      * Looks for a {@link CRuntimeCall} node intrinsic named {@code name} in {@code stubClass} and
      * returns a {@link ForeignCallDescriptor} based on its signature and the value of {@code hasSideEffect}.
      */
-    public static ForeignCallDescriptor descriptorFor(Class<?> stubClass, String name, boolean hasSideEffect) {
+    public static ForeignCallDescriptor descriptorFor(Class<?> stubClass, String name) {
         Method found = null;
         for (Method method : stubClass.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {
@@ -67,7 +67,7 @@ public class StubUtil {
         assert found != null : "could not find C runtime call named " + name + " in " + stubClass;
         List<Class<?>> paramList = Arrays.asList(found.getParameterTypes());
         Class[] cCallTypes = paramList.subList(1, paramList.size()).toArray(new Class[paramList.size() - 1]);
-        return new ForeignCallDescriptor(name, hasSideEffect, found.getReturnType(), cCallTypes);
+        return new ForeignCallDescriptor(name, found.getReturnType(), cCallTypes);
     }
 
     public static void handlePendingException(boolean isObjectResult) {

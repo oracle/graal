@@ -37,7 +37,7 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
 
     @Input private ValueNode object;
     @Input private ValueNode lock;
-    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
 
     public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
         super(StampFactory.forVoid());

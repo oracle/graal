@@ -58,8 +58,8 @@ public class GraphBuilderPhase extends Phase {
 
     public static final class RuntimeCalls {
 
-        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", true, Object.class);
-        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", true, Object.class, int.class);
+        public static final ForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = new ForeignCallDescriptor("createNullPointerException", Object.class);
+        public static final ForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = new ForeignCallDescriptor("createOutOfBoundsException", Object.class, int.class);
     }
 
     /**
@@ -940,7 +940,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedNullPointerException, runtime, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallStateSplitNode call = currentGraph.add(new RuntimeCallStateSplitNode(CREATE_NULL_POINTER_EXCEPTION));
+            RuntimeCallStateSplitNode call = currentGraph.add(new RuntimeCallStateSplitNode(runtime, CREATE_NULL_POINTER_EXCEPTION));
             call.setStateAfter(frameState.create(bci()));
             trueSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -966,7 +966,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, runtime, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
-            RuntimeCallStateSplitNode call = currentGraph.add(new RuntimeCallStateSplitNode(CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
+            RuntimeCallStateSplitNode call = currentGraph.add(new RuntimeCallStateSplitNode(runtime, CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             call.setNext(handleException(call, bci()));

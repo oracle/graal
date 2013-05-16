@@ -50,7 +50,7 @@ public class LogObjectStub extends CRuntimeStub {
         logObjectC(LOG_OBJECT_C, thread(), object, flags);
     }
 
-    public static final ForeignCallDescriptor LOG_OBJECT_C = descriptorFor(LogObjectStub.class, "logObjectC", false);
+    public static final ForeignCallDescriptor LOG_OBJECT_C = descriptorFor(LogObjectStub.class, "logObjectC");
 
     @NodeIntrinsic(CRuntimeCall.class)
     public static native void logObjectC(@ConstantNodeParameter ForeignCallDescriptor logObjectC, Word thread, Object object, int flags);

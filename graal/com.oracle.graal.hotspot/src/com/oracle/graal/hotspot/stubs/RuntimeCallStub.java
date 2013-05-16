@@ -78,7 +78,7 @@ public class RuntimeCallStub extends Stub {
         super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
-        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
+        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(sig.getName() + ":C", sig.getResultType(), targetParameterTypes);
         target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 

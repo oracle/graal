@@ -103,7 +103,7 @@ public class AESCryptSubstitutions {
 
     public static class EncryptBlockStubCall extends CryptBlockStubCall {
 
-        public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", false, void.class, Word.class, Word.class, Word.class);
+        public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", void.class, Word.class, Word.class, Word.class);
 
         public EncryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
             super(in, out, key, ENCRYPT_BLOCK);
@@ -115,7 +115,7 @@ public class AESCryptSubstitutions {
 
     public static class DecryptBlockStubCall extends CryptBlockStubCall {
 
-        public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", false, void.class, Word.class, Word.class, Word.class);
+        public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", void.class, Word.class, Word.class, Word.class);
 
         public DecryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
             super(in, out, key, DECRYPT_BLOCK);
