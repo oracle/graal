@@ -50,8 +50,8 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCallTarget call = gen.getRuntime().lookupRuntimeCall(REGISTER_FINALIZER);
-        gen.emitCall(call, call.getCallingConvention(), this, gen.operand(object()));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(REGISTER_FINALIZER);
+        gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(object()));
     }
 
     @Override

@@ -67,9 +67,9 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int getMinimumOutgoingSize();
 
     /**
-     * Gets the signature and linkage information for a runtime call.
+     * Gets the linkage for a foreign call.
      */
-    RuntimeCallTarget lookupRuntimeCall(ForeignCallDescriptor descriptor);
+    ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

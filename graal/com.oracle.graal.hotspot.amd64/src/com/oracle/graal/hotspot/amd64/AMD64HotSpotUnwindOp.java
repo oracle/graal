@@ -51,8 +51,8 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
 
-        RuntimeCallTarget stub = tasm.runtime.lookupRuntimeCall(UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention cc = stub.getCallingConvention();
+        ForeignCallLinkage linkage = tasm.runtime.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
+        CallingConvention cc = linkage.getCallingConvention();
         assert cc.getArgumentCount() == 2;
         assert exception.equals(cc.getArgument(0));
 
@@ -60,6 +60,6 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
         Register returnAddress = asRegister(cc.getArgument(1));
         masm.movq(returnAddress, new AMD64Address(rsp, 0));
 
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER));
+        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER));
     }
 }

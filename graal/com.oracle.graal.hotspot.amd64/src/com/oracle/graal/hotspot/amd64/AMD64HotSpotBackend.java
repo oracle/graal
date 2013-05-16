@@ -250,9 +250,9 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
         if (frameContext != null && !frameContext.isStub) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(EXCEPTION_HANDLER), null, false, null);
+            AMD64Call.directCall(tasm, asm, runtime().lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            AMD64Call.directCall(tasm, asm, runtime().lookupRuntimeCall(DEOPT_HANDLER), null, false, null);
+            AMD64Call.directCall(tasm, asm, runtime().lookupForeignCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
@@ -261,7 +261,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
         if (unverifiedStub != null) {
             asm.bind(unverifiedStub);
-            AMD64Call.directJmp(tasm, asm, runtime().lookupRuntimeCall(IC_MISS_HANDLER));
+            AMD64Call.directJmp(tasm, asm, runtime().lookupForeignCall(IC_MISS_HANDLER));
         }
     }
 }

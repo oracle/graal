@@ -57,8 +57,8 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
         Constant whereArg = Constant.forObject(whereString.intern());
         Constant formatArg = Constant.forObject(format.intern());
 
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VMErrorNode.VM_ERROR);
-        gen.emitCall(stub, stub.getCallingConvention(), null, whereArg, formatArg, gen.operand(value));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(VMErrorNode.VM_ERROR);
+        gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

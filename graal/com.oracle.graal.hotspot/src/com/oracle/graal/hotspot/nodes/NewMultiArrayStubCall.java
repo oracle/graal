@@ -64,8 +64,8 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
+        Variable result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
         gen.setResult(this, result);
     }
 

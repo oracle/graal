@@ -38,7 +38,7 @@ import com.oracle.graal.word.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
+public class HotSpotRuntimeCallTarget implements ForeignCallLinkage, InvokeTarget {
 
     /**
      * Constants for specifying whether a call destroys or preserves registers. A call will always

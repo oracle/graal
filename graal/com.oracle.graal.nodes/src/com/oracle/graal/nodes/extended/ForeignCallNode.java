@@ -55,12 +55,12 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
         Value[] args = new Value[arguments.size()];
         for (int i = 0; i < args.length; i++) {
             args[i] = gen.operand(arguments.get(i));
         }
-        Value result = gen.emitCall(stub, stub.getCallingConvention(), this, args);
+        Value result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, args);
         if (result != null) {
             gen.setResult(this, result);
         }

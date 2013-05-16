@@ -96,8 +96,8 @@ public class AESCryptSubstitutions {
 
         @Override
         public void generate(LIRGenerator gen) {
-            RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
-            gen.emitCall(stub, stub.getCallingConvention(), null, gen.operand(in), gen.operand(out), gen.operand(key));
+            ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
+            gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, gen.operand(in), gen.operand(out), gen.operand(key));
         }
     }
 

@@ -624,7 +624,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
+    protected abstract void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
     protected static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
@@ -659,7 +659,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         LIRFrameState state = info != null ? state(info) : null;
 
         // move the arguments into the correct location
@@ -672,7 +672,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitCall(callTarget, callCc.getReturn(), argLocations, callCc.getTemporaries(), state);
+        emitForeignCall(linkage, callCc.getReturn(), argLocations, callCc.getTemporaries(), state);
 
         if (isLegal(callCc.getReturn())) {
             return emitMove(callCc.getReturn());

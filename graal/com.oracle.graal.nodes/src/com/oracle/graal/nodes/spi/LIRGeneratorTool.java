@@ -101,7 +101,7 @@ public interface LIRGeneratorTool {
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 
-    Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args);
+    Value emitForeignCall(ForeignCallLinkage callTarget, CallingConvention cc, DeoptimizingNode info, Value... args);
 
     void emitIf(IfNode i);
 

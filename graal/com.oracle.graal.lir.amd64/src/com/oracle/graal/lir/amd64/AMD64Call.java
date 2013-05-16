@@ -104,9 +104,9 @@ public class AMD64Call {
 
     public abstract static class RuntimeCallOp extends CallOp {
 
-        protected final RuntimeCallTarget callTarget;
+        protected final ForeignCallLinkage callTarget;
 
-        public RuntimeCallOp(RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public RuntimeCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(result, parameters, temps, state);
             this.callTarget = callTarget;
         }
@@ -120,7 +120,7 @@ public class AMD64Call {
     @Opcode("CALL_NEAR_RUNTIME")
     public static class DirectNearRuntimeCallOp extends RuntimeCallOp {
 
-        public DirectNearRuntimeCallOp(RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectNearRuntimeCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(callTarget, result, parameters, temps, state);
         }
 
@@ -135,7 +135,7 @@ public class AMD64Call {
 
         @Temp({REG}) protected AllocatableValue callTemp;
 
-        public DirectFarRuntimeCallOp(LIRGeneratorTool gen, RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectFarRuntimeCallOp(LIRGeneratorTool gen, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(callTarget, result, parameters, temps, state);
             callTemp = gen.newVariable(Kind.Long);
         }

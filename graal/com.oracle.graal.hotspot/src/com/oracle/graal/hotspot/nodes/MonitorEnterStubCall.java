@@ -47,8 +47,8 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(MONITORENTER);
-        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object), gen.operand(lock));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(MONITORENTER);
+        gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(object), gen.operand(lock));
     }
 
     @NodeIntrinsic

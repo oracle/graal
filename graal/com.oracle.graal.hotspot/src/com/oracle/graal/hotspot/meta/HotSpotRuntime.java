@@ -192,14 +192,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     /**
      * Registers the details for linking a call to a {@link Stub}.
      */
-    protected RuntimeCallTarget registerStubCall(ForeignCallDescriptor descriptor) {
+    protected ForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor) {
         return register(HotSpotRuntimeCallTarget.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
     }
 
     /**
      * Registers the details for a call to a runtime C/C++ function.
      */
-    protected RuntimeCallTarget registerCRuntimeCall(ForeignCallDescriptor descriptor, long address) {
+    protected ForeignCallLinkage registerCRuntimeCall(ForeignCallDescriptor descriptor, long address) {
         Class<?> resultType = descriptor.getResultType();
         assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "C runtime call must return object thread local storage: " + descriptor;
         return register(HotSpotRuntimeCallTarget.create(descriptor, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF));
@@ -208,7 +208,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     /**
      * Registers the details for a call to a stub that never returns.
      */
-    protected RuntimeCallTarget registerNoReturnStub(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType) {
+    protected ForeignCallLinkage registerNoReturnStub(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType) {
         return register(HotSpotRuntimeCallTarget.create(descriptor, address, PRESERVES_REGISTERS, ccType, NOT_LEAF));
     }
 
@@ -217,7 +217,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * throw exceptions. That is, the thread's execution state during the call is never inspected by
      * another thread.
      */
-    protected RuntimeCallTarget registerLeafCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
+    protected ForeignCallLinkage registerLeafCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect) {
         return register(HotSpotRuntimeCallTarget.create(descriptor, address, effect, ccType, LEAF));
     }
 
@@ -854,7 +854,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return HotSpotResolvedObjectType.fromClass(clazz);
     }
 
-    public HotSpotRuntimeCallTarget lookupRuntimeCall(ForeignCallDescriptor descriptor) {
+    public HotSpotRuntimeCallTarget lookupForeignCall(ForeignCallDescriptor descriptor) {
         HotSpotRuntimeCallTarget callTarget = runtimeCalls.get(descriptor);
         assert runtimeCalls != null : descriptor;
         callTarget.finalizeAddress(graalRuntime.getBackend());

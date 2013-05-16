@@ -186,9 +186,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCall(ForeignCallLinkage callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
-        super.emitCall(callTarget, result, arguments, temps, info);
+        super.emitForeignCall(callTarget, result, arguments, temps, info);
     }
 
     protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations) {
@@ -209,10 +209,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, CallingConvention callCc, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        HotSpotRuntimeCallTarget hsCallTarget = (HotSpotRuntimeCallTarget) callTarget;
-        boolean destroysRegisters = hsCallTarget.destroysRegisters();
+        HotSpotRuntimeCallTarget hsLinkage = (HotSpotRuntimeCallTarget) linkage;
+        boolean destroysRegisters = hsLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
@@ -231,13 +231,13 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 }
             }
         }
-        if (!hsCallTarget.isLeaf()) {
+        if (!hsLinkage.isLeaf()) {
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
         }
 
-        Variable result = super.emitCall(callTarget, callCc, info, args);
+        Variable result = super.emitForeignCall(linkage, callCc, info, args);
 
-        if (!hsCallTarget.isLeaf()) {
+        if (!hsLinkage.isLeaf()) {
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
         }
 
@@ -340,10 +340,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitUnwind(Value exception) {
-        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention stubCc = stub.getCallingConvention();
-        assert stubCc.getArgumentCount() == 2;
-        RegisterValue exceptionParameter = (RegisterValue) stubCc.getArgument(0);
+        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        assert linkageCc.getArgumentCount() == 2;
+        RegisterValue exceptionParameter = (RegisterValue) linkageCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
@@ -366,11 +366,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
-        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(EXCEPTION_HANDLER_IN_CALLER);
-        CallingConvention stubCc = stub.getCallingConvention();
-        assert stubCc.getArgumentCount() == 2;
-        RegisterValue exceptionFixed = (RegisterValue) stubCc.getArgument(0);
-        RegisterValue exceptionPcFixed = (RegisterValue) stubCc.getArgument(1);
+        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        assert linkageCc.getArgumentCount() == 2;
+        RegisterValue exceptionFixed = (RegisterValue) linkageCc.getArgument(0);
+        RegisterValue exceptionPcFixed = (RegisterValue) linkageCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
         AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);

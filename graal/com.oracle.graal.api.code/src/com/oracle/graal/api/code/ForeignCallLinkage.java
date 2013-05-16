@@ -25,11 +25,13 @@ package com.oracle.graal.api.code;
 import com.oracle.graal.api.meta.*;
 
 /**
- * The name, signature and calling convention of a call from compiled code to the runtime. The
- * target of such a call may be a leaf stub or a call into the runtime code proper.
+ * The runtime specific details of a {@linkplain ForeignCallDescriptor foreign} call.
  */
-public interface RuntimeCallTarget extends InvokeTarget {
+public interface ForeignCallLinkage extends InvokeTarget {
 
+    /**
+     * Gets the details of where parameters are passed and value(s) are returned.
+     */
     CallingConvention getCallingConvention();
 
     /**
@@ -42,7 +44,7 @@ public interface RuntimeCallTarget extends InvokeTarget {
     ForeignCallDescriptor getDescriptor();
 
     /**
-     * Determines if the target routine destroys all registers.
+     * Determines if the foreign call target destroys all registers.
      * 
      * @return {@code true} if the register allocator must save all live registers around a call to
      *         this target
