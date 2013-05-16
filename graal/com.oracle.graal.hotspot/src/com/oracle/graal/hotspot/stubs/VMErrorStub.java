@@ -32,6 +32,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -52,6 +53,6 @@ public class VMErrorStub extends CRuntimeStub {
 
     public static final ForeignCallDescriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC");
 
-    @NodeIntrinsic(CRuntimeCall.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     public static native void vmErrorC(@ConstantNodeParameter ForeignCallDescriptor vmErrorC, Word thread, String where, String format, long value);
 }

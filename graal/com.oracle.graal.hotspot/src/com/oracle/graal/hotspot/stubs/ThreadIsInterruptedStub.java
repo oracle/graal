@@ -32,6 +32,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -54,6 +55,6 @@ public class ThreadIsInterruptedStub extends CRuntimeStub {
 
     public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED_C = descriptorFor(ThreadIsInterruptedStub.class, "threadIsInterruptedC");
 
-    @NodeIntrinsic(CRuntimeCall.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     public static native boolean threadIsInterruptedC(@ConstantNodeParameter ForeignCallDescriptor threadIsInterruptedC, Word thread, Thread receiverThread, boolean clearIsInterrupted);
 }

@@ -36,6 +36,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -240,6 +241,6 @@ public class NewInstanceStub extends SnippetStub {
 
     public static final ForeignCallDescriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC");
 
-    @NodeIntrinsic(CRuntimeCall.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, Word hub);
 }

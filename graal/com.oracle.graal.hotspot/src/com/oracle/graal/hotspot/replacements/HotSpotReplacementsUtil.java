@@ -673,7 +673,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @SuppressWarnings("unused")
-    @NodeIntrinsic(CRuntimeCall.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     public static int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object) {
         return System.identityHashCode(object);
     }

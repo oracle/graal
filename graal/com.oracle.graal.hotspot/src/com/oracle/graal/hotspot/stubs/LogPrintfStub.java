@@ -31,7 +31,7 @@ import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -52,6 +52,6 @@ public class LogPrintfStub extends CRuntimeStub {
 
     public static final ForeignCallDescriptor LOG_PRINTF_C = descriptorFor(LogPrintfStub.class, "logPrintfC");
 
-    @NodeIntrinsic(CRuntimeCall.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     public static native void logPrintfC(@ConstantNodeParameter ForeignCallDescriptor logPrintfC, Word thread, String format, long v1, long v2, long v3);
 }

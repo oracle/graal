@@ -40,6 +40,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -228,14 +229,14 @@ public class ForeignCallStub extends Stub {
         return invoke;
     }
 
-    private CRuntimeCall createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
+    private ForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new CRuntimeCall(target.getDescriptor(), targetArguments));
+            return builder.append(new ForeignCallNode(target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new CRuntimeCall(target.getDescriptor(), locals));
+            return builder.append(new ForeignCallNode(target.getDescriptor(), locals));
         }
     }
 
