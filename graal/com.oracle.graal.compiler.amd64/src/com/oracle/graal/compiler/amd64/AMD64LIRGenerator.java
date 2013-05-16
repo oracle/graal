@@ -787,9 +787,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset();
         if (maxOffset != (int) maxOffset) {
-            append(new AMD64Call.DirectFarRuntimeCallOp(this, linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectFarForeignCallOp(this, linkage, result, arguments, temps, info));
         } else {
-            append(new AMD64Call.DirectNearRuntimeCallOp(linkage, result, arguments, temps, info));
+            append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
         }
     }
 
