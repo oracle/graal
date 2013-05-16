@@ -45,13 +45,13 @@ public final class Log {
     private static final int LOG_OBJECT_STRING = 0x02;
     private static final int LOG_OBJECT_ADDRESS = 0x04;
 
-    @NodeIntrinsic(RuntimeCallNode.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     private static native void log(@ConstantNodeParameter ForeignCallDescriptor logObject, Object object, int flags);
 
-    @NodeIntrinsic(RuntimeCallNode.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     private static native void log(@ConstantNodeParameter ForeignCallDescriptor logPrimitive, int typeChar, long value, boolean newline);
 
-    @NodeIntrinsic(RuntimeCallNode.class)
+    @NodeIntrinsic(ForeignCallNode.class)
     private static native void printf(@ConstantNodeParameter ForeignCallDescriptor logPrintf, String format, long v1, long v2, long v3);
 
     public static void print(boolean value) {

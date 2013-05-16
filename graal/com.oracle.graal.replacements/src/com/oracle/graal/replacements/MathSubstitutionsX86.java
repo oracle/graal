@@ -95,7 +95,7 @@ public class MathSubstitutionsX86 {
     public static final ForeignCallDescriptor ARITHMETIC_COS = new ForeignCallDescriptor("arithmeticCos", double.class, double.class);
     public static final ForeignCallDescriptor ARITHMETIC_TAN = new ForeignCallDescriptor("arithmeticTan", double.class, double.class);
 
-    @NodeIntrinsic(value = RuntimeCallNode.class, setStampFromReturnType = true)
+    @NodeIntrinsic(value = ForeignCallNode.class, setStampFromReturnType = true)
     public static double callDouble(@ConstantNodeParameter ForeignCallDescriptor descriptor, double value) {
         if (descriptor == ARITHMETIC_SIN) {
             return Math.sin(value);

@@ -29,14 +29,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(nameTemplate = "RuntimeCall#{p#descriptor/s}")
-public class RuntimeCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode {
+/**
+ * Node for a {@linkplain ForeignCallDescriptor foreign} call.
+ */
+@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
+public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode {
 
     @Input private final NodeInputList<ValueNode> arguments;
 
     private final ForeignCallDescriptor descriptor;
 
-    public RuntimeCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public ForeignCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;

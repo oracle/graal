@@ -30,13 +30,13 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * A foreign call that is also a state split.
  */
-@NodeInfo(nameTemplate = "RuntimeCallStateSplit#{p#descriptor/s}")
-public class RuntimeCallStateSplitNode extends RuntimeCallNode implements LIRLowerable, StateSplit, DeoptimizingNode {
+@NodeInfo(nameTemplate = "ForeignCallStateSplit#{p#descriptor/s}")
+public class ForeignCallStateSplitNode extends ForeignCallNode implements LIRLowerable, StateSplit, DeoptimizingNode {
 
     @Input(notDataflow = true) private FrameState stateAfter;
     private MetaAccessProvider runtime;
 
-    public RuntimeCallStateSplitNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public ForeignCallStateSplitNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(descriptor, arguments);
         this.runtime = runtime;
     }
