@@ -218,7 +218,7 @@ public class StructuredGraph extends Graph implements InlineableElement {
     }
 
     /**
-     * Unlinks a node from all its control flow neighbours and then removes it from its graph. The
+     * Unlinks a node from all its control flow neighbors and then removes it from its graph. The
      * node must have no {@linkplain Node#usages() usages}.
      * 
      * @param node the node to be unlinked and removed
