@@ -111,8 +111,6 @@ public interface LIRGeneratorTool {
 
     void emitInvoke(Invoke i);
 
-    void visitRuntimeCall(RuntimeCallNode i);
-
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
     void visitMerge(MergeNode i);
 

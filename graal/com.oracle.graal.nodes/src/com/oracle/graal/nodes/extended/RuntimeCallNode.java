@@ -22,22 +22,24 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "RuntimeCall#{p#descriptor/s}")
-public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable, DeoptimizingNode {
+public class RuntimeCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode {
+
+    @Input private final NodeInputList<ValueNode> arguments;
 
     private final Descriptor descriptor;
-    @Input private FrameState deoptState;
 
     public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
-        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())), arguments);
+        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
+        this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
     }
 
@@ -45,19 +47,21 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
         return descriptor;
     }
 
-    @Override
-    public boolean hasSideEffect() {
-        return descriptor.hasSideEffect();
-    }
-
-    @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+    public NodeInputList<ValueNode> arguments() {
+        return arguments;
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.visitRuntimeCall(this);
+        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
+        Value[] args = new Value[arguments.size()];
+        for (int i = 0; i < args.length; i++) {
+            args[i] = gen.operand(arguments.get(i));
+        }
+        Value result = gen.emitCall(stub, stub.getCallingConvention(), this, args);
+        if (result != null) {
+            gen.setResult(this, result);
+        }
     }
 
     @Override
@@ -74,36 +78,7 @@ public final class RuntimeCallNode extends AbstractCallNode implements LIRLowera
     }
 
     @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState != null) {
-            return deoptState;
-        } else if (stateAfter() != null) {
-            FrameState stateDuring = stateAfter();
-            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
-                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
-            }
-            updateUsages(deoptState, stateDuring);
-            return deoptState = stateDuring;
-        }
-        return null;
-    }
-
-    @Override
-    public void setDeoptimizationState(FrameState f) {
-        if (deoptState != null) {
-            throw new IllegalStateException();
-        }
-        updateUsages(deoptState, f);
-        deoptState = f;
-    }
-
-    @Override
     public DeoptimizationReason getDeoptimizationReason() {
         return null;
-    }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return stateAfter() != null;
     }
 }

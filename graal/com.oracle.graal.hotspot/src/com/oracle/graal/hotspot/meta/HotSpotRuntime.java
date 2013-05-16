@@ -714,7 +714,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             StartNode newStart = graph.add(new StartNode());
             LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
             RuntimeCallNode migrationEnd = graph.add(new RuntimeCallNode(OSR_MIGRATION_END, buffer));
-            migrationEnd.setStateAfter(osrStart.stateAfter());
+            newStart.setStateAfter(osrStart.stateAfter());
 
             newStart.setNext(migrationEnd);
             FixedNode next = osrStart.next();

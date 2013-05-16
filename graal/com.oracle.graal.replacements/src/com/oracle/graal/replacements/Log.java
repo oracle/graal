@@ -33,8 +33,7 @@ import com.oracle.graal.nodes.extended.*;
 //JaCoCo Exclude
 
 /**
- * Provides {@link PrintStream}-like logging facility. This should only be used in
- * {@linkplain Snippet snippets}.
+ * Provides {@link PrintStream}-like logging facility.
  */
 public final class Log {
 
@@ -42,7 +41,7 @@ public final class Log {
     public static final Descriptor LOG_OBJECT = new Descriptor("logObject", false, void.class, Object.class, int.class);
     public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, void.class, Object.class, long.class, long.class, long.class);
 
-    // Note: Must be kept in sync with constants in c1_Runtime1.hpp
+    // Note: Must be kept in sync with constants in graalRuntime.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;
     private static final int LOG_OBJECT_STRING = 0x02;
     private static final int LOG_OBJECT_ADDRESS = 0x04;

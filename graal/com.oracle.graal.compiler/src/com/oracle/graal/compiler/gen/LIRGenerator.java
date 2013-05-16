@@ -681,21 +681,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    @Override
-    public void visitRuntimeCall(RuntimeCallNode x) {
-        RuntimeCallTarget call = runtime.lookupRuntimeCall(x.getDescriptor());
-        CallingConvention callCc = call.getCallingConvention();
-        frameMap.callsMethod(callCc);
-        Value resultOperand = callCc.getReturn();
-        Value[] args = visitInvokeArguments(callCc, x.arguments());
-
-        emitCall(call, resultOperand, args, callCc.getTemporaries(), state(x));
-
-        if (isLegal(resultOperand)) {
-            setResult(x, emitMove(resultOperand));
-        }
-    }
-
     /**
      * This method tries to create a switch implementation that is optimal for the given switch. It
      * will either generate a sequential if/then/else cascade, a set of range tests or a table
