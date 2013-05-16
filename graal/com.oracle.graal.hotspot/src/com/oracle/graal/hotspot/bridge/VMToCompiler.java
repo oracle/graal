@@ -53,7 +53,7 @@ public interface VMToCompiler {
 
     void shutdownCompiler() throws Throwable;
 
-    void startCompiler() throws Throwable;
+    void startCompiler(boolean bootstrapEnabled) throws Throwable;
 
     void bootstrap() throws Throwable;
 
