@@ -58,7 +58,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
         Constant formatArg = Constant.forObject(format.intern());
 
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(VMErrorNode.VM_ERROR);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, whereArg, formatArg, gen.operand(value));
+        gen.emitForeignCall(linkage, null, whereArg, formatArg, gen.operand(value));
     }
 
     @NodeIntrinsic

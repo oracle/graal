@@ -46,7 +46,7 @@ public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLow
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(VerifyOopStubCall.VERIFY_OOP);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(object));
+        gen.emitForeignCall(linkage, this, gen.operand(object));
     }
 
     @NodeIntrinsic

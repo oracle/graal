@@ -52,7 +52,7 @@ public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(ThreadIsInterruptedStubCall.THREAD_IS_INTERRUPTED);
-        Variable result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(thread), gen.operand(clearIsInterrupted));
+        Variable result = gen.emitForeignCall(linkage, this, gen.operand(thread), gen.operand(clearIsInterrupted));
         gen.setResult(this, result);
     }
 

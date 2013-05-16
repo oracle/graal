@@ -118,7 +118,7 @@ public class CipherBlockChainingSubstitutions {
         @Override
         public void generate(LIRGenerator gen) {
             ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
-            gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, gen.operand(in), gen.operand(out), gen.operand(key), gen.operand(r), gen.operand(inLength));
+            gen.emitForeignCall(linkage, null, gen.operand(in), gen.operand(out), gen.operand(key), gen.operand(r), gen.operand(inLength));
         }
     }
 

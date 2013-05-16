@@ -48,7 +48,7 @@ public class WriteBarrierPostStubCall extends FixedWithNextNode implements LIRGe
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(WriteBarrierPostStubCall.WRITE_BARRIER_POST);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, gen.operand(object), gen.operand(card));
+        gen.emitForeignCall(linkage, null, gen.operand(object), gen.operand(card));
     }
 
     @NodeIntrinsic

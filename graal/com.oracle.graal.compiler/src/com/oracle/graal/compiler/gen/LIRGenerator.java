@@ -659,23 +659,24 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitForeignCall(ForeignCallLinkage linkage, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         LIRFrameState state = info != null ? state(info) : null;
 
         // move the arguments into the correct location
-        frameMap.callsMethod(callCc);
-        assert callCc.getArgumentCount() == args.length : "argument count mismatch";
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        frameMap.callsMethod(linkageCc);
+        assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
-            AllocatableValue loc = callCc.getArgument(i);
+            AllocatableValue loc = linkageCc.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitForeignCall(linkage, callCc.getReturn(), argLocations, callCc.getTemporaries(), state);
+        emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkageCc.getTemporaries(), state);
 
-        if (isLegal(callCc.getReturn())) {
-            return emitMove(callCc.getReturn());
+        if (isLegal(linkageCc.getReturn())) {
+            return emitMove(linkageCc.getReturn());
         } else {
             return null;
         }

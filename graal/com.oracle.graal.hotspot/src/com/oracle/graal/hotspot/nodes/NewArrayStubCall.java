@@ -63,7 +63,7 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(NEW_ARRAY);
-        Variable result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(hub), gen.operand(length));
+        Variable result = gen.emitForeignCall(linkage, this, gen.operand(hub), gen.operand(length));
         gen.setResult(this, result);
     }
 

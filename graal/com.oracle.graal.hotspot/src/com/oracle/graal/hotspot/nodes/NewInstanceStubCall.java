@@ -61,7 +61,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRGenL
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(NEW_INSTANCE);
-        Variable result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(hub));
+        Variable result = gen.emitForeignCall(linkage, this, gen.operand(hub));
         gen.setResult(this, result);
     }
 

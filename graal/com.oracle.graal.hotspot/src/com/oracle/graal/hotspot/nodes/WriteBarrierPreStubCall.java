@@ -45,7 +45,7 @@ public class WriteBarrierPreStubCall extends FixedWithNextNode implements LIRGen
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(WriteBarrierPreStubCall.WRITE_BARRIER_PRE);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), null, gen.operand(object));
+        gen.emitForeignCall(linkage, null, gen.operand(object));
     }
 
     @NodeIntrinsic

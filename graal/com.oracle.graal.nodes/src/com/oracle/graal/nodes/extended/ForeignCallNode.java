@@ -60,7 +60,7 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
         for (int i = 0; i < args.length; i++) {
             args[i] = gen.operand(arguments.get(i));
         }
-        Value result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, args);
+        Value result = gen.emitForeignCall(linkage, this, args);
         if (result != null) {
             gen.setResult(this, result);
         }

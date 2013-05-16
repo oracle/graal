@@ -48,7 +48,7 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
     @Override
     public void generate(LIRGenerator gen) {
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(MONITORENTER);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(object), gen.operand(lock));
+        gen.emitForeignCall(linkage, this, gen.operand(object), gen.operand(lock));
     }
 
     @NodeIntrinsic

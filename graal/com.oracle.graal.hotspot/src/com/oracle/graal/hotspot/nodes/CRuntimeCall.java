@@ -53,7 +53,7 @@ public class CRuntimeCall extends DeoptimizingFixedWithNextNode implements LIRGe
         for (int i = 0; i < args.length; i++) {
             args[i] = gen.operand(arguments.get(i));
         }
-        Variable result = gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, args);
+        Variable result = gen.emitForeignCall(linkage, this, args);
         if (result != null) {
             gen.setResult(this, result);
         }

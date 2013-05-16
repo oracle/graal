@@ -52,7 +52,7 @@ public class MonitorExitStubCall extends DeoptimizingStubCall implements LIRGenL
         HotSpotLIRGenerator hsGen = (HotSpotLIRGenerator) gen;
         StackSlot slot = hsGen.getLockSlot(lockDepth);
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(MonitorExitStubCall.MONITOREXIT);
-        gen.emitForeignCall(linkage, linkage.getCallingConvention(), this, gen.operand(object), gen.emitAddress(slot));
+        gen.emitForeignCall(linkage, this, gen.operand(object), gen.emitAddress(slot));
     }
 
     @NodeIntrinsic
