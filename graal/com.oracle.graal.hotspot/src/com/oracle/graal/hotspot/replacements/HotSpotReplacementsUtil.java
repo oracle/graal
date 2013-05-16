@@ -28,7 +28,7 @@ import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -675,7 +675,7 @@ public class HotSpotReplacementsUtil {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic(CRuntimeCall.class)
-    public static int identityHashCode(@ConstantNodeParameter Descriptor descriptor, Object object) {
+    public static int identityHashCode(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object) {
         return System.identityHashCode(object);
     }
 

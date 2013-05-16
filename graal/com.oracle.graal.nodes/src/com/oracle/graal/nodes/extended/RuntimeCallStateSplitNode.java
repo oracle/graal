@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -35,7 +35,7 @@ public class RuntimeCallStateSplitNode extends RuntimeCallNode implements LIRLow
 
     @Input(notDataflow = true) private FrameState stateAfter;
 
-    public RuntimeCallStateSplitNode(Descriptor descriptor, ValueNode... arguments) {
+    public RuntimeCallStateSplitNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(descriptor, arguments);
     }
 

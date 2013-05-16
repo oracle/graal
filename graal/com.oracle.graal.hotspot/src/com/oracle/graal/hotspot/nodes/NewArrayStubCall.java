@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -43,7 +43,7 @@ public class NewArrayStubCall extends DeoptimizingStubCall implements LIRGenLowe
     @Input private ValueNode hub;
     @Input private ValueNode length;
 
-    public static final Descriptor NEW_ARRAY = new Descriptor("new_array", false, Object.class, Word.class, int.class);
+    public static final ForeignCallDescriptor NEW_ARRAY = new ForeignCallDescriptor("new_array", false, Object.class, Word.class, int.class);
 
     public NewArrayStubCall(ValueNode hub, ValueNode length) {
         super(defaultStamp);

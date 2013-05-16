@@ -35,14 +35,14 @@ public interface RuntimeCallTarget extends InvokeTarget {
     /**
      * The name and signature of a runtime call.
      */
-    public static class Descriptor {
+    public static class ForeignCallDescriptor {
 
         private final String name;
         private final boolean hasSideEffect;
         private final Class resultType;
         private final Class[] argumentTypes;
 
-        public Descriptor(String name, boolean hasSideEffect, Class resultType, Class... argumentTypes) {
+        public ForeignCallDescriptor(String name, boolean hasSideEffect, Class resultType, Class... argumentTypes) {
             this.name = name;
             this.hasSideEffect = hasSideEffect;
             this.resultType = resultType;
@@ -85,8 +85,8 @@ public interface RuntimeCallTarget extends InvokeTarget {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Descriptor) {
-                Descriptor nas = (Descriptor) obj;
+            if (obj instanceof ForeignCallDescriptor) {
+                ForeignCallDescriptor nas = (ForeignCallDescriptor) obj;
                 return nas.name.equals(name) && nas.resultType.equals(resultType) && Arrays.equals(nas.argumentTypes, argumentTypes);
             }
             return false;
@@ -113,7 +113,7 @@ public interface RuntimeCallTarget extends InvokeTarget {
      */
     long getMaxCallTargetOffset();
 
-    Descriptor getDescriptor();
+    ForeignCallDescriptor getDescriptor();
 
     /**
      * Determines if the target routine destroys all registers.

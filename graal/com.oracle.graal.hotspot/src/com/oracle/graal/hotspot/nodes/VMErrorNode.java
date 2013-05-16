@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -39,7 +39,7 @@ public final class VMErrorNode extends DeoptimizingStubCall implements LIRGenLow
 
     private final String format;
     @Input private ValueNode value;
-    public static final Descriptor VM_ERROR = new Descriptor("vm_error", false, void.class, Object.class, Object.class, long.class);
+    public static final ForeignCallDescriptor VM_ERROR = new ForeignCallDescriptor("vm_error", false, void.class, Object.class, Object.class, long.class);
 
     private VMErrorNode(String format, ValueNode value) {
         super(StampFactory.forVoid());

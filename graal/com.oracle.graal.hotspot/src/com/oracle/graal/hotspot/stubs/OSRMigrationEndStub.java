@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -50,8 +50,8 @@ public class OSRMigrationEndStub extends CRuntimeStub {
         osrMigrationEndC(OSR_MIGRATION_END_C, buffer);
     }
 
-    public static final Descriptor OSR_MIGRATION_END_C = descriptorFor(OSRMigrationEndStub.class, "osrMigrationEndC", false);
+    public static final ForeignCallDescriptor OSR_MIGRATION_END_C = descriptorFor(OSRMigrationEndStub.class, "osrMigrationEndC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native void osrMigrationEndC(@ConstantNodeParameter Descriptor osrMigrationEndC, Word buffer);
+    public static native void osrMigrationEndC(@ConstantNodeParameter ForeignCallDescriptor osrMigrationEndC, Word buffer);
 }

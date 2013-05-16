@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
@@ -38,7 +38,7 @@ public class MonitorExitStubCall extends DeoptimizingStubCall implements LIRGenL
 
     @Input private ValueNode object;
     private int lockDepth;
-    public static final Descriptor MONITOREXIT = new Descriptor("monitorexit", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", true, void.class, Object.class, Word.class);
 
     public MonitorExitStubCall(ValueNode object, int lockDepth) {
         super(StampFactory.forVoid());

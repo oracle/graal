@@ -27,7 +27,7 @@ import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -125,8 +125,8 @@ public class ExceptionHandlerStub extends CRuntimeStub {
         return enabled || graalRuntime().getConfig().cAssertions;
     }
 
-    public static final Descriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc", false);
+    public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc", false);
 
     @NodeIntrinsic(value = CRuntimeCall.class, setStampFromReturnType = true)
-    public static native Word exceptionHandlerForPc(@ConstantNodeParameter Descriptor exceptionHandlerForPc, Word thread);
+    public static native Word exceptionHandlerForPc(@ConstantNodeParameter ForeignCallDescriptor exceptionHandlerForPc, Word thread);
 }

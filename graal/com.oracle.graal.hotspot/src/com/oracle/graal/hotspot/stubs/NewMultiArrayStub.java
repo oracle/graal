@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -52,8 +52,8 @@ public class NewMultiArrayStub extends CRuntimeStub {
         return verifyObject(getAndClearObjectResult(thread()));
     }
 
-    public static final Descriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC", false);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY_C = descriptorFor(NewMultiArrayStub.class, "newMultiArrayC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native void newMultiArrayC(@ConstantNodeParameter Descriptor newArrayC, Word thread, Word hub, int rank, Word dims);
+    public static native void newMultiArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int rank, Word dims);
 }

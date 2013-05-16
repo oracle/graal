@@ -66,7 +66,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     /**
      * The descriptor of the call.
      */
-    private final Descriptor descriptor;
+    private final ForeignCallDescriptor descriptor;
 
     /**
      * The entry point address of this call's target.
@@ -97,7 +97,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
      * @param ccType calling convention type
      * @param transition specifies if this is a {@linkplain #isLeaf() leaf} call
      */
-    public static HotSpotRuntimeCallTarget create(Descriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
+    public static HotSpotRuntimeCallTarget create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
         CallingConvention targetCc = createCallingConvention(descriptor, ccType);
         return new HotSpotRuntimeCallTarget(descriptor, address, effect, transition, targetCc);
     }
@@ -105,7 +105,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(Descriptor descriptor, Type ccType) {
+    public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
         HotSpotRuntime runtime = graalRuntime().getRuntime();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
@@ -125,7 +125,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         }
     }
 
-    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
+    public HotSpotRuntimeCallTarget(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
         this.address = address;
         this.effect = effect;
         this.transition = transition;
@@ -146,7 +146,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         return graalRuntime().getCompilerToVM().getMaxCallTargetOffset(address);
     }
 
-    public Descriptor getDescriptor() {
+    public ForeignCallDescriptor getDescriptor() {
         return descriptor;
     }
 

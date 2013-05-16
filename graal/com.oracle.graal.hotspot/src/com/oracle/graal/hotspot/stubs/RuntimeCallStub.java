@@ -31,7 +31,7 @@ import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.Transition.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -75,11 +75,11 @@ public class RuntimeCallStub extends Stub {
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
      */
-    public RuntimeCallStub(long address, Descriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
+    public RuntimeCallStub(long address, ForeignCallDescriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
         super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(sig);
-        Descriptor targetSig = new Descriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
+        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
         target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 
@@ -90,7 +90,7 @@ public class RuntimeCallStub extends Stub {
         return target;
     }
 
-    private Class[] createTargetParameters(Descriptor sig) {
+    private Class[] createTargetParameters(ForeignCallDescriptor sig) {
         Class[] parameters = sig.getArgumentTypes();
         if (prependThread) {
             Class[] newParameters = new Class[parameters.length + 1];
@@ -111,7 +111,7 @@ public class RuntimeCallStub extends Stub {
         return new JavaMethod() {
 
             public Signature getSignature() {
-                Descriptor d = linkage.getDescriptor();
+                ForeignCallDescriptor d = linkage.getDescriptor();
                 Class<?>[] arguments = d.getArgumentTypes();
                 JavaType[] parameters = new JavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {

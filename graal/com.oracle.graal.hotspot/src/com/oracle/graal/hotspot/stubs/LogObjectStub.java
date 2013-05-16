@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -50,8 +50,8 @@ public class LogObjectStub extends CRuntimeStub {
         logObjectC(LOG_OBJECT_C, thread(), object, flags);
     }
 
-    public static final Descriptor LOG_OBJECT_C = descriptorFor(LogObjectStub.class, "logObjectC", false);
+    public static final ForeignCallDescriptor LOG_OBJECT_C = descriptorFor(LogObjectStub.class, "logObjectC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native void logObjectC(@ConstantNodeParameter Descriptor logObjectC, Word thread, Object object, int flags);
+    public static native void logObjectC(@ConstantNodeParameter ForeignCallDescriptor logObjectC, Word thread, Object object, int flags);
 }

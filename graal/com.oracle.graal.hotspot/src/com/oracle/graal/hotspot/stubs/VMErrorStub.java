@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -50,8 +50,8 @@ public class VMErrorStub extends CRuntimeStub {
         vmErrorC(VM_ERROR_C, thread(), where, format, value);
     }
 
-    public static final Descriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC", false);
+    public static final ForeignCallDescriptor VM_ERROR_C = descriptorFor(VMErrorStub.class, "vmErrorC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native void vmErrorC(@ConstantNodeParameter Descriptor vmErrorC, Word thread, String where, String format, long value);
+    public static native void vmErrorC(@ConstantNodeParameter ForeignCallDescriptor vmErrorC, Word thread, String where, String format, long value);
 }

@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -35,15 +35,15 @@ public class RuntimeCallNode extends DeoptimizingFixedWithNextNode implements LI
 
     @Input private final NodeInputList<ValueNode> arguments;
 
-    private final Descriptor descriptor;
+    private final ForeignCallDescriptor descriptor;
 
-    public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
+    public RuntimeCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
     }
 
-    public Descriptor getDescriptor() {
+    public ForeignCallDescriptor getDescriptor() {
         return descriptor;
     }
 

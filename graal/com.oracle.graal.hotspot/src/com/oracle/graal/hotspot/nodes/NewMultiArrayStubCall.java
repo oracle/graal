@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -45,7 +45,7 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
     @Input private ValueNode dims;
     private final int rank;
 
-    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
         super(defaultStamp);

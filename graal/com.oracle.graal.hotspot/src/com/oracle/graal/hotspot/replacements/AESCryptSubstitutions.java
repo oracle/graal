@@ -26,7 +26,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.gen.*;
@@ -85,9 +85,9 @@ public class AESCryptSubstitutions {
         @Input private ValueNode out;
         @Input private ValueNode key;
 
-        private final Descriptor descriptor;
+        private final ForeignCallDescriptor descriptor;
 
-        public CryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key, Descriptor descriptor) {
+        public CryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key, ForeignCallDescriptor descriptor) {
             super(StampFactory.forVoid());
             this.in = in;
             this.out = out;
@@ -104,7 +104,7 @@ public class AESCryptSubstitutions {
 
     public static class EncryptBlockStubCall extends CryptBlockStubCall {
 
-        public static final Descriptor ENCRYPT_BLOCK = new Descriptor("encrypt_block", false, void.class, Word.class, Word.class, Word.class);
+        public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", false, void.class, Word.class, Word.class, Word.class);
 
         public EncryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
             super(in, out, key, ENCRYPT_BLOCK);
@@ -116,7 +116,7 @@ public class AESCryptSubstitutions {
 
     public static class DecryptBlockStubCall extends CryptBlockStubCall {
 
-        public static final Descriptor DECRYPT_BLOCK = new Descriptor("decrypt_block", false, void.class, Word.class, Word.class, Word.class);
+        public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", false, void.class, Word.class, Word.class, Word.class);
 
         public DecryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
             super(in, out, key, DECRYPT_BLOCK);

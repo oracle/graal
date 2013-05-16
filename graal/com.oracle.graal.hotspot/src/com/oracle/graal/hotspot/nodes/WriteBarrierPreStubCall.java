@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
 public class WriteBarrierPreStubCall extends FixedWithNextNode implements LIRGenLowerable {
 
     @Input private ValueNode object;
-    public static final Descriptor WRITE_BARRIER_PRE = new Descriptor("writeBarrierPre", true, void.class, Object.class);
+    public static final ForeignCallDescriptor WRITE_BARRIER_PRE = new ForeignCallDescriptor("writeBarrierPre", true, void.class, Object.class);
 
     public WriteBarrierPreStubCall(ValueNode object) {
         super(StampFactory.forVoid());

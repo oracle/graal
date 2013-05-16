@@ -28,7 +28,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
@@ -239,8 +239,8 @@ public class NewInstanceStub extends SnippetStub {
         return Boolean.getBoolean("graal.newInstanceStub.forceSlowPath");
     }
 
-    public static final Descriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC", false);
+    public static final ForeignCallDescriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC", false);
 
     @NodeIntrinsic(CRuntimeCall.class)
-    public static native void newInstanceC(@ConstantNodeParameter Descriptor newInstanceC, Word thread, Word hub);
+    public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, Word hub);
 }

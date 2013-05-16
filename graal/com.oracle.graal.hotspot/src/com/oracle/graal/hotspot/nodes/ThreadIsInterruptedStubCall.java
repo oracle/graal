@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.nodes;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -42,7 +42,7 @@ public class ThreadIsInterruptedStubCall extends DeoptimizingStubCall implements
 
     @Input private ValueNode thread;
     @Input private ValueNode clearIsInterrupted;
-    public static final Descriptor THREAD_IS_INTERRUPTED = new Descriptor("thread_is_interrupted", false, boolean.class, Object.class, boolean.class);
+    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", false, boolean.class, Object.class, boolean.class);
 
     public ThreadIsInterruptedStubCall(ValueNode thread, ValueNode clearIsInterrupted) {
         super(StampFactory.forInteger(Kind.Int, 0, 1));

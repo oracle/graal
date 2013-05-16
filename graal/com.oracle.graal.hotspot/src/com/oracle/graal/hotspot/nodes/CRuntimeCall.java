@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.code.RuntimeCallTarget.ForeignCallDescriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -39,9 +39,9 @@ public class CRuntimeCall extends DeoptimizingFixedWithNextNode implements LIRGe
 
     @Input private final NodeInputList<ValueNode> arguments;
 
-    private final Descriptor descriptor;
+    private final ForeignCallDescriptor descriptor;
 
-    public CRuntimeCall(Descriptor descriptor, ValueNode... arguments) {
+    public CRuntimeCall(ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
