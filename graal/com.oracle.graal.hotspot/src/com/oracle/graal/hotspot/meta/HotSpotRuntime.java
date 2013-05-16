@@ -45,7 +45,6 @@ import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
 import static com.oracle.graal.hotspot.stubs.NewArrayStub.*;
 import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
-import static com.oracle.graal.hotspot.stubs.OSRMigrationEndStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.hotspot.stubs.VMErrorStub.*;
@@ -206,14 +205,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected abstract RegisterConfig createRegisterConfig();
 
     public void registerReplacements(Replacements replacements) {
+        HotSpotVMConfig c = config;
+
         registerStubCall(VERIFY_OOP);
-        registerStubCall(OSR_MIGRATION_END);
         registerStubCall(NEW_ARRAY);
         registerStubCall(UNWIND_EXCEPTION_TO_CALLER);
         registerStubCall(NEW_INSTANCE);
         registerStubCall(VM_ERROR);
 
-        HotSpotVMConfig c = config;
         registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF);
         registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
         registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall, PRESERVES_REGISTERS, LEAF);
@@ -224,7 +223,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         registerForeignCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
         registerForeignCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
 
-        registerForeignCall(OSR_MIGRATION_END_C, c.osrMigrationEndAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
         registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
         registerForeignCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
         registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
@@ -269,30 +267,30 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
         link(new UnwindExceptionToCallerStub(this, replacements, target, foreignCalls.get(UNWIND_EXCEPTION_TO_CALLER)));
         link(new VerifyOopStub(this, replacements, target, foreignCalls.get(VERIFY_OOP)));
-        link(new OSRMigrationEndStub(this, replacements, target, foreignCalls.get(OSR_MIGRATION_END)));
         link(new VMErrorStub(this, replacements, target, foreignCalls.get(VM_ERROR)));
 
-        linkForeignCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements);
-        linkForeignCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements);
-        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements);
-        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements);
-        linkForeignCall(MONITORENTER, config.monitorenterAddress, replacements);
-        linkForeignCall(MONITOREXIT, config.monitorexitAddress, replacements);
-        linkForeignCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements);
-        linkForeignCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements);
-        linkForeignCall(NEW_MULTI_ARRAY, config.newMultiArrayAddress, replacements);
-        linkForeignCall(LOG_PRINTF, config.logPrintfAddress, replacements);
-        linkForeignCall(LOG_OBJECT, config.logObjectAddress, replacements);
-        linkForeignCall(LOG_PRIMITIVE, config.logPrimitiveAddress, replacements);
-        linkForeignCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedAddress, replacements);
+        linkForeignCall(IDENTITY_HASHCODE, config.identityHashCodeAddress, replacements, true);
+        linkForeignCall(REGISTER_FINALIZER, config.registerFinalizerAddress, replacements, true);
+        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, config.createNullPointerExceptionAddress, replacements, true);
+        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, config.createOutOfBoundsExceptionAddress, replacements, true);
+        linkForeignCall(MONITORENTER, config.monitorenterAddress, replacements, true);
+        linkForeignCall(MONITOREXIT, config.monitorexitAddress, replacements, true);
+        linkForeignCall(WRITE_BARRIER_PRE, config.writeBarrierPreAddress, replacements, true);
+        linkForeignCall(WRITE_BARRIER_POST, config.writeBarrierPostAddress, replacements, true);
+        linkForeignCall(NEW_MULTI_ARRAY, config.newMultiArrayAddress, replacements, true);
+        linkForeignCall(LOG_PRINTF, config.logPrintfAddress, replacements, true);
+        linkForeignCall(LOG_OBJECT, config.logObjectAddress, replacements, true);
+        linkForeignCall(LOG_PRIMITIVE, config.logPrimitiveAddress, replacements, true);
+        linkForeignCall(THREAD_IS_INTERRUPTED, config.threadIsInterruptedAddress, replacements, true);
+        linkForeignCall(OSR_MIGRATION_END, config.osrMigrationEndAddress, replacements, false);
     }
 
     private static void link(Stub stub) {
         stub.getLinkage().setCompiledStub(stub);
     }
 
-    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, Replacements replacements) {
-        ForeignCallStub stub = new ForeignCallStub(address, descriptor, true, this, replacements);
+    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, Replacements replacements, boolean prependThread) {
+        ForeignCallStub stub = new ForeignCallStub(address, descriptor, prependThread, this, replacements);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
