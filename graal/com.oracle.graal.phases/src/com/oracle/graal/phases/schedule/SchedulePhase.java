@@ -95,6 +95,7 @@ public final class SchedulePhase extends Phase {
                             FixedNode fixed = (FixedNode) node;
                             if (identity == LocationNode.ANY_LOCATION || read.location().getLocationIdentity() == identity) {
                                 addPhantomReference(read, fixed);
+                                iter.remove();
                             }
                         }
                     }
