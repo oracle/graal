@@ -24,8 +24,15 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
+import java.lang.reflect.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -51,6 +58,22 @@ public class ThreadSubstitutions {
             }
         }
 
-        return ThreadIsInterruptedStubCall.call(thisObject, clearInterrupted);
+        return threadIsInterruptedStub(THREAD_IS_INTERRUPTED, thisObject, clearInterrupted);
+    }
+
+    public static final ForeignCallDescriptor THREAD_IS_INTERRUPTED = new ForeignCallDescriptor("thread_is_interrupted", boolean.class, Object.class, boolean.class);
+
+    /**
+     * @param descriptor
+     */
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static boolean threadIsInterruptedStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Thread thread, boolean clearIsInterrupted) {
+        try {
+            Method isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
+            isInterrupted.setAccessible(true);
+            return (Boolean) isInterrupted.invoke(thread, clearIsInterrupted);
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
     }
 }
