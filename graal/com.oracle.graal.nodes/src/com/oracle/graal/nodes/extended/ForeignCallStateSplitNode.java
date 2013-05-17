@@ -22,88 +22,59 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-@NodeInfo(nameTemplate = "RuntimeCall#{p#descriptor/s}")
-public final class RuntimeCallNode extends AbstractCallNode implements LIRLowerable, DeoptimizingNode {
+/**
+ * A foreign call that is also a state split.
+ */
+@NodeInfo(nameTemplate = "ForeignCallStateSplit#{p#descriptor/s}")
+public class ForeignCallStateSplitNode extends ForeignCallNode implements LIRLowerable, StateSplit, DeoptimizingNode {
 
-    private final Descriptor descriptor;
-    @Input private FrameState deoptState;
+    @Input(notDataflow = true) private FrameState stateAfter;
+    private MetaAccessProvider runtime;
 
-    public RuntimeCallNode(Descriptor descriptor, ValueNode... arguments) {
-        super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())), arguments);
-        this.descriptor = descriptor;
+    public ForeignCallStateSplitNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+        super(descriptor, arguments);
+        this.runtime = runtime;
     }
 
-    public Descriptor getDescriptor() {
-        return descriptor;
+    public FrameState stateAfter() {
+        return stateAfter;
     }
 
-    @Override
+    public void setStateAfter(FrameState x) {
+        assert x == null || x.isAlive() : "frame state must be in a graph";
+        updateUsages(stateAfter, x);
+        stateAfter = x;
+    }
+
     public boolean hasSideEffect() {
-        return descriptor.hasSideEffect();
-    }
-
-    @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitRuntimeCall(this);
-    }
-
-    @Override
-    public String toString(Verbosity verbosity) {
-        if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + descriptor;
-        }
-        return super.toString(verbosity);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
+        return runtime.hasSideEffect(getDescriptor());
     }
 
     @Override
     public FrameState getDeoptimizationState() {
-        if (deoptState != null) {
-            return deoptState;
+        if (super.getDeoptimizationState() != null) {
+            return super.getDeoptimizationState();
         } else if (stateAfter() != null) {
             FrameState stateDuring = stateAfter();
             if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
                 stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
             }
-            updateUsages(deoptState, stateDuring);
-            return deoptState = stateDuring;
+            setDeoptimizationState(stateDuring);
+            return stateDuring;
         }
         return null;
     }
 
     @Override
     public void setDeoptimizationState(FrameState f) {
-        if (deoptState != null) {
+        if (super.getDeoptimizationState() != null) {
             throw new IllegalStateException();
         }
-        updateUsages(deoptState, f);
-        deoptState = f;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return null;
-    }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return stateAfter() != null;
+        super.setDeoptimizationState(f);
     }
 }

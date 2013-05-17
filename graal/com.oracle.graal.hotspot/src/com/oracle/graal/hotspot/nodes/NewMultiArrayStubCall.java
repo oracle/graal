@@ -22,22 +22,18 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
- * Node implementing a call to {@link NewMultiArrayStub}.
+ * Node implementing a call to {@code GraalRuntime::new_multi_array}.
  */
-public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+public class NewMultiArrayStubCall extends ForeignCallNode {
 
     private static final Stamp defaultStamp = StampFactory.objectNonNull();
 
@@ -45,10 +41,10 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
     @Input private ValueNode dims;
     private final int rank;
 
-    public static final Descriptor NEW_MULTI_ARRAY = new Descriptor("new_multi_array", false, Object.class, Word.class, int.class, Word.class);
+    public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
 
     public NewMultiArrayStubCall(ValueNode hub, int rank, ValueNode dims) {
-        super(defaultStamp);
+        super(NEW_MULTI_ARRAY, defaultStamp);
         this.hub = hub;
         this.rank = rank;
         this.dims = dims;
@@ -64,10 +60,8 @@ public class NewMultiArrayStubCall extends DeoptimizingStubCall implements LIRGe
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NewMultiArrayStubCall.NEW_MULTI_ARRAY);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub), Constant.forInt(rank), gen.operand(dims));
-        gen.setResult(this, result);
+    protected Value[] operands(LIRGeneratorTool gen) {
+        return new Value[]{gen.operand(hub), Constant.forInt(rank), gen.operand(dims)};
     }
 
     @NodeIntrinsic

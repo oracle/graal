@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
 
 import java.util.*;
 
@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
@@ -39,15 +38,24 @@ import com.oracle.graal.word.*;
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
-public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget {
+public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarget {
 
     /**
-     * Constants for specifying whether a call destroys or preserves registers. A call will always
-     * destroy {@link HotSpotRuntimeCallTarget#getCallingConvention() its}
-     * {@linkplain CallingConvention#getTemporaries() temporary} registers.
+     * Constants for specifying whether a foreign call destroys or preserves registers. A foreign
+     * call will always destroy {@link HotSpotForeignCallLinkage#getCallingConvention() its}
+     * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     public enum RegisterEffect {
         DESTROYS_REGISTERS, PRESERVES_REGISTERS
+    }
+
+    /**
+     * Constants for specifying whether a call is a leaf or not. A leaf function does not lock, GC
+     * or throw exceptions. That is, the thread's execution state during the call is never inspected
+     * by another thread.
+     */
+    public enum Transition {
+        LEAF, NOT_LEAF;
     }
 
     /**
@@ -58,7 +66,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     /**
      * The descriptor of the call.
      */
-    private final Descriptor descriptor;
+    private final ForeignCallDescriptor descriptor;
 
     /**
      * The entry point address of this call's target.
@@ -73,32 +81,37 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     /**
      * The calling convention for this call.
      */
-    private CallingConvention cc;
-
-    private final CompilerToVM vm;
+    private final CallingConvention cc;
 
     private final RegisterEffect effect;
 
+    private final Transition transition;
+
     /**
-     * Creates a {@link HotSpotRuntimeCallTarget}.
+     * The locations defined/killed by the call.
+     */
+    private Value[] temporaries = AllocatableValue.NONE;
+
+    /**
+     * Creates a {@link HotSpotForeignCallLinkage}.
      * 
      * @param descriptor the descriptor of the call
      * @param address the address of the code to call
      * @param effect specifies if the call destroys or preserves all registers (apart from
      *            temporaries which are always destroyed)
      * @param ccType calling convention type
-     * @param ccProvider calling convention provider
-     * @param vm the Java to HotSpot C/C++ runtime interface
+     * @param transition specifies if this is a {@linkplain #isLeaf() leaf} call
      */
-    public static HotSpotRuntimeCallTarget create(Descriptor descriptor, long address, RegisterEffect effect, Type ccType, RegisterConfig ccProvider, HotSpotRuntime runtime, CompilerToVM vm) {
-        CallingConvention targetCc = createCallingConvention(descriptor, ccType, ccProvider, runtime);
-        return new HotSpotRuntimeCallTarget(descriptor, address, effect, targetCc, vm);
+    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
+        CallingConvention targetCc = createCallingConvention(descriptor, ccType);
+        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, targetCc);
     }
 
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(Descriptor descriptor, Type ccType, RegisterConfig ccProvider, HotSpotRuntime runtime) {
+    public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
+        HotSpotRuntime runtime = graalRuntime().getRuntime();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
@@ -106,7 +119,7 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         }
         TargetDescription target = graalRuntime().getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), runtime);
-        return ccProvider.getCallingConvention(ccType, returnType, parameterTypes, target, false);
+        return runtime.lookupRegisterConfig().getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
     private static JavaType asJavaType(Class type, HotSpotRuntime runtime) {
@@ -117,28 +130,45 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
         }
     }
 
-    public HotSpotRuntimeCallTarget(Descriptor descriptor, long address, RegisterEffect effect, CallingConvention cc, CompilerToVM vm) {
+    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
         this.address = address;
         this.effect = effect;
+        this.transition = transition;
         this.descriptor = descriptor;
         this.cc = cc;
-        this.vm = vm;
     }
 
     @Override
     public String toString() {
-        return (stub == null ? descriptor.toString() : stub) + "@0x" + Long.toHexString(address) + ":" + cc;
+        StringBuilder sb = new StringBuilder(stub == null ? descriptor.toString() : stub.toString());
+        sb.append("@0x").append(Long.toHexString(address)).append(':').append(cc);
+        if (temporaries != null && temporaries.length != 0) {
+            sb.append("; temps=");
+            String sep = "";
+            for (Value op : temporaries) {
+                sb.append(sep).append(op);
+                sep = ",";
+            }
+        }
+        return sb.toString();
     }
 
     public CallingConvention getCallingConvention() {
         return cc;
     }
 
-    public long getMaxCallTargetOffset() {
-        return vm.getMaxCallTargetOffset(address);
+    public Value[] getTemporaries() {
+        if (temporaries.length == 0) {
+            return temporaries;
+        }
+        return temporaries.clone();
     }
 
-    public Descriptor getDescriptor() {
+    public long getMaxCallTargetOffset() {
+        return graalRuntime().getCompilerToVM().getMaxCallTargetOffset(address);
+    }
+
+    public ForeignCallDescriptor getDescriptor() {
         return descriptor;
     }
 
@@ -160,13 +190,14 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
             InstalledCode code = stub.getCode(backend);
 
             Set<Register> destroyedRegisters = stub.getDestroyedRegisters();
-            AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
-            int i = 0;
-            for (Register reg : destroyedRegisters) {
-                temporaryLocations[i++] = reg.asValue();
+            if (!destroyedRegisters.isEmpty()) {
+                AllocatableValue[] temporaryLocations = new AllocatableValue[destroyedRegisters.size()];
+                int i = 0;
+                for (Register reg : destroyedRegisters) {
+                    temporaryLocations[i++] = reg.asValue();
+                }
+                temporaries = temporaryLocations;
             }
-            // Update calling convention with temporaries
-            cc = new CallingConvention(temporaryLocations, cc.getStackSize(), cc.getReturn(), cc.getArguments());
             address = code.getStart();
         }
     }
@@ -179,5 +210,13 @@ public class HotSpotRuntimeCallTarget implements RuntimeCallTarget, InvokeTarget
     @Override
     public boolean destroysRegisters() {
         return effect == DESTROYS_REGISTERS;
+    }
+
+    /**
+     * Determines if this is call to a function that does not lock, GC or throw exceptions. That is,
+     * the thread's execution state during the call is never inspected by another thread.
+     */
+    public boolean isLeaf() {
+        return transition == Transition.LEAF;
     }
 }

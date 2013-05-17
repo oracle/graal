@@ -186,9 +186,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
-    protected void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
+    protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         currentRuntimeCallInfo = info;
-        super.emitCall(callTarget, result, arguments, temps, info);
+        super.emitForeignCall(linkage, result, arguments, temps, info);
     }
 
     protected AMD64SaveRegistersOp emitSaveRegisters(Register[] savedRegisters, StackSlot[] savedRegisterLocations) {
@@ -209,39 +209,48 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        boolean destroysRegisters = ((HotSpotRuntimeCallTarget) callTarget).destroysRegisters();
-        assert !destroysRegisters || stub != null : "foreign call that destroys registers can only be made from compiled stub, not from " + graph;
+        HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
+        boolean destroysRegisters = hsLinkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
         if (destroysRegisters) {
-            if (stub.preservesRegisters()) {
-                Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
-                savedRegisterLocations = new StackSlot[savedRegisters.length];
-                for (int i = 0; i < savedRegisters.length; i++) {
-                    PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
-                    assert kind != Kind.Illegal;
-                    StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
-                    savedRegisterLocations[i] = spillSlot;
+            if (stub != null) {
+                if (stub.preservesRegisters()) {
+                    Register[] savedRegisters = frameMap.registerConfig.getAllocatableRegisters();
+                    savedRegisterLocations = new StackSlot[savedRegisters.length];
+                    for (int i = 0; i < savedRegisters.length; i++) {
+                        PlatformKind kind = target.arch.getLargestStorableKind(savedRegisters[i].getRegisterCategory());
+                        assert kind != Kind.Illegal;
+                        StackSlot spillSlot = frameMap.allocateSpillSlot(kind);
+                        savedRegisterLocations[i] = spillSlot;
+                    }
+                    save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
                 }
-                save = emitSaveRegisters(savedRegisters, savedRegisterLocations);
             }
+        }
+        if (!hsLinkage.isLeaf()) {
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
         }
 
-        Variable result = super.emitCall(callTarget, callCc, info, args);
+        Variable result = super.emitForeignCall(linkage, info, args);
+
+        if (!hsLinkage.isLeaf()) {
+            append(new AMD64HotSpotCRuntimeCallEpilogueOp());
+        }
 
         if (destroysRegisters) {
-            append(new AMD64HotSpotCRuntimeCallEpilogueOp());
-            if (stub.preservesRegisters()) {
-                assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
-                calleeSaveInfo.put(currentRuntimeCallInfo, save);
+            if (stub != null) {
+                if (stub.preservesRegisters()) {
+                    assert !calleeSaveInfo.containsKey(currentRuntimeCallInfo);
+                    calleeSaveInfo.put(currentRuntimeCallInfo, save);
 
-                emitRestoreRegisters(save);
-            } else {
-                assert zapRegisters();
+                    emitRestoreRegisters(save);
+                } else {
+                    assert zapRegisters();
+                }
             }
         }
 
@@ -331,10 +340,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitUnwind(Value exception) {
-        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention stubCc = stub.getCallingConvention();
-        assert stubCc.getArgumentCount() == 2;
-        RegisterValue exceptionParameter = (RegisterValue) stubCc.getArgument(0);
+        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        assert linkageCc.getArgumentCount() == 2;
+        RegisterValue exceptionParameter = (RegisterValue) linkageCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
@@ -357,11 +366,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
-        RuntimeCallTarget stub = getRuntime().lookupRuntimeCall(EXCEPTION_HANDLER_IN_CALLER);
-        CallingConvention stubCc = stub.getCallingConvention();
-        assert stubCc.getArgumentCount() == 2;
-        RegisterValue exceptionFixed = (RegisterValue) stubCc.getArgument(0);
-        RegisterValue exceptionPcFixed = (RegisterValue) stubCc.getArgument(1);
+        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        assert linkageCc.getArgumentCount() == 2;
+        RegisterValue exceptionFixed = (RegisterValue) linkageCc.getArgument(0);
+        RegisterValue exceptionPcFixed = (RegisterValue) linkageCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
         AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);

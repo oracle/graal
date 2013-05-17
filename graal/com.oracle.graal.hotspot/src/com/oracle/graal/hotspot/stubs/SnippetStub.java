@@ -30,7 +30,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -66,7 +65,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotRuntimeCallTarget linkage) {
+    public SnippetStub(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(runtime, replacements, linkage);
         this.snippet = new Template(runtime, replacements, target, getClass());
     }
@@ -77,9 +76,15 @@ public abstract class SnippetStub extends Stub implements Snippets {
     }
 
     /**
-     * Adds the {@linkplain ConstantParameter constant} arguments of this stub.
+     * Adds the arguments to this snippet stub.
      */
-    protected abstract Arguments makeArguments(SnippetInfo stub);
+    protected Arguments makeArguments(SnippetInfo stub) {
+        Arguments args = new Arguments(stub);
+        for (int i = 0; i < stub.getParameterCount(); i++) {
+            args.add(stub.getParameterName(i), null);
+        }
+        return args;
+    }
 
     @Override
     protected Object debugScopeContext() {

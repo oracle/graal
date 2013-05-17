@@ -101,7 +101,7 @@ public interface LIRGeneratorTool {
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 
-    Value emitCall(RuntimeCallTarget callTarget, CallingConvention cc, DeoptimizingNode info, Value... args);
+    Value emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args);
 
     void emitIf(IfNode i);
 
@@ -110,8 +110,6 @@ public interface LIRGeneratorTool {
     void emitSwitch(SwitchNode i);
 
     void emitInvoke(Invoke i);
-
-    void visitRuntimeCall(RuntimeCallNode i);
 
     // Handling of block-end nodes still needs to be unified in the LIRGenerator.
     void visitMerge(MergeNode i);

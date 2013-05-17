@@ -101,7 +101,9 @@ public class VMToCompilerImpl implements VMToCompiler {
         assert unsafe.getObject(mirror, offset) == type;
     }
 
-    public void startCompiler() throws Throwable {
+    public void startCompiler(boolean bootstrapEnabled) throws Throwable {
+
+        bootstrapRunning = bootstrapEnabled;
 
         HotSpotVMConfig config = graalRuntime.getConfig();
         long offset = config.graalMirrorInClassOffset;
@@ -339,7 +341,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         TTY.flush();
         long startTime = System.currentTimeMillis();
 
-        bootstrapRunning = true;
         boolean firstRun = true;
         do {
             // Initialize compile queue with a selected set of methods.

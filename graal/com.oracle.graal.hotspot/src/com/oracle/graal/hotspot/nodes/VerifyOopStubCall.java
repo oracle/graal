@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.stubs.*;
@@ -36,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
 public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private ValueNode object;
-    public static final Descriptor VERIFY_OOP = new Descriptor("verify_oop", false, Object.class, Object.class);
+    public static final ForeignCallDescriptor VERIFY_OOP = new ForeignCallDescriptor("verify_oop", Object.class, Object.class);
 
     public VerifyOopStubCall(ValueNode object) {
         super(StampFactory.objectNonNull());
@@ -45,8 +45,8 @@ public class VerifyOopStubCall extends DeoptimizingStubCall implements LIRGenLow
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(VerifyOopStubCall.VERIFY_OOP);
-        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(VerifyOopStubCall.VERIFY_OOP);
+        gen.emitForeignCall(linkage, this, gen.operand(object));
     }
 
     @NodeIntrinsic

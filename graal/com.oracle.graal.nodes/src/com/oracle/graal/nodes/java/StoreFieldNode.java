@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
 @NodeInfo(nameTemplate = "StoreField#{p#field/s}")
-public final class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtualizable {
+public final class StoreFieldNode extends AccessFieldNode implements StateSplit, VirtualizableRoot {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
@@ -77,6 +77,12 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
                 tool.setVirtualEntry(state, fieldIndex, value());
                 tool.delete();
             }
+        } else {
+            if (value() == tool.getReadCache(object(), field())) {
+                tool.delete();
+            }
+            tool.killReadCache(field());
+            tool.addReadCache(object(), field(), value());
         }
     }
 }

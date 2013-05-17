@@ -75,7 +75,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
         if (!readElimination) {
             boolean analyzableNodes = false;
             for (Node node : graph.getNodes()) {
-                if (node instanceof VirtualizableAllocation) {
+                if (node instanceof VirtualizableRoot) {
                     analyzableNodes = true;
                     break;
                 }

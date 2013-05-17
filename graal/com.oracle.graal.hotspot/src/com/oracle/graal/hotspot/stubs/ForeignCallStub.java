@@ -25,21 +25,22 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.HotSpotRuntimeCallTarget.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
+import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -51,15 +52,20 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.phases.*;
 
 /**
- * A stub that calls into a HotSpot C/C++ runtime function using the native
- * {@link CallingConvention}.
+ * A {@linkplain #getGraph() generated} stub for a {@link Transition non-leaf} foreign call from
+ * compiled code. A stub is required for such calls as the caller may be scheduled for
+ * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
+ * paths, we don't want to force the register allocator to spill around the call. As such, this stub
+ * saves and restores all allocatable registers. It also
+ * {@linkplain StubUtil#handlePendingException(boolean) handles} any exceptions raised during the
+ * foreign call.
  */
-public class RuntimeCallStub extends Stub {
+public class ForeignCallStub extends Stub {
 
     /**
      * The target of the call.
      */
-    private final HotSpotRuntimeCallTarget target;
+    private final HotSpotForeignCallLinkage target;
 
     /**
      * Specifies if the JavaThread value for the current thread is to be prepended to the arguments
@@ -71,31 +77,27 @@ public class RuntimeCallStub extends Stub {
      * Creates a stub for a call to code at a given address.
      * 
      * @param address the address of the code to call
-     * @param sig the signature of the call to this stub
+     * @param descriptor the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
-     * @param regConfig used to get the calling convention for the call to this stub from Graal
-     *            compiled Java code as well as the calling convention for the call to
-     *            {@code address}
-     * @param vm the Java to HotSpot C/C++ runtime interface
      */
-    public RuntimeCallStub(long address, Descriptor sig, boolean prependThread, HotSpotRuntime runtime, Replacements replacements, RegisterConfig regConfig, CompilerToVM vm) {
-        super(runtime, replacements, HotSpotRuntimeCallTarget.create(sig, 0L, PRESERVES_REGISTERS, JavaCallee, regConfig, runtime, vm));
+    public ForeignCallStub(long address, ForeignCallDescriptor descriptor, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
         this.prependThread = prependThread;
-        Class[] targetParameterTypes = createTargetParameters(sig);
-        Descriptor targetSig = new Descriptor(sig.getName() + ":C", sig.hasSideEffect(), sig.getResultType(), targetParameterTypes);
-        target = HotSpotRuntimeCallTarget.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, regConfig, runtime, vm);
+        Class[] targetParameterTypes = createTargetParameters(descriptor);
+        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
+        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
     }
 
     /**
-     * Gets the linkage information for the runtime call.
+     * Gets the linkage information for the call from this stub.
      */
-    public HotSpotRuntimeCallTarget getTargetLinkage() {
+    public HotSpotForeignCallLinkage getTargetLinkage() {
         return target;
     }
 
-    private Class[] createTargetParameters(Descriptor sig) {
-        Class[] parameters = sig.getArgumentTypes();
+    private Class[] createTargetParameters(ForeignCallDescriptor descriptor) {
+        Class[] parameters = descriptor.getArgumentTypes();
         if (prependThread) {
             Class[] newParameters = new Class[parameters.length + 1];
             System.arraycopy(parameters, 0, newParameters, 1, parameters.length);
@@ -115,7 +117,7 @@ public class RuntimeCallStub extends Stub {
         return new JavaMethod() {
 
             public Signature getSignature() {
-                Descriptor d = linkage.getDescriptor();
+                ForeignCallDescriptor d = linkage.getDescriptor();
                 Class<?>[] arguments = d.getArgumentTypes();
                 JavaType[] parameters = new JavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
@@ -129,12 +131,12 @@ public class RuntimeCallStub extends Stub {
             }
 
             public JavaType getDeclaringClass() {
-                return runtime.lookupJavaType(RuntimeCallStub.class);
+                return runtime.lookupJavaType(ForeignCallStub.class);
             }
 
             @Override
             public String toString() {
-                return format("HotSpotStub<%n(%p)>", this);
+                return format("ForeignCallStub<%n(%p)>", this);
             }
         };
     }
@@ -168,6 +170,49 @@ public class RuntimeCallStub extends Stub {
         }
     }
 
+    /**
+     * Creates a graph for this stub.
+     * <p>
+     * If the stub returns an object, the graph created corresponds to this pseudo code:
+     * 
+     * <pre>
+     *     Object foreignFunctionStub(args...) {
+     *         foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             getAndClearObjectResult(thread());
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *         return verifyObject(getAndClearObjectResult(thread()));
+     *     }
+     * </pre>
+     * 
+     * If the stub returns a primitive or word, the graph created corresponds to this pseudo code
+     * (using {@code int} as the primitive return type):
+     * 
+     * <pre>
+     *     int foreignFunctionStub(args...) {
+     *         int result = foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *         return result;
+     *     }
+     * </pre>
+     * 
+     * If the stub is void, the graph created corresponds to this pseudo code:
+     * 
+     * <pre>
+     *     void foreignFunctionStub(args...) {
+     *         foreignFunction(currentThread,  args);
+     *         if (clearPendingException(thread())) {
+     *             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
+     *         }
+     *     }
+     * </pre>
+     * 
+     * In each example above, the {@code currentThread} argument is the C++ JavaThread value (i.e.,
+     * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
+     */
     @Override
     protected StructuredGraph getGraph() {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
@@ -233,14 +278,14 @@ public class RuntimeCallStub extends Stub {
         return invoke;
     }
 
-    private CRuntimeCall createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
+    private ForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new CRuntimeCall(target.getDescriptor(), targetArguments));
+            return builder.append(new ForeignCallNode(target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new CRuntimeCall(target.getDescriptor(), locals));
+            return builder.append(new ForeignCallNode(target.getDescriptor(), locals));
         }
     }
 

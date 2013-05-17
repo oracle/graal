@@ -26,10 +26,9 @@ import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 
@@ -42,10 +41,10 @@ class BlockState {
 
     static class ReadCacheEntry {
 
-        public final LocationIdentity identity;
+        public final ResolvedJavaField identity;
         public final ValueNode object;
 
-        public ReadCacheEntry(LocationIdentity identity, ValueNode object) {
+        public ReadCacheEntry(ResolvedJavaField identity, ValueNode object) {
             this.identity = identity;
             this.object = object;
         }
@@ -83,7 +82,7 @@ class BlockState {
         readCache = new HashMap<>(other.readCache);
     }
 
-    public void addReadCache(ValueNode object, LocationIdentity identity, ValueNode value) {
+    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
         ValueNode cacheObject;
         ObjectState obj = getObjectState(object);
         if (obj != null) {
@@ -95,7 +94,7 @@ class BlockState {
         readCache.put(new ReadCacheEntry(identity, cacheObject), value);
     }
 
-    public ValueNode getReadCache(ValueNode object, LocationIdentity identity) {
+    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
         ValueNode cacheObject;
         ObjectState obj = getObjectState(object);
         if (obj != null) {
@@ -115,16 +114,16 @@ class BlockState {
         return cacheValue;
     }
 
-    public void killReadCache(LocationIdentity identity) {
-        if (identity == LocationNode.ANY_LOCATION) {
-            readCache.clear();
-        } else {
-            Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
-                if (entry.getKey().identity == identity) {
-                    iter.remove();
-                }
+    public void killReadCache() {
+        readCache.clear();
+    }
+
+    public void killReadCache(ResolvedJavaField identity) {
+        Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
+            if (entry.getKey().identity == identity) {
+                iter.remove();
             }
         }
     }
@@ -187,7 +186,7 @@ class BlockState {
             if (virtual instanceof VirtualInstanceNode) {
                 VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
                 for (int i = 0; i < entries.length; i++) {
-                    readCache.put(new ReadCacheEntry((LocationIdentity) instance.field(i), representation), values.get(pos + i));
+                    readCache.put(new ReadCacheEntry(instance.field(i), representation), values.get(pos + i));
                 }
             }
         } else {

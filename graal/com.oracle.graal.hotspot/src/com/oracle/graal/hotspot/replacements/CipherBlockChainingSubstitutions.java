@@ -26,7 +26,6 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.gen.*;
@@ -104,9 +103,9 @@ public class CipherBlockChainingSubstitutions {
         @Input private ValueNode r;
         @Input private ValueNode inLength;
 
-        private final Descriptor descriptor;
+        private final ForeignCallDescriptor descriptor;
 
-        public AESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength, Descriptor descriptor) {
+        public AESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength, ForeignCallDescriptor descriptor) {
             super(StampFactory.forVoid());
             this.in = in;
             this.out = out;
@@ -118,14 +117,14 @@ public class CipherBlockChainingSubstitutions {
 
         @Override
         public void generate(LIRGenerator gen) {
-            RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(descriptor);
-            gen.emitCall(stub, stub.getCallingConvention(), null, gen.operand(in), gen.operand(out), gen.operand(key), gen.operand(r), gen.operand(inLength));
+            ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
+            gen.emitForeignCall(linkage, null, gen.operand(in), gen.operand(out), gen.operand(key), gen.operand(r), gen.operand(inLength));
         }
     }
 
     public static class EncryptAESCryptStubCall extends AESCryptStubCall {
 
-        public static final Descriptor ENCRYPT = new Descriptor("encrypt", false, void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+        public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
         public EncryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
             super(in, out, key, r, inLength, ENCRYPT);
@@ -137,7 +136,7 @@ public class CipherBlockChainingSubstitutions {
 
     public static class DecryptAESCryptStubCall extends AESCryptStubCall {
 
-        public static final Descriptor DECRYPT = new Descriptor("decrypt", false, void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+        public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
         public DecryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
             super(in, out, key, r, inLength, DECRYPT);

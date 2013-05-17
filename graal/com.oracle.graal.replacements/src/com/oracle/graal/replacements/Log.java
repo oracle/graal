@@ -24,7 +24,6 @@ package com.oracle.graal.replacements;
 
 import java.io.*;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
@@ -33,28 +32,27 @@ import com.oracle.graal.nodes.extended.*;
 //JaCoCo Exclude
 
 /**
- * Provides {@link PrintStream}-like logging facility. This should only be used in
- * {@linkplain Snippet snippets}.
+ * Provides {@link PrintStream}-like logging facility.
  */
 public final class Log {
 
-    public static final Descriptor LOG_PRIMITIVE = new Descriptor("logPrimitive", false, void.class, int.class, long.class, boolean.class);
-    public static final Descriptor LOG_OBJECT = new Descriptor("logObject", false, void.class, Object.class, int.class);
-    public static final Descriptor LOG_PRINTF = new Descriptor("logPrintf", false, void.class, Object.class, long.class, long.class, long.class);
+    public static final ForeignCallDescriptor LOG_PRIMITIVE = new ForeignCallDescriptor("logPrimitive", void.class, int.class, long.class, boolean.class);
+    public static final ForeignCallDescriptor LOG_OBJECT = new ForeignCallDescriptor("logObject", void.class, Object.class, int.class);
+    public static final ForeignCallDescriptor LOG_PRINTF = new ForeignCallDescriptor("logPrintf", void.class, Object.class, long.class, long.class, long.class);
 
-    // Note: Must be kept in sync with constants in c1_Runtime1.hpp
+    // Note: Must be kept in sync with constants in graalRuntime.hpp
     private static final int LOG_OBJECT_NEWLINE = 0x01;
     private static final int LOG_OBJECT_STRING = 0x02;
     private static final int LOG_OBJECT_ADDRESS = 0x04;
 
-    @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void log(@ConstantNodeParameter Descriptor logObject, Object object, int flags);
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void log(@ConstantNodeParameter ForeignCallDescriptor logObject, Object object, int flags);
 
-    @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void log(@ConstantNodeParameter Descriptor logPrimitive, int typeChar, long value, boolean newline);
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void log(@ConstantNodeParameter ForeignCallDescriptor logPrimitive, int typeChar, long value, boolean newline);
 
-    @NodeIntrinsic(RuntimeCallNode.class)
-    private static native void printf(@ConstantNodeParameter Descriptor logPrintf, String format, long v1, long v2, long v3);
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void printf(@ConstantNodeParameter ForeignCallDescriptor logPrintf, String format, long v1, long v2, long v3);
 
     public static void print(boolean value) {
         log(LOG_PRIMITIVE, Kind.Boolean.getTypeChar(), value ? 1L : 0L, false);

@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -42,7 +42,7 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRGenL
 
     @Input private ValueNode hub;
 
-    public static final Descriptor NEW_INSTANCE = new Descriptor("new_instance", false, Object.class, Word.class);
+    public static final ForeignCallDescriptor NEW_INSTANCE = new ForeignCallDescriptor("new_instance", Object.class, Word.class);
 
     public NewInstanceStubCall(ValueNode hub) {
         super(defaultStamp);
@@ -60,8 +60,8 @@ public class NewInstanceStubCall extends DeoptimizingStubCall implements LIRGenL
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(NEW_INSTANCE);
-        Variable result = gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(hub));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(NEW_INSTANCE);
+        Variable result = gen.emitForeignCall(linkage, this, gen.operand(hub));
         gen.setResult(this, result);
     }
 

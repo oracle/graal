@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
@@ -37,7 +37,7 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
 
     @Input private ValueNode object;
     @Input private ValueNode lock;
-    public static final Descriptor MONITORENTER = new Descriptor("monitorenter", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
 
     public MonitorEnterStubCall(ValueNode object, ValueNode lock) {
         super(StampFactory.forVoid());
@@ -47,8 +47,8 @@ public class MonitorEnterStubCall extends DeoptimizingStubCall implements LIRGen
 
     @Override
     public void generate(LIRGenerator gen) {
-        RuntimeCallTarget stub = gen.getRuntime().lookupRuntimeCall(MONITORENTER);
-        gen.emitCall(stub, stub.getCallingConvention(), this, gen.operand(object), gen.operand(lock));
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(MONITORENTER);
+        gen.emitForeignCall(linkage, this, gen.operand(object), gen.operand(lock));
     }
 
     @NodeIntrinsic

@@ -608,9 +608,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         Value result = invokeCc.getReturn();
         if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, invokeCc.getTemporaries(), callState);
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else {
             throw GraalInternalError.shouldNotReachHere();
         }
@@ -624,7 +624,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
-    protected abstract void emitCall(RuntimeCallTarget callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
+    protected abstract void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info);
 
     protected static AllocatableValue toStackKind(AllocatableValue value) {
         if (value.getKind().getStackKind() != value.getKind()) {
@@ -659,40 +659,26 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitCall(RuntimeCallTarget callTarget, CallingConvention callCc, DeoptimizingNode info, Value... args) {
+    public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         LIRFrameState state = info != null ? state(info) : null;
 
         // move the arguments into the correct location
-        frameMap.callsMethod(callCc);
-        assert callCc.getArgumentCount() == args.length : "argument count mismatch";
+        CallingConvention linkageCc = linkage.getCallingConvention();
+        frameMap.callsMethod(linkageCc);
+        assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
         for (int i = 0; i < args.length; i++) {
             Value arg = args[i];
-            AllocatableValue loc = callCc.getArgument(i);
+            AllocatableValue loc = linkageCc.getArgument(i);
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
-        emitCall(callTarget, callCc.getReturn(), argLocations, callCc.getTemporaries(), state);
+        emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
-        if (isLegal(callCc.getReturn())) {
-            return emitMove(callCc.getReturn());
+        if (isLegal(linkageCc.getReturn())) {
+            return emitMove(linkageCc.getReturn());
         } else {
             return null;
-        }
-    }
-
-    @Override
-    public void visitRuntimeCall(RuntimeCallNode x) {
-        RuntimeCallTarget call = runtime.lookupRuntimeCall(x.getDescriptor());
-        CallingConvention callCc = call.getCallingConvention();
-        frameMap.callsMethod(callCc);
-        Value resultOperand = callCc.getReturn();
-        Value[] args = visitInvokeArguments(callCc, x.arguments());
-
-        emitCall(call, resultOperand, args, callCc.getTemporaries(), state(x));
-
-        if (isLegal(resultOperand)) {
-            setResult(x, emitMove(resultOperand));
         }
     }
 

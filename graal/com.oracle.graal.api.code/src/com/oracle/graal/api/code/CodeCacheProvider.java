@@ -23,7 +23,6 @@
 package com.oracle.graal.api.code;
 
 import com.oracle.graal.api.code.CompilationResult.DataPatch;
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -68,9 +67,9 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     int getMinimumOutgoingSize();
 
     /**
-     * Gets the signature and linkage information for a runtime call.
+     * Gets the linkage for a foreign call.
      */
-    RuntimeCallTarget lookupRuntimeCall(Descriptor descriptor);
+    ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
 
     /**
      * Encodes a deoptimization action and a deoptimization reason in an integer value.

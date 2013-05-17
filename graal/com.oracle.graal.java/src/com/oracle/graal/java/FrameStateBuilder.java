@@ -358,6 +358,7 @@ public class FrameStateBuilder {
      * @param object the object whose monitor will be locked.
      */
     public void pushLock(ValueNode object) {
+        assert object.isAlive() && object.kind() == Kind.Object : "unexpected value: " + object;
         locks = Arrays.copyOf(locks, locks.length + 1);
         locks[locks.length - 1] = object;
     }
@@ -406,7 +407,7 @@ public class FrameStateBuilder {
      * @param x the instruction which produces the value for the local
      */
     public void storeLocal(int i, ValueNode x) {
-        assert x == null || x.kind() != Kind.Void && x.kind() != Kind.Illegal : "unexpected value: " + x;
+        assert x == null || x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal : "unexpected value: " + x;
         locals[i] = x;
         if (x != null && isTwoSlot(x.kind())) {
             // if this is a double word, then kill i+1
@@ -422,7 +423,7 @@ public class FrameStateBuilder {
     }
 
     private void storeStack(int i, ValueNode x) {
-        assert x == null || stack[i] == null || x.kind() == stack[i].kind() : "Method does not handle changes from one-slot to two-slot values";
+        assert x == null || x.isAlive() && (stack[i] == null || x.kind() == stack[i].kind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
         stack[i] = x;
     }
 
@@ -433,7 +434,7 @@ public class FrameStateBuilder {
      * @param x the instruction to push onto the stack
      */
     public void push(Kind kind, ValueNode x) {
-        assert !x.isDeleted() && x.kind() != Kind.Void && x.kind() != Kind.Illegal;
+        assert x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal;
         xpush(assertKind(kind, x));
         if (isTwoSlot(kind)) {
             xpush(null);
@@ -446,7 +447,7 @@ public class FrameStateBuilder {
      * @param x the instruction to push onto the stack
      */
     public void xpush(ValueNode x) {
-        assert x == null || (!x.isDeleted() && x.kind() != Kind.Void && x.kind() != Kind.Illegal);
+        assert x == null || (x.isAlive() && x.kind() != Kind.Void && x.kind() != Kind.Illegal);
         stack[stackSize++] = x;
     }
 

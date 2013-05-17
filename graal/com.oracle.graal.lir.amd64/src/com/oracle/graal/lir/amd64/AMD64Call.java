@@ -102,11 +102,11 @@ public class AMD64Call {
         }
     }
 
-    public abstract static class RuntimeCallOp extends CallOp {
+    public abstract static class ForeignCallOp extends CallOp {
 
-        protected final RuntimeCallTarget callTarget;
+        protected final ForeignCallLinkage callTarget;
 
-        public RuntimeCallOp(RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public ForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(result, parameters, temps, state);
             this.callTarget = callTarget;
         }
@@ -117,11 +117,11 @@ public class AMD64Call {
         }
     }
 
-    @Opcode("CALL_NEAR_RUNTIME")
-    public static class DirectNearRuntimeCallOp extends RuntimeCallOp {
+    @Opcode("NEAR_FOREIGN_CALL")
+    public static class DirectNearForeignCallOp extends ForeignCallOp {
 
-        public DirectNearRuntimeCallOp(RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
-            super(callTarget, result, parameters, temps, state);
+        public DirectNearForeignCallOp(ForeignCallLinkage linkage, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+            super(linkage, result, parameters, temps, state);
         }
 
         @Override
@@ -130,12 +130,12 @@ public class AMD64Call {
         }
     }
 
-    @Opcode("CALL_FAR_RUNTIME")
-    public static class DirectFarRuntimeCallOp extends RuntimeCallOp {
+    @Opcode("FAR_FOREIGN_CALL")
+    public static class DirectFarForeignCallOp extends ForeignCallOp {
 
         @Temp({REG}) protected AllocatableValue callTemp;
 
-        public DirectFarRuntimeCallOp(LIRGeneratorTool gen, RuntimeCallTarget callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectFarForeignCallOp(LIRGeneratorTool gen, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(callTarget, result, parameters, temps, state);
             callTemp = gen.newVariable(Kind.Long);
         }

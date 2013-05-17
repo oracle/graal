@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.code.RuntimeCallTarget.Descriptor;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -39,34 +39,34 @@ public abstract class HotSpotBackend extends Backend {
     /**
      * Descriptor for SharedRuntime::deopt_blob()->uncommon_trap().
      */
-    public static final Descriptor UNCOMMON_TRAP = new Descriptor("deoptimize", true, void.class);
+    public static final ForeignCallDescriptor UNCOMMON_TRAP = new ForeignCallDescriptor("deoptimize", void.class);
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
      * {@linkplain Marks#MARK_EXCEPTION_HANDLER_ENTRY exception handler} in a compiled method.
      */
-    public static final Descriptor EXCEPTION_HANDLER = new Descriptor("exceptionHandler", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor EXCEPTION_HANDLER = new ForeignCallDescriptor("exceptionHandler", void.class, Object.class, Word.class);
 
     /**
      * Descriptor for SharedRuntime::deopt_blob()->unpack().
      */
-    public static final Descriptor DEOPT_HANDLER = new Descriptor("deoptHandler", true, void.class);
+    public static final ForeignCallDescriptor DEOPT_HANDLER = new ForeignCallDescriptor("deoptHandler", void.class);
 
     /**
      * Descriptor for SharedRuntime::get_ic_miss_stub().
      */
-    public static final Descriptor IC_MISS_HANDLER = new Descriptor("icMissHandler", true, void.class);
+    public static final ForeignCallDescriptor IC_MISS_HANDLER = new ForeignCallDescriptor("icMissHandler", void.class);
 
     /**
      * Descriptor for {@link UnwindExceptionToCallerStub}. This stub is called by code generated
      * from {@link UnwindNode}.
      */
-    public static final Descriptor UNWIND_EXCEPTION_TO_CALLER = new Descriptor("unwindExceptionToCaller", true, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor UNWIND_EXCEPTION_TO_CALLER = new ForeignCallDescriptor("unwindExceptionToCaller", void.class, Object.class, Word.class);
 
     /**
      * Descriptor for the arguments when unwinding to an exception handler in a caller.
      */
-    public static final Descriptor EXCEPTION_HANDLER_IN_CALLER = new Descriptor("exceptionHandlerInCaller", false, void.class, Object.class, Word.class);
+    public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
     public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
         super(runtime, target);
