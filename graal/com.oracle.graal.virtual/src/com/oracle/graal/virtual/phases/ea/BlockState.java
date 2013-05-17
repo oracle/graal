@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -159,7 +157,7 @@ class BlockState {
 
     private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations,
                     EscapeState state) {
-        trace("materializing %s", virtual);
+        VirtualUtil.trace("materializing %s", virtual);
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
@@ -241,29 +239,34 @@ class BlockState {
         return objectStates + " " + readCache;
     }
 
-    public static BlockState meetAliases(List<BlockState> states) {
+    public BlockState meetAliases(List<? extends BlockState> states) {
         BlockState newState = new BlockState();
 
-        newState.objectAliases.putAll(states.get(0).objectAliases);
+        BlockState firstState = states.get(0);
+        newState.objectAliases.putAll(firstState.objectAliases);
         for (int i = 1; i < states.size(); i++) {
             BlockState state = states.get(i);
-            for (Map.Entry<ValueNode, VirtualObjectNode> entry : states.get(0).objectAliases.entrySet()) {
+            Iterator<Map.Entry<ValueNode, VirtualObjectNode>> iter = newState.objectAliases.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<ValueNode, VirtualObjectNode> entry = iter.next();
                 if (state.objectAliases.containsKey(entry.getKey())) {
                     assert state.objectAliases.get(entry.getKey()) == entry.getValue();
                 } else {
-                    newState.objectAliases.remove(entry.getKey());
+                    iter.remove();
                 }
             }
         }
 
-        newState.scalarAliases.putAll(states.get(0).scalarAliases);
+        newState.scalarAliases.putAll(firstState.scalarAliases);
         for (int i = 1; i < states.size(); i++) {
             BlockState state = states.get(i);
-            for (Map.Entry<ValueNode, ValueNode> entry : states.get(0).scalarAliases.entrySet()) {
+            Iterator<Map.Entry<ValueNode, ValueNode>> iter = newState.scalarAliases.entrySet().iterator();
+            while (iter.hasNext()) {
+                Map.Entry<ValueNode, ValueNode> entry = iter.next();
                 if (state.scalarAliases.containsKey(entry.getKey())) {
                     assert state.scalarAliases.get(entry.getKey()) == entry.getValue();
                 } else {
-                    newState.scalarAliases.remove(entry.getKey());
+                    iter.remove();
                 }
             }
         }

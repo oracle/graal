@@ -84,6 +84,11 @@ public final class SchedulePhase extends Phase {
     private class MemoryScheduleClosure extends BlockIteratorClosure<HashSet<FloatingReadNode>> {
 
         @Override
+        protected HashSet<FloatingReadNode> getInitialState() {
+            return new HashSet<>();
+        }
+
+        @Override
         protected HashSet<FloatingReadNode> processBlock(Block block, HashSet<FloatingReadNode> currentState) {
             for (Node node : getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
@@ -184,7 +189,7 @@ public final class SchedulePhase extends Phase {
             sortNodesWithinBlocks(graph, SchedulingStrategy.EARLIEST);
 
             MemoryScheduleClosure closure = new MemoryScheduleClosure();
-            ReentrantBlockIterator.apply(closure, getCFG().getStartBlock(), new HashSet<FloatingReadNode>(), null);
+            ReentrantBlockIterator.apply(closure, getCFG().getStartBlock());
 
             cfg.clearNodeToBlock();
             blockToNodesMap = new BlockMap<>(cfg);

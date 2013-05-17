@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -149,7 +147,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks) {
-        trace("{{%s}} ", current);
+        VirtualUtil.trace("{{%s}} ", current);
         if (virtualObject.isAlive()) {
             state.addAndMarkAlias(virtualObject, virtualObject, usages);
         } else {

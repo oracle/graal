@@ -215,7 +215,7 @@ public class GraphEffectList extends EffectList {
                 FixedNode next = node.next();
                 node.setNext(null);
                 node.replaceAtPredecessor(next);
-                obsoleteNodes.add(node);
+                assert obsoleteNodes.add(node);
             }
         });
     }
@@ -250,7 +250,7 @@ public class GraphEffectList extends EffectList {
                     FixedNode next = ((FixedWithNextNode) node).next();
                     ((FixedWithNextNode) node).setNext(null);
                     node.replaceAtPredecessor(next);
-                    obsoleteNodes.add(node);
+                    assert obsoleteNodes.add(node);
                 }
             }
         });
