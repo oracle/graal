@@ -570,19 +570,19 @@ public class MetaUtil {
         return s.substring(0, s.length() - sep.length());
     }
 
-    private static void appendProfile(StringBuilder buf, AbstractJavaProfile profile, int bci, String kind, String sep) {
+    private static void appendProfile(StringBuilder buf, AbstractJavaProfile profile, int bci, String type, String sep) {
         if (profile != null) {
             AbstractProfiledItem[] pitems = profile.getItems();
             if (pitems != null) {
-                buf.append(String.format("%s@%d:", kind, bci));
+                buf.append(String.format("%s@%d:", type, bci));
                 for (int j = 0; j < pitems.length; j++) {
                     AbstractProfiledItem pitem = pitems[j];
                     buf.append(String.format(" %.6f (%s)%s", pitem.getProbability(), pitem.getItem(), sep));
                 }
                 if (profile.getNotRecordedProbability() != 0) {
-                    buf.append(String.format(" %.6f <other %s>%s", profile.getNotRecordedProbability(), kind, sep));
+                    buf.append(String.format(" %.6f <other %s>%s", profile.getNotRecordedProbability(), type, sep));
                 } else {
-                    buf.append(String.format(" <no other %s>%s", kind, sep));
+                    buf.append(String.format(" <no other %s>%s", type, sep));
                 }
             }
         }
