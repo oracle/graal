@@ -103,7 +103,7 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
     }
 
     private boolean isSubstitutionGraph() {
-        return usages().count() == 1 && usages().first() instanceof ReturnNode && condition instanceof LocalNode;
+        return usages().count() == 1 && usages().first() instanceof ReturnNode;
     }
 
     /**
