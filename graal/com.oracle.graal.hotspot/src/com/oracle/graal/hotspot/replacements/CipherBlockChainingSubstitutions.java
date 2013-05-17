@@ -72,6 +72,16 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false)
+    static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
+        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), ANY_LOCATION);
+        if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
+            crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
+        } else {
+            decrypt(rcvr, in, inOffset, inLength, out, outOffset);
+        }
+    }
+
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
         Word kAddr = Word.fromObject(embeddedCipher).readWord(Word.unsigned(AESCryptSubstitutions.kOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
         Word rAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(rOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
@@ -83,16 +93,6 @@ public class CipherBlockChainingSubstitutions {
             DecryptAESCryptStubCall.call(inAddr, outAddr, kAddr, rAddr, inLength);
         }
 
-    }
-
-    @MethodSubstitution(isStatic = false)
-    static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), ANY_LOCATION);
-        if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
-            crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
-        } else {
-            decrypt(rcvr, in, inOffset, inLength, out, outOffset);
-        }
     }
 
     abstract static class AESCryptStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
