@@ -199,13 +199,13 @@ public class NodeClass extends FieldIntrospection {
             if (field.isAnnotationPresent(Node.Input.class)) {
                 assert !field.isAnnotationPresent(Node.Successor.class) : "field cannot be both input and successor";
                 if (INPUT_LIST_CLASS.isAssignableFrom(type)) {
-                    assert Modifier.isFinal(field.getModifiers()) : "NodeInputList input field " + field + " should be final";
-                    assert !Modifier.isPublic(field.getModifiers()) : "NodeInputList input field " + field + " should not be public";
+                    GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeInputList input field %s should be final", field);
+                    GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeInputList input field %s should not be public", field);
                     inputListOffsets.add(offset);
                 } else {
-                    assert NODE_CLASS.isAssignableFrom(type) || type.isInterface() : "invalid input type: " + type;
-                    assert !Modifier.isFinal(field.getModifiers()) : "Node input field " + field + " should not be final";
-                    assert Modifier.isPrivate(field.getModifiers()) : "Node input field " + field + " should be private";
+                    GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type) || type.isInterface(), "invalid input type: %s", type);
+                    GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node input field %s should not be final", field);
+                    GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node input field %s should be private", field);
                     inputOffsets.add(offset);
                 }
                 if (field.getAnnotation(Node.Input.class).notDataflow()) {
@@ -213,19 +213,19 @@ public class NodeClass extends FieldIntrospection {
                 }
             } else if (field.isAnnotationPresent(Node.Successor.class)) {
                 if (SUCCESSOR_LIST_CLASS.isAssignableFrom(type)) {
-                    assert Modifier.isFinal(field.getModifiers()) : "NodeSuccessorList successor field " + field + " should be final";
-                    assert !Modifier.isPublic(field.getModifiers()) : "NodeSuccessorList successor field " + field + " should not be public";
+                    GraalInternalError.guarantee(Modifier.isFinal(field.getModifiers()), "NodeSuccessorList successor field % should be final", field);
+                    GraalInternalError.guarantee(!Modifier.isPublic(field.getModifiers()), "NodeSuccessorList successor field %s should not be public", field);
                     successorListOffsets.add(offset);
                 } else {
-                    assert NODE_CLASS.isAssignableFrom(type) : "invalid successor type: " + type;
-                    assert !Modifier.isFinal(field.getModifiers()) : "Node successor field " + field + " should not be final";
-                    assert Modifier.isPrivate(field.getModifiers()) : "Node successor field " + field + " should be private";
+                    GraalInternalError.guarantee(NODE_CLASS.isAssignableFrom(type), "invalid successor type: %s", type);
+                    GraalInternalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Node successor field %s should not be final", field);
+                    GraalInternalError.guarantee(Modifier.isPrivate(field.getModifiers()), "Node successor field %s should be private", field);
                     successorOffsets.add(offset);
                 }
             } else {
-                assert !NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null") : "suspicious node field: " + field;
-                assert !INPUT_LIST_CLASS.isAssignableFrom(type) : "suspicious node input list field: " + field;
-                assert !SUCCESSOR_LIST_CLASS.isAssignableFrom(type) : "suspicious node successor list field: " + field;
+                GraalInternalError.guarantee(!NODE_CLASS.isAssignableFrom(type) || field.getName().equals("Null"), "suspicious node field: %s", field);
+                GraalInternalError.guarantee(!INPUT_LIST_CLASS.isAssignableFrom(type), "suspicious node input list field: %s", field);
+                GraalInternalError.guarantee(!SUCCESSOR_LIST_CLASS.isAssignableFrom(type), "suspicious node successor list field: %s", field);
                 dataOffsets.add(offset);
             }
         }
