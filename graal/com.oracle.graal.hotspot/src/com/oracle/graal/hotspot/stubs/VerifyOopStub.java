@@ -27,12 +27,11 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Stub called from {@link VerifyOopStubCall}.
+ * Stub called via {@link HotSpotRuntime#VERIFY_OOP}.
  */
 public class VerifyOopStub extends SnippetStub {
 
