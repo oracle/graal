@@ -426,18 +426,29 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
                 long start = System.currentTimeMillis();
                 PhasePlan phasePlan = new PhasePlan();
-                StructuredGraph graphCopy = graph.copy();
+                final StructuredGraph graphCopy = graph.copy();
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
                 editPhasePlan(method, graph, phasePlan);
                 CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
                                 new SpeculationLog());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }
-                return addMethod(method, compResult, graphCopy);
+                return Debug.scope("CodeInstall", new Object[]{runtime, method}, new Callable<InstalledCode>() {
+
+                    @Override
+                    public InstalledCode call() throws Exception {
+                        InstalledCode code = addMethod(method, compResult, graphCopy);
+                        if (Debug.isDumpEnabled()) {
+                            Debug.dump(new Object[]{compResult, code}, "After code installation");
+                        }
+
+                        return code;
+                    }
+                });
             }
         });
 
@@ -448,18 +459,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult, final StructuredGraph graph) {
-        return Debug.scope("CodeInstall", new Object[]{runtime, method}, new Callable<InstalledCode>() {
-
-            @Override
-            public InstalledCode call() throws Exception {
-                InstalledCode installedCode = runtime.addMethod(method, compResult, graph);
-                if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-                }
-
-                return installedCode;
-            }
-        });
+        return runtime.addMethod(method, compResult, graph);
     }
 
     /**

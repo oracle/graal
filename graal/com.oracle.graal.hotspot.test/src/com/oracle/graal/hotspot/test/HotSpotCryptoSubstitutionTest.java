@@ -35,14 +35,13 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
- * Tests the intrinsicification of certain crypto methods.
+ * Tests the intrinsification of certain crypto methods.
  */
 public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
 
@@ -53,9 +52,6 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
         HotSpotCompiledNmethod compiledNmethod = new HotSpotCompiledNmethod(hsMethod, StructuredGraph.INVOCATION_ENTRY_BCI, compResult);
         CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(compiledNmethod, installedCode, null);
         Assert.assertEquals("Error installing method " + method + ": " + result, result, CodeInstallResult.OK);
-        if (Debug.isDumpEnabled()) {
-            Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-        }
 
         // HotSpotRuntime hsRuntime = (HotSpotRuntime) runtime;
         // TTY.println(hsMethod.toString());
