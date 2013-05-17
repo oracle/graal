@@ -57,6 +57,12 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     }
 
     @Override
+    public JavaMethodProfile getMethodProfile(int bci) {
+        findBCI(bci, false);
+        return dataAccessor.getMethodProfile(methodData, position);
+    }
+
+    @Override
     public double getBranchTakenProbability(int bci) {
         findBCI(bci, false);
         return dataAccessor.getBranchTakenProbability(methodData, position);

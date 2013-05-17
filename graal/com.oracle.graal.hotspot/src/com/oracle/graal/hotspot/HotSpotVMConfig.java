@@ -226,6 +226,16 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int constMethodMaxStackOffset;
 
     /**
+     * Offset of _constants in a metaspace ConstMethod object.
+     */
+    public int constMethodConstantsOffset;
+
+    /**
+     * Offset of _pool_holder in a metaspace ConstantPool object.
+     */
+    public int constantPoolHolderOffset;
+
+    /**
      * Value of extra_stack_entries() in method.hpp.
      */
     public int extraStackEntries;
@@ -365,6 +375,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int dataLayoutCellSize;
     public int bciProfileWidth;
     public int typeProfileWidth;
+    public int methodProfileWidth;
 
     public long inlineCacheMissStub;
     public long handleDeoptStub;

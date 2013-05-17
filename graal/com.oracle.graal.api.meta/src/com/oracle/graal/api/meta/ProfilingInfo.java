@@ -66,25 +66,31 @@ public interface ProfilingInfo {
     /**
      * Returns the TypeProfile for the given BCI.
      * 
-     * @return Returns an JavaTypeProfile object, or null if not available.
+     * @return Returns a JavaTypeProfile object, or null if not available.
      */
     JavaTypeProfile getTypeProfile(int bci);
+
+    /**
+     * Returns the MethodProfile for the given BCI.
+     * 
+     * @return Returns a JavaMethodProfile object, or null if not available.
+     */
+    JavaMethodProfile getMethodProfile(int bci);
 
     /**
      * Returns information if the given BCI did ever throw an exception.
      * 
      * @return {@link TriState#TRUE} if the instruction has thrown an exception at least once,
-     *         {@link TriState#FALSE} if it never threw an exception, and
-     *         {@link TriState#UNKNOWN} if this information was not recorded.
+     *         {@link TriState#FALSE} if it never threw an exception, and {@link TriState#UNKNOWN}
+     *         if this information was not recorded.
      */
     TriState getExceptionSeen(int bci);
 
     /**
      * Returns information if null was ever seen for the given BCI.
      * 
-     * @return {@link TriState#TRUE} if null was seen for the instruction,
-     *         {@link TriState#FALSE} if null was NOT seen, and
-     *         {@link TriState#UNKNOWN} if this information was not recorded.
+     * @return {@link TriState#TRUE} if null was seen for the instruction, {@link TriState#FALSE} if
+     *         null was NOT seen, and {@link TriState#UNKNOWN} if this information was not recorded.
      */
     TriState getNullSeen(int bci);
 
