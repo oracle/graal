@@ -30,8 +30,7 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.*;
-import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.DecryptAESCryptStubCall.*;
-import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.EncryptAESCryptStubCall.*;
+import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
