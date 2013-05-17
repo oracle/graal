@@ -25,15 +25,13 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -72,56 +70,18 @@ public class AESCryptSubstitutions {
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
         Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
         if (encrypt) {
-            EncryptBlockStubCall.call(inAddr, outAddr, kAddr);
+            encryptBlockStub(ENCRYPT_BLOCK, inAddr, outAddr, kAddr);
         } else {
-            DecryptBlockStubCall.call(inAddr, outAddr, kAddr);
+            decryptBlockStub(DECRYPT_BLOCK, inAddr, outAddr, kAddr);
         }
     }
 
-    abstract static class CryptBlockStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
+    public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", void.class, Word.class, Word.class, Word.class);
+    public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", void.class, Word.class, Word.class, Word.class);
 
-        @Input private ValueNode in;
-        @Input private ValueNode out;
-        @Input private ValueNode key;
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void encryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key);
 
-        private final ForeignCallDescriptor descriptor;
-
-        public CryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key, ForeignCallDescriptor descriptor) {
-            super(StampFactory.forVoid());
-            this.in = in;
-            this.out = out;
-            this.key = key;
-            this.descriptor = descriptor;
-        }
-
-        @Override
-        public void generate(LIRGenerator gen) {
-            ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
-            gen.emitForeignCall(linkage, null, gen.operand(in), gen.operand(out), gen.operand(key));
-        }
-    }
-
-    public static class EncryptBlockStubCall extends CryptBlockStubCall {
-
-        public static final ForeignCallDescriptor ENCRYPT_BLOCK = new ForeignCallDescriptor("encrypt_block", void.class, Word.class, Word.class, Word.class);
-
-        public EncryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
-            super(in, out, key, ENCRYPT_BLOCK);
-        }
-
-        @NodeIntrinsic
-        public static native void call(Word in, Word out, Word key);
-    }
-
-    public static class DecryptBlockStubCall extends CryptBlockStubCall {
-
-        public static final ForeignCallDescriptor DECRYPT_BLOCK = new ForeignCallDescriptor("decrypt_block", void.class, Word.class, Word.class, Word.class);
-
-        public DecryptBlockStubCall(ValueNode in, ValueNode out, ValueNode key) {
-            super(in, out, key, DECRYPT_BLOCK);
-        }
-
-        @NodeIntrinsic
-        public static native void call(Word in, Word out, Word key);
-    }
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void decryptBlockStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key);
 }
