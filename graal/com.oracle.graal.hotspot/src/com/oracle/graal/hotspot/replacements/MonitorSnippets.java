@@ -35,6 +35,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -159,7 +160,7 @@ public class MonitorSnippets implements Snippets {
                         // owns the bias and we need to revoke that bias. The revocation will occur
                         // in the interpreter runtime.
                         traceObject(trace, "+lock{stub:revoke}", object);
-                        MonitorEnterStubCall.call(object, lock);
+                        monitorenterStub(MONITORENTER, object, lock);
                         return;
                     } else {
                         // At this point we know the epoch has expired, meaning that the
@@ -179,7 +180,7 @@ public class MonitorSnippets implements Snippets {
                         // succeeded in biasing it toward itself and we need to revoke that
                         // bias. The revocation will occur in the runtime in the slow case.
                         traceObject(trace, "+lock{stub:epoch-expired}", object);
-                        MonitorEnterStubCall.call(object, lock);
+                        monitorenterStub(MONITORENTER, object, lock);
                         return;
                     }
                 } else {
@@ -236,7 +237,7 @@ public class MonitorSnippets implements Snippets {
             if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
                 // Most likely not a recursive lock, go into a slow runtime call
                 traceObject(trace, "+lock{stub:failed-cas}", object);
-                MonitorEnterStubCall.call(object, lock);
+                monitorenterStub(MONITORENTER, object, lock);
                 return;
             } else {
                 // Recursively locked => write 0 to the lock slot
@@ -262,7 +263,7 @@ public class MonitorSnippets implements Snippets {
         // cannot float about the null check above
         final Word lock = beginLockScope(lockDepth);
         traceObject(trace, "+lock{stub}", object);
-        MonitorEnterStubCall.call(object, lock);
+        monitorenterStub(MONITORENTER, object, lock);
     }
 
     @Snippet
@@ -517,4 +518,10 @@ public class MonitorSnippets implements Snippets {
             }
         }
     }
+
+    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void monitorenterStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);
+
 }
