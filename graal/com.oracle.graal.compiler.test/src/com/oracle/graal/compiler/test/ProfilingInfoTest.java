@@ -105,9 +105,8 @@ public class ProfilingInfoTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testProfileInvokeVirtual() throws NoSuchMethodException {
+    public void testProfileInvokeVirtual() {
         testTypeProfile("invokeVirtualSnippet", 1);
-        testMethodProfile("invokeVirtualSnippet", 1, "hashCode");
     }
 
     public static int invokeVirtualSnippet(Object obj) {
@@ -115,9 +114,8 @@ public class ProfilingInfoTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testTypeProfileInvokeInterface() throws NoSuchMethodException {
+    public void testTypeProfileInvokeInterface() {
         testTypeProfile("invokeInterfaceSnippet", 1);
-        testMethodProfile("invokeInterfaceSnippet", 1, "length");
     }
 
     public static int invokeInterfaceSnippet(CharSequence a) {
@@ -165,31 +163,6 @@ public class ProfilingInfoTest extends GraalCompilerTest {
         resetProfile(testSnippet);
         typeProfile = info.getTypeProfile(bci);
         Assert.assertNull(typeProfile);
-    }
-
-    private void testMethodProfile(String testSnippet, int bci, String expectedProfiledMethod) throws NoSuchMethodException {
-        ResolvedJavaMethod stringMethod = runtime.lookupJavaMethod(String.class.getMethod(expectedProfiledMethod));
-        ResolvedJavaMethod stringBuilderMethod = runtime.lookupJavaMethod(StringBuilder.class.getMethod(expectedProfiledMethod));
-
-        ProfilingInfo info = profile(testSnippet, "ABC");
-        JavaMethodProfile methodProfile = info.getMethodProfile(bci);
-        Assert.assertEquals(0.0, methodProfile.getNotRecordedProbability(), DELTA);
-        Assert.assertEquals(1, methodProfile.getMethods().length);
-        Assert.assertEquals(stringMethod, methodProfile.getMethods()[0].getMethod());
-        Assert.assertEquals(1.0, methodProfile.getMethods()[0].getProbability(), DELTA);
-
-        continueProfiling(testSnippet, new StringBuilder());
-        methodProfile = info.getMethodProfile(bci);
-        Assert.assertEquals(0.0, methodProfile.getNotRecordedProbability(), DELTA);
-        Assert.assertEquals(2, methodProfile.getMethods().length);
-        Assert.assertEquals(stringMethod, methodProfile.getMethods()[0].getMethod());
-        Assert.assertEquals(stringBuilderMethod, methodProfile.getMethods()[1].getMethod());
-        Assert.assertEquals(0.5, methodProfile.getMethods()[0].getProbability(), DELTA);
-        Assert.assertEquals(0.5, methodProfile.getMethods()[1].getProbability(), DELTA);
-
-        resetProfile(testSnippet);
-        methodProfile = info.getMethodProfile(bci);
-        Assert.assertNull(methodProfile);
     }
 
     @Test
