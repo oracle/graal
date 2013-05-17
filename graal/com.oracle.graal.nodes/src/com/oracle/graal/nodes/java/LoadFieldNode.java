@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType, Virtualizable {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, Node.IterableNodeType, VirtualizableRoot {
 
     /**
      * Creates a new LoadFieldNode instance.
@@ -78,6 +78,13 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
             if (fieldIndex != -1) {
                 tool.replaceWith(state.getEntry(fieldIndex));
+            }
+        } else {
+            ValueNode cachedValue = tool.getReadCache(object(), field());
+            if (cachedValue != null) {
+                tool.replaceWithValue(cachedValue);
+            } else {
+                tool.addReadCache(object(), field(), this);
             }
         }
     }

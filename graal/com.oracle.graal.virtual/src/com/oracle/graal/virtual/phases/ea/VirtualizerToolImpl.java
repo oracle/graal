@@ -181,4 +181,26 @@ class VirtualizerToolImpl implements VirtualizerTool {
             }
         }
     }
+
+    @Override
+    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
+        if (GraalOptions.OptEarlyReadElimination) {
+            state.addReadCache(object, identity, value);
+        }
+    }
+
+    @Override
+    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
+        if (GraalOptions.OptEarlyReadElimination) {
+            return state.getReadCache(object, identity);
+        }
+        return null;
+    }
+
+    @Override
+    public void killReadCache(ResolvedJavaField identity) {
+        if (GraalOptions.OptEarlyReadElimination) {
+            state.killReadCache(identity);
+        }
+    }
 }
