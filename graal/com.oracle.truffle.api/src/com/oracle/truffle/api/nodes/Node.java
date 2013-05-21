@@ -149,6 +149,7 @@ public abstract class Node implements Cloneable {
             // Pass on the source section to the new node.
             newNode.assignSourceSection(sourceSection);
         }
+        onReplace(newNode, reason);
         return (T) this.getParent().replaceChild(this, newNode);
     }
 
@@ -167,6 +168,16 @@ public abstract class Node implements Cloneable {
      */
     public final <T extends Node> T replace(T newNode) {
         return replace(newNode, "");
+    }
+
+    /**
+     * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
+     * node is rewritten. This method is invoked before the actual replace has happened.
+     * 
+     * @param newNode the replacement node
+     * @param reason the reason the replace supplied
+     */
+    protected void onReplace(Node newNode, String reason) {
     }
 
     /**
