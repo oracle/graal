@@ -37,4 +37,11 @@ public @interface NodeInfo {
      * @return the short name
      */
     String shortName() default "";
+
+    Kind kind() default Kind.SPECIALIZED;
+
+    public enum Kind {
+        UNINIALIZED, SPECIALIZED, GENERIC
+    }
+
 }
