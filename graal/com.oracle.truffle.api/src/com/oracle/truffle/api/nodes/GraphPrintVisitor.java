@@ -24,7 +24,6 @@ package com.oracle.truffle.api.nodes;
 
 import java.io.*;
 import java.lang.annotation.*;
-import java.lang.reflect.*;
 import java.net.*;
 import java.util.*;
 
@@ -34,6 +33,10 @@ import javax.xml.transform.dom.*;
 import javax.xml.transform.stream.*;
 
 import org.w3c.dom.*;
+
+import com.oracle.truffle.api.nodes.NodeUtil.NodeClass;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeField;
+import com.oracle.truffle.api.nodes.NodeUtil.NodeFieldKind;
 
 /**
  * Utility class for creating output for the ideal graph visualizer.
@@ -212,7 +215,7 @@ public class GraphPrintVisitor {
             setNodeProperty(node, "nodeType", (Node.class.isAssignableFrom(node.getClass()) ? Node.class.getSimpleName() : "other"));
             setNodeProperty(node, "nodeClass", node.getClass().getSimpleName());
             copyDebugProperties(node); // TODO: may overwrite property "name"? (currently allowed)
-            readNodeProperties(node);
+            readNodeProperties((Node) node);
         }
     }
 
@@ -254,23 +257,14 @@ public class GraphPrintVisitor {
         }
     }
 
-    private void readNodeProperties(Object node) {
-        Field[] fields = NodeUtil.getAllFields(node.getClass());
-        for (Field field : fields) {
-            if (Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-            if (Node.class.isAssignableFrom(field.getType()) || (field.getType().getComponentType() != null && Node.class.isAssignableFrom(field.getType()))) {
-                continue;
-            }
-            String key = field.getName();
-            if (field.getAnnotation(HiddenField.class) == null && getPropertyElement(node, key) == null) {
-                try {
-                    field.setAccessible(true);
-                    Object value = field.get(node);
+    private void readNodeProperties(Node node) {
+        NodeField[] fields = NodeClass.get(node.getClass()).getFields();
+        for (NodeField field : fields) {
+            if (field.getKind() == NodeFieldKind.DATA) {
+                String key = field.getName();
+                if (getPropertyElement(node, key) == null) {
+                    Object value = field.loadValue(node);
                     setNodeProperty(node, key, value);
-                } catch (IllegalArgumentException | IllegalAccessException e) {
-                    assert false : e;
                 }
             }
         }
