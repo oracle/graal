@@ -1348,7 +1348,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (specialization.isGeneric()) {
                 kind = Utils.findVariableElement(nodeinfoKind, "GENERIC");
             } else if (specialization.isUninitialized()) {
-                kind = Utils.findVariableElement(nodeinfoKind, "UNINIALIZED");
+                kind = Utils.findVariableElement(nodeinfoKind, "UNINITIALIZED");
             } else {
                 kind = Utils.findVariableElement(nodeinfoKind, "SPECIALIZED");
             }
