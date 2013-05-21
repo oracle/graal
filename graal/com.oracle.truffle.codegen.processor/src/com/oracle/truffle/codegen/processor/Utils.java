@@ -40,6 +40,26 @@ import com.oracle.truffle.codegen.processor.compiler.*;
  */
 public class Utils {
 
+    public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
+        List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
+        for (ExecutableElement executableElement : elements) {
+            if (executableElement.getSimpleName().toString().equals(name)) {
+                return executableElement;
+            }
+        }
+        return null;
+    }
+
+    public static VariableElement findVariableElement(DeclaredType type, String name) {
+        List<? extends VariableElement> elements = ElementFilter.fieldsIn(type.asElement().getEnclosedElements());
+        for (VariableElement variableElement : elements) {
+            if (variableElement.getSimpleName().toString().equals(name)) {
+                return variableElement;
+            }
+        }
+        return null;
+    }
+
     public static String getMethodBody(ProcessingEnvironment env, ExecutableElement method) {
         if (method instanceof CodeExecutableElement) {
             return ((CodeExecutableElement) method).getBody();

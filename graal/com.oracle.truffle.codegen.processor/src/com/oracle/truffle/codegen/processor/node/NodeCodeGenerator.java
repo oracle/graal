@@ -1336,6 +1336,27 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 baseType = nodeGen.asType();
             }
             CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodeSpecializationClassName(specialization), baseType, false);
+
+            String shortName = specialization.getNode().getShortName();
+            CodeAnnotationMirror nodeInfoMirror = new CodeAnnotationMirror(getContext().getTruffleTypes().getNodeInfoAnnotation());
+            if (shortName != null) {
+                nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("shortName"), new CodeAnnotationValue(shortName));
+            }
+
+            DeclaredType nodeinfoKind = getContext().getTruffleTypes().getNodeInfoKind();
+            VariableElement kind;
+            if (specialization.isGeneric()) {
+                kind = Utils.findVariableElement(nodeinfoKind, "GENERIC");
+            } else if (specialization.isUninitialized()) {
+                kind = Utils.findVariableElement(nodeinfoKind, "UNINIALIZED");
+            } else {
+                kind = Utils.findVariableElement(nodeinfoKind, "SPECIALIZED");
+            }
+
+            nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("kind"), new CodeAnnotationValue(kind));
+
+            clazz.getAnnotationMirrors().add(nodeInfoMirror);
+
             return clazz;
         }
 

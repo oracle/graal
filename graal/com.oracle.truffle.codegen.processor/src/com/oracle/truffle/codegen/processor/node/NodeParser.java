@@ -32,6 +32,7 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.codegen.*;
 import com.oracle.truffle.api.codegen.NodeClass.InheritNode;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.ExecutionKind;
@@ -577,6 +578,11 @@ public class NodeParser extends TemplateParser<NodeData> {
                 }
             }
         }
+        AnnotationMirror nodeInfoMirror = findFirstAnnotation(lookupTypes, NodeInfo.class);
+        if (nodeInfoMirror != null) {
+            nodeData.setShortName(Utils.getAnnotationValue(String.class, nodeInfoMirror, "shortName"));
+        }
+
         nodeData.setAssumptions(new ArrayList<>(assumptionsList));
         nodeData.setNodeType(nodeType);
         nodeData.setSplitByMethodName(splitByMethodName);
