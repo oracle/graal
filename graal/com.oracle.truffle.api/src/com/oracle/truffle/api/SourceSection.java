@@ -115,7 +115,7 @@ public class SourceSection {
      * @return the code as a String object
      */
     public final String getCode() {
-        return getSource().getCode().substring(charIndex, charLength);
+        return getSource().getCode().substring(charIndex, charIndex + charLength);
     }
 
     @Override
