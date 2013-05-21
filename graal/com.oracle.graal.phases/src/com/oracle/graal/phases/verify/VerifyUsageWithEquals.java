@@ -28,17 +28,19 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
-public class VerifyValueUsage extends VerifyPhase {
+public class VerifyUsageWithEquals extends VerifyPhase {
 
     private MetaAccessProvider runtime;
+    private Class<?> klass;
 
-    public VerifyValueUsage(MetaAccessProvider runtime) {
+    public VerifyUsageWithEquals(MetaAccessProvider runtime, Class<?> klass) {
         this.runtime = runtime;
+        this.klass = klass;
     }
 
     private boolean checkType(ValueNode node) {
         if (node.stamp() instanceof ObjectStamp) {
-            ResolvedJavaType valueType = runtime.lookupJavaType(Value.class);
+            ResolvedJavaType valueType = runtime.lookupJavaType(klass);
             ResolvedJavaType nodeType = node.objectStamp().type();
 
             if (valueType.isAssignableFrom(nodeType)) {
@@ -53,8 +55,8 @@ public class VerifyValueUsage extends VerifyPhase {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
             Signature signature = graph.method().getSignature();
             if (!(graph.method().getName().equals("equals") && signature.getParameterCount(false) == 1 && signature.getParameterKind(0).equals(Kind.Object))) {
-                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : "VerifyValueUsage: " + cn.x() + " or " + cn.y() +
-                                " in " + graph.method() + " uses object identity. Should use equals() instead.";
+                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : "VerifyUsage of " + klass.getName() + ": " + cn.x() +
+                                " or " + cn.y() + " in " + graph.method() + " uses object identity. Should use equals() instead.";
             }
         }
         return true;
