@@ -41,7 +41,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -345,7 +344,7 @@ public class MonitorSnippets implements Snippets {
      */
     private static final boolean ENABLE_BREAKPOINT = false;
 
-    private static final LocationIdentity MONITOR_COUNTER_LOCATION = LocationNode.createLocation("MonitorCounter");
+    private static final LocationIdentity MONITOR_COUNTER_LOCATION = new NamedLocationIdentity("MonitorCounter");
 
     @NodeIntrinsic(BreakpointNode.class)
     static native void bkpt(Object object, Word mark, Word tmp, Word value);

@@ -32,8 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -45,7 +43,7 @@ import com.oracle.graal.word.*;
  */
 public class TypeCheckSnippetUtils {
 
-    public static final LocationIdentity TYPE_DISPLAY_LOCATION = LocationNode.createLocation("TypeDisplay");
+    public static final LocationIdentity TYPE_DISPLAY_LOCATION = new NamedLocationIdentity("TypeDisplay");
 
     static boolean checkSecondarySubType(Word t, Word s) {
         // if (S.cache == T) return true

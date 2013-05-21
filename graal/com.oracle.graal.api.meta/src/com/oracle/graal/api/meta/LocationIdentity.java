@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.extended.*;
+package com.oracle.graal.api.meta;
 
 /**
- * The start node of a graph.
+ * Marker interface for location identities. Apart from the special values {@link #ANY_LOCATION} and
+ * {@link #FINAL_LOCATION}, a different location identity of two memory accesses guarantees that the
+ * two accesses do not interfere.
  */
-public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint {
+public interface LocationIdentity {
 
-    @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
-    }
+    /**
+     * Denotes any location. A write to such a location kills all values in a memory map during an
+     * analysis of memory accesses. A read from this location cannot be moved or coalesced with
+     * other reads because its interaction with other reads is not known.
+     */
+    LocationIdentity ANY_LOCATION = new NamedLocationIdentity("ANY_LOCATION");
+
+    /**
+     * Denotes the location of a value that is guaranteed to be final.
+     */
+    LocationIdentity FINAL_LOCATION = new NamedLocationIdentity("FINAL_LOCATION");
+
 }

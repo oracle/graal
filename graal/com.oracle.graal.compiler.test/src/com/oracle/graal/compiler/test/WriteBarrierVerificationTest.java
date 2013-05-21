@@ -33,7 +33,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;

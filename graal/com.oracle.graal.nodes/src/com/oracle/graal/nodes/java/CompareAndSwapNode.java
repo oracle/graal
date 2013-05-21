@@ -28,7 +28,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -97,7 +96,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
     }
 
     @Override

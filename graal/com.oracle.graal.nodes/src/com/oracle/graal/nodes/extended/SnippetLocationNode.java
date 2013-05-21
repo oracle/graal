@@ -74,7 +74,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
             return (LocationIdentity) locationIdentity.asConstant().asObject();
         }
         // We do not know our actual location identity yet, so be conservative.
-        return LocationNode.ANY_LOCATION;
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

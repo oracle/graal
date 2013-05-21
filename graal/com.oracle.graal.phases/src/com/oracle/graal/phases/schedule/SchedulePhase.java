@@ -24,6 +24,7 @@ package com.oracle.graal.phases.schedule;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -31,7 +32,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -93,7 +93,7 @@ public final class SchedulePhase extends Phase {
                         for (Iterator<FloatingReadNode> iter = currentState.iterator(); iter.hasNext();) {
                             FloatingReadNode read = iter.next();
                             FixedNode fixed = (FixedNode) node;
-                            if (identity == LocationNode.ANY_LOCATION || read.location().getLocationIdentity() == identity) {
+                            if (identity == LocationIdentity.ANY_LOCATION || read.location().getLocationIdentity() == identity) {
                                 addPhantomReference(read, fixed);
                                 iter.remove();
                             }

@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.word;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 public interface Pointer extends Unsigned {
 

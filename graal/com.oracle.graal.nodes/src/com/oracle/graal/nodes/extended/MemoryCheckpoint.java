@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 /**
  * This interface marks subclasses of {@link FixedNode} that kill a set of memory locations
@@ -34,7 +34,7 @@ public interface MemoryCheckpoint {
 
     /**
      * This method is used to determine which set of memory locations is killed by this node.
-     * Returning the special value {@link LocationNode#ANY_LOCATION} will kill all memory locations.
+     * Returning the special value {@link LocationIdentity#ANY_LOCATION} will kill all memory locations.
      * 
      * @return the identities of all locations killed by this node.
      */
