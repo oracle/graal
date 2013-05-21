@@ -44,8 +44,15 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, false, null);
+        List<ParameterSpec> requiredSpecs = new ArrayList<>(spec.getRequired());
+        spec.getRequired().clear();
+
+        for (ParameterSpec originalSpec : requiredSpecs) {
+            spec.addRequired(new ParameterSpec(originalSpec, Arrays.asList(getNode().getTypeSystem().getGenericType())));
+        }
+
         spec.setVariableRequiredArguments(true);
-        ParameterSpec other = new ParameterSpec("other", nodeTypeMirrors(getNode()));
+        ParameterSpec other = new ParameterSpec("other", Arrays.asList(getNode().getTypeSystem().getGenericType()));
         other.setCardinality(Cardinality.MANY);
         other.setSignature(true);
         other.setIndexed(true);

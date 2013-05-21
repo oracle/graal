@@ -1394,12 +1394,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
 
-            ExecutableTypeData foundEvaluatedPrimaryType = findFunctionalExecutableType(specialization, execType.getEvaluatedCount());
+            List<ExecutableTypeData> primaryExecutes = findFunctionalExecutableType(specialization, execType.getEvaluatedCount());
 
-            if (execType == foundEvaluatedPrimaryType || foundEvaluatedPrimaryType == null) {
+            if (primaryExecutes.contains(execType) || primaryExecutes.isEmpty()) {
                 builder.tree(createFunctionalExecute(builder, specialization, execType));
             } else if (needsCastingExecuteMethod(execType, primaryType)) {
-                builder.tree(createCastingExecute(builder, specialization, execType, foundEvaluatedPrimaryType));
+                assert !primaryExecutes.isEmpty();
+                builder.tree(createCastingExecute(builder, specialization, execType, primaryExecutes.get(0)));
             } else {
                 return null;
             }
@@ -1441,7 +1442,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return false;
         }
 
-        private ExecutableTypeData findFunctionalExecutableType(SpecializationData specialization, int evaluatedCount) {
+        private List<ExecutableTypeData> findFunctionalExecutableType(SpecializationData specialization, int evaluatedCount) {
             TypeData primaryType = specialization.getReturnType().getTypeSystemType();
             List<ExecutableTypeData> otherTypes = specialization.getNode().getExecutableTypes(evaluatedCount);
 
@@ -1453,19 +1454,24 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 filteredTypes.add(compareType);
             }
 
-            for (ExecutableTypeData compareType : filteredTypes) {
-                if (compareType.startsWithSignature(specialization)) {
-                    return compareType;
+            // no direct matches found use generic where the type is Object
+            if (filteredTypes.isEmpty()) {
+                for (ExecutableTypeData compareType : otherTypes) {
+                    if (compareType.getType().isGeneric() && !compareType.hasUnexpectedValue(getContext())) {
+                        filteredTypes.add(compareType);
+                    }
                 }
             }
 
-            for (ExecutableTypeData compareType : otherTypes) {
-                if (compareType.startsWithSignature(specialization)) {
-                    return compareType;
+            if (filteredTypes.isEmpty()) {
+                for (ExecutableTypeData compareType : otherTypes) {
+                    if (compareType.getType().isGeneric()) {
+                        filteredTypes.add(compareType);
+                    }
                 }
             }
 
-            return null;
+            return filteredTypes;
         }
 
         private CodeTree createCastingExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable, ExecutableTypeData castExecutable) {

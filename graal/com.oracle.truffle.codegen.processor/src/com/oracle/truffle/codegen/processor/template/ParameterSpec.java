@@ -55,6 +55,16 @@ public class ParameterSpec {
         this.allowedTypes = allowedTypes;
     }
 
+    public ParameterSpec(ParameterSpec o, List<TypeMirror> allowedTypes) {
+        this.name = o.name;
+        this.cardinality = o.cardinality;
+        this.signature = o.signature;
+        this.indexed = o.indexed;
+        this.local = o.local;
+        this.typeDefinition = o.typeDefinition;
+        this.allowedTypes = allowedTypes;
+    }
+
     void setTypeDefinition(TypeDef typeDefinition) {
         this.typeDefinition = typeDefinition;
     }

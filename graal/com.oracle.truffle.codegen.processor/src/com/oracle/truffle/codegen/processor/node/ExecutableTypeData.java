@@ -75,23 +75,6 @@ public class ExecutableTypeData extends TemplateMethod {
         return count;
     }
 
-    public boolean startsWithSignature(TemplateMethod method) {
-        for (ActualParameter param : getParameters()) {
-            if (!param.getSpecification().isSignature()) {
-                continue;
-            }
-            ActualParameter foundParam = method.findParameter(param.getLocalName());
-            if (foundParam != null) {
-                TypeData actualType = param.getTypeSystemType();
-                TypeData foundType = foundParam.getTypeSystemType();
-                if (actualType == null || foundType == null || !actualType.equalsType(foundType)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
     public boolean hasGenericSignature() {
         List<TypeData> types = getSignature();
         for (TypeData typeData : types) {
