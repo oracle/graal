@@ -37,7 +37,9 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
+import com.oracle.graal.phases.common.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
+import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 
@@ -146,10 +148,10 @@ public class InliningPhase extends Phase {
                 MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
 
                 for (int i = 0; i < info.numberOfMethods(); i++) {
-                    InlineableElement elem = getInlineableElement(info.methodAt(i), info.invoke(), calleeInvocation.assumptions());
+                    Inlineable elem = getInlineableElement(info.methodAt(i), info.invoke(), calleeInvocation.assumptions());
                     info.setInlinableElement(i, elem);
-                    if (elem instanceof StructuredGraph) {
-                        data.pushGraph((StructuredGraph) elem, invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+                    if (elem instanceof InlineableGraph) {
+                        data.pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
                     } else {
                         assert elem instanceof InlineableMacroNode;
                         data.pushDummyGraph();
@@ -207,12 +209,12 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private InlineableElement getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, Assumptions assumptions) {
+    private Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, Assumptions assumptions) {
         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(replacements, method);
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);
         } else {
-            return buildGraph(method, invoke, assumptions);
+            return new InlineableGraph(buildGraph(method, invoke, assumptions));
         }
     }
 
@@ -379,7 +381,7 @@ public class InliningPhase extends Phase {
         protected static int determineNodeCount(InlineInfo info) {
             int nodes = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                InlineableElement elem = info.inlineableElementAt(i);
+                Inlineable elem = info.inlineableElementAt(i);
                 if (elem != null) {
                     nodes += elem.getNodeCount();
                 }
@@ -390,10 +392,10 @@ public class InliningPhase extends Phase {
         protected static double determineInvokeProbability(InlineInfo info) {
             double invokeProbability = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                InlineableElement callee = info.inlineableElementAt(i);
+                Inlineable callee = info.inlineableElementAt(i);
                 Iterable<Invoke> invokes = callee.getInvokes();
                 if (invokes.iterator().hasNext()) {
-                    NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure((StructuredGraph) callee).apply();
+                    NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(((InlineableGraph) callee).getGraph()).apply();
                     for (Invoke invoke : invokes) {
                         invokeProbability += nodeProbabilities.get(invoke.asNode());
                     }
