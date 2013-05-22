@@ -106,11 +106,6 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
         return null;
     }
 
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return false;
-    }
-
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void register(Object thisObj) {

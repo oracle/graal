@@ -128,9 +128,4 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
     public DeoptimizationReason getDeoptimizationReason() {
         return null;
     }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return false;
-    }
 }
