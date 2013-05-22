@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -54,7 +56,7 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     @Override

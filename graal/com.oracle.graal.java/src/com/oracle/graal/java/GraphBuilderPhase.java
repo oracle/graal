@@ -925,7 +925,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedNullPointerException, runtime, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
-            ForeignCallStateSplitNode call = currentGraph.add(new ForeignCallStateSplitNode(runtime, CREATE_NULL_POINTER_EXCEPTION));
+            ForeignCallNode call = currentGraph.add(new ForeignCallNode(runtime, CREATE_NULL_POINTER_EXCEPTION));
             call.setStateAfter(frameState.create(bci()));
             trueSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -949,7 +949,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, runtime, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
-            ForeignCallStateSplitNode call = currentGraph.add(new ForeignCallStateSplitNode(runtime, CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
+            ForeignCallNode call = currentGraph.add(new ForeignCallNode(runtime, CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             call.setNext(handleException(call, bci()));

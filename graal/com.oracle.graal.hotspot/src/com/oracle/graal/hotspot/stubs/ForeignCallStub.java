@@ -80,13 +80,18 @@ public class ForeignCallStub extends Stub {
      * @param descriptor the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
+     * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
+     *            effects. Deoptimization will not return to a point before a stub call that cannot
+     *            be re-executed.
+     * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(long address, ForeignCallDescriptor descriptor, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
-        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+    public ForeignCallStub(HotSpotRuntime runtime, Replacements replacements, long address, ForeignCallDescriptor descriptor, boolean prependThread, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
+        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF, reexecutable, killedLocations);
     }
 
     /**
@@ -283,9 +288,9 @@ public class ForeignCallStub extends Stub {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new ForeignCallNode(target.getDescriptor(), targetArguments));
+            return builder.append(new ForeignCallNode(runtime, target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new ForeignCallNode(target.getDescriptor(), locals));
+            return builder.append(new ForeignCallNode(runtime, target.getDescriptor(), locals));
         }
     }
 

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -74,7 +76,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
             return (LocationIdentity) locationIdentity.asConstant().asObject();
         }
         // We do not know our actual location identity yet, so be conservative.
-        return LocationIdentity.ANY_LOCATION;
+        return ANY_LOCATION;
     }
 
     @Override

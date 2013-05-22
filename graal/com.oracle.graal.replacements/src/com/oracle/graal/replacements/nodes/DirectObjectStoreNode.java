@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import com.oracle.graal.api.meta.*;
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.*;
+import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
@@ -63,7 +64,7 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        IndexedLocationNode location = IndexedLocationNode.create(LocationIdentity.ANY_LOCATION, value.kind(), displacement, offset, graph(), 1);
+        IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, value.kind(), displacement, offset, graph(), 1);
         WriteNode write = graph().add(new WriteNode(object, value, location, WriteBarrierType.NONE));
         graph().replaceFixedWithFixed(this, write);
     }

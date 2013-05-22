@@ -33,22 +33,31 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint {
+public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint {
 
     @Input private final NodeInputList<ValueNode> arguments;
+    private final MetaAccessProvider runtime;
+    @Input private FrameState deoptState;
 
     private final ForeignCallDescriptor descriptor;
 
-    public ForeignCallNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public ForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
+        this.runtime = runtime;
     }
 
-    protected ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp) {
+    protected ForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
+        this.runtime = runtime;
+    }
+
+    @Override
+    public boolean hasSideEffect() {
+        return !runtime.isReexecutable(descriptor);
     }
 
     public ForeignCallDescriptor getDescriptor() {
@@ -57,7 +66,7 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+        return runtime.getKilledLocationIdentities(descriptor);
     }
 
     protected Value[] operands(LIRGeneratorTool gen) {
@@ -79,6 +88,30 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
     }
 
     @Override
+    public FrameState getDeoptimizationState() {
+        if (deoptState != null) {
+            return deoptState;
+        } else if (stateAfter() != null) {
+            FrameState stateDuring = stateAfter();
+            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
+                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
+            }
+            setDeoptimizationState(stateDuring);
+            return stateDuring;
+        }
+        return null;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
+        if (deoptState != null) {
+            throw new IllegalStateException(toString(Verbosity.Debugger));
+        }
+        deoptState = f;
+    }
+
+    @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
             return super.toString(verbosity) + "#" + descriptor;
@@ -94,5 +127,10 @@ public class ForeignCallNode extends DeoptimizingFixedWithNextNode implements LI
     @Override
     public DeoptimizationReason getDeoptimizationReason() {
         return null;
+    }
+
+    @Override
+    public boolean isCallSiteDeoptimization() {
+        return false;
     }
 }

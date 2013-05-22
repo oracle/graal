@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -153,7 +155,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     public FrameState stateDuring() {

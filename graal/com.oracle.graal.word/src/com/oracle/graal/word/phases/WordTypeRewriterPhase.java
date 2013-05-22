@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.word.phases;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -163,7 +165,7 @@ public class WordTypeRewriterPhase extends Phase {
                         Kind readKind = asKind(callTargetNode.returnType());
                         LocationNode location;
                         if (arguments.size() == 2) {
-                            location = makeLocation(graph, arguments.get(1), readKind, LocationIdentity.ANY_LOCATION);
+                            location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
                         } else {
                             location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                         }

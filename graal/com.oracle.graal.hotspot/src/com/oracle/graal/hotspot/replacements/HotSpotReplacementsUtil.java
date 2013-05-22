@@ -45,9 +45,6 @@ import com.oracle.graal.word.*;
  */
 public class HotSpotReplacementsUtil {
 
-    public static final LocationIdentity ANY_LOCATION = LocationIdentity.ANY_LOCATION;
-    public static final LocationIdentity FINAL_LOCATION = LocationIdentity.FINAL_LOCATION;
-
     public static HotSpotVMConfig config() {
         return graalRuntime().getConfig();
     }
@@ -199,7 +196,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static Kind wordKind() {
+    public static Kind getWordKind() {
         return graalRuntime().getTarget().wordKind;
     }
 
@@ -246,7 +243,7 @@ public class HotSpotReplacementsUtil {
     }
 
     public static int readLayoutHelper(Word hub) {
-        return hub.readInt(klassLayoutHelperOffset(), FINAL_LOCATION);
+        return hub.readInt(klassLayoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
     }
 
     @Fold
@@ -443,7 +440,7 @@ public class HotSpotReplacementsUtil {
      * Loads the hub from a object, null checking it first.
      */
     public static Word loadHub(Object object) {
-        return loadHubIntrinsic(object, wordKind());
+        return loadHubIntrinsic(object, getWordKind());
     }
 
     public static Object verifyOop(Object object) {
@@ -471,7 +468,7 @@ public class HotSpotReplacementsUtil {
     }
 
     public static Word loadWordFromObject(Object object, int offset) {
-        return loadWordFromObjectIntrinsic(object, 0, offset, wordKind());
+        return loadWordFromObjectIntrinsic(object, 0, offset, getWordKind());
     }
 
     @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)

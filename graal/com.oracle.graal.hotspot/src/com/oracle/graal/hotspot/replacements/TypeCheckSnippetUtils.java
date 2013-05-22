@@ -57,7 +57,7 @@ public class TypeCheckSnippetUtils {
 
     static boolean checkUnknownSubType(Word t, Word s) {
         // int off = T.offset
-        int superCheckOffset = t.readInt(superCheckOffsetOffset(), FINAL_LOCATION);
+        int superCheckOffset = t.readInt(superCheckOffsetOffset(), LocationIdentity.FINAL_LOCATION);
         boolean primary = superCheckOffset != secondarySuperCacheOffset();
 
         // if (T = S[off]) return true
@@ -88,7 +88,7 @@ public class TypeCheckSnippetUtils {
 
         // if (S.scan_s_s_array(T)) { S.cache = T; return true; }
         Word secondarySupers = s.readWord(secondarySupersOffset(), SECONDARY_SUPERS_LOCATION);
-        int length = secondarySupers.readInt(metaspaceArrayLengthOffset(), FINAL_LOCATION);
+        int length = secondarySupers.readInt(metaspaceArrayLengthOffset(), LocationIdentity.FINAL_LOCATION);
         for (int i = 0; i < length; i++) {
             if (probability(NOT_LIKELY_PROBABILITY, t.equal(loadSecondarySupersElement(secondarySupers, i)))) {
                 s.writeWord(secondarySuperCacheOffset(), t, SECONDARY_SUPER_CACHE_LOCATION);
@@ -142,7 +142,7 @@ public class TypeCheckSnippetUtils {
     }
 
     static Word loadSecondarySupersElement(Word metaspaceArray, int index) {
-        return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), FINAL_LOCATION);
+        return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), LocationIdentity.FINAL_LOCATION);
     }
 
     private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("TypeCheck") : null;

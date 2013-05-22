@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.virtual.phases.ea.PartialEscapeAnalysisPhase.*;
 
 import java.util.*;
@@ -160,7 +161,7 @@ class PartialEscapeClosure extends BlockIteratorClosure<BlockState> {
                     for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
                         if (identity instanceof ResolvedJavaField) {
                             state.killReadCache((ResolvedJavaField) identity);
-                        } else if (identity == LocationIdentity.ANY_LOCATION) {
+                        } else if (identity == ANY_LOCATION) {
                             state.killReadCache();
                         }
                     }
