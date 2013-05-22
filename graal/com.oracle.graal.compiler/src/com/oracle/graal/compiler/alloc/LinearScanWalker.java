@@ -654,12 +654,12 @@ final class LinearScanWalker extends IntervalWalker {
             int number = availableReg.number;
             if (usePos[number] >= intervalTo) {
                 // this register is free for the full interval
-                if (minFullReg == null || availableReg == hint || (usePos[number] < usePos[minFullReg.number] && minFullReg != hint)) {
+                if (minFullReg == null || availableReg.equals(hint) || (usePos[number] < usePos[minFullReg.number] && !minFullReg.equals(hint))) {
                     minFullReg = availableReg;
                 }
             } else if (usePos[number] > regNeededUntil) {
                 // this register is at least free until regNeededUntil
-                if (maxPartialReg == null || availableReg == hint || (usePos[number] > usePos[maxPartialReg.number] && maxPartialReg != hint)) {
+                if (maxPartialReg == null || availableReg.equals(hint) || (usePos[number] > usePos[maxPartialReg.number] && !maxPartialReg.equals(hint))) {
                     maxPartialReg = availableReg;
                 }
             }

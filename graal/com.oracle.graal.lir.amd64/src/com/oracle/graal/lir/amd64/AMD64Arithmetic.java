@@ -273,7 +273,7 @@ public enum AMD64Arithmetic {
         protected void verify() {
             super.verify();
             // left input in rax, right input in any register but rax and rdx, result quotient in rax, result remainder in rdx
-            assert asRegister(x) == AMD64.rax;
+            assert asRegister(x).equals(AMD64.rax);
             assert differentRegisters(y, AMD64.rax.asValue(), AMD64.rdx.asValue());
             verifyKind(opcode, divResult, x, y);
             verifyKind(opcode, remResult, x, y);
@@ -360,9 +360,9 @@ public enum AMD64Arithmetic {
                 case IMUL: masm.imull(asIntReg(dst), asIntReg(src)); break;
                 case IOR:  masm.orl(asIntReg(dst),   asIntReg(src)); break;
                 case IXOR: masm.xorl(asIntReg(dst),  asIntReg(src)); break;
-                case ISHL: assert asIntReg(src) == AMD64.rcx; masm.shll(asIntReg(dst)); break;
-                case ISHR: assert asIntReg(src) == AMD64.rcx; masm.sarl(asIntReg(dst)); break;
-                case IUSHR: assert asIntReg(src) == AMD64.rcx; masm.shrl(asIntReg(dst)); break;
+                case ISHL: assert asIntReg(src).equals(AMD64.rcx); masm.shll(asIntReg(dst)); break;
+                case ISHR: assert asIntReg(src).equals(AMD64.rcx); masm.sarl(asIntReg(dst)); break;
+                case IUSHR: assert asIntReg(src).equals(AMD64.rcx); masm.shrl(asIntReg(dst)); break;
 
                 case LADD: masm.addq(asLongReg(dst),  asLongReg(src)); break;
                 case LSUB: masm.subq(asLongReg(dst),  asLongReg(src)); break;
@@ -370,9 +370,9 @@ public enum AMD64Arithmetic {
                 case LAND: masm.andq(asLongReg(dst),  asLongReg(src)); break;
                 case LOR:  masm.orq(asLongReg(dst),   asLongReg(src)); break;
                 case LXOR: masm.xorq(asLongReg(dst),  asLongReg(src)); break;
-                case LSHL: assert asIntReg(src) == AMD64.rcx; masm.shlq(asLongReg(dst)); break;
-                case LSHR: assert asIntReg(src) == AMD64.rcx; masm.sarq(asLongReg(dst)); break;
-                case LUSHR: assert asIntReg(src) == AMD64.rcx; masm.shrq(asLongReg(dst)); break;
+                case LSHL: assert asIntReg(src).equals(AMD64.rcx); masm.shlq(asLongReg(dst)); break;
+                case LSHR: assert asIntReg(src).equals(AMD64.rcx); masm.sarq(asLongReg(dst)); break;
+                case LUSHR: assert asIntReg(src).equals(AMD64.rcx); masm.shrq(asLongReg(dst)); break;
 
                 case FADD: masm.addss(asFloatReg(dst), asFloatReg(src)); break;
                 case FSUB: masm.subss(asFloatReg(dst), asFloatReg(src)); break;
@@ -556,6 +556,6 @@ public enum AMD64Arithmetic {
             || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
             || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
             || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double)
-            || (opcode.name().matches(".U?SH.") && result.getKind() == x.getKind() && y.getKind() == Kind.Int && (isConstant(y) || asRegister(y) == AMD64.rcx));
+            || (opcode.name().matches(".U?SH.") && result.getKind() == x.getKind() && y.getKind() == Kind.Int && (isConstant(y) || asRegister(y).equals(AMD64.rcx)));
     }
 }
