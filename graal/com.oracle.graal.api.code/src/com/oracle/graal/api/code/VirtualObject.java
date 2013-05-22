@@ -147,7 +147,8 @@ public final class VirtualObject extends Value {
             } else {
                 Kind componentKind = type.getComponentType().getKind().getStackKind();
                 for (int i = 0; i < values.length; i++) {
-                    assert values[i].getKind().getStackKind() == componentKind : values[i].getKind() + " != " + componentKind;
+                    assert values[i].getKind().getStackKind() == componentKind || componentKind.getBitCount() >= values[i].getKind().getStackKind().getBitCount() : values[i].getKind() + " != " +
+                                    componentKind;
                 }
             }
 

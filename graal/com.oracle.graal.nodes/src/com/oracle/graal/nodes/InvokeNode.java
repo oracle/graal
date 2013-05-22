@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.Stamp;
 import com.oracle.graal.nodes.util.*;
 
 /**
@@ -48,11 +49,22 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     /**
      * Constructs a new Invoke instruction.
      * 
-     * @param bci the bytecode index of the original invoke (used for debug infos)
      * @param callTarget the target method being called
+     * @param bci the bytecode index of the original invoke (used for debug infos)
      */
     public InvokeNode(CallTargetNode callTarget, int bci) {
-        super(callTarget.returnStamp());
+        this(callTarget, bci, callTarget.returnStamp());
+    }
+
+    /**
+     * Constructs a new Invoke instruction.
+     * 
+     * @param callTarget the target method being called
+     * @param bci the bytecode index of the original invoke (used for debug infos)
+     * @param stamp the stamp to be used for this value
+     */
+    public InvokeNode(CallTargetNode callTarget, int bci, Stamp stamp) {
+        super(stamp);
         this.callTarget = callTarget;
         this.bci = bci;
         this.polymorphic = false;

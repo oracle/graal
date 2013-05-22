@@ -526,7 +526,7 @@ public class AMD64Move {
     }
 
     protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
-        assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
+        assert asRegister(cmpValue).equals(AMD64.rax) && asRegister(result).equals(AMD64.rax);
 
         if (tasm.target.isMP) {
             masm.lock();

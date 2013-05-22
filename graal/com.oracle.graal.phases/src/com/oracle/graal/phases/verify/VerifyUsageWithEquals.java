@@ -28,17 +28,19 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
-public class VerifyValueUsage extends VerifyPhase {
+public class VerifyUsageWithEquals extends VerifyPhase {
 
     private MetaAccessProvider runtime;
+    private Class<?> klass;
 
-    public VerifyValueUsage(MetaAccessProvider runtime) {
+    public VerifyUsageWithEquals(MetaAccessProvider runtime, Class<?> klass) {
         this.runtime = runtime;
+        this.klass = klass;
     }
 
-    private boolean checkType(ValueNode node) {
+    private boolean isAssignableType(ValueNode node) {
         if (node.stamp() instanceof ObjectStamp) {
-            ResolvedJavaType valueType = runtime.lookupJavaType(Value.class);
+            ResolvedJavaType valueType = runtime.lookupJavaType(klass);
             ResolvedJavaType nodeType = node.objectStamp().type();
 
             if (valueType.isAssignableFrom(nodeType)) {
@@ -48,13 +50,26 @@ public class VerifyValueUsage extends VerifyPhase {
         return false;
     }
 
+    private static boolean isNullConstant(ValueNode node) {
+        return node.isConstant() && node.asConstant().isNull();
+    }
+
+    private boolean checkUsage(ValueNode x, ValueNode y) {
+        return isAssignableType(x) && !isNullConstant(y);
+    }
+
+    private static boolean isEqualsMethod(StructuredGraph graph) {
+        Signature signature = graph.method().getSignature();
+        return graph.method().getName().equals("equals") && signature.getParameterCount(false) == 1 && signature.getParameterKind(0).equals(Kind.Object);
+    }
+
     @Override
     protected boolean verify(StructuredGraph graph) {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
-            Signature signature = graph.method().getSignature();
-            if (!(graph.method().getName().equals("equals") && signature.getParameterCount(false) == 1 && signature.getParameterKind(0).equals(Kind.Object))) {
-                assert !((checkType(cn.x()) && !(cn.y() instanceof ConstantNode)) || (checkType(cn.y()) && !(cn.x() instanceof ConstantNode))) : "VerifyValueUsage: " + cn.x() + " or " + cn.y() +
-                                " in " + graph.method() + " uses object identity. Should use equals() instead.";
+            if (!isEqualsMethod(graph)) {
+                // bail out if we compare an object of type klass with == or != (except null checks)
+                assert !(checkUsage(cn.x(), cn.y()) && checkUsage(cn.y(), cn.x())) : "VerifyUsage of " + klass.getName() + ": " + cn.x() + " or " + cn.y() + " in " + graph.method() +
+                                " uses object identity. Should use equals() instead.";
             }
         }
         return true;

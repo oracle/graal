@@ -216,7 +216,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     protected void emitOperandHelper(Register reg, AMD64Address addr) {
-        assert reg != Register.None;
+        assert !reg.equals(Register.None);
         emitOperandHelper(encode(reg), addr);
     }
 
@@ -230,14 +230,14 @@ public class AMD64Assembler extends AbstractAssembler {
         AMD64Address.Scale scale = addr.getScale();
         int disp = addr.getDisplacement();
 
-        if (base == Register.Frame) {
+        if (base.equals(Register.Frame)) {
             assert frameRegister != null : "cannot use register " + Register.Frame + " in assembler with null register configuration";
             base = frameRegister;
         }
 
-        if (base == AMD64.rip) { // also matches Placeholder
+        if (base.equals(AMD64.rip)) { // also matches Placeholder
             // [00 000 101] disp32
-            assert index == Register.None : "cannot use RIP relative addressing with index register";
+            assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
             emitInt(disp);
         } else if (base.isValid()) {
@@ -245,28 +245,28 @@ public class AMD64Assembler extends AbstractAssembler {
             if (index.isValid()) {
                 int indexenc = encode(index) << 3;
                 // [base + indexscale + disp]
-                if (disp == 0 && base != rbp && (base != r13)) {
+                if (disp == 0 && !base.equals(rbp) && !base.equals(r13)) {
                     // [base + indexscale]
                     // [00 reg 100][ss index base]
-                    assert index != rsp : "illegal addressing mode";
+                    assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x04 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
                 } else if (isByte(disp)) {
                     // [base + indexscale + imm8]
                     // [01 reg 100][ss index base] imm8
-                    assert index != rsp : "illegal addressing mode";
+                    assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x44 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
                     emitByte(disp & 0xFF);
                 } else {
                     // [base + indexscale + disp32]
                     // [10 reg 100][ss index base] disp32
-                    assert index != rsp : "illegal addressing mode";
+                    assert !index.equals(rsp) : "illegal addressing mode";
                     emitByte(0x84 | regenc);
                     emitByte(scale.log2 << 6 | indexenc | baseenc);
                     emitInt(disp);
                 }
-            } else if (base == rsp || (base == r12)) {
+            } else if (base.equals(rsp) || base.equals(r12)) {
                 // [rsp + disp]
                 if (disp == 0) {
                     // [rsp]
@@ -288,8 +288,8 @@ public class AMD64Assembler extends AbstractAssembler {
                 }
             } else {
                 // [base + disp]
-                assert base != rsp && (base != r12) : "illegal addressing mode";
-                if (disp == 0 && base != rbp && (base != r13)) {
+                assert !base.equals(rsp) && !base.equals(r12) : "illegal addressing mode";
+                if (disp == 0 && !base.equals(rbp) && !base.equals(r13)) {
                     // [base]
                     // [00 reg base]
                     emitByte(0x00 | regenc | baseenc);
@@ -310,7 +310,7 @@ public class AMD64Assembler extends AbstractAssembler {
                 int indexenc = encode(index) << 3;
                 // [indexscale + disp]
                 // [00 reg 100][ss index 101] disp32
-                assert index != rsp : "illegal addressing mode";
+                assert !index.equals(rsp) : "illegal addressing mode";
                 emitByte(0x04 | regenc);
                 emitByte(scale.log2 << 6 | indexenc | 0x05);
                 emitInt(disp);
@@ -531,7 +531,7 @@ public class AMD64Assembler extends AbstractAssembler {
             // cmpxchg r,[m] is equivalent to X86.rax, = CAS (m, X86.rax, r)
             cmpl(rax, adr);
             movl(rax, adr);
-            if (reg != rax) {
+            if (reg.equals(rax)) {
                 Label l = new Label();
                 jccb(ConditionFlag.NotEqual, l);
                 movl(adr, reg);
