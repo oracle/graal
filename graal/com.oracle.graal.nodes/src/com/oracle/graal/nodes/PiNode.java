@@ -61,12 +61,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @Override
     public boolean inferStamp() {
-        if (stamp() instanceof ObjectStamp && object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
-            // a null value flowing into a nonNull PiNode should be guarded by a type/isNull guard,
-            // but the
-            // compiler might see this situation before the branch is deleted
-            return false;
-        }
         return updateStamp(stamp().join(object().stamp()));
     }
 

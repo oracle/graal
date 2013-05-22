@@ -60,7 +60,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      * @return true if the stamp has changed, false otherwise.
      */
     protected final boolean updateStamp(Stamp newStamp) {
-        if (newStamp.equals(stamp)) {
+        if (newStamp == null || newStamp.equals(stamp)) {
             return false;
         } else {
             stamp = newStamp;
