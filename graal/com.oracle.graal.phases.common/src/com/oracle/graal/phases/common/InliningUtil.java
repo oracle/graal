@@ -935,14 +935,10 @@ public class InliningUtil {
         @Override
         public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                tryToDevirtualizeSingleMethod(graph(), runtime);
+                devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), runtime);
             } else {
                 tryToDevirtualizeMultipleMethods(graph(), runtime);
             }
-        }
-
-        private void tryToDevirtualizeSingleMethod(StructuredGraph graph, MetaAccessProvider runtime) {
-            devirtualizeWithTypeSwitch(graph, InvokeKind.Special, concretes.get(0), runtime);
         }
 
         private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime) {
