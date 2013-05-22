@@ -246,23 +246,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder doubleQuote(String s) {
-        return startGroup().string("\"").string(s).string("\"").end();
-    }
-
-    public CodeTreeBuilder startDoubleQuote() {
-        startGroup().string("\"");
-        registerCallBack(new EndCallback() {
-
-            @Override
-            public void beforeEnd() {
-            }
-
-            @Override
-            public void afterEnd() {
-                string("\"");
-            }
-        });
-        return this;
+        return startGroup().string("\"" + s + "\"").end();
     }
 
     public CodeTreeBuilder string(String chunk1) {

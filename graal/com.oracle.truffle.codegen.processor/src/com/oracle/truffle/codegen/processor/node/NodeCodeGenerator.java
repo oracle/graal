@@ -766,9 +766,45 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
                 builder.startStatement().string("boolean allowed = (minimumState == ").string(nodeSpecializationClassName(node.getSpecializations().get(0))).string(".class)").end();
                 prefix = null;
+
+                builder.startStatement().string("StringBuilder message = new StringBuilder(reason)").end();
+                builder.startStatement().startCall("message", "append").doubleQuote(" (").end().end();
+
+                String sep = null;
+                for (ActualParameter parameter : node.getGenericSpecialization().getParameters()) {
+                    if (!parameter.getSpecification().isSignature()) {
+                        continue;
+                    }
+
+                    builder.startStatement();
+                    builder.string("message");
+                    if (sep != null) {
+                        builder.startCall(".append").doubleQuote(sep).end();
+                    }
+                    builder.startCall(".append").doubleQuote(parameter.getLocalName()).end();
+                    builder.startCall(".append").doubleQuote(" = ").end();
+                    builder.startCall(".append").string(parameter.getLocalName()).end();
+                    builder.end();
+
+                    builder.startIf().string(parameter.getLocalName() + " != null").end();
+                    builder.startBlock();
+                    builder.startStatement();
+                    builder.startCall("message.append").doubleQuote(" (").end();
+                    builder.startCall(".append").string(parameter.getLocalName() + ".getClass().getSimpleName()").end();
+                    builder.startCall(".append").doubleQuote(")").end();
+                    builder.end().end();
+
+                    sep = ", ";
+                }
+
+                builder.startStatement().startCall("message", "append").doubleQuote(")").end().end();
             }
 
             addInternalValueParameters(method, node.getGenericSpecialization(), true);
+
+            if (specialize) {
+                method.addParameter(new CodeVariableElement(getContext().getType(String.class), "reason"));
+            }
 
             List<SpecializationData> specializations = node.getSpecializations();
             if (!specialize && !node.getGenericSpecialization().isUseSpecializationsForGeneric()) {
@@ -864,6 +900,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 builder.startStatement().startCall("super", "replace");
                 builder.startGroup().startNew(nodeSpecializationClassName(current)).string("this").end().end();
+                builder.string("message.toString()");
                 builder.end().end();
 
                 if (current.getReturnSignature().isVoid()) {
@@ -1585,7 +1622,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (next != null) {
                 CodeTreeBuilder returnBuilder = new CodeTreeBuilder(builder);
                 returnBuilder.tree(createDeoptimize(builder));
-                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, next, null));
+                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, next, null, "One of guards " + specialization.getGuards() + " failed"));
                 returnSpecialized = returnBuilder.getRoot();
             }
             builder.tree(createGuardAndCast(builder, null, specialization, specialization, true, executeNode, returnSpecialized, false));
@@ -1619,6 +1656,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 returnBuilder.startCall("super", EXECUTE_SPECIALIZE_NAME);
                 returnBuilder.startGroup().string(nodeSpecializationClassName(specialization)).string(".class").end();
                 addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
+                returnBuilder.doubleQuote("Uninitialized");
                 returnBuilder.end();
             } else if (specialization.getMethod() == null && !node.needsRewrites(context)) {
                 emitEncounteredSynthetic(builder);
@@ -1650,13 +1688,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 for (SpecializationThrowsData exception : specialization.getExceptions()) {
                     builder.end().startCatchBlock(exception.getJavaClass(), "ex");
                     builder.tree(createDeoptimize(builder));
-                    builder.tree(createReturnExecuteAndSpecialize(parent, executable, exception.getTransitionTo(), null));
+                    builder.tree(createReturnExecuteAndSpecialize(parent, executable, exception.getTransitionTo(), null, "Thrown " + Utils.getSimpleName(exception.getJavaClass())));
                 }
                 builder.end();
             }
             if (!specialization.getAssumptions().isEmpty()) {
                 builder.end().startCatchBlock(getContext().getTruffleTypes().getInvalidAssumption(), "ex");
-                builder.tree(createReturnExecuteAndSpecialize(parent, executable, specialization.findNextSpecialization(), null));
+                builder.tree(createReturnExecuteAndSpecialize(parent, executable, specialization.findNextSpecialization(), null, "Assumption failed"));
                 builder.end();
             }
 
@@ -1761,7 +1799,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 List<ActualParameter> genericParameters = generic.getParametersAfter(genericParameter);
                 builder.tree(createDeoptimize(builder));
                 builder.tree(createExecuteChildren(parent, currentExecutable, generic, genericParameters, genericParameter, false));
-                builder.tree(createReturnExecuteAndSpecialize(builder, currentExecutable, specialization.findNextSpecialization(), param));
+                builder.tree(createReturnExecuteAndSpecialize(builder, currentExecutable, specialization.findNextSpecialization(), param,
+                                "Expected " + param.getLocalName() + " instanceof " + Utils.getSimpleName(param.getType())));
                 builder.end(); // catch block
             }
 
@@ -1877,13 +1916,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createReturnExecuteAndSpecialize(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData nextSpecialization, ActualParameter exceptionParam) {
+        private CodeTree createReturnExecuteAndSpecialize(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData nextSpecialization, ActualParameter exceptionParam, String reason) {
 
             SpecializationData generic = nextSpecialization.getNode().getGenericSpecialization();
             CodeTreeBuilder specializeCall = new CodeTreeBuilder(parent);
             specializeCall.startCall(EXECUTE_SPECIALIZE_NAME);
             specializeCall.string(nodeSpecializationClassName(nextSpecialization) + ".class");
             addInternalValueParameterNames(specializeCall, generic, nextSpecialization.getNode().getGenericSpecialization(), exceptionParam != null ? exceptionParam.getLocalName() : null, true, true);
+            specializeCall.doubleQuote(reason);
             specializeCall.end().end();
 
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);

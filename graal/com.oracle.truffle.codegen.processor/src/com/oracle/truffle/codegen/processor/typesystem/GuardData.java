@@ -38,4 +38,9 @@ public class GuardData extends TemplateMethod {
         return specialization;
     }
 
+    @Override
+    public String toString() {
+        return getMethodName();
+    }
+
 }
