@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +22,28 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static org.junit.Assert.*;
-
 import java.lang.reflect.*;
 import java.util.*;
-
-import org.junit.*;
 
 import com.oracle.graal.api.meta.*;
 
 /**
- * Tests for {@link JavaMethod}.
+ * Context for method related api.meta tests.
  */
-public class TestJavaMethod extends MethodUniverse {
+public class MethodUniverse extends TypeUniverse {
 
-    @Test
-    public void getNameTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            String expected = e.getKey().getName();
-            String actual = e.getValue().getName();
-            assertEquals(expected, actual);
-        }
-    }
+    public final Map<Method, ResolvedJavaMethod> methods = new HashMap<>();
+    public final Map<Constructor, ResolvedJavaMethod> constructors = new HashMap<>();
 
-    @Test
-    public void getDeclaringClassTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            Class expected = e.getKey().getDeclaringClass();
-            ResolvedJavaType actual = e.getValue().getDeclaringClass();
-            assertTrue(actual.equals(runtime.lookupJavaType(expected)));
-        }
-    }
-
-    @Test
-    public void getSignatureTest() {
-        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
-            assertTrue(new NameAndSignature(e.getKey()).signatureEquals(e.getValue()));
+    public MethodUniverse() {
+        for (Class c : classes) {
+            for (Method m : c.getDeclaredMethods()) {
+                ResolvedJavaMethod method = runtime.lookupJavaMethod(m);
+                methods.put(m, method);
+            }
+            for (Constructor m : c.getDeclaredConstructors()) {
+                constructors.put(m, runtime.lookupJavaConstructor(m));
+            }
         }
     }
 }
