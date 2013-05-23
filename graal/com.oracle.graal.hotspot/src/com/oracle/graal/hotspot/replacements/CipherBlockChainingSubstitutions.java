@@ -22,18 +22,17 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import sun.misc.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
 
@@ -72,19 +71,6 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
-        Word kAddr = Word.fromObject(embeddedCipher).readWord(Word.unsigned(AESCryptSubstitutions.kOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
-        Word rAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(rOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
-        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
-        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
-        if (encrypt) {
-            EncryptAESCryptStubCall.call(inAddr, outAddr, kAddr, rAddr, inLength);
-        } else {
-            DecryptAESCryptStubCall.call(inAddr, outAddr, kAddr, rAddr, inLength);
-        }
-
-    }
-
     @MethodSubstitution(isStatic = false)
     static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object embeddedCipher = Word.fromObject(rcvr).readObject(Word.unsigned(embeddedCipherOffset), ANY_LOCATION);
@@ -95,54 +81,24 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    abstract static class AESCryptStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
-
-        @Input private ValueNode in;
-        @Input private ValueNode out;
-        @Input private ValueNode key;
-        @Input private ValueNode r;
-        @Input private ValueNode inLength;
-
-        private final ForeignCallDescriptor descriptor;
-
-        public AESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength, ForeignCallDescriptor descriptor) {
-            super(StampFactory.forVoid());
-            this.in = in;
-            this.out = out;
-            this.key = key;
-            this.r = r;
-            this.inLength = inLength;
-            this.descriptor = descriptor;
-        }
-
-        @Override
-        public void generate(LIRGenerator gen) {
-            ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
-            gen.emitForeignCall(linkage, null, gen.operand(in), gen.operand(out), gen.operand(key), gen.operand(r), gen.operand(inLength));
+    private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
+        Word kAddr = Word.fromObject(embeddedCipher).readWord(Word.unsigned(AESCryptSubstitutions.kOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
+        Word rAddr = Word.unsigned(GetObjectAddressNode.get(rcvr)).readWord(Word.unsigned(rOffset), ANY_LOCATION).add(arrayBaseOffset(Kind.Byte));
+        Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
+        Word outAddr = Word.unsigned(GetObjectAddressNode.get(out) + arrayBaseOffset(Kind.Byte) + outOffset);
+        if (encrypt) {
+            encryptAESCryptStub(ENCRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
+        } else {
+            decryptAESCryptStub(DECRYPT, inAddr, outAddr, kAddr, rAddr, inLength);
         }
     }
 
-    public static class EncryptAESCryptStubCall extends AESCryptStubCall {
+    public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+    public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
 
-        public static final ForeignCallDescriptor ENCRYPT = new ForeignCallDescriptor("encrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void encryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key, Word r, int inLength);
 
-        public EncryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
-            super(in, out, key, r, inLength, ENCRYPT);
-        }
-
-        @NodeIntrinsic
-        public static native void call(Word in, Word out, Word key, Word r, int inLength);
-    }
-
-    public static class DecryptAESCryptStubCall extends AESCryptStubCall {
-
-        public static final ForeignCallDescriptor DECRYPT = new ForeignCallDescriptor("decrypt", void.class, Word.class, Word.class, Word.class, Word.class, int.class);
-
-        public DecryptAESCryptStubCall(ValueNode in, ValueNode out, ValueNode key, ValueNode r, ValueNode inLength) {
-            super(in, out, key, r, inLength, DECRYPT);
-        }
-
-        @NodeIntrinsic
-        public static native void call(Word in, Word out, Word key, Word r, int inLength);
-    }
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native void decryptAESCryptStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word in, Word out, Word key, Word r, int inLength);
 }

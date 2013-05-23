@@ -255,7 +255,7 @@ public class InliningPhase extends Phase {
                         callerHasMoreInformationAboutArguments = true;
                     } else {
                         Stamp joinedStamp = localNode.stamp().join(arg.stamp());
-                        if (!joinedStamp.equals(localNode.stamp())) {
+                        if (joinedStamp != null && !joinedStamp.equals(localNode.stamp())) {
                             localNode.setStamp(joinedStamp);
                             callerHasMoreInformationAboutArguments = true;
                         }

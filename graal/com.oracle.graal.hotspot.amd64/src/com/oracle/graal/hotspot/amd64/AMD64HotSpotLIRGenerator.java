@@ -231,14 +231,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 }
             }
         }
+
+        Variable result;
+
         if (!hsLinkage.isLeaf()) {
+            assert info != null;
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
-        }
-
-        Variable result = super.emitForeignCall(linkage, info, args);
-
-        if (!hsLinkage.isLeaf()) {
+            result = super.emitForeignCall(linkage, info, args);
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());
+        } else {
+            result = super.emitForeignCall(linkage, null, args);
         }
 
         if (destroysRegisters) {

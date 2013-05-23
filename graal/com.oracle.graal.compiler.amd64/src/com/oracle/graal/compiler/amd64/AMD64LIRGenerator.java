@@ -135,7 +135,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitMove(Value input) {
-        Variable result = newVariable(input.getKind());
+        Variable result = newVariable(input.getPlatformKind());
         emitMove(result, input);
         return result;
     }

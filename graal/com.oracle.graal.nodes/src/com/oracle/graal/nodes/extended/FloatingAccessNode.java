@@ -91,10 +91,5 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
         deoptState = f;
     }
 
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return false;
-    }
-
     public abstract Access asFixedNode();
 }

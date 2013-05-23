@@ -22,134 +22,26 @@
  */
 package com.oracle.graal.api.meta;
 
-import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 
 /**
  * This profile object represents the type profile at a specific BCI. The precision of the supplied
  * values may vary, but a runtime that provides this information should be aware that it will be
  * used to guide performance-critical decisions like speculative inlining, etc.
  */
-public final class JavaTypeProfile implements Serializable {
+public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, ResolvedJavaType> {
 
     private static final long serialVersionUID = -6877016333706838441L;
-
-    /**
-     * A profiled type that has a probability. Profiled types are naturally sorted in descending
-     * order of their probabilities.
-     */
-    public static final class ProfiledType implements Comparable<ProfiledType>, Serializable {
-
-        private static final long serialVersionUID = 7838575753661305744L;
-
-        public static final ProfiledType[] EMPTY_ARRAY = new ProfiledType[0];
-
-        private final ResolvedJavaType type;
-        private final double probability;
-
-        public ProfiledType(ResolvedJavaType type, double probability) {
-            assert type != null;
-            assert probability >= 0.0D && probability <= 1.0D;
-            this.type = type;
-            this.probability = probability;
-        }
-
-        /**
-         * Returns the type for this profile entry.
-         */
-        public ResolvedJavaType getType() {
-            return type;
-        }
-
-        /**
-         * Returns the estimated probability of {@link #getType()}.
-         * 
-         * @return double value >= 0.0 and <= 1.0
-         */
-        public double getProbability() {
-            return probability;
-        }
-
-        @Override
-        public int compareTo(ProfiledType o) {
-            if (getProbability() > o.getProbability()) {
-                return -1;
-            } else if (getProbability() < o.getProbability()) {
-                return 1;
-            }
-            return 0;
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            long temp;
-            temp = Double.doubleToLongBits(probability);
-            result = prime * result + (int) (temp ^ (temp >>> 32));
-            result = prime * result + type.hashCode();
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            ProfiledType other = (ProfiledType) obj;
-            if (Double.doubleToLongBits(probability) != Double.doubleToLongBits(other.probability)) {
-                return false;
-            }
-            return type.equals(other.type);
-        }
-
-        @Override
-        public String toString() {
-            return "{" + type.getName() + ", " + probability + "}";
-        }
-    }
+    private static final ProfiledType[] EMPTY_ARRAY = new ProfiledType[0];
 
     private final TriState nullSeen;
-    private final double notRecordedProbability;
-    private final ProfiledType[] ptypes;
 
-    /**
-     * Determines if an array of profiled types are sorted in descending order of their
-     * probabilities.
-     */
-    private static boolean isSorted(ProfiledType[] ptypes) {
-        for (int i = 1; i < ptypes.length; i++) {
-            if (ptypes[i - 1].getProbability() < ptypes[i].getProbability()) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public JavaTypeProfile(TriState nullSeen, double notRecordedProbability, ProfiledType... ptypes) {
+    public JavaTypeProfile(TriState nullSeen, double notRecordedProbability, ProfiledType[] pitems) {
+        super(notRecordedProbability, pitems);
         this.nullSeen = nullSeen;
-        this.ptypes = ptypes;
-        assert notRecordedProbability != Double.NaN;
-        this.notRecordedProbability = notRecordedProbability;
-        assert isSorted(ptypes);
-    }
-
-    /**
-     * Returns the estimated probability of all types that could not be recorded due to profiling
-     * limitations.
-     * 
-     * @return double value >= 0.0 and <= 1.0
-     */
-    public double getNotRecordedProbability() {
-        return notRecordedProbability;
     }
 
     /**
@@ -165,41 +57,7 @@ public final class JavaTypeProfile implements Serializable {
      * type and a negative type is not.
      */
     public ProfiledType[] getTypes() {
-        return ptypes;
-    }
-
-    /**
-     * Searches for an entry of a given resolved Java type.
-     * 
-     * @param type the type for which an entry should be searched
-     * @return the entry or null if no entry for this type can be found
-     */
-    public ProfiledType findEntry(ResolvedJavaType type) {
-        if (ptypes != null) {
-            for (ProfiledType pt : ptypes) {
-                if (pt.getType() == type) {
-                    return pt;
-                }
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("JavaTypeProfile[");
-        builder.append(this.nullSeen);
-        builder.append(", ");
-        if (ptypes != null) {
-            for (ProfiledType pt : ptypes) {
-                builder.append(pt.toString());
-                builder.append(", ");
-            }
-        }
-        builder.append(this.notRecordedProbability);
-        builder.append("]");
-        return builder.toString();
+        return getItems();
     }
 
     public JavaTypeProfile restrict(JavaTypeProfile otherProfile) {
@@ -214,57 +72,42 @@ public final class JavaTypeProfile implements Serializable {
         }
 
         ArrayList<ProfiledType> result = new ArrayList<>();
-        for (int i = 0; i < getTypes().length; i++) {
-            ProfiledType ptype = getTypes()[i];
-            ResolvedJavaType type = ptype.getType();
+        for (int i = 0; i < getItems().length; i++) {
+            ProfiledType ptype = getItems()[i];
+            ResolvedJavaType type = ptype.getItem();
             if (otherProfile.isIncluded(type)) {
                 result.add(ptype);
             }
         }
 
-        TriState newNullSeen = (otherProfile.getNullSeen() == TriState.FALSE) ? TriState.FALSE : this.nullSeen;
-        double newNotRecorded = this.notRecordedProbability;
+        TriState newNullSeen = (otherProfile.getNullSeen() == TriState.FALSE) ? TriState.FALSE : getNullSeen();
+        double newNotRecorded = getNotRecordedProbability();
         return createAdjustedProfile(result, newNullSeen, newNotRecorded);
-    }
-
-    public boolean isIncluded(ResolvedJavaType type) {
-        if (this.getNotRecordedProbability() > 0.0) {
-            return true;
-        } else {
-            for (int i = 0; i < getTypes().length; i++) {
-                ProfiledType ptype = getTypes()[i];
-                ResolvedJavaType curType = ptype.getType();
-                if (curType == type) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     public JavaTypeProfile restrict(ResolvedJavaType declaredType, boolean nonNull) {
         ArrayList<ProfiledType> result = new ArrayList<>();
-        for (int i = 0; i < getTypes().length; i++) {
-            ProfiledType ptype = getTypes()[i];
-            ResolvedJavaType type = ptype.getType();
+        for (int i = 0; i < getItems().length; i++) {
+            ProfiledType ptype = getItems()[i];
+            ResolvedJavaType type = ptype.getItem();
             if (declaredType.isAssignableFrom(type)) {
                 result.add(ptype);
             }
         }
 
-        TriState newNullSeen = (nonNull) ? TriState.FALSE : this.nullSeen;
+        TriState newNullSeen = (nonNull) ? TriState.FALSE : getNullSeen();
         double newNotRecorded = this.getNotRecordedProbability();
         // Assume for the types not recorded, the incompatibility rate is the same.
-        if (getTypes().length != 0) {
-            newNotRecorded *= ((double) result.size() / (double) getTypes().length);
+        if (getItems().length != 0) {
+            newNotRecorded *= ((double) result.size() / (double) getItems().length);
         }
         return createAdjustedProfile(result, newNullSeen, newNotRecorded);
     }
 
     private JavaTypeProfile createAdjustedProfile(ArrayList<ProfiledType> result, TriState newNullSeen, double newNotRecorded) {
-        if (result.size() != this.getTypes().length || newNotRecorded != getNotRecordedProbability() || newNullSeen != this.nullSeen) {
+        if (result.size() != this.getItems().length || newNotRecorded != getNotRecordedProbability() || newNullSeen != getNullSeen()) {
             if (result.size() == 0) {
-                return new JavaTypeProfile(newNullSeen, 1.0, ProfiledType.EMPTY_ARRAY);
+                return new JavaTypeProfile(newNullSeen, 1.0, EMPTY_ARRAY);
             }
             double probabilitySum = 0.0;
             for (int i = 0; i < result.size(); i++) {
@@ -277,7 +120,7 @@ public final class JavaTypeProfile implements Serializable {
             ProfiledType[] newResult = new ProfiledType[result.size()];
             for (int i = 0; i < newResult.length; ++i) {
                 ProfiledType curType = result.get(i);
-                newResult[i] = new ProfiledType(curType.getType(), Math.min(1.0, curType.getProbability() * factor));
+                newResult[i] = new ProfiledType(curType.getItem(), Math.min(1.0, curType.getProbability() * factor));
             }
             double newNotRecordedTypeProbability = Math.min(1.0, newNotRecorded * factor);
             return new JavaTypeProfile(newNullSeen, newNotRecordedTypeProbability, newResult);
@@ -287,34 +130,32 @@ public final class JavaTypeProfile implements Serializable {
 
     @Override
     public boolean equals(Object other) {
-        if (other == this) {
-            return true;
-        }
-        if (other instanceof JavaTypeProfile) {
-            JavaTypeProfile javaTypeProfile = (JavaTypeProfile) other;
-            if (javaTypeProfile.nullSeen != nullSeen) {
-                return false;
-            }
-            if (javaTypeProfile.notRecordedProbability != notRecordedProbability) {
-                return false;
-            }
-            if (javaTypeProfile.ptypes.length != ptypes.length) {
-                return false;
-            }
-
-            for (int i = 0; i < ptypes.length; ++i) {
-                if (!ptypes[i].equals(javaTypeProfile.ptypes[i])) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-        return false;
+        return super.equals(other) && nullSeen.equals(((JavaTypeProfile) other).nullSeen);
     }
 
     @Override
     public int hashCode() {
-        return nullSeen.hashCode() + (int) Double.doubleToLongBits(notRecordedProbability) + ptypes.length * 13;
+        return nullSeen.hashCode() + super.hashCode();
+    }
+
+    public static class ProfiledType extends AbstractProfiledItem<ResolvedJavaType> {
+
+        private static final long serialVersionUID = 1481773321889860837L;
+
+        public ProfiledType(ResolvedJavaType item, double probability) {
+            super(item, probability);
+        }
+
+        /**
+         * Returns the type for this profile entry.
+         */
+        public ResolvedJavaType getType() {
+            return getItem();
+        }
+
+        @Override
+        public String toString() {
+            return "{" + item.getName() + ", " + probability + "}";
+        }
     }
 }

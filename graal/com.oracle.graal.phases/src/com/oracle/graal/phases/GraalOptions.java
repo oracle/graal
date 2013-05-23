@@ -60,7 +60,7 @@ public final class GraalOptions {
     public static int     TrivialInliningSize                = 10;
     public static int     MaximumInliningSize                = 300;
     public static int     SmallCompiledLowLevelGraphSize     = 300;
-    public static double  LimitInlinedInvokes                = 10.0;
+    public static double  LimitInlinedInvokes                = 5.0;
 
     // escape analysis settings
     public static boolean PartialEscapeAnalysis              = true;
@@ -152,6 +152,7 @@ public final class GraalOptions {
     public static int     TraceBytecodeParserLevel           = 0;
     public static boolean ExitVMOnBailout                    = ____;
     public static boolean ExitVMOnException                  = true;
+    public static boolean PrintStackTraceOnException         = false;
 
     // HotSpot command line options
     public static boolean HotSpotPrintCompilation            = ____;

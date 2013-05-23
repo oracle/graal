@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -33,7 +35,6 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
@@ -173,7 +174,7 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
                     for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
                         if (identity instanceof ResolvedJavaField) {
                             state.killReadCache((ResolvedJavaField) identity);
-                        } else if (identity == LocationNode.ANY_LOCATION) {
+                        } else if (identity == ANY_LOCATION) {
                             state.killReadCache();
                         }
                     }

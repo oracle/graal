@@ -52,12 +52,6 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
         if (stamp() == StampFactory.forNodeIntrinsic()) {
             return false;
         }
-        if (object().objectStamp().alwaysNull() && objectStamp().nonNull()) {
-            // a null value flowing into a nonNull UnsafeCastNode should be guarded by a type/isNull
-            // guard, but the
-            // compiler might see this situation before the branch is deleted
-            return false;
-        }
         return updateStamp(stamp().join(object().stamp()));
     }
 

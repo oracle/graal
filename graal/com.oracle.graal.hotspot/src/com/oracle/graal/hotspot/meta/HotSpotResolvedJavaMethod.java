@@ -66,6 +66,35 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     private CompilationTask currentTask;
     private SpeculationLog speculationLog;
 
+    /**
+     * Gets the holder of a HotSpot metaspace method native object.
+     * 
+     * @param metaspaceMethod a metaspace Method object
+     * @return the {@link ResolvedJavaType} corresponding to the holder of the
+     *         {@code metaspaceMethod}
+     */
+    public static HotSpotResolvedObjectType getHolder(long metaspaceMethod) {
+        HotSpotVMConfig config = graalRuntime().getConfig();
+        long constMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        assert constMethod != 0;
+        long constantPool = unsafe.getLong(constMethod + config.constMethodConstantsOffset);
+        assert constantPool != 0;
+        long holder = unsafe.getLong(constantPool + config.constantPoolHolderOffset);
+        assert holder != 0;
+        return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(holder);
+    }
+
+    /**
+     * Gets the {@link ResolvedJavaMethod} for a HotSpot metaspace method native object.
+     * 
+     * @param metaspaceMethod a metaspace Method object
+     * @return the {@link ResolvedJavaMethod} corresponding to {@code metaspaceMethod}
+     */
+    public static HotSpotResolvedJavaMethod fromMetaspace(long metaspaceMethod) {
+        HotSpotResolvedObjectType holder = getHolder(metaspaceMethod);
+        return holder.createMethod(metaspaceMethod);
+    }
+
     HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;

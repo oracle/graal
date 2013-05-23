@@ -25,7 +25,6 @@ package com.oracle.graal.nodes.extended;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -77,7 +76,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
             return null;
         }
         if (runtime != null && object != null && object.isConstant()) {
-            if (location.getLocationIdentity() == LocationNode.FINAL_LOCATION && location instanceof ConstantLocationNode) {
+            if (location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION && location instanceof ConstantLocationNode) {
                 long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {

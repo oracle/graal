@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -87,7 +88,7 @@ public class NewInstanceStub extends SnippetStub {
      */
     @Snippet
     private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub) {
-        int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), FINAL_LOCATION);
+        int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), LocationIdentity.FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
                 Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());

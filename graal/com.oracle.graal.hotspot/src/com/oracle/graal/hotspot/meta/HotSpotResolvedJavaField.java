@@ -31,7 +31,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 

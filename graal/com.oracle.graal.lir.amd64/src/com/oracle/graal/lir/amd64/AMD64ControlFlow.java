@@ -404,7 +404,7 @@ public class AMD64ControlFlow {
 
     private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
-            assert asRegister(other) != asRegister(result) : "other already overwritten by previous move";
+            assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
             switch (other.getKind()) {
                 case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;

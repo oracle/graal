@@ -25,29 +25,24 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Interface that needs to be implemented by nodes which need deoptimization information.
- * 
+ * Interface implemented by nodes which need deoptimization information.
  */
 public interface DeoptimizingNode {
 
     /**
-     * Returns true if this particular instance needs deoptimization information.
-     * 
-     * @return true if this particular instance needs deoptimization information
+     * Determines if this node needs deoptimization information.
      */
     boolean canDeoptimize();
 
     /**
-     * Returns the deoptimization information associated with this node if any.
-     * 
-     * @return the deoptimization information associated with this node if any.
+     * Gets the deoptimization information associated with this node if any.
      */
     FrameState getDeoptimizationState();
 
     /**
-     * Set the deoptimization information associated with this node.
+     * Sets the deoptimization information associated with this node.
      * 
-     * @param state the FrameState which represents the deoptimization information.
+     * @param state the FrameState which represents the deoptimization information
      */
     void setDeoptimizationState(FrameState state);
 
@@ -59,13 +54,4 @@ public interface DeoptimizingNode {
      * @return the reason for deoptimization triggered by this node.
      */
     DeoptimizationReason getDeoptimizationReason();
-
-    /**
-     * Returns true if this node needs deoptimization information for stack-walking purposes because
-     * it is a call-site. While most other nodes use deoptimization information representing a state
-     * that happened before them, these nodes use a state that is valid during the call itself.
-     * 
-     * @return true if this node needs deoptimization information for stack-walking purposes.
-     */
-    boolean isCallSiteDeoptimization();
 }

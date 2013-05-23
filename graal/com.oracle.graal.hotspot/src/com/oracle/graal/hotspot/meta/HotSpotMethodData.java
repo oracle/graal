@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.JavaMethodProfile.ProfiledMethod;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.hotspot.*;
@@ -204,6 +205,11 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         @Override
+        public JavaMethodProfile getMethodProfile(HotSpotMethodData data, int position) {
+            return null;
+        }
+
+        @Override
         public double getBranchTakenProbability(HotSpotMethodData data, int position) {
             return -1;
         }
@@ -332,14 +338,14 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private abstract static class AbstractTypeData extends CounterData {
 
-        private static final int RECEIVER_TYPE_DATA_ROW_SIZE = cellsToBytes(2);
-        private static final int RECEIVER_TYPE_DATA_SIZE = cellIndexToOffset(2) + RECEIVER_TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
-        protected static final int NONPROFILED_RECEIVER_COUNT_OFFSET = cellIndexToOffset(1);
-        private static final int RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET = cellIndexToOffset(2);
-        private static final int RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET = cellIndexToOffset(3);
+        protected static final int TYPE_DATA_ROW_SIZE = cellsToBytes(2);
 
-        protected AbstractTypeData(int tag) {
-            super(tag, RECEIVER_TYPE_DATA_SIZE);
+        protected static final int NONPROFILED_COUNT_OFFSET = cellIndexToOffset(1);
+        protected static final int TYPE_DATA_FIRST_TYPE_OFFSET = cellIndexToOffset(2);
+        protected static final int TYPE_DATA_FIRST_TYPE_COUNT_OFFSET = cellIndexToOffset(3);
+
+        protected AbstractTypeData(int tag, int staticSize) {
+            super(tag, staticSize);
         }
 
         @Override
@@ -352,10 +358,10 @@ public final class HotSpotMethodData extends CompilerObject {
             int entries = 0;
 
             for (int i = 0; i < typeProfileWidth; i++) {
-                long receiverKlass = data.readWord(position, getReceiverOffset(i));
+                long receiverKlass = data.readWord(position, getTypeOffset(i));
                 if (receiverKlass != 0) {
                     types[entries] = HotSpotResolvedObjectType.fromMetaspaceKlass(receiverKlass);
-                    long count = data.readUnsignedInt(position, getCountOffset(i));
+                    long count = data.readUnsignedInt(position, getTypeCountOffset(i));
                     totalCount += count;
                     counts[entries] = count;
 
@@ -390,21 +396,22 @@ public final class HotSpotMethodData extends CompilerObject {
             return new JavaTypeProfile(nullSeen, notRecordedTypeProbability, ptypes);
         }
 
-        private static int getReceiverOffset(int row) {
-            return RECEIVER_TYPE_DATA_FIRST_RECEIVER_OFFSET + row * RECEIVER_TYPE_DATA_ROW_SIZE;
+        private static int getTypeOffset(int row) {
+            return TYPE_DATA_FIRST_TYPE_OFFSET + row * TYPE_DATA_ROW_SIZE;
         }
 
-        protected static int getCountOffset(int row) {
-            return RECEIVER_TYPE_DATA_FIRST_COUNT_OFFSET + row * RECEIVER_TYPE_DATA_ROW_SIZE;
+        protected static int getTypeCountOffset(int row) {
+            return TYPE_DATA_FIRST_TYPE_COUNT_OFFSET + row * TYPE_DATA_ROW_SIZE;
         }
     }
 
     private static class TypeCheckData extends AbstractTypeData {
 
-        private static final int RECEIVER_TYPE_DATA_TAG = 4;
+        private static final int TYPE_CHECK_DATA_TAG = 4;
+        private static final int TYPE_CHECK_DATA_SIZE = cellIndexToOffset(2) + TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
 
         public TypeCheckData() {
-            super(RECEIVER_TYPE_DATA_TAG);
+            super(TYPE_CHECK_DATA_TAG, TYPE_CHECK_DATA_SIZE);
         }
 
         @Override
@@ -414,16 +421,19 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
-            return data.readUnsignedIntAsSignedInt(position, NONPROFILED_RECEIVER_COUNT_OFFSET);
+            return data.readUnsignedIntAsSignedInt(position, NONPROFILED_COUNT_OFFSET);
         }
     }
 
     private static class VirtualCallData extends AbstractTypeData {
 
         private static final int VIRTUAL_CALL_DATA_TAG = 5;
+        private static final int VIRTUAL_CALL_DATA_SIZE = cellIndexToOffset(2) + TYPE_DATA_ROW_SIZE * (config.typeProfileWidth + config.methodProfileWidth);
+        private static final int VIRTUAL_CALL_DATA_FIRST_METHOD_OFFSET = TYPE_DATA_FIRST_TYPE_OFFSET + TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
+        private static final int VIRTUAL_CALL_DATA_FIRST_METHOD_COUNT_OFFSET = TYPE_DATA_FIRST_TYPE_COUNT_OFFSET + TYPE_DATA_ROW_SIZE * config.typeProfileWidth;
 
         public VirtualCallData() {
-            super(VIRTUAL_CALL_DATA_TAG);
+            super(VIRTUAL_CALL_DATA_TAG, VIRTUAL_CALL_DATA_SIZE);
         }
 
         @Override
@@ -432,7 +442,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
             long total = 0;
             for (int i = 0; i < typeProfileWidth; i++) {
-                total += data.readUnsignedInt(position, getCountOffset(i));
+                total += data.readUnsignedInt(position, getTypeCountOffset(i));
             }
 
             total += getCounterValue(data, position);
@@ -442,6 +452,64 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         protected long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position) {
             return getCounterValue(data, position);
+        }
+
+        private static long getMethodsNotRecordedExecutionCount(HotSpotMethodData data, int position) {
+            return data.readUnsignedIntAsSignedInt(position, NONPROFILED_COUNT_OFFSET);
+        }
+
+        @Override
+        public JavaMethodProfile getMethodProfile(HotSpotMethodData data, int position) {
+            int profileWidth = config.methodProfileWidth;
+
+            ResolvedJavaMethod[] methods = new ResolvedJavaMethod[profileWidth];
+            long[] counts = new long[profileWidth];
+            long totalCount = 0;
+            int entries = 0;
+
+            for (int i = 0; i < profileWidth; i++) {
+                long method = data.readWord(position, getMethodOffset(i));
+                if (method != 0) {
+                    methods[entries] = HotSpotResolvedJavaMethod.fromMetaspace(method);
+                    long count = data.readUnsignedInt(position, getMethodCountOffset(i));
+                    totalCount += count;
+                    counts[entries] = count;
+
+                    entries++;
+                }
+            }
+
+            totalCount += getMethodsNotRecordedExecutionCount(data, position);
+            return createMethodProfile(methods, counts, totalCount, entries);
+        }
+
+        private static JavaMethodProfile createMethodProfile(ResolvedJavaMethod[] methods, long[] counts, long totalCount, int entries) {
+            if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
+                return null;
+            }
+
+            ProfiledMethod[] pmethods = new ProfiledMethod[entries];
+            double totalProbability = 0.0;
+            for (int i = 0; i < entries; i++) {
+                double p = counts[i];
+                p = p / totalCount;
+                totalProbability += p;
+                pmethods[i] = new ProfiledMethod(methods[i], p);
+            }
+
+            Arrays.sort(pmethods);
+
+            double notRecordedMethodProbability = entries < config.methodProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            assert notRecordedMethodProbability == 0 || entries == config.methodProfileWidth;
+            return new JavaMethodProfile(notRecordedMethodProbability, pmethods);
+        }
+
+        private static int getMethodOffset(int row) {
+            return VIRTUAL_CALL_DATA_FIRST_METHOD_OFFSET + row * TYPE_DATA_ROW_SIZE;
+        }
+
+        private static int getMethodCountOffset(int row) {
+            return VIRTUAL_CALL_DATA_FIRST_METHOD_COUNT_OFFSET + row * TYPE_DATA_ROW_SIZE;
         }
     }
 
