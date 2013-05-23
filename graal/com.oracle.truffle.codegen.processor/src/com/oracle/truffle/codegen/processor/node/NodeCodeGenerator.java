@@ -786,13 +786,22 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.startCall(".append").string(parameter.getLocalName()).end();
                     builder.end();
 
-                    builder.startIf().string(parameter.getLocalName() + " != null").end();
-                    builder.startBlock();
+                    if (!Utils.isPrimitive(parameter.getType())) {
+                        builder.startIf().string(parameter.getLocalName() + " != null").end();
+                        builder.startBlock();
+                    }
                     builder.startStatement();
-                    builder.startCall("message.append").doubleQuote(" (").end();
-                    builder.startCall(".append").string(parameter.getLocalName() + ".getClass().getSimpleName()").end();
-                    builder.startCall(".append").doubleQuote(")").end();
-                    builder.end().end();
+                    if (Utils.isPrimitive(parameter.getType())) {
+                        builder.startCall("message.append").doubleQuote(" (" + Utils.getSimpleName(parameter.getType()) + ")").end();
+                    } else {
+                        builder.startCall("message.append").doubleQuote(" (").end();
+                        builder.startCall(".append").string(parameter.getLocalName() + ".getClass().getSimpleName()").end();
+                        builder.startCall(".append").doubleQuote(")").end();
+                    }
+                    builder.end();
+                    if (!Utils.isPrimitive(parameter.getType())) {
+                        builder.end();
+                    }
 
                     sep = ", ";
                 }
