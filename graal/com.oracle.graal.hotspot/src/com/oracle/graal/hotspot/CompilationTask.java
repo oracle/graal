@@ -184,7 +184,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {
-            t.printStackTrace(TTY.cachedOut);
+            if (GraalOptions.PrintStackTraceOnException || GraalOptions.ExitVMOnException) {
+                t.printStackTrace(TTY.cachedOut);
+            }
             if (GraalOptions.ExitVMOnException) {
                 System.exit(-1);
             }
