@@ -43,7 +43,7 @@ public class VerifyUsageWithEquals extends VerifyPhase {
             ResolvedJavaType valueType = runtime.lookupJavaType(klass);
             ResolvedJavaType nodeType = node.objectStamp().type();
 
-            if (valueType.isAssignableFrom(nodeType)) {
+            if (nodeType != null && valueType.isAssignableFrom(nodeType)) {
                 return true;
             }
         }
