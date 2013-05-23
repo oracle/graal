@@ -28,6 +28,11 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
+/**
+ * For certain types object identity should not be used for object equality check. This phase checks
+ * the correct usage of the given type. Equality checks with == or != (except null checks) results
+ * in an {@link AssertionError}.
+ */
 public class VerifyUsageWithEquals extends VerifyPhase {
 
     private MetaAccessProvider runtime;
