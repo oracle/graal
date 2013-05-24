@@ -144,7 +144,7 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stackAt(i);
             ValueNode y = other.stackAt(i);
-            if (x != y && ValueNodeUtil.typeMismatch(x, y)) {
+            if (x != y && (x == null || x.isDeleted() || y == null || y.isDeleted() || x.kind() != y.kind())) {
                 return false;
             }
         }
@@ -171,11 +171,11 @@ public class FrameStateBuilder {
     }
 
     private ValueNode merge(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
-        if (currentValue == null) {
+        if (currentValue == null || currentValue.isDeleted()) {
             return null;
 
         } else if (block.isPhiAtMerge(currentValue)) {
-            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
                 propagateDelete((PhiNode) currentValue);
                 return null;
             }
@@ -184,7 +184,7 @@ public class FrameStateBuilder {
 
         } else if (currentValue != otherValue) {
             assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for all locals and stack slots";
-            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
                 return null;
             }
 
