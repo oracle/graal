@@ -322,13 +322,13 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
         return (BlockT) oldState.cloneState();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     protected List<BlockT> processLoop(Loop loop, BlockT initialState) {
         BlockState loopEntryState = initialState;
         BlockState lastMergedState = initialState;
         MergeProcessor<BlockT> mergeProcessor = new MergeProcessor<>(loop.header, usages, blockEffects);
         for (int iteration = 0; iteration < 10; iteration++) {
-            @SuppressWarnings("unchecked")
             LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, (BlockT) lastMergedState.cloneState());
 
             List<BlockT> states = new ArrayList<>();
