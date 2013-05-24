@@ -20,34 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package com.oracle.graal.compiler.sparc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.code.CallingConvention;
+import com.oracle.graal.api.code.CodeCacheProvider;
+import com.oracle.graal.api.code.CompilationResult;
+import com.oracle.graal.api.code.TargetDescription;
+import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.asm.AbstractAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.compiler.gen.LIRGenerator;
-import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.*;
-import static com.oracle.graal.phases.GraalOptions.*;
+import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.lir.FrameMap;
+import com.oracle.graal.lir.LIR;
+import com.oracle.graal.lir.asm.FrameContext;
+import com.oracle.graal.lir.asm.TargetMethodAssembler;
+import com.oracle.graal.nodes.StructuredGraph;
 
-/**
- * HotSpot SPARC specific backend.
- */
-public class SPARCHotSpotBackend extends HotSpotBackend {
+public class SPARCBackend extends Backend {
 
-    public SPARCHotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
+    public SPARCBackend(CodeCacheProvider runtime, TargetDescription target) {
         super(runtime, target);
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCLIRGenerator(graph, this.runtime(), this.target, frameMap, cc, lir);
+        return new SPARCLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
     }
 
     @Override
@@ -57,12 +55,6 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     class HotSpotFrameContext implements FrameContext {
 
-        final boolean isStub;
-
-        HotSpotFrameContext(boolean isStub) {
-            this.isStub = isStub;
-        }
-
         @Override
         public void enter(TargetMethodAssembler tasm) {
         }
@@ -71,29 +63,23 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         public void leave(TargetMethodAssembler tasm) {
         }
     }
-
     @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
-        SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
-        FrameMap frameMap = gen.frameMap;
-        LIR lir = gen.lir;
-        boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
-
-        Stub stub = gen.getStub();
+        FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
-        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext();
         TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
-        StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
-        if (deoptimizationRescueSlot != null && stub == null) {
-            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
-        }
-
         return tasm;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
-        // SPARC: Emit code
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
+
+        // Emit code for the LIR
+        lirGen.lir.emitCode(tasm);
+
     }
+
+
 }
