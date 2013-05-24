@@ -25,9 +25,9 @@ package com.oracle.graal.hotspot;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.ExceptionHandler;
-import com.oracle.graal.api.code.CompilationResult.Mark;
-import com.oracle.graal.api.code.CompilationResult.Site;
+import com.oracle.graal.api.code.CompilationResult.CodeComment;
+import com.oracle.graal.api.code.CompilationResult.JumpTable;
+import com.oracle.graal.api.code.CompilationResult.*;
 
 /**
  * A {@link CompilationResult} with additional HotSpot-specific information required for installing
@@ -40,6 +40,18 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
 
     public final Site[] sites;
     public final ExceptionHandler[] exceptionHandlers;
+    public final Comment[] comments;
+
+    public static class Comment {
+
+        public final String text;
+        public final int pcOffset;
+
+        public Comment(int pcOffset, String text) {
+            this.text = text;
+            this.pcOffset = pcOffset;
+        }
+    }
 
     public HotSpotCompiledCode(CompilationResult compResult) {
         this.comp = compResult;
@@ -48,6 +60,24 @@ public abstract class HotSpotCompiledCode extends CompilerObject {
             exceptionHandlers = null;
         } else {
             exceptionHandlers = compResult.getExceptionHandlers().toArray(new ExceptionHandler[compResult.getExceptionHandlers().size()]);
+        }
+        List<CodeAnnotation> annotations = compResult.getAnnotations();
+        comments = new Comment[annotations.size()];
+        if (!annotations.isEmpty()) {
+            for (int i = 0; i < comments.length; i++) {
+                CodeAnnotation annotation = annotations.get(i);
+                String text;
+                if (annotation instanceof CodeComment) {
+                    CodeComment codeComment = (CodeComment) annotation;
+                    text = codeComment.value;
+                } else if (annotation instanceof JumpTable) {
+                    JumpTable jumpTable = (JumpTable) annotation;
+                    text = "JumpTable [" + jumpTable.low + " .. " + jumpTable.high + "]";
+                } else {
+                    text = annotation.toString();
+                }
+                comments[i] = new Comment(annotation.position, text);
+            }
         }
     }
 

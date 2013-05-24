@@ -25,125 +25,16 @@ package com.oracle.graal.api.meta.test;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static org.junit.Assert.*;
 
-import java.io.*;
 import java.lang.reflect.*;
-import java.util.*;
 
 import org.junit.*;
 
-import sun.misc.Unsafe;
-
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 
 /**
  * Tests for {@link MetaAccessProvider}.
  */
-public class TestMetaAccessProvider {
-
-    public static final Unsafe unsafe;
-    static {
-        Unsafe theUnsafe = null;
-        try {
-            theUnsafe = Unsafe.getUnsafe();
-        } catch (Exception e) {
-            try {
-                Field theUnsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeField.setAccessible(true);
-                theUnsafe = (Unsafe) theUnsafeField.get(null);
-            } catch (Exception e1) {
-                throw (InternalError) new InternalError("unable to initialize unsafe").initCause(e1);
-            }
-        }
-        unsafe = theUnsafe;
-    }
-
-    public TestMetaAccessProvider() {
-    }
-
-    public static final MetaAccessProvider runtime = Graal.getRequiredCapability(MetaAccessProvider.class);
-    public static final Collection<Class<?>> classes = new HashSet<>();
-    public static final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
-
-    public static synchronized Class<?> getArrayClass(Class componentType) {
-        Class<?> arrayClass = arrayClasses.get(componentType);
-        if (arrayClass == null) {
-            arrayClass = Array.newInstance(componentType, 0).getClass();
-            arrayClasses.put(componentType, arrayClass);
-        }
-        return arrayClass;
-    }
-
-    public static int dimensions(Class c) {
-        if (c.getComponentType() != null) {
-            return 1 + dimensions(c.getComponentType());
-        }
-        return 0;
-    }
-
-    private static void addClass(Class c) {
-        if (classes.add(c)) {
-            if (c.getSuperclass() != null) {
-                addClass(c.getSuperclass());
-            }
-            for (Class sc : c.getInterfaces()) {
-                addClass(sc);
-            }
-            for (Class dc : c.getDeclaredClasses()) {
-                addClass(dc);
-            }
-            for (Method m : c.getDeclaredMethods()) {
-                addClass(m.getReturnType());
-                for (Class p : m.getParameterTypes()) {
-                    addClass(p);
-                }
-            }
-
-            if (c != void.class && dimensions(c) < 2) {
-                Class<?> arrayClass = Array.newInstance(c, 0).getClass();
-                arrayClasses.put(c, arrayClass);
-                addClass(arrayClass);
-            }
-        }
-    }
-
-    static {
-        Class[] initialClasses = {void.class, boolean.class, byte.class, short.class, char.class, int.class, float.class, long.class, double.class, Object.class, Class.class, ClassLoader.class,
-                        String.class, Serializable.class, Cloneable.class, Test.class, TestMetaAccessProvider.class, List.class, Collection.class, Map.class, Queue.class, HashMap.class,
-                        LinkedHashMap.class, IdentityHashMap.class, AbstractCollection.class, AbstractList.class, ArrayList.class};
-        for (Class c : initialClasses) {
-            addClass(c);
-        }
-    }
-
-    public static final List<Constant> constants = new ArrayList<>();
-    static {
-        for (Field f : Constant.class.getDeclaredFields()) {
-            int mods = f.getModifiers();
-            if (f.getType() == Constant.class && Modifier.isPublic(mods) && Modifier.isStatic(mods) && Modifier.isFinal(mods)) {
-                try {
-                    Constant c = (Constant) f.get(null);
-                    if (c != null) {
-                        constants.add(c);
-                    }
-                } catch (Exception e) {
-                }
-            }
-        }
-        for (Class c : classes) {
-            if (c != void.class && !c.isArray()) {
-                constants.add(Constant.forObject(Array.newInstance(c, 42)));
-            }
-        }
-        constants.add(Constant.forObject(new ArrayList<>()));
-        constants.add(Constant.forObject(new IdentityHashMap<>()));
-        constants.add(Constant.forObject(new LinkedHashMap<>()));
-        constants.add(Constant.forObject(new TreeMap<>()));
-        constants.add(Constant.forObject(new ArrayDeque<>()));
-        constants.add(Constant.forObject(new LinkedList<>()));
-        constants.add(Constant.forObject("a string"));
-        constants.add(Constant.forObject(42));
-    }
+public class TestMetaAccessProvider extends TypeUniverse {
 
     @Test
     public void lookupJavaTypeTest() {

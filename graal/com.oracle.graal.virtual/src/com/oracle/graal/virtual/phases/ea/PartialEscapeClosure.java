@@ -537,7 +537,13 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
                             for (int i = 1; i < states.size(); i++) {
                                 ValueNode[] fields = objStates[i].getEntries();
                                 if (phis[index] == null && values[index] != fields[index]) {
-                                    phis[index] = new PhiNode(values[index].kind(), merge);
+                                    Kind kind = values[index].kind();
+                                    if (kind == Kind.Illegal) {
+                                        // Can happen if one of the values is virtual and is only
+                                        // materialized in the following loop.
+                                        kind = Kind.Object;
+                                    }
+                                    phis[index] = new PhiNode(kind, merge);
                                 }
                             }
                         }

@@ -30,7 +30,7 @@ import com.oracle.graal.api.runtime.*;
 /**
  * Tests for {@link BytecodeDisassemblerProvider}.
  */
-public class TestBytecodeDisassemblerProvider {
+public class TestBytecodeDisassemblerProvider extends MethodUniverse {
 
     public TestBytecodeDisassemblerProvider() {
     }
@@ -43,7 +43,7 @@ public class TestBytecodeDisassemblerProvider {
         BytecodeDisassemblerProvider dis = Graal.getRuntime().getCapability(BytecodeDisassemblerProvider.class);
         if (dis != null) {
             int count = 0;
-            for (ResolvedJavaMethod m : TestJavaMethod.methods.values()) {
+            for (ResolvedJavaMethod m : methods.values()) {
                 String disasm1 = dis.disassemble(m);
                 String disasm2 = dis.disassemble(m);
                 if (disasm1 == null) {

@@ -213,6 +213,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 if (Debug.isDumpEnabled()) {
                     Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
+                // TTY.println(String.valueOf(graph));
+                // TTY.println(graalRuntime.getRuntime().disassemble(installedCode));
             }
 
         });
