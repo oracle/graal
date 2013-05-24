@@ -25,16 +25,15 @@ package com.oracle.graal.hotspot;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -61,6 +60,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     private final int entryBCI;
     private final int id;
     private final int priority;
+
+    private StructuredGraph graph;
 
     public static CompilationTask create(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id, int priority) {
         return new CompilationTask(graalRuntime, plan, optimisticOpts, method, entryBCI, id, priority);
@@ -151,7 +152,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
                         Replacements replacements = graalRuntime.getReplacements();
-                        StructuredGraph graph = replacements.getMethodSubstitution(method);
+                        graph = replacements.getMethodSubstitution(method);
                         if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                             graph = new StructuredGraph(method, entryBCI);
                         } else {
@@ -172,7 +173,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 }
             }
 
-            installMethod(result, null);
+            installMethod(result);
         } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();
             if (GraalOptions.ExitVMOnBailout) {
@@ -204,7 +205,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                         MetaUtil.format("%H::%n(%p)", method), isOSR ? "@ " + entryBCI + " " : "", method.getCodeSize()));
     }
 
-    private void installMethod(final CompilationResult compResult, final Graph graph) {
+    private void installMethod(final CompilationResult compResult) {
         Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), graalRuntime.getRuntime(), method}, new Runnable() {
 
             @Override
@@ -213,8 +214,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 if (Debug.isDumpEnabled()) {
                     Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
-                // TTY.println(String.valueOf(graph));
-                // TTY.println(graalRuntime.getRuntime().disassemble(installedCode));
+                if (Debug.isLogEnabled()) {
+                    Debug.log("%s", graalRuntime.getRuntime().disassemble(installedCode));
+                }
             }
 
         });
