@@ -123,4 +123,58 @@ public class SourceSection {
         return String.format("%s:%d", source.getName(), startLine);
     }
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + charIndex;
+        result = prime * result + charLength;
+        result = prime * result + ((identifier == null) ? 0 : identifier.hashCode());
+        result = prime * result + ((source == null) ? 0 : source.hashCode());
+        result = prime * result + startColumn;
+        result = prime * result + startLine;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof SourceSection)) {
+            return false;
+        }
+        SourceSection other = (SourceSection) obj;
+        if (charIndex != other.charIndex) {
+            return false;
+        }
+        if (charLength != other.charLength) {
+            return false;
+        }
+        if (identifier == null) {
+            if (other.identifier != null) {
+                return false;
+            }
+        } else if (!identifier.equals(other.identifier)) {
+            return false;
+        }
+        if (source == null) {
+            if (other.source != null) {
+                return false;
+            }
+        } else if (!source.equals(other.source)) {
+            return false;
+        }
+        if (startColumn != other.startColumn) {
+            return false;
+        }
+        if (startLine != other.startLine) {
+            return false;
+        }
+        return true;
+    }
+
 }
