@@ -104,25 +104,37 @@ public enum SPARCArithmetic {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(src2)) {
-            switch (opcode) {
-            case IADD:  throw new InternalError("NYI");
-            case ISUB:  throw new InternalError("NYI");
-            case IMUL:  throw new InternalError("NYI");
-            case IAND:  throw new InternalError("NYI");
-            case ISHL:  throw new InternalError("NYI");
-            case ISHR:  throw new InternalError("NYI");
-            case IUSHR: throw new InternalError("NYI");
-            case IXOR:  throw new InternalError("NYI");
-            case LXOR:  throw new InternalError("NYI");
-            case LUSHR: throw new InternalError("NYI");
-            case FADD:  throw new InternalError("NYI");
-            case FMUL:  throw new InternalError("NYI");
-            case FDIV:  throw new InternalError("NYI");
-            case DADD:  throw new InternalError("NYI");
-            case DMUL:  throw new InternalError("NYI");
-            case DDIV:  throw new InternalError("NYI");
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+            if (is_simm13(tasm.asIntConst(src2))) {
+                switch (opcode) {
+                case IADD:
+                    new Add(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case ISUB:
+                    new Sub(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case IMUL:
+                    new Mulx(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case IAND:
+                    new And(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case ISHL:  throw new InternalError("NYI");
+                case ISHR:  throw new InternalError("NYI");
+                case IUSHR: throw new InternalError("NYI");
+                case IXOR:  throw new InternalError("NYI");
+                case LXOR:  throw new InternalError("NYI");
+                case LUSHR: throw new InternalError("NYI");
+                case FADD:  throw new InternalError("NYI");
+                case FMUL:  throw new InternalError("NYI");
+                case FDIV:  throw new InternalError("NYI");
+                case DADD:  throw new InternalError("NYI");
+                case DMUL:  throw new InternalError("NYI");
+                case DDIV:  throw new InternalError("NYI");
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+            } else {
+                throw new InternalError("NYI");
             }
         } else {
             switch (opcode) {
@@ -211,6 +223,13 @@ public enum SPARCArithmetic {
             assert exceptionOffset != -1;
             tasm.recordImplicitException(exceptionOffset, info);
         }
+    }
+
+    private static final int max13 =  ((1 << 12) - 1);
+    private static final int min13 = -(1 << 12);
+
+    private static boolean is_simm13(int src) {
+        return min13 <= src && src <= max13;
     }
 
     private static void verifyKind(SPARCArithmetic opcode, Value result, Value x, Value y) {
