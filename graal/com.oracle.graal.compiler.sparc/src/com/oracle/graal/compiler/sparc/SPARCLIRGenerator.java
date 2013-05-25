@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,7 @@ package com.oracle.graal.compiler.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.isRegister;
 import static com.oracle.graal.api.code.ValueUtil.isStackSlot;
-import static com.oracle.graal.lir.sparc.SPARCArithmetic.DADD;
-import static com.oracle.graal.lir.sparc.SPARCArithmetic.FADD;
-import static com.oracle.graal.lir.sparc.SPARCArithmetic.IADD;
-import static com.oracle.graal.lir.sparc.SPARCArithmetic.LADD;
+import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 
 import com.oracle.graal.api.code.CallingConvention;
 import com.oracle.graal.api.code.CodeCacheProvider;
@@ -40,7 +37,7 @@ import com.oracle.graal.api.meta.AllocatableValue;
 import com.oracle.graal.api.meta.Constant;
 import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.gen.LIRGenerator;
 import com.oracle.graal.compiler.target.LIRGenLowerable;
 import com.oracle.graal.graph.GraalInternalError;
@@ -53,7 +50,10 @@ import com.oracle.graal.lir.Variable;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Op1Stack;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Stack;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary1Op;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary2Op;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
@@ -296,23 +296,84 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitSub(Value a, Value b) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Stack(ISUB, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Stack(LSUB, result, a, loadNonConst(b)));
+                break;
+            case Float:
+                append(new Op2Stack(FSUB, result, a, loadNonConst(b)));
+                break;
+            case Double:
+                append(new Op2Stack(DSUB, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+        }
+        return result;
     }
 
     @Override
     public Value emitMul(Value a, Value b) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Reg(IMUL, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Reg(LMUL, result, a, loadNonConst(b)));
+                break;
+            case Float:
+                append(new Op2Stack(FMUL, result, a, loadNonConst(b)));
+                break;
+            case Double:
+                append(new Op2Stack(DMUL, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+        }
+        return result;
     }
 
     @Override
     public Value emitDiv(Value a, Value b, DeoptimizingNode deopting) {
-        // SPARC: Auto-generated method stub
-        return null;
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Reg(IDIV, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Reg(LDIV, result, a, loadNonConst(b)));
+                break;
+            case Float:
+                append(new Op2Stack(FDIV, result, a, loadNonConst(b)));
+                break;
+            case Double:
+                append(new Op2Stack(DDIV, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+        }
+        return result;
     }
 
     @Override
     public Value emitRem(Value a, Value b, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Reg(IREM, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Reg(LREM, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + a.getKind());
+        }
+        return result;
     }
 
     @Override
@@ -342,22 +403,124 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitShl(Value a, Value b) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Stack(ISHL, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op1Stack(LSHL, result, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
     public Value emitShr(Value a, Value b) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Stack(ISHR, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op1Stack(LSHR, result, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
     public Value emitUShr(Value a, Value b) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new ShiftOp(IUSHR, result, a, b));
+                break;
+            case Long:
+                append(new ShiftOp(LUSHR, result, a, b));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
     public Value emitConvert(Op opcode, Value inputVal) {
-        throw new InternalError("NYI");
+        Variable input = load(inputVal);
+        Variable result = newVariable(opcode.to);
+        switch (opcode) {
+            case I2L:
+                append(new Unary2Op(I2L, result, input));
+                break;
+            case L2I:
+                append(new Unary1Op(L2I, result, input));
+                break;
+            case I2B:
+                append(new Unary2Op(I2B, result, input));
+                break;
+            case I2C:
+                append(new Unary1Op(I2C, result, input));
+                break;
+            case I2S:
+                append(new Unary2Op(I2S, result, input));
+                break;
+            case F2D:
+                append(new Unary2Op(F2D, result, input));
+                break;
+            case D2F:
+                append(new Unary2Op(D2F, result, input));
+                break;
+            case I2F:
+                append(new Unary2Op(I2F, result, input));
+                break;
+            case I2D:
+                append(new Unary2Op(I2D, result, input));
+                break;
+            case F2I:
+                append(new Unary2Op(F2I, result, input));
+                break;
+            case D2I:
+                append(new Unary2Op(D2I, result, input));
+                break;
+            case L2F:
+                append(new Unary2Op(L2F, result, input));
+                break;
+            case L2D:
+                append(new Unary2Op(L2D, result, input));
+                break;
+            case F2L:
+                append(new Unary2Op(F2L, result, input));
+                break;
+            case D2L:
+                append(new Unary2Op(D2L, result, input));
+                break;
+            case MOV_I2F:
+                append(new Unary2Op(MOV_I2F, result, input));
+                break;
+            case MOV_L2D:
+                append(new Unary2Op(MOV_L2D, result, input));
+                break;
+            case MOV_F2I:
+                append(new Unary2Op(MOV_F2I, result, input));
+                break;
+            case MOV_D2L:
+                append(new Unary2Op(MOV_D2L, result, input));
+                break;
+            case UNSIGNED_I2L:
+                // Instructions that move or generate 32-bit register values also set the upper 32
+                // bits of the register to zero.
+                // Consequently, there is no need for a special zero-extension move.
+                emitMove(result, input);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
