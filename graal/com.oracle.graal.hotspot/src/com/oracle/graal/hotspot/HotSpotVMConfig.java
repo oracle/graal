@@ -411,6 +411,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long arithmeticSinAddress;
     public long arithmeticCosAddress;
     public long arithmeticTanAddress;
+    public long loadAndClearExceptionAddress;
 
     public int deoptReasonNone;
     public int deoptReasonNullCheck;
