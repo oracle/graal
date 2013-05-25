@@ -213,7 +213,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
-        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "foreign calls must return objects in thread local storage: " + descriptor;
+        assert transition == LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
         return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition, reexecutable, killedLocations));
     }
 
@@ -994,6 +994,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     @Override
     public boolean isReexecutable(ForeignCallDescriptor descriptor) {
         return foreignCalls.get(descriptor).isReexecutable();
+    }
+
+    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+        return !foreignCalls.get(descriptor).isLeaf();
     }
 
     public LocationIdentity[] getKilledLocationIdentities(ForeignCallDescriptor descriptor) {

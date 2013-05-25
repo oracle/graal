@@ -121,7 +121,7 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     @Override
     public boolean canDeoptimize() {
-        return true;
+        return runtime.canDeoptimize(descriptor);
     }
 
     @Override
