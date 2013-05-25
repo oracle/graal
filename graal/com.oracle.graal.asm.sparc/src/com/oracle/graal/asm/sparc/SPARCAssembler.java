@@ -169,6 +169,18 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fmt3n {
+        public Fmt3n(SPARCAssembler masm, int op, int op3, int opf, int rs2, int rd) {
+            assert  op == 2 || op == 3;
+            assert op3 >= 0 && op3 < 0x40;
+            assert opf >= 0 && opf < 0x200;
+            assert rs2 >= 0 && rs2 < 0x20;
+            assert  rd >= 0 &&  rd < 0x20;
+
+            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | opf << 5 | rs2);
+        }
+    }
+
     public static class Fmt3q {
         public Fmt3q(SPARCAssembler masm, int op, int op3, int rs1, int rd) {
             assert  op == 2 || op == 3;
@@ -313,12 +325,14 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
     }
 
     public enum Opfs {
-        Fadds((0x41 << 5) & 0x00003FE0, "fadds"),
-        Faddd((0x42 << 5) & 0x00003FE0, "faddd"),
-        Faddq((0x43 << 5) & 0x00003FE0, "faddq"),
-        Fsubs((0x45 << 5) & 0x00003FE0, "fsubs"),
-        Fsubd((0x46 << 5) & 0x00003FE0, "fsubd"),
-        Fsubq((0x47 << 5) & 0x00003FE0, "fsubq");
+        Fadds(0x41, "fadds"),
+        Faddd(0x42, "faddd"),
+        Faddq(0x43, "faddq"),
+        Fsubs(0x45, "fsubs"),
+        Fsubd(0x46, "fsubd"),
+        Fsubq(0x47, "fsubq"),
+        Fstoi(0xD1, "fstoi"),
+        Fdtoi(0xD2, "fdtoi");
 
         private final int value;
         private final String operator;
@@ -599,6 +613,20 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         public Faddq(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Faddq.getValue(),
                     src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fstoi extends Fmt3n {
+        public Fstoi(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstoi.getValue(),
+                  src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fdtoi extends Fmt3n {
+        public Fdtoi(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdtoi.getValue(),
+                  src2.encoding(), dst.encoding());
         }
     }
 

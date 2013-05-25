@@ -22,21 +22,12 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.asFloatReg;
-import static com.oracle.graal.api.code.ValueUtil.asIntReg;
-import static com.oracle.graal.api.code.ValueUtil.asLongReg;
-import static com.oracle.graal.api.code.ValueUtil.isConstant;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
-
-import com.oracle.graal.api.meta.Kind;
-import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.asm.sparc.SPARCAssembler;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Add;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.And;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Fadds;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Fdtoi;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Fstoi;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Fsubs;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Mulx;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Or;
@@ -46,7 +37,13 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Sra;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.graph.GraalInternalError;
 import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.asm.TargetMethodAssembler;
@@ -63,6 +60,65 @@ public enum SPARCArithmetic {
     I2F, I2D, F2I, D2I,
     L2F, L2D, F2L, D2L,
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
+
+
+    /**
+     * Unary operation with separate source and destination operand. 
+     */
+    public static class Unary2Op extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+
+        public Unary2Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            SPARCMove.move(tasm, masm, result, x);
+            emit(tasm, masm, opcode, result, x, null);
+        }
+    }
+
+    /**
+     * Unary operation with single operand for source and destination. 
+     */
+    public static class Unary1Op extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+
+        public Unary1Op(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            emit(masm, opcode, result);
+        }
+    }
+
+    public static class Op1Stack extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG, HINT}) protected Value result;
+        @Use({REG, STACK, CONST}) protected Value x;
+
+        public Op1Stack(SPARCArithmetic opcode, Value result, Value x) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            emit(tasm, masm, opcode, result, x, null);
+        }
+    }
 
     public static class Op2Stack extends SPARCLIRInstruction {
         @Opcode private final SPARCArithmetic opcode;
@@ -89,19 +145,94 @@ public enum SPARCArithmetic {
         }
     }
 
+    public static class Op2Reg extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG, HINT}) protected Value result;
+        @Use({REG, STACK, CONST}) protected Value x;
+        @Alive({REG, CONST}) protected Value y;
+
+        public Op2Reg(SPARCArithmetic opcode, Value result, Value x, Value y) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            emit(tasm, masm, opcode, result, x, y, null);
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            verifyKind(opcode, result, x, y);
+        }
+    }
+
+    public static class ShiftOp extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG, HINT}) protected Value result;
+        @Use({REG, STACK, CONST}) protected Value x;
+        @Alive({REG, CONST}) protected Value y;
+
+        public ShiftOp(SPARCArithmetic opcode, Value result, Value x, Value y) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            emit(tasm, masm, opcode, result, x, y, null);
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            verifyKind(opcode, result, x, x);
+            assert y.getKind().getStackKind() == Kind.Int;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected static void emit(SPARCAssembler masm, SPARCArithmetic opcode, Value result) {
+        switch (opcode) {
+            case L2I:
+                new Sra(masm, asLongReg(result), 0, asIntReg(result));
+                break;
+            case I2C:
+                new Sll(masm, asIntReg(result), 16, asIntReg(result));
+                new Srl(masm, asIntReg(result), 16, asIntReg(result));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
+        }
+    }
+
+    @SuppressWarnings("unused")
     public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isConstant(src1)) {
-            switch (opcode) {
-            case ISUB:  throw new InternalError("NYI");
-            case IAND:  throw new InternalError("NYI");
-            case IDIV:  throw new InternalError("NYI");
-            case FSUB:  throw new InternalError("NYI");
-            case FDIV:  throw new InternalError("NYI");
-            case DSUB:  throw new InternalError("NYI");
-            case DDIV:  throw new InternalError("NYI");
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+            if (is_simm13(tasm.asIntConst(src1))) {
+                switch (opcode) {
+                case ISUB:
+                    new Add(masm, asIntReg(src2), -(tasm.asIntConst(src1)), asIntReg(dst));
+                    break;
+                case IAND:  throw new InternalError("NYI");
+                case IDIV:
+                    throw new InternalError("NYI");
+                    // new Sdivx(masm, asIntReg(src1), asIntReg(src2), asIntReg(dst));
+                case FSUB:  throw new InternalError("NYI");
+                case FDIV:  throw new InternalError("NYI");
+                case DSUB:  throw new InternalError("NYI");
+                case DDIV:  throw new InternalError("NYI");
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+                }
+            } else {
+                throw new InternalError("NYI");
             }
         } else if (isConstant(src2)) {
             if (is_simm13(tasm.asIntConst(src2))) {
@@ -118,9 +249,15 @@ public enum SPARCArithmetic {
                 case IAND:
                     new And(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                     break;
-                case ISHL:  throw new InternalError("NYI");
-                case ISHR:  throw new InternalError("NYI");
-                case IUSHR: throw new InternalError("NYI");
+                case ISHL:
+                    new Sll(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case ISHR:
+                    new Srl(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
+                case IUSHR:
+                    new Sra(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
+                    break;
                 case IXOR:  throw new InternalError("NYI");
                 case LXOR:  throw new InternalError("NYI");
                 case LUSHR: throw new InternalError("NYI");
@@ -216,6 +353,46 @@ public enum SPARCArithmetic {
             case DREM:  throw new InternalError("NYI");
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
+            }
+        }
+
+        if (info != null) {
+            assert exceptionOffset != -1;
+            tasm.recordImplicitException(exceptionOffset, info);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode,
+                            Value dst, Value src, LIRFrameState info) {
+        int exceptionOffset = -1;
+        if (isRegister(src)) {
+            switch (opcode) {
+                case I2L:
+                    new Sra(masm, asIntReg(src), 0, asLongReg(dst));
+                    break;
+                case I2B:
+                    new Sll(masm, asIntReg(src), 24, asIntReg(src));
+                    new Srl(masm, asIntReg(dst), 24, asIntReg(src));
+                    break;
+                case I2F:
+                    new Fstoi(masm, asIntReg(src), asFloatReg(dst));
+                    break;
+                case I2D:
+                    new Fdtoi(masm, asIntReg(src), asDoubleReg(dst));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
+            }
+        } else if (isConstant(src)) {
+            switch (opcode) {
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
+            }
+        } else {
+            switch (opcode) {
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
             }
         }
 
