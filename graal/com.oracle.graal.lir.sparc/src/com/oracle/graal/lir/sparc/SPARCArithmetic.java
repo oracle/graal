@@ -195,6 +195,8 @@ public enum SPARCArithmetic {
             assert y.getKind().getStackKind() == Kind.Int;
         }
     }
+
+    @SuppressWarnings("unused")
     protected static void emit(SPARCAssembler masm, SPARCArithmetic opcode, Value result) {
         switch (opcode) {
             case L2I:
@@ -209,7 +211,7 @@ public enum SPARCArithmetic {
         }
     }
 
-
+    @SuppressWarnings("unused")
     public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isConstant(src1)) {
@@ -360,6 +362,7 @@ public enum SPARCArithmetic {
         }
     }
 
+    @SuppressWarnings("unused")
     public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode,
                             Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
