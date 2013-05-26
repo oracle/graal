@@ -127,7 +127,10 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
-        throw new InternalError("NYI");
+        switch (left.getKind().getStackKind()) {
+            default:
+                throw GraalInternalError.shouldNotReachHere("" + left.getKind());
+        }
     }
 
     @Override
@@ -269,7 +272,21 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitNegate(Value input) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind()) {
+            case Int:
+                append(new Op1Stack(INEG, result, input));
+                break;
+            case Float:
+                append(new Op1Stack(FNEG, result, input));
+                break;
+            case Double:
+                append(new Op1Stack(DNEG, result, input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override

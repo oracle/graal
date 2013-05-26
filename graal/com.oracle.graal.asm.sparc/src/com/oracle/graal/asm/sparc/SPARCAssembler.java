@@ -305,7 +305,16 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         Save(0x3c, "save"),
         Restore(0x3d, "restore"),
         Done(0x3e, "done"),
-        Retry(0x3e, "retry");
+        Retry(0x3e, "retry"),
+
+        Ldf(0x20, "ldf"),
+        Ldfsr(0x21, "ldfsr"),
+        Ldaf(0x22, "ldaf"),
+        Lddf(0x23, "lddf"),
+        Stf(0x24, "stf"),
+        Stfsr(0x25, "stfsr"),
+        Staf(0x26, "staf"),
+        Stdf(0x27, "stdf");
 
         private final int value;
         private final String operator;
@@ -325,12 +334,31 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
     }
 
     public enum Opfs {
+        Fmovs(0x01, "fmovs"),
+        Fmovd(0x02, "fmovd"),
+        Fmovq(0x03, "fmovq"),
+        Fnegs(0x05, "fnegs"),
+        Fnegd(0x06, "fnegd"),
+        Fnegq(0x07, "fnegq"),
+        Fabss(0x09, "fabss"),
+        Fabsd(0x0A, "fabsd"),
+        Fabsq(0x0B, "fabsq"),
         Fadds(0x41, "fadds"),
         Faddd(0x42, "faddd"),
         Faddq(0x43, "faddq"),
         Fsubs(0x45, "fsubs"),
         Fsubd(0x46, "fsubd"),
         Fsubq(0x47, "fsubq"),
+        Fmuls(0x49, "fmuls"),
+        Fmuld(0x4A, "fmuld"),
+        Fdivs(0x4C, "fdivs"),
+        Fdivd(0x4D, "fdivd"),
+        Fdivq(0x4E, "fdivq"),
+
+        Fsmuld(0x69, "fsmuld"),
+        Fmulq(0x6B, "fmulq"),
+        Fdmuldq(0x6E, "fdmulq"),
+
         Fstoi(0xD1, "fstoi"),
         Fdtoi(0xD2, "fdtoi");
 
@@ -616,6 +644,48 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fdivs extends Fmt3p {
+        public Fdivs(SPARCAssembler masm, Register src1, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdivs.getValue(),
+                    src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fdivd extends Fmt3p {
+        public Fdivd(SPARCAssembler masm, Register src1, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdivd.getValue(),
+                    src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmuls extends Fmt3p {
+        public Fmuls(SPARCAssembler masm, Register src1, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuls.getValue(),
+                    src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmuld extends Fmt3p {
+        public Fmuld(SPARCAssembler masm, Register src1, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuld.getValue(),
+                    src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnegs extends Fmt3n {
+        public Fnegs(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegs.getValue(),
+                  src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnegd extends Fmt3n {
+        public Fnegd(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegd.getValue(),
+                  src2.encoding(), dst.encoding());
+        }
+    }
+
     public static class Fstoi extends Fmt3n {
         public Fstoi(SPARCAssembler masm, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fstoi.getValue(),
@@ -652,6 +722,13 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         public Fsubq(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fsubq.getValue(),
                     src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Ld extends Fmt3b {
+        public Ld(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldf.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
         }
     }
 
