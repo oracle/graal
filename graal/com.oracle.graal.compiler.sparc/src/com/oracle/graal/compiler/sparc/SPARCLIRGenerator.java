@@ -23,8 +23,7 @@
 
 package com.oracle.graal.compiler.sparc;
 
-import static com.oracle.graal.api.code.ValueUtil.isRegister;
-import static com.oracle.graal.api.code.ValueUtil.isStackSlot;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 
 import com.oracle.graal.api.code.CallingConvention;
@@ -47,9 +46,15 @@ import com.oracle.graal.lir.LIRFrameState;
 import com.oracle.graal.lir.LIRInstruction;
 import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op1Stack;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Stack;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary1Op;
@@ -122,7 +127,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitJump(LabelRef label) {
-        throw new InternalError("NYI");
+        append(new JumpOp(label));
     }
 
     @Override
@@ -170,7 +175,14 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-        throw new InternalError("NYI");
+        // Making a copy of the switch value is necessary because jump table destroys the input
+        // value
+        if (key.getKind() == Kind.Int || key.getKind() == Kind.Long) {
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.ILLEGAL));
+        } else {
+            assert key.getKind() == Kind.Object : key.getKind();
+            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object)));
+        }
     }
 
     @Override
@@ -180,7 +192,10 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        throw new InternalError("NYI");
+        // Making a copy of the switch value is necessary because jump table destroys the input
+        // value
+        Variable tmp = emitMove(key);
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind)));
     }
 
     @Override
@@ -251,18 +266,68 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAddress(Value base, long displacement, Value index, int scale) {
-        throw new InternalError("NYI");
+    public SPARCAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
+        AllocatableValue baseRegister;
+        long finalDisp = displacement;
+        if (isConstant(base)) {
+            if (asConstant(base).isNull()) {
+                baseRegister = Value.ILLEGAL;
+            } else if (asConstant(base).getKind() != Kind.Object) {
+                finalDisp += asConstant(base).asLong();
+                baseRegister = Value.ILLEGAL;
+            } else {
+                baseRegister = load(base);
+            }
+        } else {
+            baseRegister = asAllocatable(base);
+        }
+
+        if (index != Value.ILLEGAL && scale != 0) {
+            if (isConstant(index)) {
+                finalDisp += asConstant(index).asLong() * scale;
+            } else {
+                Value indexRegister;
+                if (scale != 1) {
+                    indexRegister = emitMul(index, Constant.forInt(scale));
+                } else {
+                    indexRegister = index;
+                }
+
+                if (baseRegister == Value.ILLEGAL) {
+                    baseRegister = asAllocatable(indexRegister);
+                } else {
+                    Variable newBase = newVariable(Kind.Int);
+                    emitMove(newBase, baseRegister);
+                    baseRegister = newBase;
+                    baseRegister = emitAdd(baseRegister, indexRegister);
+                }
+            }
+        }
+
+        return new SPARCAddressValue(target().wordKind, baseRegister, (int) finalDisp);
+    }
+
+    private SPARCAddressValue asAddress(Value address) {
+        if (address instanceof SPARCAddressValue) {
+            return (SPARCAddressValue) address;
+        } else {
+            return emitAddress(address, 0, Value.ILLEGAL, 0);
+        }
     }
 
     @Override
-    public Value emitLoad(Kind kind, Value address, DeoptimizingNode canTrap) {
-        throw new InternalError("NYI");
+    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
+        SPARCAddressValue loadAddress = asAddress(address);
+        Variable result = newVariable(kind);
+        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value input, DeoptimizingNode canTrap) {
-        throw new InternalError("NYI");
+    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+        SPARCAddressValue storeAddress = asAddress(address);
+        Variable input = load(inputVal);
+        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
     }
 
     @Override
@@ -290,7 +355,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAdd(Value a, Value b) {
+    public Variable emitAdd(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:

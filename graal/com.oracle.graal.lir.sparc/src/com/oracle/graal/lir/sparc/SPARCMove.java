@@ -25,21 +25,111 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.api.code.ValueUtil.asRegister;
 import static com.oracle.graal.api.code.ValueUtil.isConstant;
 import static com.oracle.graal.api.code.ValueUtil.isRegister;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.meta.AllocatableValue;
-import com.oracle.graal.api.meta.Constant;
-import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.TargetMethodAssembler;
 
 public class SPARCMove {
+
+    public static class LoadOp extends SPARCLIRInstruction {
+
+        private final Kind kind;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({COMPOSITE}) protected SPARCAddressValue address;
+        @State protected LIRFrameState state;
+
+        public LoadOp(Kind kind, AllocatableValue result, SPARCAddressValue address, LIRFrameState state) {
+            this.kind = kind;
+            this.result = result;
+            this.address = address;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            @SuppressWarnings("unused") SPARCAddress addr = address.toAddress();
+            switch (kind) {
+                case Byte:
+                    // masm.ld_global_s8(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Short:
+                    // masm.ld_global_s16(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Char:
+                    // masm.ld_global_u16(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Int:
+                    // masm.ld_global_s32(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Long:
+                    // masm.ld_global_s64(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Float:
+                    // masm.ld_global_f32(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Double:
+                    // masm.ld_global_f64(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Object:
+                    // masm.ld_global_u32(asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
+    public static class StoreOp extends SPARCLIRInstruction {
+
+        private final Kind kind;
+        @Use({COMPOSITE}) protected SPARCAddressValue address;
+        @Use({REG}) protected AllocatableValue input;
+        @State protected LIRFrameState state;
+
+        public StoreOp(Kind kind, SPARCAddressValue address, AllocatableValue input, LIRFrameState state) {
+            this.kind = kind;
+            this.address = address;
+            this.input = input;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            assert isRegister(input);
+            @SuppressWarnings("unused") SPARCAddress addr = address.toAddress();
+            switch (kind) {
+                case Byte:
+                    // masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Short:
+                    // masm.st_global_s8(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Int:
+                    // masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Long:
+                    // masm.st_global_s64(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Float:
+                    // masm.st_global_f32(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Double:
+                    // masm.st_global_f64(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                case Object:
+                    // masm.st_global_s32(addr.getBase(), addr.getDisplacement(), asRegister(input));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());
+            }
+        }
+    }
 
     @Opcode("MOVE")
     public static class MoveToRegOp extends SPARCLIRInstruction implements MoveOp {

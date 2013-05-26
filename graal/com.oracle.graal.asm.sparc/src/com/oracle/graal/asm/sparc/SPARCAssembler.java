@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.Register;
 import com.oracle.graal.api.code.RegisterConfig;
 import com.oracle.graal.api.code.TargetDescription;
 import com.oracle.graal.api.meta.Kind;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime;
 
 /**
@@ -228,6 +229,26 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         private final int value;
 
         private Ops(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+    }
+
+    public enum Op2s {
+        Bpr(3),
+        Fb(6),
+        Fbp(5),
+        Br(2),
+        Bp(1),
+        Cb(7),
+        Sethi(4);
+
+        private final int value;
+
+        private Op2s(int value) {
             this.value = value;
         }
 
@@ -623,6 +644,59 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Bpa extends Fmt2c {
+        public Bpa(SPARCAssembler masm, int simmm19) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Always.getValue(),
+                            Op2s.Bp.getValue(), CC.Icc.getValue(), 1, simmm19);
+        }
+        public Bpa(SPARCAssembler masm, Label label) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Always.getValue(),
+                            Op2s.Bp.getValue(), CC.Icc.getValue(), 1,
+                            label.isBound() ? label.position() : patchUnbound(masm, label));
+        }
+    }
+
+    public static class Bpe extends Fmt2c {
+        public Bpe(SPARCAssembler masm, CC cc, int simmm19) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Equal.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1, simmm19);
+        }
+        public Bpe(SPARCAssembler masm, CC cc, Label label) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Equal.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1,
+                            label.isBound() ? label.position() : patchUnbound(masm, label));
+        }
+    }
+
+    public static class Bpn extends Fmt2c {
+        public Bpn(SPARCAssembler masm, CC cc, int simmm19) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Never.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1, simmm19);
+        }
+        public Bpn(SPARCAssembler masm, CC cc, Label label) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.Never.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1,
+                            label.isBound() ? label.position() : patchUnbound(masm, label));
+        }
+    }
+
+    public static class Bpne extends Fmt2c {
+        public Bpne(SPARCAssembler masm, CC cc, int simmm19) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.NotZero.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1, simmm19);
+        }
+        public Bpne(SPARCAssembler masm, CC cc, Label label) {
+            super(masm, Ops.BranchOp.getValue(), 0, Condition.NotZero.getValue(),
+                            Op2s.Bp.getValue(), cc.getValue(), 1,
+                            label.isBound() ? label.position() : patchUnbound(masm, label));
+        }
+    }
+
+    private static int patchUnbound(SPARCAssembler masm, Label label) {
+        label.addPatchAt(masm.codeBuffer.position());
+        return 0;
+    }
+
     public static class Fadds extends Fmt3p {
         public Fadds(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fadds.getValue(),
@@ -724,6 +798,13 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
                     src1.encoding(), src2.encoding(), dst.encoding());
         }
     }
+
+    @Override
+    @SuppressWarnings("unused")
+    public void jmp(Label l) {
+        new Bpa(this, l);
+    }
+
 
     public static class Ld extends Fmt3b {
         public Ld(SPARCAssembler masm, SPARCAddress src, Register dst) {
