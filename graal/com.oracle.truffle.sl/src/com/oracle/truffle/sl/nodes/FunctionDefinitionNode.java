@@ -61,6 +61,6 @@ public class FunctionDefinitionNode extends RootNode {
 
     @Override
     public String toString() {
-        return "Function " + name + "@" + Integer.toHexString(hashCode());
+        return "Function " + name;
     }
 }
