@@ -77,7 +77,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     }
 
     private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
+        return type != null && metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
     }
 
     private static ResolvedJavaType getConcreteType(ObjectStamp stamp, Assumptions assumptions) {
