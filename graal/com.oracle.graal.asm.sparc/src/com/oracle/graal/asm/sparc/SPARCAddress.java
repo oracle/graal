@@ -28,8 +28,7 @@ import com.oracle.graal.api.code.Register;
 public class SPARCAddress extends AbstractAddress {
 
     private final Register base;
-    private final Register index;
-    private final int displacement;
+    private final int displacement; // need Register offset / displacement CompositeValue?
 
     /**
      * Creates an {@link SPARCAddress} with given base register, no scaling and a given
@@ -41,35 +40,16 @@ public class SPARCAddress extends AbstractAddress {
     public SPARCAddress(Register base, int displacement) {
         this.base = base;
         this.displacement = displacement;
-        this.index = null;
-    }
-
-    /**
-     * Creates an {@link SPARCAddress} with given base and index registers, scaling and
-     * displacement. This is the most general constructor.
-     * 
-     * @param base the base register
-     * @param index the index register
-     */
-    public SPARCAddress(Register base, Register index, int disp) {
-        this.base = base;
-        this.index = index;
-        this.displacement = disp;
     }
 
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
         s.append("[");
-        String sep = "";
         if (!getBase().equals(Register.None)) {
             s.append(getBase());
-            sep = " + ";
         }
-        if (!getIndex().equals(Register.None)) {
-            s.append(sep).append(getIndex()).append(" * ");
-            sep = " + ";
-        }
+        // later: displacement CompositeValue?
         s.append("]");
         return s.toString();
     }
@@ -80,14 +60,6 @@ public class SPARCAddress extends AbstractAddress {
      */
     public Register getBase() {
         return base;
-    }
-
-    /**
-     * @return Index register, the value of which is added to {@link #getBase}. If not present, is
-     *         denoted by {@link Register#None}.
-     */
-    public Register getIndex() {
-        return index;
     }
 
     /**

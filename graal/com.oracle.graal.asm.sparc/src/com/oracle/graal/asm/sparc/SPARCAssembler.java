@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.TargetDescription;
 import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime;
+import com.oracle.graal.sparc.SPARC;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -328,6 +329,20 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         Done(0x3e, "done"),
         Retry(0x3e, "retry"),
 
+        Lduw(0x00, "lduw"),
+        Ldub(0x01, "ldub"),
+        Lduh(0x02, "lduh"),
+        Ldd(0x03, "ldd"),
+        Stw(0x04, "stw"),
+        Stb(0x05, "stb"),
+        Sth(0x06, "sth"),
+        Std(0x07, "std"),
+        Ldsw(0x08, "ldsw"),
+        Ldsb(0x09, "ldsb"),
+        Ldsh(0x0A, "ldsh"),
+        Ldx(0x0b, "ldx"),
+        Stx(0x0e, "stx"),
+
         Ldf(0x20, "ldf"),
         Ldfsr(0x21, "ldfsr"),
         Ldaf(0x22, "ldaf"),
@@ -565,6 +580,21 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
     public static final int simm(int x, int nbits) {
         // assert_signed_range(x, nbits);
         return x & ((1 << nbits) - 1);
+    }
+
+    private static final int max13 = ((1 << 12) - 1);
+    private static final int min13 = -(1 << 12);
+
+    public static boolean isSimm13(int src) {
+        return min13 <= src && src <= max13;
+    }
+
+    public static final int hi22(int x) {
+        return x >> 10;
+    }
+
+    public static final int lo10(int x) {
+        return x & ((1 << 10) - 1);
     }
 
     private static int fcn(int val) {
@@ -805,10 +835,51 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         new Bpa(this, l);
     }
 
+    public static class Lddf extends Fmt3b {
+        public Lddf(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Lddf.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
 
-    public static class Ld extends Fmt3b {
-        public Ld(SPARCAssembler masm, SPARCAddress src, Register dst) {
+    public static class Ldf extends Fmt3b {
+        public Ldf(SPARCAssembler masm, SPARCAddress src, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Ldf.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Ldsb extends Fmt3b {
+        public Ldsb(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldsb.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Ldsh extends Fmt3b {
+        public Ldsh(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldsh.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Ldsw extends Fmt3b {
+        public Ldsw(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldsw.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Lduw extends Fmt3b {
+        public Lduw(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Lduw.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Ldx extends Fmt3b {
+        public Ldx(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldx.getValue(),
                   src.getBase().encoding(), src.getDisplacement(), dst.encoding());
         }
     }
@@ -859,6 +930,13 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
         public Mulx(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Mulx.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class NullCheck extends Fmt3b {
+        public NullCheck(SPARCAssembler masm, SPARCAddress src) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Ldx.getValue(),
+                            src.getBase().encoding(), src.getDisplacement(), SPARC.r0.encoding());
         }
     }
 
@@ -996,6 +1074,68 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Sethi extends Fmt2a {
+        public Sethi(SPARCAssembler masm, int simm22, Register dst) {
+            super(masm, Ops.BranchOp.getValue(), Op2s.Sethi.getValue(), simm22, dst.encoding());
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class Setuw {
+        public Setuw(SPARCAssembler masm, int value, Register dst) {
+            if (value >= 0 && ((value & 0x3FFF) == 0)) {
+                new Sethi(masm, hi22(value), dst);
+            } else if (-4095 <= value && value <= 4096) {
+                // or   g0, value, dst
+                new Or(masm, SPARC.r0, value, dst);
+            } else {
+                new Sethi(masm, hi22(value), dst);
+                new Or(masm, dst, lo10(value), dst);
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class Setx {
+        public Setx(SPARCAssembler masm, long value, Register tmp, Register dst) {
+            int hi = (int) (value >> 32);
+            int lo = (int) (value & ~0);
+
+            if (isSimm13(lo) && value == lo) {
+                new Or(masm, SPARC.r0, lo, dst);
+            } else if (hi == 0) {
+                new Sethi(masm, lo, dst);   // hardware version zero-extends to upper 32
+                if (lo10(lo) != 0) {
+                    new Or(masm, dst, lo10(lo), dst);
+                }
+            } else if (hi == -1) {
+                new Sethi(masm, ~lo, dst);  // hardware version zero-extends to upper 32
+                new Xor(masm, dst, lo10(lo) ^ ~lo10(~0), dst);
+            } else if (lo == 0) {
+                if (isSimm13(hi)) {
+                    new Or(masm, SPARC.r0, hi, dst);
+                } else {
+                    new Sethi(masm, hi, dst);   // hardware version zero-extends to upper 32
+                    if (lo10(hi) != 0) {
+                        new Or(masm, dst, lo10(hi), dst);
+                    }
+                }
+                new Sllx(masm, dst, 32, dst);
+            }  else {
+                new Sethi(masm, hi, tmp);
+                new Sethi(masm, lo, dst); // macro assembler version sign-extends
+                if (lo10(hi) != 0) {
+                    new Or(masm, tmp, lo10(hi), tmp);
+                }
+                if (lo10(lo) != 0) {
+                    new Or(masm, dst, lo10(lo), dst);
+                }
+                new Sllx(masm, tmp, 32, tmp);
+                new Or(masm, dst, tmp, dst);
+              }
+        }
+    }
+
     public final void sir(int simm13a) {
         emitInt(Ops.ArithOp.getValue() | Op3s.Sir.getValue() | ImmedTrue | simm(simm13a, 13));
     }
@@ -1076,6 +1216,34 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
     @Deprecated
     public final void stbar() {
         emitInt(Ops.ArithOp.getValue() | Op3s.Membar.getValue() | 0x0003C000);
+    }
+
+    public static class Stb extends Fmt3b {
+        public Stb(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Stb.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Sth extends Fmt3b {
+        public Sth(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Sth.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Stw extends Fmt3b {
+        public Stw(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Stw.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
+    }
+
+    public static class Stx extends Fmt3b {
+        public Stx(SPARCAssembler masm, SPARCAddress src, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Stx.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
     }
 
     public static class Sub extends Fmt3b {

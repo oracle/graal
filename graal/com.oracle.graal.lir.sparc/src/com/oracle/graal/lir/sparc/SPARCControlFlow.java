@@ -37,14 +37,46 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.sparc.SPARC;
 
 public class SPARCControlFlow {
 
+    public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
+
+        protected Condition condition;
+        protected LabelRef destination;
+
+        public BranchOp(Condition condition, LabelRef destination) {
+            this.condition = condition;
+            this.destination = destination;
+        }
+
+        @Override
+        @SuppressWarnings("unused")
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            // masm.at();
+            Label l = destination.label();
+            // l.addPatchAt(tasm.asm.codeBuffer.position());
+            String target = l.isBound() ? "L" + l.toString() : AbstractSPARCAssembler.UNBOUND_TARGET;
+            // masm.bra(target);
+        }
+
+        @Override
+        public LabelRef destination() {
+            return destination;
+        }
+
+        @Override
+        public void negate(LabelRef newDestination) {
+            destination = newDestination;
+            condition = condition.negate();
+        }
+    }
+
     public static class ReturnOp extends SPARCLIRInstruction {
 
-        @Use({ REG, ILLEGAL })
-        protected Value x;
+        @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {
             this.x = x;
@@ -59,21 +91,15 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class SequentialSwitchOp extends SPARCLIRInstruction
-            implements FallThroughOp {
+    public static class SequentialSwitchOp extends SPARCLIRInstruction implements FallThroughOp {
 
-        @Use({ CONST })
-        protected Constant[] keyConstants;
+        @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
-        @Alive({ REG })
-        protected Value key;
-        @Temp({ REG, ILLEGAL })
-        protected Value scratch;
+        @Alive({REG}) protected Value key;
+        @Temp({REG, ILLEGAL}) protected Value scratch;
 
-        public SequentialSwitchOp(Constant[] keyConstants,
-                LabelRef[] keyTargets, LabelRef defaultTarget, Value key,
-                Value scratch) {
+        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
             assert keyConstants.length == keyTargets.length;
             this.keyConstants = keyConstants;
             this.keyTargets = keyTargets;
@@ -112,14 +138,12 @@ public class SPARCControlFlow {
                 Register intKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    SPARCMove.move(tasm, masm, temp.asValue(Kind.Object),
-                            keyConstants[i]);
+                    SPARCMove.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
                     new Subcc(masm, intKey, temp, SPARC.r0); // CMP
                     new Bpe(masm, CC.Icc, keyTargets[i].label());
                 }
             } else {
-                throw new GraalInternalError(
-                        "sequential switch only supported for int, long and object");
+                throw new GraalInternalError("sequential switch only supported for int, long and object");
             }
             if (defaultTarget != null) {
                 masm.jmp(defaultTarget.label());
@@ -144,13 +168,10 @@ public class SPARCControlFlow {
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
-        @Alive
-        protected Value index;
-        @Temp
-        protected Value scratch;
+        @Alive protected Value index;
+        @Temp protected Value scratch;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget,
-                final LabelRef[] targets, Variable index, Variable scratch) {
+        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch) {
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -160,15 +181,12 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
-            tableswitch(tasm, masm, lowKey, defaultTarget, targets,
-                    asIntReg(index), asLongReg(scratch));
+            tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch));
         }
     }
 
     @SuppressWarnings("unused")
-    private static void tableswitch(TargetMethodAssembler tasm,
-            SPARCAssembler masm, int lowKey, LabelRef defaultTarget,
-            LabelRef[] targets, Register value, Register scratch) {
+    private static void tableswitch(TargetMethodAssembler tasm, SPARCAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;

@@ -47,6 +47,7 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Sra;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.CONST;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.HINT;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.REG;
@@ -60,7 +61,7 @@ import com.oracle.graal.lir.asm.TargetMethodAssembler;
 
 //@formatter:off
 public enum SPARCArithmetic {
-    //@formatter:off
+    // @formatter:off
     IADD, ISUB, IMUL, IDIV, IDIVREM, IREM, IUDIV, IUREM, IAND, IOR, IXOR, ISHL, ISHR, IUSHR,
     LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
@@ -255,14 +256,13 @@ public enum SPARCArithmetic {
         if (isConstant(src1)) {
             switch (opcode) {
             case ISUB:
-                assert is_simm13(tasm.asIntConst(src1));
-                new Add(masm, asIntReg(src2), -(tasm.asIntConst(src1)),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src1));
+                new Add(masm, asIntReg(src2), -(tasm.asIntConst(src1)), asIntReg(dst));
                 break;
             case IAND:
                 throw new InternalError("NYI");
             case IDIV:
-                assert is_simm13(tasm.asIntConst(src1));
+                assert isSimm13(tasm.asIntConst(src1));
                 throw new InternalError("NYI");
                 // new Sdivx(masm, asIntReg(src1), asIntReg(src2),
                 // asIntReg(dst));
@@ -280,49 +280,40 @@ public enum SPARCArithmetic {
         } else if (isConstant(src2)) {
             switch (opcode) {
             case IADD:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Add(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Add(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case ISUB:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Sub(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Sub(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case IMUL:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Mulx(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Mulx(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case IAND:
-                assert is_simm13(tasm.asIntConst(src2));
-                new And(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new And(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case ISHL:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Sll(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Sll(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case ISHR:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Srl(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Srl(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case IUSHR:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Sra(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Sra(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case IXOR:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Xor(masm, asIntReg(src1), tasm.asIntConst(src2),
-                        asIntReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Xor(masm, asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst));
                 break;
             case LXOR:
-                assert is_simm13(tasm.asIntConst(src2));
-                new Add(masm, asLongReg(src1), tasm.asIntConst(src2),
-                        asLongReg(dst));
+                assert isSimm13(tasm.asIntConst(src2));
+                new Add(masm, asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst));
                 break;
             case LUSHR:
                 throw new InternalError("NYI");
@@ -509,13 +500,6 @@ public enum SPARCArithmetic {
             assert exceptionOffset != -1;
             tasm.recordImplicitException(exceptionOffset, info);
         }
-    }
-
-    private static final int max13 = ((1 << 12) - 1);
-    private static final int min13 = -(1 << 12);
-
-    private static boolean is_simm13(int src) {
-        return min13 <= src && src <= max13;
     }
 
     private static void verifyKind(SPARCArithmetic opcode, Value result, Value x, Value y) {

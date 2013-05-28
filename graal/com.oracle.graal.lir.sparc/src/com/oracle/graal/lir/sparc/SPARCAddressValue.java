@@ -36,8 +36,6 @@ public class SPARCAddressValue extends CompositeValue {
 
     @Component({ REG, OperandFlag.ILLEGAL })
     protected AllocatableValue base;
-    @Component({ REG, OperandFlag.ILLEGAL })
-    protected AllocatableValue index;
     protected final int displacement;
 
     public SPARCAddressValue(PlatformKind kind, AllocatableValue baseRegister,
@@ -57,8 +55,7 @@ public class SPARCAddressValue extends CompositeValue {
     }
 
     public SPARCAddress toAddress() {
-        return new SPARCAddress(toRegister(base), toRegister(index),
-                displacement);
+        return new SPARCAddress(toRegister(base), displacement);
     }
 
 }
