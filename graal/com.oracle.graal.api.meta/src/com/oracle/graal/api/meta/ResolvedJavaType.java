@@ -198,7 +198,8 @@ public interface ResolvedJavaType extends JavaType {
      * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
      * 
      * @param method the method to select the implementation of
-     * @return the method implementation that would be selected at runtime
+     * @return the method implementation that would be selected at runtime, or {@code null} if the
+     *         runtime cannot resolve the method at this point in time.
      */
     ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method);
 

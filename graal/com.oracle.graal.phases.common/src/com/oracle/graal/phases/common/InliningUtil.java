@@ -1033,20 +1033,29 @@ public class InliningUtil {
                 holder = receiverType;
                 if (receiverStamp.isExactType()) {
                     assert targetMethod.getDeclaringClass().isAssignableFrom(holder) : holder + " subtype of " + targetMethod.getDeclaringClass() + " for " + targetMethod;
-                    return getExactInlineInfo(data, invoke, replacements, optimisticOpts, holder.resolveMethod(targetMethod));
+                    ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod);
+                    if (resolvedMethod != null) {
+                        return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
+                    }
                 }
             }
         }
 
         if (holder.isArray()) {
             // arrays can be treated as Objects
-            return getExactInlineInfo(data, invoke, replacements, optimisticOpts, holder.resolveMethod(targetMethod));
+            ResolvedJavaMethod resolvedMethod = holder.resolveMethod(targetMethod);
+            if (resolvedMethod != null) {
+                return getExactInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod);
+            }
         }
 
         if (assumptions.useOptimisticAssumptions()) {
             ResolvedJavaType uniqueSubtype = holder.findUniqueConcreteSubtype();
             if (uniqueSubtype != null) {
-                return getAssumptionInlineInfo(data, invoke, replacements, optimisticOpts, uniqueSubtype.resolveMethod(targetMethod), new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                ResolvedJavaMethod resolvedMethod = uniqueSubtype.resolveMethod(targetMethod);
+                if (resolvedMethod != null) {
+                    return getAssumptionInlineInfo(data, invoke, replacements, optimisticOpts, resolvedMethod, new Assumptions.ConcreteSubtype(holder, uniqueSubtype));
+                }
             }
 
             ResolvedJavaMethod concrete = holder.findUniqueConcreteMethod(targetMethod);
@@ -1122,6 +1131,9 @@ public class InliningUtil {
             ArrayList<Double> concreteMethodsProbabilities = new ArrayList<>();
             for (int i = 0; i < ptypes.length; i++) {
                 ResolvedJavaMethod concrete = ptypes[i].getType().resolveMethod(targetMethod);
+                if (concrete == null) {
+                    return logNotInlinedMethodAndReturnNull(invoke, data.inliningDepth(), targetMethod, "could not resolve method");
+                }
                 int index = concreteMethods.indexOf(concrete);
                 double curProbability = ptypes[i].getProbability();
                 if (index < 0) {
