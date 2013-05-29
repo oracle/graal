@@ -259,6 +259,7 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
 
     public Assumptions(boolean useOptimisticAssumptions) {
         this.useOptimisticAssumptions = useOptimisticAssumptions;
+        list = new Assumption[4];
     }
 
     /**
@@ -360,6 +361,10 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
         }
         list[count] = assumption;
         count++;
+    }
+
+    public Assumption[] getAssumptions() {
+        return list;
     }
 
     public void record(Assumptions assumptions) {
