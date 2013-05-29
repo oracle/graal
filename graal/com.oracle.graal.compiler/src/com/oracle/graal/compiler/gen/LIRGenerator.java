@@ -203,7 +203,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return value;
     }
 
-    protected LabelRef getLIRBlock(FixedNode b) {
+    public LabelRef getLIRBlock(FixedNode b) {
         Block result = lir.cfg.blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
