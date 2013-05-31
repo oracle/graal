@@ -722,6 +722,16 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    @SuppressWarnings("unused")
+    public static class Cmp {
+        public Cmp(SPARCAssembler masm, Register a, Register b) {
+            new Subcc(masm, a, b, SPARC.r0);
+        }
+        public Cmp(SPARCAssembler masm, Register a, int simm13) {
+            new Subcc(masm, a, simm13, SPARC.r0);
+        }
+    }
+
     private static int patchUnbound(SPARCAssembler masm, Label label) {
         label.addPatchAt(masm.codeBuffer.position());
         return 0;

@@ -139,23 +139,23 @@ public class SPARCLIRGenerator extends LIRGenerator {
     public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
         switch (left.getKind().getStackKind()) {
             case Int:
-                append(new CompareOp(ICMP, cond, left, right));
+                append(new CompareOp(ICMP, left, right));
                 append(new BranchOp(cond, label));
                 break;
             case Long:
-                append(new CompareOp(LCMP, cond, left, right));
+                append(new CompareOp(LCMP, left, right));
                 append(new BranchOp(cond, label));
                 break;
             case Float:
-                append(new CompareOp(FCMP, cond, left, right));
+                append(new CompareOp(FCMP, left, right));
                 append(new BranchOp(cond, label));
                 break;
             case Double:
-                append(new CompareOp(DCMP, cond, left, right));
+                append(new CompareOp(DCMP, left, right));
                 append(new BranchOp(cond, label));
                 break;
             case Object:
-                append(new CompareOp(ACMP, cond, left, right));
+                append(new CompareOp(ACMP, left, right));
                 append(new BranchOp(cond, label));
                 break;
             default:
