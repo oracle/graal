@@ -194,6 +194,16 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fmt3r {
+        public Fmt3r(SPARCAssembler masm, int op, int fcn, int op3) {
+            assert  op == 23;
+            assert op3 >= 0 && op3 < 0x40;
+            assert fcn >= 0 && fcn < 0x40;
+
+            masm.emitInt(op << 30 | fcn << 25 | op3 << 19);
+        }
+    }
+
     public static class Fmt4c {
         public Fmt4c(SPARCAssembler masm, int op, int op3, int cond, int cc, int rs2, int rd) {
             assert op == 2;
@@ -597,11 +607,6 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         return x & ((1 << 10) - 1);
     }
 
-    private static int fcn(int val) {
-        assert val < 0x20;
-        return (val << 25);
-    }
-
     public static class Add extends Fmt3b {
         public Add(SPARCAssembler masm, Register src1, int simm13, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Add.getValue(), src1.encoding(), simm13, dst.encoding());
@@ -722,16 +727,6 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
-    public static class Cmp {
-        public Cmp(SPARCAssembler masm, Register a, Register b) {
-            new Subcc(masm, a, b, SPARC.r0);
-        }
-        public Cmp(SPARCAssembler masm, Register a, int simm13) {
-            new Subcc(masm, a, simm13, SPARC.r0);
-        }
-    }
-
     private static int patchUnbound(SPARCAssembler masm, Label label) {
         label.addPatchAt(masm.codeBuffer.position());
         return 0;
@@ -814,8 +809,10 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
-    public final void flushw() {
-        emitInt(Ops.ArithOp.getValue() | Op3s.Flushw.getValue());
+    public static class Flushw extends Fmt3r {
+        public Flushw(SPARCAssembler masm) {
+            super(masm, Ops.ArithOp.getValue(), 0, Op3s.Flushw.getValue());
+        }
     }
 
     public static class Fsubs extends Fmt3p {
@@ -843,6 +840,13 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
     @SuppressWarnings("unused")
     public void jmp(Label l) {
         new Bpa(this, l);
+    }
+
+    public static class Jmpl extends Fmt3b {
+        public Jmpl(SPARCAssembler asm, SPARCAddress src, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Jmpl.getValue(),
+                  src.getBase().encoding(), src.getDisplacement(), dst.encoding());
+        }
     }
 
     public static class Lddf extends Fmt3b {
@@ -1034,6 +1038,19 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Restore extends Fmt3b {
+        public Restore(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Restore.getValue(),
+                  src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Restored extends Fmt3r {
+        public Restored(SPARCAssembler asm) {
+            super(asm, Ops.ArithOp.getValue(), 1, Op3s.Saved.getValue());
+        }
+    }
+
     public static class Return extends Fmt3d {
         public Return(SPARCAssembler masm, Register src1, int simm13) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Rett.getValue(), src1.encoding(), simm13);
@@ -1043,12 +1060,17 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
-    public final void restored() {
-        emitInt(Ops.ArithOp.getValue() | Op3s.Saved.getValue() | fcn(1));
+    public static class Save extends Fmt3b {
+        public Save(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Save.getValue(),
+                  src1.encoding(), src2.encoding(), dst.encoding());
+        }
     }
 
-    public final void saved() {
-        emitInt(Ops.ArithOp.getValue() | Op3s.Saved.getValue() | fcn(0));
+    public static class Saved extends Fmt3r {
+        public Saved(SPARCAssembler asm) {
+            super(asm, Ops.ArithOp.getValue(), 0, Op3s.Saved.getValue());
+        }
     }
 
     @Deprecated
@@ -1090,64 +1112,11 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
-    public static class Setuw {
-        public Setuw(SPARCAssembler masm, int value, Register dst) {
-            if (value >= 0 && ((value & 0x3FFF) == 0)) {
-                new Sethi(masm, hi22(value), dst);
-            } else if (-4095 <= value && value <= 4096) {
-                // or   g0, value, dst
-                new Or(masm, SPARC.r0, value, dst);
-            } else {
-                new Sethi(masm, hi22(value), dst);
-                new Or(masm, dst, lo10(value), dst);
-            }
+    public static class Sir extends Fmt3b {
+        public Sir(SPARCAssembler asm, int simm13) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Sir.getValue(),
+                  SPARC.r0.encoding(), simm13, SPARC.r15.encoding());
         }
-    }
-
-    @SuppressWarnings("unused")
-    public static class Setx {
-        public Setx(SPARCAssembler masm, long value, Register tmp, Register dst) {
-            int hi = (int) (value >> 32);
-            int lo = (int) (value & ~0);
-
-            if (isSimm13(lo) && value == lo) {
-                new Or(masm, SPARC.r0, lo, dst);
-            } else if (hi == 0) {
-                new Sethi(masm, lo, dst);   // hardware version zero-extends to upper 32
-                if (lo10(lo) != 0) {
-                    new Or(masm, dst, lo10(lo), dst);
-                }
-            } else if (hi == -1) {
-                new Sethi(masm, ~lo, dst);  // hardware version zero-extends to upper 32
-                new Xor(masm, dst, lo10(lo) ^ ~lo10(~0), dst);
-            } else if (lo == 0) {
-                if (isSimm13(hi)) {
-                    new Or(masm, SPARC.r0, hi, dst);
-                } else {
-                    new Sethi(masm, hi, dst);   // hardware version zero-extends to upper 32
-                    if (lo10(hi) != 0) {
-                        new Or(masm, dst, lo10(hi), dst);
-                    }
-                }
-                new Sllx(masm, dst, 32, dst);
-            }  else {
-                new Sethi(masm, hi, tmp);
-                new Sethi(masm, lo, dst); // macro assembler version sign-extends
-                if (lo10(hi) != 0) {
-                    new Or(masm, tmp, lo10(hi), tmp);
-                }
-                if (lo10(lo) != 0) {
-                    new Or(masm, dst, lo10(lo), dst);
-                }
-                new Sllx(masm, tmp, 32, tmp);
-                new Or(masm, dst, tmp, dst);
-              }
-        }
-    }
-
-    public final void sir(int simm13a) {
-        emitInt(Ops.ArithOp.getValue() | Op3s.Sir.getValue() | ImmedTrue | simm(simm13a, 13));
     }
 
     public static class Sll extends Fmt3b {
