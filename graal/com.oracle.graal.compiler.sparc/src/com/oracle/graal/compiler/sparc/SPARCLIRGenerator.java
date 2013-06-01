@@ -24,6 +24,7 @@
 package com.oracle.graal.compiler.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
 import static com.oracle.graal.lir.sparc.SPARCCompare.*;
 
@@ -41,12 +42,7 @@ import com.oracle.graal.asm.NumUtil;
 import com.oracle.graal.compiler.gen.LIRGenerator;
 import com.oracle.graal.compiler.target.LIRGenLowerable;
 import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.lir.FrameMap;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.lir.LIRFrameState;
-import com.oracle.graal.lir.LIRInstruction;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.Variable;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op1Stack;
@@ -61,9 +57,12 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
+import com.oracle.graal.lir.sparc.SPARCTestOp;
 import com.oracle.graal.nodes.BreakpointNode;
 import com.oracle.graal.nodes.DeoptimizingNode;
 import com.oracle.graal.nodes.DirectCallTargetNode;
@@ -165,12 +164,38 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
-        throw new InternalError("NYI");
+        // append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, label));
     }
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
-        throw new InternalError("NYI");
+        emitIntegerTest(left, right);
+        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
+    }
+
+    private void emitIntegerTest(Value a, Value b) {
+        assert a.getKind().getStackKind() == Kind.Int || a.getKind() == Kind.Long;
+        if (LIRValueUtil.isVariable(b)) {
+            append(new SPARCTestOp(load(b), loadNonConst(a)));
+        } else {
+            append(new SPARCTestOp(load(a), loadNonConst(b)));
+        }
+    }
+
+    @Override
+    public Variable load(Value value) {
+        if (!isVariable(value)) {
+            return emitMove(value);
+        }
+        return (Variable) value;
+    }
+
+    @Override
+    public Value loadNonConst(Value value) {
+        if (isConstant(value) && !canInlineConstant((Constant) value)) {
+            return emitMove(value);
+        }
+        return value;
     }
 
     @Override
@@ -357,7 +382,9 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitAddress(StackSlot address) {
-        throw new InternalError("NYI");
+        Variable result = newVariable(target().wordKind);
+        append(new StackLoadAddressOp(result, address));
+        return result;
     }
 
     @Override
@@ -666,7 +693,10 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        throw new InternalError("NYI");
+        int necessaryBarriers = target.arch.requiredBarriers(barriers);
+        if (target.isMP && necessaryBarriers != 0) {
+            append(new MembarOp(necessaryBarriers));
+        }
     }
 
     @Override
