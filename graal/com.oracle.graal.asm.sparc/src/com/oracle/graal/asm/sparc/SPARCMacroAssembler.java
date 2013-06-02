@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.asm.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.sparc.*;
 
@@ -317,4 +319,12 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
+    @SuppressWarnings("unused")
+    public static class Trap {
+
+        public Trap(SPARCAssembler asm, int trap) {
+            assert trap >= 0 && trap <= 0x7f;
+            new Ta(asm, Icc, SPARC.g0, trap);
+        }
+    }
 }

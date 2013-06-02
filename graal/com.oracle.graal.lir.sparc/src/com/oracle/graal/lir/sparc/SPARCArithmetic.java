@@ -74,6 +74,35 @@ public enum SPARCArithmetic {
     MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
 
     /**
+     * Binary operation with single source/destination operand and one constant.
+     */
+    public static class BinaryRegConst extends SPARCLIRInstruction {
+        @Opcode private final SPARCArithmetic opcode;
+        @Def({REG, HINT}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+        protected Constant y;
+
+        public BinaryRegConst(SPARCArithmetic opcode, AllocatableValue result, AllocatableValue x, Constant y) {
+            this.opcode = opcode;
+            this.result = result;
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+            SPARCMove.move(tasm, masm, result, x);
+            emit(tasm, masm, opcode, result, y, null);
+        }
+
+        @Override
+        public void verify() {
+            super.verify();
+            verifyKind(opcode, result, x, y);
+        }
+    }
+
+    /**
      * Unary operation with separate source and destination operand.
      */
     public static class Unary2Op extends SPARCLIRInstruction {
@@ -397,6 +426,9 @@ public enum SPARCArithmetic {
             case LUSHR:
                 new Sra(masm, asLongReg(src1), asIntReg(src2), asLongReg(dst));
                 break;
+            case LDIVREM:
+            case LUDIV:
+            case LUREM:
             case LREM:
                 throw new InternalError("NYI");
             case FADD:
