@@ -37,8 +37,10 @@ public class HotSpotOptions {
     static {
         ServiceLoader<OptionProvider> sl = ServiceLoader.loadInstalled(OptionProvider.class);
         for (OptionProvider provider : sl) {
-            String name = provider.getName();
-            options.put(name, provider);
+            if (provider.getClass().getName().startsWith("com.oracle.graal")) {
+                String name = provider.getName();
+                options.put(name, provider);
+            }
         }
     }
 
