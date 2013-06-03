@@ -1843,19 +1843,29 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             builder.startCall(execType.getMethodName());
 
-            List<ActualParameter> signatureParameters = getModel().getSignatureParameters();
             int index = 0;
             for (ActualParameter parameter : execType.getParameters()) {
 
                 if (!parameter.getSpecification().isSignature()) {
                     builder.string(parameter.getLocalName());
                 } else {
-                    if (index < signatureParameters.size()) {
-                        ActualParameter specializationParam = signatureParameters.get(index);
+                    if (index < targetField.getExecuteWith().size()) {
+                        NodeChildData child = targetField.getExecuteWith().get(index);
+
+                        ParameterSpec spec = getModel().getSpecification().findParameterSpec(child.getName());
+                        List<ActualParameter> specializationParams = getModel().findParameters(spec);
+
+                        if (specializationParams.isEmpty()) {
+                            builder.defaultValue(parameter.getType());
+                            continue;
+                        }
+
+                        ActualParameter specializationParam = specializationParams.get(0);
 
                         TypeData targetType = parameter.getTypeSystemType();
                         TypeData sourceType = specializationParam.getTypeSystemType();
                         String localName = specializationParam.getLocalName();
+
                         if (unexpectedParameter != null && unexpectedParameter.getLocalName().equals(specializationParam.getLocalName())) {
                             localName = "ex.getResult()";
                             sourceType = getModel().getNode().getTypeSystem().getGenericTypeData();

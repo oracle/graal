@@ -133,6 +133,16 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return parameters;
     }
 
+    public List<ActualParameter> findParameters(ParameterSpec spec) {
+        List<ActualParameter> foundParameters = new ArrayList<>();
+        for (ActualParameter param : getReturnTypeAndParameters()) {
+            if (param.getSpecification().equals(spec)) {
+                foundParameters.add(param);
+            }
+        }
+        return foundParameters;
+    }
+
     public ActualParameter findParameter(String valueName) {
         for (ActualParameter param : getReturnTypeAndParameters()) {
             if (param.getLocalName().equals(valueName)) {
