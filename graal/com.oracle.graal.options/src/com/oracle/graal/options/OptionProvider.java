@@ -20,30 +20,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package com.oracle.graal.options;
 
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
-
-import java.io.*;
 import java.util.*;
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.phases.*;
+/**
+ * Describes the attributes of an {@linkplain Option option} and provides access to its
+ * {@linkplain OptionValue value}. The {@link OptionProcessor} auto-generates instances of this
+ * interface that are accessible as a {@linkplain ServiceLoader service}.
+ */
+public interface OptionProvider {
 
-public class DebugEnvironment {
+    /**
+     * Gets the type of values stored in the option.
+     */
+    Class getType();
 
-    public static void initialize(PrintStream log) {
-        Debug.enable();
-        List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
-        dumpHandlers.add(new GraphPrinterDumpHandler());
-        if (GraalOptions.PrintCFG) {
-            if (GraalOptions.PrintBinaryGraphs) {
-                TTY.println("CFG dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
-            }
-            dumpHandlers.add(new CFGPrinterObserver());
-        }
-        GraalDebugConfig hotspotDebugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), Time.getValue(), Dump.getValue(), MethodFilter.getValue(), log, dumpHandlers);
-        Debug.setConfig(hotspotDebugConfig);
-    }
+    /**
+     * Gets a descriptive help message for the option.
+     */
+    String getHelp();
+
+    /**
+     * Gets the name of the option. It's up to the client of this object how to use the name to get
+     * a user specified value for the option from the environment.
+     */
+    String getName();
+
+    /**
+     * Gets the boxed option value.
+     */
+    OptionValue<?> getOptionValue();
 }

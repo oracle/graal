@@ -27,9 +27,20 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
 public class HotSpotOptions {
+
+    private static final Map<String, OptionProvider> options = new HashMap<>();
+
+    static {
+        ServiceLoader<OptionProvider> sl = ServiceLoader.loadInstalled(OptionProvider.class);
+        for (OptionProvider provider : sl) {
+            String name = provider.getName();
+            options.put(name, provider);
+        }
+    }
 
     // Called from VM code
     public static boolean setOption(String option) {
@@ -61,6 +72,53 @@ public class HotSpotOptions {
             }
         }
 
+        OptionProvider optionProvider = options.get(fieldName);
+        if (optionProvider == null) {
+            return setOptionLegacy(option, fieldName, value, valueString);
+        }
+
+        Class<?> optionType = optionProvider.getType();
+
+        if (value == null) {
+            if (optionType == Boolean.TYPE || optionType == Boolean.class) {
+                Logger.info("Value for boolean option '" + fieldName + "' must use '-G:+" + fieldName + "' or '-G:-" + fieldName + "' format");
+                return false;
+            }
+
+            if (valueString == null) {
+                Logger.info("Value for option '" + fieldName + "' must use '-G:" + fieldName + "=<value>' format");
+                return false;
+            }
+
+            if (optionType == Float.class) {
+                value = Float.parseFloat(valueString);
+            } else if (optionType == Double.class) {
+                value = Double.parseDouble(valueString);
+            } else if (optionType == Integer.class) {
+                value = Integer.parseInt(valueString);
+            } else if (optionType == String.class) {
+                value = valueString;
+            }
+        } else {
+            if (optionType != Boolean.class) {
+                Logger.info("Value for option '" + fieldName + "' must use '-G:" + fieldName + "=<value>' format");
+                return false;
+            }
+        }
+
+        if (value != null) {
+            optionProvider.getOptionValue().setValue(value);
+            // Logger.info("Set option " + fieldName + " to " + value);
+        } else {
+            Logger.info("Wrong value \"" + valueString + "\" for option " + fieldName);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean setOptionLegacy(String option, String fieldName, Object v, String valueString) {
+        Object value = v;
         Field f;
         try {
             f = GraalOptions.class.getDeclaredField(fieldName);
@@ -116,10 +174,25 @@ public class HotSpotOptions {
         }
 
         return true;
+
     }
 
     private static void printFlags() {
         Logger.info("[Graal flags]");
+        SortedMap<String, OptionProvider> sortedOptions = new TreeMap<>(options);
+        for (Map.Entry<String, OptionProvider> e : sortedOptions.entrySet()) {
+            e.getKey();
+            OptionProvider opt = e.getValue();
+            Object value = opt.getOptionValue().getValue();
+            Logger.info(String.format("%9s %-40s = %-14s %s", opt.getType().getSimpleName(), e.getKey(), value, opt.getHelp()));
+        }
+
+        printFlagsLegacy();
+
+        System.exit(0);
+    }
+
+    protected static void printFlagsLegacy() {
         Field[] flags = GraalOptions.class.getDeclaredFields();
         Arrays.sort(flags, new Comparator<Field>() {
 
@@ -137,6 +210,5 @@ public class HotSpotOptions {
                 }
             }
         }
-        System.exit(0);
     }
 }

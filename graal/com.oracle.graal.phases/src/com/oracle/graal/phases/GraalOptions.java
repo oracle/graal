@@ -34,11 +34,6 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
-    public static int     Threads;
-    static {
-        Threads = Runtime.getRuntime().availableProcessors();
-    }
-
     public static String  CompilerConfiguration              = "basic";
     public static String  GraalRuntime                       = "basic";
 
@@ -80,10 +75,6 @@ public final class GraalOptions {
     public static int     MatureExecutionsTypeProfile        = 1;
 
     // comilation queue
-    public static int     TimedBootstrap                     = -1;
-    public static boolean PriorityCompileQueue               = true;
-    public static int     SlowQueueCutoff                    = 100000;
-    public static boolean SlowCompileThreads                 = ____;
     public static boolean DynamicCompilePriority             = ____;
     public static String  CompileTheWorld                    = null;
     public static int     CompileTheWorldStartAt             = 1;
@@ -115,21 +106,7 @@ public final class GraalOptions {
     public static String  PrintFilter                        = null;
 
     // Debug settings:
-    public static boolean Debug                              = true;
-    public static boolean DebugReplacements                  = ____;
     public static boolean BootstrapReplacements              = ____;
-    public static boolean PerThreadDebugValues               = ____;
-    public static boolean SummarizeDebugValues               = ____;
-    public static boolean SummarizePerPhase                  = ____;
-    public static String  Dump                               = null;
-    public static String  Meter                              = null;
-    public static String  Time                               = null;
-    public static String  Log                                = null;
-    public static String  LogFile                            = null;
-    public static String  MethodFilter                       = null;
-    public static boolean DumpOnError                        = ____;
-    public static boolean GenericDynamicCounters             = ____;
-    public static String  BenchmarkDynamicCounters           = null;
 
     // Ideal graph visualizer output settings
     public static boolean PrintBinaryGraphs                  = true;
@@ -140,7 +117,6 @@ public final class GraalOptions {
     public static int     PrintBinaryGraphPort               = 4445;
 
     // Other printing settings
-    public static boolean PrintQueue                         = ____;
     public static boolean PrintCompilation                   = ____;
     public static boolean PrintProfilingInformation          = ____;
     public static boolean PrintIRWithLIR                     = ____;
@@ -211,7 +187,6 @@ public final class GraalOptions {
     public static boolean OptFilterProfiledTypes             = true;
     public static boolean OptDevirtualizeInvokesOptimistically = true;
     public static boolean OptPushThroughPi                   = true;
-    public static boolean VerifyUsageWithEquals              = true;
 
     // Intrinsification settings
     public static boolean IntrinsifyObjectClone              = ____;

@@ -20,30 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.printer;
+package com.oracle.graal.options;
 
-import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import java.lang.annotation.*;
 
-import java.io.*;
-import java.util.*;
+/**
+ * Describes the attributes of an option whose {@link OptionValue value} is in a static field
+ * annotated by this annotation type.
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.FIELD)
+public @interface Option {
 
-import com.oracle.graal.compiler.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.phases.*;
+    /**
+     * Gets a help message for the option.
+     */
+    String help();
 
-public class DebugEnvironment {
-
-    public static void initialize(PrintStream log) {
-        Debug.enable();
-        List<DebugDumpHandler> dumpHandlers = new ArrayList<>();
-        dumpHandlers.add(new GraphPrinterDumpHandler());
-        if (GraalOptions.PrintCFG) {
-            if (GraalOptions.PrintBinaryGraphs) {
-                TTY.println("CFG dumping slows down PrintBinaryGraphs: use -G:-PrintCFG to disable it");
-            }
-            dumpHandlers.add(new CFGPrinterObserver());
-        }
-        GraalDebugConfig hotspotDebugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), Time.getValue(), Dump.getValue(), MethodFilter.getValue(), log, dumpHandlers);
-        Debug.setConfig(hotspotDebugConfig);
-    }
+    /**
+     * The name of the option. By default, the name of the annotated field should be used.
+     */
+    String name() default "";
 }
