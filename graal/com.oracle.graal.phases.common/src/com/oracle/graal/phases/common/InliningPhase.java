@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
@@ -42,6 +43,11 @@ import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 
 public class InliningPhase extends Phase {
+
+    // @formatter:off
+    @Option(help = "Unconditionally inline intrinsics")
+    public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
+    // @formatter:on
 
     private final PhasePlan plan;
     private final MetaAccessProvider runtime;
@@ -340,7 +346,7 @@ public class InliningPhase extends Phase {
         }
 
         protected boolean isIntrinsic(InlineInfo info) {
-            if (GraalOptions.AlwaysInlineIntrinsics) {
+            if (AlwaysInlineIntrinsics.getValue()) {
                 return onlyIntrinsics(info);
             } else {
                 return onlyForcedIntrinsics(info);

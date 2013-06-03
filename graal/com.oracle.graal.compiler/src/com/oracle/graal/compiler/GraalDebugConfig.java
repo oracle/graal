@@ -56,6 +56,16 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<Boolean> SummarizePerPhase = new OptionValue<>(false);
     @Option(help = "Send Graal IR to dump handlers on error")
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
+    @Option(help = "Enable expensive assertions")
+    public static final OptionValue<Boolean> DetailedAsserts = new OptionValue<Boolean>(false) {
+        @Override
+        protected Boolean initialValue() {
+            boolean enabled = value;
+            // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
+            assert (enabled = true) == true;
+            return enabled;
+        }
+    };
     // @formatter:on
 
     private final DebugFilter logFilter;

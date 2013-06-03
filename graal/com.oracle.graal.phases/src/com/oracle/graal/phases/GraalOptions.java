@@ -34,12 +34,7 @@ public final class GraalOptions {
     private static final boolean ____ = false;
     // Checkstyle: resume
 
-    public static String  CompilerConfiguration              = "basic";
-    public static String  GraalRuntime                       = "basic";
-
     // inlining settings
-    public static boolean Inline                             = true;
-    public static boolean AlwaysInlineIntrinsics             = ____;
     public static boolean Intrinsify                         = true;
            static boolean InlineMonomorphicCalls             = true;
            static boolean InlinePolymorphicCalls             = true;
@@ -163,8 +158,6 @@ public final class GraalOptions {
     public static int     RangeTestsSwitchDensity            = 5;
     public static double  MinTableSwitchDensity              = 0.5;
 
-    public static boolean DetailedAsserts                    = ____;
-
     // Runtime settings
     public static int     StackShadowPages                   = 2;
 
@@ -228,9 +221,4 @@ public final class GraalOptions {
      * @see #CheckcastMaxHints
      */
     public static int InstanceOfMaxHints = 2;
-
-    static {
-        // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
-        assert (DetailedAsserts = true) == true;
-    }
 }

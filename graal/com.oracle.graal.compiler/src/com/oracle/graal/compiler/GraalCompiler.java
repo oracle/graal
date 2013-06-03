@@ -56,6 +56,8 @@ public class GraalCompiler {
     // @formatter:off
     @Option(help = "")
     public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
+    @Option(help = "Enable inlining")
+    public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
     // @formatter:on
 
     /**
@@ -142,7 +144,7 @@ public class GraalCompiler {
 
         HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
 
-        if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
+        if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (GraalOptions.IterativeInlining) {
                 new IterativeInliningPhase(replacements, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph, highTierContext);
             } else {
