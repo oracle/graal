@@ -29,7 +29,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -37,7 +36,7 @@ import com.oracle.graal.nodes.type.*;
  * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
  * value matched the expected value.
  */
-public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint, Node.IterableNodeType {
+public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit, LIRLowerable, Lowerable, MemoryCheckpoint, Node.IterableNodeType, HeapAccess {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
@@ -46,6 +45,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
     @Input private LocationNode location;
     private final int displacement;
     private WriteBarrierType barrierType;
+    private boolean compress;
 
     public ValueNode object() {
         return object;
@@ -76,12 +76,22 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
         this.location = location;
     }
 
+    @Override
     public WriteBarrierType getWriteBarrierType() {
         return barrierType;
     }
 
     public void setWriteBarrierType(WriteBarrierType type) {
         this.barrierType = type;
+    }
+
+    @Override
+    public boolean compress() {
+        return compress;
+    }
+
+    public void setCompress() {
+        this.compress = true;
     }
 
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
@@ -93,6 +103,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements StateSplit
         this.newValue = newValue;
         this.displacement = displacement;
         this.barrierType = WriteBarrierType.NONE;
+        this.compress = false;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
+/**
+ * A HeapAccess is a node that access the heap and therefore may be subjected to certain rules of
+ * the underlying runtime.
+ */
+public interface HeapAccess {
 
-public interface Access extends DeoptimizingNode, GuardedNode, HeapAccess {
+    /*
+     * The types of write barriers attached to stores.
+     */
+    public enum WriteBarrierType {
+        /*
+         * Primitive stores which do not necessitate write barriers.
+         */
+        NONE,
+        /*
+         * Array object stores which necessitate precise write barriers.
+         */
+        PRECISE,
+        /*
+         * Field object stores which necessitate imprecise write barriers.
+         */
+        IMPRECISE
+    }
 
-    ValueNode object();
+    /**
+     * Gets the write barrier type for that particular access.
+     */
+    WriteBarrierType getWriteBarrierType();
 
-    LocationNode nullCheckLocation();
-
-    void setNullCheck(boolean check);
-
+    /**
+     * Returns whether or not the heap access is a compressed pointer candidate.
+     */
+    boolean compress();
 }
