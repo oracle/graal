@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
@@ -34,7 +35,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -150,7 +150,7 @@ public class InstanceOfSnippets implements Snippets {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
                 ValueNode object = instanceOf.object();
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), GraalOptions.InstanceOfMinHintHitProbability, GraalOptions.InstanceOfMaxHints);
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), InstanceOfMinHintHitProbability.getValue(), InstanceOfMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
 

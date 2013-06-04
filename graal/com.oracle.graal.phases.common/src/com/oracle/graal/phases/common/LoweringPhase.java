@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -95,7 +97,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             if (loweringType == LoweringType.AFTER_GUARDS) {
                 throw new GraalInternalError("Cannot create guards in after-guard lowering");
             }
-            if (GraalOptions.OptEliminateGuards) {
+            if (OptEliminateGuards.getValue()) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).negated() == negated) {
                         return (GuardNode) usage;
@@ -103,7 +105,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
             }
             GuardNode newGuard = guardAnchor.asNode().graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
-            if (GraalOptions.OptEliminateGuards) {
+            if (OptEliminateGuards.getValue()) {
                 activeGuards.grow();
                 activeGuards.mark(newGuard);
             }
@@ -203,7 +205,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
             }
 
-            if (parentAnchor == null && GraalOptions.OptEliminateGuards) {
+            if (parentAnchor == null && OptEliminateGuards.getValue()) {
                 for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
                     activeGuards.clear(guard);
                 }

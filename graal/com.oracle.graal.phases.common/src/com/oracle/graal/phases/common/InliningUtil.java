@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -98,7 +100,7 @@ public class InliningUtil {
      * Print a HotSpot-style inlining message to the console.
      */
     private static void printInlining(final ResolvedJavaMethod method, final Invoke invoke, final int inliningDepth, final boolean success, final String msg, final Object... args) {
-        if (GraalOptions.HotSpotPrintInlining) {
+        if (HotSpotPrintInlining.getValue()) {
             final int mod = method.getModifiers();
             // 1234567
             TTY.print("        ");     // print timestamp
@@ -668,7 +670,7 @@ public class InliningUtil {
                 replacementNodes.add(null);
             }
 
-            if (GraalOptions.OptTailDuplication) {
+            if (OptTailDuplication.getValue()) {
                 /*
                  * We might want to perform tail duplication at the merge after a type switch, if
                  * there are invokes that would benefit from the improvement in type information.
@@ -1154,7 +1156,7 @@ public class InliningUtil {
                 ArrayList<ResolvedJavaMethod> newConcreteMethods = new ArrayList<>();
                 ArrayList<Double> newConcreteMethodsProbabilities = new ArrayList<>();
                 for (int i = 0; i < concreteMethods.size(); ++i) {
-                    if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability) {
+                    if (concreteMethodsProbabilities.get(i) >= GraalOptions.MegamorphicInliningMinMethodProbability.getValue()) {
                         newConcreteMethods.add(concreteMethods.get(i));
                         newConcreteMethodsProbabilities.add(concreteMethodsProbabilities.get(i));
                     }
@@ -1227,7 +1229,7 @@ public class InliningUtil {
     private static boolean checkTargetConditions(InliningData data, Replacements replacements, Invoke invoke, ResolvedJavaMethod method, OptimisticOptimizations optimisticOpts) {
         if (method == null) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "the method is not resolved");
-        } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify || !InliningUtil.canIntrinsify(replacements, method))) {
+        } else if (Modifier.isNative(method.getModifiers()) && (!GraalOptions.Intrinsify.getValue() || !InliningUtil.canIntrinsify(replacements, method))) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it is a non-intrinsic native method");
         } else if (Modifier.isAbstract(method.getModifiers())) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it is an abstract method");
@@ -1235,7 +1237,7 @@ public class InliningUtil {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "the method's class is not initialized");
         } else if (!method.canBeInlined()) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it is marked non-inlinable");
-        } else if (data.countRecursiveInlining(method) > GraalOptions.MaximumRecursiveInlining) {
+        } else if (data.countRecursiveInlining(method) > MaximumRecursiveInlining.getValue()) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "it exceeds the maximum recursive inlining depth");
         } else if (new OptimisticOptimizations(method).lessOptimisticThan(optimisticOpts)) {
             return logNotInlinedMethodAndReturnFalse(invoke, data.inliningDepth(), method, "the callee uses less optimistic optimizations than caller");

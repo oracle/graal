@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
@@ -75,7 +76,7 @@ public final class CompileTheWorld {
      * {@link GraalOptions#CompileTheWorldStopAt}.
      */
     public CompileTheWorld() {
-        this(GraalOptions.CompileTheWorld, GraalOptions.CompileTheWorldStartAt, GraalOptions.CompileTheWorldStopAt);
+        this(CompileTheWorld.getValue(), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue());
     }
 
     /**
@@ -91,7 +92,7 @@ public final class CompileTheWorld {
         this.stopAt = stopAt;
 
         // We don't want the VM to exit when a method fails to compile.
-        GraalOptions.ExitVMOnException = false;
+        ExitVMOnException.setValue(false);
     }
 
     /**

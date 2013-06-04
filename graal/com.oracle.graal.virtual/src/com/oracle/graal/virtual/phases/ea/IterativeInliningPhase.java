@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -50,7 +52,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
     }
 
     public static final void trace(String format, Object... obj) {
-        if (GraalOptions.TraceEscapeAnalysis) {
+        if (TraceEscapeAnalysis.getValue()) {
             Debug.log(format, obj);
         }
     }
@@ -63,7 +65,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
     private void runIterations(final StructuredGraph graph, final boolean simple, final HighTierContext context) {
         Boolean continueIteration = true;
-        for (int iteration = 0; iteration < GraalOptions.EscapeAnalysisIterations && continueIteration; iteration++) {
+        for (int iteration = 0; iteration < EscapeAnalysisIterations.getValue() && continueIteration; iteration++) {
             continueIteration = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
 
                 @Override
@@ -73,7 +75,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
                     boolean eaResult = ea.runAnalysis(graph, context);
                     progress |= eaResult;
 
-                    Map<Invoke, Double> hints = GraalOptions.PEAInliningHints ? PartialEscapeAnalysisPhase.getHints(graph) : null;
+                    Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapeAnalysisPhase.getHints(graph) : null;
 
                     InliningPhase inlining = new InliningPhase(context.getRuntime(), hints, replacements, context.getAssumptions(), cache, plan, optimisticOpts);
                     inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
@@ -82,7 +84,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
                     new DeadCodeEliminationPhase().apply(graph);
 
-                    if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
+                    if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                         new CanonicalizerPhase().apply(graph, context);
                         new IterativeConditionalEliminationPhase().apply(graph, context);
                     }

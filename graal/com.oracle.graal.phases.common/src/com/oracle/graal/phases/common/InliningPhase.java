@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -188,7 +190,7 @@ public class InliningPhase extends Phase {
             metricInliningRuns.increment();
             Debug.dump(callerGraph, "after %s", callee);
 
-            if (GraalOptions.OptCanonicalizer) {
+            if (OptCanonicalizer.getValue()) {
                 int markBeforeCanonicalization = callerGraph.getMark();
                 new CanonicalizerPhase.Instance(runtime, callerAssumptions, invokeUsages, markBeforeInlining, customCanonicalizer).apply(callerGraph);
 
@@ -274,7 +276,7 @@ public class InliningPhase extends Phase {
                     // probability to check the inlining
                 }
 
-                if (GraalOptions.OptCanonicalizer) {
+                if (OptCanonicalizer.getValue()) {
                     new CanonicalizerPhase.Instance(runtime, assumptions).apply(newGraph);
                 }
 
@@ -284,7 +286,7 @@ public class InliningPhase extends Phase {
     }
 
     private StructuredGraph getCachedGraph(ResolvedJavaMethod method) {
-        if (GraalOptions.CacheGraphs && cache != null) {
+        if (CacheGraphs.getValue() && cache != null) {
             StructuredGraph cachedGraph = cache.get(method);
             if (cachedGraph != null) {
                 return cachedGraph;
@@ -301,14 +303,14 @@ public class InliningPhase extends Phase {
 
         new DeadCodeEliminationPhase().apply(newGraph);
 
-        if (GraalOptions.OptCanonicalizer) {
+        if (OptCanonicalizer.getValue()) {
             new CanonicalizerPhase.Instance(runtime, assumptions).apply(newGraph);
         }
 
-        if (GraalOptions.CullFrameStates) {
+        if (CullFrameStates.getValue()) {
             new CullFrameStatesPhase().apply(newGraph);
         }
-        if (GraalOptions.CacheGraphs && cache != null) {
+        if (CacheGraphs.getValue() && cache != null) {
             cache.put(newGraph.copy());
         }
         return newGraph;
@@ -334,7 +336,7 @@ public class InliningPhase extends Phase {
         }
 
         protected double computeMaximumSize(double relevance, int configuredMaximum) {
-            double inlineRatio = Math.min(GraalOptions.RelevanceCapForInlining, relevance);
+            double inlineRatio = Math.min(RelevanceCapForInlining.getValue(), relevance);
             return configuredMaximum * inlineRatio;
         }
 
@@ -416,7 +418,7 @@ public class InliningPhase extends Phase {
         }
 
         public boolean continueInlining(StructuredGraph currentGraph) {
-            if (currentGraph.getNodeCount() >= GraalOptions.MaximumDesiredSize) {
+            if (currentGraph.getNodeCount() >= MaximumDesiredSize.getValue()) {
                 InliningUtil.logInliningDecision("inlining is cut off by MaximumDesiredSize");
                 metricInliningStoppedByMaxDesiredSize.increment();
                 return false;
@@ -433,7 +435,7 @@ public class InliningPhase extends Phase {
             double inliningBonus = getInliningBonus(info);
 
             int lowLevelGraphSize = previousLowLevelGraphSize(info);
-            if (GraalOptions.SmallCompiledLowLevelGraphSize > 0 && lowLevelGraphSize > GraalOptions.SmallCompiledLowLevelGraphSize * inliningBonus) {
+            if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
                 return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph: %d", lowLevelGraphSize);
             }
 
@@ -445,16 +447,16 @@ public class InliningPhase extends Phase {
              */
 
             int nodes = determineNodeCount(info);
-            if (nodes < GraalOptions.TrivialInliningSize * inliningBonus) {
+            if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
                 return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (nodes=%d)", nodes);
             }
 
             double invokes = determineInvokeProbability(info);
-            if (GraalOptions.LimitInlinedInvokes > 0 && fullyProcessed && invokes > GraalOptions.LimitInlinedInvokes * inliningBonus) {
+            if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
                 return InliningUtil.logNotInlinedMethod(info, inliningDepth, "invoke probability is too high (%f)", invokes);
             }
 
-            double maximumNodes = computeMaximumSize(relevance, (int) (GraalOptions.MaximumInliningSize * inliningBonus));
+            double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
             if (nodes < maximumNodes) {
                 return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, nodes=%d)", relevance, nodes);
             }
@@ -790,7 +792,7 @@ public class InliningPhase extends Phase {
         }
 
         public double invokeRelevance(Invoke invoke) {
-            return Math.min(GraalOptions.CapInheritedRelevance, relevance) * nodeRelevance.get(invoke.asNode());
+            return Math.min(CapInheritedRelevance.getValue(), relevance) * nodeRelevance.get(invoke.asNode());
         }
     }
 

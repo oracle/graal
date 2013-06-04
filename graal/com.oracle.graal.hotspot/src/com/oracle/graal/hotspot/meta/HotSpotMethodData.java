@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -32,7 +33,6 @@ import com.oracle.graal.api.meta.JavaMethodProfile.ProfiledMethod;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Access to a HotSpot MethodData structure (defined in methodData.hpp).
@@ -376,7 +376,7 @@ public final class HotSpotMethodData extends CompilerObject {
         protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
         private static JavaTypeProfile createTypeProfile(TriState nullSeen, ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
+            if (entries <= 0 || totalCount < MatureExecutionsTypeProfile.getValue()) {
                 return null;
             }
 
@@ -484,7 +484,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         private static JavaMethodProfile createMethodProfile(ResolvedJavaMethod[] methods, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount < GraalOptions.MatureExecutionsTypeProfile) {
+            if (entries <= 0 || totalCount < MatureExecutionsTypeProfile.getValue()) {
                 return null;
             }
 
@@ -540,7 +540,7 @@ public final class HotSpotMethodData extends CompilerObject {
             long notTakenCount = data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
             long total = takenCount + notTakenCount;
 
-            if (total < GraalOptions.MatureExecutionsBranch) {
+            if (total < MatureExecutionsBranch.getValue()) {
                 return -1;
             } else {
                 return takenCount / (double) total;
@@ -607,7 +607,7 @@ public final class HotSpotMethodData extends CompilerObject {
                 result[i - 1] = count;
             }
 
-            if (totalCount < GraalOptions.MatureExecutionsPerSwitchCase * length) {
+            if (totalCount < MatureExecutionsPerSwitchCase.getValue() * length) {
                 return null;
             } else {
                 for (int i = 0; i < length; i++) {

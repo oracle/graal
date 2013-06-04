@@ -50,6 +50,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
@@ -84,7 +85,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -294,26 +294,26 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(r, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(r, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, NOT_REEXECUTABLE, NO_LOCATIONS);
 
-        if (GraalOptions.IntrinsifyObjectMethods) {
+        if (IntrinsifyObjectMethods.getValue()) {
             r.registerSubstitutions(ObjectSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifySystemMethods) {
+        if (IntrinsifySystemMethods.getValue()) {
             r.registerSubstitutions(SystemSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyThreadMethods) {
+        if (IntrinsifyThreadMethods.getValue()) {
             r.registerSubstitutions(ThreadSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyUnsafeMethods) {
+        if (IntrinsifyUnsafeMethods.getValue()) {
             r.registerSubstitutions(UnsafeSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyClassMethods) {
+        if (IntrinsifyClassMethods.getValue()) {
             r.registerSubstitutions(ClassSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyAESMethods) {
+        if (IntrinsifyAESMethods.getValue()) {
             r.registerSubstitutions(AESCryptSubstitutions.class);
             r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyReflectionMethods) {
+        if (IntrinsifyReflectionMethods.getValue()) {
             r.registerSubstitutions(ReflectionSubstitutions.class);
         }
 
@@ -492,7 +492,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
                 LoweredCallTargetNode loweredCallTarget = null;
-                if (callTarget.invokeKind() == InvokeKind.Virtual && GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || invoke.isPolymorphic())) {
+                if (callTarget.invokeKind() == InvokeKind.Virtual && InlineVTableStubs.getValue() && (AlwaysInlineVTableStubs.getValue() || invoke.isPolymorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {

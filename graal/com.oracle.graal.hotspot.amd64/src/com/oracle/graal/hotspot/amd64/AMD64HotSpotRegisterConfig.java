@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -32,7 +33,6 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.phases.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
@@ -95,8 +95,8 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
                     };
         // @formatter:on
 
-        if (GraalOptions.RegisterPressure != null) {
-            String[] names = GraalOptions.RegisterPressure.split(",");
+        if (RegisterPressure.getValue() != null) {
+            String[] names = RegisterPressure.getValue().split(",");
             Register[] regs = new Register[names.length];
             for (int i = 0; i < names.length; i++) {
                 regs[i] = findRegister(names[i], allocatable);

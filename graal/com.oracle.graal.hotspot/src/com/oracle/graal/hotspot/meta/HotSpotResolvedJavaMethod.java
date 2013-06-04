@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.meta;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -37,7 +38,6 @@ import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -276,7 +276,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public ProfilingInfo getProfilingInfo() {
         ProfilingInfo info;
 
-        if (GraalOptions.UseProfilingInformation && methodData == null) {
+        if (UseProfilingInformation.getValue() && methodData == null) {
             long metaspaceMethodData = unsafeReadWord(metaspaceMethod + graalRuntime().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);

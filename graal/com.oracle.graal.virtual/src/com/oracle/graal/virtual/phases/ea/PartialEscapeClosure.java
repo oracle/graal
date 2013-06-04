@@ -23,6 +23,7 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
@@ -167,7 +167,7 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
                 VirtualUtil.trace("%s ", node);
                 deleted = false;
             }
-            if (GraalOptions.OptEarlyReadElimination) {
+            if (OptEarlyReadElimination.getValue()) {
                 if (!deleted && node instanceof MemoryCheckpoint) {
                     METRIC_MEMORYCHECKOINT.increment();
                     MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;

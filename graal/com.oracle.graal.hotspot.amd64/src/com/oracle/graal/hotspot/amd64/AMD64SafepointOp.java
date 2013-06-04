@@ -58,7 +58,7 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
         int pos = asm.codeBuffer.position();
-        int offset = SafepointPollOffset % unsafe.pageSize();
+        int offset = SafepointPollOffset.getValue() % unsafe.pageSize();
         RegisterValue scratch = (RegisterValue) temp;
         if (config.isPollingPageFar) {
             asm.movq(scratch.getRegister(), config.safepointPollingAddress + offset);
