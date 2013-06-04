@@ -528,7 +528,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), WriteBarrierType.NONE, false));
+            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), WriteBarrierType.NONE,
+                            (loadField.kind() == Kind.Object && !field.getName().equals("classMirrorOffset"))));
             tool.createNullCheckGuard(memoryRead, object);
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
@@ -544,7 +545,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
             WriteBarrierType barrierType = getFieldStoreBarrierType(storeField);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType, false));
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType, storeField.field().getKind() == Kind.Object));
             tool.createNullCheckGuard(memoryWrite, object);
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
@@ -563,12 +564,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             LocationNode location = IndexedLocationNode.create(ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             cas.setLocation(location);
             cas.setWriteBarrierType(getCompareAndSwapBarrier(cas));
+            if (cas.expected().kind() == Kind.Object) {
+                cas.setCompress();
+            }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
             GuardingNode boundsCheck = createBoundsCheck(loadIndexed, tool);
             Kind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
-            ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp(), WriteBarrierType.NONE, false));
+            ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp(), WriteBarrierType.NONE, elementKind == Kind.Object));
             memoryRead.setGuard(boundsCheck);
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
@@ -599,7 +603,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
             }
             WriteBarrierType barrierType = getArrayStoreBarrierType(storeIndexed);
-            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType, false));
+            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType, elementKind == Kind.Object));
             memoryWrite.setGuard(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -608,7 +612,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
-            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, false));
+            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, (!load.object().isNullConstant() && load.accessKind() == Kind.Object)));
             // An unsafe read must not floating outside its block as may float above an explicit
             // null check on its object.
             memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
@@ -618,7 +622,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
             ValueNode object = store.object();
             WriteBarrierType barrierType = getUnsafeStoreBarrierType(store);
-            WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, false));
+            WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().kind() == Kind.Object));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
         } else if (n instanceof LoadHubNode) {
@@ -668,8 +672,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             value = allocations[commit.getVirtualObjects().indexOf(value)];
                         }
                         if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit,
-                                            graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE, false)));
+                            WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE,
+                                            instance.field(i).getKind() == Kind.Object);
+
+                            graph.addBeforeFixed(commit, graph.add(write));
                         }
                     }
                 } else {
@@ -683,8 +689,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             value = allocations[indexOf];
                         }
                         if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit,
-                                            graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE, false)));
+                            WriteNode write = new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE,
+                                            value.kind() == Kind.Object);
+                            graph.addBeforeFixed(commit, graph.add(write));
                         }
                     }
                 }
@@ -726,7 +733,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
                 int size = FrameStateBuilder.stackSlots(osrLocal.kind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), osrLocal.kind()));
+                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.kind(), offset, ConstantNode.forLong(0, graph), graph, 1);
+                ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), WriteBarrierType.NONE, osrLocal.kind() == Kind.Object));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
@@ -836,14 +844,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
         return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
-    
-    public  int getScalingFactor(Kind kind) {
-                if(config.useCompressedOops && kind==Kind.Object) {
-                    return this.graalRuntime.getTarget().arch.getSizeInBytes(Kind.Int);
-                } else {
-                    return this.graalRuntime.getTarget().arch.getSizeInBytes(kind);
-                }
-            }
+
+    public int getScalingFactor(Kind kind) {
+        if (config.useCompressedOops && kind == Kind.Object) {
+            return this.graalRuntime.getTarget().arch.getSizeInBytes(Kind.Int);
+        } else {
+            return this.graalRuntime.getTarget().arch.getSizeInBytes(kind);
+        }
+    }
 
     protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
         int scale = getScalingFactor(elementKind);
