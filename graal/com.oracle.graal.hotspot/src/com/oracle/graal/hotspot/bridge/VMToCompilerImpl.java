@@ -75,7 +75,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     private static final OptionValue<Integer> TimedBootstrap = new OptionValue<>(-1);
 
     @Option(help = "Number of compilation threads to use")
-    private static final OptionValue<Integer> Threads = new OptionValue<Integer>(1) {
+    private static final OptionValue<Integer> Threads = new OptionValue<Integer>() {
 
         @Override
         public Integer initialValue() {
