@@ -836,9 +836,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected static ConstantLocationNode createFieldLocation(StructuredGraph graph, HotSpotResolvedJavaField field) {
         return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
+    
+    public  int getScalingFactor(Kind kind) {
+                if(config.useCompressedOops && kind==Kind.Object) {
+                    return this.graalRuntime.getTarget().arch.getSizeInBytes(Kind.Int);
+                } else {
+                    return this.graalRuntime.getTarget().arch.getSizeInBytes(kind);
+                }
+            }
 
     protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
-        int scale = this.graalRuntime.getTarget().arch.getSizeInBytes(elementKind);
+        int scale = getScalingFactor(elementKind);
         return IndexedLocationNode.create(NamedLocationIdentity.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
