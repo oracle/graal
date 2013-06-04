@@ -33,12 +33,12 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable, PiPushable {
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp) {
-        super(object, location, stamp);
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, WriteBarrierType barrierType, boolean compress) {
+        super(object, location, stamp, barrierType, compress);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard) {
-        super(object, location, stamp, guard);
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compress) {
+        super(object, location, stamp, guard, barrierType, compress);
     }
 
     private ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
@@ -50,7 +50,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
          * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
          * LocalNode, the constructor cannot use the declared type LocationNode.
          */
-        super(object, location, StampFactory.forNodeIntrinsic(), guard);
+        super(object, location, StampFactory.forNodeIntrinsic(), guard, WriteBarrierType.NONE, false);
     }
 
     @Override
@@ -66,7 +66,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard()));
+        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getWriteBarrierType(), compress()));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool) {
