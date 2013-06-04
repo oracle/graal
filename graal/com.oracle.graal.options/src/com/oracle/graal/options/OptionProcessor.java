@@ -106,7 +106,10 @@ public class OptionProcessor extends AbstractProcessor {
         Element enclosing = element.getEnclosingElement();
         String declaringClass = "";
         String separator = "";
+        List<Element> originatingElementsList = new ArrayList<>();
+        originatingElementsList.add(field);
         while (enclosing != null) {
+            originatingElementsList.add(enclosing);
             if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
                 if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
                     String msg = String.format("Option field cannot be declared in a private %s %s", enclosing.getKind().name().toLowerCase(), enclosing);
@@ -123,9 +126,10 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         String providerClassName = declaringClass.replace('.', '_') + "_" + fieldName;
+        Element[] originatingElements = originatingElementsList.toArray(new Element[originatingElementsList.size()]);
 
         Filer filer = processingEnv.getFiler();
-        try (PrintWriter out = createSourceFile(element, pkg, providerClassName, filer)) {
+        try (PrintWriter out = createSourceFile(pkg, providerClassName, filer, originatingElements)) {
 
             out.println("/*");
             out.println(" * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.");
@@ -185,24 +189,24 @@ public class OptionProcessor extends AbstractProcessor {
         }
 
         try {
-            createProviderFile(field, pkg, providerClassName);
+            createProviderFile(pkg, providerClassName, originatingElements);
         } catch (IOException e) {
             processingEnv.getMessager().printMessage(Kind.ERROR, e.getMessage(), field);
         }
     }
 
-    private void createProviderFile(Element field, String pkg, String providerClassName) throws IOException {
+    private void createProviderFile(String pkg, String providerClassName, Element... originatingElements) throws IOException {
         String filename = "META-INF/providers/" + pkg + "." + providerClassName;
-        FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, field);
+        FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", filename, originatingElements);
         PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
         writer.println(OptionProvider.class.getName());
         writer.close();
     }
 
-    protected PrintWriter createSourceFile(Element element, String pkg, String relativeName, Filer filer) {
+    protected PrintWriter createSourceFile(String pkg, String relativeName, Filer filer, Element... originatingElements) {
         try {
             // Ensure Unix line endings to comply with Graal code style guide checked by Checkstyle
-            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, element);
+            JavaFileObject sourceFile = filer.createSourceFile(pkg + "." + relativeName, originatingElements);
             return new PrintWriter(sourceFile.openWriter()) {
 
                 @Override
