@@ -734,7 +734,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 int size = FrameStateBuilder.stackSlots(osrLocal.kind());
                 int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
                 IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.kind(), offset, ConstantNode.forLong(0, graph), graph, 1);
-                ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), WriteBarrierType.NONE, osrLocal.kind() == Kind.Object));
+                ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), WriteBarrierType.NONE, false));
                 osrLocal.replaceAndDelete(load);
                 graph.addBeforeFixed(migrationEnd, load);
             }
