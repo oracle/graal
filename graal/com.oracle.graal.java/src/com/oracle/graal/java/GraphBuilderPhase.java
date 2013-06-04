@@ -1107,8 +1107,11 @@ public class GraphBuilderPhase extends Phase {
         }
         if (exact != null) {
             // either the holder class is exact, or the receiver object has an exact type
-            invokeDirect(exact.resolveMethod(target), args);
-            return;
+            ResolvedJavaMethod exactMethod = exact.resolveMethod(target);
+            if (exactMethod != null) {
+                invokeDirect(exactMethod, args);
+                return;
+            }
         }
         // devirtualization failed, produce an actual invokevirtual
         appendInvoke(invokeKind, target, args);

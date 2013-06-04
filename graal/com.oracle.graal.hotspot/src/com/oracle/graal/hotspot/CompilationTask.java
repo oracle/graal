@@ -37,10 +37,16 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
+
+    //@formatter:off
+    @Option(help = "")
+    public static final OptionValue<Integer> SlowQueueCutoff = new OptionValue<>(100000);
+    //@formatter:on
 
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
@@ -109,7 +115,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
             inProgress = true;
             if (GraalOptions.DynamicCompilePriority) {
-                int threadPriority = priority < GraalOptions.SlowQueueCutoff ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
+                int threadPriority = priority < SlowQueueCutoff.getValue() ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
                 if (Thread.currentThread().getPriority() != threadPriority) {
                     Thread.currentThread().setPriority(threadPriority);
                 }

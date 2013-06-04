@@ -45,12 +45,12 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
         super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
     }
 
-    private ReadNode(ValueNode object, ValueNode location, GuardingNode guard) {
+    private ReadNode(ValueNode object, ValueNode location, ValueNode guard) {
         /*
          * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
          * LocalNode, the constructor cannot use the declared type LocationNode.
          */
-        super(object, location, StampFactory.forNodeIntrinsic(), guard, WriteBarrierType.NONE, false);
+        super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, WriteBarrierType.NONE, false);
     }
 
     @Override

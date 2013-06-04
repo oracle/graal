@@ -92,11 +92,18 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
                 }
             }
             if (!couldSet) {
+                if (isSubstitutionGraph()) {
+                    return this;
+                }
                 throw new GraalInternalError("Wrong usage of branch probability injection!");
             }
             return condition;
         }
         return this;
+    }
+
+    private boolean isSubstitutionGraph() {
+        return usages().count() == 1 && usages().first() instanceof ReturnNode;
     }
 
     /**

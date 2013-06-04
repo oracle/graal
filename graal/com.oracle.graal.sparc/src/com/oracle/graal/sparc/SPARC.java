@@ -74,6 +74,33 @@ public class SPARC extends Architecture {
     public static final Register r30 = new Register(30, 30, "r30", CPU);
     public static final Register r31 = new Register(31, 31, "r31", CPU);
 
+    public static final Register g0 = r0;
+    public static final Register g1 = r1;
+    public static final Register g2 = r2;
+    public static final Register g3 = r3;
+    public static final Register g4 = r4;
+    public static final Register g5 = r5;
+    public static final Register g6 = r6;
+    public static final Register g7 = r7;
+
+    public static final Register i0 = r24;
+    public static final Register i1 = r25;
+    public static final Register i2 = r26;
+    public static final Register i3 = r27;
+    public static final Register i4 = r28;
+    public static final Register i5 = r29;
+    public static final Register i6 = r30;
+    public static final Register i7 = r31;
+
+    public static final Register o0 = r8;
+    public static final Register o1 = r9;
+    public static final Register o2 = r10;
+    public static final Register o3 = r11;
+    public static final Register o4 = r12;
+    public static final Register o5 = r13;
+    public static final Register o6 = r14;
+    public static final Register o7 = r15;
+
     public static final Register[] gprRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
          r8,  r9, r10, r11, r12, r13, r14, r15,

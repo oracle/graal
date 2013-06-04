@@ -74,7 +74,7 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
             int index = indexValue.isConstant() ? indexValue.asConstant().asInt() : -1;
             if (index >= 0 && index < arrayState.getVirtualObject().entryCount()) {
                 ResolvedJavaType componentType = arrayState.getVirtualObject().type().getComponentType();
-                if (componentType.isPrimitive() || value.objectStamp().alwaysNull() || componentType.isAssignableFrom(value.objectStamp().type())) {
+                if (componentType.isPrimitive() || value.objectStamp().alwaysNull() || (value.objectStamp().type() != null && componentType.isAssignableFrom(value.objectStamp().type()))) {
                     tool.setVirtualEntry(arrayState, index, value());
                     tool.delete();
                 }

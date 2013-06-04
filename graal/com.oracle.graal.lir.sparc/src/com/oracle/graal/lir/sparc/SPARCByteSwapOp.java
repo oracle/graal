@@ -22,40 +22,30 @@
  */
 package com.oracle.graal.lir.sparc;
 
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.asm.*;
 
-public class SPARCAddressValue extends CompositeValue {
+@Opcode("BSWAP")
+public class SPARCByteSwapOp extends SPARCLIRInstruction {
 
-    private static final long serialVersionUID = -3583286416638228207L;
+    @Def({OperandFlag.REG, OperandFlag.HINT}) protected Value result;
+    @Use protected Value input;
 
-    @Component({ REG, OperandFlag.ILLEGAL })
-    protected AllocatableValue base;
-    protected final int displacement;
-
-    public SPARCAddressValue(PlatformKind kind, AllocatableValue baseRegister,
-            int finalDisp) {
-        super(kind);
-        this.base = baseRegister;
-        this.displacement = finalDisp;
+    public SPARCByteSwapOp(Value result, Value input) {
+        this.result = result;
+        this.input = input;
     }
 
-    private static Register toRegister(AllocatableValue value) {
-        if (value.equals(Value.ILLEGAL)) {
-            return Register.None;
-        } else {
-            RegisterValue reg = (RegisterValue) value;
-            return reg.getRegister();
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+        SPARCMove.move(tasm, masm, result, input);
+        switch (input.getKind()) {
+        // case Int:
+        // masm.bswapl(ValueUtil.asIntReg(result));
+        // case Long:
+        // masm.bswapq(ValueUtil.asLongReg(result));
         }
     }
-
-    public SPARCAddress toAddress() {
-        return new SPARCAddress(toRegister(base), displacement);
-    }
-
 }

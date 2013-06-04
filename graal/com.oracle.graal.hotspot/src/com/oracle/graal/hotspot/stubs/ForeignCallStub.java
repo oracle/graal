@@ -260,7 +260,7 @@ public class ForeignCallStub extends Stub {
             if (kind == Kind.Object) {
                 stamp = StampFactory.declared(type);
             } else {
-                stamp = StampFactory.forKind(kind);
+                stamp = StampFactory.forKind(type.getKind());
             }
             LocalNode local = builder.add(new LocalNode(i, stamp));
             locals[i] = local;

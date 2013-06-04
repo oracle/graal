@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,35 @@ package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Trap;
 import com.oracle.graal.lir.LIRInstruction.*;
+import com.oracle.graal.lir.asm.*;
 
-public class SPARCAddressValue extends CompositeValue {
+/**
+ * Emits a breakpoint.
+ */
+@Opcode("BREAKPOINT")
+public class SPARCBreakpointOp extends SPARCLIRInstruction {
 
-    private static final long serialVersionUID = -3583286416638228207L;
+    // historical - from hotspot src/cpu/sparc/vm
+    // <sys/trap.h> promises that the system will not use traps 16-31
+    // We want to use ST_BREAKPOINT here, but the debugger is confused by it.
+    public static final int ST_RESERVED_FOR_USER_0 = 0x10;
 
-    @Component({ REG, OperandFlag.ILLEGAL })
-    protected AllocatableValue base;
-    protected final int displacement;
+    /**
+     * A set of values loaded into the Java ABI parameter locations (for inspection by a debugger).
+     */
+    @Use({REG, STACK}) protected Value[] parameters;
 
-    public SPARCAddressValue(PlatformKind kind, AllocatableValue baseRegister,
-            int finalDisp) {
-        super(kind);
-        this.base = baseRegister;
-        this.displacement = finalDisp;
+    public SPARCBreakpointOp(Value[] parameters) {
+        this.parameters = parameters;
     }
 
-    private static Register toRegister(AllocatableValue value) {
-        if (value.equals(Value.ILLEGAL)) {
-            return Register.None;
-        } else {
-            RegisterValue reg = (RegisterValue) value;
-            return reg.getRegister();
-        }
+    @Override
+    @SuppressWarnings("unused")
+    public void emitCode(TargetMethodAssembler tasm, SPARCAssembler asm) {
+        new Trap(asm, ST_RESERVED_FOR_USER_0);
     }
-
-    public SPARCAddress toAddress() {
-        return new SPARCAddress(toRegister(base), displacement);
-    }
-
 }

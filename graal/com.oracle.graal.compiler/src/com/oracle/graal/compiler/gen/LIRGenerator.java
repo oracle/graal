@@ -203,7 +203,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return value;
     }
 
-    protected LabelRef getLIRBlock(FixedNode b) {
+    public LabelRef getLIRBlock(FixedNode b) {
         Block result = lir.cfg.blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
@@ -259,7 +259,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     public void append(LIRInstruction op) {
-        assert LIRVerifier.verify(op);
         if (GraalOptions.PrintIRWithLIR && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
@@ -269,6 +268,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
+        assert LIRVerifier.verify(op);
         lir.lir(currentBlock).add(op);
     }
 
