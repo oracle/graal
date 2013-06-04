@@ -174,8 +174,8 @@ public class LIRInstructionClass extends LIRIntrospection {
 
         @Override
         protected void scan(Class<?> clazz) {
-            if (clazz.getAnnotation(LIRInstruction.Opcode.class) != null) {
-                opcodeConstant = clazz.getAnnotation(LIRInstruction.Opcode.class).value();
+            if (clazz.getAnnotation(Opcode.class) != null) {
+                opcodeConstant = clazz.getAnnotation(Opcode.class).value();
             }
             opcodeOffset = -1;
 
@@ -199,7 +199,7 @@ public class LIRInstructionClass extends LIRIntrospection {
                 super.scanField(field, type, offset);
             }
 
-            if (field.getAnnotation(LIRInstruction.Opcode.class) != null) {
+            if (field.getAnnotation(Opcode.class) != null) {
                 assert opcodeConstant == null && opcodeOffset == -1 : "Can have only one Opcode definition: " + field.getType();
                 opcodeOffset = offset;
             }

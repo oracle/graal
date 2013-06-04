@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.lir;
 
-import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import java.lang.annotation.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.amd64.*;
-import com.oracle.graal.lir.asm.*;
+/**
+ * Denotes an opcode name for an annotated {@link LIRInstruction}.
+ * <p>
+ * Note: Unlike the other LIR related annotations declared as inner classes of
+ * {@link LIRInstruction}, this annotation is in a top level file to work around a <a
+ * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=409824">bug</a> in Eclipse causing spurious
+ * warnings about unused imports.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
+public @interface Opcode {
 
-@Opcode
-final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {
-
-    @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-
-        // save last Java frame
-        Register thread = graalRuntime().getRuntime().threadRegister();
-        masm.movq(new AMD64Address(thread, graalRuntime().getConfig().threadLastJavaSpOffset), rsp);
-    }
+    String value() default "";
 }
