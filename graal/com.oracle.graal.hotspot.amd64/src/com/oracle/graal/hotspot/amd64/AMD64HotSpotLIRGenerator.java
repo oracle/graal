@@ -211,8 +211,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
         Stub stub = getStub();
-        HotSpotForeignCallLinkage hsLinkage = (HotSpotForeignCallLinkage) linkage;
-        boolean destroysRegisters = hsLinkage.destroysRegisters();
+        boolean destroysRegisters = linkage.destroysRegisters();
 
         AMD64SaveRegistersOp save = null;
         StackSlot[] savedRegisterLocations = null;
@@ -234,7 +233,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         Variable result;
 
-        if (!hsLinkage.isLeaf()) {
+        if (linkage.canDeoptimize()) {
             assert info != null;
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
             result = super.emitForeignCall(linkage, info, args);

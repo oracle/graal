@@ -1004,7 +1004,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
-        return !foreignCalls.get(descriptor).isLeaf();
+        return foreignCalls.get(descriptor).canDeoptimize();
     }
 
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {

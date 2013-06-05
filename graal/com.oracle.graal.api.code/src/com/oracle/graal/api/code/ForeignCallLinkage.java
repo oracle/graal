@@ -55,4 +55,11 @@ public interface ForeignCallLinkage extends InvokeTarget {
      *         this target
      */
     boolean destroysRegisters();
+
+    /**
+     * Determines if this is call to a function that does not deoptimize, and therefore also does
+     * not lock, GC or throw exceptions. That is, the thread's execution state during the call is
+     * never inspected by another thread.
+     */
+    boolean canDeoptimize();
 }
