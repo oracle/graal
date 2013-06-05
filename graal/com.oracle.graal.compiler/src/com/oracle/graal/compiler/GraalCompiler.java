@@ -140,11 +140,12 @@ public class GraalCompiler {
             new VerifyUsageWithEquals(runtime, Register.class).apply(graph);
         }
 
-        if (OptCanonicalizer.getValue()) {
-            new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-        }
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements, canonicalizer);
 
-        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
+        if (OptCanonicalizer.getValue()) {
+            highTierContext.applyCanonicalizer(graph);
+        }
 
         if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (IterativeInlining.getValue()) {
@@ -154,7 +155,7 @@ public class GraalCompiler {
                 new DeadCodeEliminationPhase().apply(graph);
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+                    highTierContext.applyCanonicalizer(graph);
                     new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
                 }
             }
@@ -164,12 +165,12 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
 
-        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);
+        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, canonicalizer, target, optimisticOpts);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
+        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, canonicalizer, target);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
         InliningPhase.storeStatisticsAfterLowTier(graph);
 

@@ -85,7 +85,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                        new CanonicalizerPhase().apply(graph, context);
+                        context.applyCanonicalizer(graph);
                         new IterativeConditionalEliminationPhase().apply(graph, context);
                     }
 

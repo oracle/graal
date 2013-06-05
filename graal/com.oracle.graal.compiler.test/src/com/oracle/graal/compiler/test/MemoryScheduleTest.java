@@ -33,7 +33,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -220,11 +220,11 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             public SchedulePhase call() throws Exception {
                 StructuredGraph graph = parse(snippet);
                 Assumptions assumptions = new Assumptions(false);
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, new CanonicalizerPhase());
+                context.applyCanonicalizer(graph);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 }
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {

@@ -105,7 +105,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
-                        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions()).apply(graph);
+                        context.applyCanonicalizer(graph);
                     }
 
                     return true;

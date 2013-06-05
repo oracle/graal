@@ -621,8 +621,9 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
             public AssertionError call() {
                 final StructuredGraph graph = parse(snippet);
-                HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements);
-                MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
+                CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+                HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements, canonicalizer);
+                MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, canonicalizer, runtime().getTarget(), OptimisticOptimizations.ALL);
 
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);
