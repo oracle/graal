@@ -71,6 +71,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public LoweringType getLoweringType() {
+            return loweringType;
+        }
+
+        @Override
         public GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object) {
             if (object.objectStamp().nonNull()) {
                 // Short cut creation of null check guard if the object is known to be non-null.

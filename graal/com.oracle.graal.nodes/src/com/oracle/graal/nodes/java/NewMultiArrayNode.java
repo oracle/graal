@@ -63,9 +63,7 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (loweringType == LoweringType.AFTER_GUARDS) {
-            tool.getRuntime().lower(this, tool);
-        }
+        tool.getRuntime().lower(this, tool);
     }
 
     public ResolvedJavaType type() {

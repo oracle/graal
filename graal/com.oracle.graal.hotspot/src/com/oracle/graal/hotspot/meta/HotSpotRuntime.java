@@ -83,6 +83,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.printer.*;
@@ -639,101 +640,105 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             node.replaceAtUsages(guard.asNode());
             graph.replaceFixedWithFixed(node, newAnchor);
         } else if (n instanceof CommitAllocationNode) {
-            CommitAllocationNode commit = (CommitAllocationNode) n;
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                CommitAllocationNode commit = (CommitAllocationNode) n;
 
-            ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
+                ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                    int entryCount = virtual.entryCount();
 
-                FixedWithNextNode newObject;
-                if (virtual instanceof VirtualInstanceNode) {
-                    newObject = graph.add(new NewInstanceNode(virtual.type(), true));
-                } else {
-                    ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                    newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                    FixedWithNextNode newObject;
+                    if (virtual instanceof VirtualInstanceNode) {
+                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
+                    } else {
+                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                        newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                    }
+                    graph.addBeforeFixed(commit, newObject);
+                    allocations[objIndex] = newObject;
                 }
-                graph.addBeforeFixed(commit, newObject);
-                allocations[objIndex] = newObject;
-            }
-            int valuePos = 0;
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
+                int valuePos = 0;
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                    int entryCount = virtual.entryCount();
 
-                ValueNode newObject = allocations[objIndex];
-                if (virtual instanceof VirtualInstanceNode) {
-                    VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode value = commit.getValues().get(valuePos++);
-                        if (value instanceof VirtualObjectNode) {
-                            value = allocations[commit.getVirtualObjects().indexOf(value)];
+                    ValueNode newObject = allocations[objIndex];
+                    if (virtual instanceof VirtualInstanceNode) {
+                        VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+                        for (int i = 0; i < entryCount; i++) {
+                            ValueNode value = commit.getValues().get(valuePos++);
+                            if (value instanceof VirtualObjectNode) {
+                                value = allocations[commit.getVirtualObjects().indexOf(value)];
+                            }
+                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                graph.addBeforeFixed(commit,
+                                                graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE, false)));
+                            }
                         }
-                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit,
-                                            graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE, false)));
+                    } else {
+                        VirtualArrayNode array = (VirtualArrayNode) virtual;
+                        ResolvedJavaType element = array.componentType();
+                        for (int i = 0; i < entryCount; i++) {
+                            ValueNode value = commit.getValues().get(valuePos++);
+                            if (value instanceof VirtualObjectNode) {
+                                int indexOf = commit.getVirtualObjects().indexOf(value);
+                                assert indexOf != -1 : commit + " " + value;
+                                value = allocations[indexOf];
+                            }
+                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                graph.addBeforeFixed(commit,
+                                                graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE, false)));
+                            }
                         }
                     }
-                } else {
-                    VirtualArrayNode array = (VirtualArrayNode) virtual;
-                    ResolvedJavaType element = array.componentType();
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode value = commit.getValues().get(valuePos++);
-                        if (value instanceof VirtualObjectNode) {
-                            int indexOf = commit.getVirtualObjects().indexOf(value);
-                            assert indexOf != -1 : commit + " " + value;
-                            value = allocations[indexOf];
-                        }
-                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit,
-                                            graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE, false)));
-                        }
+                }
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
+                    allocations[objIndex] = anchor;
+                    graph.addBeforeFixed(commit, anchor);
+                }
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    for (int lockDepth : commit.getLocks().get(objIndex)) {
+                        MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+                        graph.addBeforeFixed(commit, enter);
                     }
                 }
-            }
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
-                allocations[objIndex] = anchor;
-                graph.addBeforeFixed(commit, anchor);
-            }
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                for (int lockDepth : commit.getLocks().get(objIndex)) {
-                    MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
-                    graph.addBeforeFixed(commit, enter);
+                for (Node usage : commit.usages().snapshot()) {
+                    AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
+                    int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+                    graph.replaceFloating(addObject, allocations[index]);
                 }
+                graph.removeFixed(commit);
             }
-            for (Node usage : commit.usages().snapshot()) {
-                AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
-                int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-                graph.replaceFloating(addObject, allocations[index]);
-            }
-            graph.removeFixed(commit);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof OSRStartNode) {
-            OSRStartNode osrStart = (OSRStartNode) n;
-            StartNode newStart = graph.add(new StartNode());
-            LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
-            ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(this, OSR_MIGRATION_END, buffer));
-            migrationEnd.setStateAfter(osrStart.stateAfter());
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                OSRStartNode osrStart = (OSRStartNode) n;
+                StartNode newStart = graph.add(new StartNode());
+                LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
+                ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(this, OSR_MIGRATION_END, buffer));
+                migrationEnd.setStateAfter(osrStart.stateAfter());
 
-            newStart.setNext(migrationEnd);
-            FixedNode next = osrStart.next();
-            osrStart.setNext(null);
-            migrationEnd.setNext(next);
-            graph.setStart(newStart);
+                newStart.setNext(migrationEnd);
+                FixedNode next = osrStart.next();
+                osrStart.setNext(null);
+                migrationEnd.setNext(next);
+                graph.setStart(newStart);
 
-            // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
-            int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
-            for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
-                int size = FrameStateBuilder.stackSlots(osrLocal.kind());
-                int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), osrLocal.kind()));
-                osrLocal.replaceAndDelete(load);
-                graph.addBeforeFixed(migrationEnd, load);
+                // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
+                int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
+                for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
+                    int size = FrameStateBuilder.stackSlots(osrLocal.kind());
+                    int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
+                    UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), osrLocal.kind()));
+                    osrLocal.replaceAndDelete(load);
+                    graph.addBeforeFixed(migrationEnd, load);
+                }
+                osrStart.replaceAtUsages(newStart);
+                osrStart.safeDelete();
             }
-            osrStart.replaceAtUsages(newStart);
-            osrStart.safeDelete();
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
@@ -741,19 +746,29 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof InstanceOfDynamicNode) {
             instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
         } else if (n instanceof NewInstanceNode) {
-            newObjectSnippets.lower((NewInstanceNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewInstanceNode) n);
+            }
         } else if (n instanceof NewArrayNode) {
-            newObjectSnippets.lower((NewArrayNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewArrayNode) n);
+            }
         } else if (n instanceof MonitorEnterNode) {
-            monitorSnippets.lower((MonitorEnterNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                monitorSnippets.lower((MonitorEnterNode) n, tool);
+            }
         } else if (n instanceof MonitorExitNode) {
-            monitorSnippets.lower((MonitorExitNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                monitorSnippets.lower((MonitorExitNode) n, tool);
+            }
         } else if (n instanceof SerialWriteBarrier) {
             writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
             writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            newObjectSnippets.lower((NewMultiArrayNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewMultiArrayNode) n);
+            }
         } else if (n instanceof LoadExceptionObjectNode) {
             exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
