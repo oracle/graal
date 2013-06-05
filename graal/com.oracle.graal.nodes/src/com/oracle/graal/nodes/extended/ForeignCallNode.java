@@ -91,7 +91,7 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
     public FrameState getDeoptimizationState() {
         if (deoptState != null) {
             return deoptState;
-        } else if (stateAfter() != null) {
+        } else if (stateAfter() != null && canDeoptimize()) {
             FrameState stateDuring = stateAfter();
             if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
                 stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
