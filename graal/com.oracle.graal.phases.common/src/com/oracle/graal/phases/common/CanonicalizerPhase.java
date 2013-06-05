@@ -211,21 +211,6 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
                     public Boolean call() {
                         ValueNode canonical = ((Canonicalizable) node).canonical(tool);
-// @formatter:off
-//     cases:                                           original node:
-//                                         |Floating|Fixed-unconnected|Fixed-connected|
-//                                         --------------------------------------------
-//                                     null|   1    |        X        |       3       |
-//                                         --------------------------------------------
-//                                 Floating|   2    |        X        |       4       |
-//       canonical node:                   --------------------------------------------
-//                        Fixed-unconnected|   X    |        X        |       5       |
-//                                         --------------------------------------------
-//                          Fixed-connected|   2    |        X        |       6       |
-//                                         --------------------------------------------
-//       X: must not happen (checked with assertions)
-// @formatter:on
-
                         return performReplacement(node, graph, canonical);
                     }
                 });
@@ -242,6 +227,20 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return node.isDeleted();
         }
 
+// @formatter:off
+//     cases:                                           original node:
+//                                         |Floating|Fixed-unconnected|Fixed-connected|
+//                                         --------------------------------------------
+//                                     null|   1    |        X        |       3       |
+//                                         --------------------------------------------
+//                                 Floating|   2    |        X        |       4       |
+//       canonical node:                   --------------------------------------------
+//                        Fixed-unconnected|   X    |        X        |       5       |
+//                                         --------------------------------------------
+//                          Fixed-connected|   2    |        X        |       6       |
+//                                         --------------------------------------------
+//       X: must not happen (checked with assertions)
+// @formatter:on
         private boolean performReplacement(final Node node, final StructuredGraph graph, ValueNode canonical) {
             if (canonical == node) {
                 Debug.log("Canonicalizer: work on %s", node);
