@@ -34,7 +34,7 @@ import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -127,6 +127,6 @@ public class ExceptionHandlerStub extends SnippetStub {
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc");
 
-    @NodeIntrinsic(value = ForeignCallNode.class, setStampFromReturnType = true)
+    @NodeIntrinsic(value = StubForeignCallNode.class, setStampFromReturnType = true)
     public static native Word exceptionHandlerForPc(@ConstantNodeParameter ForeignCallDescriptor exceptionHandlerForPc, Word thread);
 }
