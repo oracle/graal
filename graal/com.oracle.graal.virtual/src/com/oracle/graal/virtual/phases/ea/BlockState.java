@@ -30,11 +30,11 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 
-class BlockState {
+public class BlockState {
 
-    private final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
-    private final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
-    private final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
+    protected final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
+    protected final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
+    protected final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
     final HashMap<ReadCacheEntry, ValueNode> readCache;
 
     static class ReadCacheEntry {
@@ -144,6 +144,10 @@ class BlockState {
         return new BlockState(this);
     }
 
+    public BlockState cloneEmptyState() {
+        return new BlockState();
+    }
+
     public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, EscapeState state, GraphEffectList materializeEffects) {
         PartialEscapeClosure.METRIC_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
@@ -239,39 +243,14 @@ class BlockState {
         return objectStates + " " + readCache;
     }
 
-    public BlockState meetAliases(List<? extends BlockState> states) {
-        BlockState newState = new BlockState();
-
-        BlockState firstState = states.get(0);
-        newState.objectAliases.putAll(firstState.objectAliases);
+    public void meetAliases(List<? extends BlockState> states) {
+        objectAliases.putAll(states.get(0).objectAliases);
+        scalarAliases.putAll(states.get(0).scalarAliases);
         for (int i = 1; i < states.size(); i++) {
             BlockState state = states.get(i);
-            Iterator<Map.Entry<ValueNode, VirtualObjectNode>> iter = newState.objectAliases.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<ValueNode, VirtualObjectNode> entry = iter.next();
-                if (state.objectAliases.containsKey(entry.getKey())) {
-                    assert state.objectAliases.get(entry.getKey()) == entry.getValue();
-                } else {
-                    iter.remove();
-                }
-            }
+            meetMaps(objectAliases, state.objectAliases);
+            meetMaps(scalarAliases, state.scalarAliases);
         }
-
-        newState.scalarAliases.putAll(firstState.scalarAliases);
-        for (int i = 1; i < states.size(); i++) {
-            BlockState state = states.get(i);
-            Iterator<Map.Entry<ValueNode, ValueNode>> iter = newState.scalarAliases.entrySet().iterator();
-            while (iter.hasNext()) {
-                Map.Entry<ValueNode, ValueNode> entry = iter.next();
-                if (state.scalarAliases.containsKey(entry.getKey())) {
-                    assert state.scalarAliases.get(entry.getKey()) == entry.getValue();
-                } else {
-                    iter.remove();
-                }
-            }
-        }
-
-        return newState;
     }
 
     public Map<ReadCacheEntry, ValueNode> getReadCache() {
@@ -289,14 +268,14 @@ class BlockState {
         return objectAliasesEqual && objectStatesEqual && readCacheEqual && scalarAliasesEqual;
     }
 
-    private static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
+    protected static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
         if (left.size() != right.size()) {
             return false;
         }
         return compareMapsNoSize(left, right);
     }
 
-    private static <K, V> boolean compareMapsNoSize(Map<K, V> left, Map<K, V> right) {
+    protected static <K, V> boolean compareMapsNoSize(Map<K, V> left, Map<K, V> right) {
         if (left == right) {
             return true;
         }
@@ -310,6 +289,18 @@ class BlockState {
             }
         }
         return true;
+    }
+
+    protected static <U, V> void meetMaps(Map<U, V> target, Map<U, V> source) {
+        Iterator<Map.Entry<U, V>> iter = target.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<U, V> entry = iter.next();
+            if (source.containsKey(entry.getKey())) {
+                assert source.get(entry.getKey()) == entry.getValue();
+            } else {
+                iter.remove();
+            }
+        }
     }
 
 }

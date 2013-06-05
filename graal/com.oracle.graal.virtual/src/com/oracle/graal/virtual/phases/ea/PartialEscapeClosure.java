@@ -48,7 +48,7 @@ import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
-class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnalysisPhase.Closure<BlockT> {
+public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnalysisPhase.Closure<BlockT> {
 
     public static final DebugMetric METRIC_MATERIALIZATIONS = Debug.metric("Materializations");
     public static final DebugMetric METRIC_MATERIALIZATIONS_PHI = Debug.metric("MaterializationsPhi");
@@ -476,7 +476,8 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
 
         @SuppressWarnings("unchecked")
         private void merge(List<BlockT> states) {
-            newState = (BlockT) states.get(0).meetAliases(states);
+            newState = (BlockT) states.get(0).cloneEmptyState();
+            newState.meetAliases(states);
 
             /*
              * Iterative processing: Merging the materialized/virtual state of virtual objects can
