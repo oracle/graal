@@ -238,7 +238,7 @@ public class NewObjectSnippets implements Snippets {
             Kind elementKind = elementType.getKind();
             ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), runtime, graph);
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
-            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime)runtime).getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) runtime).getScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray);
             args.add("hub", hub);
