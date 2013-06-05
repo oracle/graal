@@ -409,7 +409,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public Variable emitLoad(Kind kind, Value address, DeoptimizingNode access) {
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        assert access != null || access instanceof HeapAccess;
+        assert access == null || access instanceof HeapAccess;
         if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
             assert kind == Kind.Object;
             Variable scratch = newVariable(Kind.Long);
