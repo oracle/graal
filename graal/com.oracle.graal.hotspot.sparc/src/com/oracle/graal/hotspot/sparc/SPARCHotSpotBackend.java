@@ -77,7 +77,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         LIR lir = gen.lir;
-        boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
+        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
         Stub stub = gen.getStub();
         AbstractAssembler masm = createAssembler(frameMap);

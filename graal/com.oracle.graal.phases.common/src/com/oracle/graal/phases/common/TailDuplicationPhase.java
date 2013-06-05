@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 
 import com.oracle.graal.debug.*;
@@ -80,7 +82,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
     public static final TailDuplicationDecision DEFAULT_DECISION = new TailDuplicationDecision() {
 
         public boolean doTransform(MergeNode merge, int fixedNodeCount) {
-            if (fixedNodeCount < GraalOptions.TailDuplicationTrivialSize) {
+            if (fixedNodeCount < TailDuplicationTrivialSize.getValue()) {
                 return true;
             }
             HashSet<PhiNode> improvements = new HashSet<>();
@@ -136,7 +138,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         // A snapshot is taken here, so that new MergeNode instances aren't considered for tail
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
-            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= GraalOptions.TailDuplicationProbability) {
+            if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= TailDuplicationProbability.getValue()) {
                 tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext);
             }
         }

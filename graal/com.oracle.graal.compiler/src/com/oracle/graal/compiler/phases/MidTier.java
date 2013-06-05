@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -30,40 +32,40 @@ import com.oracle.graal.phases.tiers.*;
 public class MidTier extends PhaseSuite<MidTierContext> {
 
     public MidTier() {
-        if (GraalOptions.OptPushThroughPi) {
+        if (OptPushThroughPi.getValue()) {
             addPhase(new PushThroughPiPhase());
-            if (GraalOptions.OptCanonicalizer) {
+            if (OptCanonicalizer.getValue()) {
                 addPhase(new CanonicalizerPhase());
             }
         }
 
-        if (GraalOptions.OptFloatingReads) {
+        if (OptFloatingReads.getValue()) {
             IncrementalCanonicalizerPhase<MidTierContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
             canonicalizer.addPhase(new FloatingReadPhase());
             addPhase(canonicalizer);
-            if (GraalOptions.OptReadElimination) {
+            if (OptReadElimination.getValue()) {
                 addPhase(new ReadEliminationPhase());
             }
         }
         addPhase(new RemoveValueProxyPhase());
 
-        if (GraalOptions.OptCanonicalizer) {
+        if (OptCanonicalizer.getValue()) {
             addPhase(new CanonicalizerPhase());
         }
 
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
+        if (OptEliminatePartiallyRedundantGuards.getValue()) {
             addPhase(new EliminatePartiallyRedundantGuardsPhase(false, true));
         }
 
-        if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
+        if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
             addPhase(new IterativeConditionalEliminationPhase());
         }
 
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
+        if (OptEliminatePartiallyRedundantGuards.getValue()) {
             addPhase(new EliminatePartiallyRedundantGuardsPhase(true, true));
         }
 
-        if (GraalOptions.OptCanonicalizer) {
+        if (OptCanonicalizer.getValue()) {
             addPhase(new CanonicalizerPhase());
         }
 
@@ -73,7 +75,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         addPhase(new GuardLoweringPhase());
 
-        if (GraalOptions.OptCanonicalizer) {
+        if (OptCanonicalizer.getValue()) {
             addPhase(new CanonicalizerPhase());
         }
     }

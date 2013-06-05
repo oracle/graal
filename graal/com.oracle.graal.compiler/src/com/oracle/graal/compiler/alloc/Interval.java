@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.alloc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.compiler.GraalDebugConfig.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -29,11 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
-
-import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.lir.LIRValueUtil.*;
 
 /**
  * Represents an interval in the {@linkplain LinearScan linear scan register allocator}.
@@ -922,7 +922,7 @@ public final class Interval {
 
         // do not add use positions for precolored intervals because they are never used
         if (registerPriority != RegisterPriority.None && isVariable(operand)) {
-            if (GraalOptions.DetailedAsserts) {
+            if (DetailedAsserts.getValue()) {
                 for (int i = 0; i < usePosList.size(); i++) {
                     assert pos <= usePosList.usePos(i) : "already added a use-position with lower position";
                     if (i > 0) {
@@ -1026,7 +1026,7 @@ public final class Interval {
         // split list of use positions
         result.usePosList = usePosList.splitAt(splitPos);
 
-        if (GraalOptions.DetailedAsserts) {
+        if (DetailedAsserts.getValue()) {
             for (int i = 0; i < usePosList.size(); i++) {
                 assert usePosList.usePos(i) < splitPos;
             }

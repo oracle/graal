@@ -22,215 +22,328 @@
  */
 package com.oracle.graal.phases;
 
+import com.oracle.graal.options.*;
+
 /**
  * This class encapsulates options that control the behavior of the Graal compiler.
- * 
- * (thomaswue) WARNING: Fields of this class are treated as final by Graal.
  */
 // @formatter:off
 public final class GraalOptions {
 
-    // Checkstyle: stop
-    private static final boolean ____ = false;
-    // Checkstyle: resume
-
-    public static String  CompilerConfiguration              = "basic";
-    public static String  GraalRuntime                       = "basic";
+    @Option(help = "Enable use of compiler intrinsics")
+    public static final OptionValue<Boolean> Intrinsify = new OptionValue<>(true);
+    @Option(help = "Enable inlining of monomorphic calls")
+    static final OptionValue<Boolean> InlineMonomorphicCalls = new OptionValue<>(true);
+    @Option(help = "Enable inlining of polymorphic calls")
+    static final OptionValue<Boolean> InlinePolymorphicCalls = new OptionValue<>(true);
+    @Option(help = "Enable inlining of megamorphic calls")
+    static final OptionValue<Boolean> InlineMegamorphicCalls = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Double> MegamorphicInliningMinMethodProbability = new OptionValue<>(0.33D);
+    @Option(help = "")
+    public static final OptionValue<Integer> MaximumDesiredSize = new OptionValue<>(5000);
+    @Option(help = "")
+    public static final OptionValue<Integer> MaximumRecursiveInlining = new OptionValue<>(1);
 
     // inlining settings
-    public static boolean Inline                             = true;
-    public static boolean AlwaysInlineIntrinsics             = ____;
-    public static boolean Intrinsify                         = true;
-           static boolean InlineMonomorphicCalls             = true;
-           static boolean InlinePolymorphicCalls             = true;
-           static boolean InlineMegamorphicCalls             = true;
-    public static double  MegamorphicInliningMinMethodProbability = 0.33;
-    public static int     MaximumDesiredSize                 = 5000;
-    public static int     MaximumRecursiveInlining           = 1;
-    public static float   BoostInliningForEscapeAnalysis     = 2f;
-    public static float   RelevanceCapForInlining            = 1f;
-    public static float   CapInheritedRelevance              = 1f;
-    public static boolean IterativeInlining                  = ____;
+    @Option(help = "")
+    public static final OptionValue<Float> BoostInliningForEscapeAnalysis = new OptionValue<>(2f);
+    @Option(help = "")
+    public static final OptionValue<Float> RelevanceCapForInlining = new OptionValue<>(1f);
+    @Option(help = "")
+    public static final OptionValue<Float> CapInheritedRelevance = new OptionValue<>(1f);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IterativeInlining = new OptionValue<>(false);
 
-    public static int     TrivialInliningSize                = 10;
-    public static int     MaximumInliningSize                = 300;
-    public static int     SmallCompiledLowLevelGraphSize     = 300;
-    public static double  LimitInlinedInvokes                = 5.0;
+    @Option(help = "")
+    public static final OptionValue<Integer> TrivialInliningSize = new OptionValue<>(10);
+    @Option(help = "")
+    public static final OptionValue<Integer> MaximumInliningSize = new OptionValue<>(300);
+    @Option(help = "")
+    public static final OptionValue<Integer> SmallCompiledLowLevelGraphSize = new OptionValue<>(300);
+    @Option(help = "")
+    public static final OptionValue<Double> LimitInlinedInvokes = new OptionValue<>(5.0);
 
     // escape analysis settings
-    public static boolean PartialEscapeAnalysis              = true;
-    public static boolean EscapeAnalysisHistogram            = ____;
-    public static int     EscapeAnalysisIterations           = 2;
-    public static String  EscapeAnalyzeOnly                  = null;
-    public static int     MaximumEscapeAnalysisArrayLength   = 32;
-    public static boolean PEAInliningHints                   = ____;
+    @Option(help = "")
+    public static final OptionValue<Boolean> PartialEscapeAnalysis = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> EscapeAnalysisHistogram = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Integer> EscapeAnalysisIterations = new OptionValue<>(2);
+    @Option(help = "")
+    public static final OptionValue<String> EscapeAnalyzeOnly = new OptionValue<>(null);
+    @Option(help = "")
+    public static final OptionValue<Integer> MaximumEscapeAnalysisArrayLength = new OptionValue<>(32);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PEAInliningHints = new OptionValue<>(false);
 
-    public static double  TailDuplicationProbability         = 0.5;
-    public static int     TailDuplicationTrivialSize         = 1;
+    @Option(help = "")
+    public static final OptionValue<Double> TailDuplicationProbability = new OptionValue<>(0.5);
+    @Option(help = "")
+    public static final OptionValue<Integer> TailDuplicationTrivialSize = new OptionValue<>(1);
 
     // profiling information
-    public static int     DeoptsToDisableOptimisticOptimization = 40;
-    public static int     MatureExecutionsBranch             = 1;
-    public static int     MatureExecutionsPerSwitchCase      = 1;
-    public static int     MatureExecutionsTypeProfile        = 1;
+    @Option(help = "")
+    public static final OptionValue<Integer> DeoptsToDisableOptimisticOptimization = new OptionValue<>(40);
+    @Option(help = "")
+    public static final OptionValue<Integer> MatureExecutionsBranch = new OptionValue<>(1);
+    @Option(help = "")
+    public static final OptionValue<Integer> MatureExecutionsPerSwitchCase = new OptionValue<>(1);
+    @Option(help = "")
+    public static final OptionValue<Integer> MatureExecutionsTypeProfile = new OptionValue<>(1);
 
     // comilation queue
-    public static boolean DynamicCompilePriority             = ____;
-    public static String  CompileTheWorld                    = null;
-    public static int     CompileTheWorldStartAt             = 1;
-    public static int     CompileTheWorldStopAt              = Integer.MAX_VALUE;
+    @Option(help = "")
+    public static final OptionValue<Boolean> DynamicCompilePriority = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<String> CompileTheWorld = new OptionValue<>(null);
+    @Option(help = "")
+    public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
+    @Option(help = "")
+    public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
 
     // graph caching
-    public static boolean CacheGraphs                        = true;
-    public static int     GraphCacheSize                     = 1000;
-    public static boolean PrintGraphCache                    = ____;
+    @Option(help = "")
+    public static final OptionValue<Boolean> CacheGraphs = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Integer> GraphCacheSize = new OptionValue<>(1000);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintGraphCache = new OptionValue<>(false);
 
     //loop transform settings TODO (gd) tune
-    public static boolean LoopPeeling                        = true;
-    public static boolean ReassociateInvariants              = true;
-    public static boolean FullUnroll                         = true;
-    public static boolean LoopUnswitch                       = true;
-    public static int     FullUnrollMaxNodes                 = 300;
-    public static int     ExactFullUnrollMaxNodes            = 1200;
-    public static float   MinimumPeelProbability             = 0.35f;
-    public static int     LoopMaxUnswitch                    = 3;
-    public static int     LoopUnswitchMaxIncrease            = 50;
-    public static int     LoopUnswitchUncertaintyBoost       = 5;
-    public static boolean UseLoopLimitChecks                 = true;
+    @Option(help = "")
+    public static final OptionValue<Boolean> LoopPeeling = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> ReassociateInvariants = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> FullUnroll = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> LoopUnswitch = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Integer> FullUnrollMaxNodes = new OptionValue<>(300);
+    @Option(help = "")
+    public static final OptionValue<Integer> ExactFullUnrollMaxNodes = new OptionValue<>(1200);
+    @Option(help = "")
+    public static final OptionValue<Float> MinimumPeelProbability = new OptionValue<>(0.35f);
+    @Option(help = "")
+    public static final OptionValue<Integer> LoopMaxUnswitch = new OptionValue<>(3);
+    @Option(help = "")
+    public static final OptionValue<Integer> LoopUnswitchMaxIncrease = new OptionValue<>(50);
+    @Option(help = "")
+    public static final OptionValue<Integer> LoopUnswitchUncertaintyBoost = new OptionValue<>(5);
+    @Option(help = "")
+    public static final OptionValue<Boolean> UseLoopLimitChecks = new OptionValue<>(true);
 
     // debugging settings
-    public static boolean ZapStackOnMethodEntry              = ____;
-    public static boolean DeoptALot                          = ____;
-    public static boolean VerifyPhases                       = false;
+    @Option(help = "")
+    public static final OptionValue<Boolean> ZapStackOnMethodEntry = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> DeoptALot = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> VerifyPhases = new OptionValue<>(false);
 
-    public static String  PrintFilter                        = null;
+    @Option(help = "")
+    public static final OptionValue<String> PrintFilter = new OptionValue<>(null);
 
     // Debug settings:
-    public static boolean BootstrapReplacements              = ____;
+    @Option(help = "")
+    public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
 
     // Ideal graph visualizer output settings
-    public static boolean PrintBinaryGraphs                  = true;
-    public static boolean PrintCFG                           = ____;
-    public static boolean PrintIdealGraphFile                = ____;
-    public static String  PrintIdealGraphAddress             = "127.0.0.1";
-    public static int     PrintIdealGraphPort                = 4444;
-    public static int     PrintBinaryGraphPort               = 4445;
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintBinaryGraphs = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintCFG = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintIdealGraphFile = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<String> PrintIdealGraphAddress = new OptionValue<>("127.0.0.1");
+    @Option(help = "")
+    public static final OptionValue<Integer> PrintIdealGraphPort = new OptionValue<>(4444);
+    @Option(help = "")
+    public static final OptionValue<Integer> PrintBinaryGraphPort = new OptionValue<>(4445);
 
     // Other printing settings
-    public static boolean PrintCompilation                   = ____;
-    public static boolean PrintProfilingInformation          = ____;
-    public static boolean PrintIRWithLIR                     = ____;
-    public static boolean PrintCodeBytes                     = ____;
-    public static boolean PrintBailout                       = ____;
-    public static int     TraceLinearScanLevel               = 0;
-    public static int     TraceLIRGeneratorLevel             = 0;
-    public static boolean TraceEscapeAnalysis                = ____;
-    public static int     TraceBytecodeParserLevel           = 0;
-    public static boolean ExitVMOnBailout                    = ____;
-    public static boolean ExitVMOnException                  = true;
-    public static boolean PrintStackTraceOnException         = false;
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintProfilingInformation = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintIRWithLIR = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintCodeBytes = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintBailout = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Integer> TraceLinearScanLevel = new OptionValue<>(0);
+    @Option(help = "")
+    public static final OptionValue<Integer> TraceLIRGeneratorLevel = new OptionValue<>(0);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceEscapeAnalysis = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
+    @Option(help = "")
+    public static final OptionValue<Boolean> ExitVMOnBailout = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
 
     // HotSpot command line options
-    public static boolean HotSpotPrintCompilation            = ____;
-    public static boolean HotSpotPrintInlining               = ____;
+    @Option(help = "")
+    public static final OptionValue<Boolean> HotSpotPrintCompilation = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
 
     // Register allocator debugging
-    public static String  RegisterPressure                   = null;
+    @Option(help = "")
+    public static final OptionValue<String> RegisterPressure = new OptionValue<>(null);
 
     // Code generator settings
-    public static boolean ConditionalElimination             = true;
-    public static boolean CullFrameStates                    = ____;
-    public static boolean UseProfilingInformation            = true;
-           static boolean RemoveNeverExecutedCode            = true;
-           static boolean UseExceptionProbability            = true;
-           static boolean UseExceptionProbabilityForOperations = true;
-    public static boolean OmitHotExceptionStacktrace         = ____;
-    public static boolean GenSafepoints                      = true;
-    public static boolean GenLoopSafepoints                  = true;
-           static boolean UseTypeCheckHints                  = true;
-    public static boolean InlineVTableStubs                  = true;
-    public static boolean AlwaysInlineVTableStubs            = ____;
-    public static boolean GenAssertionCode                   = ____;
-    public static boolean AlignCallsForPatching              = true;
-    public static boolean ResolveClassBeforeStaticInvoke     = ____;
-    public static boolean CanOmitFrame                       = true;
-    public static int     SafepointPollOffset                = 256;
+    @Option(help = "")
+    public static final OptionValue<Boolean> ConditionalElimination = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> CullFrameStates = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
+    @Option(help = "")
+           static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);
+           @Option(help = "")
+           static final OptionValue<Boolean> UseExceptionProbability = new OptionValue<>(true);
+           @Option(help = "")
+           static final OptionValue<Boolean> UseExceptionProbabilityForOperations = new OptionValue<>(true);
+           @Option(help = "")
+    public static final OptionValue<Boolean> OmitHotExceptionStacktrace = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> GenSafepoints = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> GenLoopSafepoints = new OptionValue<>(true);
+    @Option(help = "")
+           static final OptionValue<Boolean> UseTypeCheckHints = new OptionValue<>(true);
+           @Option(help = "")
+    public static final OptionValue<Boolean> InlineVTableStubs = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> AlwaysInlineVTableStubs = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> GenAssertionCode = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> AlignCallsForPatching = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> ResolveClassBeforeStaticInvoke = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> CanOmitFrame = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Integer> SafepointPollOffset = new OptionValue<>(256);
 
-    public static boolean MemoryAwareScheduling              = true;
+    @Option(help = "")
+    public static final OptionValue<Boolean> MemoryAwareScheduling = new OptionValue<>(true);
 
     // Translating tableswitch instructions
-    public static int     MinimumJumpTableSize               = 5;
-    public static int     RangeTestsSwitchDensity            = 5;
-    public static double  MinTableSwitchDensity              = 0.5;
-
-    public static boolean DetailedAsserts                    = ____;
+    @Option(help = "")
+    public static final OptionValue<Integer> MinimumJumpTableSize = new OptionValue<>(5);
+    @Option(help = "")
+    public static final OptionValue<Integer> RangeTestsSwitchDensity = new OptionValue<>(5);
+    @Option(help = "")
+    public static final OptionValue<Double> MinTableSwitchDensity = new OptionValue<>(0.5);
 
     // Runtime settings
-    public static int     StackShadowPages                   = 2;
+    @Option(help = "")
+    public static final OptionValue<Integer> StackShadowPages = new OptionValue<>(2);
 
-    public static boolean SupportJsrBytecodes                = true;
+    @Option(help = "")
+    public static final OptionValue<Boolean> SupportJsrBytecodes = new OptionValue<>(true);
 
-    public static boolean OptAssumptions                     = true;
-    public static boolean OptConvertDeoptsToGuards           = true;
-    public static boolean OptReadElimination                 = true;
-    public static boolean OptEarlyReadElimination            = true;
-    public static boolean OptCanonicalizer                   = true;
-    public static boolean OptScheduleOutOfLoops              = true;
-    public static boolean OptEliminateGuards                 = true;
-    public static boolean OptEliminateSafepoints             = true;
-    public static boolean OptImplicitNullChecks              = true;
-    public static boolean OptLivenessAnalysis                = true;
-    public static boolean OptLoopTransform                   = true;
-    public static boolean OptFloatingReads                   = true;
-    public static boolean OptTailDuplication                 = true;
-    public static boolean OptEliminatePartiallyRedundantGuards = true;
-    public static boolean OptFilterProfiledTypes             = true;
-    public static boolean OptDevirtualizeInvokesOptimistically = true;
-    public static boolean OptPushThroughPi                   = true;
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptAssumptions = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptConvertDeoptsToGuards = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptReadElimination = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptCanonicalizer = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptEliminateGuards = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptEliminateSafepoints = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptImplicitNullChecks = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptLivenessAnalysis = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptLoopTransform = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptFloatingReads = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptTailDuplication = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptEliminatePartiallyRedundantGuards = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptFilterProfiledTypes = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptDevirtualizeInvokesOptimistically = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptPushThroughPi = new OptionValue<>(true);
 
     // Intrinsification settings
-    public static boolean IntrinsifyObjectClone              = ____;
-    public static boolean IntrinsifyArrayCopy                = true;
-    public static boolean IntrinsifyObjectMethods            = true;
-    public static boolean IntrinsifySystemMethods            = true;
-    public static boolean IntrinsifyClassMethods             = true;
-    public static boolean IntrinsifyThreadMethods            = true;
-    public static boolean IntrinsifyUnsafeMethods            = true;
-    public static boolean IntrinsifyMathMethods              = true;
-    public static boolean IntrinsifyAESMethods               = true;
-    public static boolean IntrinsifyReflectionMethods        = true;
-    public static boolean IntrinsifyInstalledCodeMethods     = true;
-    public static boolean IntrinsifyCallSiteTarget           = true;
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyObjectClone = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyArrayCopy = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyObjectMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifySystemMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyClassMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyThreadMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyUnsafeMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyMathMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyAESMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyReflectionMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyInstalledCodeMethods = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyCallSiteTarget = new OptionValue<>(true);
     /**
      * Counts the various paths taken through snippets.
      */
-    public static boolean SnippetCounters = false;
+    @Option(help = "")
+    public static final OptionValue<Boolean> SnippetCounters = new OptionValue<>(false);
 
     /**
      * If the probability that a checkcast will hit one the profiled types (up to {@link #CheckcastMaxHints})
      * is below this value, the checkcast will be compiled without hints.
      */
-    public static double CheckcastMinHintHitProbability = 0.5;
+    @Option(help = "")
+    public static final OptionValue<Double> CheckcastMinHintHitProbability = new OptionValue<>(0.5);
 
     /**
      * The maximum number of hint types that will be used when compiling a checkcast for which
      * profiling information is available. Note that {@link #CheckcastMinHintHitProbability}
      * also influences whether hints are used.
      */
-    public static int CheckcastMaxHints = 2;
+    @Option(help = "")
+    public static final OptionValue<Integer> CheckcastMaxHints = new OptionValue<>(2);
 
     /**
      * @see #CheckcastMinHintHitProbability
      */
-    public static double InstanceOfMinHintHitProbability = 0.5;
+    @Option(help = "")
+    public static final OptionValue<Double> InstanceOfMinHintHitProbability = new OptionValue<>(0.5);
 
     /**
      * @see #CheckcastMaxHints
      */
-    public static int InstanceOfMaxHints = 2;
-
-    static {
-        // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
-        assert (DetailedAsserts = true) == true;
-    }
+    @Option(help = "")
+    public static final OptionValue<Integer> InstanceOfMaxHints = new OptionValue<>(2);
 }

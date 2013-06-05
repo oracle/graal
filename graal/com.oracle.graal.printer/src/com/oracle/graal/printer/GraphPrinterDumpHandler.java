@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.io.*;
 import java.net.*;
 import java.nio.channels.*;
@@ -33,7 +35,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**
@@ -60,7 +61,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             previousInlineContext.clear();
-            if (GraalOptions.PrintIdealGraphFile) {
+            if (PrintIdealGraphFile.getValue()) {
                 initializeFilePrinter();
             } else {
                 initializeNetworkPrinter();
@@ -75,7 +76,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private void initializeFilePrinter() {
         String ext;
-        if (GraalOptions.PrintBinaryGraphs) {
+        if (PrintBinaryGraphs.getValue()) {
             ext = ".bgv";
         } else {
             ext = ".gv.xml";
@@ -91,7 +92,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
             num = "-" + Integer.toString(++i);
         }
         try {
-            if (GraalOptions.PrintBinaryGraphs) {
+            if (PrintBinaryGraphs.getValue()) {
                 printer = new BinaryGraphPrinter(FileChannel.open(file.toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
             } else {
                 printer = new IdealGraphPrinter(new FileOutputStream(file));
@@ -105,10 +106,10 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
     }
 
     private void initializeNetworkPrinter() {
-        String host = GraalOptions.PrintIdealGraphAddress;
-        int port = GraalOptions.PrintBinaryGraphs ? GraalOptions.PrintBinaryGraphPort : GraalOptions.PrintIdealGraphPort;
+        String host = PrintIdealGraphAddress.getValue();
+        int port = PrintBinaryGraphs.getValue() ? PrintBinaryGraphPort.getValue() : PrintIdealGraphPort.getValue();
         try {
-            if (GraalOptions.PrintBinaryGraphs) {
+            if (PrintBinaryGraphs.getValue()) {
                 printer = new BinaryGraphPrinter(SocketChannel.open(new InetSocketAddress(host, port)));
             } else {
                 IdealGraphPrinter xmlPrinter = new IdealGraphPrinter(new Socket(host, port).getOutputStream());

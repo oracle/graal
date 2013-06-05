@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.concurrent.*;
@@ -114,7 +115,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                 return;
             }
             inProgress = true;
-            if (GraalOptions.DynamicCompilePriority) {
+            if (DynamicCompilePriority.getValue()) {
                 int threadPriority = priority < SlowQueueCutoff.getValue() ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
                 if (Thread.currentThread().getPriority() != threadPriority) {
                     Thread.currentThread().setPriority(threadPriority);
@@ -139,17 +140,17 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public void runCompilation() {
         CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
         try (TimerCloseable a = CompilationTime.start()) {
-            final boolean printCompilation = GraalOptions.PrintCompilation && !TTY.isSuppressed();
+            final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(),
                                 entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") "));
             }
-            if (GraalOptions.HotSpotPrintCompilation) {
+            if (HotSpotPrintCompilation.getValue()) {
                 printCompilation();
             }
 
             CompilationResult result = null;
-            TTY.Filter filter = new TTY.Filter(GraalOptions.PrintFilter, method);
+            TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             long start = System.currentTimeMillis();
             try {
                 result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CompilationResult>() {
@@ -182,19 +183,19 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             installMethod(result);
         } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();
-            if (GraalOptions.ExitVMOnBailout) {
+            if (ExitVMOnBailout.getValue()) {
                 TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
                 System.exit(-1);
-            } else if (GraalOptions.PrintBailout) {
+            } else if (PrintBailout.getValue()) {
                 TTY.cachedOut.println(MetaUtil.format("Bailout in %H.%n(%p)", method));
                 bailout.printStackTrace(TTY.cachedOut);
             }
         } catch (Throwable t) {
-            if (GraalOptions.PrintStackTraceOnException || GraalOptions.ExitVMOnException) {
+            if (PrintStackTraceOnException.getValue() || ExitVMOnException.getValue()) {
                 t.printStackTrace(TTY.cachedOut);
             }
-            if (GraalOptions.ExitVMOnException) {
+            if (ExitVMOnException.getValue()) {
                 System.exit(-1);
             }
         }

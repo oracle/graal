@@ -48,6 +48,9 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
 
         @Override
         public ValueNode canonical(CanonicalizerTool tool) {
+            if (!usages().isEmpty()) {
+                return this;
+            }
             if (stateAfter() == null) {
                 return null;
             }

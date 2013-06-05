@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -31,7 +33,6 @@ import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.spi.Virtualizable.State;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 
 class VirtualizerToolImpl implements VirtualizerTool {
 
@@ -164,7 +165,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public int getMaximumEntryCount() {
-        return GraalOptions.MaximumEscapeAnalysisArrayLength;
+        return MaximumEscapeAnalysisArrayLength.getValue();
     }
 
     @Override
@@ -183,14 +184,14 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
-        if (GraalOptions.OptEarlyReadElimination) {
+        if (OptEarlyReadElimination.getValue()) {
             state.addReadCache(object, identity, value);
         }
     }
 
     @Override
     public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
-        if (GraalOptions.OptEarlyReadElimination) {
+        if (OptEarlyReadElimination.getValue()) {
             return state.getReadCache(object, identity);
         }
         return null;
@@ -198,7 +199,7 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void killReadCache(ResolvedJavaField identity) {
-        if (GraalOptions.OptEarlyReadElimination) {
+        if (OptEarlyReadElimination.getValue()) {
             state.killReadCache(identity);
         }
     }

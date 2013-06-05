@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 
 public final class VirtualUtil {
 
@@ -105,7 +106,7 @@ public final class VirtualUtil {
     }
 
     public static void trace(String format, Object... obj) {
-        if (GraalOptions.TraceEscapeAnalysis) {
+        if (TraceEscapeAnalysis.getValue()) {
             Debug.log(format, obj);
         }
     }

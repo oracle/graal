@@ -252,7 +252,8 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         ResolvedJavaMethod method1 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
         ResolvedJavaMethod method2 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
         assertEquals(0, method1.getMaxStackSize());
-        assertEquals(3, method2.getMaxStackSize());
+        // some versions of javac produce bytecode with a stacksize of 2 for this method
+        assertTrue(3 == method2.getMaxStackSize() || 2 == method2.getMaxStackSize());
     }
 
     private Method findTestMethod(Method apiMethod) {

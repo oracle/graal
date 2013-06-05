@@ -107,7 +107,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * @param effect specifies if the call destroys or preserves all registers (apart from
      *            temporaries which are always destroyed)
      * @param ccType calling convention type
-     * @param transition specifies if this is a {@linkplain #isLeaf() leaf} call
+     * @param transition specifies if this is a {@linkplain #canDeoptimize() leaf} call
      * @param reexecutable specifies if the call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a call that cannot be
      *            re-executed.
@@ -235,11 +235,8 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         return effect == DESTROYS_REGISTERS;
     }
 
-    /**
-     * Determines if this is call to a function that does not lock, GC or throw exceptions. That is,
-     * the thread's execution state during the call is never inspected by another thread.
-     */
-    public boolean isLeaf() {
-        return transition == Transition.LEAF;
+    @Override
+    public boolean canDeoptimize() {
+        return transition != Transition.LEAF;
     }
 }

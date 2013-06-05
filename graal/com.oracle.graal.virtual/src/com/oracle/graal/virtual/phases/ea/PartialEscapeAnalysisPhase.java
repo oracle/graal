@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -39,7 +41,7 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
+public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
 
     public abstract static class Closure<T> extends ReentrantBlockIterator.BlockIteratorClosure<T> {
 
@@ -63,12 +65,12 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         runAnalysis(graph, context);
     }
 
-    public boolean runAnalysis(final StructuredGraph graph, final HighTierContext context) {
-        if (!VirtualUtil.matches(graph, GraalOptions.EscapeAnalyzeOnly)) {
+    public boolean runAnalysis(final StructuredGraph graph, final PhaseContext context) {
+        if (!VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
             return false;
         }
 
@@ -87,7 +89,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
 
         boolean continueIteration = true;
         boolean changed = false;
-        for (int iteration = 0; iteration < GraalOptions.EscapeAnalysisIterations && continueIteration; iteration++) {
+        for (int iteration = 0; iteration < EscapeAnalysisIterations.getValue() && continueIteration; iteration++) {
             boolean currentChanged = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
 
                 @Override
@@ -109,7 +111,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
 
                     new DeadCodeEliminationPhase().apply(graph);
 
-                    if (GraalOptions.OptCanonicalizer) {
+                    if (OptCanonicalizer.getValue()) {
                         new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).apply(graph);
                     }
 
@@ -123,7 +125,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
         return changed;
     }
 
-    protected Closure<?> createAnalysisClosure(final HighTierContext context, SchedulePhase schedule) {
+    protected Closure<?> createAnalysisClosure(PhaseContext context, SchedulePhase schedule) {
         return new PartialEscapeClosure<>(schedule, context.getRuntime(), context.getAssumptions());
     }
 

@@ -20,20 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.code.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * Node for a {@linkplain ForeignCallDescriptor foreign} call.
+ * Node for a {@linkplain ForeignCallDescriptor foreign} call from within a stub.
  */
-@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint {
+@NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}")
+public class StubForeignCallNode extends FixedWithNextNode implements DeoptimizingNode, LIRLowerable, MemoryCheckpoint {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final MetaAccessProvider runtime;
@@ -41,23 +43,11 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     private final ForeignCallDescriptor descriptor;
 
-    public ForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public StubForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.runtime = runtime;
-    }
-
-    protected ForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, Stamp stamp) {
-        super(stamp);
-        this.arguments = new NodeInputList<>(this);
-        this.descriptor = descriptor;
-        this.runtime = runtime;
-    }
-
-    @Override
-    public boolean hasSideEffect() {
-        return !runtime.isReexecutable(descriptor);
     }
 
     public ForeignCallDescriptor getDescriptor() {
@@ -79,36 +69,13 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
+        assert graph().start() instanceof StubStartNode;
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.emitForeignCall(linkage, this, operands);
         if (result != null) {
             gen.setResult(this, result);
         }
-    }
-
-    @Override
-    public FrameState getDeoptimizationState() {
-        if (deoptState != null) {
-            return deoptState;
-        } else if (stateAfter() != null && canDeoptimize()) {
-            FrameState stateDuring = stateAfter();
-            if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
-                stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
-            }
-            setDeoptimizationState(stateDuring);
-            return stateDuring;
-        }
-        return null;
-    }
-
-    @Override
-    public void setDeoptimizationState(FrameState f) {
-        updateUsages(deoptState, f);
-        if (deoptState != null) {
-            throw new IllegalStateException(toString(Verbosity.Debugger));
-        }
-        deoptState = f;
     }
 
     @Override
@@ -121,7 +88,16 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     @Override
     public boolean canDeoptimize() {
-        return runtime.canDeoptimize(descriptor);
+        return false;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return null;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState state) {
     }
 
     @Override

@@ -23,6 +23,7 @@
 package com.oracle.graal.java;
 
 import static com.oracle.graal.bytecode.Bytecodes.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -31,7 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Builds a mapping between bytecodes and basic blocks and builds a conservative control flow graph
@@ -187,7 +187,7 @@ public final class BciBlockMapping {
         makeExceptionEntries();
         iterateOverBytecodes();
         if (hasJsrBytecodes) {
-            if (!GraalOptions.SupportJsrBytecodes) {
+            if (!SupportJsrBytecodes.getValue()) {
                 throw new JsrNotSupportedBailout("jsr/ret parsing disabled");
             }
             createJsrAlternatives(blockMap[0]);
@@ -209,7 +209,7 @@ public final class BciBlockMapping {
         if (Debug.isLogEnabled()) {
             this.log("Before LivenessAnalysis");
         }
-        if (GraalOptions.OptLivenessAnalysis) {
+        if (OptLivenessAnalysis.getValue()) {
             Debug.scope("LivenessAnalysis", new Runnable() {
 
                 @Override

@@ -443,6 +443,13 @@ public class HotSpotReplacementsUtil {
         return loadHubIntrinsic(object, getWordKind());
     }
 
+    /**
+     * Loads the hub from a object.
+     */
+    public static Word loadHubNoNullcheck(Object object) {
+        return loadWordFromObject(object, hubOffset());
+    }
+
     public static Object verifyOop(Object object) {
         if (verifyOops()) {
             verifyOopStub(VERIFY_OOP, object);

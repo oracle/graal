@@ -50,7 +50,6 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.phases.*;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -75,7 +74,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
      *            the current frame
      */
     protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
-        if (GraalOptions.StackShadowPages > 0) {
+        if (StackShadowPages.getValue() > 0) {
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
             int frameSize = tasm.frameMap.frameSize();
@@ -83,7 +82,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + GraalOptions.StackShadowPages) * unsafe.pageSize();
+                    int disp = (i + StackShadowPages.getValue()) * unsafe.pageSize();
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
@@ -112,7 +111,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
                 emitStackOverflowCheck(tasm, false);
             }
             asm.decrementq(rsp, frameSize);
-            if (GraalOptions.ZapStackOnMethodEntry) {
+            if (ZapStackOnMethodEntry.getValue()) {
                 final int intSize = 4;
                 for (int i = 0; i < frameSize / intSize; ++i) {
                     asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
@@ -158,7 +157,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         LIR lir = gen.lir;
-        boolean omitFrame = CanOmitFrame && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
+        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
 
         Stub stub = gen.getStub();
         AbstractAssembler masm = createAssembler(frameMap);

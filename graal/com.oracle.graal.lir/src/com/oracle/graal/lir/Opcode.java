@@ -20,22 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.lir;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import java.lang.annotation.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.nodes.spi.*;
+/**
+ * Denotes an opcode name for an annotated {@link LIRInstruction}.
+ * <p>
+ * Note: Unlike the other LIR related annotations declared as inner classes of
+ * {@link LIRInstruction}, this annotation is in a top level file to work around a <a
+ * href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=409824">bug</a> in Eclipse causing spurious
+ * warnings about unused imports.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.FIELD})
+public @interface Opcode {
 
-@ServiceProvider(ReplacementsProvider.class)
-public class HotSpotNmethodIntrinsics implements ReplacementsProvider {
-
-    @Override
-    public void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-        if (IntrinsifyInstalledCodeMethods.getValue()) {
-            replacements.registerSubstitutions(HotSpotNmethodSubstitutions.class);
-        }
-    }
+    String value() default "";
 }

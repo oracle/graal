@@ -23,6 +23,7 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
@@ -48,7 +48,7 @@ import com.oracle.graal.virtual.nodes.*;
 import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
-class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnalysisPhase.Closure<BlockT> {
+public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnalysisPhase.Closure<BlockT> {
 
     public static final DebugMetric METRIC_MATERIALIZATIONS = Debug.metric("Materializations");
     public static final DebugMetric METRIC_MATERIALIZATIONS_PHI = Debug.metric("MaterializationsPhi");
@@ -167,7 +167,7 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
                 VirtualUtil.trace("%s ", node);
                 deleted = false;
             }
-            if (GraalOptions.OptEarlyReadElimination) {
+            if (OptEarlyReadElimination.getValue()) {
                 if (!deleted && node instanceof MemoryCheckpoint) {
                     METRIC_MEMORYCHECKOINT.increment();
                     MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;
@@ -476,7 +476,8 @@ class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnaly
 
         @SuppressWarnings("unchecked")
         private void merge(List<BlockT> states) {
-            newState = (BlockT) states.get(0).meetAliases(states);
+            newState = (BlockT) states.get(0).cloneEmptyState();
+            newState.meetAliases(states);
 
             /*
              * Iterative processing: Merging the materialized/virtual state of virtual objects can
