@@ -41,7 +41,7 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
+public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
 
     public abstract static class Closure<T> extends ReentrantBlockIterator.BlockIteratorClosure<T> {
 
@@ -65,11 +65,11 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         runAnalysis(graph, context);
     }
 
-    public boolean runAnalysis(final StructuredGraph graph, final HighTierContext context) {
+    public boolean runAnalysis(final StructuredGraph graph, final PhaseContext context) {
         if (!VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
             return false;
         }
@@ -125,7 +125,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<HighTierContext> {
         return changed;
     }
 
-    protected Closure<?> createAnalysisClosure(final HighTierContext context, SchedulePhase schedule) {
+    protected Closure<?> createAnalysisClosure(PhaseContext context, SchedulePhase schedule) {
         return new PartialEscapeClosure<>(schedule, context.getRuntime(), context.getAssumptions());
     }
 
