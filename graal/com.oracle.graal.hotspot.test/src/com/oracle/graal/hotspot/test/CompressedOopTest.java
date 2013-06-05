@@ -306,8 +306,8 @@ public class CompressedOopTest extends GraalCompilerTest {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     public static void compareAndSwapTest(Object c1, Object c2, Object c3) throws ClassCastException {
-        @SuppressWarnings("unchecked")
         AtomicReference<Object> cas = (AtomicReference<Object>) c1;
         cas.compareAndSet(c2, c3);
     }
