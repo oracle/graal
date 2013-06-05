@@ -61,6 +61,10 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         }
     }
 
+    public void removeAnchoredNode(ValueNode value) {
+        this.anchored.remove(value);
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (permanent) {

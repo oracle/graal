@@ -33,6 +33,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -284,40 +285,57 @@ public class NodeIntrinsificationPhase extends Phase {
         if (newInstance instanceof ValueNode && (((ValueNode) newInstance).kind() != Kind.Object || ((ValueNode) newInstance).stamp() == StampFactory.forNodeIntrinsic())) {
             StructuredGraph graph = (StructuredGraph) newInstance.graph();
             for (CheckCastNode checkCastNode : newInstance.usages().filter(CheckCastNode.class).snapshot()) {
-                for (ProxyNode vpn : checkCastNode.usages().filter(ProxyNode.class).snapshot()) {
-                    graph.replaceFloating(vpn, checkCastNode);
-                }
                 for (Node checkCastUsage : checkCastNode.usages().snapshot()) {
-                    if (checkCastUsage instanceof ValueAnchorNode) {
-                        ValueAnchorNode valueAnchorNode = (ValueAnchorNode) checkCastUsage;
-                        graph.removeFixed(valueAnchorNode);
-                    } else if (checkCastUsage instanceof UnboxNode) {
-                        UnboxNode unbox = (UnboxNode) checkCastUsage;
-                        unbox.replaceAtUsages(newInstance);
-                        graph.removeFixed(unbox);
-                    } else if (checkCastUsage instanceof MethodCallTargetNode) {
-                        MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) checkCastUsage;
-                        assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(checkCastNode) +
-                                        " not used by an unboxing method or node intrinsic, but by a call at " + sourceLocation(checkCastCallTarget.usages().first()) + " to " +
-                                        checkCastCallTarget.targetMethod();
-                        checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
-                    } else if (checkCastUsage instanceof FrameState) {
-                        checkCastUsage.replaceFirstInput(checkCastNode, null);
-                    } else if (checkCastUsage instanceof ReturnNode && checkCastNode.object().stamp() == StampFactory.forNodeIntrinsic()) {
-                        checkCastUsage.replaceFirstInput(checkCastNode, checkCastNode.object());
-                    } else if (checkCastUsage instanceof IsNullNode) {
-                        assert checkCastUsage.usages().count() == 1 && checkCastUsage.usages().first().predecessor() == checkCastNode;
-                        graph.replaceFloating((FloatingNode) checkCastUsage, LogicConstantNode.contradiction(graph));
-                    } else {
-                        Debug.dump(graph, "exception");
-                        assert false : sourceLocation(checkCastUsage) + " has unexpected usage " + checkCastUsage + " of checkcast at " + sourceLocation(checkCastNode);
-                    }
+                    checkCheckCastUsage(graph, newInstance, checkCastNode, checkCastUsage);
                 }
                 FixedNode next = checkCastNode.next();
                 checkCastNode.setNext(null);
                 checkCastNode.replaceAtPredecessor(next);
                 GraphUtil.killCFG(checkCastNode);
             }
+        }
+    }
+
+    private static void checkCheckCastUsage(StructuredGraph graph, Node intrinsifiedNode, Node input, Node usage) {
+        if (usage instanceof ValueAnchorNode) {
+            ValueAnchorNode valueAnchorNode = (ValueAnchorNode) usage;
+            valueAnchorNode.removeAnchoredNode((ValueNode) input);
+            Debug.log("%s: Removed a ValueAnchor input", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof UnboxNode) {
+            UnboxNode unbox = (UnboxNode) usage;
+            unbox.replaceAtUsages(intrinsifiedNode);
+            graph.removeFixed(unbox);
+            Debug.log("%s: Removed an UnboxNode", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof MethodCallTargetNode) {
+            MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) usage;
+            assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(input) +
+                            " not used by an unboxing method or node intrinsic, but by a call at " + sourceLocation(checkCastCallTarget.usages().first()) + " to " + checkCastCallTarget.targetMethod();
+            usage.replaceFirstInput(input, intrinsifiedNode);
+            Debug.log("%s: Checkcast used in an other node intrinsic", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof FrameState) {
+            usage.replaceFirstInput(input, null);
+            Debug.log("%s: Checkcast used in a FS", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof ReturnNode && ((ValueNode) intrinsifiedNode).stamp() == StampFactory.forNodeIntrinsic()) {
+            usage.replaceFirstInput(input, intrinsifiedNode);
+            Debug.log("%s: Checkcast used in a return with forNodeIntrinsic stamp", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof IsNullNode) {
+            assert usage.usages().count() == 1 && usage.usages().first().predecessor() == input;
+            graph.replaceFloating((FloatingNode) usage, LogicConstantNode.contradiction(graph));
+            Debug.log("%s: Replaced IsNull with false", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof ProxyNode) {
+            ProxyNode proxy = (ProxyNode) usage;
+            assert proxy.type() == PhiType.Value;
+            ProxyNode newProxy = graph.unique(new ProxyNode((ValueNode) intrinsifiedNode, proxy.proxyPoint(), PhiType.Value, proxy.getIdentity()));
+            for (Node proxyUsage : usage.usages().snapshot()) {
+                checkCheckCastUsage(graph, newProxy, proxy, proxyUsage);
+            }
+        } else if (usage instanceof PiNode) {
+            for (Node piUsage : usage.usages().snapshot()) {
+                checkCheckCastUsage(graph, intrinsifiedNode, usage, piUsage);
+            }
+        } else {
+            Debug.dump(graph, "exception");
+            assert false : sourceLocation(usage) + " has unexpected usage " + usage + " of checkcast at " + sourceLocation(input);
         }
     }
 }

@@ -1271,6 +1271,10 @@ public class InliningUtil {
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
+        GuardingNode receiverNullCheckNode = null;
+        if (receiverNullCheck) {
+            receiverNullCheckNode = receiverNullCheck(invoke);
+        }
 
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
         ArrayList<Node> nodes = new ArrayList<>();
@@ -1282,7 +1286,18 @@ public class InliningUtil {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
                 // Do nothing.
             } else if (node instanceof LocalNode) {
-                replacements.put(node, parameters.get(((LocalNode) node).index()));
+                int localIndex = ((LocalNode) node).index();
+                ValueNode parameter = parameters.get(localIndex);
+                if (receiverNullCheckNode != null && localIndex == 0) {
+                    Stamp piStamp = parameter.stamp();
+                    if (piStamp instanceof ObjectStamp) {
+                        piStamp = piStamp.join(StampFactory.objectNonNull());
+                    }
+                    PiNode piReceiver = graph.add(new PiNode(parameter, piStamp));
+                    piReceiver.setGuard(receiverNullCheckNode);
+                    parameter = piReceiver;
+                }
+                replacements.put(node, parameter);
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
@@ -1302,9 +1317,6 @@ public class InliningUtil {
 
         Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        if (receiverNullCheck) {
-            receiverNullCheck(invoke);
-        }
         invoke.asNode().replaceAtPredecessor(firstCFGNodeDuplicate);
 
         FrameState stateAtExceptionEdge = null;
@@ -1410,15 +1422,17 @@ public class InliningUtil {
         return true;
     }
 
-    public static void receiverNullCheck(Invoke invoke) {
+    public static GuardingNode receiverNullCheck(Invoke invoke) {
         MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
         StructuredGraph graph = callTarget.graph();
         NodeInputList<ValueNode> parameters = callTarget.arguments();
         ValueNode firstParam = parameters.size() <= 0 ? null : parameters.get(0);
         if (!callTarget.isStatic() && firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
-            graph.addBeforeFixed(invoke.asNode(),
-                            graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true)));
+            FixedGuardNode guard = graph.add(new FixedGuardNode(graph.unique(new IsNullNode(firstParam)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true));
+            graph.addBeforeFixed(invoke.asNode(), guard);
+            return guard;
         }
+        return null;
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target) {
