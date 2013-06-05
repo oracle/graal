@@ -36,7 +36,6 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
@@ -50,16 +49,10 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
         public abstract void applyEffects();
     }
 
-    private final CustomCanonicalizer customCanonicalizer;
     private final boolean iterative;
     private final boolean readElimination;
 
     public PartialEscapeAnalysisPhase(boolean iterative, boolean readElimination) {
-        this(null, iterative, readElimination);
-    }
-
-    public PartialEscapeAnalysisPhase(CustomCanonicalizer customCanonicalizer, boolean iterative, boolean readElimination) {
-        this.customCanonicalizer = customCanonicalizer;
         this.iterative = iterative;
         this.readElimination = readElimination;
     }
@@ -112,7 +105,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
-                        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), null, customCanonicalizer).apply(graph);
+                        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions()).apply(graph);
                     }
 
                     return true;
