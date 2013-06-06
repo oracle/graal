@@ -131,29 +131,7 @@ public class OptionProcessor extends AbstractProcessor {
         Filer filer = processingEnv.getFiler();
         try (PrintWriter out = createSourceFile(pkg, providerClassName, filer, originatingElements)) {
 
-            out.println("/*");
-            out.println(" * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.");
-            out.println(" * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.");
-            out.println(" *");
-            out.println(" * This code is free software; you can redistribute it and/or modify it");
-            out.println(" * under the terms of the GNU General Public License version 2 only, as");
-            out.println(" * published by the Free Software Foundation.");
-            out.println(" *");
-            out.println(" * This code is distributed in the hope that it will be useful, but WITHOUT");
-            out.println(" * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or");
-            out.println(" * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License");
-            out.println(" * version 2 for more details (a copy is included in the LICENSE file that");
-            out.println(" * accompanied this code).");
-            out.println(" *");
-            out.println(" * You should have received a copy of the GNU General Public License version");
-            out.println(" * 2 along with this work; if not, write to the Free Software Foundation,");
-            out.println(" * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.");
-            out.println(" *");
-            out.println(" * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA");
-            out.println(" * or visit www.oracle.com if you need additional information or have any");
-            out.println(" * questions.");
-            out.println(" */");
-
+            out.println("// CheckStyle: stop header check");
             out.println("package " + pkg + ";");
             out.println("");
             if (element.getModifiers().contains(Modifier.PRIVATE)) {
