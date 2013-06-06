@@ -37,7 +37,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
 
         if (FullUnroll.getValue()) {
-            addPhase(new LoopFullUnrollPhase());
+            addPhase(new LoopFullUnrollPhase(OptCanonicalizeReads.getValue()));
         }
 
         if (OptTailDuplication.getValue()) {

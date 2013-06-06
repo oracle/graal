@@ -85,7 +85,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         // additions, etc.
         HighTierContext context = new HighTierContext(tool.getRuntime(), tool.assumptions(), tool.getReplacements());
         new CanonicalizerPhase(true).apply(snippetGraph, context);
-        new LoopFullUnrollPhase().apply(snippetGraph, context);
+        new LoopFullUnrollPhase(true).apply(snippetGraph, context);
         new CanonicalizerPhase(true).apply(snippetGraph, context);
     }
 
