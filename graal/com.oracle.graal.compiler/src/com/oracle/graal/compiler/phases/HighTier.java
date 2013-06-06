@@ -63,7 +63,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(new CanonicalizerPhase());
+            addPhase(new CanonicalizerPhase.Context());
         }
 
         addPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));

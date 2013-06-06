@@ -35,7 +35,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         if (OptPushThroughPi.getValue()) {
             addPhase(new PushThroughPiPhase());
             if (OptCanonicalizer.getValue()) {
-                addPhase(new CanonicalizerPhase());
+                addPhase(new CanonicalizerPhase.Context());
             }
         }
 
@@ -50,7 +50,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         addPhase(new RemoveValueProxyPhase());
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(new CanonicalizerPhase());
+            addPhase(new CanonicalizerPhase.Context());
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
@@ -66,7 +66,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(new CanonicalizerPhase());
+            addPhase(new CanonicalizerPhase.Context());
         }
 
         addPhase(new LoopSafepointEliminationPhase());
@@ -76,7 +76,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         addPhase(new GuardLoweringPhase());
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(new CanonicalizerPhase());
+            addPhase(new CanonicalizerPhase.Context());
         }
     }
 }
