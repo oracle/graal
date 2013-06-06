@@ -37,7 +37,8 @@ public class HotSpotOptions {
         for (OptionProvider provider : sl) {
             if (provider.getClass().getName().startsWith("com.oracle.graal")) {
                 String name = provider.getName();
-                options.put(name, provider);
+                OptionProvider existing = options.put(name, provider);
+                assert existing == null : name + " option has multiple definitions: " + existing.getClass() + " and " + provider.getClass();
             }
         }
     }
