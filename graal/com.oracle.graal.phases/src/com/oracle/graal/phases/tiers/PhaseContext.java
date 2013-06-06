@@ -24,22 +24,18 @@ package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 
 public class PhaseContext {
 
     private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
     private final Replacements replacements;
-    private final BasePhase<PhaseContext> canonicalizer;
 
-    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, BasePhase<PhaseContext> canonicalizer) {
+    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
         this.runtime = runtime;
         this.assumptions = assumptions;
         this.replacements = replacements;
-        this.canonicalizer = canonicalizer;
     }
 
     public MetaAccessProvider getRuntime() {
@@ -52,13 +48,5 @@ public class PhaseContext {
 
     public Replacements getReplacements() {
         return replacements;
-    }
-
-    private BasePhase<PhaseContext> getCanonicalizer() {
-        return canonicalizer;
-    }
-
-    public void applyCanonicalizer(StructuredGraph graph) {
-        getCanonicalizer().apply(graph, this);
     }
 }

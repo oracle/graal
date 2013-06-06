@@ -161,15 +161,16 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
                 StructuredGraph graph = parse(snippet);
 
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, new CanonicalizerPhase(true));
+                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                context.applyCanonicalizer(graph);
-                new PartialEscapeAnalysisPhase(false, false).apply(graph, context);
+                CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+                canonicalizer.apply(graph, context);
+                new PartialEscapeAnalysisPhase(false, false, canonicalizer).apply(graph, context);
 
                 new CullFrameStatesPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                context.applyCanonicalizer(graph);
+                canonicalizer.apply(graph, context);
                 return graph;
             }
         });

@@ -34,6 +34,8 @@ import com.oracle.graal.virtual.phases.ea.*;
 public class HighTier extends PhaseSuite<HighTierContext> {
 
     public HighTier() {
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
+
         if (FullUnroll.getValue()) {
             addPhase(new LoopFullUnrollPhase());
         }
@@ -43,7 +45,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (PartialEscapeAnalysis.getValue()) {
-            addPhase(new PartialEscapeAnalysisPhase(true, OptEarlyReadElimination.getValue()));
+            addPhase(new PartialEscapeAnalysisPhase(true, OptEarlyReadElimination.getValue(), canonicalizer));
         }
 
         if (OptConvertDeoptsToGuards.getValue()) {
@@ -63,10 +65,9 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(new CanonicalizerPhase.Context());
+            addPhase(canonicalizer);
         }
 
         addPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));
     }
-
 }

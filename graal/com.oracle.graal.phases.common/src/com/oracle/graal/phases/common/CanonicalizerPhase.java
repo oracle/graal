@@ -359,12 +359,4 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
     }
-
-    public static class Context extends BasePhase<PhaseContext> {
-
-        @Override
-        protected void run(StructuredGraph graph, PhaseContext context) {
-            context.applyCanonicalizer(graph);
-        }
-    }
 }

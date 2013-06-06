@@ -32,9 +32,8 @@ public class MidTierContext extends PhaseContext {
     private final TargetDescription target;
     private final OptimisticOptimizations optimisticOpts;
 
-    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, BasePhase<PhaseContext> canonicalizer, TargetDescription target,
-                    OptimisticOptimizations optimisticOpts) {
-        super(runtime, assumptions, replacements, canonicalizer);
+    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, TargetDescription target, OptimisticOptimizations optimisticOpts) {
+        super(runtime, assumptions, replacements);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
     }

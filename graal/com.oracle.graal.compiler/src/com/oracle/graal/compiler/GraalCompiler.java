@@ -141,21 +141,21 @@ public class GraalCompiler {
         }
 
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
-        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements, canonicalizer);
+        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
 
         if (OptCanonicalizer.getValue()) {
-            highTierContext.applyCanonicalizer(graph);
+            canonicalizer.apply(graph, highTierContext);
         }
 
         if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (IterativeInlining.getValue()) {
-                new IterativeInliningPhase(replacements, cache, plan, optimisticOpts, OptEarlyReadElimination.getValue()).apply(graph, highTierContext);
+                new IterativeInliningPhase(replacements, cache, plan, optimisticOpts, OptEarlyReadElimination.getValue(), canonicalizer).apply(graph, highTierContext);
             } else {
                 new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                    highTierContext.applyCanonicalizer(graph);
+                    canonicalizer.apply(graph, highTierContext);
                     new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
                 }
             }
@@ -165,12 +165,12 @@ public class GraalCompiler {
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
         Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
 
-        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, canonicalizer, target, optimisticOpts);
+        MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);
         Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
 
         plan.runPhases(PhasePosition.LOW_LEVEL, graph);
 
-        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, canonicalizer, target);
+        LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
         Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
         InliningPhase.storeStatisticsAfterLowTier(graph);
 

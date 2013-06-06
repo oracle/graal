@@ -51,10 +51,12 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
 
     private final boolean iterative;
     private final boolean readElimination;
+    private final CanonicalizerPhase canonicalizer;
 
-    public PartialEscapeAnalysisPhase(boolean iterative, boolean readElimination) {
+    public PartialEscapeAnalysisPhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer) {
         this.iterative = iterative;
         this.readElimination = readElimination;
+        this.canonicalizer = canonicalizer;
     }
 
     @Override
@@ -105,7 +107,7 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
-                        context.applyCanonicalizer(graph);
+                        canonicalizer.apply(graph, context);
                     }
 
                     return true;

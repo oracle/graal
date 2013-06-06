@@ -25,11 +25,10 @@ package com.oracle.graal.phases.tiers;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 
 public class HighTierContext extends PhaseContext {
 
-    public HighTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, BasePhase<PhaseContext> canonicalizer) {
-        super(runtime, assumptions, replacements, canonicalizer);
+    public HighTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
+        super(runtime, assumptions, replacements);
     }
 }

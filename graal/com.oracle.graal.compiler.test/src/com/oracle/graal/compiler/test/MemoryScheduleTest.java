@@ -220,8 +220,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             public SchedulePhase call() throws Exception {
                 StructuredGraph graph = parse(snippet);
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, new CanonicalizerPhase(true));
-                context.applyCanonicalizer(graph);
+                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
+                new CanonicalizerPhase(true).apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 }

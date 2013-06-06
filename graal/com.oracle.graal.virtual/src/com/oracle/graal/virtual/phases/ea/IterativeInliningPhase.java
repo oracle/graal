@@ -42,13 +42,15 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
     private final boolean readElimination;
+    private final CanonicalizerPhase canonicalizer;
 
-    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination) {
+    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination, CanonicalizerPhase canonicalizer) {
         this.replacements = replacements;
         this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
         this.readElimination = readElimination;
+        this.canonicalizer = canonicalizer;
     }
 
     public static final void trace(String format, Object... obj) {
@@ -71,7 +73,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
                 @Override
                 public Boolean call() {
                     boolean progress = false;
-                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(false, readElimination);
+                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(false, readElimination, canonicalizer);
                     boolean eaResult = ea.runAnalysis(graph, context);
                     progress |= eaResult;
 
@@ -85,7 +87,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
                     new DeadCodeEliminationPhase().apply(graph);
 
                     if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                        context.applyCanonicalizer(graph);
+                        canonicalizer.apply(graph, context);
                         new IterativeConditionalEliminationPhase().apply(graph, context);
                     }
 
