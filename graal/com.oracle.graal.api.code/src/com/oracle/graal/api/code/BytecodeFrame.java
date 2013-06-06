@@ -82,6 +82,13 @@ public class BytecodeFrame extends BytecodePosition implements Serializable {
      */
     public final int numLocks;
 
+    /**
+     * True if this is a position inside an exception handler before the exception object has been
+     * consumed. In this case, {@link #numStack == 1} and {@link #getStackValue(int)
+     * getStackValue(0)} is the location of the exception object. If deoptimization happens at this
+     * position, the interpreter will rethrow the exception instead of executing the bytecode
+     * instruction at this position.
+     */
     public final boolean rethrowException;
 
     public final boolean duringCall;

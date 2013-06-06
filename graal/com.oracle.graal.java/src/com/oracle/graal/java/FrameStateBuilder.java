@@ -49,6 +49,10 @@ public class FrameStateBuilder {
     private ValueNode[] locks;
 
     private int stackSize;
+
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     private boolean rethrowException;
 
     public FrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
@@ -308,10 +312,16 @@ public class FrameStateBuilder {
         }
     }
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     public boolean rethrowException() {
         return rethrowException;
     }
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     public void setRethrowException(boolean b) {
         rethrowException = b;
     }
