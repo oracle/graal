@@ -439,29 +439,30 @@ public class InliningPhase extends Phase {
                 return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph: %d", lowLevelGraphSize);
             }
 
+            int nodes = determineNodeCount(info);
+            if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (nodes=%d)", nodes);
+            }
+
             /*
              * TODO (chaeubl): invoked methods that are on important paths but not yet compiled ->
              * will be compiled anyways and it is likely that we are the only caller... might be
              * useful to inline those methods but increases bootstrap time (maybe those methods are
              * also getting queued in the compilation queue concurrently)
              */
-
-            int nodes = determineNodeCount(info);
-            if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (nodes=%d)", nodes);
-            }
-
             double invokes = determineInvokeProbability(info);
             if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "invoke probability is too high (%f)", invokes);
+                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (%f)", invokes);
             }
 
             double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
-            if (nodes < maximumNodes) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, nodes=%d)", relevance, nodes);
+            if (nodes <= maximumNodes) {
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= max=%f)", relevance, probability,
+                                inliningBonus, nodes, maximumNodes);
             }
 
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "(relevance=%f, probability=%f, bonus=%f)", relevance, probability, inliningBonus);
+            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > max=%f)", relevance, probability, inliningBonus, nodes,
+                            maximumNodes);
         }
     }
 
