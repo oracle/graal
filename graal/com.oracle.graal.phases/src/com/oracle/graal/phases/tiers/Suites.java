@@ -32,7 +32,7 @@ public final class Suites {
 
     // @formatter:off
     @Option(help = "The compiler configuration to use")
-    private static final OptionValue<String> CompilerConfiguration = OptionValue.newOption("basic");
+    private static final OptionValue<String> CompilerConfiguration = new OptionValue<>("basic");
     // @formatter:on
 
     public static final Suites DEFAULT;

@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
-import static com.oracle.graal.options.OptionValue.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
@@ -47,7 +46,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     //@formatter:off
     @Option(help = "")
-    public static final OptionValue<Integer> SlowQueueCutoff = newOption(100000);
+    public static final OptionValue<Integer> SlowQueueCutoff = new OptionValue<>(100000);
     //@formatter:on
 
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {

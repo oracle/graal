@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
-//import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -38,6 +37,8 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+
+//import static com.oracle.graal.phases.GraalOptions.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
@@ -88,7 +89,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     // @formatter:off
     @Option(help = "The runtime configuration to use")
-    private static final OptionValue<String> GraalRuntime = OptionValue.newOption("basic");
+    private static final OptionValue<String> GraalRuntime = new OptionValue<>("basic");
     // @formatter:on
 
     protected static HotSpotGraalRuntimeFactory findFactory(String architecture) {

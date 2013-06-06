@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.options.OptionValue.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
@@ -49,7 +48,7 @@ public class InliningPhase extends Phase {
 
     // @formatter:off
     @Option(help = "Unconditionally inline intrinsics")
-    public static final OptionValue<Boolean> AlwaysInlineIntrinsics = newOption(false);
+    public static final OptionValue<Boolean> AlwaysInlineIntrinsics = new OptionValue<>(false);
     // @formatter:on
 
     private final PhasePlan plan;

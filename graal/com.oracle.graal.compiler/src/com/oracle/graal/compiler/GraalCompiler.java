@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler;
 
-import static com.oracle.graal.options.OptionValue.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
@@ -58,9 +57,9 @@ public class GraalCompiler {
 
     // @formatter:off
     @Option(help = "")
-    public static final OptionValue<Boolean> VerifyUsageWithEquals = newOption(true);
+    public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
     @Option(help = "Enable inlining")
-    public static final OptionValue<Boolean> Inline = newOption(true);
+    public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
     // @formatter:on
 
     /**

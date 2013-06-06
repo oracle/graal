@@ -22,59 +22,54 @@
  */
 package com.oracle.graal.options;
 
-import java.util.*;
-
 /**
- * A settable option value.
- * <p>
- * To access {@link OptionProvider} instances via a {@link ServiceLoader} for working with options,
- * instances of this class should be assigned to static final fields that are annotated with
- * {@link Option}.
+ * A settable option that always returns the same {@linkplain #getValue() value}.
  */
-public class OptionValue<T> {
+public class StableOptionValue<T> extends OptionValue<T> {
 
     /**
-     * The raw option value.
+     * Creates a stable option value.
      */
-    protected T value;
-
-    public OptionValue(T value) {
-        this.value = value;
+    public StableOptionValue(T value) {
+        super(value);
     }
 
-    private static final Object UNINITIALIZED = "UNINITIALIZED";
+    /**
+     * Used to assert the invariant for stability. Without using locks, this check is not safe
+     * against races and so it's only an assertion.
+     */
+    private boolean getValueCalled;
 
     /**
-     * Creates an uninitialized option value for a subclass that initializes itself
+     * Creates an uninitialized stable option value for a subclass that initializes itself
      * {@link #initialValue() lazily}.
      */
-    @SuppressWarnings("unchecked")
-    protected OptionValue() {
-        this.value = (T) UNINITIALIZED;
-    }
-
-    /**
-     * Lazy initialization of value.
-     */
-    protected T initialValue() {
-        throw new InternalError("Uninitialized option value must override initialValue()");
+    public StableOptionValue() {
     }
 
     /**
      * Gets the value of this option.
      */
-    public T getValue() {
-        if (value == UNINITIALIZED) {
-            value = initialValue();
-        }
-        return value;
+    @Override
+    public final T getValue() {
+        T result = super.getValue();
+        assert initGetValueCalled();
+        return result;
+    }
+
+    private boolean initGetValueCalled() {
+        getValueCalled = true;
+        return true;
     }
 
     /**
-     * Sets the value of this option.
+     * {@inheritDoc}
+     * <p>
+     * This must only be called if {@link #getValue()} has never been called.
      */
-    @SuppressWarnings("unchecked")
-    public void setValue(Object v) {
-        this.value = (T) v;
+    @Override
+    public final void setValue(Object v) {
+        assert !getValueCalled;
+        super.setValue(v);
     }
 }

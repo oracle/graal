@@ -28,7 +28,6 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.CompilationTask.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.java.GraphBuilderPhase.*;
-import static com.oracle.graal.options.OptionValue.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.*;
@@ -63,22 +62,22 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     //@formatter:off
     @Option(help = "File to which compiler logging is sent")
-    private static final OptionValue<String> LogFile = OptionValue.newOption(null);
+    private static final OptionValue<String> LogFile = new OptionValue<>(null);
 
     @Option(help = "Use low priority compilation threads")
-    private static final OptionValue<Boolean> SlowCompileThreads = newOption(false);
+    private static final OptionValue<Boolean> SlowCompileThreads = new OptionValue<>(false);
 
     @Option(help = "Use priority-based compilation queue")
-    private static final OptionValue<Boolean> PriorityCompileQueue = OptionValue.newOption(true);
+    private static final OptionValue<Boolean> PriorityCompileQueue = new OptionValue<>(true);
 
     @Option(help = "Print compilation queue activity periodically")
-    private static final OptionValue<Boolean> PrintQueue = OptionValue.newOption(false);
+    private static final OptionValue<Boolean> PrintQueue = new OptionValue<>(false);
 
     @Option(help = "Time limit in milliseconds for bootstrap (-1 for no limit)")
-    private static final OptionValue<Integer> TimedBootstrap = OptionValue.newOption(-1);
+    private static final OptionValue<Integer> TimedBootstrap = new OptionValue<>(-1);
 
     @Option(help = "Number of compilation threads to use")
-    private static final OptionValue<Integer> Threads = new OptionValue<Integer>(true) {
+    private static final StableOptionValue<Integer> Threads = new StableOptionValue<Integer>() {
 
         @Override
         public Integer initialValue() {
@@ -87,10 +86,10 @@ public class VMToCompilerImpl implements VMToCompiler {
     };
 
     @Option(help = "")
-    private static final OptionValue<Boolean> GenericDynamicCounters = newOption(false);
+    private static final OptionValue<Boolean> GenericDynamicCounters = new OptionValue<>(false);
 
     @Option(help = "")
-    private static final OptionValue<String> BenchmarkDynamicCounters = OptionValue.newOption(null);
+    private static final OptionValue<String> BenchmarkDynamicCounters = new OptionValue<>(null);
     //@formatter:on
 
     private final HotSpotGraalRuntime graalRuntime;

@@ -103,11 +103,9 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
                 }
             } else {
                 Class<?> clazz = object.getClass();
-                if (OptionValue.class.isAssignableFrom(clazz)) {
-                    OptionValue<?> option = (OptionValue<?>) object;
-                    if (option.isStable()) {
-                        return Constant.forObject(option.getValue());
-                    }
+                if (StableOptionValue.class.isAssignableFrom(clazz)) {
+                    StableOptionValue<?> option = (StableOptionValue<?>) object;
+                    return Constant.forObject(option.getValue());
                 }
             }
         }
