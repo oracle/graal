@@ -59,7 +59,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, new CanonicalizerPhase());
+                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, new CanonicalizerPhase(true));
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 new FloatingReadPhase().apply(graph);
 

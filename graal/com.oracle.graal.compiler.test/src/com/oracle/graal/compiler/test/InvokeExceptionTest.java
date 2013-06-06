@@ -66,7 +66,7 @@ public class InvokeExceptionTest extends GraalCompilerTest {
         }
         Assumptions assumptions = new Assumptions(false);
         new InliningPhase(runtime(), hints, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
     }
 }

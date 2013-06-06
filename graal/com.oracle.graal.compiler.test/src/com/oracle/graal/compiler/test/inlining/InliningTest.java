@@ -161,7 +161,7 @@ public class InliningTest extends GraalCompilerTest {
                 Debug.dump(graph, "Graph");
                 new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");
-                new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;
             }
