@@ -88,7 +88,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     // @formatter:off
     @Option(help = "The runtime configuration to use")
-    private static final OptionValue<String> GraalRuntime = new OptionValue<>("basic");
+    private static final OptionValue<String> GraalRuntime = OptionValue.newOption("basic");
     // @formatter:on
 
     protected static HotSpotGraalRuntimeFactory findFactory(String architecture) {

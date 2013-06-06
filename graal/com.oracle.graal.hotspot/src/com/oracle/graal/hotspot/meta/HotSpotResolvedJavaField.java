@@ -95,10 +95,19 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              * have a non-default value.
              */
             assert !Modifier.isStatic(flags);
+            Object object = receiver.asObject();
             if (Modifier.isFinal(getModifiers())) {
                 Constant value = readValue(receiver);
-                if (assumeNonStaticFinalFieldsAsFinal(receiver.asObject().getClass()) || !value.isDefaultForKind()) {
+                if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
                     return value;
+                }
+            } else {
+                Class<?> clazz = object.getClass();
+                if (OptionValue.class.isAssignableFrom(clazz)) {
+                    OptionValue<?> option = (OptionValue<?>) object;
+                    if (option.isStable()) {
+                        return Constant.forObject(option.getValue());
+                    }
                 }
             }
         }
@@ -120,9 +129,6 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {
-        if (clazz == OptionValue.class) {
-            return true;
-        }
         return clazz == SnippetCounter.class;
     }
 

@@ -38,24 +38,47 @@ public class OptionValue<T> {
      */
     protected T value;
 
+    private OptionValue(boolean stable, T value) {
+        this.value = value;
+        this.stable = stable;
+    }
+
     /**
-     * Creates an option value.
+     * Used to assert the invariant for {@link #isStable()} options. Without using locks, this check
+     * is not safe against races and so it's only an assertion.
+     */
+    private boolean getValueCalled;
+
+    /**
+     * Creates a {@link #isStable() non-stable} option value.
      * 
      * @param value the initial/default value of the option
      */
-    public OptionValue(T value) {
-        this.value = value;
+    public static <T> OptionValue<T> newOption(T value) {
+        return new OptionValue<>(false, value);
+    }
+
+    /**
+     * Creates a {@link #isStable() stable} option value.
+     * 
+     * @param value the initial/default value of the option
+     */
+    public static <T> OptionValue<T> newStableOption(T value) {
+        return new OptionValue<>(true, value);
     }
 
     private static final Object UNINITIALIZED = "UNINITIALIZED";
+
+    private final boolean stable;
 
     /**
      * Creates an uninitialized option value for a subclass that initializes itself
      * {@link #initialValue() lazily}.
      */
     @SuppressWarnings("unchecked")
-    protected OptionValue() {
+    protected OptionValue(boolean stable) {
         this.value = (T) UNINITIALIZED;
+        this.stable = stable;
     }
 
     /**
@@ -72,14 +95,29 @@ public class OptionValue<T> {
         if (value == UNINITIALIZED) {
             value = initialValue();
         }
+        assert initGetValueCalled();
         return value;
     }
 
+    private boolean initGetValueCalled() {
+        getValueCalled = true;
+        return true;
+    }
+
     /**
-     * Sets the value of this option.
+     * Determines if this option always returns the same {@linkplain #getValue() value}.
+     */
+    public boolean isStable() {
+        return stable;
+    }
+
+    /**
+     * Sets the value of this option. This can only be called for a {@linkplain #isStable() stable}
+     * option if {@link #getValue()} has never been called.
      */
     @SuppressWarnings("unchecked")
     public final void setValue(Object v) {
+        assert !getValueCalled || !stable;
         this.value = (T) v;
     }
 }

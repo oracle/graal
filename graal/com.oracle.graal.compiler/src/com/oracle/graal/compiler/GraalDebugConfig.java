@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
+import static com.oracle.graal.options.OptionValue.*;
+
 import java.io.*;
 import java.util.*;
 
@@ -37,30 +39,30 @@ public class GraalDebugConfig implements DebugConfig {
 
     // @formatter:off
     @Option(help = "Enable scope-based debugging", name = "Debug")
-    public static final OptionValue<Boolean> DebugEnabled = new OptionValue<>(true);
+    public static final OptionValue<Boolean> DebugEnabled = newOption(true);
     @Option(help = "Scopes to be dumped")
-    public static final OptionValue<String> Dump = new OptionValue<>(null);
+    public static final OptionValue<String> Dump = OptionValue.newOption(null);
     @Option(help = "Scopes to be metered")
-    public static final OptionValue<String> Meter = new OptionValue<>(null);
+    public static final OptionValue<String> Meter = OptionValue.newOption(null);
     @Option(help = "Scopes to be timed")
-    public static final OptionValue<String> Time = new OptionValue<>(null);
+    public static final OptionValue<String> Time = OptionValue.newOption(null);
     @Option(help = "Scopes to be logged")
-    public static final OptionValue<String> Log = new OptionValue<>(null);
+    public static final OptionValue<String> Log = OptionValue.newOption(null);
     @Option(help = "Filters debug scope output by method name/pattern")
-    public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
+    public static final OptionValue<String> MethodFilter = OptionValue.newOption(null);
     @Option(help = "")
-    public static final OptionValue<Boolean> PerThreadDebugValues = new OptionValue<>(false);
+    public static final OptionValue<Boolean> PerThreadDebugValues = newOption(false);
     @Option(help = "")
-    public static final OptionValue<Boolean> SummarizeDebugValues = new OptionValue<>(false);
+    public static final OptionValue<Boolean> SummarizeDebugValues = newOption(false);
     @Option(help = "")
-    public static final OptionValue<Boolean> SummarizePerPhase = new OptionValue<>(false);
+    public static final OptionValue<Boolean> SummarizePerPhase = newOption(false);
     @Option(help = "Send Graal IR to dump handlers on error")
-    public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
+    public static final OptionValue<Boolean> DumpOnError = newOption(false);
     @Option(help = "Enable expensive assertions")
-    public static final OptionValue<Boolean> DetailedAsserts = new OptionValue<Boolean>(false) {
+    public static final OptionValue<Boolean> DetailedAsserts = new OptionValue<Boolean>(true) {
         @Override
         protected Boolean initialValue() {
-            boolean enabled = value;
+            boolean enabled = false;
             // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
             assert (enabled = true) == true;
             return enabled;

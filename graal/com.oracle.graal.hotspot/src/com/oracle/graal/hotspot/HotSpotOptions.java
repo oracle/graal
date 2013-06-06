@@ -50,7 +50,7 @@ public class HotSpotOptions {
         }
 
         Object value = null;
-        String fieldName = null;
+        String optionName = null;
         String valueString = null;
 
         if (option.equals("+PrintFlags")) {
@@ -60,22 +60,22 @@ public class HotSpotOptions {
 
         char first = option.charAt(0);
         if (first == '+' || first == '-') {
-            fieldName = option.substring(1);
+            optionName = option.substring(1);
             value = (first == '+');
         } else {
             int index = option.indexOf('=');
             if (index == -1) {
-                fieldName = option;
+                optionName = option;
                 valueString = null;
             } else {
-                fieldName = option.substring(0, index);
+                optionName = option.substring(0, index);
                 valueString = option.substring(index + 1);
             }
         }
 
-        OptionProvider optionProvider = options.get(fieldName);
+        OptionProvider optionProvider = options.get(optionName);
         if (optionProvider == null) {
-            Logger.info("Could not find option " + fieldName + " (use -G:+PrintFlags to see Graal options)");
+            Logger.info("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
             return false;
         }
 
@@ -83,12 +83,12 @@ public class HotSpotOptions {
 
         if (value == null) {
             if (optionType == Boolean.TYPE || optionType == Boolean.class) {
-                Logger.info("Value for boolean option '" + fieldName + "' must use '-G:+" + fieldName + "' or '-G:-" + fieldName + "' format");
+                Logger.info("Value for boolean option '" + optionName + "' must use '-G:+" + optionName + "' or '-G:-" + optionName + "' format");
                 return false;
             }
 
             if (valueString == null) {
-                Logger.info("Value for option '" + fieldName + "' must use '-G:" + fieldName + "=<value>' format");
+                Logger.info("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
 
@@ -103,16 +103,17 @@ public class HotSpotOptions {
             }
         } else {
             if (optionType != Boolean.class) {
-                Logger.info("Value for option '" + fieldName + "' must use '-G:" + fieldName + "=<value>' format");
+                Logger.info("Value for option '" + optionName + "' must use '-G:" + optionName + "=<value>' format");
                 return false;
             }
         }
 
         if (value != null) {
-            optionProvider.getOptionValue().setValue(value);
+            OptionValue<?> optionValue = optionProvider.getOptionValue();
+            optionValue.setValue(value);
             // Logger.info("Set option " + fieldName + " to " + value);
         } else {
-            Logger.info("Wrong value \"" + valueString + "\" for option " + fieldName);
+            Logger.info("Wrong value \"" + valueString + "\" for option " + optionName);
             return false;
         }
 
