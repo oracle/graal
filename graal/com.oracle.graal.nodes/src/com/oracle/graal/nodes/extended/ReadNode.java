@@ -76,7 +76,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
             // Read without usages can be savely removed.
             return null;
         }
-        if (runtime != null && object != null && object.isConstant()) {
+        if (tool.canonicalizeReads() && runtime != null && object != null && object.isConstant()) {
             if (location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION && location instanceof ConstantLocationNode) {
                 long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();

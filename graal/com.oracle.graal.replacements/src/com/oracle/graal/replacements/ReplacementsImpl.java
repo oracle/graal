@@ -323,7 +323,7 @@ public class ReplacementsImpl implements Replacements {
             new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
             if (OptCanonicalizer.getValue()) {
                 new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(graph);
             }
 
             return graph;
@@ -338,7 +338,7 @@ public class ReplacementsImpl implements Replacements {
         protected void afterInline(StructuredGraph caller, StructuredGraph callee) {
             if (OptCanonicalizer.getValue()) {
                 new WordTypeRewriterPhase(runtime, target.wordKind).apply(caller);
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(caller);
+                new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(caller);
             }
         }
 
@@ -352,7 +352,7 @@ public class ReplacementsImpl implements Replacements {
 
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+                new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(graph);
             }
         }
 

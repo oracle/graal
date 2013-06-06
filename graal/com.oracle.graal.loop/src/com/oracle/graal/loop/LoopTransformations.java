@@ -61,7 +61,7 @@ public abstract class LoopTransformations {
         while (!loopBegin.isDeleted()) {
             int mark = graph.getMark();
             peel(loop);
-            new CanonicalizerPhase.Instance(runtime, assumptions, mark, null).apply(graph);
+            new CanonicalizerPhase.Instance(runtime, assumptions, OptCanonicalizeReads.getValue(), mark, null).apply(graph);
             if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }

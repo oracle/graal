@@ -265,6 +265,8 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> OptCanonicalizer = new OptionValue<>(true);
     @Option(help = "")
+    public static final OptionValue<Boolean> OptCanonicalizeReads = new OptionValue<>(true);
+    @Option(help = "")
     public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptEliminateGuards = new OptionValue<>(true);

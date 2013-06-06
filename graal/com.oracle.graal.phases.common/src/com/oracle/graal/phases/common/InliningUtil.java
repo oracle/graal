@@ -691,7 +691,7 @@ public class InliningUtil {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
                     TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new HighTierContext(runtime, assumptions, replacements,
-                                    new CanonicalizerPhase()));
+                                    new CanonicalizerPhase(OptCanonicalizeReads.getValue())));
                 }
             }
         }
