@@ -52,6 +52,7 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -177,6 +178,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         if (DebugEnabled.getValue()) {
             Debug.enable();
+            DebugEnvironment.initialize(log);
         }
 
         // Install intrinsics.
