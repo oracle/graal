@@ -22,14 +22,8 @@
  */
 package com.oracle.graal.options;
 
-import java.util.*;
-
 /**
- * A settable option value.
- * <p>
- * To access {@link OptionProvider} instances via a {@link ServiceLoader} for working with options,
- * instances of this class should be assigned to static final fields that are annotated with
- * {@link Option}.
+ * An option value.
  */
 public class OptionValue<T> {
 

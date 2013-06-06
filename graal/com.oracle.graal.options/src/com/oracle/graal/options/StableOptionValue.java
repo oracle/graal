@@ -23,7 +23,7 @@
 package com.oracle.graal.options;
 
 /**
- * A settable option that always returns the same {@linkplain #getValue() value}.
+ * An option that always returns the same {@linkplain #getValue() value}.
  */
 public class StableOptionValue<T> extends OptionValue<T> {
 

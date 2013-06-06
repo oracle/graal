@@ -22,33 +22,60 @@
  */
 package com.oracle.graal.options;
 
-import java.util.*;
-
 /**
- * Describes the attributes of an {@linkplain Option option} and provides access to its
- * {@linkplain OptionValue value}. The {@link OptionProcessor} auto-generates instances of this
- * interface that are accessible as a {@linkplain ServiceLoader service}.
+ * Describes the attributes of a static field {@linkplain Option option} and provides access to its
+ * {@linkplain OptionValue value}.
  */
-public interface OptionProvider {
+public class OptionDescriptor {
+
+    protected final String name;
+    protected final Class type;
+    protected final String help;
+    protected final OptionValue<?> option;
+    protected final String location;
+
+    public OptionDescriptor(String name, Class type, String help, String location, OptionValue<?> option) {
+        this.name = name;
+        this.type = type;
+        this.help = help;
+        this.option = option;
+        this.location = location;
+    }
 
     /**
      * Gets the type of values stored in the option.
      */
-    Class getType();
+    public Class getType() {
+        return type;
+    }
 
     /**
      * Gets a descriptive help message for the option.
      */
-    String getHelp();
+    public String getHelp() {
+        return help;
+    }
 
     /**
      * Gets the name of the option. It's up to the client of this object how to use the name to get
      * a user specified value for the option from the environment.
      */
-    String getName();
+    public String getName() {
+        return name;
+    }
 
     /**
      * Gets the boxed option value.
      */
-    OptionValue<?> getOptionValue();
+    public OptionValue<?> getOptionValue() {
+        return option;
+    }
+
+    /**
+     * Gets a description of the location where this option is stored.
+     */
+    public String getLocation() {
+        return location;
+
+    }
 }

@@ -22,26 +22,10 @@
  */
 package com.oracle.graal.options;
 
-import java.lang.annotation.*;
+import java.util.*;
 
 /**
- * Describes the attributes of an option whose {@link OptionValue value} is in a static field
- * annotated by this annotation type.
- * 
- * @see OptionProcessor
- * @see OptionDescriptor
+ * A {@linkplain ServiceLoader service} for accessing a set of {@link OptionDescriptor}s.
  */
-@Retention(RetentionPolicy.CLASS)
-@Target(ElementType.FIELD)
-public @interface Option {
-
-    /**
-     * Gets a help message for the option.
-     */
-    String help();
-
-    /**
-     * The name of the option. By default, the name of the annotated field should be used.
-     */
-    String name() default "";
+public interface Options extends Iterable<OptionDescriptor> {
 }

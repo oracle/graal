@@ -30,15 +30,17 @@ import com.oracle.graal.options.*;
 
 public class HotSpotOptions {
 
-    private static final Map<String, OptionProvider> options = new HashMap<>();
+    private static final Map<String, OptionDescriptor> options = new HashMap<>();
 
     static {
-        ServiceLoader<OptionProvider> sl = ServiceLoader.loadInstalled(OptionProvider.class);
-        for (OptionProvider provider : sl) {
-            if (provider.getClass().getName().startsWith("com.oracle.graal")) {
-                String name = provider.getName();
-                OptionProvider existing = options.put(name, provider);
-                assert existing == null : name + " option has multiple definitions: " + existing.getClass() + " and " + provider.getClass();
+        ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
+        for (Options opts : sl) {
+            for (OptionDescriptor desc : opts) {
+                if (desc.getClass().getName().startsWith("com.oracle.graal")) {
+                    String name = desc.getName();
+                    OptionDescriptor existing = options.put(name, desc);
+                    assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
+                }
             }
         }
     }
@@ -73,13 +75,13 @@ public class HotSpotOptions {
             }
         }
 
-        OptionProvider optionProvider = options.get(optionName);
-        if (optionProvider == null) {
+        OptionDescriptor desc = options.get(optionName);
+        if (desc == null) {
             Logger.info("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
             return false;
         }
 
-        Class<?> optionType = optionProvider.getType();
+        Class<?> optionType = desc.getType();
 
         if (value == null) {
             if (optionType == Boolean.TYPE || optionType == Boolean.class) {
@@ -109,7 +111,7 @@ public class HotSpotOptions {
         }
 
         if (value != null) {
-            OptionValue<?> optionValue = optionProvider.getOptionValue();
+            OptionValue<?> optionValue = desc.getOptionValue();
             optionValue.setValue(value);
             // Logger.info("Set option " + fieldName + " to " + value);
         } else {
@@ -122,12 +124,12 @@ public class HotSpotOptions {
 
     private static void printFlags() {
         Logger.info("[Graal flags]");
-        SortedMap<String, OptionProvider> sortedOptions = new TreeMap<>(options);
-        for (Map.Entry<String, OptionProvider> e : sortedOptions.entrySet()) {
+        SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>(options);
+        for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             e.getKey();
-            OptionProvider opt = e.getValue();
-            Object value = opt.getOptionValue().getValue();
-            Logger.info(String.format("%9s %-40s = %-14s %s", opt.getType().getSimpleName(), e.getKey(), value, opt.getHelp()));
+            OptionDescriptor desc = e.getValue();
+            Object value = desc.getOptionValue().getValue();
+            Logger.info(String.format("%9s %-40s = %-14s %s", desc.getType().getSimpleName(), e.getKey(), value, desc.getHelp()));
         }
 
         System.exit(0);
