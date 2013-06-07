@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.sparc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * SPARC specific implementation of {@link HotSpotGraalRuntime}.
@@ -44,10 +45,15 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
         return graalRuntime();
     }
 
+    protected static Architecture createArchitecture() {
+        return new SPARC();
+    }
+
     @Override
     protected TargetDescription createTarget() {
-        // SPARC: Create target description.
-        throw new InternalError("NYI");
+        final int stackFrameAlignment = 16;
+        final int implicitNullCheckLimit = 4096;
+        return new TargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, true);
     }
 
     @Override
