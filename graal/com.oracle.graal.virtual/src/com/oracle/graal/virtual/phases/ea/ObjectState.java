@@ -131,7 +131,6 @@ class ObjectState extends Virtualizable.State {
         return entries[index];
     }
 
-    @Override
     public void setEntry(int index, ValueNode value) {
         assert isVirtual();
         entries[index] = value;
