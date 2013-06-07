@@ -128,7 +128,11 @@ public class ProfilingInfoTest extends GraalCompilerTest {
     }
 
     public static Serializable checkCastSnippet(Object obj) {
-        return (Serializable) obj;
+        try {
+            return (Serializable) obj;
+        } catch (ClassCastException e) {
+            return null;
+        }
     }
 
     @Test
@@ -250,19 +254,30 @@ public class ProfilingInfoTest extends GraalCompilerTest {
 
     @Test
     public void testNullSeen() {
-        ProfilingInfo info = profile("instanceOfSnippet", 1);
+        testNullSeen("instanceOfSnippet");
+        testNullSeen("checkCastSnippet");
+    }
+
+    private void testNullSeen(String snippet) {
+        ProfilingInfo info = profile(snippet, 1);
         Assert.assertEquals(TriState.FALSE, info.getNullSeen(1));
 
-        continueProfiling("instanceOfSnippet", "ABC");
+        continueProfiling(snippet, "ABC");
         Assert.assertEquals(TriState.FALSE, info.getNullSeen(1));
 
-        continueProfiling("instanceOfSnippet", (Object) null);
+        continueProfiling(snippet, new Object());
+        Assert.assertEquals(TriState.FALSE, info.getNullSeen(1));
+
+        continueProfiling(snippet, (Object) null);
         Assert.assertEquals(TriState.TRUE, info.getNullSeen(1));
 
-        continueProfiling("instanceOfSnippet", 0.0);
+        continueProfiling(snippet, 0.0);
         Assert.assertEquals(TriState.TRUE, info.getNullSeen(1));
 
-        resetProfile("instanceOfSnippet");
+        continueProfiling(snippet, new Object());
+        Assert.assertEquals(TriState.TRUE, info.getNullSeen(1));
+
+        resetProfile(snippet);
         Assert.assertEquals(TriState.FALSE, info.getNullSeen(1));
     }
 
