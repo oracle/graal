@@ -140,8 +140,9 @@ public class ComputeProbabilityClosure {
 
     private static boolean allSuxVisited(FixedNode fixedPred, NodeBitMap visitedNodes) {
         for (Node sux : fixedPred.successors()) {
-            if (!visitedNodes.contains(sux))
+            if (!visitedNodes.contains(sux)) {
                 return false;
+            }
         }
         return true;
     }
