@@ -288,7 +288,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             // case of a deoptimization.
             info = DefaultProfilingInfo.get(TriState.FALSE);
         } else {
-            info = new HotSpotProfilingInfo(methodData, codeSize);
+            info = new HotSpotProfilingInfo(methodData, this);
         }
         return info;
     }

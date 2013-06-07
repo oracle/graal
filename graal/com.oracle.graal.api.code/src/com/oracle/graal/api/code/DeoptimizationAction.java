@@ -32,28 +32,39 @@ public enum DeoptimizationAction {
      * it's highly likely nothing will change the likelihood of the deoptimization happening again.
      * For example, a compiled array allocation where the size is negative.
      */
-    None,
+    None(false),
 
     /**
      * Do not invalidate the machine code, but schedule a recompilation if this deoptimization is
      * triggered too often.
      */
-    RecompileIfTooManyDeopts,
+    RecompileIfTooManyDeopts(true),
 
     /**
      * Invalidate the machine code and reset the profiling information.
      */
-    InvalidateReprofile,
+    InvalidateReprofile(true),
 
     /**
      * Invalidate the machine code and immediately schedule a recompilation. This is typically used
      * when deoptimizing to resolve an unresolved symbol in which case extra profiling is not
      * required to determine that the deoptimization will not re-occur.
      */
-    InvalidateRecompile,
+    InvalidateRecompile(true),
 
     /**
      * Invalidate the machine code and stop compiling the outermost method of this compilation.
      */
-    InvalidateStopCompiling;
+    InvalidateStopCompiling(true);
+
+    private final boolean invalidatesCompilation;
+
+    private DeoptimizationAction(boolean invalidatesCompilation) {
+        this.invalidatesCompilation = invalidatesCompilation;
+    }
+
+    public boolean doesInvalidateCompilation() {
+        return invalidatesCompilation;
+    }
+
 }

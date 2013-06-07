@@ -25,10 +25,14 @@ package com.oracle.graal.api.meta;
 import java.io.*;
 
 /**
- * This profile object represents a certain set of profiling information at a specific BCI. The
- * precision of the supplied values may vary, but a runtime that provides this information should be
- * aware that it will be used to guide performance-critical decisions like speculative inlining,
- * etc.
+ * This object holds probability information for a set of items that were profiled at a specific
+ * BCI. The precision of the supplied values may vary, but a runtime that provides this information
+ * should be aware that it will be used to guide performance-critical decisions like speculative
+ * inlining, etc.
+ * 
+ * @param <T> a subclass of AbstractProfiledItem
+ * @param <U> the class of the items that are profiled at the specific BCI and for which
+ *            probabilities are stored. E.g., a ResolvedJavaType or a ResolvedJavaMethod.
  */
 public abstract class AbstractJavaProfile<T extends AbstractProfiledItem<U>, U> implements Serializable {
 
