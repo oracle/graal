@@ -56,9 +56,12 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     private boolean assertProbabilities() {
+        double total = 0;
         for (double d : keyProbabilities) {
+            total += d;
             assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
         }
+        assert total > 0.999 && total < 1.001;
         return true;
     }
 

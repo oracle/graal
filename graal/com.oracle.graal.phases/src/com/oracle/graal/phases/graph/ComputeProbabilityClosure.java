@@ -24,6 +24,7 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -102,7 +103,7 @@ public class ComputeProbabilityClosure {
 
             for (Node pred : currentNode.cfgPredecessors()) {
                 FixedNode fixedPred = (FixedNode) pred;
-                if (allSuxVisited(fixedPred, visitedNodes)) {
+                if (allSuxVisited(fixedPred, visitedNodes) || fixedPred instanceof InvokeWithExceptionNode) {
                     nodes.push(fixedPred);
                 } else {
                     assert fixedPred instanceof ControlSplitNode : "only control splits can have more than one sux";
@@ -112,7 +113,7 @@ public class ComputeProbabilityClosure {
         } while (!nodes.isEmpty());
     }
 
-    private static void modifyProbabilities(Node node, NodeBitMap visitedNodes) {
+    private static void modifyProbabilities(ControlSplitNode node, NodeBitMap visitedNodes) {
         if (node instanceof IfNode) {
             IfNode ifNode = (IfNode) node;
             assert visitedNodes.isMarked(ifNode.falseSuccessor()) ^ visitedNodes.isMarked(ifNode.trueSuccessor());
@@ -134,7 +135,7 @@ public class ComputeProbabilityClosure {
                 }
             }
         } else {
-            assert !(node instanceof ControlSplitNode);
+            GraalInternalError.shouldNotReachHere();
         }
     }
 
