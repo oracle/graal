@@ -298,6 +298,8 @@ public class InliningPhase extends Phase {
     }
 
     private StructuredGraph parseBytecodes(StructuredGraph newGraph, Assumptions assumptions) {
+        boolean hasMatureProfilingInfo = newGraph.method().getProfilingInfo().isMature();
+
         if (plan != null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
         }
@@ -313,7 +315,7 @@ public class InliningPhase extends Phase {
             new CullFrameStatesPhase().apply(newGraph);
         }
         if (CacheGraphs.getValue() && cache != null) {
-            cache.put(newGraph.copy());
+            cache.put(newGraph.copy(), hasMatureProfilingInfo);
         }
         return newGraph;
     }

@@ -384,6 +384,8 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int typeProfileWidth;
     public int methodProfileWidth;
 
+    public int interpreterProfilingThreshold;
+
     public long inlineCacheMissStub;
     public long handleDeoptStub;
     public long uncommonTrapStub;

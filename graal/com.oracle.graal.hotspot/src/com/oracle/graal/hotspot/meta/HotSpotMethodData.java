@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -376,7 +375,7 @@ public final class HotSpotMethodData extends CompilerObject {
         protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
         private static JavaTypeProfile createTypeProfile(TriState nullSeen, ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount < MatureExecutionsTypeProfile.getValue()) {
+            if (entries <= 0 || totalCount <= 0) {
                 return null;
             }
 
@@ -484,7 +483,7 @@ public final class HotSpotMethodData extends CompilerObject {
         }
 
         private static JavaMethodProfile createMethodProfile(ResolvedJavaMethod[] methods, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount < MatureExecutionsTypeProfile.getValue()) {
+            if (entries <= 0 || totalCount <= 0) {
                 return null;
             }
 
@@ -540,11 +539,7 @@ public final class HotSpotMethodData extends CompilerObject {
             long notTakenCount = data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
             long total = takenCount + notTakenCount;
 
-            if (total < MatureExecutionsBranch.getValue()) {
-                return -1;
-            } else {
-                return takenCount / (double) total;
-            }
+            return total <= 0 ? -1 : takenCount / (double) total;
         }
 
         @Override
@@ -607,7 +602,7 @@ public final class HotSpotMethodData extends CompilerObject {
                 result[i - 1] = count;
             }
 
-            if (totalCount < MatureExecutionsPerSwitchCase.getValue() * length) {
+            if (totalCount <= 0) {
                 return null;
             } else {
                 for (int i = 0; i < length; i++) {
