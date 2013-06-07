@@ -45,7 +45,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (PartialEscapeAnalysis.getValue()) {
-            addPhase(new PartialEscapeAnalysisPhase(true, OptEarlyReadElimination.getValue(), canonicalizer));
+            addPhase(new PartialEscapePhase(true, canonicalizer));
         }
 
         if (OptConvertDeoptsToGuards.getValue()) {

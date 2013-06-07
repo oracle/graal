@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
-import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assert.*;
 
 import java.util.concurrent.*;
@@ -81,19 +80,6 @@ public class IterativeInliningTest extends GraalCompilerTest {
         assertEquals(graph.getLocal(0), result);
     }
 
-    @SuppressWarnings("all")
-    public static int testSimpleReadSnippet(TestObject a, int b) throws Exception {
-        a.callable = new TestInt(b, 9);
-        return a.callable.call();
-    }
-
-    @Test
-    public void testSimpleRead() {
-        ValueNode result = getReturn("testSimpleReadSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
-        assertEquals(graph.getLocal(1), result);
-    }
-
     final ReturnNode getReturn(String snippet) {
         processMethod(snippet);
         assertEquals(1, graph.getNodes(ReturnNode.class).count());
@@ -102,8 +88,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
 
     private void processMethod(final String snippet) {
         graph = parse(snippet);
-        OptEarlyReadElimination.setValue(true);
         HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
-        new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false, new CanonicalizerPhase(true)).apply(graph, context);
+        new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

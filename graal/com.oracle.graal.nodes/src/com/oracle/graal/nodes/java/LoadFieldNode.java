@@ -79,13 +79,6 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             if (fieldIndex != -1) {
                 tool.replaceWith(state.getEntry(fieldIndex));
             }
-        } else {
-            ValueNode cachedValue = tool.getReadCache(object(), field());
-            if (cachedValue != null) {
-                tool.replaceWithValue(cachedValue);
-            } else {
-                tool.addReadCache(object(), field(), this);
-            }
         }
     }
 }

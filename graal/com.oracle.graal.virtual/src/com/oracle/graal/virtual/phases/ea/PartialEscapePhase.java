@@ -25,51 +25,27 @@ package com.oracle.graal.virtual.phases.ea;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
+public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
-    public abstract static class Closure<T> extends ReentrantBlockIterator.BlockIteratorClosure<T> {
-
-        public abstract boolean hasChanged();
-
-        public abstract void applyEffects();
-    }
-
-    private final boolean iterative;
-    private final boolean readElimination;
-    private final CanonicalizerPhase canonicalizer;
-
-    public PartialEscapeAnalysisPhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer) {
-        this.iterative = iterative;
-        this.readElimination = readElimination;
-        this.canonicalizer = canonicalizer;
+    public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer) {
+        super(iterative ? EscapeAnalysisIterations.getValue() : 1, canonicalizer);
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        runAnalysis(graph, context);
-    }
-
-    public boolean runAnalysis(final StructuredGraph graph, final PhaseContext context) {
-        if (!VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
-            return false;
-        }
-
-        if (!readElimination) {
+        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
             boolean analyzableNodes = false;
             for (Node node : graph.getNodes()) {
                 if (node instanceof VirtualizableAllocation) {
@@ -77,51 +53,15 @@ public class PartialEscapeAnalysisPhase extends BasePhase<PhaseContext> {
                     break;
                 }
             }
-            if (!analyzableNodes) {
-                return false;
+            if (analyzableNodes) {
+                runAnalysis(graph, context);
             }
         }
-
-        boolean continueIteration = true;
-        boolean changed = false;
-        for (int iteration = 0; iteration < EscapeAnalysisIterations.getValue() && continueIteration; iteration++) {
-            boolean currentChanged = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
-
-                @Override
-                public Boolean call() {
-
-                    SchedulePhase schedule = new SchedulePhase();
-                    schedule.apply(graph, false);
-                    Closure<?> closure = createAnalysisClosure(context, schedule);
-                    ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
-
-                    if (!closure.hasChanged()) {
-                        return false;
-                    }
-
-                    // apply the effects collected during the escape analysis iteration
-                    closure.applyEffects();
-
-                    Debug.dump(graph, "after PartialEscapeAnalysis iteration");
-
-                    new DeadCodeEliminationPhase().apply(graph);
-
-                    if (OptCanonicalizer.getValue()) {
-                        canonicalizer.apply(graph, context);
-                    }
-
-                    return true;
-                }
-            });
-            continueIteration = currentChanged && iterative;
-            changed |= currentChanged;
-        }
-
-        return changed;
     }
 
-    protected Closure<?> createAnalysisClosure(PhaseContext context, SchedulePhase schedule) {
-        return new PartialEscapeClosure<>(schedule, context.getRuntime(), context.getAssumptions());
+    @Override
+    protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule) {
+        return new PartialEscapeClosure.Final(schedule, context.getRuntime(), context.getAssumptions());
     }
 
     public static Map<Invoke, Double> getHints(StructuredGraph graph) {

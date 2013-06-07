@@ -166,7 +166,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
                 new DeadCodeEliminationPhase().apply(graph);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
-                new PartialEscapeAnalysisPhase(false, false, canonicalizer).apply(graph, context);
+                new PartialEscapePhase(false, canonicalizer).apply(graph, context);
 
                 new CullFrameStatesPhase().apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
