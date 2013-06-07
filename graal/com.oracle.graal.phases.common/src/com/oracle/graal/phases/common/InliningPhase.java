@@ -437,15 +437,16 @@ public class InliningPhase extends Phase {
             }
 
             double inliningBonus = getInliningBonus(info);
-
+            int nodes = determineNodeCount(info);
             int lowLevelGraphSize = previousLowLevelGraphSize(info);
+
             if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph: %d", lowLevelGraphSize);
+                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)",
+                                lowLevelGraphSize, relevance, probability, inliningBonus, nodes);
             }
 
-            int nodes = determineNodeCount(info);
             if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (nodes=%d)", nodes);
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (relevance=%f, probability=%f, bonus=%f, nodes=%d)", relevance, probability, inliningBonus, nodes);
             }
 
             /*
@@ -456,16 +457,17 @@ public class InliningPhase extends Phase {
              */
             double invokes = determineInvokeProbability(info);
             if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (%f)", invokes);
+                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes,
+                                relevance, probability, inliningBonus, nodes);
             }
 
             double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
             if (nodes <= maximumNodes) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= max=%f)", relevance, probability,
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability,
                                 inliningBonus, nodes, maximumNodes);
             }
 
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > max=%f)", relevance, probability, inliningBonus, nodes,
+            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
                             maximumNodes);
         }
     }
