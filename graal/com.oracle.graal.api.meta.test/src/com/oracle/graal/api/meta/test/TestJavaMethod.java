@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static com.oracle.graal.api.meta.test.TestMetaAccessProvider.*;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.*;
@@ -35,24 +34,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Tests for {@link JavaMethod}.
  */
-public class TestJavaMethod {
-
-    public TestJavaMethod() {
-    }
-
-    public static final Map<Method, ResolvedJavaMethod> methods = new HashMap<>();
-    public static final Map<Constructor, ResolvedJavaMethod> constructors = new HashMap<>();
-    static {
-        for (Class c : classes) {
-            for (Method m : c.getDeclaredMethods()) {
-                ResolvedJavaMethod method = runtime.lookupJavaMethod(m);
-                methods.put(m, method);
-            }
-            for (Constructor m : c.getDeclaredConstructors()) {
-                constructors.put(m, runtime.lookupJavaConstructor(m));
-            }
-        }
-    }
+public class TestJavaMethod extends MethodUniverse {
 
     @Test
     public void getNameTest() {

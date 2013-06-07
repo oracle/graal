@@ -27,10 +27,12 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
@@ -38,7 +40,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -94,7 +95,7 @@ public class CheckCastSnippets implements Snippets {
             isNull.inc();
         } else {
             Word objectHub = loadHub(object);
-            if (objectHub.readWord(superCheckOffset, FINAL_LOCATION).notEqual(hub)) {
+            if (objectHub.readWord(superCheckOffset, LocationIdentity.FINAL_LOCATION).notEqual(hub)) {
                 displayMiss.inc();
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
@@ -167,7 +168,7 @@ public class CheckCastSnippets implements Snippets {
             StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
-            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), CheckcastMinHintHitProbability.getValue(), CheckcastMaxHints.getValue());
             ValueNode hub = ConstantNode.forConstant(type.klass(), runtime, checkcast.graph());
 
             Arguments args;
@@ -187,7 +188,7 @@ public class CheckCastSnippets implements Snippets {
                 args = new Arguments(secondary);
                 args.add("hub", hub);
                 args.add("object", object);
-                args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind()), hints);
+                args.addVarargs("hints", Word.class, StampFactory.forKind(getWordKind()), hints);
             }
             args.addConst("checkNull", !object.stamp().nonNull());
 

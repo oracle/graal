@@ -213,7 +213,8 @@ public final class Register implements Comparable<Register>, Serializable {
     public boolean equals(Object obj) {
         if (obj instanceof Register) {
             Register other = (Register) obj;
-            if (number == other.number && name.equals(other.name)) {
+            if (number == other.number) {
+                assert name.equals(other.name);
                 assert encoding == other.encoding;
                 assert registerCategory == other.registerCategory;
                 return true;

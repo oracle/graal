@@ -24,6 +24,12 @@ package com.oracle.graal.phases;
 
 import com.oracle.graal.nodes.*;
 
+/***
+ * This phase serves as a verification, in order to check the graph for certain properties. The
+ * {@link #verify(StructuredGraph)} method will be used as an assertion, and implements the actual
+ * check. Instead of returning false, it is also valid to throw an {@link AssertionError} in the
+ * implemented {@link #verify(StructuredGraph)} method.
+ */
 public abstract class VerifyPhase extends Phase {
 
     @Override

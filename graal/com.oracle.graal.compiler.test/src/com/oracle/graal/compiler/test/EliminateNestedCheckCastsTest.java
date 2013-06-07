@@ -115,7 +115,7 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
                 StructuredGraph graph = parse(snippet);
                 Debug.dump(graph, "After parsing: " + snippet);
                 Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
-                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false)).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
                 Assert.assertEquals(afterCanon, graph.getNodes(CheckCastNode.class).count());
                 return graph;
             }

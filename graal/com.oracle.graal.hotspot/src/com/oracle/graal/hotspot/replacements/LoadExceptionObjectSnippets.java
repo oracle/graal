@@ -22,11 +22,15 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.hotspot.meta.HotSpotRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -34,12 +38,18 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
+import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
  * Snippet for loading the exception object at the start of an exception dispatcher.
  */
 public class LoadExceptionObjectSnippets implements Snippets {
+
+    /**
+     * Alternative way to implement exception object loading.
+     */
+    private static final boolean USE_C_RUNTIME = Boolean.getBoolean("graal.loadExceptionObject.useCRuntime");
 
     @Snippet
     public static Object loadException() {
@@ -59,8 +69,18 @@ public class LoadExceptionObjectSnippets implements Snippets {
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject) {
-            Arguments args = new Arguments(loadException);
-            template(args).instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, args);
+            if (USE_C_RUNTIME) {
+                StructuredGraph graph = loadExceptionObject.graph();
+                HotSpotRuntime hsRuntime = (HotSpotRuntime) runtime;
+                ReadRegisterNode thread = graph.add(new ReadRegisterNode(hsRuntime.threadRegister(), true, false));
+                graph.addBeforeFixed(loadExceptionObject, thread);
+                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(runtime, LOAD_AND_CLEAR_EXCEPTION, thread));
+                loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
+                graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
+            } else {
+                Arguments args = new Arguments(loadException);
+                template(args).instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, args);
+            }
         }
     }
 }

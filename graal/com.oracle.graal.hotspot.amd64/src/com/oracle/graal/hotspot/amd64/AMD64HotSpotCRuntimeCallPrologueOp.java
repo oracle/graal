@@ -27,11 +27,11 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 
-@Opcode("CRUNTIME_CALL_PROLOGUE")
+@Opcode
 final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {
 
     @Override

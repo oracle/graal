@@ -24,9 +24,9 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
 
@@ -40,7 +40,6 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
@@ -80,13 +79,18 @@ public class ForeignCallStub extends Stub {
      * @param descriptor the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
+     * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
+     *            effects. Deoptimization will not return to a point before a stub call that cannot
+     *            be re-executed.
+     * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(long address, ForeignCallDescriptor descriptor, boolean prependThread, HotSpotRuntime runtime, Replacements replacements) {
-        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+    public ForeignCallStub(HotSpotRuntime runtime, Replacements replacements, long address, ForeignCallDescriptor descriptor, boolean prependThread, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF);
+        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NOT_LEAF, reexecutable, killedLocations);
     }
 
     /**
@@ -255,7 +259,7 @@ public class ForeignCallStub extends Stub {
             if (kind == Kind.Object) {
                 stamp = StampFactory.declared(type);
             } else {
-                stamp = StampFactory.forKind(kind);
+                stamp = StampFactory.forKind(type.getKind());
             }
             LocalNode local = builder.add(new LocalNode(i, stamp));
             locals[i] = local;
@@ -278,14 +282,14 @@ public class ForeignCallStub extends Stub {
         return invoke;
     }
 
-    private ForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
+    private StubForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {
         if (prependThread) {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new ForeignCallNode(target.getDescriptor(), targetArguments));
+            return builder.append(new StubForeignCallNode(runtime, target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new ForeignCallNode(target.getDescriptor(), locals));
+            return builder.append(new StubForeignCallNode(runtime, target.getDescriptor(), locals));
         }
     }
 

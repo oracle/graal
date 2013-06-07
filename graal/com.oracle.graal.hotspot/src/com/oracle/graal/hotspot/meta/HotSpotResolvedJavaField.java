@@ -31,8 +31,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -84,7 +83,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             assert Modifier.isStatic(flags);
             if (constant == null) {
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName)) {
-                    if (Modifier.isFinal(getModifiers()) || assumeStaticFieldsFinal(holder.mirror())) {
+                    if (Modifier.isFinal(getModifiers())) {
                         constant = readValue(receiver);
                     }
                 }
@@ -96,10 +95,17 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              * have a non-default value.
              */
             assert !Modifier.isStatic(flags);
+            Object object = receiver.asObject();
             if (Modifier.isFinal(getModifiers())) {
                 Constant value = readValue(receiver);
-                if (assumeNonStaticFinalFieldsAsFinal(receiver.asObject().getClass()) || !value.isDefaultForKind()) {
+                if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
                     return value;
+                }
+            } else {
+                Class<?> clazz = object.getClass();
+                if (StableOptionValue.class.isAssignableFrom(clazz)) {
+                    StableOptionValue<?> option = (StableOptionValue<?>) object;
+                    return Constant.forObject(option.getValue());
                 }
             }
         }
@@ -118,10 +124,6 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             assert !Modifier.isStatic(flags);
             return graalRuntime().getRuntime().readUnsafeConstant(getKind(), receiver.asObject(), offset);
         }
-    }
-
-    private static boolean assumeStaticFieldsFinal(Class<?> clazz) {
-        return clazz == GraalOptions.class;
     }
 
     private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {

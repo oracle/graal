@@ -36,7 +36,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -89,7 +88,7 @@ public class NewArrayStub extends SnippetStub {
      */
     @Snippet
     private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub) {
-        int layoutHelper = hub.readInt(layoutHelperOffset(), FINAL_LOCATION);
+        int layoutHelper = hub.readInt(layoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();
@@ -122,6 +121,6 @@ public class NewArrayStub extends SnippetStub {
 
     public static final ForeignCallDescriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC");
 
-    @NodeIntrinsic(ForeignCallNode.class)
+    @NodeIntrinsic(StubForeignCallNode.class)
     public static native void newArrayC(@ConstantNodeParameter ForeignCallDescriptor newArrayC, Word thread, Word hub, int length);
 }

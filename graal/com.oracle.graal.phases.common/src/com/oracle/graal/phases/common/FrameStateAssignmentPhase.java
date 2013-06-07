@@ -41,6 +41,7 @@ public class FrameStateAssignmentPhase extends Phase {
             if (node instanceof DeoptimizingNode) {
                 DeoptimizingNode deopt = (DeoptimizingNode) node;
                 if (deopt.canDeoptimize() && deopt.getDeoptimizationState() == null) {
+                    GraalInternalError.guarantee(currentState != null, "no FrameState at DeoptimizingNode %s", deopt);
                     deopt.setDeoptimizationState(currentState);
                 }
             }
@@ -58,10 +59,7 @@ public class FrameStateAssignmentPhase extends Phase {
 
         @Override
         protected FrameState merge(MergeNode merge, List<FrameState> states) {
-            if (merge.stateAfter() != null) {
-                return merge.stateAfter();
-            }
-            return singleFrameState(merge, states);
+            return merge.stateAfter() != null ? merge.stateAfter() : singleFrameState(merge, states);
         }
 
         @Override
@@ -73,7 +71,6 @@ public class FrameStateAssignmentPhase extends Phase {
         protected Map<LoopExitNode, FrameState> processLoop(LoopBeginNode loop, FrameState initialState) {
             return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
         }
-
     }
 
     @Override
@@ -93,33 +90,12 @@ public class FrameStateAssignmentPhase extends Phase {
     }
 
     private static FrameState singleFrameState(@SuppressWarnings("unused") MergeNode merge, List<FrameState> states) {
-        if (states.size() == 0) {
-            return null;
-        }
-        FrameState firstState = states.get(0);
-        FrameState singleState = firstState;
-        if (singleState == null) {
-            return null;
-        }
-        int singleBci = singleState.bci;
+        FrameState singleState = states.get(0);
         for (int i = 1; i < states.size(); ++i) {
-            FrameState cur = states.get(i);
-            if (cur == null) {
+            if (states.get(i) != singleState) {
                 return null;
             }
-
-            if (cur != singleState) {
-                singleState = null;
-            }
-
-            if (cur.bci != singleBci) {
-                singleBci = FrameState.INVALID_FRAMESTATE_BCI;
-            }
-
         }
-        if (singleState != null) {
-            return singleState;
-        }
-        return null;
+        return singleState;
     }
 }

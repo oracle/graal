@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.test;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -88,14 +89,14 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new EliminatePartiallyRedundantGuardsPhase(true, false).apply(graph);
                 new ReadEliminationPhase().apply(graph);
-                new CanonicalizerPhase().apply(graph, context);
+                new CanonicalizerPhase(true).apply(graph, context);
 
                 Debug.dump(graph, "After lowering");
 
                 for (FloatingReadNode node : graph.getNodes(LocalNode.class).first().usages().filter(FloatingReadNode.class)) {
                     // Checking that the parameter a is not directly used for the access to field
                     // x10 (because x10 must be guarded by the checkcast).
-                    Assert.assertTrue(node.location().getLocationIdentity() == LocationNode.FINAL_LOCATION);
+                    Assert.assertTrue(node.location().getLocationIdentity() == LocationIdentity.FINAL_LOCATION);
                 }
             }
         });

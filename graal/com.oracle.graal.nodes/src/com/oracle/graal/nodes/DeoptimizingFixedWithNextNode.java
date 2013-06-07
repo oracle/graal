@@ -42,9 +42,4 @@ public abstract class DeoptimizingFixedWithNextNode extends FixedWithNextNode im
         updateUsages(deoptState, f);
         deoptState = f;
     }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return false;
-    }
 }

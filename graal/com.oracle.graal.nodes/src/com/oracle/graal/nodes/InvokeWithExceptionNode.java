@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.nodes;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
@@ -154,7 +155,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     public FrameState stateDuring() {
@@ -234,11 +235,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     @Override
     public void setDeoptimizationState(FrameState f) {
         throw new IllegalStateException();
-    }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return true;
     }
 
     @Override

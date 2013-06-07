@@ -492,6 +492,9 @@ public class CompilationResult implements Serializable {
      * @return the code annotations or {@code null} if there are none
      */
     public List<CodeAnnotation> getAnnotations() {
+        if (annotations == null) {
+            return Collections.emptyList();
+        }
         return annotations;
     }
 

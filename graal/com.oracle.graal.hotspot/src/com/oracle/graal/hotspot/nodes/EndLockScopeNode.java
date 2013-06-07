@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -46,7 +48,7 @@ public final class EndLockScopeNode extends AbstractStateSplit implements LIRGen
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     @Override

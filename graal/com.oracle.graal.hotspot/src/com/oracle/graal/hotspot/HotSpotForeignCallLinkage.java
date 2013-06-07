@@ -88,9 +88,16 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     private final Transition transition;
 
     /**
-     * The locations defined/killed by the call.
+     * The registers and stack slots defined/killed by the call.
      */
     private Value[] temporaries = AllocatableValue.NONE;
+
+    /**
+     * The memory locations killed by the call.
+     */
+    private final LocationIdentity[] killedLocations;
+
+    private final boolean reexecutable;
 
     /**
      * Creates a {@link HotSpotForeignCallLinkage}.
@@ -100,11 +107,16 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * @param effect specifies if the call destroys or preserves all registers (apart from
      *            temporaries which are always destroyed)
      * @param ccType calling convention type
-     * @param transition specifies if this is a {@linkplain #isLeaf() leaf} call
+     * @param transition specifies if this is a {@linkplain #canDeoptimize() leaf} call
+     * @param reexecutable specifies if the call can be re-executed without (meaningful) side
+     *            effects. Deoptimization will not return to a point before a call that cannot be
+     *            re-executed.
+     * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition) {
+    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
         CallingConvention targetCc = createCallingConvention(descriptor, ccType);
-        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, targetCc);
+        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, targetCc, reexecutable, killedLocations);
     }
 
     /**
@@ -130,12 +142,15 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         }
     }
 
-    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc) {
+    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
         this.address = address;
         this.effect = effect;
         this.transition = transition;
         this.descriptor = descriptor;
         this.cc = cc;
+        this.reexecutable = reexecutable;
+        this.killedLocations = killedLocations;
     }
 
     @Override
@@ -151,6 +166,14 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
             }
         }
         return sb.toString();
+    }
+
+    public boolean isReexecutable() {
+        return reexecutable;
+    }
+
+    public LocationIdentity[] getKilledLocations() {
+        return killedLocations;
     }
 
     public CallingConvention getCallingConvention() {
@@ -212,11 +235,8 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         return effect == DESTROYS_REGISTERS;
     }
 
-    /**
-     * Determines if this is call to a function that does not lock, GC or throw exceptions. That is,
-     * the thread's execution state during the call is never inspected by another thread.
-     */
-    public boolean isLeaf() {
-        return transition == Transition.LEAF;
+    @Override
+    public boolean canDeoptimize() {
+        return transition != Transition.LEAF;
     }
 }

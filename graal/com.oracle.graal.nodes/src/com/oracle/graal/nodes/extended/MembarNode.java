@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.lang.reflect.*;
@@ -29,9 +30,9 @@ import java.lang.reflect.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -52,7 +53,7 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     @Override

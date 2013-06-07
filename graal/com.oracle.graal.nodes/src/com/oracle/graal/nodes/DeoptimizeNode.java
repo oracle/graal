@@ -83,9 +83,4 @@ public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNode
     public DeoptimizationReason getDeoptimizationReason() {
         return reason;
     }
-
-    @Override
-    public boolean isCallSiteDeoptimization() {
-        return false;
-    }
 }

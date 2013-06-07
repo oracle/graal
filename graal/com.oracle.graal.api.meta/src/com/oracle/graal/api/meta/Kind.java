@@ -362,8 +362,12 @@ public enum Kind implements PlatformKind {
             case Char:
             case Short:
                 return 16;
+            case Float:
+                return 32;
             case Int:
                 return 32;
+            case Double:
+                return 64;
             case Long:
                 return 64;
             default:

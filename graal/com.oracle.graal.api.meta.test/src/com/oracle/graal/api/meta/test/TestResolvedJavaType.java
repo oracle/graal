@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static com.oracle.graal.api.meta.test.TestMetaAccessProvider.*;
 import static java.lang.Integer.*;
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
@@ -41,7 +40,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Tests for {@link ResolvedJavaType}.
  */
-public class TestResolvedJavaType {
+public class TestResolvedJavaType extends TypeUniverse {
 
     public TestResolvedJavaType() {
     }
@@ -83,7 +82,7 @@ public class TestResolvedJavaType {
     }
 
     @Test
-    public void isArrayClassTest() {
+    public void isArrayTest() {
         for (Class c : classes) {
             ResolvedJavaType type = runtime.lookupJavaType(c);
             boolean expected = c.isArray();
@@ -103,7 +102,7 @@ public class TestResolvedJavaType {
     }
 
     @Test
-    public void isAssignableToTest() {
+    public void isAssignableFromTest() {
         Class[] all = classes.toArray(new Class[classes.size()]);
         for (int i = 0; i < all.length; i++) {
             Class<?> c1 = all[i];
@@ -194,7 +193,7 @@ public class TestResolvedJavaType {
         }
     }
 
-    public static Class getSupertype(Class c) {
+    public Class getSupertype(Class c) {
         assert !c.isPrimitive();
         if (c.isArray()) {
             Class componentType = c.getComponentType();
@@ -209,7 +208,7 @@ public class TestResolvedJavaType {
         return c.getSuperclass();
     }
 
-    public static Class findLeastCommonAncestor(Class<?> c1Initial, Class<?> c2Initial) {
+    public Class findLeastCommonAncestor(Class<?> c1Initial, Class<?> c2Initial) {
         if (c1Initial.isPrimitive() || c2Initial.isPrimitive()) {
             return null;
         } else {
@@ -270,7 +269,7 @@ public class TestResolvedJavaType {
     abstract static class Abstract4 extends Concrete3 {
     }
 
-    static void checkConcreteSubtype(ResolvedJavaType type, Class expected) {
+    void checkConcreteSubtype(ResolvedJavaType type, Class expected) {
         ResolvedJavaType subtype = type.findUniqueConcreteSubtype();
         if (subtype == null) {
             // findUniqueConcreteSubtype() is conservative
@@ -455,8 +454,10 @@ public class TestResolvedJavaType {
     }
 
     @Test
-    public void findUniqueConcreteMethodTest() {
-        // TODO
+    public void findUniqueConcreteMethodTest() throws NoSuchMethodException {
+        ResolvedJavaMethod thisMethod = runtime.lookupJavaMethod(getClass().getDeclaredMethod("findUniqueConcreteMethodTest"));
+        ResolvedJavaMethod ucm = runtime.lookupJavaType(getClass()).findUniqueConcreteMethod(thisMethod);
+        assertEquals(thisMethod, ucm);
     }
 
     public static Set<Field> getInstanceFields(Class c, boolean includeSuperclasses) {
@@ -475,12 +476,12 @@ public class TestResolvedJavaType {
         return result;
     }
 
-    public static boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
+    public boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
         return rjf.getDeclaringClass().equals(runtime.lookupJavaType(f.getDeclaringClass())) && rjf.getName().equals(f.getName()) &&
                         rjf.getType().resolve(rjf.getDeclaringClass()).equals(runtime.lookupJavaType(f.getType()));
     }
 
-    public static ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
+    public ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
         for (ResolvedJavaField rf : fields) {
             if (fieldsEqual(key, rf)) {
                 assert (fieldModifiers() & key.getModifiers()) == rf.getModifiers() : key + ": " + toHexString(key.getModifiers()) + " != " + toHexString(rf.getModifiers());
@@ -490,7 +491,7 @@ public class TestResolvedJavaType {
         return null;
     }
 
-    public static Field lookupField(Set<Field> fields, ResolvedJavaField key) {
+    public Field lookupField(Set<Field> fields, ResolvedJavaField key) {
         for (Field f : fields) {
             if (fieldsEqual(f, key)) {
                 assert key.getModifiers() == (fieldModifiers() & f.getModifiers()) : key + ": " + toHexString(key.getModifiers()) + " != " + toHexString(f.getModifiers());
@@ -500,7 +501,7 @@ public class TestResolvedJavaType {
         return null;
     }
 
-    private static boolean isHiddenFromReflection(ResolvedJavaField f) {
+    private boolean isHiddenFromReflection(ResolvedJavaField f) {
         if (f.getDeclaringClass().equals(runtime.lookupJavaType(Throwable.class)) && f.getName().equals("backtrace")) {
             return true;
         }
@@ -574,4 +575,50 @@ public class TestResolvedJavaType {
             }
         }
     }
+
+    private Method findTestMethod(Method apiMethod) {
+        String testName = apiMethod.getName() + "Test";
+        for (Method m : getClass().getDeclaredMethods()) {
+            if (m.getName().equals(testName) && m.getAnnotation(Test.class) != null) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    // @formatter:off
+    private static final String[] untestedApiMethods = {
+        "initialize",
+        "isPrimitive",
+        "newArray",
+        "getDeclaredMethods",
+        "getDeclaredConstructors",
+        "isInitialized",
+        "getEncoding",
+        "hasFinalizableSubclass",
+        "hasFinalizer",
+        "getSourceFileName",
+        "getClassFilePath",
+        "isLocal",
+        "isMember",
+        "getEnclosingType"
+    };
+    // @formatter:on
+
+    /**
+     * Ensures that any new methods added to {@link ResolvedJavaMethod} either have a test written
+     * for them or are added to {@link #untestedApiMethods}.
+     */
+    @Test
+    public void testCoverage() {
+        Set<String> known = new HashSet<>(Arrays.asList(untestedApiMethods));
+        for (Method m : ResolvedJavaType.class.getDeclaredMethods()) {
+            if (findTestMethod(m) == null) {
+                assertTrue("test missing for " + m, known.contains(m.getName()));
+            } else {
+                assertFalse("test should be removed from untestedApiMethods" + m, known.contains(m.getName()));
+            }
+        }
+    }
+
 }

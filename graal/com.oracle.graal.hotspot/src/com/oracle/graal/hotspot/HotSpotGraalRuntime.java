@@ -35,7 +35,10 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+
+//import static com.oracle.graal.phases.GraalOptions.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
@@ -84,9 +87,14 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         runtime.compilerToVm = toVM;
     }
 
+    // @formatter:off
+    @Option(help = "The runtime configuration to use")
+    private static final OptionValue<String> GraalRuntime = new OptionValue<>("basic");
+    // @formatter:on
+
     protected static HotSpotGraalRuntimeFactory findFactory(String architecture) {
         for (HotSpotGraalRuntimeFactory factory : ServiceLoader.loadInstalled(HotSpotGraalRuntimeFactory.class)) {
-            if (factory.getArchitecture().equals(architecture) && factory.getName().equals(GraalOptions.GraalRuntime)) {
+            if (factory.getArchitecture().equals(architecture) && factory.getName().equals(GraalRuntime.getValue())) {
                 return factory;
             }
         }
@@ -123,9 +131,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         return unsafe.getInt(object, offset);
     }
 
-    protected/* final */CompilerToVM  compilerToVm;
+    protected/* final */CompilerToVM compilerToVm;
     protected/* final */CompilerToGPU compilerToGpu;
-    protected/* final */VMToCompiler  vmToCompiler;
+    protected/* final */VMToCompiler vmToCompiler;
 
     protected final HotSpotRuntime runtime;
     protected final TargetDescription target;
@@ -138,13 +146,13 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     private final HotSpotBackend backend;
 
     protected HotSpotGraalRuntime() {
-        CompilerToVM  toVM  = new CompilerToVMImpl();
+        CompilerToVM toVM = new CompilerToVMImpl();
         CompilerToGPU toGPU = new CompilerToGPUImpl();
 
         // initialize VmToCompiler
         VMToCompiler toCompiler = new VMToCompilerImpl(this);
 
-        compilerToVm  = toVM;
+        compilerToVm = toVM;
         compilerToGpu = toGPU;
         vmToCompiler = toCompiler;
         config = new HotSpotVMConfig();
@@ -153,16 +161,16 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
         // Set some global options:
         if (config.compileTheWorld) {
-            GraalOptions.CompileTheWorld = CompileTheWorld.SUN_BOOT_CLASS_PATH;
+            GraalOptions.CompileTheWorld.setValue(CompileTheWorld.SUN_BOOT_CLASS_PATH);
         }
         if (config.compileTheWorldStartAt != 1) {
-            GraalOptions.CompileTheWorldStartAt = config.compileTheWorldStartAt;
+            GraalOptions.CompileTheWorldStartAt.setValue(config.compileTheWorldStartAt);
         }
         if (config.compileTheWorldStopAt != Integer.MAX_VALUE) {
-            GraalOptions.CompileTheWorldStopAt = config.compileTheWorldStopAt;
+            GraalOptions.CompileTheWorldStopAt.setValue(config.compileTheWorldStopAt);
         }
-        GraalOptions.HotSpotPrintCompilation = config.printCompilation;
-        GraalOptions.HotSpotPrintInlining = config.printInlining;
+        GraalOptions.HotSpotPrintCompilation.setValue(config.printCompilation);
+        GraalOptions.HotSpotPrintInlining.setValue(config.printInlining);
 
         if (Boolean.valueOf(System.getProperty("graal.printconfig"))) {
             printConfig(config);
@@ -180,8 +188,8 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         replacements = new HotSpotReplacementsImpl(runtime, assumptions, runtime.getGraalRuntime().getTarget());
 
         backend = createBackend();
-        GraalOptions.StackShadowPages = config.stackShadowPages;
-        if (GraalOptions.CacheGraphs) {
+        GraalOptions.StackShadowPages.setValue(config.stackShadowPages);
+        if (GraalOptions.CacheGraphs.getValue()) {
             cache = new HotSpotGraphCache();
         }
     }

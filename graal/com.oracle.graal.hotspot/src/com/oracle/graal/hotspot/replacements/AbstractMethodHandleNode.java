@@ -273,9 +273,20 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
             ValueNode[] args = replacementArguments.toArray(new ValueNode[replacementArguments.size()]);
             callTarget = new SelfReplacingMethodCallTargetNode(invokeKind, targetMethod, targetArguments, returnType, replacementTargetMethod, args, replacementReturnType);
         }
-
         graph().add(callTarget);
-        InvokeNode invoke = graph().add(new InvokeNode(callTarget, getBci()));
+
+        // The call target can have a different return type than the invoker,
+        // e.g. the target returns an Object but the invoker void. In this case
+        // we need to use the stamp of the invoker. Note: always using the
+        // invoker's stamp would be wrong because it's a less concrete type
+        // (usually java.lang.Object).
+        InvokeNode invoke;
+        if (callTarget.returnStamp().kind() != stamp().kind()) {
+            invoke = new InvokeNode(callTarget, getBci(), stamp());
+        } else {
+            invoke = new InvokeNode(callTarget, getBci());
+        }
+        graph().add(invoke);
         invoke.setStateAfter(stateAfter());
         return invoke;
     }

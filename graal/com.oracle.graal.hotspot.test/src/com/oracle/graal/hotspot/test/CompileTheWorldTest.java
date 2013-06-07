@@ -26,6 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Tests {@link CompileTheWorld} functionality.
@@ -34,9 +35,11 @@ public class CompileTheWorldTest extends GraalCompilerTest {
 
     @Test
     public void testRtJar() throws Throwable {
+        boolean originalSetting = GraalOptions.ExitVMOnException.getValue();
         // Compile a couple classes in rt.jar
         String file = System.getProperty("java.home") + "/lib/rt.jar";
         new CompileTheWorld(file, 1, 5).compile();
+        GraalOptions.ExitVMOnException.setValue(originalSetting);
     }
 
 }

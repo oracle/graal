@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import java.lang.reflect.*;
@@ -43,15 +44,15 @@ public class ThreadSubstitutions {
 
     @MethodSubstitution
     public static Thread currentThread() {
-        return (Thread) CurrentJavaThreadNode.get().readObject(threadObjectOffset(), FINAL_LOCATION);
+        return (Thread) CurrentJavaThreadNode.get().readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION);
     }
 
     @MethodSubstitution(isStatic = false)
     public static boolean isInterrupted(final Thread thisObject, boolean clearInterrupted) {
         Word javaThread = CurrentJavaThreadNode.get();
-        Object thread = javaThread.readObject(threadObjectOffset(), FINAL_LOCATION);
+        Object thread = javaThread.readObject(threadObjectOffset(), LocationIdentity.FINAL_LOCATION);
         if (thisObject == thread) {
-            Word osThread = javaThread.readWord(osThreadOffset(), FINAL_LOCATION);
+            Word osThread = javaThread.readWord(osThreadOffset(), LocationIdentity.FINAL_LOCATION);
             boolean interrupted = osThread.readInt(osThreadInterruptedOffset(), ANY_LOCATION) != 0;
             if (!interrupted || !clearInterrupted) {
                 return interrupted;

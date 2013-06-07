@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -41,7 +42,7 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationNode.ANY_LOCATION};
+        return new LocationIdentity[]{ANY_LOCATION};
     }
 
     @Override

@@ -22,8 +22,12 @@
  */
 package com.oracle.graal.phases.schedule;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
@@ -31,7 +35,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -84,6 +87,11 @@ public final class SchedulePhase extends Phase {
     private class MemoryScheduleClosure extends BlockIteratorClosure<HashSet<FloatingReadNode>> {
 
         @Override
+        protected HashSet<FloatingReadNode> getInitialState() {
+            return new HashSet<>();
+        }
+
+        @Override
         protected HashSet<FloatingReadNode> processBlock(Block block, HashSet<FloatingReadNode> currentState) {
             for (Node node : getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
@@ -93,7 +101,7 @@ public final class SchedulePhase extends Phase {
                         for (Iterator<FloatingReadNode> iter = currentState.iterator(); iter.hasNext();) {
                             FloatingReadNode read = iter.next();
                             FixedNode fixed = (FixedNode) node;
-                            if (identity == LocationNode.ANY_LOCATION || read.location().getLocationIdentity() == identity) {
+                            if (identity == ANY_LOCATION || read.location().getLocationIdentity() == identity) {
                                 addPhantomReference(read, fixed);
                                 iter.remove();
                             }
@@ -165,7 +173,7 @@ public final class SchedulePhase extends Phase {
     private final SchedulingStrategy selectedStrategy;
 
     public SchedulePhase() {
-        this(GraalOptions.OptScheduleOutOfLoops ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
+        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
@@ -178,13 +186,13 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (GraalOptions.MemoryAwareScheduling && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
+        if (MemoryAwareScheduling.getValue() && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
 
             assignBlockToNodes(graph, SchedulingStrategy.EARLIEST);
             sortNodesWithinBlocks(graph, SchedulingStrategy.EARLIEST);
 
             MemoryScheduleClosure closure = new MemoryScheduleClosure();
-            ReentrantBlockIterator.apply(closure, getCFG().getStartBlock(), new HashSet<FloatingReadNode>(), null);
+            ReentrantBlockIterator.apply(closure, getCFG().getStartBlock());
 
             cfg.clearNodeToBlock();
             blockToNodesMap = new BlockMap<>(cfg);

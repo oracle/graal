@@ -31,9 +31,42 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.options.*;
 
 public class GraalDebugConfig implements DebugConfig {
+
+    // @formatter:off
+    @Option(help = "Enable scope-based debugging", name = "Debug")
+    public static final OptionValue<Boolean> DebugEnabled = new OptionValue<>(true);
+    @Option(help = "Scopes to be dumped")
+    public static final OptionValue<String> Dump = new OptionValue<>(null);
+    @Option(help = "Scopes to be metered")
+    public static final OptionValue<String> Meter = new OptionValue<>(null);
+    @Option(help = "Scopes to be timed")
+    public static final OptionValue<String> Time = new OptionValue<>(null);
+    @Option(help = "Scopes to be logged")
+    public static final OptionValue<String> Log = new OptionValue<>(null);
+    @Option(help = "Filters debug scope output by method name/pattern")
+    public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PerThreadDebugValues = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> SummarizeDebugValues = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> SummarizePerPhase = new OptionValue<>(false);
+    @Option(help = "Send Graal IR to dump handlers on error")
+    public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
+    @Option(help = "Enable expensive assertions")
+    public static final OptionValue<Boolean> DetailedAsserts = new StableOptionValue<Boolean>() {
+        @Override
+        protected Boolean initialValue() {
+            boolean enabled = false;
+            // turn detailed assertions on when the general assertions are on (misusing the assert keyword for this)
+            assert (enabled = true) == true;
+            return enabled;
+        }
+    };
+    // @formatter:on
 
     private final DebugFilter logFilter;
     private final DebugFilter meterFilter;
@@ -170,7 +203,7 @@ public class GraalDebugConfig implements DebugConfig {
         for (Object o : Debug.context()) {
             if (o instanceof Graph) {
                 Debug.log("Context obj %s", o);
-                if (GraalOptions.DumpOnError) {
+                if (DumpOnError.getValue()) {
                     Debug.dump(o, "Exception graph");
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");

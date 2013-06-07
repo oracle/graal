@@ -27,11 +27,11 @@ import java.util.regex.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.phases.*;
 
 /**
- * Implements the filter specified by the {@link GraalOptions#Dump}, {@link GraalOptions#Log},
- * {@link GraalOptions#Meter} and {@link GraalOptions#Time} options.
+ * Implements the filter specified by the {@link GraalDebugConfig#Dump},
+ * {@link GraalDebugConfig#Log}, {@link GraalDebugConfig#Meter} and {@link GraalDebugConfig#Time}
+ * options.
  * <p>
  * These options enable the associated debug facility if their filter matches the
  * {@linkplain DebugScope#getQualifiedName() name} of the {@linkplain Debug#currentScope() current

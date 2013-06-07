@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
@@ -31,7 +33,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class ObjectCloneNode extends MacroNode implements VirtualizableAllocation, ArrayLengthProvider {
@@ -51,7 +52,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
 
     @Override
     protected StructuredGraph getSnippetGraph(LoweringTool tool) {
-        if (!GraalOptions.IntrinsifyObjectClone) {
+        if (!IntrinsifyObjectClone.getValue()) {
             return null;
         }
 
@@ -77,7 +78,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     }
 
     private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
+        return type != null && metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
     }
 
     private static ResolvedJavaType getConcreteType(ObjectStamp stamp, Assumptions assumptions) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,17 @@ package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.sparc.*;
+import com.oracle.graal.asm.AbstractAssembler;
+import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.compiler.gen.LIRGenerator;
+import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 /**
  * HotSpot SPARC specific backend.
@@ -49,14 +52,44 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     protected AbstractAssembler createAssembler(FrameMap frameMap) {
-        // SPARC: Create assembler.
-        return null;
+        return new SPARCAssembler(target, frameMap.registerConfig);
+    }
+
+    class HotSpotFrameContext implements FrameContext {
+
+        final boolean isStub;
+
+        HotSpotFrameContext(boolean isStub) {
+            this.isStub = isStub;
+        }
+
+        @Override
+        public void enter(TargetMethodAssembler tasm) {
+        }
+
+        @Override
+        public void leave(TargetMethodAssembler tasm) {
+        }
     }
 
     @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
-        // SPARC: Create assembler.
-        return null;
+        SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
+        FrameMap frameMap = gen.frameMap;
+        LIR lir = gen.lir;
+        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
+
+        Stub stub = gen.getStub();
+        AbstractAssembler masm = createAssembler(frameMap);
+        HotSpotFrameContext frameContext = omitFrame ? null : new HotSpotFrameContext(stub != null);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
+        tasm.setFrameSize(frameMap.frameSize());
+        StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
+        if (deoptimizationRescueSlot != null && stub == null) {
+            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+        }
+
+        return tasm;
     }
 
     @Override

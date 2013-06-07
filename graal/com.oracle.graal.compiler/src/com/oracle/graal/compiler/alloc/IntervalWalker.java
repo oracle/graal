@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.compiler.alloc;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.compiler.alloc.Interval.RegisterBinding;
 import com.oracle.graal.compiler.alloc.Interval.RegisterBindingLists;
 import com.oracle.graal.compiler.alloc.Interval.State;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.phases.*;
 
 /**
  */
@@ -208,7 +209,7 @@ public class IntervalWalker {
             boolean isActive = currentInterval.from() <= toOpId;
             int opId = isActive ? currentInterval.from() : toOpId;
 
-            if (GraalOptions.TraceLinearScanLevel >= 2 && !TTY.isSuppressed()) {
+            if (TraceLinearScanLevel.getValue() >= 2 && !TTY.isSuppressed()) {
                 if (currentPosition < opId) {
                     TTY.println();
                     TTY.println("walkTo(%d) *", opId);
@@ -239,7 +240,7 @@ public class IntervalWalker {
     private void intervalMoved(Interval interval, State from, State to) {
         // intervalMoved() is called whenever an interval moves from one interval list to another.
         // In the implementation of this method it is prohibited to move the interval to any list.
-        if (GraalOptions.TraceLinearScanLevel >= 4 && !TTY.isSuppressed()) {
+        if (TraceLinearScanLevel.getValue() >= 4 && !TTY.isSuppressed()) {
             TTY.print(from.toString() + " to " + to.toString());
             TTY.fillTo(23);
             TTY.out().println(interval.logString(allocator));

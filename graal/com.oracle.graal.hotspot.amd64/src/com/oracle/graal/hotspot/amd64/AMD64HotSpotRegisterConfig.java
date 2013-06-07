@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -32,13 +33,12 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.phases.*;
 
 public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final Architecture architecture;
 
-    private final Register[] allocatable = initAllocatable();
+    private final Register[] allocatable;
 
     private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
@@ -86,25 +86,34 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         throw new IllegalArgumentException("register " + name + " is not allocatable");
     }
 
-    private static Register[] initAllocatable() {
+    private static Register[] initAllocatable(boolean reserveForHeapBase) {
+        Register[] registers = null;
         // @formatter:off
-        Register[] allocatable = {
+        if (reserveForHeapBase) {
+            registers = new Register[] {
+                        rax, rbx, rcx, rdx, /*rsp,*/ rbp, rsi, rdi, r8, r9,  r10, r11, /*r12,*/ r13, r14, /*r15, */
+                        xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
+                        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
+                      };
+        } else {
+            registers = new Register[] {
                         rax, rbx, rcx, rdx, /*rsp,*/ rbp, rsi, rdi, r8, r9,  r10, r11, r12, r13, r14, /*r15, */
                         xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
                         xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
-                    };
-        // @formatter:on
+                      };
+        }
+       // @formatter:on
 
-        if (GraalOptions.RegisterPressure != null) {
-            String[] names = GraalOptions.RegisterPressure.split(",");
+        if (RegisterPressure.getValue() != null) {
+            String[] names = RegisterPressure.getValue().split(",");
             Register[] regs = new Register[names.length];
             for (int i = 0; i < names.length; i++) {
-                regs[i] = findRegister(names[i], allocatable);
+                regs[i] = findRegister(names[i], registers);
             }
             return regs;
         }
 
-        return allocatable;
+        return registers;
     }
 
     public AMD64HotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
@@ -119,6 +128,7 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
         }
 
         csl = null;
+        allocatable = initAllocatable(config.useCompressedOops);
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
     }
 

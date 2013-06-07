@@ -33,6 +33,9 @@ import java.util.*;
  * <li>The callee has different register saving semantics. For example, the callee may save all
  * registers (apart from some specified temporaries) in which case the register allocator doesn't
  * not need to spill all live registers around the call site.</li>
+ * <li>The call does not occur at an INVOKE* bytecode. Such a call could be transformed into a
+ * standard Java call if the foreign routine is a normal Java method and the runtime supports
+ * linking Java calls at arbitrary bytecodes.</li>
  * </ul>
  */
 public class ForeignCallDescriptor {

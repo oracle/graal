@@ -41,6 +41,9 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
 
     protected final int stackSize;
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     private boolean rethrowException;
 
     private boolean duringCall;
@@ -160,6 +163,9 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
         this.outerFrameState = x;
     }
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     public boolean rethrowException() {
         return rethrowException;
     }

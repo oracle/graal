@@ -22,7 +22,9 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.lang.reflect.*;
@@ -32,7 +34,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
@@ -116,12 +117,12 @@ public class ObjectCloneSnippets implements Snippets {
         }
     }
 
-    private static final SnippetCounter.Group cloneCounters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Object.clone") : null;
+    private static final SnippetCounter.Group cloneCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("Object.clone") : null;
     private static final SnippetCounter instanceCloneCounter = new SnippetCounter(cloneCounters, "instanceClone", "clone snippet for instances");
     private static final SnippetCounter arrayCloneCounter = new SnippetCounter(cloneCounters, "arrayClone", "clone snippet for arrays");
     private static final SnippetCounter genericCloneCounter = new SnippetCounter(cloneCounters, "genericClone", "clone snippet for arrays and instances");
 
-    private static final SnippetCounter.Group genericCloneCounters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Object.clone generic snippet") : null;
+    private static final SnippetCounter.Group genericCloneCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("Object.clone generic snippet") : null;
     private static final SnippetCounter genericInstanceCloneCounter = new SnippetCounter(genericCloneCounters, "genericInstanceClone", "generic clone implementation took instance path");
     private static final SnippetCounter genericArrayCloneCounter = new SnippetCounter(genericCloneCounters, "genericArrayClone", "generic clone implementation took array path");
 

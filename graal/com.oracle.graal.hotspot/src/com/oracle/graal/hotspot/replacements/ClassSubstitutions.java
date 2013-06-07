@@ -27,6 +27,7 @@ import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.word.*;
@@ -44,7 +45,7 @@ public class ClassSubstitutions {
             // Class for primitive type
             return Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC;
         } else {
-            return klass.readInt(klassModifierFlagsOffset(), FINAL_LOCATION);
+            return klass.readInt(klassModifierFlagsOffset(), LocationIdentity.FINAL_LOCATION);
         }
     }
 
@@ -54,7 +55,7 @@ public class ClassSubstitutions {
         if (klass.equal(0)) {
             return false;
         } else {
-            int accessFlags = klass.readInt(klassAccessFlagsOffset(), FINAL_LOCATION);
+            int accessFlags = klass.readInt(klassAccessFlagsOffset(), LocationIdentity.FINAL_LOCATION);
             return (accessFlags & Modifier.INTERFACE) != 0;
         }
     }
@@ -79,16 +80,16 @@ public class ClassSubstitutions {
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass.notEqual(0)) {
-            int accessFlags = klass.readInt(klassAccessFlagsOffset(), FINAL_LOCATION);
+            int accessFlags = klass.readInt(klassAccessFlagsOffset(), LocationIdentity.FINAL_LOCATION);
             if ((accessFlags & Modifier.INTERFACE) == 0) {
                 if ((readLayoutHelper(klass) & arrayKlassLayoutHelperIdentifier()) != 0) {
                     return Object.class;
                 } else {
-                    Word superKlass = klass.readWord(klassSuperKlassOffset(), FINAL_LOCATION);
+                    Word superKlass = klass.readWord(klassSuperKlassOffset(), LocationIdentity.FINAL_LOCATION);
                     if (superKlass.equal(0)) {
                         return null;
                     } else {
-                        return unsafeCast(superKlass.readObject(classMirrorOffset(), FINAL_LOCATION), Class.class, true, true);
+                        return unsafeCast(superKlass.readObject(classMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
                     }
                 }
             }
@@ -101,7 +102,7 @@ public class ClassSubstitutions {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass.notEqual(0)) {
             if ((readLayoutHelper(klass) & arrayKlassLayoutHelperIdentifier()) != 0) {
-                return unsafeCast(klass.readObject(arrayKlassComponentMirrorOffset(), FINAL_LOCATION), Class.class, true, true);
+                return unsafeCast(klass.readObject(arrayKlassComponentMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
             }
         }
         return null;

@@ -82,7 +82,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
             public void run() {
                 StructuredGraph graph = parse(snippet);
                 new InliningPhase(runtime(), null, replacements, new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false)).apply(graph);
+                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
                 Debug.dump(graph, "Graph");
                 StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
                 Debug.dump(referenceGraph, "ReferenceGraph");

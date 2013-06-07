@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assert.*;
 
 import java.util.concurrent.*;
@@ -33,6 +34,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
@@ -100,8 +102,8 @@ public class IterativeInliningTest extends GraalCompilerTest {
 
     private void processMethod(final String snippet) {
         graph = parse(snippet);
-        GraalOptions.OptEarlyReadElimination = true;
+        OptEarlyReadElimination.setValue(true);
         HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
-        new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false).apply(graph, context);
+        new IterativeInliningPhase(replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, false, new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

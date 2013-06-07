@@ -129,8 +129,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native long getMaxCallTargetOffset(long address);
 
+    // The HotSpot disassembler seems not to be thread safe so it's better to synchronize its usage
     @Override
-    public native String disassembleCodeBlob(long codeBlob);
+    public synchronized native String disassembleCodeBlob(long codeBlob);
 
     @Override
     public native byte[] getCode(long codeBlob);

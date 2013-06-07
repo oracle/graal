@@ -33,7 +33,6 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
@@ -43,7 +42,7 @@ import com.oracle.graal.word.*;
  */
 public class PointerTest extends GraalCompilerTest implements Snippets {
 
-    private static final LocationIdentity ID = LocationNode.createLocation("ID");
+    private static final LocationIdentity ID = new NamedLocationIdentity("ID");
     private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};
     private final TargetDescription target;
     private final ReplacementsImpl installer;
@@ -78,7 +77,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void test_read3() {
         for (Kind kind : KINDS) {
-            assertRead(parse("read" + kind.name() + "3"), kind, false, LocationNode.ANY_LOCATION);
+            assertRead(parse("read" + kind.name() + "3"), kind, false, LocationIdentity.ANY_LOCATION);
         }
     }
 
@@ -99,7 +98,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     @Test
     public void test_write3() {
         for (Kind kind : KINDS) {
-            assertWrite(parse("write" + kind.name() + "3"), kind, false, LocationNode.ANY_LOCATION);
+            assertWrite(parse("write" + kind.name() + "3"), kind, false, LocationIdentity.ANY_LOCATION);
         }
     }
 

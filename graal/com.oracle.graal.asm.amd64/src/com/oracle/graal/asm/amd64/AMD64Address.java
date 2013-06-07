@@ -114,11 +114,11 @@ public final class AMD64Address extends AbstractAddress {
         StringBuilder s = new StringBuilder();
         s.append("[");
         String sep = "";
-        if (getBase() != Register.None) {
+        if (!getBase().equals(Register.None)) {
             s.append(getBase());
             sep = " + ";
         }
-        if (getIndex() != Register.None) {
+        if (!getIndex().equals(Register.None)) {
             s.append(sep).append(getIndex()).append(" * ").append(getScale().value);
             sep = " + ";
         }

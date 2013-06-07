@@ -120,7 +120,7 @@ public final class ValueUtil {
     }
 
     public static boolean sameRegister(Value v1, Value v2) {
-        return isRegister(v1) && isRegister(v2) && asRegister(v1) == asRegister(v2);
+        return isRegister(v1) && isRegister(v2) && asRegister(v1).equals(asRegister(v2));
     }
 
     public static boolean sameRegister(Value v1, Value v2, Value v3) {
@@ -128,7 +128,7 @@ public final class ValueUtil {
     }
 
     public static boolean differentRegisters(Value v1, Value v2) {
-        return !isRegister(v1) || !isRegister(v2) || asRegister(v1) != asRegister(v2);
+        return !isRegister(v1) || !isRegister(v2) || !asRegister(v1).equals(asRegister(v2));
     }
 
     public static boolean differentRegisters(Value v1, Value v2, Value v3) {

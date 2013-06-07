@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -220,7 +222,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static void processBlock(Block block, SchedulePhase schedule, int implicitNullCheckLimit) {
         List<ScheduledNode> nodes = schedule.nodesFor(block);
-        if (GraalOptions.OptImplicitNullChecks && implicitNullCheckLimit > 0) {
+        if (OptImplicitNullChecks.getValue() && implicitNullCheckLimit > 0) {
             new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(nodes, block.getBeginNode());
         }
         new LowerGuards(block).processNodes(nodes, block.getBeginNode());

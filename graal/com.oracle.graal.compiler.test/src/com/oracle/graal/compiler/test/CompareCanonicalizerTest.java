@@ -35,7 +35,7 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
 
     private StructuredGraph getCanonicalizedGraph(String name) {
         StructuredGraph graph = parse(name);
-        new CanonicalizerPhase.Instance(runtime(), null).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
         return graph;
     }
 
@@ -53,7 +53,7 @@ public class CompareCanonicalizerTest extends GraalCompilerTest {
             assertEquals(referenceGraph, graph);
         }
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(referenceGraph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(referenceGraph);
         for (int i = 1; i < 4; i++) {
             StructuredGraph graph = getCanonicalizedGraph("canonicalCompare" + i);
             assertEquals(referenceGraph, graph);

@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.type;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.meta.*;
 
 public class ObjectStamp extends Stamp {
@@ -33,12 +35,27 @@ public class ObjectStamp extends Stamp {
 
     public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(Kind.Object);
-        assert !exactType || type != null;
-        assert !(nonNull && alwaysNull);
+        assert isValid(type, exactType, nonNull, alwaysNull);
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;
         this.alwaysNull = alwaysNull;
+    }
+
+    public static boolean isValid(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
+        if (exactType && type == null) {
+            return false;
+        }
+
+        if (exactType && Modifier.isAbstract(type.getModifiers()) && !type.isArray()) {
+            return false;
+        }
+
+        if (nonNull && alwaysNull) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override
@@ -152,12 +169,19 @@ public class ObjectStamp extends Stamp {
                 joinType = type;
             }
         }
+
         if (joinType == type && joinExactType == exactType && joinNonNull == nonNull && joinAlwaysNull == alwaysNull) {
             return this;
         } else if (joinType == other.type && joinExactType == other.exactType && joinNonNull == other.nonNull && joinAlwaysNull == other.alwaysNull) {
             return other;
         } else {
-            return new ObjectStamp(joinType, joinExactType, joinNonNull, joinAlwaysNull);
+            if (isValid(joinType, joinExactType, joinNonNull, joinAlwaysNull)) {
+                return new ObjectStamp(joinType, joinExactType, joinNonNull, joinAlwaysNull);
+            } else {
+                // This situation can happen in case the compiler wants to join two contradicting
+                // stamps.
+                return null;
+            }
         }
     }
 

@@ -22,18 +22,19 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 
 @ServiceProvider(ReplacementsProvider.class)
 public class HotSpotNmethodIntrinsics implements ReplacementsProvider {
 
     @Override
     public void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-        if (GraalOptions.IntrinsifyInstalledCodeMethods) {
+        if (IntrinsifyInstalledCodeMethods.getValue()) {
             replacements.registerSubstitutions(HotSpotNmethodSubstitutions.class);
         }
     }

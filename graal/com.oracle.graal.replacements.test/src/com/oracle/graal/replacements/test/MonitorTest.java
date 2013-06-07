@@ -33,6 +33,7 @@ public class MonitorTest extends GraalCompilerTest {
     public void test0() {
         test("lockObjectSimple", new Object(), new Object());
         test("lockObjectSimple", new Object(), null);
+        test("lockObjectSimple", null, null);
     }
 
     @Test

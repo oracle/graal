@@ -24,7 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.nodes.*;
 
-public interface Access extends DeoptimizingNode, GuardedNode {
+public interface Access extends DeoptimizingNode, GuardedNode, HeapAccess {
 
     ValueNode object();
 

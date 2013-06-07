@@ -313,6 +313,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
+        assert other != null;
         if (other instanceof HotSpotResolvedObjectType) {
             HotSpotResolvedObjectType otherType = (HotSpotResolvedObjectType) other;
             return javaMirror.isAssignableFrom(otherType.javaMirror);

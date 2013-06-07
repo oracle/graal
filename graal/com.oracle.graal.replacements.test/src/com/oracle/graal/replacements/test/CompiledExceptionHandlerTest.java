@@ -72,7 +72,7 @@ public class CompiledExceptionHandlerTest extends GraalCompilerTest {
             try {
                 raiseException(message);
             } catch (Exception e) {
-                return message;
+                return message + e.getMessage();
             }
         }
         return null;

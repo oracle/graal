@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
@@ -38,6 +39,7 @@ import static com.oracle.graal.hotspot.nodes.NewMultiArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPostStubCall.*;
 import static com.oracle.graal.hotspot.nodes.WriteBarrierPreStubCall.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.MonitorSnippets.*;
 import static com.oracle.graal.hotspot.replacements.SystemSubstitutions.*;
 import static com.oracle.graal.hotspot.replacements.ThreadSubstitutions.*;
@@ -48,6 +50,7 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
 
@@ -74,15 +77,15 @@ import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -95,6 +98,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
     public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
     public static final ForeignCallDescriptor VERIFY_OOP = new ForeignCallDescriptor("verify_oop", Object.class, Object.class);
+    public static final ForeignCallDescriptor LOAD_AND_CLEAR_EXCEPTION = new ForeignCallDescriptor("load_and_clear_exception", Object.class, Word.class);
 
     public final HotSpotVMConfig config;
 
@@ -190,18 +194,29 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     /**
      * Creates and registers the details for linking a foreign call to a {@link Stub}.
+     * 
+     * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
+     *            effects. Deoptimization will not return to a point before a stub call that cannot
+     *            be re-executed.
+     * @param killedLocations the memory locations killed by the stub call
      */
-    protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor) {
-        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF));
+    protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, LocationIdentity... killedLocations) {
+        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, NOT_LEAF, reexecutable, killedLocations));
     }
 
     /**
      * Creates and registers the linkage for a foreign call.
+     * 
+     * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
+     *            effects. Deoptimization will not return to a point before a stub call that cannot
+     *            be re-executed.
+     * @param killedLocations the memory locations killed by the stub call
      */
-    protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition) {
+    protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition,
+                    boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
-        assert resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition));
+        assert transition == LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition, reexecutable, killedLocations));
     }
 
     private static void link(Stub stub) {
@@ -215,9 +230,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param address the address of the code to call
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
+     * @param reexecutable specifies if the foreign call can be re-executed without (meaningful)
+     *            side effects. Deoptimization will not return to a point before a foreign call that
+     *            cannot be re-executed.
+     * @param killedLocations the memory locations killed by the foreign call
      */
-    private void linkForeignCall(ForeignCallDescriptor descriptor, long address, boolean prependThread, Replacements replacements) {
-        ForeignCallStub stub = new ForeignCallStub(address, descriptor, prependThread, this, replacements);
+    private void linkForeignCall(Replacements replacements, ForeignCallDescriptor descriptor, long address, boolean prependThread, boolean reexecutable, LocationIdentity... killedLocations) {
+        ForeignCallStub stub = new ForeignCallStub(this, replacements, address, descriptor, prependThread, reexecutable, killedLocations);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
@@ -225,78 +244,87 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         register(targetLinkage);
     }
 
-    public void registerReplacements(Replacements replacements) {
+    public static final boolean PREPEND_THREAD = true;
+    public static final boolean DONT_PREPEND_THREAD = !PREPEND_THREAD;
+
+    public static final boolean REEXECUTABLE = true;
+    public static final boolean NOT_REEXECUTABLE = !REEXECUTABLE;
+
+    public static final LocationIdentity[] NO_LOCATIONS = {};
+
+    public void registerReplacements(Replacements r) {
         HotSpotVMConfig c = config;
         TargetDescription target = getTarget();
 
-        registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF);
-        registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF);
-        registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall, PRESERVES_REGISTERS, LEAF);
+        registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(DEOPT_HANDLER, c.handleDeoptStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        registerForeignCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
-        registerForeignCall(JAVA_TIME_NANOS, c.javaTimeNanosAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
-        registerForeignCall(ARITHMETIC_SIN, c.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
-        registerForeignCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
-        registerForeignCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS, LEAF);
+        registerForeignCall(JAVA_TIME_MILLIS, c.javaTimeMillisAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(JAVA_TIME_NANOS, c.javaTimeNanosAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(ARITHMETIC_SIN, c.arithmeticSinAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(ARITHMETIC_COS, c.arithmeticCosAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(ARITHMETIC_TAN, c.arithmeticTanAddress, NativeCall, DESTROYS_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        registerForeignCall(LOAD_AND_CLEAR_EXCEPTION, c.loadAndClearExceptionAddress, NativeCall, DESTROYS_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
 
-        registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
-        registerForeignCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
-        registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
-        registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
-        registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF);
+        registerForeignCall(EXCEPTION_HANDLER_FOR_PC, c.exceptionHandlerForPcAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, c.exceptionHandlerForReturnAddressAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(NEW_ARRAY_C, c.newArrayAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        link(new NewInstanceStub(this, replacements, target, registerStubCall(NEW_INSTANCE)));
-        link(new NewArrayStub(this, replacements, target, registerStubCall(NEW_ARRAY)));
-        link(new ExceptionHandlerStub(this, replacements, target, foreignCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(this, replacements, target, registerStubCall(UNWIND_EXCEPTION_TO_CALLER)));
-        link(new VerifyOopStub(this, replacements, target, registerStubCall(VERIFY_OOP)));
+        link(new NewInstanceStub(this, r, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, ANY_LOCATION)));
+        link(new NewArrayStub(this, r, target, registerStubCall(NEW_ARRAY, REEXECUTABLE, ANY_LOCATION)));
+        link(new ExceptionHandlerStub(this, r, target, foreignCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(this, r, target, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, ANY_LOCATION)));
+        link(new VerifyOopStub(this, r, target, registerStubCall(VERIFY_OOP, REEXECUTABLE, NO_LOCATIONS)));
 
-        linkForeignCall(IDENTITY_HASHCODE, c.identityHashCodeAddress, true, replacements);
-        linkForeignCall(REGISTER_FINALIZER, c.registerFinalizerAddress, true, replacements);
-        linkForeignCall(CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, true, replacements);
-        linkForeignCall(CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, true, replacements);
-        linkForeignCall(MONITORENTER, c.monitorenterAddress, true, replacements);
-        linkForeignCall(MONITOREXIT, c.monitorexitAddress, true, replacements);
-        linkForeignCall(WRITE_BARRIER_PRE, c.writeBarrierPreAddress, true, replacements);
-        linkForeignCall(WRITE_BARRIER_POST, c.writeBarrierPostAddress, true, replacements);
-        linkForeignCall(NEW_MULTI_ARRAY, c.newMultiArrayAddress, true, replacements);
-        linkForeignCall(LOG_PRINTF, c.logPrintfAddress, true, replacements);
-        linkForeignCall(LOG_OBJECT, c.logObjectAddress, true, replacements);
-        linkForeignCall(LOG_PRIMITIVE, c.logPrimitiveAddress, true, replacements);
-        linkForeignCall(THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, true, replacements);
-        linkForeignCall(VM_ERROR, c.vmErrorAddress, true, replacements);
-        linkForeignCall(OSR_MIGRATION_END, c.osrMigrationEndAddress, false, replacements);
+        linkForeignCall(r, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
+        linkForeignCall(r, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, PREPEND_THREAD, REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, PREPEND_THREAD, REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, WRITE_BARRIER_PRE, c.writeBarrierPreAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, WRITE_BARRIER_POST, c.writeBarrierPostAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(r, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, NOT_REEXECUTABLE, NO_LOCATIONS);
 
-        if (GraalOptions.IntrinsifyObjectMethods) {
-            replacements.registerSubstitutions(ObjectSubstitutions.class);
+        if (IntrinsifyObjectMethods.getValue()) {
+            r.registerSubstitutions(ObjectSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifySystemMethods) {
-            replacements.registerSubstitutions(SystemSubstitutions.class);
+        if (IntrinsifySystemMethods.getValue()) {
+            r.registerSubstitutions(SystemSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyThreadMethods) {
-            replacements.registerSubstitutions(ThreadSubstitutions.class);
+        if (IntrinsifyThreadMethods.getValue()) {
+            r.registerSubstitutions(ThreadSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyUnsafeMethods) {
-            replacements.registerSubstitutions(UnsafeSubstitutions.class);
+        if (IntrinsifyUnsafeMethods.getValue()) {
+            r.registerSubstitutions(UnsafeSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyClassMethods) {
-            replacements.registerSubstitutions(ClassSubstitutions.class);
+        if (IntrinsifyClassMethods.getValue()) {
+            r.registerSubstitutions(ClassSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyAESMethods) {
-            replacements.registerSubstitutions(AESCryptSubstitutions.class);
-            replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
+        if (IntrinsifyAESMethods.getValue()) {
+            r.registerSubstitutions(AESCryptSubstitutions.class);
+            r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
-        if (GraalOptions.IntrinsifyReflectionMethods) {
-            replacements.registerSubstitutions(ReflectionSubstitutions.class);
+        if (IntrinsifyReflectionMethods.getValue()) {
+            r.registerSubstitutions(ReflectionSubstitutions.class);
         }
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        monitorSnippets = new MonitorSnippets.Templates(this, replacements, graalRuntime.getTarget(), c.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        boxingSnippets = new BoxingSnippets.Templates(this, replacements, graalRuntime.getTarget());
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, replacements, graalRuntime.getTarget());
+        checkcastSnippets = new CheckCastSnippets.Templates(this, r, graalRuntime.getTarget());
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, r, graalRuntime.getTarget());
+        newObjectSnippets = new NewObjectSnippets.Templates(this, r, graalRuntime.getTarget());
+        monitorSnippets = new MonitorSnippets.Templates(this, r, graalRuntime.getTarget(), c.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, r, graalRuntime.getTarget());
+        boxingSnippets = new BoxingSnippets.Templates(this, r, graalRuntime.getTarget());
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, r, graalRuntime.getTarget());
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {
@@ -449,7 +477,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         if (n instanceof ArrayLengthNode) {
             ArrayLengthNode arrayLengthNode = (ArrayLengthNode) n;
             ValueNode array = arrayLengthNode.array();
-            ReadNode arrayLengthRead = graph.add(new ReadNode(array, ConstantLocationNode.create(LocationNode.FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt()));
+            ReadNode arrayLengthRead = graph.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt(),
+                            WriteBarrierType.NONE, false));
             tool.createNullCheckGuard(arrayLengthRead, array);
             graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);
         } else if (n instanceof Invoke) {
@@ -464,7 +493,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
                 LoweredCallTargetNode loweredCallTarget = null;
-                if (callTarget.invokeKind() == InvokeKind.Virtual && GraalOptions.InlineVTableStubs && (GraalOptions.AlwaysInlineVTableStubs || invoke.isPolymorphic())) {
+                if (callTarget.invokeKind() == InvokeKind.Virtual && InlineVTableStubs.getValue() && (AlwaysInlineVTableStubs.getValue() || invoke.isPolymorphic())) {
 
                     HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) callTarget.targetMethod();
                     if (!hsMethod.getDeclaringClass().isInterface()) {
@@ -476,8 +505,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             // We use LocationNode.ANY_LOCATION for the reads that access the
                             // compiled code entry as HotSpot does not guarantee they are final
                             // values.
-                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, ConstantLocationNode.create(LocationNode.ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph),
-                                            StampFactory.forKind(wordKind())));
+                            ReadNode compiledEntry = graph.add(new ReadNode(metaspaceMethod, ConstantLocationNode.create(ANY_LOCATION, wordKind, config.methodCompiledEntryOffset, graph),
+                                            StampFactory.forKind(wordKind()), WriteBarrierType.NONE, false));
 
                             loweredCallTarget = graph.add(new HotSpotIndirectCallTargetNode(metaspaceMethod, compiledEntry, parameters, invoke.asNode().stamp(), signature, callTarget.targetMethod(),
                                             CallingConvention.Type.JavaCall));
@@ -500,7 +529,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), WriteBarrierType.NONE,
+                            (loadField.kind() == Kind.Object && !field.getName().equals("classMirrorOffset"))));
             tool.createNullCheckGuard(memoryRead, object);
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
@@ -516,7 +546,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) storeField.field();
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : storeField.object();
             WriteBarrierType barrierType = getFieldStoreBarrierType(storeField);
-            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType));
+            WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field), barrierType, storeField.field().getKind() == Kind.Object));
             tool.createNullCheckGuard(memoryWrite, object);
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
@@ -532,15 +562,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CompareAndSwapNode) {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
-            LocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+            LocationNode location = IndexedLocationNode.create(ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             cas.setLocation(location);
             cas.setWriteBarrierType(getCompareAndSwapBarrier(cas));
+            if (cas.expected().kind() == Kind.Object) {
+                cas.setCompress();
+            }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
             GuardingNode boundsCheck = createBoundsCheck(loadIndexed, tool);
             Kind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index());
-            ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp()));
+            ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp(), WriteBarrierType.NONE, elementKind == Kind.Object));
             memoryRead.setGuard(boundsCheck);
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
@@ -562,7 +595,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     }
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array, wordKind));
-                    LocationNode location = ConstantLocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
+                    LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind())));
                     CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
                     graph.addBeforeFixed(storeIndexed, checkcast);
@@ -571,7 +604,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
             }
             WriteBarrierType barrierType = getArrayStoreBarrierType(storeIndexed);
-            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType));
+            WriteNode memoryWrite = graph.add(new WriteNode(array, value, arrayLocation, barrierType, elementKind == Kind.Object));
             memoryWrite.setGuard(boundsCheck);
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
@@ -579,18 +612,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
-            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp()));
+            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
+            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, (!load.object().isNullConstant() && load.accessKind() == Kind.Object)));
             // An unsafe read must not floating outside its block as may float above an explicit
             // null check on its object.
             memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
             graph.replaceFixedWithFixed(load, memoryRead);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
-            IndexedLocationNode location = IndexedLocationNode.create(LocationNode.ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
+            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
             ValueNode object = store.object();
             WriteBarrierType barrierType = getUnsafeStoreBarrierType(store);
-            WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType));
+            WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().kind() == Kind.Object));
             write.setStateAfter(store.stateAfter());
             graph.replaceFixedWithFixed(store, write);
         } else if (n instanceof LoadHubNode) {
@@ -606,103 +639,115 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixed(loadMethodNode, metaspaceMethod);
         } else if (n instanceof FixedGuardNode) {
             FixedGuardNode node = (FixedGuardNode) n;
-            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated()).asNode()));
+            GuardingNode guard = tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated());
+            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(guard.asNode()));
+            node.replaceAtUsages(guard.asNode());
             graph.replaceFixedWithFixed(node, newAnchor);
         } else if (n instanceof CommitAllocationNode) {
-            CommitAllocationNode commit = (CommitAllocationNode) n;
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                CommitAllocationNode commit = (CommitAllocationNode) n;
 
-            ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
+                ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                    int entryCount = virtual.entryCount();
 
-                FixedWithNextNode newObject;
-                if (virtual instanceof VirtualInstanceNode) {
-                    newObject = graph.add(new NewInstanceNode(virtual.type(), true));
-                } else {
-                    ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                    newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                    FixedWithNextNode newObject;
+                    if (virtual instanceof VirtualInstanceNode) {
+                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
+                    } else {
+                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                        newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                    }
+                    graph.addBeforeFixed(commit, newObject);
+                    allocations[objIndex] = newObject;
                 }
-                graph.addBeforeFixed(commit, newObject);
-                allocations[objIndex] = newObject;
-            }
-            int valuePos = 0;
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
+                int valuePos = 0;
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                    int entryCount = virtual.entryCount();
 
-                ValueNode newObject = allocations[objIndex];
-                if (virtual instanceof VirtualInstanceNode) {
-                    VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode value = commit.getValues().get(valuePos++);
-                        if (value instanceof VirtualObjectNode) {
-                            value = allocations[commit.getVirtualObjects().indexOf(value)];
+                    ValueNode newObject = allocations[objIndex];
+                    if (virtual instanceof VirtualInstanceNode) {
+                        VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+                        for (int i = 0; i < entryCount; i++) {
+                            ValueNode value = commit.getValues().get(valuePos++);
+                            if (value instanceof VirtualObjectNode) {
+                                value = allocations[commit.getVirtualObjects().indexOf(value)];
+                            }
+                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE,
+                                                instance.field(i).getKind() == Kind.Object);
+
+                                graph.addBeforeFixed(commit, graph.add(write));
+                            }
                         }
-                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit, graph.add(new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE)));
+
+                    } else {
+                        VirtualArrayNode array = (VirtualArrayNode) virtual;
+                        ResolvedJavaType element = array.componentType();
+                        for (int i = 0; i < entryCount; i++) {
+                            ValueNode value = commit.getValues().get(valuePos++);
+                            if (value instanceof VirtualObjectNode) {
+                                int indexOf = commit.getVirtualObjects().indexOf(value);
+                                assert indexOf != -1 : commit + " " + value;
+                                value = allocations[indexOf];
+                            }
+                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                WriteNode write = new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE,
+                                                value.kind() == Kind.Object);
+                                graph.addBeforeFixed(commit, graph.add(write));
+                            }
                         }
                     }
-                } else {
-                    VirtualArrayNode array = (VirtualArrayNode) virtual;
-                    ResolvedJavaType element = array.componentType();
-                    for (int i = 0; i < entryCount; i++) {
-                        ValueNode value = commit.getValues().get(valuePos++);
-                        if (value instanceof VirtualObjectNode) {
-                            int indexOf = commit.getVirtualObjects().indexOf(value);
-                            assert indexOf != -1 : commit + " " + value;
-                            value = allocations[indexOf];
-                        }
-                        if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                            graph.addBeforeFixed(commit,
-                                            graph.add(new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)), WriteBarrierType.NONE)));
-                        }
+                }
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
+                    allocations[objIndex] = anchor;
+                    graph.addBeforeFixed(commit, anchor);
+                }
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    for (int lockDepth : commit.getLocks().get(objIndex)) {
+                        MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
+                        graph.addBeforeFixed(commit, enter);
                     }
                 }
-            }
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
-                allocations[objIndex] = anchor;
-                graph.addBeforeFixed(commit, anchor);
-            }
-            for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                for (int lockDepth : commit.getLocks().get(objIndex)) {
-                    MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
-                    graph.addBeforeFixed(commit, enter);
+                for (Node usage : commit.usages().snapshot()) {
+                    AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
+                    int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
+                    graph.replaceFloating(addObject, allocations[index]);
                 }
+                graph.removeFixed(commit);
             }
-            for (Node usage : commit.usages().snapshot()) {
-                AllocatedObjectNode addObject = (AllocatedObjectNode) usage;
-                int index = commit.getVirtualObjects().indexOf(addObject.getVirtualObject());
-                graph.replaceFloating(addObject, allocations[index]);
-            }
-            graph.removeFixed(commit);
         } else if (n instanceof CheckCastNode) {
             checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof OSRStartNode) {
-            OSRStartNode osrStart = (OSRStartNode) n;
-            StartNode newStart = graph.add(new StartNode());
-            LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
-            ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(OSR_MIGRATION_END, buffer));
-            newStart.setStateAfter(osrStart.stateAfter());
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                OSRStartNode osrStart = (OSRStartNode) n;
+                StartNode newStart = graph.add(new StartNode());
+                LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
+                ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(this, OSR_MIGRATION_END, buffer));
+                migrationEnd.setStateAfter(osrStart.stateAfter());
 
-            newStart.setNext(migrationEnd);
-            FixedNode next = osrStart.next();
-            osrStart.setNext(null);
-            migrationEnd.setNext(next);
-            graph.setStart(newStart);
+                newStart.setNext(migrationEnd);
+                FixedNode next = osrStart.next();
+                osrStart.setNext(null);
+                migrationEnd.setNext(next);
+                graph.setStart(newStart);
 
-            // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
-            int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
-            for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
-                int size = FrameStateBuilder.stackSlots(osrLocal.kind());
-                int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
-                UnsafeLoadNode load = graph.add(new UnsafeLoadNode(buffer, offset, ConstantNode.forInt(0, graph), osrLocal.kind()));
-                osrLocal.replaceAndDelete(load);
-                graph.addBeforeFixed(migrationEnd, load);
+                // mirroring the calculations in c1_GraphBuilder.cpp (setup_osr_entry_block)
+                int localsOffset = (graph.method().getMaxLocals() - 1) * 8;
+                for (OSRLocalNode osrLocal : graph.getNodes(OSRLocalNode.class)) {
+                    int size = FrameStateBuilder.stackSlots(osrLocal.kind());
+                    int offset = localsOffset - (osrLocal.index() + size - 1) * 8;
+                    IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, osrLocal.kind(), offset, ConstantNode.forLong(0, graph), graph, 1);
+                    ReadNode load = graph.add(new ReadNode(buffer, location, osrLocal.stamp(), WriteBarrierType.NONE, false));
+                    osrLocal.replaceAndDelete(load);
+                    graph.addBeforeFixed(migrationEnd, load);
+                }
+                osrStart.replaceAtUsages(newStart);
+                osrStart.safeDelete();
             }
-            osrStart.replaceAtUsages(newStart);
-            osrStart.safeDelete();
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
@@ -710,19 +755,29 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof InstanceOfDynamicNode) {
             instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
         } else if (n instanceof NewInstanceNode) {
-            newObjectSnippets.lower((NewInstanceNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewInstanceNode) n);
+            }
         } else if (n instanceof NewArrayNode) {
-            newObjectSnippets.lower((NewArrayNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewArrayNode) n);
+            }
         } else if (n instanceof MonitorEnterNode) {
-            monitorSnippets.lower((MonitorEnterNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                monitorSnippets.lower((MonitorEnterNode) n, tool);
+            }
         } else if (n instanceof MonitorExitNode) {
-            monitorSnippets.lower((MonitorExitNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                monitorSnippets.lower((MonitorExitNode) n, tool);
+            }
         } else if (n instanceof SerialWriteBarrier) {
             writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
             writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            newObjectSnippets.lower((NewMultiArrayNode) n);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((NewMultiArrayNode) n);
+            }
         } else if (n instanceof LoadExceptionObjectNode) {
             exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
@@ -749,14 +804,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
-        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(LocationNode.ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind())));
+        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind()), WriteBarrierType.NONE,
+                        false));
         return metaspaceMethod;
     }
 
     private ReadNode createReadHub(LoweringTool tool, StructuredGraph graph, Kind wordKind, ValueNode object) {
-        LocationNode location = ConstantLocationNode.create(LocationNode.FINAL_LOCATION, wordKind, config.hubOffset, graph);
+        LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind())));
+        ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind()), WriteBarrierType.NONE, false));
         tool.createNullCheckGuard(hub, object);
         return hub;
     }
@@ -807,9 +863,17 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return ConstantLocationNode.create(field, field.getKind(), field.offset(), graph);
     }
 
+    public int getScalingFactor(Kind kind) {
+        if (config.useCompressedOops && kind == Kind.Object) {
+            return this.graalRuntime.getTarget().arch.getSizeInBytes(Kind.Int);
+        } else {
+            return this.graalRuntime.getTarget().arch.getSizeInBytes(kind);
+        }
+    }
+
     protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
-        int scale = this.graalRuntime.getTarget().arch.getSizeInBytes(elementKind);
-        return IndexedLocationNode.create(LocationNode.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
+        int scale = getScalingFactor(elementKind);
+        return IndexedLocationNode.create(NamedLocationIdentity.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
     private static GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
@@ -967,12 +1031,16 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     @Override
-    public boolean hasSideEffect(ForeignCallDescriptor descriptor) {
-        // Only these two foreign calls are expected to be made with
-        // a node that implements StateSplit. They need to be a state
-        // split so that the stack trace they produce is accurate.
-        assert descriptor == CREATE_NULL_POINTER_EXCEPTION || descriptor == CREATE_OUT_OF_BOUNDS_EXCEPTION : descriptor;
-        return false;
+    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
+        return foreignCalls.get(descriptor).isReexecutable();
+    }
+
+    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+        return foreignCalls.get(descriptor).canDeoptimize();
+    }
+
+    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
+        return foreignCalls.get(descriptor).getKilledLocations();
     }
 
     @Override

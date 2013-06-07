@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -46,7 +47,6 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 
 /**
@@ -203,7 +203,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return value;
     }
 
-    protected LabelRef getLIRBlock(FixedNode b) {
+    public LabelRef getLIRBlock(FixedNode b) {
         Block result = lir.cfg.blockFor(b);
         int suxIndex = currentBlock.getSuccessors().indexOf(result);
         assert suxIndex != -1 : "Block not in successor list of current block";
@@ -259,8 +259,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     public void append(LIRInstruction op) {
-        assert LIRVerifier.verify(op);
-        if (GraalOptions.PrintIRWithLIR && !TTY.isSuppressed()) {
+        if (PrintIRWithLIR.getValue() && !TTY.isSuppressed()) {
             if (currentInstruction != null && lastInstructionPrinted != currentInstruction) {
                 lastInstructionPrinted = currentInstruction;
                 InstructionPrinter ip = new InstructionPrinter(TTY.out());
@@ -269,11 +268,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
+        assert LIRVerifier.verify(op);
         lir.lir(currentBlock).add(op);
     }
 
     public void doBlock(Block block) {
-        if (GraalOptions.PrintIRWithLIR) {
+        if (PrintIRWithLIR.getValue()) {
             TTY.print(block.toString());
         }
 
@@ -284,7 +284,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         append(new LabelOp(new Label(), block.isAligned()));
 
-        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
+        if (TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
         }
 
@@ -315,12 +315,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                     }
                 }
             }
-            if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+            if (TraceLIRGeneratorLevel.getValue() >= 2) {
                 if (fs == null) {
                     TTY.println("STATE RESET");
                 } else {
                     TTY.println("STATE CHANGE (singlePred)");
-                    if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    if (TraceLIRGeneratorLevel.getValue() >= 3) {
                         TTY.println(fs.toString(Node.Verbosity.Debugger));
                     }
                 }
@@ -331,7 +331,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         List<ScheduledNode> nodes = lir.nodesFor(block);
         for (int i = 0; i < nodes.size(); i++) {
             Node instr = nodes.get(i);
-            if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+            if (TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
             FrameState stateAfter = null;
@@ -358,9 +358,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             if (stateAfter != null) {
                 lastState = stateAfter;
                 assert checkStateReady(lastState);
-                if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+                if (TraceLIRGeneratorLevel.getValue() >= 2) {
                     TTY.println("STATE CHANGE");
-                    if (GraalOptions.TraceLIRGeneratorLevel >= 3) {
+                    if (TraceLIRGeneratorLevel.getValue() >= 3) {
                         TTY.println(stateAfter.toString(Node.Verbosity.Debugger));
                     }
                 }
@@ -373,7 +373,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             emitJump(getLIRBlock((FixedNode) successors.first()));
         }
 
-        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
+        if (TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("END Generating LIR for block B" + block.getId());
         }
 
@@ -384,7 +384,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         blockLastState.put(block, lastState);
         currentBlock = null;
 
-        if (GraalOptions.PrintIRWithLIR) {
+        if (PrintIRWithLIR.getValue()) {
             TTY.println();
         }
     }
@@ -414,7 +414,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     private void doRoot(ValueNode instr) {
-        if (GraalOptions.TraceLIRGeneratorLevel >= 2) {
+        if (TraceLIRGeneratorLevel.getValue() >= 2) {
             TTY.println("Emitting LIR for instruction " + instr);
         }
         currentInstruction = instr;
@@ -484,7 +484,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     private void moveToPhi(MergeNode merge, AbstractEndNode pred) {
-        if (GraalOptions.TraceLIRGeneratorLevel >= 1) {
+        if (TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("MOVE TO PHI from " + pred + " to " + merge);
         }
         PhiResolver resolver = new PhiResolver(this);
@@ -660,7 +660,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
-        LIRFrameState state = info != null ? state(info) : null;
+        LIRFrameState state = !linkage.canDeoptimize() ? null : stateFor(info.getDeoptimizationState(), info.getDeoptimizationReason());
 
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getCallingConvention();
@@ -707,7 +707,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                 int switchRangeCount = switchRangeCount(x);
                 if (switchRangeCount == 0) {
                     emitJump(getLIRBlock(x.defaultSuccessor()));
-                } else if (switchRangeCount >= GraalOptions.MinimumJumpTableSize && keyCount / (double) valueRange >= GraalOptions.MinTableSwitchDensity) {
+                } else if (switchRangeCount >= MinimumJumpTableSize.getValue() && keyCount / (double) valueRange >= MinTableSwitchDensity.getValue()) {
                     int minValue = x.keyAt(0).asInt();
                     assert valueRange < Integer.MAX_VALUE;
                     LabelRef[] targets = new LabelRef[(int) valueRange];
@@ -718,7 +718,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                         targets[x.keyAt(i).asInt() - minValue] = getLIRBlock(x.keySuccessor(i));
                     }
                     emitTableSwitch(minValue, defaultTarget, targets, value);
-                } else if (keyCount / switchRangeCount >= GraalOptions.RangeTestsSwitchDensity) {
+                } else if (keyCount / switchRangeCount >= RangeTestsSwitchDensity.getValue()) {
                     emitSwitchRanges(x, switchRangeCount, value, defaultTarget);
                 } else {
                     emitSequentialSwitch(x, value, defaultTarget);

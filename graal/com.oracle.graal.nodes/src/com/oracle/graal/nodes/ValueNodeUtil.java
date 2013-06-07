@@ -72,10 +72,6 @@ public class ValueNodeUtil {
         assert x == null;
     }
 
-    public static boolean typeMismatch(ValueNode x, ValueNode y) {
-        return y == null || x == null || x.kind() != y.kind();
-    }
-
     @SuppressWarnings("unchecked")
     public static <T extends Node> Collection<T> filter(Iterable<Node> nodes, Class<T> clazz) {
         ArrayList<T> phis = new ArrayList<>();

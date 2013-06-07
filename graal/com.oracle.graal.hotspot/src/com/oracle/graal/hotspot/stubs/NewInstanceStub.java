@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
@@ -36,7 +37,6 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -87,7 +87,7 @@ public class NewInstanceStub extends SnippetStub {
      */
     @Snippet
     private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub) {
-        int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), FINAL_LOCATION);
+        int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), LocationIdentity.FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
                 Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
@@ -241,6 +241,6 @@ public class NewInstanceStub extends SnippetStub {
 
     public static final ForeignCallDescriptor NEW_INSTANCE_C = descriptorFor(NewInstanceStub.class, "newInstanceC");
 
-    @NodeIntrinsic(ForeignCallNode.class)
+    @NodeIntrinsic(StubForeignCallNode.class)
     public static native void newInstanceC(@ConstantNodeParameter ForeignCallDescriptor newInstanceC, Word thread, Word hub);
 }

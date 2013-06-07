@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
@@ -29,14 +31,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.*;
 
 @ServiceProvider(ReplacementsProvider.class)
 public class CallSiteSubstitutions implements ReplacementsProvider {
 
     @Override
     public void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-        if (GraalOptions.IntrinsifyCallSiteTarget) {
+        if (IntrinsifyCallSiteTarget.getValue()) {
             replacements.registerSubstitutions(ConstantCallSiteSubstitutions.class);
             replacements.registerSubstitutions(MutableCallSiteSubstitutions.class);
             replacements.registerSubstitutions(VolatileCallSiteSubstitutions.class);

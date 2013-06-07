@@ -27,10 +27,10 @@ import static com.oracle.graal.graph.UnsafeAccess.*;
 import java.lang.annotation.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.LocationNode.LocationIdentity;
 
 public abstract class Word implements Signed, Unsigned, Pointer {
 

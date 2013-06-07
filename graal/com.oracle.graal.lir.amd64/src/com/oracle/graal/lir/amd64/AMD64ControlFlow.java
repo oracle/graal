@@ -35,7 +35,6 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
@@ -404,7 +403,7 @@ public class AMD64ControlFlow {
 
     private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
-            assert asRegister(other) != asRegister(result) : "other already overwritten by previous move";
+            assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
             switch (other.getKind()) {
                 case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
                 case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;

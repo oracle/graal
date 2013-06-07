@@ -244,9 +244,9 @@ public class ReassociateAndCanonicalTest extends GraalCompilerTest {
     private <T extends Node & Node.IterableNodeType> void test(String test, String ref) {
         StructuredGraph testGraph = parse(test);
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(testGraph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(testGraph);
         StructuredGraph refGraph = parse(ref);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(refGraph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(refGraph);
         assertEquals(testGraph, refGraph);
     }
 }

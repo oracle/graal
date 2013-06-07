@@ -49,6 +49,10 @@ public class FrameStateBuilder {
     private ValueNode[] locks;
 
     private int stackSize;
+
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     private boolean rethrowException;
 
     public FrameStateBuilder(ResolvedJavaMethod method, StructuredGraph graph, boolean eagerResolve) {
@@ -82,7 +86,7 @@ public class FrameStateBuilder {
             if (kind == Kind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.declared((ResolvedJavaType) type);
             } else {
-                stamp = StampFactory.forKind(kind);
+                stamp = StampFactory.forKind(type.getKind());
             }
             LocalNode local = graph.unique(new LocalNode(index, stamp));
             storeLocal(javaIndex, local);
@@ -144,7 +148,7 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize(); i++) {
             ValueNode x = stackAt(i);
             ValueNode y = other.stackAt(i);
-            if (x != y && ValueNodeUtil.typeMismatch(x, y)) {
+            if (x != y && (x == null || x.isDeleted() || y == null || y.isDeleted() || x.kind() != y.kind())) {
                 return false;
             }
         }
@@ -171,11 +175,11 @@ public class FrameStateBuilder {
     }
 
     private ValueNode merge(ValueNode currentValue, ValueNode otherValue, MergeNode block) {
-        if (currentValue == null) {
+        if (currentValue == null || currentValue.isDeleted()) {
             return null;
 
         } else if (block.isPhiAtMerge(currentValue)) {
-            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
                 propagateDelete((PhiNode) currentValue);
                 return null;
             }
@@ -184,7 +188,7 @@ public class FrameStateBuilder {
 
         } else if (currentValue != otherValue) {
             assert !(block instanceof LoopBeginNode) : "Phi functions for loop headers are create eagerly for all locals and stack slots";
-            if (otherValue == null || currentValue.kind() != otherValue.kind()) {
+            if (otherValue == null || otherValue.isDeleted() || currentValue.kind() != otherValue.kind()) {
                 return null;
             }
 
@@ -308,10 +312,16 @@ public class FrameStateBuilder {
         }
     }
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     public boolean rethrowException() {
         return rethrowException;
     }
 
+    /**
+     * @see BytecodeFrame#rethrowException
+     */
     public void setRethrowException(boolean b) {
         rethrowException = b;
     }

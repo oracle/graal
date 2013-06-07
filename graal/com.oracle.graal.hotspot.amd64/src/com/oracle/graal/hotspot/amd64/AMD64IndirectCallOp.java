@@ -31,7 +31,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Call.IndirectCallOp;
 import com.oracle.graal.lir.asm.*;
@@ -61,13 +60,13 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         tasm.recordMark(Marks.MARK_INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
-        assert callReg != METHOD;
+        assert !callReg.equals(METHOD);
         AMD64Call.indirectCall(tasm, masm, callReg, callTarget, state);
     }
 
     @Override
     protected void verify() {
         super.verify();
-        assert asRegister(metaspaceMethod) == METHOD;
+        assert asRegister(metaspaceMethod).equals(METHOD);
     }
 }

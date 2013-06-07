@@ -22,10 +22,10 @@
  */
 package com.oracle.graal.api.meta.test;
 
-import static com.oracle.graal.api.meta.test.TestJavaMethod.*;
 import static java.lang.reflect.Modifier.*;
 import static org.junit.Assert.*;
 
+import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -36,7 +36,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Tests for {@link ResolvedJavaMethod}.
  */
-public class TestResolvedJavaMethod {
+public class TestResolvedJavaMethod extends MethodUniverse {
 
     public TestResolvedJavaMethod() {
     }
@@ -94,21 +94,6 @@ public class TestResolvedJavaMethod {
     }
 
     @Test
-    public void getCompilationComplexityTest() {
-        // TODO
-    }
-
-    @Test
-    public void getMaxLocalsTest() {
-        // TODO
-    }
-
-    @Test
-    public void getMaxStackSizeTest() {
-        // TODO
-    }
-
-    @Test
     public void getModifiersTest() {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
@@ -148,52 +133,168 @@ public class TestResolvedJavaMethod {
 
     @Test
     public void canBeStaticallyBoundTest() {
-        // TODO
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(m.canBeStaticallyBound(), canBeStaticallyBound(e.getKey().getModifiers()));
+        }
+        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            assertEquals(m.canBeStaticallyBound(), canBeStaticallyBound(e.getKey().getModifiers()));
+        }
+    }
+
+    private static boolean canBeStaticallyBound(int modifiers) {
+        return (Modifier.isFinal(modifiers) || Modifier.isPrivate(modifiers) || Modifier.isStatic(modifiers)) && !Modifier.isAbstract(modifiers);
+    }
+
+    private static String methodWithExceptionHandlers(String p1, Object o2) {
+        try {
+            return p1.substring(100) + o2.toString();
+        } catch (IndexOutOfBoundsException e) {
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Test
-    public void getExceptionHandlersTest() {
-        // TODO
+    public void getExceptionHandlersTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithExceptionHandlers", String.class, Object.class));
+        ExceptionHandler[] handlers = method.getExceptionHandlers();
+        assertNotNull(handlers);
+        assertEquals(handlers.length, 3);
+        handlers[0].getCatchType().equals(runtime.lookupJavaType(IndexOutOfBoundsException.class));
+        handlers[1].getCatchType().equals(runtime.lookupJavaType(NullPointerException.class));
+        handlers[2].getCatchType().equals(runtime.lookupJavaType(RuntimeException.class));
+    }
+
+    private static String nullPointerExceptionOnFirstLine(Object o, String ignored) {
+        return o.toString() + ignored;
     }
 
     @Test
-    public void asStackTraceElementTest() {
-        // TODO
-    }
-
-    @Test
-    public void getProfilingInfoTest() {
-        // TODO
-    }
-
-    @Test
-    public void getCompilerStorageTest() {
-        // TODO
+    public void asStackTraceElementTest() throws NoSuchMethodException {
+        try {
+            nullPointerExceptionOnFirstLine(null, "ignored");
+            Assert.fail("should not reach here");
+        } catch (NullPointerException e) {
+            StackTraceElement expected = e.getStackTrace()[0];
+            ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+            StackTraceElement actual = method.asStackTraceElement(0);
+            assertEquals(expected, actual);
+        }
     }
 
     @Test
     public void getConstantPoolTest() {
-        // TODO
+        for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
+            ResolvedJavaMethod m = e.getValue();
+            ConstantPool cp = m.getConstantPool();
+            assertTrue(cp.length() > 0);
+        }
+    }
+
+    @Test(timeout = 1000L)
+    public void getAnnotationTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("getAnnotationTest"));
+        Test annotation = method.getAnnotation(Test.class);
+        assertNotNull(annotation);
+        assertEquals(1000L, annotation.timeout());
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface NonNull {
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface Special {
+    }
+
+    private static native void methodWithAnnotatedParameters(@NonNull HashMap<String, String> p1, @Special @NonNull Class<? extends Annotation> p2);
+
+    @Test
+    public void getParameterAnnotationsTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        Annotation[][] annotations = method.getParameterAnnotations();
+        assertEquals(2, annotations.length);
+        assertEquals(1, annotations[0].length);
+        assertEquals(NonNull.class, annotations[0][0].annotationType());
+        assertEquals(2, annotations[1].length);
+        assertEquals(Special.class, annotations[1][0].annotationType());
+        assertEquals(NonNull.class, annotations[1][1].annotationType());
     }
 
     @Test
-    public void getAnnotationTest() {
-        // TODO
+    public void getGenericParameterTypesTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        Type[] genericParameterTypes = method.getGenericParameterTypes();
+        assertEquals(2, genericParameterTypes.length);
+        assertEquals("java.util.HashMap<java.lang.String, java.lang.String>", genericParameterTypes[0].toString());
+        assertEquals("java.lang.Class<? extends java.lang.annotation.Annotation>", genericParameterTypes[1].toString());
     }
 
     @Test
-    public void getParameterAnnotationsTest() {
-        // TODO
-    }
-
-    @Test
-    public void getGenericParameterTypesTest() {
-        // TODO
+    public void getMaxLocalsTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method1 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method2 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+        assertEquals(0, method1.getMaxLocals());
+        assertEquals(2, method2.getMaxLocals());
 
     }
 
     @Test
-    public void canBeInlinedTest() {
-        // TODO
+    public void getMaxStackSizeTest() throws NoSuchMethodException {
+        ResolvedJavaMethod method1 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method2 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+        assertEquals(0, method1.getMaxStackSize());
+        // some versions of javac produce bytecode with a stacksize of 2 for this method
+        assertTrue(3 == method2.getMaxStackSize() || 2 == method2.getMaxStackSize());
+    }
+
+    private Method findTestMethod(Method apiMethod) {
+        String testName = apiMethod.getName() + "Test";
+        for (Method m : getClass().getDeclaredMethods()) {
+            if (m.getName().equals(testName) && m.getAnnotation(Test.class) != null) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    // @formatter:off
+    private static final String[] untestedApiMethods = {
+        "invoke",
+        "newInstance",
+        "getDeclaringClass",
+        "getEncoding",
+        "getProfilingInfo",
+        "reprofile",
+        "getCompilerStorage",
+        "canBeInlined",
+        "getLineNumberTable",
+        "getLocalVariableTable",
+        "isInVirtualMethodTable"
+    };
+    // @formatter:on
+
+    /**
+     * Ensures that any new methods added to {@link ResolvedJavaMethod} either have a test written
+     * for them or are added to {@link #untestedApiMethods}.
+     */
+    @Test
+    public void testCoverage() {
+        Set<String> known = new HashSet<>(Arrays.asList(untestedApiMethods));
+        for (Method m : ResolvedJavaMethod.class.getDeclaredMethods()) {
+            if (findTestMethod(m) == null) {
+                assertTrue("test missing for " + m, known.contains(m.getName()));
+            } else {
+                assertFalse("test should be removed from untestedApiMethods" + m, known.contains(m.getName()));
+            }
+        }
     }
 }

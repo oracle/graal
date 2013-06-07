@@ -35,7 +35,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.word.*;
@@ -50,15 +49,15 @@ public class StubUtil {
     public static final ForeignCallDescriptor VM_MESSAGE_C = descriptorFor(StubUtil.class, "vmMessageC");
 
     /**
-     * Looks for a {@link ForeignCallNode} node intrinsic named {@code name} in {@code stubClass}
-     * and returns a {@link ForeignCallDescriptor} based on its signature and the value of
-     * {@code hasSideEffect}.
+     * Looks for a {@link StubForeignCallNode} node intrinsic named {@code name} in
+     * {@code stubClass} and returns a {@link ForeignCallDescriptor} based on its signature and the
+     * value of {@code hasSideEffect}.
      */
     public static ForeignCallDescriptor descriptorFor(Class<?> stubClass, String name) {
         Method found = null;
         for (Method method : stubClass.getDeclaredMethods()) {
             if (Modifier.isStatic(method.getModifiers()) && method.getAnnotation(NodeIntrinsic.class) != null && method.getName().equals(name)) {
-                if (method.getAnnotation(NodeIntrinsic.class).value() == ForeignCallNode.class) {
+                if (method.getAnnotation(NodeIntrinsic.class).value() == StubForeignCallNode.class) {
                     assert found == null : "found more than one foreign call named " + name + " in " + stubClass;
                     assert method.getParameterTypes().length != 0 && method.getParameterTypes()[0] == ForeignCallDescriptor.class : "first parameter of foreign call '" + name + "' in " + stubClass +
                                     " must be of type " + ForeignCallDescriptor.class.getSimpleName();
@@ -81,7 +80,7 @@ public class StubUtil {
         }
     }
 
-    @NodeIntrinsic(ForeignCallNode.class)
+    @NodeIntrinsic(StubForeignCallNode.class)
     private static native void vmMessageC(@ConstantNodeParameter ForeignCallDescriptor stubPrintfC, boolean vmError, Word format, long v1, long v2, long v3);
 
     /**
