@@ -105,10 +105,15 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
     @Override
     public void setDeoptimizationState(FrameState f) {
         updateUsages(deoptState, f);
-        if (deoptState != null) {
-            throw new IllegalStateException(toString(Verbosity.Debugger));
-        }
+        assert deoptState == null && canDeoptimize() : "shouldn't assign deoptState to " + this;
         deoptState = f;
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        if (hasSideEffect() || canDeoptimize()) {
+            super.setStateAfter(x);
+        }
     }
 
     @Override
