@@ -159,7 +159,7 @@ public class OptionProcessor extends AbstractProcessor {
                 String help = option.help;
                 String location = pkg + "." + option.declaringClass + "." + option.field.getSimpleName();
                 String comma = i == info.options.size() - 1 ? "" : ",";
-                out.printf("            new %s(\"%s\", %s.class, \"%s\", \"%s\", %s)%s%n", OptionDescriptor.class.getSimpleName(), name, type, help, location, optionValue, comma);
+                out.printf("            new %s(\"%s\", %s.class, \"%s\", \"%s\", %s)%s\n", OptionDescriptor.class.getSimpleName(), name, type, help, location, optionValue, comma);
                 i++;
             }
             out.println("        );");
