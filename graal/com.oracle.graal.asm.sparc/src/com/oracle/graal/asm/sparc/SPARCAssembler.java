@@ -90,6 +90,20 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fmt2e {
+        public Fmt2e(SPARCAssembler asm, int op, int c4lo, int cc2, int rs1, int d10lo, int regOrImmediate) {
+            assert op == 0;
+            assert (cc2 & 0xFFFFFFFE) == 0;
+            assert c4lo >= 0 && rs1 < 0x10;
+            assert rs1 >= 0 && rs1 < 0x20;
+            assert (regOrImmediate & 0x1F) < 0x20;
+            assert (regOrImmediate & 0xFFFFC000) == 0;
+            assert (d10lo & 0xFFFFFC00) == 0;
+
+            asm.emitInt(op << 30 | 1 << 28 | 3 << 22 | cc2 << 21 | (d10lo >> 8) << 19 | rs1 << 14 | (d10lo & 0xff) << 5 | regOrImmediate);
+        }
+    }
+
     public static class Fmt3a {
         public Fmt3a(SPARCAssembler masm, int op, int rd, int op3, int rs1, int rs2) {
             assert  op == 2 || op == 3;
@@ -158,6 +172,18 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fmt3n {
+        public Fmt3n(SPARCAssembler masm, int op, int op3, int opf, int rs2, int rd) {
+            assert  op == 2 || op == 3;
+            assert op3 >= 0 && op3 < 0x40;
+            assert opf >= 0 && opf < 0x200;
+            assert rs2 >= 0 && rs2 < 0x20;
+            assert  rd >= 0 &&  rd < 0x20;
+
+            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | opf << 5 | rs2);
+        }
+    }
+
     public static class Fmt3p {
         public Fmt3p(SPARCAssembler masm, int op, int op3, int opf, int rs1, int rs2, int rd) {
             assert  op == 2 || op == 3;
@@ -168,18 +194,6 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
             assert  rd >= 0 &&  rd < 0x20;
 
             masm.emitInt(op << 30 | rd << 25 | op3 << 19 |  rs1 << 14 | opf << 5 | rs2);
-        }
-    }
-
-    public static class Fmt3n {
-        public Fmt3n(SPARCAssembler masm, int op, int op3, int opf, int rs2, int rd) {
-            assert  op == 2 || op == 3;
-            assert op3 >= 0 && op3 < 0x40;
-            assert opf >= 0 && opf < 0x200;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert  rd >= 0 &&  rd < 0x20;
-
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | opf << 5 | rs2);
         }
     }
 
@@ -236,6 +250,20 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
             assert  rd >= 0 &&  rd < 0x20;
 
             masm.emitInt(op << 30 | rd << 25 | op3 << 19 | ImmedTrue | ((cc << 15) & 0x00040000) | cond << 14 | ((cc << 11) & 0x3) | simm11 & 0x00004000);
+        }
+    }
+
+    public static class Fmt5a {
+        public Fmt5a(SPARCAssembler masm, int op, int op3, int op5, int rs1, int rs2, int rs3, int rd) {
+            assert   op == 2;
+            assert  op3 >= 0 &&  op3 < 0x40;
+            assert  op5 >= 0 &&  op5 < 0x10;
+            assert  rs1 >= 0 &&  rs1 < 0x20;
+            assert  rs2 >= 0 &&  rs2 < 0x20;
+            assert  rs3 >= 0 &&  rs3 < 0x20;
+            assert  rd  >= 0 &&  rd  < 0x20;
+
+            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | rs1 << 14 | rs3 << 9 | op5 << 5 | rs2);
         }
     }
 
@@ -389,6 +417,27 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public enum Op5s {
+        Fmadds(0x1),
+        Fmaddd(0x2),
+        Fmsubs(0x5),
+        Fmsubd(0x6),
+        Fnmsubs(0x9),
+        Fnmsubd(0xA),
+        Fnmadds(0xD),
+        Fnmaddd(0xE);
+
+        private final int value;
+
+        private Op5s(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+    }
+
     public enum Opfs {
         Fmovs(0x01, "fmovs"),
         Fmovd(0x02, "fmovd"),
@@ -399,6 +448,62 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         Fabss(0x09, "fabss"),
         Fabsd(0x0A, "fabsd"),
         Fabsq(0x0B, "fabsq"),
+
+        // start VIS1
+        Edge8cc(0x0, "edge8cc"),
+        Edge8n(0x1, "edge8n"),
+        Edge8lcc(0x2, "edge8lcc"),
+        Edge8ln(0x3, "edge8ln"),
+        Edge16cc(0x4, "edge16cc"),
+        Edge16n(0x5, "edge16n"),
+        Edge16lcc(0x6, "edge16lcc"),
+        Edge16ln(0x7, "edge16ln"),
+        Edge32cc(0x8, "edge32cc"),
+        Edge32n(0x9, "edge32n"),
+        Edge32lcc(0xA, "edge32lcc"),
+        Edge32ln(0xB, "edge32ln"),
+        Array8(0x10, "array8"),
+        Array16(0x12, "array16"),
+        Array32(0x14, "array32"),
+        AlignAddress(0x18, "alignaddress"),
+        AlignAddressLittle(0x1A, "alignaddress_little"),
+        Fmul8x16(0x31, "fmul8x16"),
+        Fmul8x16au(0x33, "fmul8x16au"),
+        Fmul8x16al(0x35, "fmul8x16al"),
+        Fmul8sux16(0x36, "fmul8sux16"),
+        Fmul8ulx16(0x37, "fmul8ulx16"),
+        Fmuld8sux16(0x38, "fmuld8sux16"),
+        Fmuld8ulx16(0x39, "fmuld8ulx16"),
+        Faligndatag(0x48, "faligndata"),
+        Fnhadds(0x71, "fnhadds"),
+        Fnhaddd(0x72, "fnhaddd"),
+        // end VIS1
+
+        // start VIS2
+        Bmask(0x19, "bmask"),
+        Bshuffle(0x4c, "bshuffle"),
+        // end VIS2 only
+
+        // start VIS3
+        Addxc(0x11, "addxc"),
+        Addxccc(0x13, "addxccc"),
+        Cmask8(0x1B, "cmask8"),
+        Cmask16(0x1D, "cmask16"),
+        Cmask32(0x1F, "cmask32"),
+        Fmean16(0x40, "fmean16"),
+        Fnadds(0x51, "fnadds"),
+        Fnaddd(0x52, "fnaddd"),
+        // end VIS3
+
+        // start CAMMELLIA
+        CammelliaFl(0x13C, "cammelia_fl"),
+        CammelliaFli(0x13D, "cammellia_fli"),
+        // end CAMMELLIA
+
+        // start CRYPTO
+        Crc32c(0x147, "crc32c"),
+        // end CRYPTO
+
         Fadds(0x41, "fadds"),
         Faddd(0x42, "faddd"),
         Faddq(0x43, "faddq"),
@@ -663,6 +768,38 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Addxc extends Fmt3p {
+        public Addxc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Addxc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Addxccc extends Fmt3p {
+        public Addxccc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Addxccc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Alignaddr extends Fmt3p {
+        public Alignaddr(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.AlignAddress.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Alignaddrl extends Fmt3p {
+        public Alignaddrl(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.AlignAddressLittle.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
     public static class And extends Fmt3b {
         public And(SPARCAssembler masm, Register src1, int simm13, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.And.getValue(), src1.encoding(), simm13, dst.encoding());
@@ -696,6 +833,38 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
         public Andncc(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Andncc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Array8 extends Fmt3p {
+        public Array8(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array8.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Array16 extends Fmt3p {
+        public Array16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Array32 extends Fmt3p {
+        public Array32(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array32.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Bmask extends Fmt3p {
+        public Bmask(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS2 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Bmask.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
         }
     }
 
@@ -891,9 +1060,454 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Bshuffle extends Fmt3p {
+        public Bshuffle(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS2 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Bshuffle.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class CammelliaFl extends Fmt3p {
+        public CammelliaFl(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* CAMELLIA only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.CammelliaFl.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class CammelliaFli extends Fmt3p {
+        public CammelliaFli(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* CAMELLIA only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.CammelliaFli.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
     private static int patchUnbound(SPARCAssembler masm, Label label) {
         label.addPatchAt(masm.codeBuffer.position());
         return 0;
+    }
+
+    public static class Cmask8 extends Fmt3n {
+        public Cmask8(SPARCAssembler asm, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask8.getValue(),
+                            src2.encoding(), 0);
+        }
+    }
+
+    public static class Cmask16 extends Fmt3n {
+        public Cmask16(SPARCAssembler asm, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask16.getValue(),
+                            src2.encoding(), 0);
+        }
+    }
+
+    public static class Cmask32 extends Fmt3n {
+        public Cmask32(SPARCAssembler asm, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Cmask32.getValue(),
+                            src2.encoding(), 0);
+        }
+    }
+
+    public static class Crc32c extends Fmt3p {
+        public Crc32c(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* CRYPTO only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Crc32c.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Cwbcc extends Fmt2e {
+        public Cwbcc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbcc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbcs extends Fmt2e {
+        public Cwbcs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbcs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbe extends Fmt2e {
+        public Cwbe(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbe(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbg extends Fmt2e {
+        public Cwbg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbge extends Fmt2e {
+        public Cwbge(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbge(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbgu extends Fmt2e {
+        public Cwbgu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbgu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbl extends Fmt2e {
+        public Cwbl(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbl(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwble extends Fmt2e {
+        public Cwble(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwble(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbleu extends Fmt2e {
+        public Cwbleu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbleu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbne extends Fmt2e {
+        public Cwbne(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbne(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbneg extends Fmt2e {
+        public Cwbneg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbneg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbpos extends Fmt2e {
+        public Cwbpos(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbpos(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbvc extends Fmt2e {
+        public Cwbvc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbvc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cwbvs extends Fmt2e {
+        public Cwbvs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 0,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cwbvs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 0,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbcc extends Fmt2e {
+        public Cxbcc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbcc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbcs extends Fmt2e {
+        public Cxbcs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbcs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarrySet.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbe extends Fmt2e {
+        public Cxbe(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.CarryClear.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbe(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Equal.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbg extends Fmt2e {
+        public Cxbg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Greater.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbge extends Fmt2e {
+        public Cxbge(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbge(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterEqual.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbgu extends Fmt2e {
+        public Cxbgu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbgu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.GreaterUnsigned.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbl extends Fmt2e {
+        public Cxbl(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbl(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Less.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxble extends Fmt2e {
+        public Cxble(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxble(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqual.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbleu extends Fmt2e {
+        public Cxbleu(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbleu(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.LessEqualUnsigned.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbne extends Fmt2e {
+        public Cxbne(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbne(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.NotEqual.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbneg extends Fmt2e {
+        public Cxbneg(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbneg(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Negative.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbpos extends Fmt2e {
+        public Cxbpos(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbpos(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.Positive.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbvc extends Fmt2e {
+        public Cxbvc(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbvc(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowClear.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Cxbvs extends Fmt2e {
+        public Cxbvs(SPARCAssembler asm, Register src1, Register src2, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 1,
+                            src1.encoding(), simm10, src2.encoding());
+        }
+        public Cxbvs(SPARCAssembler asm, Register src1, int immed5, int simm10) {
+            super(asm, Ops.BranchOp.getValue(), ConditionFlag.OverflowSet.getValue(), 1,
+                            src1.encoding(), simm10, immed5 | ImmedTrue);
+        }
+    }
+
+    public static class Edge8cc extends Fmt3p {
+        public Edge8cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8cc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge8n extends Fmt3p {
+        public Edge8n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8n.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge8lcc extends Fmt3p {
+        public Edge8lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8lcc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge8ln extends Fmt3p {
+        public Edge8ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8ln.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge16cc extends Fmt3p {
+        public Edge16cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16cc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge16n extends Fmt3p {
+        public Edge16n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16n.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge16lcc extends Fmt3p {
+        public Edge16lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16lcc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge16ln extends Fmt3p {
+        public Edge16ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16ln.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge32cc extends Fmt3p {
+        public Edge32cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32cc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge32n extends Fmt3p {
+        public Edge32n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32n.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge32lcc extends Fmt3p {
+        public Edge32lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32lcc.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Edge32ln extends Fmt3p {
+        public Edge32ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32ln.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
     }
 
     public static class Fadds extends Fmt3p {
@@ -917,6 +1531,13 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Faligndata extends Fmt3p {
+        public Faligndata(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Faligndatag.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
     public static class Fdivs extends Fmt3p {
         public Fdivs(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdivs.getValue(),
@@ -931,6 +1552,86 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Fmadds extends Fmt5a {
+        public Fmadds(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fmadds.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmaddd extends Fmt5a {
+        public Fmaddd(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fmaddd.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmean16 extends Fmt3p {
+        public Fmean16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmean16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmsubs extends Fmt5a {
+        public Fmsubs(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fmsubs.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmsubd extends Fmt5a {
+        public Fmsubd(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fmsubd.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnadds extends Fmt3p {
+        public Fnadds(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnadds.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnaddd extends Fmt3p {
+        public Fnaddd(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnaddd.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnmadds extends Fmt5a {
+        public Fnmadds(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fnmadds.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnmaddd extends Fmt5a {
+        public Fnmaddd(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fnmaddd.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnmsubs extends Fmt5a {
+        public Fnmsubs(SPARCAssembler masm, Register src1, Register src2, Register src3, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fnmsubs.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnmsubd extends Fmt5a {
+        public Fnmsubd(SPARCAssembler masm, Register src1, Register src2, Register src3, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), Op5s.Fnmsubd.getValue(),
+                            src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
     public static class Fmuls extends Fmt3p {
         public Fmuls(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuls.getValue(),
@@ -942,6 +1643,62 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         public Fmuld(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuld.getValue(),
                     src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmul8x16 extends Fmt3p {
+        public Fmul8x16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmul8x16au extends Fmt3p {
+        public Fmul8x16au(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmul8x16al extends Fmt3p {
+        public Fmul8x16al(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16al.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmul8sux16 extends Fmt3p {
+        public Fmul8sux16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8sux16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmul8ulx16 extends Fmt3p {
+        public Fmul8ulx16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8ulx16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmuld8sux16 extends Fmt3p {
+        public Fmuld8sux16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmuld8sux16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fmuld8ulx16 extends Fmt3p {
+        public Fmuld8ulx16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmuld8ulx16.getValue(),
+                            src1.encoding(), src2.encoding(), dst.encoding());
         }
     }
 
@@ -1463,6 +2220,127 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         }
     }
 
+    public static class Tcc extends Fmt4a {
+        public Tcc(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.CarryClear.getValue());
+        }
+        public Tcc(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.CarryClear.getValue());
+        }
+    }
+
+    public static class Tcs extends Fmt4a {
+        public Tcs(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.CarrySet.getValue());
+        }
+        public Tcs(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.CarrySet.getValue());
+        }
+    }
+
+    public static class Te extends Fmt4a {
+        public Te(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.Equal.getValue());
+        }
+        public Te(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.Equal.getValue());
+        }
+    }
+
+    public static class Tg extends Fmt4a {
+        public Tg(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.Greater.getValue());
+        }
+        public Tg(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.Greater.getValue());
+        }
+    }
+
+    public static class Tge extends Fmt4a {
+        public Tge(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.GreaterEqual.getValue());
+        }
+        public Tge(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.GreaterEqual.getValue());
+        }
+    }
+
+    public static class Tle extends Fmt4a {
+        public Tle(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.LessEqual.getValue());
+        }
+        public Tle(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.LessEqual.getValue());
+        }
+    }
+
+    public static class Tleu extends Fmt4a {
+        public Tleu(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.LessEqualUnsigned.getValue());
+        }
+        public Tleu(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.LessEqualUnsigned.getValue());
+        }
+    }
+
+    public static class Tn extends Fmt4a {
+        public Tn(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.Never.getValue());
+        }
+        public Tn(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.Never.getValue());
+        }
+    }
+
+    public static class Tne extends Fmt4a {
+        public Tne(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.NotEqual.getValue());
+        }
+        public Tne(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.NotEqual.getValue());
+        }
+    }
+
+    public static class Tneg extends Fmt4a {
+        public Tneg(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.Negative.getValue());
+        }
+        public Tneg(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.Negative.getValue());
+        }
+    }
+
+    public static class Tpos extends Fmt4a {
+        public Tpos(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.Positive.getValue());
+        }
+        public Tpos(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.Positive.getValue());
+        }
+    }
+
     public static class Tsubcc extends Fmt3b {
         public Tsubcc(SPARCAssembler masm, Register src1, int simm13, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Tsubcc.getValue(), src1.encoding(), simm13, dst.encoding());
@@ -1481,6 +2359,28 @@ public class SPARCAssembler extends AbstractSPARCAssembler {
         @Deprecated
         public Tsubcctv(SPARCAssembler masm, Register src1, Register src2, Register dst) {
             super(masm, Ops.ArithOp.getValue(), Op3s.Tsubcctv.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Tvc extends Fmt4a {
+        public Tvc(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.OverflowClear.getValue());
+        }
+        public Tvc(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.OverflowClear.getValue());
+        }
+    }
+
+    public static class Tvs extends Fmt4a {
+        public Tvs(SPARCAssembler asm, CC cc, Register src1, int trap) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), trap, ConditionFlag.OverflowSet.getValue());
+        }
+        public Tvs(SPARCAssembler asm, CC cc, Register src1, Register src2) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Trap.getValue(), cc.getValue(),
+                  src1.encoding(), src2.encoding(), ConditionFlag.OverflowSet.getValue());
         }
     }
 

@@ -212,6 +212,19 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     }
 
     @SuppressWarnings("unused")
+    public static class Mov {
+
+        public Mov(SPARCAssembler asm, Register src1, Register dst) {
+            assert src1.encoding() != dst.encoding();
+            new Or(asm, SPARC.g0, src1, dst);
+        }
+
+        public Mov(SPARCAssembler asm, int simm13, Register dst) {
+            new Or(asm, SPARC.g0, simm13, dst);
+        }
+    }
+
+    @SuppressWarnings("unused")
     public static class Not {
 
         public Not(SPARCAssembler asm, Register src1, Register dst) {
