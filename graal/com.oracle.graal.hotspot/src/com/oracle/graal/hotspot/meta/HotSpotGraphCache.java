@@ -127,13 +127,15 @@ public class HotSpotGraphCache implements GraphCache {
     }
 
     @Override
-    public void put(StructuredGraph graph) {
+    public void put(StructuredGraph graph, boolean hasMatureProfilingInfo) {
         assert graph.method() != null;
-        cachedGraphIds.put(graph.graphId(), new WeakReference<>(graph.method()));
-        graph.method().getCompilerStorage().put(this, graph);
+        if (hasMatureProfilingInfo) {
+            cachedGraphIds.put(graph.graphId(), new WeakReference<>(graph.method()));
+            graph.method().getCompilerStorage().put(this, graph);
 
-        if (PrintGraphCache.getValue()) {
-            putCounter++;
+            if (PrintGraphCache.getValue()) {
+                putCounter++;
+            }
         }
     }
 

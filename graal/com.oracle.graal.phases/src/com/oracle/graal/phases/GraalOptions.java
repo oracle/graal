@@ -87,11 +87,7 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Integer> DeoptsToDisableOptimisticOptimization = new OptionValue<>(40);
     @Option(help = "")
-    public static final OptionValue<Integer> MatureExecutionsBranch = new OptionValue<>(1);
-    @Option(help = "")
-    public static final OptionValue<Integer> MatureExecutionsPerSwitchCase = new OptionValue<>(1);
-    @Option(help = "")
-    public static final OptionValue<Integer> MatureExecutionsTypeProfile = new OptionValue<>(1);
+    public static final OptionValue<Integer> MatureProfilingInformationThreshold = new OptionValue<>(100);
 
     // comilation queue
     @Option(help = "")

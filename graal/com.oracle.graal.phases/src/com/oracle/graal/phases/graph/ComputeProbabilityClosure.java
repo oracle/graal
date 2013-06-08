@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
@@ -63,10 +64,102 @@ public class ComputeProbabilityClosure {
     }
 
     public NodesToDoubles apply() {
+        adjustControlSplitProbabilities();
         new PropagateProbability(graph.start()).apply();
         computeLoopFactors();
         new PropagateLoopFrequency(graph.start()).apply();
+        assert verifyProbabilities();
         return nodeProbabilities;
+    }
+
+    /**
+     * Assume that paths with a DeoptimizeNode at their end are taken infrequently.
+     */
+    private void adjustControlSplitProbabilities() {
+        HashSet<ControlSplitNode> result = new HashSet<>();
+        NodeBitMap visitedNodes = new NodeBitMap(graph);
+        for (DeoptimizeNode n : graph.getNodes(DeoptimizeNode.class)) {
+            if (n.action().doesInvalidateCompilation()) {
+                findParentControlSplitNodes(result, n, visitedNodes);
+            }
+        }
+
+        for (ControlSplitNode n : result) {
+            if (!allSuxVisited(n, visitedNodes)) {
+                modifyProbabilities(n, visitedNodes);
+            }
+        }
+    }
+
+    private static void findParentControlSplitNodes(HashSet<ControlSplitNode> result, DeoptimizeNode n, NodeBitMap visitedNodes) {
+        ArrayDeque<FixedNode> nodes = new ArrayDeque<>();
+        nodes.push(n);
+
+        Node currentNode;
+        do {
+            currentNode = nodes.pop();
+            visitedNodes.mark(currentNode);
+
+            for (Node pred : currentNode.cfgPredecessors()) {
+                FixedNode fixedPred = (FixedNode) pred;
+                if (allSuxVisited(fixedPred, visitedNodes) || fixedPred instanceof InvokeWithExceptionNode) {
+                    nodes.push(fixedPred);
+                } else {
+                    assert fixedPred instanceof ControlSplitNode : "only control splits can have more than one sux";
+                    result.add((ControlSplitNode) fixedPred);
+                }
+            }
+        } while (!nodes.isEmpty());
+    }
+
+    private static void modifyProbabilities(ControlSplitNode node, NodeBitMap visitedNodes) {
+        if (node instanceof IfNode) {
+            IfNode ifNode = (IfNode) node;
+            assert visitedNodes.isMarked(ifNode.falseSuccessor()) ^ visitedNodes.isMarked(ifNode.trueSuccessor());
+
+            if (visitedNodes.isMarked(ifNode.trueSuccessor())) {
+                if (ifNode.probability(ifNode.trueSuccessor()) > 0) {
+                    ifNode.setTrueSuccessorProbability(0);
+                }
+            } else {
+                if (ifNode.probability(ifNode.trueSuccessor()) < 1) {
+                    ifNode.setTrueSuccessorProbability(1);
+                }
+            }
+        } else if (node instanceof SwitchNode) {
+            SwitchNode switchNode = (SwitchNode) node;
+            for (Node sux : switchNode.successors()) {
+                if (visitedNodes.isMarked(sux)) {
+                    switchNode.setProbability(sux, 0);
+                }
+            }
+        } else {
+            GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static boolean allSuxVisited(FixedNode fixedPred, NodeBitMap visitedNodes) {
+        for (Node sux : fixedPred.successors()) {
+            if (!visitedNodes.contains(sux)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean verifyProbabilities() {
+        if (doesNotAlwaysDeopt(graph)) {
+            for (DeoptimizeNode n : graph.getNodes(DeoptimizeNode.class)) {
+                if (n.action().doesInvalidateCompilation() && nodeProbabilities.get(n) > 0.01) {
+                    throw new AssertionError(String.format("%s with reason %s and probability %f in graph %s", n, n.reason(), nodeProbabilities.get(n), graph));
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean doesNotAlwaysDeopt(StructuredGraph graph) {
+        return graph.getNodes(ReturnNode.class).iterator().hasNext();
     }
 
     private void computeLoopFactors() {

@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.*;
 
 public interface GraphCache {
 
-    void put(StructuredGraph graph);
+    void put(StructuredGraph graph, boolean hasMatureProfilingInfo);
 
     StructuredGraph get(ResolvedJavaMethod method);
 
