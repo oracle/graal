@@ -29,7 +29,7 @@ public final class FrameSlotImpl implements FrameSlot {
     private final int index;
     private FrameSlotKind kind;
 
-    protected FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, FrameSlotKind kind) {
+    public FrameSlotImpl(FrameDescriptor descriptor, Object identifier, int index, FrameSlotKind kind) {
         this.descriptor = descriptor;
         this.identifier = identifier;
         this.index = index;
