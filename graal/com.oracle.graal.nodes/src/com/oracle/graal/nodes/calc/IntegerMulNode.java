@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "*")
-public final class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class IntegerMulNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
 
     public IntegerMulNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
