@@ -119,6 +119,13 @@ public class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
+        // XXX SPARCAddress loads
+        /*
+         * if (src instanceof SPARCAddressValue) { public LoadOp(Kind kind, AllocatableValue result,
+         * SPARCAddressValue address, LIRFrameState state) {
+         * 
+         * return new LoadOp(result.getKind(), result, (SPARCAddressValue) src); }
+         */
         if (isRegister(src) || isStackSlot(dst)) {
             append(new MoveFromRegOp(dst, src));
         } else {
