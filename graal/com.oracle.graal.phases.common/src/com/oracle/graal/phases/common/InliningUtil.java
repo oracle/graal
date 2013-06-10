@@ -366,6 +366,7 @@ public class InliningUtil {
         public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
             super(invoke);
             this.concrete = concrete;
+            assert concrete != null;
         }
 
         @Override
