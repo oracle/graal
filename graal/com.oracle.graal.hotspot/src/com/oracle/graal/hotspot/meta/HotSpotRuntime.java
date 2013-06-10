@@ -73,6 +73,7 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.java.*;
@@ -1068,6 +1069,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public Suites createSuites() {
-        return Suites.createDefaultSuites();
+        Suites ret = Suites.createDefaultSuites();
+
+        ret.getMidTier().addPhase(new WriteBarrierAdditionPhase());
+        if (VerifyPhases.getValue()) {
+            ret.getMidTier().addPhase(new WriteBarrierVerificationPhase());
+        }
+
+        return ret;
     }
 }

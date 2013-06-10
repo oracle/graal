@@ -51,7 +51,6 @@ import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.test.*;
-import com.oracle.graal.hotspot.phases.WriteBarrierAdditionPhase;
 
 /**
  * Base class for Graal compiler unit tests.
@@ -433,7 +432,6 @@ public abstract class GraalCompilerTest extends GraalTest {
                 final StructuredGraph graphCopy = graph.copy();
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
                 editPhasePlan(method, graph, phasePlan);
                 CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
                 final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,

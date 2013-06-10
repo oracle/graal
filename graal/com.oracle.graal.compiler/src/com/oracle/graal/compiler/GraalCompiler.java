@@ -169,8 +169,6 @@ public class GraalCompiler {
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);
         suites.getMidTier().apply(graph, midTierContext);
 
-        plan.runPhases(PhasePosition.LOW_LEVEL, graph);
-
         LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
         suites.getLowTier().apply(graph, lowTierContext);
 
