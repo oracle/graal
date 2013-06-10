@@ -37,7 +37,6 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
-    private final WriteBarrierType barrierType;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -60,7 +59,6 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress) {
         super(object, location, StampFactory.forVoid(), barrierType, compress);
         this.value = value;
-        this.barrierType = barrierType;
     }
 
     @Override
