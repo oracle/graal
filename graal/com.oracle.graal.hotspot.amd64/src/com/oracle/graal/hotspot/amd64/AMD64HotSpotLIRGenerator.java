@@ -48,10 +48,10 @@ import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapCompressedOp;
 import com.oracle.graal.lir.amd64.AMD64Move.CompareAndSwapOp;
-import com.oracle.graal.lir.amd64.AMD64Move.LoadCompressedOop;
+import com.oracle.graal.lir.amd64.AMD64Move.LoadCompressedPointer;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
 import com.oracle.graal.lir.amd64.AMD64Move.MoveFromRegOp;
-import com.oracle.graal.lir.amd64.AMD64Move.StoreCompressedOop;
+import com.oracle.graal.lir.amd64.AMD64Move.StoreCompressedPointer;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
@@ -412,7 +412,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
             assert kind == Kind.Object;
             Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedOop(kind, result, scratch, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
+            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
                             runtime().config.logMinObjAlignment));
         } else {
             append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
@@ -435,7 +435,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
             assert kind == Kind.Object;
             Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedOop(kind, storeAddress, input, scratch, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
+            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
         }
