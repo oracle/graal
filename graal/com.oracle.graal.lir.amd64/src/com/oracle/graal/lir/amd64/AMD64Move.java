@@ -215,10 +215,6 @@ public class AMD64Move {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            emitMemAccess(tasm, masm);
-        }
-
-        public void emitMemAccess(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             switch (kind) {
                 case Object:
                     masm.movq(asRegister(scratch), asRegister(input));
