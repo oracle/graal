@@ -37,6 +37,11 @@ public class VirtualInstanceNode extends VirtualObjectNode {
         this.fields = type.getInstanceFields(true);
     }
 
+    public VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
+        this.type = type;
+        this.fields = fields;
+    }
+
     @Override
     public ResolvedJavaType type() {
         return type;

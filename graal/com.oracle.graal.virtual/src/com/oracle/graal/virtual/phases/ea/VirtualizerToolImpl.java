@@ -39,7 +39,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
     private final NodeBitMap usages;
     private final MetaAccessProvider metaAccess;
     private final Assumptions assumptions;
-    private GraphEffectList effects;
 
     VirtualizerToolImpl(NodeBitMap usages, MetaAccessProvider metaAccess, Assumptions assumptions) {
         this.usages = usages;
@@ -48,9 +47,10 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     private boolean deleted;
-    private BlockState state;
+    private PartialEscapeBlockState state;
     private ValueNode current;
     private FixedNode position;
+    private GraphEffectList effects;
 
     @Override
     public MetaAccessProvider getMetaAccessProvider() {
@@ -62,15 +62,12 @@ class VirtualizerToolImpl implements VirtualizerTool {
         return assumptions;
     }
 
-    public void setEffects(GraphEffectList effects) {
-        this.effects = effects;
-    }
-
-    public void reset(BlockState newState, ValueNode newCurrent, FixedNode newPosition) {
+    public void reset(PartialEscapeBlockState newState, ValueNode newCurrent, FixedNode newPosition, GraphEffectList newEffects) {
         deleted = false;
         state = newState;
         current = newCurrent;
         position = newPosition;
+        effects = newEffects;
     }
 
     public boolean isDeleted() {
@@ -87,16 +84,24 @@ class VirtualizerToolImpl implements VirtualizerTool {
         ObjectState obj = (ObjectState) objectState;
         assert obj != null && obj.isVirtual() : "not virtual: " + obj;
         ObjectState valueState = state.getObjectState(value);
+        ValueNode newValue = value;
         if (valueState == null) {
-            obj.setEntry(index, getReplacedValue(value));
+            newValue = getReplacedValue(value);
+            assert obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
         } else {
-            ValueNode newValue = value;
             if (valueState.getState() != EscapeState.Virtual) {
                 newValue = valueState.getMaterializedValue();
+                assert newValue.kind() == Kind.Object;
+            } else {
+                newValue = valueState.getVirtualObject();
             }
-            assert obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind();
-            obj.setEntry(index, newValue);
+            assert obj.getEntry(index) == null || isObjectEntry(obj.getEntry(index));
         }
+        obj.setEntry(index, newValue);
+    }
+
+    private static boolean isObjectEntry(ValueNode value) {
+        return value.kind() == Kind.Object || value instanceof VirtualObjectNode;
     }
 
     @Override
@@ -128,7 +133,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void delete() {
-        assert current instanceof FixedWithNextNode;
         effects.deleteFixedNode((FixedWithNextNode) current);
         deleted = true;
     }
@@ -179,28 +183,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
             } else {
                 replaceWithValue(resultState.getMaterializedValue());
             }
-        }
-    }
-
-    @Override
-    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
-        if (OptEarlyReadElimination.getValue()) {
-            state.addReadCache(object, identity, value);
-        }
-    }
-
-    @Override
-    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
-        if (OptEarlyReadElimination.getValue()) {
-            return state.getReadCache(object, identity);
-        }
-        return null;
-    }
-
-    @Override
-    public void killReadCache(ResolvedJavaField identity) {
-        if (OptEarlyReadElimination.getValue()) {
-            state.killReadCache(identity);
         }
     }
 }

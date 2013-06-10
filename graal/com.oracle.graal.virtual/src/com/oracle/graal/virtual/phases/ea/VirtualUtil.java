@@ -111,7 +111,7 @@ public final class VirtualUtil {
         }
     }
 
-    static boolean matches(StructuredGraph graph, String filter) {
+    public static boolean matches(StructuredGraph graph, String filter) {
         if (filter != null) {
             if (filter.startsWith("~")) {
                 ResolvedJavaMethod method = graph.method();

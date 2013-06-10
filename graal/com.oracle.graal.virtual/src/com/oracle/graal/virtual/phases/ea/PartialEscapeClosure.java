@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -35,20 +32,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.VirtualState.NodeClosure;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
-import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.nodes.*;
-import com.oracle.graal.virtual.phases.ea.BlockState.ReadCacheEntry;
-import com.oracle.graal.virtual.phases.ea.EffectList.Effect;
 
-public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEscapeAnalysisPhase.Closure<BlockT> {
+public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockState<BlockT>> extends EffectsClosure<BlockT> {
 
     public static final DebugMetric METRIC_MATERIALIZATIONS = Debug.metric("Materializations");
     public static final DebugMetric METRIC_MATERIALIZATIONS_PHI = Debug.metric("MaterializationsPhi");
@@ -61,143 +52,63 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
     public static final DebugMetric METRIC_MEMORYCHECKOINT = Debug.metric("MemoryCheckpoint");
 
     private final NodeBitMap usages;
-    private final SchedulePhase schedule;
-
-    private final BlockMap<GraphEffectList> blockEffects;
-    private final IdentityHashMap<Loop, GraphEffectList> loopMergeEffects = new IdentityHashMap<>();
-
     private final VirtualizerToolImpl tool;
-
     private final Map<Invoke, Double> hints = new IdentityHashMap<>();
 
-    private boolean changed;
+    /**
+     * Final subclass of PartialEscapeClosure, for performance and to make everything behave nicely
+     * with generics.
+     */
+    public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
-        this.usages = schedule.getCFG().graph.createNodeBitMap();
-        this.schedule = schedule;
-        this.tool = new VirtualizerToolImpl(usages, metaAccess, assumptions);
-        this.blockEffects = new BlockMap<>(schedule.getCFG());
-        for (Block block : schedule.getCFG().getBlocks()) {
-            blockEffects.put(block, new GraphEffectList());
+        public Final(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
+            super(schedule, metaAccess, assumptions);
+        }
+
+        @Override
+        protected PartialEscapeBlockState.Final getInitialState() {
+            return new PartialEscapeBlockState.Final();
+        }
+
+        @Override
+        protected PartialEscapeBlockState.Final cloneState(PartialEscapeBlockState.Final oldState) {
+            return new PartialEscapeBlockState.Final(oldState);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    protected BlockT getInitialState() {
-        return (BlockT) new BlockState();
-    }
-
-    @Override
-    public boolean hasChanged() {
-        return changed;
-    }
-
-    @Override
-    public void applyEffects() {
-        final StructuredGraph graph = schedule.getCFG().graph;
-        final ArrayList<Node> obsoleteNodes = new ArrayList<>(0);
-        BlockIteratorClosure<Void> closure = new BlockIteratorClosure<Void>() {
-
-            @Override
-            protected Void getInitialState() {
-                return null;
-            }
-
-            private void apply(GraphEffectList effects, Object context) {
-                if (!effects.isEmpty()) {
-                    Debug.log(" ==== effects for %s", context);
-                    for (Effect effect : effects) {
-                        effect.apply(graph, obsoleteNodes);
-                        if (effect.isVisible()) {
-                            Debug.log("    %s", effect);
-                        }
-                    }
-                }
-            }
-
-            @Override
-            protected Void processBlock(Block block, Void currentState) {
-                apply(blockEffects.get(block), block);
-                return currentState;
-            }
-
-            @Override
-            protected Void merge(Block merge, List<Void> states) {
-                return null;
-            }
-
-            @Override
-            protected Void cloneState(Void oldState) {
-                return oldState;
-            }
-
-            @Override
-            protected List<Void> processLoop(Loop loop, Void initialState) {
-                LoopInfo<Void> info = ReentrantBlockIterator.processLoop(this, loop, initialState);
-                apply(loopMergeEffects.get(loop), loop);
-                return info.exitStates;
-            }
-        };
-        ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
-        assert VirtualUtil.assertNonReachable(graph, obsoleteNodes);
+    public PartialEscapeClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
+        super(schedule);
+        this.usages = schedule.getCFG().graph.createNodeBitMap();
+        this.tool = new VirtualizerToolImpl(usages, metaAccess, assumptions);
     }
 
     public Map<Invoke, Double> getHints() {
         return hints;
     }
 
+    /**
+     * @return true if the node was deleted, false otherwise
+     */
     @Override
-    protected BlockT processBlock(Block block, BlockT state) {
-        GraphEffectList effects = blockEffects.get(block);
-        tool.setEffects(effects);
-
-        VirtualUtil.trace("\nBlock: %s (", block);
-        List<ScheduledNode> nodeList = schedule.getBlockToNodesMap().get(block);
-
-        FixedWithNextNode lastFixedNode = null;
-        for (Node node : nodeList) {
-            boolean deleted;
-            boolean isMarked = usages.isMarked(node);
-            if (isMarked || node instanceof VirtualizableRoot) {
-                VirtualUtil.trace("[[%s]] ", node);
-                FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
-                deleted = processNode((ValueNode) node, nextFixedNode, state, effects, isMarked);
-            } else {
-                VirtualUtil.trace("%s ", node);
-                deleted = false;
-            }
-            if (OptEarlyReadElimination.getValue()) {
-                if (!deleted && node instanceof MemoryCheckpoint) {
-                    METRIC_MEMORYCHECKOINT.increment();
-                    MemoryCheckpoint checkpoint = (MemoryCheckpoint) node;
-                    for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
-                        if (identity instanceof ResolvedJavaField) {
-                            state.killReadCache((ResolvedJavaField) identity);
-                        } else if (identity == ANY_LOCATION) {
-                            state.killReadCache();
-                        }
-                    }
-                }
-            }
-            if (node instanceof FixedWithNextNode) {
-                lastFixedNode = (FixedWithNextNode) node;
-            }
+    protected boolean processNode(Node node, BlockT state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
+        boolean isMarked = usages.isMarked(node);
+        if (isMarked || node instanceof VirtualizableRoot) {
+            VirtualUtil.trace("[[%s]] ", node);
+            FixedNode nextFixedNode = lastFixedNode == null ? null : lastFixedNode.next();
+            return processNode((ValueNode) node, nextFixedNode, state, effects, isMarked);
+        } else {
+            VirtualUtil.trace("%s ", node);
+            return false;
         }
-        VirtualUtil.trace(")\n    end state: %s\n", state);
-        return state;
     }
 
     private boolean processNode(final ValueNode node, FixedNode insertBefore, final BlockT state, final GraphEffectList effects, boolean isMarked) {
-        tool.reset(state, node, insertBefore);
+        tool.reset(state, node, insertBefore, effects);
         if (node instanceof Virtualizable) {
             ((Virtualizable) node).virtualize(tool);
         }
         if (tool.isDeleted()) {
-            if (!(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode)) {
-                changed = true;
-            }
-            return true;
+            return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode);
         }
         if (isMarked) {
             if (node instanceof StateSplit) {
@@ -289,7 +200,7 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
         return false;
     }
 
-    private static void ensureMaterialized(BlockState state, ObjectState obj, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
+    private static void ensureMaterialized(PartialEscapeBlockState state, ObjectState obj, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
         assert obj != null;
         if (obj.getState() == EscapeState.Virtual) {
             metric.increment();
@@ -300,70 +211,13 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
         assert !obj.isVirtual();
     }
 
-    private static void replaceWithMaterialized(ValueNode value, Node usage, FixedNode materializeBefore, BlockState state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
+    private static void replaceWithMaterialized(ValueNode value, Node usage, FixedNode materializeBefore, PartialEscapeBlockState state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
         ensureMaterialized(state, obj, materializeBefore, effects, metric);
         effects.replaceFirstInput(usage, value, obj.getMaterializedValue());
     }
 
     @Override
-    protected BlockT merge(Block merge, List<BlockT> states) {
-        assert blockEffects.get(merge).isEmpty();
-        MergeProcessor<BlockT> processor = new MergeProcessor<>(merge, usages, blockEffects);
-        processor.merge(states);
-        blockEffects.get(merge).addAll(processor.mergeEffects);
-        blockEffects.get(merge).addAll(processor.afterMergeEffects);
-        return processor.newState;
-
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected BlockT cloneState(BlockState oldState) {
-        return (BlockT) oldState.cloneState();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    protected List<BlockT> processLoop(Loop loop, BlockT initialState) {
-        BlockState loopEntryState = initialState;
-        BlockState lastMergedState = initialState;
-        MergeProcessor<BlockT> mergeProcessor = new MergeProcessor<>(loop.header, usages, blockEffects);
-        for (int iteration = 0; iteration < 10; iteration++) {
-            LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, (BlockT) lastMergedState.cloneState());
-
-            List<BlockT> states = new ArrayList<>();
-            states.add(initialState);
-            states.addAll(info.endStates);
-            mergeProcessor.merge(states);
-
-            Debug.log("================== %s", loop.header);
-            Debug.log("%s", mergeProcessor.newState);
-            Debug.log("===== vs.");
-            Debug.log("%s", lastMergedState);
-
-            if (mergeProcessor.newState.equivalentTo(lastMergedState)) {
-                blockEffects.get(loop.header).insertAll(mergeProcessor.mergeEffects, 0);
-                loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
-
-                assert info.exitStates.size() == loop.exits.size();
-                for (int i = 0; i < loop.exits.size(); i++) {
-                    BlockState exitState = info.exitStates.get(i);
-                    assert exitState != null : "no loop exit state at " + loop.exits.get(i) + " / " + loop.header;
-                    processLoopExit((LoopExitNode) loop.exits.get(i).getBeginNode(), loopEntryState, exitState, blockEffects.get(loop.exits.get(i)));
-                }
-
-                return info.exitStates;
-            } else {
-                lastMergedState = mergeProcessor.newState;
-                for (Block block : loop.blocks) {
-                    blockEffects.get(block).clear();
-                }
-            }
-        }
-        throw new GraalInternalError("too many iterations at %s", loop);
-    }
-
-    private static void processLoopExit(LoopExitNode exitNode, BlockState initialState, BlockState exitState, GraphEffectList effects) {
+    protected void processLoopExit(LoopExitNode exitNode, BlockT initialState, BlockT exitState, GraphEffectList effects) {
         HashMap<VirtualObjectNode, ProxyNode> proxies = new HashMap<>();
 
         for (ProxyNode proxy : exitNode.proxies()) {
@@ -404,41 +258,25 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
                 }
             }
         }
-
-        for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
-            if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
-                ProxyNode proxy = new ProxyNode(exitState.getReadCache(entry.getKey().object, entry.getKey().identity), exitNode, PhiType.Value, null);
-                effects.addFloatingNode(proxy, "readCacheProxy");
-                entry.setValue(proxy);
-            }
-        }
     }
 
-    private static class MergeProcessor<BlockT extends BlockState> {
+    @Override
+    protected MergeProcessor createMergeProcessor(Block merge) {
+        return new MergeProcessor(merge);
+    }
 
-        private final Block mergeBlock;
-        private final MergeNode merge;
-        private final NodeBitMap usages;
-        private final BlockMap<GraphEffectList> blockEffects;
-        private final GraphEffectList mergeEffects;
-        private final GraphEffectList afterMergeEffects;
+    protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
         private final HashMap<Object, PhiNode> materializedPhis = new HashMap<>();
         private final IdentityHashMap<VirtualObjectNode, PhiNode[]> valuePhis = new IdentityHashMap<>();
         private final IdentityHashMap<PhiNode, PhiNode[]> valueObjectMergePhis = new IdentityHashMap<>();
         private final IdentityHashMap<PhiNode, VirtualObjectNode> valueObjectVirtuals = new IdentityHashMap<>();
-        private BlockT newState;
 
-        public MergeProcessor(Block mergeBlock, NodeBitMap usages, BlockMap<GraphEffectList> blockEffects) {
-            this.usages = usages;
-            this.mergeBlock = mergeBlock;
-            this.blockEffects = blockEffects;
-            this.merge = (MergeNode) mergeBlock.getBeginNode();
-            this.mergeEffects = new GraphEffectList();
-            this.afterMergeEffects = new GraphEffectList();
+        public MergeProcessor(Block mergeBlock) {
+            super(mergeBlock);
         }
 
-        private <T> PhiNode getCachedPhi(T virtual, Kind kind) {
+        protected <T> PhiNode getCachedPhi(T virtual, Kind kind) {
             PhiNode result = materializedPhis.get(virtual);
             if (result == null) {
                 result = new PhiNode(kind, merge);
@@ -474,10 +312,9 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
             return result;
         }
 
-        @SuppressWarnings("unchecked")
-        private void merge(List<BlockT> states) {
-            newState = (BlockT) states.get(0).cloneEmptyState();
-            newState.meetAliases(states);
+        @Override
+        protected void merge(List<BlockT> states) {
+            super.merge(states);
 
             /*
              * Iterative processing: Merging the materialized/virtual state of virtual objects can
@@ -519,7 +356,7 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
                             PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
                             for (int i = 0; i < states.size(); i++) {
-                                BlockState state = states.get(i);
+                                PartialEscapeBlockState state = states.get(i);
                                 ObjectState obj = objStates[i];
                                 materialized |= obj.isVirtual();
                                 Block predecessor = mergeBlock.getPredecessors().get(i);
@@ -578,8 +415,6 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
                     }
                 }
             } while (materialized);
-
-            mergeReadCache(states);
         }
 
         private boolean processPhi(PhiNode phi, List<BlockT> states) {
@@ -664,63 +499,6 @@ public class PartialEscapeClosure<BlockT extends BlockState> extends PartialEsca
                 }
             }
             return materialized;
-        }
-
-        private void mergeReadCache(List<BlockT> states) {
-            for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
-                ReadCacheEntry key = entry.getKey();
-                ValueNode value = entry.getValue();
-                boolean phi = false;
-                for (int i = 1; i < states.size(); i++) {
-                    ValueNode otherValue = states.get(i).readCache.get(key);
-                    if (otherValue == null) {
-                        value = null;
-                        phi = false;
-                        break;
-                    }
-                    if (!phi && otherValue != value) {
-                        phi = true;
-                    }
-                }
-                if (phi) {
-                    PhiNode phiNode = getCachedPhi(entry, value.kind());
-                    mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
-                    for (int i = 0; i < states.size(); i++) {
-                        afterMergeEffects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity));
-                    }
-                    newState.readCache.put(key, phiNode);
-                } else if (value != null) {
-                    newState.readCache.put(key, value);
-                }
-            }
-            for (PhiNode phi : merge.phis()) {
-                if (phi.kind() == Kind.Object) {
-                    for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
-                        if (entry.getKey().object == phi.valueAt(0)) {
-                            mergeReadCachePhi(phi, entry.getKey().identity, states);
-                        }
-                    }
-
-                }
-            }
-        }
-
-        private void mergeReadCachePhi(PhiNode phi, ResolvedJavaField identity, List<BlockT> states) {
-            ValueNode[] values = new ValueNode[phi.valueCount()];
-            for (int i = 0; i < phi.valueCount(); i++) {
-                ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
-                if (value == null) {
-                    return;
-                }
-                values[i] = value;
-            }
-
-            PhiNode phiNode = getCachedPhi(new ReadCacheEntry(identity, phi), values[0].kind());
-            mergeEffects.addFloatingNode(phiNode, "mergeReadCachePhi");
-            for (int i = 0; i < values.length; i++) {
-                afterMergeEffects.addPhiInput(phiNode, values[i]);
-            }
-            newState.readCache.put(new ReadCacheEntry(identity, phi), phiNode);
         }
     }
 }

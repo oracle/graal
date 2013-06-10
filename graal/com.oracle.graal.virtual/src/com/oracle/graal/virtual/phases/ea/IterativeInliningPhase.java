@@ -41,15 +41,13 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
     private final Replacements replacements;
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
-    private final boolean readElimination;
     private final CanonicalizerPhase canonicalizer;
 
-    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, boolean readElimination, CanonicalizerPhase canonicalizer) {
+    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, CanonicalizerPhase canonicalizer) {
         this.replacements = replacements;
         this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
-        this.readElimination = readElimination;
         this.canonicalizer = canonicalizer;
     }
 
@@ -73,11 +71,11 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
                 @Override
                 public Boolean call() {
                     boolean progress = false;
-                    PartialEscapeAnalysisPhase ea = new PartialEscapeAnalysisPhase(false, readElimination, canonicalizer);
+                    PartialEscapePhase ea = new PartialEscapePhase(false, canonicalizer);
                     boolean eaResult = ea.runAnalysis(graph, context);
                     progress |= eaResult;
 
-                    Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapeAnalysisPhase.getHints(graph) : null;
+                    Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapePhase.getHints(graph) : null;
 
                     InliningPhase inlining = new InliningPhase(context.getRuntime(), hints, replacements, context.getAssumptions(), cache, plan, optimisticOpts);
                     inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);

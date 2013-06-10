@@ -68,12 +68,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected Block currentBlock;
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
-    private FrameState lastState;
-
-    /**
-     * Mapping from blocks to the last encountered frame state at the end of the block.
-     */
-    private final BlockMap<FrameState> blockLastState;
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for store
@@ -100,7 +94,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         this.nodeOperands = graph.createNodeMap();
         this.lir = lir;
         this.debugInfoBuilder = createDebugInfoBuilder(nodeOperands);
-        this.blockLastState = new BlockMap<>(lir.cfg);
     }
 
     @SuppressWarnings("hiding")
@@ -291,41 +284,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (block == lir.cfg.getStartBlock()) {
             assert block.getPredecessorCount() == 0;
             emitPrologue();
-
         } else {
             assert block.getPredecessorCount() > 0;
-            FrameState fs = null;
-
-            for (Block pred : block.getPredecessors()) {
-                if (fs == null) {
-                    fs = blockLastState.get(pred);
-                } else {
-                    if (blockLastState.get(pred) == null) {
-                        // Only a back edge can have a null state for its enclosing block.
-                        assert pred.getEndNode() instanceof LoopEndNode;
-
-                        if (block.getBeginNode().stateAfter() == null) {
-                            // We'll assert later that the begin and end of a framestate-less loop
-                            // share the frame state that flowed into the loop
-                            blockLastState.put(pred, fs);
-                        }
-                    } else if (fs != blockLastState.get(pred)) {
-                        fs = null;
-                        break;
-                    }
-                }
-            }
-            if (TraceLIRGeneratorLevel.getValue() >= 2) {
-                if (fs == null) {
-                    TTY.println("STATE RESET");
-                } else {
-                    TTY.println("STATE CHANGE (singlePred)");
-                    if (TraceLIRGeneratorLevel.getValue() >= 3) {
-                        TTY.println(fs.toString(Node.Verbosity.Debugger));
-                    }
-                }
-            }
-            lastState = fs;
         }
 
         List<ScheduledNode> nodes = lir.nodesFor(block);
@@ -333,10 +293,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             Node instr = nodes.get(i);
             if (TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
-            }
-            FrameState stateAfter = null;
-            if (instr instanceof StateSplit && !(instr instanceof InfopointNode)) {
-                stateAfter = ((StateSplit) instr).stateAfter();
             }
             if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
@@ -355,16 +311,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                     // before by other instructions.
                 }
             }
-            if (stateAfter != null) {
-                lastState = stateAfter;
-                assert checkStateReady(lastState);
-                if (TraceLIRGeneratorLevel.getValue() >= 2) {
-                    TTY.println("STATE CHANGE");
-                    if (TraceLIRGeneratorLevel.getValue() >= 3) {
-                        TTY.println(stateAfter.toString(Node.Verbosity.Debugger));
-                    }
-                }
-            }
         }
         if (block.getSuccessorCount() >= 1 && !endsWithJump(block)) {
             NodeClassIterable successors = block.getEndNode().successors();
@@ -377,11 +323,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println("END Generating LIR for block B" + block.getId());
         }
 
-        // Check that the begin and end of a framestate-less loop
-        // share the frame state that flowed into the loop
-        assert blockLastState.get(block) == null || blockLastState.get(block) == lastState;
-
-        blockLastState.put(block, lastState);
         currentBlock = null;
 
         if (PrintIRWithLIR.getValue()) {
@@ -390,19 +331,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     protected abstract boolean peephole(ValueNode valueNode);
-
-    private boolean checkStateReady(FrameState state) {
-        FrameState fs = state;
-        while (fs != null) {
-            for (ValueNode v : fs.values()) {
-                if (v != null && !(v instanceof VirtualObjectNode)) {
-                    assert operand(v) != null : "Value " + v + " in " + fs + " is not ready!";
-                }
-            }
-            fs = fs.outerFrameState();
-        }
-        return true;
-    }
 
     private boolean endsWithJump(Block block) {
         List<LIRInstruction> instructions = lir.lir(block);
