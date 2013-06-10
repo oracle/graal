@@ -39,7 +39,6 @@ import com.oracle.graal.hotspot.meta.*;
  * The following tests perform object/array equality and assignments in various ways. The selected
  * cases have been the problematic ones while implementing the Compressed Oops support.
  */
-
 public class CompressedOopTest extends GraalCompilerTest {
 
     private final MetaAccessProvider metaAccessProvider;
