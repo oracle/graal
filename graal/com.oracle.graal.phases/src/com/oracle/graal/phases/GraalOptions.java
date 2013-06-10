@@ -190,7 +190,7 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> HotSpotPrintCompilation = new OptionValue<>(false);
     @Option(help = "")
-    public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(false);
+    public static final OptionValue<Boolean> HotSpotPrintInlining = new OptionValue<>(true);
 
     // Register allocator debugging
     @Option(help = "")
