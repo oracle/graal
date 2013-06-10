@@ -163,7 +163,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public boolean isMature() {
-        return method.invocationCount() >= graalRuntime().getConfig().interpreterProfilingThreshold + GraalOptions.MatureProfilingInformationThreshold.getValue();
+        return true;
     }
 
     @Override
