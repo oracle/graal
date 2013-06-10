@@ -45,6 +45,11 @@ public interface ResolvedJavaField extends JavaField {
     boolean isInternal();
 
     /**
+     * Determines if this field is a synthetic field as defined by the Java Language Specification.
+     */
+    boolean isSynthetic();
+
+    /**
      * Gets the constant value of this field for a given object, if available.
      * 
      * @param receiver object from which this field's value is to be read. This value is ignored if

@@ -160,6 +160,15 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     @Override
+    public boolean isSynthetic() {
+        Field javaField = toJava();
+        if (javaField != null) {
+            return javaField.isSynthetic();
+        }
+        return false;
+    }
+
+    @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         Field javaField = toJava();
         if (javaField != null) {
