@@ -131,19 +131,14 @@ public class AMD64Move {
             this.narrowOopShift = narrowOopShift;
             this.logMinObjAlignment = logMinObjAlignment;
             this.scratch = scratch;
+            assert kind == Kind.Object;
         }
 
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
-            switch (kind) {
-                case Object:
-                    Register resRegister = asRegister(result);
-                    masm.movl(resRegister, address.toAddress());
-                    decodeOop(masm, resRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+            Register resRegister = asRegister(result);
+            masm.movl(resRegister, address.toAddress());
+            decodeOop(masm, resRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
         }
     }
 
@@ -211,22 +206,17 @@ public class AMD64Move {
             this.address = address;
             this.state = state;
             this.input = input;
+            assert kind == Kind.Object;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            switch (kind) {
-                case Object:
-                    masm.movq(asRegister(scratch), asRegister(input));
-                    encodeOop(masm, asRegister(scratch), narrowOopBase, narrowOopShift, logMinObjAlignment);
-                    if (state != null) {
-                        tasm.recordImplicitException(masm.codeBuffer.position(), state);
-                    }
-                    masm.movl(address.toAddress(), asRegister(scratch));
-                    break;
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
+            masm.movq(asRegister(scratch), asRegister(input));
+            encodeOop(masm, asRegister(scratch), narrowOopBase, narrowOopShift, logMinObjAlignment);
+            if (state != null) {
+                tasm.recordImplicitException(masm.codeBuffer.position(), state);
             }
+            masm.movl(address.toAddress(), asRegister(scratch));
         }
     }
 
