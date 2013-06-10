@@ -86,6 +86,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -93,7 +94,7 @@ import com.oracle.graal.word.*;
 /**
  * HotSpot implementation of {@link GraalCodeCacheProvider}.
  */
-public abstract class HotSpotRuntime implements GraalCodeCacheProvider, DisassemblerProvider, BytecodeDisassemblerProvider {
+public abstract class HotSpotRuntime implements GraalCodeCacheProvider, DisassemblerProvider, BytecodeDisassemblerProvider, SuitesProvider {
 
     public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
     public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
@@ -104,6 +105,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     protected final RegisterConfig regConfig;
     protected final HotSpotGraalRuntime graalRuntime;
+    private final Suites defaultSuites;
 
     private CheckCastSnippets.Templates checkcastSnippets;
     private InstanceOfSnippets.Templates instanceofSnippets;
@@ -179,6 +181,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         this.config = c;
         this.graalRuntime = graalRuntime;
         regConfig = createRegisterConfig();
+        defaultSuites = createSuites();
     }
 
     protected abstract RegisterConfig createRegisterConfig();
@@ -1058,5 +1061,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     public String disassemble(ResolvedJavaMethod method) {
         return new BytecodeDisassembler().disassemble(method);
+    }
+
+    public Suites getDefaultSuites() {
+        return defaultSuites;
+    }
+
+    public Suites createSuites() {
+        return Suites.createDefaultSuites();
     }
 }

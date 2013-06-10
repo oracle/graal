@@ -55,9 +55,8 @@ public abstract class SPARCTestBase extends GraalCompilerTest {
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, graalRuntime().getReplacements(),
-                                                              sparcBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                                                              new SpeculationLog());
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, graalRuntime().getReplacements(), sparcBackend, target, null, phasePlan,
+                        OptimisticOptimizations.NONE, new SpeculationLog(), suites);
         return result;
     }
 
@@ -66,4 +65,3 @@ public abstract class SPARCTestBase extends GraalCompilerTest {
     }
 
 }
-
