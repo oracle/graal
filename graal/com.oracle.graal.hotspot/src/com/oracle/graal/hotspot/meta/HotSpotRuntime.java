@@ -529,8 +529,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) loadField.field();
             ValueNode object = loadField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), this, graph) : loadField.object();
             assert loadField.kind() != Kind.Illegal;
-            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), WriteBarrierType.NONE,
-                            (loadField.kind() == Kind.Object && !field.getName().equals("classMirrorOffset"))));
+            ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), WriteBarrierType.NONE, (loadField.kind() == Kind.Object)));
             tool.createNullCheckGuard(memoryRead, object);
 
             graph.replaceFixedWithFixed(loadField, memoryRead);
