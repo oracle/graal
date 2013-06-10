@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import org.junit.*;
 
@@ -74,8 +75,8 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(test);
         ResolvedJavaMethod method = graph.method();
 
-        boolean originalSetting = GraalOptions.OptCanonicalizeReads.getValue();
-        GraalOptions.OptCanonicalizeReads.setValue(!compileAOT);
+        boolean originalSetting = OptCanonicalizeReads.getValue();
+        OptCanonicalizeReads.setValue(!compileAOT);
         PhasePlan phasePlan = new PhasePlan();
         final StructuredGraph graphCopy = graph.copy();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
@@ -87,7 +88,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
                         new SpeculationLog());
         addMethod(method, compResult, graphCopy);
 
-        GraalOptions.OptCanonicalizeReads.setValue(originalSetting);
+        OptCanonicalizeReads.setValue(originalSetting);
 
         return graph;
     }
