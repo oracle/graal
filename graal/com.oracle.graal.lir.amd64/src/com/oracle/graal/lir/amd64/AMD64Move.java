@@ -423,6 +423,7 @@ public class AMD64Move {
             this.address = address;
             this.cmpValue = cmpValue;
             this.newValue = newValue;
+            assert cmpValue.getKind() == Kind.Object;
         }
 
         @Override
@@ -643,23 +644,16 @@ public class AMD64Move {
     protected static void compareAndSwapCompressed(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
                     AllocatableValue newValue, AllocatableValue scratch, long narrowOopBase, int narrowOopShift, int logMinObjAlignment) {
         assert asRegister(cmpValue) == AMD64.rax && asRegister(result) == AMD64.rax;
-
-        switch (cmpValue.getKind()) {
-            case Object:
-                final Register scratchRegister = asRegister(scratch);
-                final Register cmpRegister = asRegister(cmpValue);
-                final Register newRegister = asRegister(newValue);
-                encodeOop(masm, cmpRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
-                masm.movq(scratchRegister, newRegister);
-                encodeOop(masm, scratchRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
-                if (tasm.target.isMP) {
-                    masm.lock();
-                }
-                masm.cmpxchgl(scratchRegister, address.toAddress());
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
+        final Register scratchRegister = asRegister(scratch);
+        final Register cmpRegister = asRegister(cmpValue);
+        final Register newRegister = asRegister(newValue);
+        encodeOop(masm, cmpRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
+        masm.movq(scratchRegister, newRegister);
+        encodeOop(masm, scratchRegister, narrowOopBase, narrowOopShift, logMinObjAlignment);
+        if (tasm.target.isMP) {
+            masm.lock();
         }
+        masm.cmpxchgl(scratchRegister, address.toAddress());
     }
 
     private static void encodeOop(AMD64MacroAssembler masm, Register scratchRegister, long narrowOopBase, int narrowOopShift, int logMinObjAlignment) {
