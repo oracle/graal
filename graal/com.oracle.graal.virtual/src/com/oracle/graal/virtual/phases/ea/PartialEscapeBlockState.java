@@ -24,106 +24,40 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 
-public class BlockState {
+public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<T>> extends EffectsBlockState<T> {
 
     protected final IdentityHashMap<VirtualObjectNode, ObjectState> objectStates = new IdentityHashMap<>();
     protected final IdentityHashMap<ValueNode, VirtualObjectNode> objectAliases;
-    protected final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
-    final HashMap<ReadCacheEntry, ValueNode> readCache;
 
-    static class ReadCacheEntry {
+    /**
+     * Final subclass of PartialEscapeBlockState, for performance and to make everything behave
+     * nicely with generics.
+     */
+    public static final class Final extends PartialEscapeBlockState<Final> {
 
-        public final ResolvedJavaField identity;
-        public final ValueNode object;
-
-        public ReadCacheEntry(ResolvedJavaField identity, ValueNode object) {
-            this.identity = identity;
-            this.object = object;
+        public Final() {
         }
 
-        @Override
-        public int hashCode() {
-            int result = 31 + ((identity == null) ? 0 : identity.hashCode());
-            return 31 * result + ((object == null) ? 0 : object.hashCode());
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            ReadCacheEntry other = (ReadCacheEntry) obj;
-            return identity == other.identity && object == other.object;
-        }
-
-        @Override
-        public String toString() {
-            return object + ":" + identity;
+        public Final(Final other) {
+            super(other);
         }
     }
 
-    public BlockState() {
+    protected PartialEscapeBlockState() {
         objectAliases = new IdentityHashMap<>();
-        scalarAliases = new IdentityHashMap<>();
-        readCache = new HashMap<>();
     }
 
-    public BlockState(BlockState other) {
+    protected PartialEscapeBlockState(PartialEscapeBlockState<T> other) {
+        super(other);
         for (Map.Entry<VirtualObjectNode, ObjectState> entry : other.objectStates.entrySet()) {
             objectStates.put(entry.getKey(), entry.getValue().cloneState());
         }
         objectAliases = new IdentityHashMap<>(other.objectAliases);
-        scalarAliases = new IdentityHashMap<>(other.scalarAliases);
-        readCache = new HashMap<>(other.readCache);
-    }
-
-    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
-        ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheObject = obj.getMaterializedValue();
-        } else {
-            cacheObject = object;
-        }
-        readCache.put(new ReadCacheEntry(identity, cacheObject), value);
-    }
-
-    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
-        ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheObject = obj.getMaterializedValue();
-        } else {
-            cacheObject = object;
-        }
-        ValueNode cacheValue = readCache.get(new ReadCacheEntry(identity, cacheObject));
-        obj = getObjectState(cacheValue);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheValue = obj.getMaterializedValue();
-        } else {
-            cacheValue = getScalarAlias(cacheValue);
-        }
-        return cacheValue;
-    }
-
-    public void killReadCache() {
-        readCache.clear();
-    }
-
-    public void killReadCache(ResolvedJavaField identity) {
-        Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
-            if (entry.getKey().identity == identity) {
-                iter.remove();
-            }
-        }
     }
 
     public ObjectState getObjectState(VirtualObjectNode object) {
@@ -140,14 +74,6 @@ public class BlockState {
         return object == null ? null : getObjectState(object);
     }
 
-    public BlockState cloneState() {
-        return new BlockState(this);
-    }
-
-    public BlockState cloneEmptyState() {
-        return new BlockState();
-    }
-
     public void materializeBefore(FixedNode fixed, VirtualObjectNode virtual, EscapeState state, GraphEffectList materializeEffects) {
         PartialEscapeClosure.METRIC_MATERIALIZATIONS.increment();
         List<AllocatedObjectNode> objects = new ArrayList<>(2);
@@ -161,7 +87,6 @@ public class BlockState {
 
     private void materializeWithCommit(FixedNode fixed, VirtualObjectNode virtual, List<AllocatedObjectNode> objects, List<int[]> locks, List<ValueNode> values, List<ValueNode> otherAllocations,
                     EscapeState state) {
-        VirtualUtil.trace("materializing %s", virtual);
         ObjectState obj = getObjectState(virtual);
 
         ValueNode[] entries = obj.getEntries();
@@ -185,16 +110,16 @@ public class BlockState {
                     values.set(pos + i, entries[i]);
                 }
             }
-            if (virtual instanceof VirtualInstanceNode) {
-                VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
-                for (int i = 0; i < entries.length; i++) {
-                    readCache.put(new ReadCacheEntry(instance.field(i), representation), values.get(pos + i));
-                }
-            }
+            objectMaterialized(virtual, (AllocatedObjectNode) representation, values.subList(pos, pos + entries.length));
         } else {
+            VirtualUtil.trace("materialized %s as %s", virtual, representation);
             otherAllocations.add(representation);
             assert obj.getLocks().length == 0;
         }
+    }
+
+    protected void objectMaterialized(VirtualObjectNode virtual, AllocatedObjectNode representation, List<ValueNode> values) {
+        VirtualUtil.trace("materialized %s as %s with values %s", virtual, representation, values);
     }
 
     void addAndMarkAlias(VirtualObjectNode virtual, ValueNode node, NodeBitMap usages) {
@@ -221,15 +146,6 @@ public class BlockState {
         objectStates.put(virtual, state);
     }
 
-    public void addScalarAlias(ValueNode alias, ValueNode value) {
-        scalarAliases.put(alias, value);
-    }
-
-    public ValueNode getScalarAlias(ValueNode alias) {
-        ValueNode result = scalarAliases.get(alias);
-        return result == null ? alias : result;
-    }
-
     public Iterable<ObjectState> getStates() {
         return objectStates.values();
     }
@@ -240,32 +156,24 @@ public class BlockState {
 
     @Override
     public String toString() {
-        return objectStates + " " + readCache;
+        return super.toString() + ", Object Aliases: " + objectAliases + ", Object States: " + objectStates;
     }
 
-    public void meetAliases(List<? extends BlockState> states) {
+    @Override
+    public void meetAliases(List<T> states) {
+        super.meetAliases(states);
         objectAliases.putAll(states.get(0).objectAliases);
-        scalarAliases.putAll(states.get(0).scalarAliases);
         for (int i = 1; i < states.size(); i++) {
-            BlockState state = states.get(i);
-            meetMaps(objectAliases, state.objectAliases);
-            meetMaps(scalarAliases, state.scalarAliases);
+            meetMaps(objectAliases, states.get(i).objectAliases);
         }
     }
 
-    public Map<ReadCacheEntry, ValueNode> getReadCache() {
-        return readCache;
-    }
-
-    public boolean equivalentTo(BlockState other) {
-        if (this == other) {
-            return true;
+    @Override
+    public boolean equivalentTo(T other) {
+        if (!compareMaps(objectAliases, other.objectAliases) || !compareMaps(objectStates, other.objectStates)) {
+            return false;
         }
-        boolean objectAliasesEqual = compareMaps(objectAliases, other.objectAliases);
-        boolean objectStatesEqual = compareMaps(objectStates, other.objectStates);
-        boolean readCacheEqual = compareMapsNoSize(readCache, other.readCache);
-        boolean scalarAliasesEqual = scalarAliases.equals(other.scalarAliases);
-        return objectAliasesEqual && objectStatesEqual && readCacheEqual && scalarAliasesEqual;
+        return super.equivalentTo(other);
     }
 
     protected static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {

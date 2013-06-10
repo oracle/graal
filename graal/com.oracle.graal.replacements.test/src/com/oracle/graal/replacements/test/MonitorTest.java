@@ -63,7 +63,7 @@ public class MonitorTest extends GraalCompilerTest {
     }
 
     /**
-     * Tests monitor operations on {@link PartialEscapeAnalysisPhase virtual objects}.
+     * Tests monitor operations on {@link PartialEscapePhase virtual objects}.
      */
     @Test
     public void test3() {

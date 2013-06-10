@@ -222,7 +222,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
-                new PartialEscapeAnalysisPhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true)).apply(graph, context);
+                new PartialEscapePhase(iterativeEscapeAnalysis, new CanonicalizerPhase(true)).apply(graph, context);
                 Assert.assertEquals(1, graph.getNodes(ReturnNode.class).count());
                 ReturnNode returnNode = graph.getNodes(ReturnNode.class).first();
                 if (expectedConstantResult != null) {

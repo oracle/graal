@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.common;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
@@ -43,6 +45,6 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
     protected void run(StructuredGraph graph, C context) {
         int mark = graph.getMark();
         super.run(graph, context);
-        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), GraalOptions.OptCanonicalizeReads.getValue(), mark, customCanonicalizer).apply(graph);
+        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), OptCanonicalizeReads.getValue(), mark, customCanonicalizer).apply(graph);
     }
 }

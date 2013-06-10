@@ -43,8 +43,6 @@ public interface Virtualizable {
 
         public abstract VirtualObjectNode getVirtualObject();
 
-        public abstract void setEntry(int index, ValueNode value);
-
         public abstract ValueNode getEntry(int index);
 
         public abstract void addLock(int depth);

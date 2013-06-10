@@ -20,11 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.phases.tiers;
 
-public interface InlineableElement {
+public interface SuitesProvider {
 
-    int getNodeCount();
+    /**
+     * Get the default phase suites of this compiler.
+     */
+    Suites getDefaultSuites();
 
-    Iterable<Invoke> getInvokes();
+    /**
+     * Create a new set of phase suites. Initially, the suites are the same as the
+     * {@link #getDefaultSuites default} suites.
+     */
+    Suites createSuites();
 }

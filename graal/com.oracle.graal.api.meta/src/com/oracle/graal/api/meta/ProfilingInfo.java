@@ -112,4 +112,12 @@ public interface ProfilingInfo {
      */
     int getDeoptimizationCount(DeoptimizationReason reason);
 
+    /**
+     * Returns true if the profiling information can be assumed as sufficiently accurate.
+     * 
+     * @return true if the profiling information was recorded often enough mature enough, false
+     *         otherwise.
+     */
+    boolean isMature();
+
 }

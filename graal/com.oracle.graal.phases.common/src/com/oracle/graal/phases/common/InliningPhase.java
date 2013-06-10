@@ -40,7 +40,9 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
+import com.oracle.graal.phases.common.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
+import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 
@@ -149,19 +151,16 @@ public class InliningPhase extends Phase {
         if (info != null) {
             double invokeProbability = graphInfo.invokeProbability(invoke);
             double invokeRelevance = graphInfo.invokeRelevance(invoke);
+            MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
 
-            if (inliningPolicy.isWorthInlining(info, data.inliningDepth(), invokeProbability, invokeRelevance, false)) {
-                MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
-
-                for (int i = 0; i < info.numberOfMethods(); i++) {
-                    InlineableElement elem = getInlineableElement(info.methodAt(i), info.invoke(), calleeInvocation.assumptions());
-                    info.setInlinableElement(i, elem);
-                    if (elem instanceof StructuredGraph) {
-                        data.pushGraph((StructuredGraph) elem, invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
-                    } else {
-                        assert elem instanceof InlineableMacroNode;
-                        data.pushDummyGraph();
-                    }
+            for (int i = 0; i < info.numberOfMethods(); i++) {
+                Inlineable elem = getInlineableElement(info.methodAt(i), info.invoke(), calleeInvocation.assumptions());
+                info.setInlinableElement(i, elem);
+                if (elem instanceof InlineableGraph) {
+                    data.pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
+                } else {
+                    assert elem instanceof InlineableMacroNode;
+                    data.pushDummyGraph();
                 }
             }
         }
@@ -215,12 +214,12 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private InlineableElement getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, Assumptions assumptions) {
+    private Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, Assumptions assumptions) {
         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(replacements, method);
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);
         } else {
-            return buildGraph(method, invoke, assumptions);
+            return new InlineableGraph(buildGraph(method, invoke, assumptions));
         }
     }
 
@@ -296,6 +295,8 @@ public class InliningPhase extends Phase {
     }
 
     private StructuredGraph parseBytecodes(StructuredGraph newGraph, Assumptions assumptions) {
+        boolean hasMatureProfilingInfo = newGraph.method().getProfilingInfo().isMature();
+
         if (plan != null) {
             plan.runPhases(PhasePosition.AFTER_PARSING, newGraph);
         }
@@ -311,7 +312,7 @@ public class InliningPhase extends Phase {
             new CullFrameStatesPhase().apply(newGraph);
         }
         if (CacheGraphs.getValue() && cache != null) {
-            cache.put(newGraph.copy());
+            cache.put(newGraph.copy(), hasMatureProfilingInfo);
         }
         return newGraph;
     }
@@ -387,7 +388,7 @@ public class InliningPhase extends Phase {
         protected static int determineNodeCount(InlineInfo info) {
             int nodes = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                InlineableElement elem = info.inlineableElementAt(i);
+                Inlineable elem = info.inlineableElementAt(i);
                 if (elem != null) {
                     nodes += elem.getNodeCount();
                 }
@@ -398,10 +399,10 @@ public class InliningPhase extends Phase {
         protected static double determineInvokeProbability(InlineInfo info) {
             double invokeProbability = 0;
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                InlineableElement callee = info.inlineableElementAt(i);
+                Inlineable callee = info.inlineableElementAt(i);
                 Iterable<Invoke> invokes = callee.getInvokes();
                 if (invokes.iterator().hasNext()) {
-                    NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure((StructuredGraph) callee).apply();
+                    NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(((InlineableGraph) callee).getGraph()).apply();
                     for (Invoke invoke : invokes) {
                         invokeProbability += nodeProbabilities.get(invoke.asNode());
                     }
@@ -433,15 +434,16 @@ public class InliningPhase extends Phase {
             }
 
             double inliningBonus = getInliningBonus(info);
-
+            int nodes = determineNodeCount(info);
             int lowLevelGraphSize = previousLowLevelGraphSize(info);
+
             if (SmallCompiledLowLevelGraphSize.getValue() > 0 && lowLevelGraphSize > SmallCompiledLowLevelGraphSize.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph: %d", lowLevelGraphSize);
+                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "too large previous low-level graph (low-level-nodes: %d, relevance=%f, probability=%f, bonus=%f, nodes=%d)",
+                                lowLevelGraphSize, relevance, probability, inliningBonus, nodes);
             }
 
-            int nodes = determineNodeCount(info);
             if (nodes < TrivialInliningSize.getValue() * inliningBonus) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (nodes=%d)", nodes);
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "trivial (relevance=%f, probability=%f, bonus=%f, nodes=%d)", relevance, probability, inliningBonus, nodes);
             }
 
             /*
@@ -452,16 +454,17 @@ public class InliningPhase extends Phase {
              */
             double invokes = determineInvokeProbability(info);
             if (LimitInlinedInvokes.getValue() > 0 && fullyProcessed && invokes > LimitInlinedInvokes.getValue() * inliningBonus) {
-                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (%f)", invokes);
+                return InliningUtil.logNotInlinedMethod(info, inliningDepth, "callee invoke probability is too high (invokeP=%f, relevance=%f, probability=%f, bonus=%f, nodes=%d)", invokes,
+                                relevance, probability, inliningBonus, nodes);
             }
 
             double maximumNodes = computeMaximumSize(relevance, (int) (MaximumInliningSize.getValue() * inliningBonus));
             if (nodes <= maximumNodes) {
-                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= max=%f)", relevance, probability,
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d <= %f)", relevance, probability,
                                 inliningBonus, nodes, maximumNodes);
             }
 
-            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > max=%f)", relevance, probability, inliningBonus, nodes,
+            return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
                             maximumNodes);
         }
     }

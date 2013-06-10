@@ -56,9 +56,12 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     private boolean assertProbabilities() {
+        double total = 0;
         for (double d : keyProbabilities) {
+            total += d;
             assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
         }
+        assert total > 0.999 && total < 1.001;
         return true;
     }
 
@@ -71,6 +74,32 @@ public abstract class SwitchNode extends ControlSplitNode {
             }
         }
         return sum;
+    }
+
+    public void setProbability(Node successor, double value) {
+        double changeInProbability = 0;
+        int nonZeroProbabilityCases = 0;
+        for (int i = 0; i < keySuccessors.length; i++) {
+            if (successors.get(keySuccessors[i]) == successor) {
+                changeInProbability += keyProbabilities[i] - value;
+                keyProbabilities[i] = value;
+            } else if (keyProbabilities[i] > 0) {
+                nonZeroProbabilityCases++;
+            }
+        }
+
+        if (nonZeroProbabilityCases > 0) {
+            double changePerEntry = changeInProbability / nonZeroProbabilityCases;
+            if (changePerEntry != 0) {
+                for (int i = 0; i < keyProbabilities.length; i++) {
+                    if (keyProbabilities[i] > 0) {
+                        keyProbabilities[i] = keyProbabilities[i] + changePerEntry;
+                    }
+                }
+            }
+        }
+
+        assertProbabilities();
     }
 
     public ValueNode value() {

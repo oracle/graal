@@ -119,7 +119,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (newNodesMark > 0) {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
-            tool = new Tool(workList, runtime, assumptions, canonicalizeReads);
+            tool = new Tool();
             processWorkSet(graph);
         }
 
@@ -309,19 +309,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        private static final class Tool implements SimplifierTool {
-
-            private final NodeWorkList nodeWorkSet;
-            private final MetaAccessProvider runtime;
-            private final Assumptions assumptions;
-            private final boolean canonicalizeReads;
-
-            public Tool(NodeWorkList nodeWorkSet, MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads) {
-                this.nodeWorkSet = nodeWorkSet;
-                this.runtime = runtime;
-                this.assumptions = assumptions;
-                this.canonicalizeReads = canonicalizeReads;
-            }
+        private final class Tool implements SimplifierTool {
 
             @Override
             public void deleteBranch(FixedNode branch) {
@@ -345,7 +333,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
             @Override
             public void addToWorkList(Node node) {
-                nodeWorkSet.addAgain(node);
+                workList.addAgain(node);
             }
 
             @Override
