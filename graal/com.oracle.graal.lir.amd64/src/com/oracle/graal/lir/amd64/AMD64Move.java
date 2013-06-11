@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
@@ -667,6 +668,8 @@ public class AMD64Move {
         } else {
             // Otherwise the narrow heap base, which resides always in register 12, is subtracted
             // followed by right shift.
+            masm.testq(scratchRegister, scratchRegister);
+            masm.cmovq(ConditionFlag.Equal, scratchRegister, AMD64.r12);
             masm.subq(scratchRegister, AMD64.r12);
             masm.shrq(scratchRegister, logMinObjAlignment);
         }
@@ -681,9 +684,12 @@ public class AMD64Move {
                 masm.shlq(resRegister, logMinObjAlignment);
             }
         } else {
-            // Otherwise the narrow heap base is added to the shifted address.
+            Label done = new Label();
             masm.shlq(resRegister, logMinObjAlignment);
+            masm.jccb(ConditionFlag.Equal, done);
+            // Otherwise the narrow heap base is added to the shifted address.
             masm.addq(resRegister, AMD64.r12);
+            masm.bind(done);
         }
     }
 
