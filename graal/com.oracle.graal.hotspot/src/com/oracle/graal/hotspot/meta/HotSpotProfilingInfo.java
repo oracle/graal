@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
@@ -163,7 +160,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public boolean isMature() {
-        return method.invocationCount() >= graalRuntime().getConfig().interpreterProfilingThreshold + MatureProfilingInformationThreshold.getValue();
+        return true;
     }
 
     @Override

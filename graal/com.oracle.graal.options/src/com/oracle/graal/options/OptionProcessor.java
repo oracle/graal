@@ -123,9 +123,9 @@ public class OptionProcessor extends AbstractProcessor {
 
     private void createFiles(OptionsInfo info) {
         String pkg = ((PackageElement) info.topDeclaringType.getEnclosingElement()).getQualifiedName().toString();
-        Name declaringClass = info.topDeclaringType.getSimpleName();
+        Name topDeclaringClass = info.topDeclaringType.getSimpleName();
 
-        String optionsClassName = declaringClass + "_" + Options.class.getSimpleName();
+        String optionsClassName = topDeclaringClass + "_" + Options.class.getSimpleName();
         Element[] originatingElements = info.originatingElements.toArray(new Element[info.originatingElements.size()]);
 
         Filer filer = processingEnv.getFiler();
@@ -133,7 +133,7 @@ public class OptionProcessor extends AbstractProcessor {
 
             out.println("// CheckStyle: stop header check");
             out.println("// GENERATED CONTENT - DO NOT EDIT");
-            out.println("// Source: " + declaringClass + ".java");
+            out.println("// Source: " + topDeclaringClass + ".java");
             out.println("package " + pkg + ";");
             out.println("");
             out.println("import java.util.*;");
@@ -141,8 +141,9 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("");
             out.println("public class " + optionsClassName + " implements " + Options.class.getSimpleName() + " {");
             out.println("    @Override");
-            out.println("    public Iterator<" + OptionDescriptor.class.getSimpleName() + "> iterator() {");
-            out.println("        List<" + OptionDescriptor.class.getSimpleName() + "> options = Arrays.asList(");
+            String desc = OptionDescriptor.class.getSimpleName();
+            out.println("    public Iterator<" + desc + "> iterator() {");
+            out.println("        List<" + desc + "> options = Arrays.asList(");
 
             boolean needPrivateFieldAccessor = false;
             int i = 0;
@@ -157,9 +158,10 @@ public class OptionProcessor extends AbstractProcessor {
                 String name = option.name;
                 String type = option.type;
                 String help = option.help;
-                String location = pkg + "." + option.declaringClass + "." + option.field.getSimpleName();
+                String declaringClass = option.declaringClass;
+                Name fieldName = option.field.getSimpleName();
                 String comma = i == info.options.size() - 1 ? "" : ",";
-                out.printf("            new %s(\"%s\", %s.class, \"%s\", \"%s\", %s)%s\n", OptionDescriptor.class.getSimpleName(), name, type, help, location, optionValue, comma);
+                out.printf("            new %s(\"%s\", %s.class, \"%s\", %s.class, \"%s\", %s)%s\n", desc, name, type, help, declaringClass, fieldName, optionValue, comma);
                 i++;
             }
             out.println("        );");

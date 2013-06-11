@@ -32,14 +32,16 @@ public class OptionDescriptor {
     protected final Class type;
     protected final String help;
     protected final OptionValue<?> option;
-    protected final String location;
+    protected final Class<?> declaringClass;
+    protected final String fieldName;
 
-    public OptionDescriptor(String name, Class type, String help, String location, OptionValue<?> option) {
+    public OptionDescriptor(String name, Class type, String help, Class<?> declaringClass, String fieldName, OptionValue<?> option) {
         this.name = name;
         this.type = type;
         this.help = help;
         this.option = option;
-        this.location = location;
+        this.declaringClass = declaringClass;
+        this.fieldName = fieldName;
     }
 
     /**
@@ -71,11 +73,18 @@ public class OptionDescriptor {
         return option;
     }
 
+    public Class<?> getDeclaringClass() {
+        return declaringClass;
+    }
+
+    public String getFieldName() {
+        return fieldName;
+    }
+
     /**
      * Gets a description of the location where this option is stored.
      */
     public String getLocation() {
-        return location;
-
+        return getDeclaringClass().getName() + "." + getFieldName();
     }
 }
