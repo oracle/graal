@@ -22,12 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.phases.*;
 
 public final class HotSpotProfilingInfo extends CompilerObject implements ProfilingInfo {
 

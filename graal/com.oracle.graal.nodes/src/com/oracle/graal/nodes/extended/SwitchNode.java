@@ -76,7 +76,8 @@ public abstract class SwitchNode extends ControlSplitNode {
         return sum;
     }
 
-    public void setProbability(Node successor, double value) {
+    @Override
+    public void setProbability(AbstractBeginNode successor, double value) {
         double changeInProbability = 0;
         int nonZeroProbabilityCases = 0;
         for (int i = 0; i < keySuccessors.length; i++) {
