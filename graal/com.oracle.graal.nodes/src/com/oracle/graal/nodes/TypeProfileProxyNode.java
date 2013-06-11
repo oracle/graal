@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * A node that attached a type profile to a proxied input node.
+ * A node that attaches a type profile to a proxied input node.
  */
 public final class TypeProfileProxyNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType {
 
