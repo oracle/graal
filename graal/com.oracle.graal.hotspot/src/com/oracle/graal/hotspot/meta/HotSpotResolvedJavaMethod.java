@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.phases.GraalOptions.*;
@@ -257,11 +256,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             signature = new HotSpotSignature(graalRuntime().getCompilerToVM().getSignature(metaspaceMethod));
         }
         return signature;
-    }
-
-    @Override
-    public String toString() {
-        return format("HotSpotMethod<%H.%n(%p)>", this);
     }
 
     public int getCompiledCodeSize() {
