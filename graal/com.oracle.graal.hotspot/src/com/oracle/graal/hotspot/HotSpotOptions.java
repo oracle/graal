@@ -48,13 +48,20 @@ public class HotSpotOptions {
         ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
         for (Options opts : sl) {
             for (OptionDescriptor desc : opts) {
-                if (desc.getClass().getName().startsWith("com.oracle.graal")) {
+                if (isHotSpotOption(desc)) {
                     String name = desc.getName();
                     OptionDescriptor existing = options.put(name, desc);
                     assert existing == null : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
                 }
             }
         }
+    }
+
+    /**
+     * Determines if a given option is a HotSpot command line option.
+     */
+    public static boolean isHotSpotOption(OptionDescriptor desc) {
+        return desc.getClass().getName().startsWith("com.oracle.graal");
     }
 
     /**

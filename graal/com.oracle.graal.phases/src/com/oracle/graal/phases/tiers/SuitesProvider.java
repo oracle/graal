@@ -20,31 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.phases.tiers;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+public interface SuitesProvider {
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
-import com.oracle.graal.phases.tiers.*;
+    /**
+     * Get the default phase suites of this compiler.
+     */
+    Suites getDefaultSuites();
 
-public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
-
-    private final CustomCanonicalizer customCanonicalizer;
-
-    public IncrementalCanonicalizerPhase() {
-        this(null);
-    }
-
-    public IncrementalCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
-        this.customCanonicalizer = customCanonicalizer;
-    }
-
-    @Override
-    protected void run(StructuredGraph graph, C context) {
-        int mark = graph.getMark();
-        super.run(graph, context);
-        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), OptCanonicalizeReads.getValue(), mark, customCanonicalizer).apply(graph);
-    }
+    /**
+     * Create a new set of phase suites. Initially, the suites are the same as the
+     * {@link #getDefaultSuites default} suites.
+     */
+    Suites createSuites();
 }

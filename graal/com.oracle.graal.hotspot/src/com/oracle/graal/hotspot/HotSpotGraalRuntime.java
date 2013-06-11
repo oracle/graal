@@ -38,6 +38,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 
 //import static com.oracle.graal.phases.GraalOptions.*;
 
@@ -318,7 +319,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         if (clazz == GraalCodeCacheProvider.class || clazz == CodeCacheProvider.class || clazz == MetaAccessProvider.class) {
             return (T) getRuntime();
         }
-        if (clazz == DisassemblerProvider.class || clazz == BytecodeDisassemblerProvider.class) {
+        if (clazz == DisassemblerProvider.class || clazz == BytecodeDisassemblerProvider.class || clazz == SuitesProvider.class) {
             return (T) getRuntime();
         }
         if (clazz == HotSpotRuntime.class) {

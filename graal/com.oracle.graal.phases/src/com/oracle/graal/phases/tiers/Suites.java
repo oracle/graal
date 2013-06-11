@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.phases.tiers;
 
+import static com.oracle.graal.phases.tiers.Suites.Options.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
@@ -30,12 +32,13 @@ import com.oracle.graal.phases.*;
 
 public final class Suites {
 
-    // @formatter:off
-    @Option(help = "The compiler configuration to use")
-    private static final OptionValue<String> CompilerConfiguration = new OptionValue<>("basic");
-    // @formatter:on
+    static class Options {
 
-    public static final Suites DEFAULT;
+        // @formatter:off
+        @Option(help = "The compiler configuration to use")
+        static final OptionValue<String> CompilerConfiguration = new OptionValue<>("basic");
+        // @formatter:on
+    }
 
     private final PhaseSuite<HighTierContext> highTier;
     private final PhaseSuite<MidTierContext> midTier;
@@ -64,8 +67,6 @@ public final class Suites {
             }
             configurations.put(name.toLowerCase(), config);
         }
-
-        DEFAULT = createDefaultSuites();
     }
 
     private Suites(CompilerConfiguration config) {

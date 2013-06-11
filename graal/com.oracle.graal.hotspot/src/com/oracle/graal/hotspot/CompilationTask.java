@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
 
@@ -57,6 +58,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     private final HotSpotGraalRuntime graalRuntime;
     private final PhasePlan plan;
+    private final SuitesProvider suitesProvider;
     private final OptimisticOptimizations optimisticOpts;
     private final HotSpotResolvedJavaMethod method;
     private final int entryBCI;
@@ -72,6 +74,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id, int priority) {
         this.graalRuntime = graalRuntime;
         this.plan = plan;
+        this.suitesProvider = graalRuntime.getCapability(SuitesProvider.class);
         this.method = method;
         this.optimisticOpts = optimisticOpts;
         this.entryBCI = entryBCI;
@@ -165,7 +168,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                         HotSpotRuntime runtime = graalRuntime.getRuntime();
                         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
                         return GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
-                                        method.getSpeculationLog());
+                                        method.getSpeculationLog(), suitesProvider.getDefaultSuites());
                     }
                 });
             } finally {

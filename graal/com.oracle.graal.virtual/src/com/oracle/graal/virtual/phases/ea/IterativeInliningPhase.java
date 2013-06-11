@@ -38,13 +38,11 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
     private final PhasePlan plan;
 
-    private final Replacements replacements;
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
     private final CanonicalizerPhase canonicalizer;
 
-    public IterativeInliningPhase(Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, CanonicalizerPhase canonicalizer) {
-        this.replacements = replacements;
+    public IterativeInliningPhase(GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, CanonicalizerPhase canonicalizer) {
         this.cache = cache;
         this.plan = plan;
         this.optimisticOpts = optimisticOpts;
@@ -77,7 +75,7 @@ public class IterativeInliningPhase extends BasePhase<HighTierContext> {
 
                     Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapePhase.getHints(graph) : null;
 
-                    InliningPhase inlining = new InliningPhase(context.getRuntime(), hints, replacements, context.getAssumptions(), cache, plan, optimisticOpts);
+                    InliningPhase inlining = new InliningPhase(context.getRuntime(), hints, context.getReplacements(), context.getAssumptions(), cache, plan, optimisticOpts);
                     inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
                     inlining.apply(graph);
                     progress |= inlining.getInliningCount() > 0;

@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import org.junit.*;
 
@@ -31,7 +32,6 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -74,20 +74,19 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(test);
         ResolvedJavaMethod method = graph.method();
 
-        boolean originalSetting = GraalOptions.OptCanonicalizeReads.getValue();
-        GraalOptions.OptCanonicalizeReads.setValue(!compileAOT);
+        boolean originalSetting = OptCanonicalizeReads.getValue();
+        OptCanonicalizeReads.setValue(!compileAOT);
         PhasePlan phasePlan = new PhasePlan();
         final StructuredGraph graphCopy = graph.copy();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        phasePlan.addPhase(PhasePosition.LOW_LEVEL, new WriteBarrierAdditionPhase());
         editPhasePlan(method, graph, phasePlan);
         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
         final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog());
+                        new SpeculationLog(), suites);
         addMethod(method, compResult, graphCopy);
 
-        GraalOptions.OptCanonicalizeReads.setValue(originalSetting);
+        OptCanonicalizeReads.setValue(originalSetting);
 
         return graph;
     }
