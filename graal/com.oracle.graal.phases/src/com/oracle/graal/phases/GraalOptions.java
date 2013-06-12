@@ -332,14 +332,25 @@ public final class GraalOptions {
     public static final OptionValue<Integer> CheckcastMaxHints = new OptionValue<>(2);
 
     /**
-     * @see #CheckcastMinHintHitProbability
+     * If the probability that an instanceof will hit one the profiled types (up to {@link #InstanceOfMaxHints})
+     * is below this value, the instanceof will be compiled without hints.
      */
     @Option(help = "")
     public static final OptionValue<Double> InstanceOfMinHintHitProbability = new OptionValue<>(0.5);
 
     /**
-     * @see #CheckcastMaxHints
+     * The maximum number of hint types that will be used when compiling an instanceof for which
+     * profiling information is available. Note that {@link #InstanceOfMinHintHitProbability}
+     * also influences whether hints are used.
      */
     @Option(help = "")
     public static final OptionValue<Integer> InstanceOfMaxHints = new OptionValue<>(2);
+
+    /**
+     * If the probability that an instanceof will hit one the profiled types (up to {@link #InstanceOfMaxHints})
+     * is above this value, the compiled instanceof will deoptimize if all hints are missed.
+     */
+    @Option(help = "")
+    public static final OptionValue<Double> InstanceOfFullCoverageSpeculationThreshold = new OptionValue<>(0.998);
+
 }

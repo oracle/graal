@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -58,8 +59,10 @@ import com.oracle.graal.word.*;
 public class InstanceOfSnippets implements Snippets {
 
     /**
-     * A test against a set of hints derived from a profile with 100% precise coverage of seen
-     * types. This snippet deoptimizes on any path that contradicts the profile.
+     * A test against a set of hints derived from a profile with very close to 100% precise coverage
+     * of seen types. This snippet deoptimizes on hint miss paths.
+     * 
+     * @see GraalOptions#InstanceOfFullCoverageSpeculationThreshold
      */
     @Snippet
     public static Object instanceofWithProfile(Object object, @VarargsParameter Word[] hints, @VarargsParameter boolean[] hintIsPositive, Object trueValue, Object falseValue,
@@ -67,6 +70,8 @@ public class InstanceOfSnippets implements Snippets {
         if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             if (!nullSeen) {
+                // In this case, the execution is contradicting the profile
+                // so invalidating and re-profiling is justified.
                 DeoptimizeNode.deopt(InvalidateReprofile, OptimizedTypeCheckViolated);
             }
             return falseValue;
@@ -82,6 +87,8 @@ public class InstanceOfSnippets implements Snippets {
                 return positive ? trueValue : falseValue;
             }
         }
+        // Don't throw away the code as we assume this is a rare event
+        // that will periodically occur.
         DeoptimizeNode.deopt(InvalidateReprofile, OptimizedTypeCheckViolated);
         return falseValue;
     }
@@ -189,7 +196,7 @@ public class InstanceOfSnippets implements Snippets {
                 ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
 
                 Arguments args;
-                if (hintInfo.hintHitProbability == 1.0D) {
+                if (hintInfo.hintHitProbability >= InstanceOfFullCoverageSpeculationThreshold.getValue()) {
                     Hints hints = createHints(hintInfo, runtime, false, hub.graph());
                     args = new Arguments(instanceofWithProfile);
                     args.add("object", object);
@@ -215,7 +222,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 args.addConst("checkNull", !object.stamp().nonNull());
-                if (hintInfo.hintHitProbability == 1.0D) {
+                if (hintInfo.hintHitProbability >= InstanceOfFullCoverageSpeculationThreshold.getValue()) {
                     args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
                 return args;
