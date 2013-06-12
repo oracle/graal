@@ -54,6 +54,7 @@ import com.oracle.graal.phases.tiers.*;
 public class AheadOfTimeCompilationTest extends GraalCompilerTest {
 
     public static final Object STATICFINALOBJECT = new Object();
+    public static final String STATICFINALSTRING = "test string";
 
     public static Object getStaticFinalObject() {
         return AheadOfTimeCompilationTest.STATICFINALOBJECT;
@@ -131,6 +132,34 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Object mirror = filter.first().asConstant().asObject();
         assertEquals(Class.class, mirror.getClass());
         assertEquals(Integer.TYPE, mirror);
+
+        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertEquals(0, result.getNodes(ReadNode.class).count());
+    }
+
+    public static String getStringObject() {
+        return AheadOfTimeCompilationTest.STATICFINALSTRING;
+    }
+
+    @Test
+    public void testStringObjectAOT() {
+        // embedded strings are fine
+        testStringObjectCommon(true);
+    }
+
+    @Test
+    public void testStringObject() {
+        testStringObjectCommon(false);
+    }
+
+    private void testStringObjectCommon(boolean compileAOT) {
+        StructuredGraph result = compile("getStringObject", compileAOT);
+
+        NodeIterable<ConstantNode> filter = result.getNodes().filter(ConstantNode.class);
+        assertEquals(1, filter.count());
+        Object mirror = filter.first().asConstant().asObject();
+        assertEquals(String.class, mirror.getClass());
+        assertEquals("test string", mirror);
 
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
         assertEquals(0, result.getNodes(ReadNode.class).count());
