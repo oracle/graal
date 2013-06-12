@@ -40,18 +40,18 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
             Constant constant = node.asConstant();
             if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
                 ResolvedJavaType type = context.getRuntime().lookupJavaType((Class<?>) constant.asObject());
-                if (type instanceof HotSpotResolvedObjectType) {
-                    HotSpotRuntime runtime = (HotSpotRuntime) context.getRuntime();
+                assert type instanceof HotSpotResolvedObjectType;
 
-                    Constant klass = ((HotSpotResolvedObjectType) type).klass();
-                    ConstantNode klassNode = ConstantNode.forConstant(klass, runtime, graph);
+                HotSpotRuntime runtime = (HotSpotRuntime) context.getRuntime();
 
-                    Stamp stamp = StampFactory.exactNonNull(runtime.lookupJavaType(Class.class));
-                    LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), runtime.config.classMirrorOffset, graph));
-                    FloatingReadNode freadNode = graph.add(new FloatingReadNode(klassNode, location, null, stamp));
+                Constant klass = ((HotSpotResolvedObjectType) type).klass();
+                ConstantNode klassNode = ConstantNode.forConstant(klass, runtime, graph);
 
-                    graph.replaceFloating(node, freadNode);
-                }
+                Stamp stamp = StampFactory.exactNonNull(runtime.lookupJavaType(Class.class));
+                LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), runtime.config.classMirrorOffset, graph));
+                FloatingReadNode freadNode = graph.add(new FloatingReadNode(klassNode, location, null, stamp));
+
+                graph.replaceFloating(node, freadNode);
             }
         }
     }
