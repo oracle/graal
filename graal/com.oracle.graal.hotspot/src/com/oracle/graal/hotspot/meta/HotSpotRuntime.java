@@ -768,6 +768,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
                 newObjectSnippets.lower((NewArrayNode) n);
             }
+        } else if (n instanceof DynamicNewArrayNode) {
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                newObjectSnippets.lower((DynamicNewArrayNode) n);
+            }
         } else if (n instanceof MonitorEnterNode) {
             if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
                 monitorSnippets.lower((MonitorEnterNode) n, tool);
