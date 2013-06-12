@@ -241,6 +241,10 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Double> MinTableSwitchDensity = new OptionValue<>(0.5);
 
+    // Ahead of time compilation
+    @Option(help = "configure compiler to emit code compatible with AOT requirements for HotSpot")
+    public static final OptionValue<Boolean> AOTCompilation = new OptionValue<>(false);
+
     // Runtime settings
     @Option(help = "")
     public static final OptionValue<Integer> StackShadowPages = new OptionValue<>(2);
@@ -256,8 +260,6 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptReadElimination = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptCanonicalizer = new OptionValue<>(true);
-    @Option(help = "")
-    public static final OptionValue<Boolean> OptCanonicalizeReads = new OptionValue<>(true);
     @Option(help = "")
      public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
     @Option(help = "")

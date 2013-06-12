@@ -45,6 +45,6 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
     protected void run(StructuredGraph graph, C context) {
         int mark = graph.getMark();
         super.run(graph, context);
-        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), OptCanonicalizeReads.getValue(), mark, customCanonicalizer).apply(graph);
+        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), mark, customCanonicalizer).apply(graph);
     }
 }

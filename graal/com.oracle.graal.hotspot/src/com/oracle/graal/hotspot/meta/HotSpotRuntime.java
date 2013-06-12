@@ -1073,6 +1073,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     public Suites createSuites() {
         Suites ret = Suites.createDefaultSuites();
 
+        if (AOTCompilation.getValue()) {
+            // lowering introduces class constants, therefore it must be after lowering
+            ret.getHighTier().addPhase(new LoadJavaMirrorWithKlassPhase());
+        }
+
         ret.getMidTier().addPhase(new WriteBarrierAdditionPhase());
         if (VerifyPhases.getValue()) {
             ret.getMidTier().addPhase(new WriteBarrierVerificationPhase());
