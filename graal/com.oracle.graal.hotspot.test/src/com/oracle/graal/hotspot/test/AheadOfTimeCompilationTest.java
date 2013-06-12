@@ -35,7 +35,6 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -64,14 +63,18 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testStaticFinalObjectAOT() {
         StructuredGraph result = compile("getStaticFinalObject", true);
         assert result.getNodes().filter(ConstantNode.class).count() == 1;
+        assert result.getNodes().filter(ConstantNode.class).first().kind() == runtime.getTarget().wordKind;
         assert result.getNodes(FloatingReadNode.class).count() == 2;
+        assert result.getNodes(ReadNode.class).count() == 0;
     }
 
     @Test
     public void testStaticFinalObject() {
         StructuredGraph result = compile("getStaticFinalObject", false);
         assert result.getNodes().filter(ConstantNode.class).count() == 1;
+        assert result.getNodes().filter(ConstantNode.class).first().kind() == Kind.Object;
         assert result.getNodes(FloatingReadNode.class).count() == 0;
+        assert result.getNodes(ReadNode.class).count() == 0;
     }
 
     public static Class getClassObject() {
@@ -100,6 +103,34 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         Object mirror = filter.first().asConstant().asObject();
         assert mirror.getClass().equals(Class.class);
         assert mirror.equals(AheadOfTimeCompilationTest.class);
+
+        assert result.getNodes(FloatingReadNode.class).count() == 0;
+        assert result.getNodes(ReadNode.class).count() == 0;
+    }
+
+    public static Class getPrimitiveClassObject() {
+        return int.class;
+    }
+
+    @Test
+    public void testPrimitiveClassObjectAOT() {
+        StructuredGraph result = compile("getPrimitiveClassObject", true);
+        NodeIterable<ConstantNode> filter = result.getNodes().filter(ConstantNode.class);
+        assert filter.count() == 1;
+        assert filter.first().kind() == runtime.getTarget().wordKind;
+
+        assert result.getNodes(FloatingReadNode.class).count() == 2;
+        assert result.getNodes(ReadNode.class).count() == 0;
+    }
+
+    @Test
+    public void testPrimitiveClassObject() {
+        StructuredGraph result = compile("getPrimitiveClassObject", false);
+        NodeIterable<ConstantNode> filter = result.getNodes().filter(ConstantNode.class);
+        assert filter.count() == 1;
+        Object mirror = filter.first().asConstant().asObject();
+        assert mirror.getClass().equals(Class.class);
+        assert mirror.equals(Integer.TYPE);
 
         assert result.getNodes(FloatingReadNode.class).count() == 0;
         assert result.getNodes(ReadNode.class).count() == 0;
