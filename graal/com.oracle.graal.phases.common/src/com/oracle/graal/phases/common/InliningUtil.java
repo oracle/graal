@@ -491,15 +491,13 @@ public class InliningUtil {
             LoadHubNode receiverHub = graph.add(new LoadHubNode(receiver, typeHub.kind()));
             CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
             assert invoke.predecessor() != null;
 
-            ValueNode anchoredReceiver = createAnchoredReceiver(graph, anchor, type, receiver, true);
+            ValueNode anchoredReceiver = createAnchoredReceiver(graph, guard, type, receiver, true);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
             graph.addBeforeFixed(invoke.asNode(), receiverHub);
             graph.addBeforeFixed(invoke.asNode(), guard);
-            graph.addBeforeFixed(invoke.asNode(), anchor);
         }
 
         @Override
@@ -1228,8 +1226,12 @@ public class InliningUtil {
     }
 
     private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
+        return createAnchoredReceiver(graph, anchor, receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType));
+    }
+
+    private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new PiNode(receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType), anchor));
+        return graph.unique(new PiNode(receiver, stamp, anchor));
     }
 
     // TODO (chaeubl): cleanup this method
@@ -1298,9 +1300,17 @@ public class InliningUtil {
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
-        GuardingNode receiverNullCheckNode = null;
         if (receiverNullCheck) {
-            receiverNullCheckNode = receiverNullCheck(invoke);
+            GuardingNode receiverNullCheckNode = receiverNullCheck(invoke);
+            if (receiverNullCheckNode != null) {
+                ValueNode receiver = invoke.callTarget().arguments().get(0);
+                Stamp piStamp = receiver.stamp();
+                if (piStamp instanceof ObjectStamp) {
+                    piStamp = piStamp.join(StampFactory.objectNonNull());
+                }
+                ValueNode anchoredReceiver = createAnchoredReceiver(graph, receiverNullCheckNode, receiver, piStamp);
+                invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
+            }
         }
 
         IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
@@ -1313,18 +1323,7 @@ public class InliningUtil {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
                 // Do nothing.
             } else if (node instanceof LocalNode) {
-                int localIndex = ((LocalNode) node).index();
-                ValueNode parameter = parameters.get(localIndex);
-                if (receiverNullCheckNode != null && localIndex == 0) {
-                    Stamp piStamp = parameter.stamp();
-                    if (piStamp instanceof ObjectStamp) {
-                        piStamp = piStamp.join(StampFactory.objectNonNull());
-                    }
-                    PiNode piReceiver = graph.add(new PiNode(parameter, piStamp));
-                    piReceiver.setGuard(receiverNullCheckNode);
-                    parameter = piReceiver;
-                }
-                replacements.put(node, parameter);
+                replacements.put(node, parameters.get(((LocalNode) node).index()));
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
