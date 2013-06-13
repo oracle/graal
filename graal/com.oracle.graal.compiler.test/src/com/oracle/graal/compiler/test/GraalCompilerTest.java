@@ -358,7 +358,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         test(method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
     }
 
-    protected void test(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected Result executeActualCheckDeopt(Method method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
         ProfilingInfo profile = runtime.lookupJavaMethod(method).getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
@@ -368,7 +368,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         for (DeoptimizationReason reason : shouldNotDeopt) {
             Assert.assertEquals((int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
         }
+        return actual;
+    }
 
+    protected void assertEquals(Result expect, Result actual) {
         if (expect.exception != null) {
             Assert.assertTrue("expected " + expect.exception, actual.exception != null);
             Assert.assertEquals(expect.exception.getClass(), actual.exception.getClass());
@@ -380,6 +383,11 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             assertEquals(expect.returnValue, actual.returnValue);
         }
+    }
+
+    protected void test(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+        Result actual = executeActualCheckDeopt(method, shouldNotDeopt, receiver, args);
+        assertEquals(expect, actual);
     }
 
     private Map<ResolvedJavaMethod, InstalledCode> cache = new HashMap<>();

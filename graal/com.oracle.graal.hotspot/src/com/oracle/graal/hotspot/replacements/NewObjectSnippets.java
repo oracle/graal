@@ -126,7 +126,7 @@ public class NewObjectSnippets implements Snippets {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset());
         if (hub.equal(Word.zero())) {
             // the array class is not yet loaded
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.Unresolved);
         }
 
         int layoutHelper = readLayoutHelper(hub);

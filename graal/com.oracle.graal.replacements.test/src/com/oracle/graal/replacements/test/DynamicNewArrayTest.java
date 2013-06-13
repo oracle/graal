@@ -23,15 +23,20 @@
 package com.oracle.graal.replacements.test;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import org.junit.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 
 /**
  * Tests the implementation of Array.createInstance.
  */
 public class DynamicNewArrayTest extends GraalCompilerTest {
+
+    private class Element {
+    }
 
     @Test
     public void test1() {
@@ -61,6 +66,16 @@ public class DynamicNewArrayTest extends GraalCompilerTest {
     @Test
     public void test6() {
         test("dynamic", null, 5);
+    }
+
+    @Test
+    public void test7() {
+        Method method = getMethod("dynamic");
+        Result actual1 = executeActual(method, null, Element.class, 7);
+        Result actual2 = executeActualCheckDeopt(method, Collections.<DeoptimizationReason> singleton(DeoptimizationReason.Unresolved), null, Element.class, 7);
+        Result expected = executeExpected(method, null, Element.class, 7);
+        assertEquals(actual1, expected);
+        assertEquals(actual2, expected);
     }
 
     public static Object test1snippet() {
