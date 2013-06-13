@@ -30,12 +30,12 @@ import com.oracle.graal.phases.tiers.*;
 public class LowTier extends PhaseSuite<LowTierContext> {
 
     public LowTier() {
-        addPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
 
-        addPhase(new FrameStateAssignmentPhase());
+        appendPhase(new FrameStateAssignmentPhase());
 
-        addPhase(new ExpandLogicPhase());
+        appendPhase(new ExpandLogicPhase());
 
-        addPhase(new DeadCodeEliminationPhase());
+        appendPhase(new DeadCodeEliminationPhase());
     }
 }

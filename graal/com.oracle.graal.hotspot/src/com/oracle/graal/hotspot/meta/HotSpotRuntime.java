@@ -1074,15 +1074,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         if (AOTCompilation.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
-            ret.getHighTier().addPhase(new LoadJavaMirrorWithKlassPhase());
+            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase());
             if (VerifyPhases.getValue()) {
-                ret.getHighTier().addPhase(new AheadOfTimeVerifcationPhase());
+                ret.getHighTier().appendPhase(new AheadOfTimeVerifcationPhase());
             }
         }
 
-        ret.getMidTier().addPhase(new WriteBarrierAdditionPhase());
+        ret.getMidTier().appendPhase(new WriteBarrierAdditionPhase());
         if (VerifyPhases.getValue()) {
-            ret.getMidTier().addPhase(new WriteBarrierVerificationPhase());
+            ret.getMidTier().appendPhase(new WriteBarrierVerificationPhase());
         }
 
         return ret;

@@ -156,7 +156,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             int mark = graph.getMark();
 
             IncrementalCanonicalizerPhase<PhaseContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
-            canonicalizer.addPhase(round);
+            canonicalizer.appendPhase(round);
             canonicalizer.apply(graph, context);
 
             if (!round.deferred && !containsLowerable(graph.getNewNodes(mark))) {
