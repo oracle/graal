@@ -429,7 +429,6 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
                 long start = System.currentTimeMillis();
                 PhasePlan phasePlan = new PhasePlan();
-                final StructuredGraph graphCopy = graph.copy();
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 editPhasePlan(method, graph, phasePlan);
@@ -443,7 +442,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
                     @Override
                     public InstalledCode call() throws Exception {
-                        InstalledCode code = addMethod(method, compResult, graphCopy);
+                        InstalledCode code = addMethod(method, compResult);
                         if (Debug.isDumpEnabled()) {
                             Debug.dump(new Object[]{compResult, code}, "After code installation");
                         }
@@ -460,8 +459,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         return installedCode;
     }
 
-    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult, final StructuredGraph graph) {
-        return runtime.addMethod(method, compResult, graph);
+    protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
+        return runtime.addMethod(method, compResult);
     }
 
     /**

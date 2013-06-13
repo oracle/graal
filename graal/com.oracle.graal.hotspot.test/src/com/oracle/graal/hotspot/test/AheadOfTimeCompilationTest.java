@@ -112,7 +112,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         boolean originalSetting = OptCanonicalizeReads.getValue();
         OptCanonicalizeReads.setValue(!compileAOT);
         PhasePlan phasePlan = new PhasePlan();
-        final StructuredGraph graphCopy = graph.copy();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         editPhasePlan(method, graph, phasePlan);
@@ -124,7 +123,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         }
         final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
                         new SpeculationLog(), suitesLocal);
-        addMethod(method, compResult, graphCopy);
+        addMethod(method, compResult);
 
         OptCanonicalizeReads.setValue(originalSetting);
 
