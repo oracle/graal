@@ -34,10 +34,10 @@ import com.oracle.graal.virtual.phases.ea.*;
 public class HighTier extends PhaseSuite<HighTierContext> {
 
     public HighTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
 
         if (FullUnroll.getValue()) {
-            addPhase(new LoopFullUnrollPhase(OptCanonicalizeReads.getValue()));
+            addPhase(new LoopFullUnrollPhase(!AOTCompilation.getValue()));
         }
 
         if (OptTailDuplication.getValue()) {

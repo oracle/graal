@@ -241,6 +241,10 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Double> MinTableSwitchDensity = new OptionValue<>(0.5);
 
+    // Ahead of time compilation
+    @Option(help = "configure compiler to emit code compatible with AOT requirements for HotSpot")
+    public static final OptionValue<Boolean> AOTCompilation = new OptionValue<>(false);
+
     // Runtime settings
     @Option(help = "")
     public static final OptionValue<Integer> StackShadowPages = new OptionValue<>(2);
@@ -256,8 +260,6 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> OptReadElimination = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptCanonicalizer = new OptionValue<>(true);
-    @Option(help = "")
-    public static final OptionValue<Boolean> OptCanonicalizeReads = new OptionValue<>(true);
     @Option(help = "")
      public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
     @Option(help = "")
@@ -330,14 +332,25 @@ public final class GraalOptions {
     public static final OptionValue<Integer> CheckcastMaxHints = new OptionValue<>(2);
 
     /**
-     * @see #CheckcastMinHintHitProbability
+     * If the probability that an instanceof will hit one the profiled types (up to {@link #InstanceOfMaxHints})
+     * is below this value, the instanceof will be compiled without hints.
      */
     @Option(help = "")
     public static final OptionValue<Double> InstanceOfMinHintHitProbability = new OptionValue<>(0.5);
 
     /**
-     * @see #CheckcastMaxHints
+     * The maximum number of hint types that will be used when compiling an instanceof for which
+     * profiling information is available. Note that {@link #InstanceOfMinHintHitProbability}
+     * also influences whether hints are used.
      */
     @Option(help = "")
     public static final OptionValue<Integer> InstanceOfMaxHints = new OptionValue<>(2);
+
+    /**
+     * If the probability that an instanceof will hit one the profiled types (up to {@link #InstanceOfMaxHints})
+     * is above this value, the compiled instanceof will deoptimize if all hints are missed.
+     */
+    @Option(help = "")
+    public static final OptionValue<Double> InstanceOfFullCoverageSpeculationThreshold = new OptionValue<>(0.998);
+
 }

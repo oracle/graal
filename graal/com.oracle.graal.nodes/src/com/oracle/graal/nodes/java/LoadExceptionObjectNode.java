@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -29,6 +30,12 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Loads an exception object passed by the runtime from a callee to an exception handler in a
  * caller. The node is only produced when lowering an {@link ExceptionObjectNode}.
+ * <p>
+ * The frame state upon entry to an exception handler is such that it is a
+ * {@link BytecodeFrame#rethrowException rethrow exception} state and the stack contains exactly the
+ * exception object (per the JVM spec) to rethrow. This means that the code generated for this node
+ * must not cause a deoptimization as the runtime/interpreter would not have a valid location to
+ * find the exception object to be rethrown.
  */
 public class LoadExceptionObjectNode extends AbstractStateSplit implements Lowerable {
 

@@ -32,7 +32,7 @@ import com.oracle.graal.phases.tiers.*;
 public class MidTier extends PhaseSuite<MidTierContext> {
 
     public MidTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
 
         if (OptPushThroughPi.getValue()) {
             addPhase(new PushThroughPiPhase());

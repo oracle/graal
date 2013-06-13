@@ -141,7 +141,7 @@ public class GraalCompiler {
             new VerifyUsageWithEquals(runtime, Register.class).apply(graph);
         }
 
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(OptCanonicalizeReads.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
         HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
 
         if (OptCanonicalizer.getValue()) {

@@ -62,7 +62,7 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
     public JavaTypeProfile restrict(JavaTypeProfile otherProfile) {
         if (otherProfile.getNotRecordedProbability() > 0.0) {
-            // Not useful for restricting since there is an unknown set of types occuring.
+            // Not useful for restricting since there is an unknown set of types occurring.
             return this;
         }
 
@@ -155,7 +155,20 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
         @Override
         public String toString() {
-            return "{" + item.getName() + ", " + probability + "}";
+            return String.format("%.6f#%s", probability, item);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder("JavaTypeProfile<nullSeen=").append(getNullSeen()).append(", types=[");
+        for (int j = 0; j < getTypes().length; j++) {
+            if (j != 0) {
+                buf.append(", ");
+            }
+            ProfiledType ptype = getTypes()[j];
+            buf.append(String.format("%.6f:%s", ptype.getProbability(), ptype.getType()));
+        }
+        return buf.append(String.format("], notRecorded:%.6f>", getNotRecordedProbability())).toString();
     }
 }
