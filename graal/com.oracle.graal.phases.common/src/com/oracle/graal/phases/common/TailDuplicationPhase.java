@@ -300,7 +300,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                     phi.setMerge(mergeAfter);
                 }
             }
-            new CanonicalizerPhase.Instance(phaseContext.getRuntime(), phaseContext.getAssumptions(), OptCanonicalizeReads.getValue(), graph.getNewNodes(startMark), null).apply(graph);
+            new CanonicalizerPhase.Instance(phaseContext.getRuntime(), phaseContext.getAssumptions(), !AOTCompilation.getValue(), graph.getNewNodes(startMark), null).apply(graph);
             Debug.dump(graph, "After tail duplication at %s", merge);
         }
 

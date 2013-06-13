@@ -46,7 +46,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
             if (canonicalizationRoots.isEmpty()) {
                 break;
             }
-            new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), OptCanonicalizeReads.getValue(), canonicalizationRoots, null).apply(graph);
+            new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), canonicalizationRoots, null).apply(graph);
             canonicalizationRoots.clear();
         }
     }

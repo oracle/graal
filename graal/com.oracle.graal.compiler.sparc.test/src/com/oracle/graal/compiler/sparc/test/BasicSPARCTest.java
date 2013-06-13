@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 
 import org.junit.Test;
 
-
 public class BasicSPARCTest extends SPARCTestBase {
 
     @Test

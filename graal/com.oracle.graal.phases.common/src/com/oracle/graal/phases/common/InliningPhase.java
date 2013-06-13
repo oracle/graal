@@ -195,7 +195,7 @@ public class InliningPhase extends Phase {
 
             if (OptCanonicalizer.getValue()) {
                 int markBeforeCanonicalization = callerGraph.getMark();
-                new CanonicalizerPhase.Instance(runtime, callerAssumptions, OptCanonicalizeReads.getValue(), invokeUsages, markBeforeInlining, customCanonicalizer).apply(callerGraph);
+                new CanonicalizerPhase.Instance(runtime, callerAssumptions, !AOTCompilation.getValue(), invokeUsages, markBeforeInlining, customCanonicalizer).apply(callerGraph);
 
                 // process invokes that are possibly created during canonicalization
                 for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
@@ -280,7 +280,7 @@ public class InliningPhase extends Phase {
                 }
 
                 if (OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase.Instance(runtime, assumptions, OptCanonicalizeReads.getValue()).apply(newGraph);
+                    new CanonicalizerPhase.Instance(runtime, assumptions, !AOTCompilation.getValue()).apply(newGraph);
                 }
 
                 return newGraph;
@@ -309,7 +309,7 @@ public class InliningPhase extends Phase {
         new DeadCodeEliminationPhase().apply(newGraph);
 
         if (OptCanonicalizer.getValue()) {
-            new CanonicalizerPhase.Instance(runtime, assumptions, OptCanonicalizeReads.getValue()).apply(newGraph);
+            new CanonicalizerPhase.Instance(runtime, assumptions, !AOTCompilation.getValue()).apply(newGraph);
         }
 
         if (CullFrameStates.getValue()) {

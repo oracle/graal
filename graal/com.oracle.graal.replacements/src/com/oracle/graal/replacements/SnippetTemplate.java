@@ -241,13 +241,13 @@ public class SnippetTemplate {
             if (value instanceof char[]) {
                 return Arrays.toString((char[]) value);
             }
-            if (value instanceof float[]) {
+            if (value instanceof short[]) {
                 return Arrays.toString((short[]) value);
             }
-            if (value instanceof float[]) {
+            if (value instanceof int[]) {
                 return Arrays.toString((int[]) value);
             }
-            if (value instanceof float[]) {
+            if (value instanceof long[]) {
                 return Arrays.toString((long[]) value);
             }
             if (value instanceof float[]) {

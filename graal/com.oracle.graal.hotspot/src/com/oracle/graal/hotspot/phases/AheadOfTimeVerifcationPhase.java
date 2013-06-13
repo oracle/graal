@@ -20,31 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.common;
+package com.oracle.graal.hotspot.phases;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
-import com.oracle.graal.phases.tiers.*;
 
-public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
-
-    private final CustomCanonicalizer customCanonicalizer;
-
-    public IncrementalCanonicalizerPhase() {
-        this(null);
-    }
-
-    public IncrementalCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
-        this.customCanonicalizer = customCanonicalizer;
-    }
+public class AheadOfTimeVerifcationPhase extends VerifyPhase {
 
     @Override
-    protected void run(StructuredGraph graph, C context) {
-        int mark = graph.getMark();
-        super.run(graph, context);
-        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), mark, customCanonicalizer).apply(graph);
+    protected boolean verify(StructuredGraph graph) {
+        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
+            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
+        }
+        return true;
+    }
+
+    private static boolean isOop(ConstantNode node) {
+        return node.kind() == Kind.Object;
+    }
+
+    private static boolean isNullReference(ConstantNode node) {
+        return isOop(node) && node.asConstant().asObject() == null;
+    }
+
+    private static boolean isString(ConstantNode node) {
+        return isOop(node) && node.asConstant().asObject() instanceof String;
     }
 }
