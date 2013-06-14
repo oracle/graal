@@ -42,9 +42,13 @@ public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLe
         this.length = length;
     }
 
-    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, ValueNode anchor) {
+    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, GuardingNode anchor) {
         super(object, stamp, anchor);
         this.length = length;
+    }
+
+    private UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, ValueNode anchor) {
+        this(object, length, stamp, (GuardingNode) anchor);
     }
 
     @Override
