@@ -312,9 +312,6 @@ public class InliningPhase extends Phase {
             new CanonicalizerPhase.Instance(runtime, assumptions, !AOTCompilation.getValue()).apply(newGraph);
         }
 
-        if (CullFrameStates.getValue()) {
-            new CullFrameStatesPhase().apply(newGraph);
-        }
         if (CacheGraphs.getValue() && cache != null) {
             cache.put(newGraph.copy(), hasMatureProfilingInfo);
         }
