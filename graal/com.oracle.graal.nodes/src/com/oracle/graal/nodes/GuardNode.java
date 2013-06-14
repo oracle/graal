@@ -95,7 +95,7 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue() != negated) {
-                return getGuard().asNode();
+                return graph().start();
             }
         }
         return this;
