@@ -101,6 +101,10 @@ public class StampTool {
     private static final long LONG_SIGN_BIT = 0x8000000000000000L;
 
     private static Stamp stampForMask(Kind kind, long mask) {
+        return stampForMask(kind, mask, 0);
+    }
+
+    private static Stamp stampForMask(Kind kind, long mask, long alwaysSetBits) {
         long lowerBound;
         long upperBound;
         if (kind == Kind.Int && (mask & INTEGER_SIGN_BIT) != 0) {
@@ -112,7 +116,7 @@ public class StampTool {
             lowerBound = Long.MIN_VALUE;
             upperBound = mask ^ LONG_SIGN_BIT;
         } else {
-            lowerBound = 0;
+            lowerBound = alwaysSetBits;
             upperBound = mask;
         }
         return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
@@ -127,7 +131,11 @@ public class StampTool {
     public static Stamp or(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
         long mask = stamp1.mask() | stamp2.mask();
-        return stampForMask(kind, mask);
+        if (stamp1.lowerBound() >= 0 && stamp2.lowerBound() >= 0) {
+            return stampForMask(kind, mask, stamp1.lowerBound() | stamp2.lowerBound());
+        } else {
+            return stampForMask(kind, mask);
+        }
     }
 
     public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
