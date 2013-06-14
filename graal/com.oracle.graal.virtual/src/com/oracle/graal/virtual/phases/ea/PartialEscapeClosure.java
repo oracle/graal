@@ -349,9 +349,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         locksMatch &= obj.locksEqual(startObj);
                     }
 
-                    assert virtual < states.size() || locksMatch : "mismatching lock counts at " + merge;
-
-                    if (virtual < states.size()) {
+                    if (virtual < states.size() || !locksMatch) {
                         if (singleValue == null) {
                             PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
