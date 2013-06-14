@@ -37,10 +37,11 @@ public interface GraalCodeCacheProvider extends CodeCacheProvider {
      * 
      * @param method a method to which the executable code is begin added
      * @param compResult the compilation result to be added
+     * @param graph the graph that represents the method
      * @return a reference to the compiled and ready-to-run code or null if the code installation
      *         failed
      */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult);
+    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph);
 
     void lower(Node n, LoweringTool tool);
 }

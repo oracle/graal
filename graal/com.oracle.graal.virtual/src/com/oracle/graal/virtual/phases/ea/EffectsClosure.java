@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 
 import com.oracle.graal.debug.*;
@@ -82,7 +84,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             @Override
             protected Void processBlock(Block block, Void currentState) {
                 apply(blockEffects.get(block), block);
-                Debug.dump(graph, "after processing block %s", block);
+                if (TraceEscapeAnalysis.getValue()) {
+                    Debug.dump(graph, "after processing block %s", block);
+                }
                 return currentState;
             }
 
@@ -109,7 +113,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     @Override
     protected BlockT processBlock(Block block, BlockT state) {
-        VirtualUtil.trace("\nBlock: %s (", block);
+        VirtualUtil.trace("\nBlock: %s, preds: %s, succ: %s (", block, block.getPredecessors(), block.getSuccessors());
 
         GraphEffectList effects = blockEffects.get(block);
         FixedWithNextNode lastFixedNode = null;
@@ -130,6 +134,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         assert blockEffects.get(merge).isEmpty();
         MergeProcessor processor = createMergeProcessor(merge);
         processor.merge(states);
+        processor.commitEnds(states);
         blockEffects.get(merge).addAll(processor.mergeEffects);
         blockEffects.get(merge).addAll(processor.afterMergeEffects);
         return processor.newState;
@@ -138,7 +143,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     @Override
     protected final List<BlockT> processLoop(Loop loop, BlockT initialState) {
         BlockT loopEntryState = initialState;
-        BlockT lastMergedState = initialState;
+        BlockT lastMergedState = cloneState(initialState);
         MergeProcessor mergeProcessor = createMergeProcessor(loop.header);
         for (int iteration = 0; iteration < 10; iteration++) {
             LoopInfo<BlockT> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(lastMergedState));
@@ -154,6 +159,8 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             Debug.log("%s", lastMergedState);
 
             if (mergeProcessor.newState.equivalentTo(lastMergedState)) {
+                mergeProcessor.commitEnds(states);
+
                 blockEffects.get(loop.header).insertAll(mergeProcessor.mergeEffects, 0);
                 loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
@@ -198,6 +205,12 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         protected void merge(List<BlockT> states) {
             newState = getInitialState();
             newState.meetAliases(states);
+            mergeEffects.clear();
+            afterMergeEffects.clear();
+        }
+
+        @SuppressWarnings("unused")
+        protected void commitEnds(List<BlockT> states) {
         }
     }
 }

@@ -64,7 +64,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
         return graph.unique(new IndexedLocationNode(identity, kind, displacement, index, indexScaling));
     }
 
-    private IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
+    public IndexedLocationNode(LocationIdentity identity, Kind kind, long displacement, ValueNode index, int indexScaling) {
         super(StampFactory.extension());
         assert kind != Kind.Illegal && kind != Kind.Void;
         this.valueKind = kind;

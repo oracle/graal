@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as an nmethod. The nmethod stores a
@@ -44,14 +45,20 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
 
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
+    private final Graph graph;
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault) {
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, Graph graph) {
         this.method = method;
         this.isDefault = isDefault;
+        this.graph = graph;
     }
 
     public boolean isDefault() {
         return isDefault;
+    }
+
+    public Graph getGraph() {
+        return graph;
     }
 
     @Override

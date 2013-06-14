@@ -89,7 +89,7 @@ public class InstanceOfSnippets implements Snippets {
         }
         // Don't throw away the code as we assume this is a rare event
         // that will periodically occur.
-        DeoptimizeNode.deopt(InvalidateReprofile, OptimizedTypeCheckViolated);
+        DeoptimizeNode.deopt(DeoptimizationAction.None, OptimizedTypeCheckViolated);
         return falseValue;
     }
 

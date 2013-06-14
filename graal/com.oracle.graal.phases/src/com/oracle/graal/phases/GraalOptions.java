@@ -198,8 +198,6 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> ConditionalElimination = new OptionValue<>(true);
     @Option(help = "")
-    public static final OptionValue<Boolean> CullFrameStates = new OptionValue<>(false);
-    @Option(help = "")
     public static final OptionValue<Boolean> UseProfilingInformation = new OptionValue<>(true);
     @Option(help = "")
            static final OptionValue<Boolean> RemoveNeverExecutedCode = new OptionValue<>(true);

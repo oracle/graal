@@ -927,15 +927,20 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public HotSpotInstalledCode installMethod(HotSpotResolvedJavaMethod method, int entryBCI, CompilationResult compResult) {
-        HotSpotInstalledCode installedCode = new HotSpotNmethod(method, true);
+        HotSpotInstalledCode installedCode = new HotSpotNmethod(method, true, null);
         graalRuntime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, entryBCI, compResult), installedCode, method.getSpeculationLog());
         return installedCode;
     }
 
     @Override
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
+        return addMethod(method, compResult, null);
+    }
+
+    @Override
+    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph) {
         HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
-        HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, false);
+        HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, false, graph);
         CodeInstallResult result = graalRuntime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(hotspotMethod, -1, compResult), code, null);
         if (result != CodeInstallResult.OK) {
             return null;
