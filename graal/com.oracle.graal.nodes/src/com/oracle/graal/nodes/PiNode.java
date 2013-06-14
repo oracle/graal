@@ -35,7 +35,6 @@ import com.oracle.graal.nodes.type.*;
 public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Node.IterableNodeType, GuardingNode {
 
     @Input private ValueNode object;
-    @Input private FixedNode anchor;
 
     public ValueNode object() {
         return object;
@@ -46,10 +45,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         this.object = object;
     }
 
-    public PiNode(ValueNode object, Stamp stamp, FixedNode anchor) {
-        super(stamp);
+    public PiNode(ValueNode object, Stamp stamp, GuardingNode anchor) {
+        super(stamp, anchor);
         this.object = object;
-        this.anchor = anchor;
     }
 
     @Override
