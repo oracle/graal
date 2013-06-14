@@ -28,6 +28,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -53,8 +54,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         }
     };
 
-    private volatile boolean cancelled;
-    private volatile boolean inProgress;
+    private enum CompilationStatus {
+        Queued, Running, Canceled
+    }
 
     private final HotSpotGraalRuntime graalRuntime;
     private final PhasePlan plan;
@@ -64,6 +66,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     private final int entryBCI;
     private final int id;
     private final int priority;
+    private final AtomicInteger status;
 
     private StructuredGraph graph;
 
@@ -80,6 +83,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         this.entryBCI = entryBCI;
         this.id = id;
         this.priority = priority;
+        this.status = new AtomicInteger();
     }
 
     public ResolvedJavaMethod getMethod() {
@@ -90,16 +94,8 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         return priority;
     }
 
-    public void cancel() {
-        cancelled = true;
-    }
-
-    public boolean isInProgress() {
-        return inProgress;
-    }
-
-    public boolean isCancelled() {
-        return cancelled;
+    public boolean tryToCancel() {
+        return tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Canceled);
     }
 
     public int getEntryBCI() {
@@ -109,10 +105,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
-            if (cancelled) {
+            if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
                 return;
             }
-            inProgress = true;
             if (DynamicCompilePriority.getValue()) {
                 int threadPriority = priority < VMToCompilerImpl.SlowQueueCutoff.getValue() ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
                 if (Thread.currentThread().getPriority() != threadPriority) {
@@ -124,8 +119,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             if (method.currentTask() == this) {
                 method.setCurrentTask(null);
             }
-            graalRuntime.getCompilerToVM().clearQueuedForCompilation(method);
-            inProgress = false;
             withinEnqueue.set(Boolean.TRUE);
         }
     }
@@ -196,6 +189,9 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             if (ExitVMOnException.getValue()) {
                 System.exit(-1);
             }
+        } finally {
+            assert method.isQueuedForCompilation();
+            method.clearQueuedForCompilation();
         }
         stats.finish(method);
     }
@@ -225,6 +221,10 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
 
         });
+    }
+
+    private boolean tryToChangeStatus(CompilationStatus from, CompilationStatus to) {
+        return status.compareAndSet(from.ordinal(), to.ordinal());
     }
 
     @Override

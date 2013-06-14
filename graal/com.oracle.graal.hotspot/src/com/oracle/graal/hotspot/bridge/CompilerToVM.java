@@ -222,8 +222,6 @@ public interface CompilerToVM {
 
     String getFileName(HotSpotResolvedJavaType method);
 
-    void clearQueuedForCompilation(HotSpotResolvedJavaMethod method);
-
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.
      * 
