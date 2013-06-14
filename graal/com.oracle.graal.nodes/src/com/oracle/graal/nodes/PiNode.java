@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * A node that changes the type of its input, usually narrowing it. For example, a PI node refines
  * the type of a receiver during type-guarded inlining to be the type tested by the guard.
  */
-public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Node.IterableNodeType, GuardingNode {
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Node.IterableNodeType, GuardingNode, Canonicalizable {
 
     @Input private ValueNode object;
 
@@ -68,5 +68,16 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (state != null && state.getState() == EscapeState.Virtual) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (getGuard() == graph().start()) {
+            inferStamp();
+            if (stamp().equals(object().stamp())) {
+                return object();
+            }
+        }
+        return this;
     }
 }
