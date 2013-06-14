@@ -119,6 +119,10 @@ public class StructuredGraph extends Graph {
         return entryBCI;
     }
 
+    public boolean isOSR() {
+        return entryBCI != INVOCATION_ENTRY_BCI;
+    }
+
     public long graphId() {
         return graphId;
     }

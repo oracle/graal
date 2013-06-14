@@ -38,7 +38,6 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
@@ -173,8 +172,7 @@ public class GraalCompiler {
         suites.getLowTier().apply(graph, lowTierContext);
 
         // we do not want to store statistics about OSR compilations because it may prevent inlining
-        boolean isOSRCompilation = graph.start() instanceof OSRStartNode;
-        if (!isOSRCompilation) {
+        if (!graph.isOSR()) {
             InliningPhase.storeStatisticsAfterLowTier(graph);
         }
 
