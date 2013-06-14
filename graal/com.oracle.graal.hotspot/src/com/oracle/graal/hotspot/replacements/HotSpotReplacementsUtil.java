@@ -521,6 +521,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static int arrayKlassOffset() {
+        return config().arrayKlassOffset;
+    }
+
+    @Fold
     public static int classMirrorOffset() {
         return config().classMirrorOffset;
     }

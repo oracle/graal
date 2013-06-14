@@ -121,6 +121,33 @@ public class NewObjectSnippets implements Snippets {
         return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
+    @Snippet
+    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents) {
+        Word hub = loadWordFromObject(elementType, arrayKlassOffset());
+        if (hub.equal(Word.zero())) {
+            // the array class is not yet loaded
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.Unresolved);
+        }
+
+        int layoutHelper = readLayoutHelper(hub);
+        //@formatter:off
+        // For arrays, layout helper is a negative number, containing four
+        // distinct bytes, as follows:
+        //    MSB:[tag, hsz, ebt, log2(esz)]:LSB
+        // where:
+        //    tag is 0x80 if the elements are oops, 0xC0 if non-oops
+        //    hsz is array header size in bytes (i.e., offset of first element)
+        //    ebt is the BasicType of the elements
+        //    esz is the element size in bytes
+        //@formatter:on
+
+        int headerSize = (layoutHelper >> 16) & 0xFF;
+        int log2ElementSize = layoutHelper & 0xFF;
+        Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
+
+        return allocateArray(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
+    }
+
     /**
      * Computes the size of the memory chunk allocated for an array. This size accounts for the
      * array header size, boy size and any padding after the last element to satisfy object
@@ -201,6 +228,7 @@ public class NewObjectSnippets implements Snippets {
 
         private final SnippetInfo allocateInstance = snippet(NewObjectSnippets.class, "allocateInstance");
         private final SnippetInfo allocateArray = snippet(NewObjectSnippets.class, "allocateArray");
+        private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic");
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
@@ -250,6 +278,16 @@ public class NewObjectSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
+            template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(DynamicNewArrayNode newArrayNode) {
+            Arguments args = new Arguments(allocateArrayDynamic);
+            args.add("elementType", newArrayNode.getElementType());
+            args.add("length", newArrayNode.length());
+            args.addConst("fillContents", newArrayNode.fillContents());
+
+            SnippetTemplate template = template(args);
             template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
         }
 

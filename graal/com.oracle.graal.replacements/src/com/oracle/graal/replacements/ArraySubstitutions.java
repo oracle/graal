@@ -20,22 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.replacements;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+/**
+ * Substitutions for {@link java.lang.reflect.Array} methods.
+ */
+@ClassSubstitution(java.lang.reflect.Array.class)
+public class ArraySubstitutions {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
-
-        appendPhase(new FrameStateAssignmentPhase());
-
-        appendPhase(new ExpandLogicPhase());
-
-        appendPhase(new DeadCodeEliminationPhase());
+    @MethodSubstitution
+    public static Object newArray(Class<?> componentType, int length) throws NegativeArraySizeException {
+        if (componentType == null) {
+            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
+        }
+        return DynamicNewArrayNode.newArray(componentType, length);
     }
 }

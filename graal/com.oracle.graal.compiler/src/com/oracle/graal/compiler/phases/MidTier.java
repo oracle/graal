@@ -35,50 +35,50 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
 
         if (OptPushThroughPi.getValue()) {
-            addPhase(new PushThroughPiPhase());
+            appendPhase(new PushThroughPiPhase());
             if (OptCanonicalizer.getValue()) {
-                addPhase(canonicalizer);
+                appendPhase(canonicalizer);
             }
         }
 
         if (OptFloatingReads.getValue()) {
             IncrementalCanonicalizerPhase<MidTierContext> incCanonicalizer = new IncrementalCanonicalizerPhase<>();
-            incCanonicalizer.addPhase(new FloatingReadPhase());
-            addPhase(incCanonicalizer);
+            incCanonicalizer.appendPhase(new FloatingReadPhase());
+            appendPhase(incCanonicalizer);
             if (OptReadElimination.getValue()) {
-                addPhase(new ReadEliminationPhase());
+                appendPhase(new ReadEliminationPhase());
             }
         }
-        addPhase(new RemoveValueProxyPhase());
+        appendPhase(new RemoveValueProxyPhase());
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(canonicalizer);
+            appendPhase(canonicalizer);
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
-            addPhase(new EliminatePartiallyRedundantGuardsPhase(false, true));
+            appendPhase(new EliminatePartiallyRedundantGuardsPhase(false, true));
         }
 
         if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-            addPhase(new IterativeConditionalEliminationPhase());
+            appendPhase(new IterativeConditionalEliminationPhase());
         }
 
         if (OptEliminatePartiallyRedundantGuards.getValue()) {
-            addPhase(new EliminatePartiallyRedundantGuardsPhase(true, true));
+            appendPhase(new EliminatePartiallyRedundantGuardsPhase(true, true));
         }
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(canonicalizer);
+            appendPhase(canonicalizer);
         }
 
-        addPhase(new LoopSafepointEliminationPhase());
+        appendPhase(new LoopSafepointEliminationPhase());
 
-        addPhase(new SafepointInsertionPhase());
+        appendPhase(new SafepointInsertionPhase());
 
-        addPhase(new GuardLoweringPhase());
+        appendPhase(new GuardLoweringPhase());
 
         if (OptCanonicalizer.getValue()) {
-            addPhase(canonicalizer);
+            appendPhase(canonicalizer);
         }
     }
 }
