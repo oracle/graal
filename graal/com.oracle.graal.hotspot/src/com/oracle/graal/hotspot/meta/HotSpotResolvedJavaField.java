@@ -29,6 +29,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -106,19 +107,44 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         return false;
     }
 
-    private static final String SystemClassName = MetaUtil.toInternalName(System.class.getName());
-    private static final String IntegerCacheClassName = "Ljava/lang/Integer$IntegerCache;";
-    private static final String LongCacheClassName = "Ljava/lang/Long$LongCache;";
-    private static final String BooleanCacheName = MetaUtil.toInternalName(Boolean.class.getName());
-    private static final String ThrowableClassName = MetaUtil.toInternalName(Throwable.class.getName());
+    private static final Set<ResolvedJavaField> notEmbeddable = new HashSet<>();
 
-    private boolean isConstantCache() {
-        if (AOTCompilation.getValue()) {
-            String n = holder.getName();
-            return n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName) || n.equals(ThrowableClassName);
-        }
-        return false;
+    private static void addResolvedToSet(Field field) {
+        HotSpotRuntime runtime = graalRuntime().getRuntime();
+        notEmbeddable.add(runtime.lookupJavaField(field));
     }
+
+    static {
+        try {
+            addResolvedToSet(Boolean.class.getDeclaredField("TRUE"));
+            addResolvedToSet(Boolean.class.getDeclaredField("FALSE"));
+
+            Class<?> integerCacheClass = Integer.class.getDeclaredClasses()[0];
+            assert "java.lang.Integer$IntegerCache".equals(integerCacheClass.getName());
+            addResolvedToSet(integerCacheClass.getDeclaredField("cache"));
+
+            Class<?> longCacheClass = Long.class.getDeclaredClasses()[0];
+            assert "java.lang.Long$LongCache".equals(longCacheClass.getName());
+            addResolvedToSet(longCacheClass.getDeclaredField("cache"));
+
+            addResolvedToSet(Throwable.class.getDeclaredField("UNASSIGNED_STACK"));
+            addResolvedToSet(Throwable.class.getDeclaredField("SUPPRESSED_SENTINEL"));
+        } catch (SecurityException | NoSuchFieldException e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
+    /**
+     * in AOT mode, some fields should never be embedded even for snippets/replacements.
+     */
+    private boolean isEmbeddable() {
+        if (AOTCompilation.getValue() && notEmbeddable.contains(this)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static final String SystemClassName = MetaUtil.toInternalName(System.class.getName());
 
     @Override
     public Constant readConstantValue(Constant receiver) {
@@ -127,7 +153,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (constant == null) {
-                if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && !isConstantCache()) {
+                if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable()) {
                     if (Modifier.isFinal(getModifiers())) {
                         constant = readValue(receiver);
                     }
