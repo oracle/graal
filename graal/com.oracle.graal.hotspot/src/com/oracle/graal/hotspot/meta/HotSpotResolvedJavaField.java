@@ -32,6 +32,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -76,13 +77,21 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     private static final String SystemClassName = MetaUtil.toInternalName(System.class.getName());
+    private static final String IntegerCacheClassName = "Ljava/lang/Integer$IntegerCache;";
+    private static final String LongCacheClassName = "Ljava/lang/Long$LongCache;";
+    private static final String BooleanCacheName = MetaUtil.toInternalName(Boolean.class.getName());
+
+    private boolean isConstantCache() {
+        String n = holder.getName();
+        return GraalOptions.AOTCompilation.getValue() && n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName);
+    }
 
     @Override
     public Constant readConstantValue(Constant receiver) {
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (constant == null) {
-                if (holder.isInitialized() && !holder.getName().equals(SystemClassName)) {
+                if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && !isConstantCache()) {
                     if (Modifier.isFinal(getModifiers())) {
                         constant = readValue(receiver);
                     }

@@ -31,7 +31,7 @@ public class AheadOfTimeVerifcationPhase extends VerifyPhase {
     @Override
     protected boolean verify(StructuredGraph graph) {
         for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
-            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
+            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node + ". toString: " + node.asConstant().asObject();
         }
         return true;
     }
