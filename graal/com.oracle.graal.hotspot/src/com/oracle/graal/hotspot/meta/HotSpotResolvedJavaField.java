@@ -25,15 +25,18 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
+import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
 /**
  * Represents a field in a HotSpot type.
@@ -76,6 +79,33 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         return (flags & FIELD_INTERNAL_FLAG) != 0;
     }
 
+    /**
+     * if the compiler is configured for AOT mode, {@link #readConstantValue(Constant)} should be
+     * only called for snippets or replacements.
+     */
+    private static boolean isCalledForSnippets() {
+        HotSpotRuntime runtime = graalRuntime().getRuntime();
+
+        ResolvedJavaMethod makeGraphMethod = null;
+        ResolvedJavaMethod initMethod = null;
+        try {
+            Class<?> rjm = ResolvedJavaMethod.class;
+            makeGraphMethod = runtime.lookupJavaMethod(ReplacementsImpl.class.getDeclaredMethod("makeGraph", rjm, rjm, SnippetInliningPolicy.class));
+            initMethod = runtime.lookupJavaMethod(SnippetTemplate.AbstractTemplates.class.getDeclaredMethod("template", Arguments.class));
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw new GraalInternalError(e);
+        }
+        StackTraceElement makeGraphSTE = makeGraphMethod.asStackTraceElement(1);
+        StackTraceElement initSTE = initMethod.asStackTraceElement(30);
+
+        for (StackTraceElement element : new Exception().getStackTrace()) {
+            if (makeGraphSTE.equals(element) || initSTE.equals(element)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static final String SystemClassName = MetaUtil.toInternalName(System.class.getName());
     private static final String IntegerCacheClassName = "Ljava/lang/Integer$IntegerCache;";
     private static final String LongCacheClassName = "Ljava/lang/Long$LongCache;";
@@ -83,12 +113,17 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private static final String ThrowableClassName = MetaUtil.toInternalName(Throwable.class.getName());
 
     private boolean isConstantCache() {
-        String n = holder.getName();
-        return GraalOptions.AOTCompilation.getValue() && n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName) || n.equals(ThrowableClassName);
+        if (AOTCompilation.getValue()) {
+            String n = holder.getName();
+            return n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName) || n.equals(ThrowableClassName);
+        }
+        return false;
     }
 
     @Override
     public Constant readConstantValue(Constant receiver) {
+        assert !AOTCompilation.getValue() || isCalledForSnippets();
+
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (constant == null) {
