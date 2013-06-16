@@ -215,7 +215,7 @@ public class BoxingSnippets implements Snippets {
 
         public void lower(BoxNode box) {
             FloatingNode canonical = canonicalizeBoxing(box, runtime);
-            if (canonical != null) {
+            if (!AOTCompilation.getValue() && canonical != null) {
                 box.graph().replaceFixedWithFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()));
