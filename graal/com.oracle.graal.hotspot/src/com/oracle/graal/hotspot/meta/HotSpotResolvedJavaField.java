@@ -80,10 +80,11 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private static final String IntegerCacheClassName = "Ljava/lang/Integer$IntegerCache;";
     private static final String LongCacheClassName = "Ljava/lang/Long$LongCache;";
     private static final String BooleanCacheName = MetaUtil.toInternalName(Boolean.class.getName());
+    private static final String ThrowableClassName = MetaUtil.toInternalName(Throwable.class.getName());
 
     private boolean isConstantCache() {
         String n = holder.getName();
-        return GraalOptions.AOTCompilation.getValue() && n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName);
+        return GraalOptions.AOTCompilation.getValue() && n.equals(IntegerCacheClassName) || n.equals(LongCacheClassName) || n.equals(BooleanCacheName) || n.equals(ThrowableClassName);
     }
 
     @Override
