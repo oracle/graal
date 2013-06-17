@@ -165,6 +165,33 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(0, result.getNodes(ReadNode.class).count());
     }
 
+    public static Boolean getBoxedBoolean() {
+        return Boolean.valueOf(true);
+    }
+
+    @Test
+    public void testBoxedBooleanAOT() {
+        StructuredGraph result = compile("getBoxedBoolean", true);
+
+        assertEquals(2, result.getNodes(FloatingReadNode.class).count());
+        assertEquals(1, result.getNodes(UnsafeCastNode.class).count());
+        assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
+        ConstantNode constant = result.getNodes().filter(ConstantNode.class).first();
+        assertEquals(Kind.Long, constant.kind());
+        assertEquals(((HotSpotResolvedObjectType) runtime.lookupJavaType(Boolean.class)).klass(), constant.asConstant());
+    }
+
+    @Test
+    public void testBoxedBoolean() {
+        StructuredGraph result = compile("getBoxedBoolean", false);
+        assertEquals(0, result.getNodes(FloatingReadNode.class).count());
+        assertEquals(0, result.getNodes(UnsafeCastNode.class).count());
+        assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
+        ConstantNode constant = result.getNodes().filter(ConstantNode.class).first();
+        assertEquals(Kind.Object, constant.kind());
+        assertEquals(Boolean.TRUE, constant.asConstant().asObject());
+    }
+
     private StructuredGraph compile(String test, boolean compileAOT) {
         StructuredGraph graph = parse(test);
         ResolvedJavaMethod method = graph.method();
