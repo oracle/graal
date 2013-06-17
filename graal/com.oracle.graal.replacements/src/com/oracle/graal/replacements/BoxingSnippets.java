@@ -215,6 +215,7 @@ public class BoxingSnippets implements Snippets {
 
         public void lower(BoxNode box) {
             FloatingNode canonical = canonicalizeBoxing(box, runtime);
+            // if in AOT mode, we don't want to embed boxed constants.
             if (!AOTCompilation.getValue() && canonical != null) {
                 box.graph().replaceFixedWithFloating(box, canonical);
             } else {

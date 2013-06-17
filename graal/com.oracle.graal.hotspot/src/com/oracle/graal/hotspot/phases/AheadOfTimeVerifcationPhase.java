@@ -26,12 +26,18 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
+/**
+ * Checking for embedded oops in the graph. (Interned) Strings are an exception as they live in CDS
+ * space.
+ * 
+ * @see LoadJavaMirrorWithKlassPhase
+ */
 public class AheadOfTimeVerifcationPhase extends VerifyPhase {
 
     @Override
     protected boolean verify(StructuredGraph graph) {
         for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
-            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node + ". toString: " + node.asConstant().asObject();
+            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
         }
         return true;
     }

@@ -81,7 +81,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     /**
-     * if the compiler is configured for AOT mode, {@link #readConstantValue(Constant)} should be
+     * If the compiler is configured for AOT mode, {@link #readConstantValue(Constant)} should be
      * only called for snippets or replacements.
      */
     private static boolean isCalledForSnippets() {
