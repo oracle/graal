@@ -343,12 +343,4 @@ public final class GraalOptions {
      */
     @Option(help = "")
     public static final OptionValue<Integer> InstanceOfMaxHints = new OptionValue<>(2);
-
-    /**
-     * If the probability that an instanceof will hit one the profiled types (up to {@link #InstanceOfMaxHints})
-     * is above this value, the compiled instanceof will deoptimize if all hints are missed.
-     */
-    @Option(help = "")
-    public static final OptionValue<Double> InstanceOfFullCoverageSpeculationThreshold = new OptionValue<>(0.998);
-
 }
