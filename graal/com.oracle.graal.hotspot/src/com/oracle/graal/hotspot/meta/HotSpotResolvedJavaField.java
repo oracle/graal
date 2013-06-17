@@ -119,6 +119,18 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             addResolvedToSet(Boolean.class.getDeclaredField("TRUE"));
             addResolvedToSet(Boolean.class.getDeclaredField("FALSE"));
 
+            Class<?> characterCacheClass = Character.class.getDeclaredClasses()[0];
+            assert "java.lang.Character$CharacterCache".equals(characterCacheClass.getName());
+            addResolvedToSet(characterCacheClass.getDeclaredField("cache"));
+
+            Class<?> byteCacheClass = Byte.class.getDeclaredClasses()[0];
+            assert "java.lang.Byte$ByteCache".equals(byteCacheClass.getName());
+            addResolvedToSet(byteCacheClass.getDeclaredField("cache"));
+
+            Class<?> shortCacheClass = Short.class.getDeclaredClasses()[0];
+            assert "java.lang.Short$ShortCache".equals(shortCacheClass.getName());
+            addResolvedToSet(shortCacheClass.getDeclaredField("cache"));
+
             Class<?> integerCacheClass = Integer.class.getDeclaredClasses()[0];
             assert "java.lang.Integer$IntegerCache".equals(integerCacheClass.getName());
             addResolvedToSet(integerCacheClass.getDeclaredField("cache"));
