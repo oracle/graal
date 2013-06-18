@@ -42,7 +42,7 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 public class NodeParser extends TemplateParser<NodeData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
-                    ExecuteChildren.class, NodeClass.class, NodeChild.class, NodeChildren.class, NodeId.class);
+                    NodeClass.class, NodeChild.class, NodeChildren.class, NodeId.class);
 
     private Map<String, NodeData> parsedNodes;
 
@@ -754,8 +754,12 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
 
             List<AnnotationMirror> children = Utils.collectAnnotations(context, nodeChildrenMirror, "value", type, NodeChild.class);
+            int index = 0;
             for (AnnotationMirror childMirror : children) {
                 String name = Utils.getAnnotationValue(String.class, childMirror, "value");
+                if (name.equals("")) {
+                    name = "child" + index;
+                }
 
                 Cardinality cardinality = Cardinality.ONE;
 
@@ -785,7 +789,9 @@ public class NodeParser extends TemplateParser<NodeData> {
                 if (fieldNodeData == null) {
                     nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
                 }
+
             }
+            index++;
         }
 
         List<NodeChildData> filteredChildren = new ArrayList<>();
