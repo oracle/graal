@@ -582,7 +582,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     /**
-     * Compiled a method to machine code.
+     * Compiles a method to machine code.
      */
     public void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking, int priority) throws Throwable {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
