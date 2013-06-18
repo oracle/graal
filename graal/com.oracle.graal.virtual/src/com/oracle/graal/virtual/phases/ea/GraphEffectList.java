@@ -24,6 +24,7 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -359,6 +360,26 @@ public class GraphEffectList extends EffectList {
                     }
 
                 }
+            }
+
+            @Override
+            public boolean isVisible() {
+                return true;
+            }
+        });
+    }
+
+    public void addLowLevelCounterBefore(final String group, final String name, final int increment, final boolean addContext, final FixedNode position, final MetaAccessProvider runtime) {
+        add(new Effect() {
+
+            @Override
+            public String name() {
+                return "addLowLevelCounterBefore";
+            }
+
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                DynamicCounterNode.addLowLevel(group, name, increment, addContext, position, runtime);
             }
 
             @Override
