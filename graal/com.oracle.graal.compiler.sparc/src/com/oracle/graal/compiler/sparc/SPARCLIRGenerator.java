@@ -419,7 +419,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
             baseRegister = asAllocatable(base);
         }
 
-        if (index != Value.ILLEGAL && scale != 0) {
+        if (!Value.ILLEGAL.equals(index) && scale != 0) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
             } else {
@@ -430,7 +430,7 @@ public class SPARCLIRGenerator extends LIRGenerator {
                     indexRegister = index;
                 }
 
-                if (baseRegister == Value.ILLEGAL) {
+                if (Value.ILLEGAL.equals(baseRegister)) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
                     Variable newBase = newVariable(Kind.Int);
