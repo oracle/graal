@@ -34,54 +34,11 @@ import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
-
-    private abstract static class ScheduledNodeIterator {
-
-        private FixedWithNextNode lastFixed;
-        private FixedWithNextNode reconnect;
-        private ListIterator<ScheduledNode> iterator;
-
-        public void processNodes(List<ScheduledNode> nodes, FixedWithNextNode begin) {
-            assert begin != null;
-            lastFixed = begin;
-            reconnect = null;
-            iterator = nodes.listIterator();
-            while (iterator.hasNext()) {
-                Node node = iterator.next();
-                if (!node.isAlive()) {
-                    continue;
-                }
-                if (reconnect != null && node instanceof FixedNode) {
-                    reconnect.setNext((FixedNode) node);
-                    reconnect = null;
-                }
-                if (node instanceof FixedWithNextNode) {
-                    lastFixed = (FixedWithNextNode) node;
-                }
-                processNode(node);
-            }
-        }
-
-        protected void insert(FixedNode start, FixedWithNextNode end) {
-            this.lastFixed.setNext(start);
-            this.lastFixed = end;
-            this.reconnect = end;
-        }
-
-        protected void replaceCurrent(FixedWithNextNode newNode) {
-            Node current = iterator.previous();
-            iterator.next(); // needed because of the previous() call
-            current.replaceAndDelete(newNode);
-            insert(newNode, newNode);
-            iterator.set(newNode);
-        }
-
-        protected abstract void processNode(Node node);
-    }
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
