@@ -77,12 +77,6 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
                 tool.setVirtualEntry(state, fieldIndex, value());
                 tool.delete();
             }
-        } else {
-            if (value() == tool.getReadCache(object(), field())) {
-                tool.delete();
-            }
-            tool.killReadCache(field());
-            tool.addReadCache(object(), field(), value());
         }
     }
 }

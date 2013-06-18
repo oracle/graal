@@ -32,5 +32,7 @@ public interface CanonicalizerTool {
 
     MetaAccessProvider runtime();
 
+    boolean canonicalizeReads();
+
     void removeIfUnused(Node node);
 }

@@ -22,14 +22,8 @@
  */
 package com.oracle.graal.options;
 
-import java.util.*;
-
 /**
- * A settable option value.
- * <p>
- * To access {@link OptionProvider} instances via a {@link ServiceLoader} for working with options,
- * instances of this class should be assigned to static final fields that are annotated with
- * {@link Option}.
+ * An option value.
  */
 public class OptionValue<T> {
 
@@ -38,32 +32,34 @@ public class OptionValue<T> {
      */
     protected T value;
 
-    /**
-     * Guards whether {@link #initialValue()} should be called to give a subclass an opportunity to
-     * provide a context-sensitive initial value for this option.
-     */
-    protected boolean initialValueCalled;
-
-    /**
-     * Create an option.
-     * 
-     * @param value the initial/default value of the option
-     */
     public OptionValue(T value) {
         this.value = value;
     }
 
+    private static final Object UNINITIALIZED = "UNINITIALIZED";
+
+    /**
+     * Creates an uninitialized option value for a subclass that initializes itself
+     * {@link #initialValue() lazily}.
+     */
+    @SuppressWarnings("unchecked")
+    protected OptionValue() {
+        this.value = (T) UNINITIALIZED;
+    }
+
+    /**
+     * Lazy initialization of value.
+     */
     protected T initialValue() {
-        return value;
+        throw new InternalError("Uninitialized option value must override initialValue()");
     }
 
     /**
      * Gets the value of this option.
      */
-    public final T getValue() {
-        if (!initialValueCalled) {
+    public T getValue() {
+        if (value == UNINITIALIZED) {
             value = initialValue();
-            initialValueCalled = true;
         }
         return value;
     }
@@ -72,8 +68,7 @@ public class OptionValue<T> {
      * Sets the value of this option.
      */
     @SuppressWarnings("unchecked")
-    public final void setValue(Object v) {
+    public void setValue(Object v) {
         this.value = (T) v;
-        this.initialValueCalled = true;
     }
 }

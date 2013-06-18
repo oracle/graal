@@ -80,6 +80,12 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     int getModifiers();
 
     /**
+     * Determines if this method is a synthetic method as defined by the Java Language
+     * Specification.
+     */
+    boolean isSynthetic();
+
+    /**
      * Checks whether this method is a class initializer.
      * 
      * @return {@code true} if the method is a class initializer

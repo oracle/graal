@@ -91,7 +91,7 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
     public FrameState getDeoptimizationState() {
         if (deoptState != null) {
             return deoptState;
-        } else if (stateAfter() != null) {
+        } else if (stateAfter() != null && canDeoptimize()) {
             FrameState stateDuring = stateAfter();
             if ((stateDuring.stackSize() > 0 && stateDuring.stackAt(stateDuring.stackSize() - 1) == this) || (stateDuring.stackSize() > 1 && stateDuring.stackAt(stateDuring.stackSize() - 2) == this)) {
                 stateDuring = stateDuring.duplicateModified(stateDuring.bci, stateDuring.rethrowException(), this.kind());
@@ -105,10 +105,15 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
     @Override
     public void setDeoptimizationState(FrameState f) {
         updateUsages(deoptState, f);
-        if (deoptState != null) {
-            throw new IllegalStateException(toString(Verbosity.Debugger));
-        }
+        assert deoptState == null && canDeoptimize() : "shouldn't assign deoptState to " + this;
         deoptState = f;
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        if (hasSideEffect() || canDeoptimize()) {
+            super.setStateAfter(x);
+        }
     }
 
     @Override

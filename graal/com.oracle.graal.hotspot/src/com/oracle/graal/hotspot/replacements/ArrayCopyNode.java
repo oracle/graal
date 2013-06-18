@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Node.IterableNodeType;
@@ -29,7 +31,6 @@ import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -83,14 +84,14 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
         HighTierContext context = new HighTierContext(tool.getRuntime(), tool.assumptions(), tool.getReplacements());
-        new CanonicalizerPhase().apply(snippetGraph, context);
-        new LoopFullUnrollPhase().apply(snippetGraph, context);
-        new CanonicalizerPhase().apply(snippetGraph, context);
+        new CanonicalizerPhase(true).apply(snippetGraph, context);
+        new LoopFullUnrollPhase(true).apply(snippetGraph, context);
+        new CanonicalizerPhase(true).apply(snippetGraph, context);
     }
 
     @Override
     protected StructuredGraph getSnippetGraph(LoweringTool tool) {
-        if (!GraalOptions.IntrinsifyArrayCopy) {
+        if (!IntrinsifyArrayCopy.getValue()) {
             return null;
         }
 
@@ -115,10 +116,22 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         return position >= 0 && position + length <= virtualObject.entryCount();
     }
 
-    private static boolean checkEntryTypes(int srcPos, int length, State srcState, ResolvedJavaType destComponentType) {
+    private static boolean checkEntryTypes(int srcPos, int length, State srcState, ResolvedJavaType destComponentType, VirtualizerTool tool) {
         if (destComponentType.getKind() == Kind.Object) {
             for (int i = 0; i < length; i++) {
-                if (!destComponentType.isAssignableFrom(srcState.getEntry(srcPos + i).objectStamp().type())) {
+                ValueNode entry = srcState.getEntry(srcPos + i);
+                State state = tool.getObjectState(entry);
+                ResolvedJavaType type;
+                if (state != null) {
+                    if (state.getState() == EscapeState.Virtual) {
+                        type = state.getVirtualObject().type();
+                    } else {
+                        type = state.getMaterializedValue().objectStamp().type();
+                    }
+                } else {
+                    type = entry.objectStamp().type();
+                }
+                if (type == null || !destComponentType.isAssignableFrom(type)) {
                     return false;
                 }
             }
@@ -138,10 +151,16 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
             if (srcState != null && srcState.getState() == EscapeState.Virtual && destState != null && destState.getState() == EscapeState.Virtual) {
                 VirtualObjectNode srcVirtual = srcState.getVirtualObject();
                 VirtualObjectNode destVirtual = destState.getVirtualObject();
+                if (!(srcVirtual instanceof VirtualArrayNode) || !(destVirtual instanceof VirtualArrayNode)) {
+                    return;
+                }
+                if (((VirtualArrayNode) srcVirtual).componentType().getKind() != Kind.Object || ((VirtualArrayNode) destVirtual).componentType().getKind() != Kind.Object) {
+                    return;
+                }
                 if (length < 0 || !checkBounds(srcPos, length, srcVirtual) || !checkBounds(destPos, length, destVirtual)) {
                     return;
                 }
-                if (!checkEntryTypes(srcPos, length, srcState, destVirtual.type().getComponentType())) {
+                if (!checkEntryTypes(srcPos, length, srcState, destVirtual.type().getComponentType(), tool)) {
                     return;
                 }
                 for (int i = 0; i < length; i++) {

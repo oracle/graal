@@ -57,7 +57,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null) {
+        if (tool.canonicalizeReads() && runtime != null) {
             Constant constant = null;
             if (isStatic()) {
                 constant = field().readConstantValue(null);
@@ -78,13 +78,6 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
             if (fieldIndex != -1) {
                 tool.replaceWith(state.getEntry(fieldIndex));
-            }
-        } else {
-            ValueNode cachedValue = tool.getReadCache(object(), field());
-            if (cachedValue != null) {
-                tool.replaceWithValue(cachedValue);
-            } else {
-                tool.addReadCache(object(), field(), this);
             }
         }
     }

@@ -27,10 +27,10 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
-import com.oracle.graal.nodes.spi.Lowerable.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 

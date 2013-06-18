@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -37,7 +37,6 @@ import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -259,11 +258,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return signature;
     }
 
-    @Override
-    public String toString() {
-        return format("HotSpotMethod<%H.%n(%p)>", this);
-    }
-
     public int getCompiledCodeSize() {
         return graalRuntime().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
     }
@@ -276,7 +270,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     public ProfilingInfo getProfilingInfo() {
         ProfilingInfo info;
 
-        if (GraalOptions.UseProfilingInformation && methodData == null) {
+        if (UseProfilingInformation.getValue() && methodData == null) {
             long metaspaceMethodData = unsafeReadWord(metaspaceMethod + graalRuntime().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);
@@ -288,7 +282,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             // case of a deoptimization.
             info = DefaultProfilingInfo.get(TriState.FALSE);
         } else {
-            info = new HotSpotProfilingInfo(methodData, codeSize);
+            info = new HotSpotProfilingInfo(methodData, this);
         }
         return info;
     }
@@ -332,6 +326,29 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     @Override
+    public boolean isSynthetic() {
+        if (isConstructor()) {
+            Constructor<?> javaConstructor = toJavaConstructor();
+            return javaConstructor == null ? false : javaConstructor.isSynthetic();
+        }
+
+        // Cannot use toJava() as it ignores the return type
+        HotSpotSignature sig = getSignature();
+        JavaType[] sigTypes = MetaUtil.signatureToTypes(sig, null);
+        HotSpotRuntime runtime = graalRuntime().getRuntime();
+        for (Method method : holder.mirror().getDeclaredMethods()) {
+            if (method.getName().equals(name)) {
+                if (runtime.lookupJavaType(method.getReturnType()).equals(sig.getReturnType(holder))) {
+                    if (matches(runtime, sigTypes, method.getParameterTypes())) {
+                        return method.isSynthetic();
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
     public Type[] getGenericParameterTypes() {
         if (isConstructor()) {
             Constructor javaConstructor = toJavaConstructor();
@@ -349,6 +366,18 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             result[i] = ((HotSpotResolvedJavaType) sig.getParameterType(i, holder).resolve(holder)).mirror();
         }
         return result;
+    }
+
+    private static boolean matches(HotSpotRuntime runtime, JavaType[] sigTypes, Class<?>[] parameterTypes) {
+        if (parameterTypes.length == sigTypes.length) {
+            for (int i = 0; i < parameterTypes.length; i++) {
+                if (!runtime.lookupJavaType(parameterTypes[i]).equals(sigTypes[i])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     private Method toJava() {
@@ -474,5 +503,44 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         } catch (IllegalAccessException | InvocationTargetException | InstantiationException ex) {
             throw new IllegalArgumentException(ex);
         }
+    }
+
+    public boolean tryToQueueForCompilation() {
+        // other threads may update certain bits of the access flags field concurrently. So, the
+        // loop ensures that this method only returns false when another thread has set the
+        // queuedForCompilation bit.
+        do {
+            long address = getAccessFlagsAddress();
+            int actualValue = unsafe.getInt(address);
+            int expectedValue = actualValue & ~graalRuntime().getConfig().methodQueuedForCompilationBit;
+            if (actualValue != expectedValue) {
+                return false;
+            } else {
+                int newValue = expectedValue | graalRuntime().getConfig().methodQueuedForCompilationBit;
+                boolean success = unsafe.compareAndSwapInt(null, address, expectedValue, newValue);
+                if (success) {
+                    return true;
+                }
+            }
+        } while (true);
+    }
+
+    public void clearQueuedForCompilation() {
+        long address = getAccessFlagsAddress();
+        boolean success;
+        do {
+            int actualValue = unsafe.getInt(address);
+            int newValue = actualValue & ~graalRuntime().getConfig().methodQueuedForCompilationBit;
+            assert isQueuedForCompilation() : "queued for compilation must be set";
+            success = unsafe.compareAndSwapInt(null, address, actualValue, newValue);
+        } while (!success);
+    }
+
+    public boolean isQueuedForCompilation() {
+        return (unsafe.getInt(getAccessFlagsAddress()) & graalRuntime().getConfig().methodQueuedForCompilationBit) != 0;
+    }
+
+    private long getAccessFlagsAddress() {
+        return metaspaceMethod + graalRuntime().getConfig().methodAccessFlagsOffset;
     }
 }

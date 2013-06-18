@@ -133,8 +133,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         }
 
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(referenceGraph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(referenceGraph);
         Debug.scope("Test", new DebugDumpScope("Test:" + snippet), new Runnable() {
 
             @Override

@@ -89,7 +89,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new EliminatePartiallyRedundantGuardsPhase(true, false).apply(graph);
                 new ReadEliminationPhase().apply(graph);
-                new CanonicalizerPhase().apply(graph, context);
+                new CanonicalizerPhase(true).apply(graph, context);
 
                 Debug.dump(graph, "After lowering");
 

@@ -27,6 +27,9 @@ import java.lang.annotation.*;
 /**
  * Describes the attributes of an option whose {@link OptionValue value} is in a static field
  * annotated by this annotation type.
+ * 
+ * @see OptionProcessor
+ * @see OptionDescriptor
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.FIELD)

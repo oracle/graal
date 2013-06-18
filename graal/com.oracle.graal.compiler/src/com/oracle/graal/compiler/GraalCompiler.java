@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -56,6 +58,8 @@ public class GraalCompiler {
     // @formatter:off
     @Option(help = "")
     public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
+    @Option(help = "Enable inlining")
+    public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
     // @formatter:on
 
     /**
@@ -70,16 +74,16 @@ public class GraalCompiler {
      */
     public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
                     final Replacements replacements, final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog) {
+                    final SpeculationLog speculationLog, final Suites suites) {
         final CompilationResult compilationResult = new CompilationResult();
         Debug.scope("GraalCompiler", new Object[]{graph, runtime}, new Runnable() {
 
             public void run() {
-                final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
+                final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
                     public LIR call() {
-                        return emitHIR(runtime, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog);
+                        return emitHIR(runtime, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
                     }
                 });
                 final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
@@ -119,7 +123,7 @@ public class GraalCompiler {
      * @param target
      */
     public static LIR emitHIR(GraalCodeCacheProvider runtime, TargetDescription target, final StructuredGraph graph, Replacements replacements, Assumptions assumptions, GraphCache cache,
-                    PhasePlan plan, OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog) {
+                    PhasePlan plan, OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog, final Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -136,21 +140,22 @@ public class GraalCompiler {
             new VerifyUsageWithEquals(runtime, Register.class).apply(graph);
         }
 
-        if (GraalOptions.OptCanonicalizer) {
-            new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
-        }
-
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
         HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
 
-        if (GraalOptions.Inline && !plan.isPhaseDisabled(InliningPhase.class)) {
-            if (GraalOptions.IterativeInlining) {
-                new IterativeInliningPhase(replacements, cache, plan, optimisticOpts, GraalOptions.OptEarlyReadElimination).apply(graph, highTierContext);
+        if (OptCanonicalizer.getValue()) {
+            canonicalizer.apply(graph, highTierContext);
+        }
+
+        if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
+            if (IterativeInlining.getValue()) {
+                new IterativeInliningPhase(cache, plan, optimisticOpts, canonicalizer).apply(graph, highTierContext);
             } else {
                 new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-                    new CanonicalizerPhase.Instance(runtime, assumptions).apply(graph);
+                if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
+                    canonicalizer.apply(graph, highTierContext);
                     new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
                 }
             }
@@ -158,16 +163,18 @@ public class GraalCompiler {
         TypeProfileProxyNode.cleanFromGraph(graph);
 
         plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
-        Suites.DEFAULT.getHighTier().apply(graph, highTierContext);
+        suites.getHighTier().apply(graph, highTierContext);
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);
-        Suites.DEFAULT.getMidTier().apply(graph, midTierContext);
-
-        plan.runPhases(PhasePosition.LOW_LEVEL, graph);
+        suites.getMidTier().apply(graph, midTierContext);
 
         LowTierContext lowTierContext = new LowTierContext(runtime, assumptions, replacements, target);
-        Suites.DEFAULT.getLowTier().apply(graph, lowTierContext);
-        InliningPhase.storeStatisticsAfterLowTier(graph);
+        suites.getLowTier().apply(graph, lowTierContext);
+
+        // we do not want to store statistics about OSR compilations because it may prevent inlining
+        if (!graph.isOSR()) {
+            InliningPhase.storeStatisticsAfterLowTier(graph);
+        }
 
         final SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);

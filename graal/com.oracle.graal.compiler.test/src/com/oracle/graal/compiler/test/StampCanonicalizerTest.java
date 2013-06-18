@@ -96,9 +96,20 @@ public class StampCanonicalizerTest extends GraalCompilerTest {
         testZeroReturn("divStamp2");
     }
 
+    public static int distinctMask(int a, int b) {
+        int x = a & 0xaaaa;
+        int y = (b & 0x5555) | 0x1;
+        return x == y ? 1 : 0;
+    }
+
+    @Test
+    public void testDistinctMask() {
+        testZeroReturn("distinctMask");
+    }
+
     private void testZeroReturn(String methodName) {
         StructuredGraph graph = parse(methodName);
-        new CanonicalizerPhase.Instance(runtime(), new Assumptions(false)).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
         new DeadCodeEliminationPhase().apply(graph);
         assertConstantReturn(graph, 0);
     }

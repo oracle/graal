@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
@@ -39,7 +40,6 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -168,16 +168,14 @@ public class CheckCastSnippets implements Snippets {
             StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) checkcast.type();
-            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), GraalOptions.CheckcastMinHintHitProbability, GraalOptions.CheckcastMaxHints);
+            TypeCheckHints hintInfo = new TypeCheckHints(checkcast.type(), checkcast.profile(), tool.assumptions(), CheckcastMinHintHitProbability.getValue(), CheckcastMaxHints.getValue());
             ValueNode hub = ConstantNode.forConstant(type.klass(), runtime, checkcast.graph());
 
             Arguments args;
-            if (hintInfo.exact) {
-                ConstantNode[] hints = createHints(hintInfo, runtime, true, graph).hubs;
-                assert hints.length == 1;
+            if (hintInfo.exact != null) {
                 args = new Arguments(exact);
                 args.add("object", object);
-                args.add("exactHub", hints[0]);
+                args.add("exactHub", ConstantNode.forConstant(((HotSpotResolvedObjectType) hintInfo.exact).klass(), runtime, graph));
             } else if (type.isPrimaryType()) {
                 args = new Arguments(primary);
                 args.add("hub", hub);

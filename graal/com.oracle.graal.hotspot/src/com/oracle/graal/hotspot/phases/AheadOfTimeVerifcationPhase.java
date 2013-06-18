@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,34 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.hotspot.phases;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
 
 /**
- * A call to {@code GraalRuntime::write_barrier_pre}.
+ * Checking for embedded oops in the graph. (Interned) Strings are an exception as they live in CDS
+ * space.
+ * 
+ * @see LoadJavaMirrorWithKlassPhase
  */
-public class WriteBarrierPreStubCall extends FixedWithNextNode implements LIRGenLowerable {
-
-    @Input private ValueNode object;
-    public static final ForeignCallDescriptor WRITE_BARRIER_PRE = new ForeignCallDescriptor("writeBarrierPre", void.class, Object.class);
-
-    public WriteBarrierPreStubCall(ValueNode object) {
-        super(StampFactory.forVoid());
-        this.object = object;
-    }
+public class AheadOfTimeVerifcationPhase extends VerifyPhase {
 
     @Override
-    public void generate(LIRGenerator gen) {
-        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(WriteBarrierPreStubCall.WRITE_BARRIER_PRE);
-        gen.emitForeignCall(linkage, null, gen.operand(object));
+    protected boolean verify(StructuredGraph graph) {
+        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
+            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
+        }
+        return true;
     }
 
-    @NodeIntrinsic
-    public static native void call(Object hub);
+    private static boolean isOop(ConstantNode node) {
+        return node.kind() == Kind.Object;
+    }
+
+    private static boolean isNullReference(ConstantNode node) {
+        return isOop(node) && node.asConstant().asObject() == null;
+    }
+
+    private static boolean isString(ConstantNode node) {
+        return isOop(node) && node.asConstant().asObject() instanceof String;
+    }
 }

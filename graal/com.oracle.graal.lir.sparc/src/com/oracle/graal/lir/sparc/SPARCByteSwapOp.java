@@ -24,7 +24,7 @@ package com.oracle.graal.lir.sparc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 @Opcode("BSWAP")

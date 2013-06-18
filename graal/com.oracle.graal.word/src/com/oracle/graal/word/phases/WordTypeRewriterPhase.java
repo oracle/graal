@@ -29,9 +29,9 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -310,7 +310,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location) {
-        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp()));
+        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp(), WriteBarrierType.NONE, false));
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
         // check on its base address
@@ -319,7 +319,7 @@ public class WordTypeRewriterPhase extends Phase {
     }
 
     private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location) {
-        WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE));
+        WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE, false));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);
         return write;

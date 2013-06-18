@@ -22,33 +22,54 @@
  */
 package com.oracle.graal.options;
 
-import java.util.*;
-
 /**
- * Describes the attributes of an {@linkplain Option option} and provides access to its
- * {@linkplain OptionValue value}. The {@link OptionProcessor} auto-generates instances of this
- * interface that are accessible as a {@linkplain ServiceLoader service}.
+ * An option that always returns the same {@linkplain #getValue() value}.
  */
-public interface OptionProvider {
+public class StableOptionValue<T> extends OptionValue<T> {
 
     /**
-     * Gets the type of values stored in the option.
+     * Creates a stable option value.
      */
-    Class getType();
+    public StableOptionValue(T value) {
+        super(value);
+    }
 
     /**
-     * Gets a descriptive help message for the option.
+     * Used to assert the invariant for stability. Without using locks, this check is not safe
+     * against races and so it's only an assertion.
      */
-    String getHelp();
+    private boolean getValueCalled;
 
     /**
-     * Gets the name of the option. It's up to the client of this object how to use the name to get
-     * a user specified value for the option from the environment.
+     * Creates an uninitialized stable option value for a subclass that initializes itself
+     * {@link #initialValue() lazily}.
      */
-    String getName();
+    public StableOptionValue() {
+    }
 
     /**
-     * Gets the boxed option value.
+     * Gets the value of this option.
      */
-    OptionValue<?> getOptionValue();
+    @Override
+    public final T getValue() {
+        T result = super.getValue();
+        assert initGetValueCalled();
+        return result;
+    }
+
+    private boolean initGetValueCalled() {
+        getValueCalled = true;
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This must only be called if {@link #getValue()} has never been called.
+     */
+    @Override
+    public final void setValue(Object v) {
+        assert !getValueCalled;
+        super.setValue(v);
+    }
 }

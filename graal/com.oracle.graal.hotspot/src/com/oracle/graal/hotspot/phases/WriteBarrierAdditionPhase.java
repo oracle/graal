@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.phases;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.extended.WriteNode.WriteBarrierType;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 

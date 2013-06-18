@@ -87,6 +87,11 @@ public final class DefaultProfilingInfo implements ProfilingInfo {
     }
 
     @Override
+    public boolean isMature() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "BaseProfilingInfo<" + MetaUtil.profileToString(this, null, "; ") + ">";
     }

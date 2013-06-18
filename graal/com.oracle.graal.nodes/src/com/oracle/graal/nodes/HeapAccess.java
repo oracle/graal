@@ -22,9 +22,37 @@
  */
 package com.oracle.graal.nodes;
 
-public interface InlineableElement {
+/**
+ * A HeapAccess is a node that access the heap and therefore may be subjected to certain rules of
+ * the underlying runtime.
+ */
+public interface HeapAccess {
 
-    int getNodeCount();
+    /*
+     * The types of write barriers attached to stores.
+     */
+    public enum WriteBarrierType {
+        /*
+         * Primitive stores which do not necessitate write barriers.
+         */
+        NONE,
+        /*
+         * Array object stores which necessitate precise write barriers.
+         */
+        PRECISE,
+        /*
+         * Field object stores which necessitate imprecise write barriers.
+         */
+        IMPRECISE
+    }
 
-    Iterable<Invoke> getInvokes();
+    /**
+     * Gets the write barrier type for that particular access.
+     */
+    WriteBarrierType getWriteBarrierType();
+
+    /**
+     * Returns whether or not the heap access is a compressed pointer candidate.
+     */
+    boolean compress();
 }

@@ -153,10 +153,4 @@ public interface VirtualizerTool {
      */
     void replaceWith(ValueNode value);
 
-    void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value);
-
-    ValueNode getReadCache(ValueNode object, ResolvedJavaField identity);
-
-    void killReadCache(ResolvedJavaField identity);
-
 }

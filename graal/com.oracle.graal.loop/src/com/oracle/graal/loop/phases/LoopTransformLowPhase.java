@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.loop.phases;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.loop.*;
@@ -35,7 +37,7 @@ public class LoopTransformLowPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            if (GraalOptions.ReassociateInvariants) {
+            if (ReassociateInvariants.getValue()) {
                 final LoopsData dataReassociate = new LoopsData(graph);
                 Debug.scope("ReassociateInvariants", new Runnable() {
 
@@ -47,7 +49,7 @@ public class LoopTransformLowPhase extends Phase {
                     }
                 });
             }
-            if (GraalOptions.LoopUnswitch) {
+            if (LoopUnswitch.getValue()) {
                 boolean unswitched;
                 do {
                     unswitched = false;

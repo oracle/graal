@@ -43,7 +43,7 @@ public class NodeFlood implements Iterable<Node> {
         }
     }
 
-    public void addAll(Iterable<Node> nodes) {
+    public void addAll(Iterable<? extends Node> nodes) {
         for (Node node : nodes) {
             this.add(node);
         }

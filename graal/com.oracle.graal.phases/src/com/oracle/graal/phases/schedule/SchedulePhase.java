@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.schedule;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 
@@ -172,7 +173,7 @@ public final class SchedulePhase extends Phase {
     private final SchedulingStrategy selectedStrategy;
 
     public SchedulePhase() {
-        this(GraalOptions.OptScheduleOutOfLoops ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
+        this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
@@ -185,7 +186,7 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (GraalOptions.MemoryAwareScheduling && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
+        if (MemoryAwareScheduling.getValue() && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
 
             assignBlockToNodes(graph, SchedulingStrategy.EARLIEST);
             sortNodesWithinBlocks(graph, SchedulingStrategy.EARLIEST);

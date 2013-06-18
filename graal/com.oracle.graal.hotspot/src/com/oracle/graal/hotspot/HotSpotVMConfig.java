@@ -38,6 +38,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int codeEntryAlignment;
     public boolean verifyOops;
     public boolean ciTime;
+    public int compileThreshold;
     public boolean compileTheWorld;
     public int compileTheWorldStartAt;
     public int compileTheWorldStopAt;
@@ -49,6 +50,13 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean usePopCountInstruction;
     public boolean useAESIntrinsics;
     public boolean useG1GC;
+
+    // Compressed Oops related values.
+    public boolean useCompressedOops;
+    public boolean useCompressedKlassPointers;
+    public long narrowOopBase;
+    public int narrowOopShift;
+    public int logMinObjAlignment;
 
     // CPU capabilities
     public int useSSE;
@@ -206,6 +214,12 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int methodAccessFlagsOffset;
 
     /**
+     * JVM_ACC_QUEUED defined in accessFlags.hpp and used for marking a Method object as queued for
+     * compilation.
+     */
+    public int methodQueuedForCompilationBit;
+
+    /**
      * Offset of _intrinsic_id in a metaspace Method object.
      */
     public int methodIntrinsicIdOffset;
@@ -320,6 +334,11 @@ public final class HotSpotVMConfig extends CompilerObject {
      * The offset of the injected klass field in a {@link Class}.
      */
     public int klassOffset;
+
+    /**
+     * The offset of the injected array klass field in a {@link Class}.
+     */
+    public int arrayKlassOffset;
 
     /**
      * The offset of the injected graal_mirror field in a {@link Class}.

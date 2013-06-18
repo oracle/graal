@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Fsqrtd;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {

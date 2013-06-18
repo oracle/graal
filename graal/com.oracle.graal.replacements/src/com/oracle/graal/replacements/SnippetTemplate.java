@@ -34,6 +34,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -191,7 +192,7 @@ public class SnippetTemplate {
         @Override
         public String toString() {
             StringBuilder result = new StringBuilder();
-            result.append("Parameters<").append(MetaUtil.format("%H.%n", info.method)).append(" [");
+            result.append("Parameters<").append(MetaUtil.format("%h.%n", info.method)).append(" [");
             String sep = "";
             for (int i = 0; i < info.getParameterCount(); i++) {
                 result.append(sep);
@@ -227,6 +228,38 @@ public class SnippetTemplate {
             } else {
                 this.length = Array.getLength(value);
             }
+        }
+
+        @Override
+        public String toString() {
+            if (value instanceof boolean[]) {
+                return Arrays.toString((boolean[]) value);
+            }
+            if (value instanceof byte[]) {
+                return Arrays.toString((byte[]) value);
+            }
+            if (value instanceof char[]) {
+                return Arrays.toString((char[]) value);
+            }
+            if (value instanceof short[]) {
+                return Arrays.toString((short[]) value);
+            }
+            if (value instanceof int[]) {
+                return Arrays.toString((int[]) value);
+            }
+            if (value instanceof long[]) {
+                return Arrays.toString((long[]) value);
+            }
+            if (value instanceof float[]) {
+                return Arrays.toString((float[]) value);
+            }
+            if (value instanceof double[]) {
+                return Arrays.toString((double[]) value);
+            }
+            if (value instanceof Object[]) {
+                return Arrays.toString((Object[]) value);
+            }
+            return String.valueOf(value);
         }
     }
 
@@ -384,7 +417,7 @@ public class SnippetTemplate {
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), 0, null).apply(snippetCopy);
+            new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, 0, null).apply(snippetCopy);
         }
         NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
@@ -440,8 +473,8 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions());
-                    new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), mark, null).apply(snippetCopy);
+                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions(), true);
+                    new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, mark, null).apply(snippetCopy);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();
@@ -723,10 +756,14 @@ public class SnippetTemplate {
             } else {
                 returnValue = (ValueNode) duplicates.get(returnNode.result());
             }
-            assert returnValue != null || replacee.usages().isEmpty();
-            replacer.replace(replacee, returnValue);
-
             Node returnDuplicate = duplicates.get(returnNode);
+            if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
+                replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor());
+            } else {
+                assert returnValue != null || replacee.usages().isEmpty() : this + " " + returnValue + " " + returnNode + " " + replacee.usages();
+                replacer.replace(replacee, returnValue);
+
+            }
             if (returnDuplicate.isAlive()) {
                 returnDuplicate.clearInputs();
                 returnDuplicate.replaceAndDelete(next);

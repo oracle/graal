@@ -78,9 +78,7 @@ public final class NewInstanceNode extends FixedWithNextNode implements Node.Ite
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (loweringType == LoweringType.AFTER_GUARDS) {
-            tool.getRuntime().lower(this, tool);
-        }
+        tool.getRuntime().lower(this, tool);
     }
 
     @Override

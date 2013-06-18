@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -30,51 +32,53 @@ import com.oracle.graal.phases.tiers.*;
 public class MidTier extends PhaseSuite<MidTierContext> {
 
     public MidTier() {
-        if (GraalOptions.OptPushThroughPi) {
-            addPhase(new PushThroughPiPhase());
-            if (GraalOptions.OptCanonicalizer) {
-                addPhase(new CanonicalizerPhase());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+
+        if (OptPushThroughPi.getValue()) {
+            appendPhase(new PushThroughPiPhase());
+            if (OptCanonicalizer.getValue()) {
+                appendPhase(canonicalizer);
             }
         }
 
-        if (GraalOptions.OptFloatingReads) {
-            IncrementalCanonicalizerPhase<MidTierContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
-            canonicalizer.addPhase(new FloatingReadPhase());
-            addPhase(canonicalizer);
-            if (GraalOptions.OptReadElimination) {
-                addPhase(new ReadEliminationPhase());
+        if (OptFloatingReads.getValue()) {
+            IncrementalCanonicalizerPhase<MidTierContext> incCanonicalizer = new IncrementalCanonicalizerPhase<>();
+            incCanonicalizer.appendPhase(new FloatingReadPhase());
+            appendPhase(incCanonicalizer);
+            if (OptReadElimination.getValue()) {
+                appendPhase(new ReadEliminationPhase());
             }
         }
-        addPhase(new RemoveValueProxyPhase());
+        appendPhase(new RemoveValueProxyPhase());
 
-        if (GraalOptions.OptCanonicalizer) {
-            addPhase(new CanonicalizerPhase());
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
         }
 
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
-            addPhase(new EliminatePartiallyRedundantGuardsPhase(false, true));
+        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+            appendPhase(new EliminatePartiallyRedundantGuardsPhase(false, true));
         }
 
-        if (GraalOptions.ConditionalElimination && GraalOptions.OptCanonicalizer) {
-            addPhase(new IterativeConditionalEliminationPhase());
+        if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
+            appendPhase(new IterativeConditionalEliminationPhase());
         }
 
-        if (GraalOptions.OptEliminatePartiallyRedundantGuards) {
-            addPhase(new EliminatePartiallyRedundantGuardsPhase(true, true));
+        if (OptEliminatePartiallyRedundantGuards.getValue()) {
+            appendPhase(new EliminatePartiallyRedundantGuardsPhase(true, true));
         }
 
-        if (GraalOptions.OptCanonicalizer) {
-            addPhase(new CanonicalizerPhase());
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
         }
 
-        addPhase(new LoopSafepointEliminationPhase());
+        appendPhase(new LoopSafepointEliminationPhase());
 
-        addPhase(new SafepointInsertionPhase());
+        appendPhase(new SafepointInsertionPhase());
 
-        addPhase(new GuardLoweringPhase());
+        appendPhase(new GuardLoweringPhase());
 
-        if (GraalOptions.OptCanonicalizer) {
-            addPhase(new CanonicalizerPhase());
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
         }
     }
 }

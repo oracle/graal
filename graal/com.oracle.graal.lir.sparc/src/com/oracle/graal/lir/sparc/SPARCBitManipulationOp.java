@@ -22,14 +22,22 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Andn;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Or;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Popc;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
+import static com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
 import static com.oracle.graal.asm.sparc.SPARCAssembler.isSimm13;
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.sparc.SPARC;
 
@@ -53,6 +61,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
     @SuppressWarnings("unused")
     public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
+        Register tmp = null;  // ??
         if (ValueUtil.isRegister(input)) {
             Register src = ValueUtil.asRegister(input);
             switch (opcode) {
@@ -64,9 +73,64 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
                 case LPOPCNT:
                     new Popc(masm, src, dst);
                     break;
-                case BSF:  // masm.bsfq(dst, src);
-                case IBSR:  // masm.bsrl(dst, src);
-                case LBSR:  // masm.bsrq(dst, src);
+                case BSF:
+                    // countTrailingZerosI - bsfl
+                    // countTrailingZerosL - masm.bsfq(dst, src);
+                    Kind tkind = input.getKind();
+                    if (tkind == Kind.Int) {
+                        new Sub(masm, src, 1, dst);
+                        new Andn(masm, dst, src, dst);
+                        new Srl(masm, dst, SPARC.g0, dst);
+                        new Popc(masm, dst, dst);
+                    } else if (tkind == Kind.Long) {
+                        new Sub(masm, src, 1, dst);
+                        new Andn(masm, dst, src, dst);
+                        new Popc(masm, dst, dst);
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("missing: " + tkind);
+                    }
+                    break;
+                case IBSR:
+                    // countLeadingZerosI_bsr masm.bsrq(dst, src);
+                    // masm.bsrl(dst, src);
+                    Kind ikind = input.getKind();
+                    assert ikind == Kind.Int;
+                    new Srl(masm, src, 1, tmp);
+                    new Srl(masm, src, 0, dst);
+                    new Or(masm, src, tmp, dst);
+                    new Srl(masm, dst, 2, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 4, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 8, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 16, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Popc(masm, dst, dst);
+                    new Mov(masm, ikind.getBitCount(), tmp);
+                    new Sub(masm, tmp, dst, dst);
+                    break;
+                case LBSR:
+                    // countLeadingZerosL_bsr masm.bsrq(dst, src);
+                    // masm.bsrq(dst, src);
+                    Kind lkind = input.getKind();
+                    assert lkind == Kind.Int;
+                    new Srlx(masm, src, 1, tmp);
+                    new Or(masm, src, tmp, dst);
+                    new Srlx(masm, dst, 2, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srlx(masm, dst, 4, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srlx(masm, dst, 8, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srlx(masm, dst, 16, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srlx(masm, dst, 32, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Popc(masm, dst, dst);
+                    new Mov(masm, lkind.getBitCount(), tmp);
+                    new Sub(masm, tmp, dst, dst);
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
 
@@ -86,20 +150,41 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
             SPARCAddress src = (SPARCAddress) tasm.asAddress(input);
             switch (opcode) {
                 case IPOPCNT:
-                    // masm.popcntl(dst, src);
+                    new Ldsw(masm, src, tmp);
+                    // clear upper word for 64 bit POPC
+                    new Srl(masm, tmp, SPARC.g0, dst);
+                    new Popc(masm, tmp, dst);
                     break;
                 case LPOPCNT:
-                    // masm.popcntq(dst, src);
+                    new Ldx(masm, src, tmp);
+                    new Popc(masm, tmp, dst);
                     break;
                 case BSF:
-                    // masm.bsfq(dst, src);
+                    assert input.getKind() == Kind.Int;
+                    new Ldsw(masm, src, tmp);
+                    new Srl(masm, tmp, 1, tmp);
+                    new Srl(masm, tmp, 0, dst);
+                    new Or(masm, tmp, tmp, dst);
+                    new Srl(masm, dst, 2, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 4, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 8, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Srl(masm, dst, 16, tmp);
+                    new Or(masm, dst, tmp, dst);
+                    new Popc(masm, dst, dst);
+                    new Mov(masm, Kind.Int.getBitCount(), tmp);
+                    new Sub(masm, tmp, dst, dst);
                     break;
                 case IBSR:
                     // masm.bsrl(dst, src);
-                    break;
+                    // countLeadingZerosI_bsr masm.bsrq(dst, src);
+                    // masm.bsrl(dst, src);
                 case LBSR:
                     // masm.bsrq(dst, src);
-                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
             }
         }
     }

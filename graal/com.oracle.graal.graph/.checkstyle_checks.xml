@@ -203,6 +203,12 @@
     <property name="checkFormat" value="RegexpSingleline"/>
     <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable System.(out|err).print checks"/>
   </module>
+  <module name="SuppressionCommentFilter">
+    <property name="offCommentFormat" value="CheckStyle: stop header check"/>
+    <property name="onCommentFormat" value="CheckStyle: resume header check"/>
+    <property name="checkFormat" value=".*Header"/>
+    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable header checks"/>
+  </module>
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>

@@ -31,23 +31,24 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     private static final long serialVersionUID = -8307682725047864875L;
     private static final DebugMetric metricInsufficentSpace = Debug.metric("InsufficientSpaceForProfilingData");
 
+    private final HotSpotMethodData methodData;
+    private final HotSpotResolvedJavaMethod method;
+
     private int position;
     private int hintPosition;
     private int hintBCI;
     private HotSpotMethodDataAccessor dataAccessor;
-    private HotSpotMethodData methodData;
-    private final int codeSize;
 
-    public HotSpotProfilingInfo(HotSpotMethodData methodData, int codeSize) {
+    public HotSpotProfilingInfo(HotSpotMethodData methodData, HotSpotResolvedJavaMethod method) {
         this.methodData = methodData;
-        this.codeSize = codeSize;
+        this.method = method;
         hintPosition = 0;
         hintBCI = -1;
     }
 
     @Override
     public int getCodeSize() {
-        return codeSize;
+        return method.getCodeSize();
     }
 
     @Override
@@ -155,6 +156,11 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     private void setCurrentData(HotSpotMethodDataAccessor dataAccessor, int position) {
         this.dataAccessor = dataAccessor;
         this.position = position;
+    }
+
+    @Override
+    public boolean isMature() {
+        return true;
     }
 
     @Override

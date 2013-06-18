@@ -56,7 +56,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.STACK;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler;
 import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.lir.LIRFrameState;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.TargetMethodAssembler;
 
 //@formatter:off

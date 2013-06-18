@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
@@ -32,7 +33,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
@@ -145,7 +145,7 @@ public class TypeCheckSnippetUtils {
         return metaspaceArray.readWord(metaspaceArrayBaseOffset() + index * wordSize(), LocationIdentity.FINAL_LOCATION);
     }
 
-    private static final SnippetCounter.Group counters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("TypeCheck") : null;
+    private static final SnippetCounter.Group counters = SnippetCounters.getValue() ? new SnippetCounter.Group("TypeCheck") : null;
     static final SnippetCounter hintsHit = new SnippetCounter(counters, "hintsHit", "hit a hint type");
     static final SnippetCounter exactHit = new SnippetCounter(counters, "exactHit", "exact type test succeeded");
     static final SnippetCounter exactMiss = new SnippetCounter(counters, "exactMiss", "exact type test failed");

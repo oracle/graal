@@ -47,10 +47,10 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     private final boolean isDefault;
     private final Graph graph;
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, Graph graph, boolean isDefault) {
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, Graph graph) {
         this.method = method;
-        this.graph = graph;
         this.isDefault = isDefault;
+        this.graph = graph;
     }
 
     public boolean isDefault() {

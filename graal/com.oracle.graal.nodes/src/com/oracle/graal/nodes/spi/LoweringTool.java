@@ -28,10 +28,13 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 
 public interface LoweringTool {
 
     GraalCodeCacheProvider getRuntime();
+
+    LoweringType getLoweringType();
 
     Replacements getReplacements();
 

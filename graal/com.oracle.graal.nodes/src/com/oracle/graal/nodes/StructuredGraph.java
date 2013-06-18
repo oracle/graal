@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.util.*;
  * A graph that contains at least one distinguished node : the {@link #start() start} node. This
  * node is the start of the control flow of the graph.
  */
-public class StructuredGraph extends Graph implements InlineableElement {
+public class StructuredGraph extends Graph {
 
     public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
@@ -117,6 +117,10 @@ public class StructuredGraph extends Graph implements InlineableElement {
 
     public int getEntryBCI() {
         return entryBCI;
+    }
+
+    public boolean isOSR() {
+        return entryBCI != INVOCATION_ENTRY_BCI;
     }
 
     public long graphId() {

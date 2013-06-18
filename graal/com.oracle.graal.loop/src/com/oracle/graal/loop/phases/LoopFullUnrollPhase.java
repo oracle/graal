@@ -31,8 +31,10 @@ import com.oracle.graal.phases.tiers.*;
 public class LoopFullUnrollPhase extends BasePhase<HighTierContext> {
 
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
+    private final boolean canonicalizeReads;
 
-    public LoopFullUnrollPhase() {
+    public LoopFullUnrollPhase(boolean canonicalizeReads) {
+        this.canonicalizeReads = canonicalizeReads;
     }
 
     @Override
@@ -46,7 +48,7 @@ public class LoopFullUnrollPhase extends BasePhase<HighTierContext> {
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     if (LoopPolicies.shouldFullUnroll(loop)) {
                         Debug.log("FullUnroll %s", loop);
-                        LoopTransformations.fullUnroll(loop, context.getRuntime(), context.getAssumptions());
+                        LoopTransformations.fullUnroll(loop, context.getRuntime(), context.getAssumptions(), canonicalizeReads);
                         FULLY_UNROLLED_LOOPS.increment();
                         Debug.dump(graph, "After fullUnroll %s", loop);
                         peeled = true;

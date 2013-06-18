@@ -25,22 +25,21 @@ package com.oracle.graal.lir.sparc;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Bpe;
 import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
 import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpe;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Subcc;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.calc.Condition;
-import com.oracle.graal.sparc.SPARC;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCControlFlow {
 

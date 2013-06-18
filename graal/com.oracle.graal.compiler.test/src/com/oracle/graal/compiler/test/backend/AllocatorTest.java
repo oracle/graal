@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test.backend;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -112,13 +113,13 @@ public class AllocatorTest extends GraalCompilerTest {
 
     private RegisterStats getRegisterStats(final StructuredGraph graph) {
         final PhasePlan phasePlan = getDefaultPhasePlan();
-        final Assumptions assumptions = new Assumptions(GraalOptions.OptAssumptions);
+        final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
         final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
             @Override
             public LIR call() {
-                return GraalCompiler.emitHIR(runtime, backend.target, graph, replacements, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog());
+                return GraalCompiler.emitHIR(runtime, backend.target, graph, replacements, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), suites);
             }
         });
 

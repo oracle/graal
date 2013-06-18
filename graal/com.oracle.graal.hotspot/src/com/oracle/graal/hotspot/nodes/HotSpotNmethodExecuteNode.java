@@ -58,7 +58,7 @@ public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lower
             InvokeNode invoke = replaceWithInvoke(tool.getRuntime());
             StructuredGraph graph = (StructuredGraph) nmethod.getGraph();
             if (graph != null) {
-                InliningUtil.inline(invoke, (StructuredGraph) nmethod.getGraph(), false);
+                InliningUtil.inline(invoke, graph, false);
             }
         } else {
             replaceWithInvoke(tool.getRuntime());

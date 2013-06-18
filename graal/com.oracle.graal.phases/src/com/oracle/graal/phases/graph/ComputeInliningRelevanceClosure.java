@@ -24,7 +24,6 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.util.*;
@@ -56,14 +55,14 @@ public class ComputeInliningRelevanceClosure {
 
         public ComputeInliningRelevanceIterator(StructuredGraph graph) {
             super(graph);
-            this.scopes = computeLowestPathProbabilities();
+            this.scopes = computeScopesAndProbabilities();
         }
 
         @Override
         protected void initializeScope() {
             Scope scope = scopes.get(currentScopeStart);
             parentRelevance = getParentScopeRelevance(scope);
-            currentProbability = scope.minPathProbability;
+            currentProbability = scope.probability;
         }
 
         private double getParentScopeRelevance(Scope scope) {
@@ -73,7 +72,7 @@ public class ComputeInliningRelevanceClosure {
                 for (AbstractEndNode end : ((LoopBeginNode) scope.start).forwardEnds()) {
                     parentProbability += nodeProbabilities.get(end);
                 }
-                return parentProbability / scope.parent.minPathProbability;
+                return parentProbability / scope.parent.probability;
             } else {
                 assert scope.parent == null;
                 return 1.0;
@@ -90,12 +89,11 @@ public class ComputeInliningRelevanceClosure {
             assert !Double.isNaN(relevance);
         }
 
-        private HashMap<FixedNode, Scope> computeLowestPathProbabilities() {
+        private HashMap<FixedNode, Scope> computeScopesAndProbabilities() {
             HashMap<FixedNode, Scope> result = new HashMap<>();
 
             for (Scope scope : computeScopes()) {
-                double lowestPathProbability = computeLowestPathProbability(scope);
-                scope.minPathProbability = Math.max(EPSILON, lowestPathProbability);
+                scope.probability = Math.max(EPSILON, nodeProbabilities.get(scope.start));
                 result.put(scope.start, scope);
             }
 
@@ -128,92 +126,13 @@ public class ComputeInliningRelevanceClosure {
             processedLoops.put(loop, result);
             return result;
         }
-
-        private double computeLowestPathProbability(Scope scope) {
-            FixedNode scopeStart = scope.start;
-            ArrayList<FixedNode> pathBeginNodes = new ArrayList<>();
-            pathBeginNodes.add(scopeStart);
-            double minPathProbability = nodeProbabilities.get(scopeStart);
-            boolean isLoopScope = scopeStart instanceof LoopBeginNode;
-
-            do {
-                Node current = pathBeginNodes.remove(pathBeginNodes.size() - 1);
-                do {
-                    if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
-                        return minPathProbability;
-                    } else if (current instanceof LoopBeginNode && current != scopeStart) {
-                        current = getMaxProbabilityLoopExit((LoopBeginNode) current, pathBeginNodes);
-                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
-                    } else if (current instanceof ControlSplitNode) {
-                        current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
-                        minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
-                    } else {
-                        assert current.successors().count() <= 1;
-                        current = current.successors().first();
-                    }
-                } while (current != null);
-            } while (!pathBeginNodes.isEmpty());
-
-            return minPathProbability;
-        }
-
-        private double getMinPathProbability(FixedNode current, double minPathProbability) {
-            if (current != null && nodeProbabilities.get(current) < minPathProbability) {
-                return nodeProbabilities.get(current);
-            }
-            return minPathProbability;
-        }
-
-        private Node getMaxProbabilitySux(ControlSplitNode controlSplit, ArrayList<FixedNode> pathBeginNodes) {
-            Node maxSux = null;
-            double maxProbability = 0.0;
-            int pathBeginCount = pathBeginNodes.size();
-
-            for (Node sux : controlSplit.successors()) {
-                double probability = controlSplit.probability((AbstractBeginNode) sux);
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                    maxSux = sux;
-                    truncate(pathBeginNodes, pathBeginCount);
-                } else if (probability == maxProbability) {
-                    pathBeginNodes.add((FixedNode) sux);
-                }
-            }
-
-            return maxSux;
-        }
-
-        private Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin, ArrayList<FixedNode> pathBeginNodes) {
-            Node maxSux = null;
-            double maxProbability = 0.0;
-            int pathBeginCount = pathBeginNodes.size();
-
-            for (LoopExitNode sux : loopBegin.loopExits()) {
-                double probability = nodeProbabilities.get(sux);
-                if (probability > maxProbability) {
-                    maxProbability = probability;
-                    maxSux = sux;
-                    truncate(pathBeginNodes, pathBeginCount);
-                } else if (probability == maxProbability) {
-                    pathBeginNodes.add(sux);
-                }
-            }
-
-            return maxSux;
-        }
-
-        private void truncate(ArrayList<FixedNode> pathBeginNodes, int pathBeginCount) {
-            for (int i = pathBeginNodes.size() - pathBeginCount; i > 0; i--) {
-                pathBeginNodes.remove(pathBeginNodes.size() - 1);
-            }
-        }
     }
 
     private static class Scope {
 
         public final FixedNode start;
         public final Scope parent;
-        public double minPathProbability;
+        public double probability;
 
         public Scope(FixedNode start, Scope parent) {
             this.start = start;

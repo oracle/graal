@@ -168,6 +168,8 @@ public interface CompilerToVM {
 
     HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
+    HotSpotResolvedJavaMethod[] getMethods(HotSpotResolvedObjectType klass);
+
     boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
 
     /**
@@ -219,8 +221,6 @@ public interface CompilerToVM {
     Local[] getLocalVariableTable(HotSpotResolvedJavaMethod method);
 
     String getFileName(HotSpotResolvedJavaType method);
-
-    void clearQueuedForCompilation(HotSpotResolvedJavaMethod method);
 
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.

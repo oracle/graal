@@ -28,33 +28,15 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint, Node.IterableNodeType {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint, Node.IterableNodeType, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
-    private final WriteBarrierType barrierType;
-
-    /*
-     * The types of write barriers attached to stores.
-     */
-    public enum WriteBarrierType {
-        /*
-         * Primitive stores which do not necessitate write barriers.
-         */
-        NONE,
-        /*
-         * Array object stores which necessitate precise write barriers.
-         */
-        PRECISE,
-        /*
-         * Field object stores which necessitate imprecise write barriers.
-         */
-        IMPRECISE
-    }
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -74,14 +56,9 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return value;
     }
 
-    public WriteBarrierType getWriteBarrierType() {
-        return barrierType;
-    }
-
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType) {
-        super(object, location, StampFactory.forVoid());
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress) {
+        super(object, location, StampFactory.forVoid(), barrierType, compress);
         this.value = value;
-        this.barrierType = barrierType;
     }
 
     @Override
@@ -91,10 +68,26 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType);
+    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType, @ConstantNodeParameter boolean compress);
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
         return new LocationIdentity[]{location().getLocationIdentity()};
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        if (location() instanceof ConstantLocationNode) {
+            ConstantLocationNode constantLocation = (ConstantLocationNode) location();
+            State state = tool.getObjectState(object());
+            if (state != null && state.getState() == EscapeState.Virtual) {
+                VirtualObjectNode virtual = state.getVirtualObject();
+                int entryIndex = virtual.entryIndexForOffset(constantLocation.getDisplacement());
+                if (entryIndex != -1 && virtual.entryKind(entryIndex) == constantLocation.getValueKind()) {
+                    tool.setVirtualEntry(state, entryIndex, value());
+                    tool.delete();
+                }
+            }
+        }
     }
 }

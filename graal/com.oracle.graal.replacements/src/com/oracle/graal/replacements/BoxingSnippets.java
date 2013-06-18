@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import java.lang.reflect.*;
@@ -36,7 +37,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
@@ -215,7 +215,8 @@ public class BoxingSnippets implements Snippets {
 
         public void lower(BoxNode box) {
             FloatingNode canonical = canonicalizeBoxing(box, runtime);
-            if (canonical != null) {
+            // if in AOT mode, we don't want to embed boxed constants.
+            if (!AOTCompilation.getValue() && canonical != null) {
                 box.graph().replaceFixedWithFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()));
@@ -237,7 +238,7 @@ public class BoxingSnippets implements Snippets {
         }
     }
 
-    private static final SnippetCounter.Group integerCounters = GraalOptions.SnippetCounters ? new SnippetCounter.Group("Integer intrinsifications") : null;
+    private static final SnippetCounter.Group integerCounters = SnippetCounters.getValue() ? new SnippetCounter.Group("Integer intrinsifications") : null;
     private static final SnippetCounter valueOfCounter = new SnippetCounter(integerCounters, "valueOf", "valueOf intrinsification");
 
 }

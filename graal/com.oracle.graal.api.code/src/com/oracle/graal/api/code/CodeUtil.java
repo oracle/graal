@@ -53,7 +53,7 @@ public class CodeUtil {
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
     public static boolean isPowerOf2(int val) {
-        return val != 0 && (val & val - 1) == 0;
+        return val > 0 && (val & val - 1) == 0;
     }
 
     /**
@@ -63,7 +63,7 @@ public class CodeUtil {
      * @return {@code true} if the value is a power of two; {@code false} otherwise
      */
     public static boolean isPowerOf2(long val) {
-        return val != 0 && (val & val - 1) == 0;
+        return val > 0 && (val & val - 1) == 0;
     }
 
     /**
@@ -74,7 +74,7 @@ public class CodeUtil {
      * @return the log base 2 of the value
      */
     public static int log2(int val) {
-        assert val > 0 && isPowerOf2(val);
+        assert val > 0;
         return 31 - Integer.numberOfLeadingZeros(val);
     }
 
@@ -86,7 +86,7 @@ public class CodeUtil {
      * @return the log base 2 of the value
      */
     public static int log2(long val) {
-        assert val > 0 && isPowerOf2(val);
+        assert val > 0;
         return 63 - Long.numberOfLeadingZeros(val);
     }
 

@@ -124,6 +124,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
     @Override
+    public native HotSpotResolvedJavaMethod[] getMethods(HotSpotResolvedObjectType klass);
+
+    @Override
     public native int getCompiledCodeSize(long metaspaceMethod);
 
     @Override
@@ -159,9 +162,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native String getFileName(HotSpotResolvedJavaType method);
-
-    @Override
-    public native void clearQueuedForCompilation(HotSpotResolvedJavaMethod method);
 
     @Override
     public native void reprofile(long metaspaceMethod);

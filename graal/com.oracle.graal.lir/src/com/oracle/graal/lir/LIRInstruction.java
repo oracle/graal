@@ -144,13 +144,6 @@ public abstract class LIRInstruction {
     public static @interface State {
     }
 
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE, ElementType.FIELD})
-    public static @interface Opcode {
-
-        String value() default "";
-    }
-
     /**
      * Flags for an operand.
      */

@@ -27,8 +27,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.sparc.SPARCAddress;
-import com.oracle.graal.asm.sparc.SPARCAssembler;
+import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lddf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldf;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsb;
@@ -37,20 +36,19 @@ import com.oracle.graal.asm.sparc.SPARCAssembler.Ldsw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Lduw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Ldx;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Membar;
+import com.oracle.graal.asm.sparc.SPARCAssembler.NullCheck;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stb;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Sth;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
 import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.NullCheck;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setuw;
 import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Setx;
-import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
-import com.oracle.graal.lir.asm.TargetMethodAssembler;
-import com.oracle.graal.sparc.SPARC;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCMove {
 

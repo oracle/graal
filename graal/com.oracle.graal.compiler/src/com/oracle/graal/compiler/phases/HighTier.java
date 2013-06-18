@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
@@ -32,39 +34,36 @@ import com.oracle.graal.virtual.phases.ea.*;
 public class HighTier extends PhaseSuite<HighTierContext> {
 
     public HighTier() {
-        if (GraalOptions.FullUnroll) {
-            addPhase(new LoopFullUnrollPhase());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+
+        if (FullUnroll.getValue()) {
+            appendPhase(new LoopFullUnrollPhase(!AOTCompilation.getValue()));
         }
 
-        if (GraalOptions.OptTailDuplication) {
-            addPhase(new TailDuplicationPhase());
+        if (OptTailDuplication.getValue()) {
+            appendPhase(new TailDuplicationPhase());
         }
 
-        if (GraalOptions.PartialEscapeAnalysis) {
-            addPhase(new PartialEscapeAnalysisPhase(true, GraalOptions.OptEarlyReadElimination));
+        if (PartialEscapeAnalysis.getValue()) {
+            appendPhase(new PartialEscapePhase(true, canonicalizer));
         }
 
-        if (GraalOptions.OptConvertDeoptsToGuards) {
-            addPhase(new ConvertDeoptimizeToGuardPhase());
+        if (OptConvertDeoptsToGuards.getValue()) {
+            appendPhase(new ConvertDeoptimizeToGuardPhase());
         }
 
-        addPhase(new LockEliminationPhase());
+        appendPhase(new LockEliminationPhase());
 
-        if (GraalOptions.OptLoopTransform) {
-            addPhase(new LoopTransformHighPhase());
-            addPhase(new LoopTransformLowPhase());
+        if (OptLoopTransform.getValue()) {
+            appendPhase(new LoopTransformHighPhase());
+            appendPhase(new LoopTransformLowPhase());
         }
-        addPhase(new RemoveValueProxyPhase());
+        appendPhase(new RemoveValueProxyPhase());
 
-        if (GraalOptions.CullFrameStates) {
-            addPhase(new CullFrameStatesPhase());
-        }
-
-        if (GraalOptions.OptCanonicalizer) {
-            addPhase(new CanonicalizerPhase());
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
         }
 
-        addPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));
+        appendPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));
     }
-
 }

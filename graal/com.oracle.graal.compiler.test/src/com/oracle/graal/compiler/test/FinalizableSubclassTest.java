@@ -68,7 +68,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault();
         new GraphBuilderPhase(runtime, conf, OptimisticOptimizations.ALL).apply(graph);
         new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
         return graph;
     }
 

@@ -32,7 +32,6 @@ import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.Opcode;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;
@@ -59,7 +58,7 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
         int pos = asm.codeBuffer.position();
-        int offset = SafepointPollOffset % unsafe.pageSize();
+        int offset = SafepointPollOffset.getValue() % unsafe.pageSize();
         RegisterValue scratch = (RegisterValue) temp;
         if (config.isPollingPageFar) {
             asm.movq(scratch.getRegister(), config.safepointPollingAddress + offset);

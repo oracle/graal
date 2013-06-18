@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
  * the fields or array elements (called "entries") and the lock count if the object is still
  * virtual. If the object was materialized, it contains the current materialized value.
  */
-class ObjectState extends Virtualizable.State {
+public class ObjectState extends Virtualizable.State {
 
     private static final int[] EMPTY_INT_ARRAY = new int[0];
 
@@ -131,7 +131,6 @@ class ObjectState extends Virtualizable.State {
         return entries[index];
     }
 
-    @Override
     public void setEntry(int index, ValueNode value) {
         assert isVirtual();
         entries[index] = value;
