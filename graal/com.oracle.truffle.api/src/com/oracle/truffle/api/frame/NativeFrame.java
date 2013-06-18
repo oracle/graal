@@ -133,4 +133,9 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
     public FrameDescriptor getFrameDescriptor() {
         throw new UnsupportedOperationException("native frame");
     }
+
+    @Override
+    public boolean isInitialized(FrameSlot slot) {
+        throw new UnsupportedOperationException("native frame");
+    }
 }

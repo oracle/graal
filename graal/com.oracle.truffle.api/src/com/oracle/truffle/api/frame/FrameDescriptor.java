@@ -112,6 +112,13 @@ public final class FrameDescriptor implements Cloneable {
         return clonedFrameDescriptor;
     }
 
+    public FrameDescriptor shallowCopy() {
+        FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.typeConversion);
+        clonedFrameDescriptor.slots.addAll(slots);
+        clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
+        return clonedFrameDescriptor;
+    }
+
     void updateVersion() {
         version.invalidate();
         version = createVersion();

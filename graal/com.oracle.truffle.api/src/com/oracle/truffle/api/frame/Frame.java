@@ -170,4 +170,13 @@ public interface Frame {
      * @return the new materialized frame
      */
     MaterializedFrame materialize();
+
+    /**
+     * To check whether the given {@link FrameSlot} has been initialized or not. An initialized slot
+     * has previously been read or modified.
+     * 
+     * @param slot the slot
+     * @return true if the slot is uninitialized.
+     */
+    boolean isInitialized(FrameSlot slot);
 }

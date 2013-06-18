@@ -201,4 +201,9 @@ public final class DefaultVirtualFrame implements VirtualFrame {
             tags = Arrays.copyOf(tags, newSize);
         }
     }
+
+    @Override
+    public boolean isInitialized(FrameSlot slot) {
+        return (this.tags[slot.getIndex()] != FrameSlotKind.Illegal.ordinal());
+    }
 }

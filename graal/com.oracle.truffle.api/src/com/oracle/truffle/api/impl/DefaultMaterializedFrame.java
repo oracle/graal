@@ -122,4 +122,9 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     public FrameDescriptor getFrameDescriptor() {
         return wrapped.getFrameDescriptor();
     }
+
+    @Override
+    public boolean isInitialized(FrameSlot slot) {
+        return wrapped.isInitialized(slot);
+    }
 }
