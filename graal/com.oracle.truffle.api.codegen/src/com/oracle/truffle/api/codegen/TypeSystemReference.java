@@ -24,10 +24,20 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
+import com.oracle.truffle.api.nodes.*;
+
+/**
+ * References a {@link TypeSystem} on a node. Must be applied on a {@link Node} class. At least one
+ * {@link TypeSystem} must be referenced in a {@link Node}'s type hierarchy.
+ * 
+ * @see TypeSystem
+ * @see Node
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
 public @interface TypeSystemReference {
 
+    /** The {@link TypeSystem} java type. */
     Class<?> value();
 
 }

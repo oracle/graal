@@ -24,41 +24,55 @@ package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
+import com.oracle.truffle.api.nodes.*;
+
 /**
  * <p>
- * Annotates a type system class that represents type information for a node. Generates code for
- * converting and managing types. Methods contained in the type system may be annotated with
- * {@link TypeCast} or {@link TypeCheck}. These methods alter the default behavior of the type
- * system.
+ * Each {@link Node} has one {@link TypeSystem} at its root to define the types that can be used
+ * throughout the system. Multiple {@link TypeSystem}s are allowed, but they cannot be mixed inside
+ * a single {@link Node} hierarchy. A {@link TypeSystem} defines a list of types as its child
+ * elements, in which every type precedes its super types.The latter condition ensures that the most
+ * concrete type is found first when searching the list sequentially for the type of a given generic
+ * value.
  * </p>
  * 
- * 
- * <b>Example:</b>
  * <p>
- * Shows a <code>@TypeSystem</code> definition with three types. In this example BigIntegers can be
- * also treated as integers if their bit width is less than 32.
+ * Each {@link #value()} is represented as a java type. A type can specify two annotations:
+ * {@link TypeCheck} and {@link TypeCast}. The {@link TypeCheck} checks whether a given generic
+ * value matches to the current type. The {@link TypeCast} casts a generic type value to the current
+ * type. If the {@link TypeCheck} and {@link TypeCast} annotations are not declared in the
+ * {@link TypeSystem} the a default implementation is provided. The default implementation of
+ * {@link TypeCheck} returns <code>true</code> only on an exact type match and {@link TypeCast} is
+ * only a cast to this type. Specified methods with {@link TypeCheck} and {@link TypeCast} may be
+ * used to extend the definition of a type in the language. In our example, the
+ * <code>isInteger</code> and <code>asInteger</code> methods are defined in a way so that they
+ * accept also {@link Integer} values, implicitly converting them to {@link Double} . This example
+ * points out how we express implicit type conversions.
  * </p>
+ * 
+ * <p>
+ * <b>Example:</b> The {@link TypeSystem} contains the types {@link Boolean}, {@link Integer}, and
+ * {@link Double}. The type {@link Object} is always used implicitly as the generic type represent
+ * all values.
  * 
  * <pre>
  * 
- * {@literal @}TypeSystem(types = {int.class, BigInteger.class, String.class}, nodeBaseClass = TypedNode.class)
- * public abstract class Types {
+ * {@literal @}TypeSystem(types = {boolean.class, int.class, double.class})
+ * public abstract class ExampleTypeSystem {
  * 
  *     {@literal @}TypeCheck
  *     public boolean isInteger(Object value) {
- *         return value instanceof Integer || (value instanceof BigInteger &amp;&amp; ((BigInteger) value).bitLength() &lt; Integer.SIZE);
+ *         return value instanceof Integer || value instanceof Double;
  *     }
  * 
  *     {@literal @}TypeCast
- *     public int asInteger(Object value) {
- *         if (value instanceof Integer) {
- *             return (int) value;
- *         } else {
- *             return ((BigInteger) value).intValue();
- *         }
+ *     public double asInteger(Object value) {
+ *         return ((Number)value).doubleValue();
  *     }
  * }
  * </pre>
+ * 
+ * </p>
  * 
  * @see TypeCast
  * @see TypeCheck
@@ -68,8 +82,7 @@ import java.lang.annotation.*;
 public @interface TypeSystem {
 
     /**
-     * Sets the types contained by this type system. The order of types also determines the order of
-     * specialization.
+     * The list of types as child elements of the {@link TypeSystem}. Each precedes its super type.
      */
     Class[] value();
 

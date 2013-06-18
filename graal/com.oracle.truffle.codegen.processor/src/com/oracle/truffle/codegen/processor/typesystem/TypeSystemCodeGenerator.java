@@ -103,8 +103,6 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
                 }
             }
 
-            clazz.getEnclosedElements().addAll(typeSystem.getExtensionElements());
-
             return clazz;
         }
 

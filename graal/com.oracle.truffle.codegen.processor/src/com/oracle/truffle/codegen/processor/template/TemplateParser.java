@@ -28,19 +28,11 @@ import javax.lang.model.element.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.codegen.processor.*;
-import com.oracle.truffle.codegen.processor.ext.*;
 
 public abstract class TemplateParser<M extends Template> extends AbstractParser<M> {
 
-    private final ExtensionParser extensionParser;
-
     public TemplateParser(ProcessorContext c) {
         super(c);
-        extensionParser = new ExtensionParser(c);
-    }
-
-    public ExtensionParser getExtensionParser() {
-        return extensionParser;
     }
 
     protected void verifyExclusiveMethodAnnotation(Template template, Class<?>... annotationTypes) {

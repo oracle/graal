@@ -84,10 +84,6 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         verifyExclusiveMethodAnnotation(typeSystem, TypeCast.class, TypeCheck.class);
 
         List<Element> elements = new ArrayList<>(context.getEnvironment().getElementUtils().getAllMembers(templateType));
-        typeSystem.setExtensionElements(getExtensionParser().parseAll(typeSystem, elements));
-        if (typeSystem.getExtensionElements() != null) {
-            elements.addAll(typeSystem.getExtensionElements());
-        }
 
         List<TypeCastData> casts = new TypeCastParser(context, typeSystem).parse(elements);
         List<TypeCheckData> checks = new TypeCheckParser(context, typeSystem).parse(elements);
