@@ -111,7 +111,7 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     @Override
     public void setStateAfter(FrameState x) {
-        if (hasSideEffect() || canDeoptimize()) {
+        if (hasSideEffect()) {
             super.setStateAfter(x);
         }
     }
