@@ -807,7 +807,7 @@ public class SnippetTemplate {
         Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
         FixedWithNextNode lastFixedNode = tool.lastFixedNode();
-        assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph;
+        assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph + " lastFixed=" + lastFixedNode;
         FixedNode next = lastFixedNode.next();
         lastFixedNode.setNext(null);
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
@@ -836,14 +836,10 @@ public class SnippetTemplate {
         assert returnValue != null || replacee.usages().isEmpty();
         replacer.replace(replacee, returnValue);
 
-        tool.setLastFixedNode(null);
         Node returnDuplicate = duplicates.get(returnNode);
         if (returnDuplicate.isAlive()) {
             returnDuplicate.clearInputs();
             returnDuplicate.replaceAndDelete(next);
-            if (next != null && next.predecessor() instanceof FixedWithNextNode) {
-                tool.setLastFixedNode((FixedWithNextNode) next.predecessor());
-            }
         }
 
         Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);

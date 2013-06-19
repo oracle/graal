@@ -126,7 +126,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return lastFixedNode;
         }
 
-        public void setLastFixedNode(FixedWithNextNode n) {
+        private void setLastFixedNode(FixedWithNextNode n) {
             assert n == null || n.isAlive() : n;
             lastFixedNode = n;
         }
@@ -150,35 +150,30 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     @Override
     protected void run(final StructuredGraph graph, PhaseContext context) {
         int i = 0;
-        NodeBitMap processed = graph.createNodeBitMap();
         while (true) {
-            Round round = new Round(i++, context, processed);
+            Round round = new Round(i++, context);
             int mark = graph.getMark();
 
             IncrementalCanonicalizerPhase<PhaseContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
             canonicalizer.appendPhase(round);
             canonicalizer.apply(graph, context);
 
-            if (!round.deferred && !containsLowerable(graph.getNewNodes(mark))) {
+            if (!containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!
                 break;
             }
             assert graph.verify();
-            processed.grow();
         }
     }
 
     private final class Round extends Phase {
 
         private final PhaseContext context;
-        private final NodeBitMap processed;
         private final SchedulePhase schedule;
-        private boolean deferred = false;
 
-        private Round(int iteration, PhaseContext context, NodeBitMap processed) {
+        private Round(int iteration, PhaseContext context) {
             super(String.format("Lowering iteration %d", iteration));
             this.context = context;
-            this.processed = processed;
             this.schedule = new SchedulePhase();
         }
 
@@ -223,45 +218,45 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
             // Lower the instructions of this block.
             List<ScheduledNode> nodes = schedule.nodesFor(b);
-
+            loweringTool.setLastFixedNode(null);
             for (Node node : nodes) {
-                FixedNode nextFixedNode = null;
-                if (node instanceof FixedWithNextNode && node.isAlive()) {
+
+                if (node.isDeleted()) {
+                    // This case can happen when previous lowerings deleted nodes.
+                    continue;
+                }
+
+                if (loweringTool.lastFixedNode() == null) {
+                    AbstractBeginNode beginNode = b.getBeginNode();
+                    if (node instanceof Lowerable) {
+                        // Handles cases where there is a lowerable nodes scheduled before the begin
+                        // node.
+                        BeginNode newBegin = node.graph().add(new BeginNode());
+                        beginNode.replaceAtPredecessor(newBegin);
+                        newBegin.setNext(beginNode);
+                        loweringTool.setLastFixedNode(newBegin);
+                    } else if (node == beginNode) {
+                        loweringTool.setLastFixedNode(beginNode);
+                    } else {
+                        continue;
+                    }
+                }
+
+                // Cache the next node to be able to reconstruct the previous of the next node
+                // after lowering.
+                FixedNode nextNode = null;
+                if (node instanceof FixedWithNextNode) {
                     FixedWithNextNode fixed = (FixedWithNextNode) node;
-                    nextFixedNode = fixed.next();
-                    loweringTool.setLastFixedNode(fixed);
+                    nextNode = fixed.next();
+                } else {
+                    nextNode = loweringTool.lastFixedNode().next();
                 }
 
-                if (node.isAlive() && !processed.isMarked(node) && node instanceof Lowerable) {
-                    if (loweringTool.lastFixedNode() == null) {
-                        /*
-                         * We cannot lower the node now because we don't have a fixed node to anchor
-                         * the replacements. This can happen when previous lowerings in this
-                         * lowering iteration deleted the BeginNode of this block. In the next
-                         * iteration, we will have the new BeginNode available, and we can lower
-                         * this node.
-                         */
-                        deferred = true;
-                    } else {
-                        processed.mark(node);
-                        ((Lowerable) node).lower(loweringTool, loweringType);
-                    }
+                if (node instanceof Lowerable) {
+                    ((Lowerable) node).lower(loweringTool, loweringType);
                 }
 
-                if (loweringTool.lastFixedNode() == node && !node.isAlive()) {
-                    if (nextFixedNode == null || !nextFixedNode.isAlive()) {
-                        loweringTool.setLastFixedNode(null);
-                    } else {
-                        Node prev = nextFixedNode.predecessor();
-                        if (prev != node && prev instanceof FixedWithNextNode) {
-                            loweringTool.setLastFixedNode((FixedWithNextNode) prev);
-                        } else if (nextFixedNode instanceof FixedWithNextNode) {
-                            loweringTool.setLastFixedNode((FixedWithNextNode) nextFixedNode);
-                        } else {
-                            loweringTool.setLastFixedNode(null);
-                        }
-                    }
-                }
+                loweringTool.setLastFixedNode((FixedWithNextNode) nextNode.predecessor());
             }
         }
     }
