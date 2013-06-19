@@ -24,14 +24,12 @@ package com.oracle.graal.compiler.test;
 
 import java.io.*;
 
-import junit.framework.Assert;
-
-import org.junit.Test;
+import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.*;
+import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.java.*;

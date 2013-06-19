@@ -190,7 +190,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
             if (baseRegister.equals(Value.ILLEGAL)) {
                 baseRegister = displacementRegister;
-            } else if (indexRegister == Value.ILLEGAL) {
+            } else if (indexRegister.equals(Value.ILLEGAL)) {
                 indexRegister = displacementRegister;
                 scaleEnum = Scale.Times1;
             } else {

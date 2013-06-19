@@ -22,18 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
  * The start node of a graph.
  */
-public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint {
+public class StartNode extends BeginStateSplitNode implements MemoryCheckpoint.Single {
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 }

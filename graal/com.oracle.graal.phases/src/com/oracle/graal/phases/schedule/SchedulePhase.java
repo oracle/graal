@@ -96,20 +96,27 @@ public final class SchedulePhase extends Phase {
             for (Node node : getBlockToNodesMap().get(block)) {
                 if (node instanceof FloatingReadNode) {
                     currentState.add((FloatingReadNode) node);
-                } else if (node instanceof MemoryCheckpoint) {
-                    for (LocationIdentity identity : ((MemoryCheckpoint) node).getLocationIdentities()) {
-                        for (Iterator<FloatingReadNode> iter = currentState.iterator(); iter.hasNext();) {
-                            FloatingReadNode read = iter.next();
-                            FixedNode fixed = (FixedNode) node;
-                            if (identity == ANY_LOCATION || read.location().getLocationIdentity() == identity) {
-                                addPhantomReference(read, fixed);
-                                iter.remove();
-                            }
-                        }
+                } else if (node instanceof MemoryCheckpoint.Single) {
+                    LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
+                    processIdentity(currentState, (FixedNode) node, identity);
+                } else if (node instanceof MemoryCheckpoint.Multi) {
+                    for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+                        processIdentity(currentState, (FixedNode) node, identity);
                     }
                 }
+                assert MemoryCheckpoint.TypeAssertion.correctType(node);
             }
             return currentState;
+        }
+
+        private void processIdentity(HashSet<FloatingReadNode> currentState, FixedNode fixed, LocationIdentity identity) {
+            for (Iterator<FloatingReadNode> iter = currentState.iterator(); iter.hasNext();) {
+                FloatingReadNode read = iter.next();
+                if (identity == ANY_LOCATION || read.location().getLocationIdentity() == identity) {
+                    addPhantomReference(read, fixed);
+                    iter.remove();
+                }
+            }
         }
 
         public void addPhantomReference(FloatingReadNode read, FixedNode fixed) {

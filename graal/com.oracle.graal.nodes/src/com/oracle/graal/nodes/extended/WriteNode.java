@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint, Node.IterableNodeType, Virtualizable {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, Node.IterableNodeType, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
@@ -71,8 +71,8 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType, @ConstantNodeParameter boolean compress);
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{location().getLocationIdentity()};
+    public LocationIdentity getLocationIdentity() {
+        return location().getLocationIdentity();
     }
 
     @Override

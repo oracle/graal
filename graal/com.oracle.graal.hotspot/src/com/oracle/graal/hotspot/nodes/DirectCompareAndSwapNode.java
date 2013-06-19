@@ -37,7 +37,7 @@ import com.oracle.graal.word.*;
  * {@linkplain #compareAndSwap(Object, long, Word, Word, LocationIdentity)} returns either the
  * expected value or the compared against value instead of a boolean.
  */
-public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint {
+public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGenLowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
@@ -72,8 +72,8 @@ public class DirectCompareAndSwapNode extends FixedWithNextNode implements LIRGe
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{locationIdentity};
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
     }
 
     @Override

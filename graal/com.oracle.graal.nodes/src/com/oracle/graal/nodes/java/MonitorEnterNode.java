@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -32,7 +30,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code MonitorEnterNode} represents the acquisition of a monitor.
  */
-public final class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, MonitorEnter, MonitorReference {
+public final class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, MonitorEnter, MemoryCheckpoint.Single, MonitorReference {
 
     private int lockDepth;
 
@@ -47,8 +45,8 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Virtual
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

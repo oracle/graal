@@ -737,7 +737,7 @@ final class LinearScanWalker extends IntervalWalker {
         Register ignore = interval.location() != null && isRegister(interval.location()) ? asRegister(interval.location()) : null;
         for (Register availableReg : availableRegs) {
             int number = availableReg.number;
-            if (availableReg == ignore) {
+            if (availableReg.equals(ignore)) {
                 // this register must be ignored
             } else if (usePos[number] > regNeededUntil) {
                 if (reg == null || (usePos[number] > usePos[reg.number])) {

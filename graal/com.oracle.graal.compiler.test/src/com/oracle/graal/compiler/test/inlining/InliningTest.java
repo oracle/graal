@@ -38,7 +38,6 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.test.*;
 
-@SuppressWarnings("unused")
 public class InliningTest extends GraalCompilerTest {
 
     @Test
@@ -62,6 +61,14 @@ public class InliningTest extends GraalCompilerTest {
         assertInlined(getGraph("invokeConstructorSnippet", false));
         assertInlined(getGraph("invokeFinalMethodSnippet", false));
         assertInlined(getGraph("invokeMethodOnFinalClassSnippet", false));
+        assertInlined(getGraph("invokeMethodOnStaticFinalFieldSnippet", false));
+    }
+
+    @Ignore("would need read elimination/EA before inlining")
+    @Test
+    public void testDependentStaticBindableInlining() {
+        assertInlined(getGraph("invokeMethodOnFinalFieldSnippet", false));
+        assertInlined(getGraph("invokeMethodOnFieldSnippet", false));
     }
 
     @LongTest
@@ -69,6 +76,14 @@ public class InliningTest extends GraalCompilerTest {
         assertManyMethodInfopoints(assertInlined(getGraph("invokeConstructorSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeFinalMethodSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFinalClassSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnStaticFinalFieldSnippet", true)));
+    }
+
+    @Ignore("would need read elimination/EA before inlining")
+    @LongTest
+    public void testDependentStaticBindableInliningIP() {
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFinalFieldSnippet", true)));
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeMethodOnFieldSnippet", true)));
     }
 
     @SuppressWarnings("all")
@@ -86,6 +101,30 @@ public class InliningTest extends GraalCompilerTest {
     public static int invokeMethodOnFinalClassSnippet(FinalSubClass finalSubClass) {
         return finalSubClass.publicFinalMethod() + finalSubClass.publicNotOverriddenMethod() + finalSubClass.publicOverriddenMethod() + finalSubClass.protectedFinalMethod() +
                         finalSubClass.protectedNotOverriddenMethod() + finalSubClass.protectedOverriddenMethod();
+    }
+
+    @SuppressWarnings("all")
+    public static int invokeMethodOnStaticFinalFieldSnippet() {
+        return StaticFinalFields.NumberStaticFinalField.intValue() + StaticFinalFields.SuperClassStaticFinalField.publicOverriddenMethod() +
+                        StaticFinalFields.FinalSubClassStaticFinalField.publicOverriddenMethod() + StaticFinalFields.SingleImplementorStaticFinalField.publicOverriddenMethod() +
+                        StaticFinalFields.MultipleImplementorsStaticFinalField.publicOverriddenMethod() + StaticFinalFields.SubClassAStaticFinalField.publicOverriddenMethod() +
+                        StaticFinalFields.SubClassBStaticFinalField.publicOverriddenMethod() + StaticFinalFields.SubClassCStaticFinalField.publicOverriddenMethod();
+    }
+
+    @SuppressWarnings("all")
+    public static int invokeMethodOnFinalFieldSnippet() {
+        FinalFields fields = new FinalFields();
+        return fields.numberFinalField.intValue() + fields.superClassFinalField.publicOverriddenMethod() + fields.finalSubClassFinalField.publicOverriddenMethod() +
+                        fields.singleImplementorFinalField.publicOverriddenMethod() + fields.multipleImplementorsFinalField.publicOverriddenMethod() +
+                        fields.subClassAFinalField.publicOverriddenMethod() + fields.subClassBFinalField.publicOverriddenMethod() + fields.subClassCFinalField.publicOverriddenMethod();
+    }
+
+    @SuppressWarnings("all")
+    public static int invokeMethodOnFieldSnippet() {
+        Fields fields = new Fields();
+        return fields.numberField.intValue() + fields.superClassField.publicOverriddenMethod() + fields.finalSubClassField.publicOverriddenMethod() +
+                        fields.singleImplementorField.publicOverriddenMethod() + fields.multipleImplementorsField.publicOverriddenMethod() + fields.subClassAField.publicOverriddenMethod() +
+                        fields.subClassBField.publicOverriddenMethod() + fields.subClassCField.publicOverriddenMethod();
     }
 
     @Test
@@ -159,6 +198,7 @@ public class InliningTest extends GraalCompilerTest {
                 PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
                 Assumptions assumptions = new Assumptions(true);
                 Debug.dump(graph, "Graph");
+                new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
                 new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
                 Debug.dump(graph, "Graph");
                 new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
@@ -338,5 +378,41 @@ public class InliningTest extends GraalCompilerTest {
         protected int protectedOverriddenMethod() {
             return value * 5;
         }
+    }
+
+    private static final class StaticFinalFields {
+
+        private static final Number NumberStaticFinalField = new Integer(1);
+        private static final SuperClass SuperClassStaticFinalField = new SubClassA(2);
+        private static final FinalSubClass FinalSubClassStaticFinalField = new FinalSubClass(3);
+        private static final SingleImplementorInterface SingleImplementorStaticFinalField = new SubClassA(4);
+        private static final MultipleImplementorsInterface MultipleImplementorsStaticFinalField = new SubClassC(5);
+        private static final SubClassA SubClassAStaticFinalField = new SubClassA(6);
+        private static final SubClassB SubClassBStaticFinalField = new SubClassB(7);
+        private static final SubClassC SubClassCStaticFinalField = new SubClassC(8);
+    }
+
+    private static final class FinalFields {
+
+        private final Number numberFinalField = new Integer(1);
+        private final SuperClass superClassFinalField = new SubClassA(2);
+        private final FinalSubClass finalSubClassFinalField = new FinalSubClass(3);
+        private final SingleImplementorInterface singleImplementorFinalField = new SubClassA(4);
+        private final MultipleImplementorsInterface multipleImplementorsFinalField = new SubClassC(5);
+        private final SubClassA subClassAFinalField = new SubClassA(6);
+        private final SubClassB subClassBFinalField = new SubClassB(7);
+        private final SubClassC subClassCFinalField = new SubClassC(8);
+    }
+
+    private static final class Fields {
+
+        private Number numberField = new Integer(1);
+        private SuperClass superClassField = new SubClassA(2);
+        private FinalSubClass finalSubClassField = new FinalSubClass(3);
+        private SingleImplementorInterface singleImplementorField = new SubClassA(4);
+        private MultipleImplementorsInterface multipleImplementorsField = new SubClassC(5);
+        private SubClassA subClassAField = new SubClassA(6);
+        private SubClassB subClassBField = new SubClassB(7);
+        private SubClassC subClassCField = new SubClassC(8);
     }
 }
