@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.lang.reflect.*;
@@ -39,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Creates a memory barrier.
  */
-public class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint {
+public class MembarNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Single {
 
     private final int barriers;
 
@@ -52,8 +51,8 @@ public class MembarNode extends FixedWithNextNode implements LIRLowerable, Memor
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

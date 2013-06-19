@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -32,12 +33,35 @@ import com.oracle.graal.nodes.*;
  */
 public interface MemoryCheckpoint {
 
-    /**
-     * This method is used to determine which set of memory locations is killed by this node.
-     * Returning the special value {@link LocationIdentity#ANY_LOCATION} will kill all memory locations.
-     * 
-     * @return the identities of all locations killed by this node.
-     */
-    LocationIdentity[] getLocationIdentities();
+    interface Single extends MemoryCheckpoint {
 
+        /**
+         * This method is used to determine which memory location is killed by this node. Returning
+         * the special value {@link LocationIdentity#ANY_LOCATION} will kill all memory locations.
+         * 
+         * @return the identity of the location killed by this node.
+         */
+        LocationIdentity getLocationIdentity();
+
+    }
+
+    interface Multi extends MemoryCheckpoint {
+
+        /**
+         * This method is used to determine which set of memory locations is killed by this node.
+         * Returning the special value {@link LocationIdentity#ANY_LOCATION} will kill all memory
+         * locations.
+         * 
+         * @return the identities of all locations killed by this node.
+         */
+        LocationIdentity[] getLocationIdentities();
+
+    }
+
+    public class TypeAssertion {
+
+        public static boolean correctType(Node node) {
+            return !(node instanceof MemoryCheckpoint) || (node instanceof MemoryCheckpoint.Single ^ node instanceof MemoryCheckpoint.Multi);
+        }
+    }
 }

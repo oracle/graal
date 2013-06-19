@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 
-public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lowerable {
+public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode code;
     private final Class[] signature;
@@ -47,8 +47,8 @@ public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lower
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

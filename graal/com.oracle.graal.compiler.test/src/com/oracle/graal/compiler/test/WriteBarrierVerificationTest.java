@@ -640,7 +640,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     protected Boolean processNode(FixedNode node, Boolean currentState) {
                         if (node instanceof WriteNode) {
                             WriteNode write = (WriteNode) node;
-                            LocationIdentity obj = write.getLocationIdentities()[0];
+                            LocationIdentity obj = write.getLocationIdentity();
                             if (obj instanceof ResolvedJavaField) {
                                 if (((ResolvedJavaField) obj).getName().equals("barrierIndex")) {
                                     /*

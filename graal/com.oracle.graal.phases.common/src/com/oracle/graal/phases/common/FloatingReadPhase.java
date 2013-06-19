@@ -91,8 +91,10 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected Set<LocationIdentity> processNode(FixedNode node, Set<LocationIdentity> currentState) {
-            if (node instanceof MemoryCheckpoint) {
-                for (LocationIdentity identity : ((MemoryCheckpoint) node).getLocationIdentities()) {
+            if (node instanceof MemoryCheckpoint.Single) {
+                currentState.add(((MemoryCheckpoint.Single) node).getLocationIdentity());
+            } else if (node instanceof MemoryCheckpoint.Multi) {
+                for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
                     currentState.add(identity);
                 }
             }
@@ -143,13 +145,24 @@ public class FloatingReadPhase extends Phase {
         protected MemoryMap processNode(FixedNode node, MemoryMap state) {
             if (node instanceof FloatableAccessNode) {
                 processFloatable((FloatableAccessNode) node, state);
-            } else if (node instanceof MemoryCheckpoint) {
-                processCheckpoint((MemoryCheckpoint) node, state);
+            } else if (node instanceof MemoryCheckpoint.Single) {
+                processCheckpoint((MemoryCheckpoint.Single) node, state);
+            } else if (node instanceof MemoryCheckpoint.Multi) {
+                processCheckpoint((MemoryCheckpoint.Multi) node, state);
             }
+            assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
             return state;
         }
 
-        private static void processCheckpoint(MemoryCheckpoint checkpoint, MemoryMap state) {
+        private static void processCheckpoint(MemoryCheckpoint.Single checkpoint, MemoryMap state) {
+            LocationIdentity identity = checkpoint.getLocationIdentity();
+            if (identity == ANY_LOCATION) {
+                state.lastMemorySnapshot.clear();
+            }
+            state.lastMemorySnapshot.put(identity, (ValueNode) checkpoint);
+        }
+
+        private static void processCheckpoint(MemoryCheckpoint.Multi checkpoint, MemoryMap state) {
             for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
                 if (identity == ANY_LOCATION) {
                     state.lastMemorySnapshot.clear();
@@ -223,14 +236,12 @@ public class FloatingReadPhase extends Phase {
                 /*
                  * InvokeWithException cannot be the lastLocationAccess for a FloatingReadNode.
                  * Since it is both the invoke and a control flow split, the scheduler cannot
-                 * schedule anything immediately the invoke. It can only schedule in the normal or
-                 * exceptional successor - and we have to tell the scheduler here which side it
-                 * needs to choose by putting in the location identity on both successors.
+                 * schedule anything immediately after the invoke. It can only schedule in the
+                 * normal or exceptional successor - and we have to tell the scheduler here which
+                 * side it needs to choose by putting in the location identity on both successors.
                  */
-                InvokeWithExceptionNode checkpoint = (InvokeWithExceptionNode) node.predecessor();
-                for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
-                    result.lastMemorySnapshot.put(identity, node);
-                }
+                InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) node.predecessor();
+                result.lastMemorySnapshot.put(invoke.getLocationIdentity(), node);
             }
             return result;
         }
