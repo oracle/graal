@@ -26,7 +26,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -102,8 +101,9 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
             if (constantOffset != 0) {
                 int intDisplacement = (int) (constantOffset + displacement());
                 if (constantOffset == intDisplacement) {
-                    Graph graph = this.graph();
-                    return graph.add(new UnsafeStoreNode(this.stamp(), object(), intDisplacement, graph.unique(ConstantNode.forInt(0, graph)), value(), accessKind()));
+                    UnsafeStoreNode unsafeStoreNode = graph().add(new UnsafeStoreNode(stamp(), object(), intDisplacement, ConstantNode.forInt(0, graph()), value(), accessKind()));
+                    unsafeStoreNode.setStateAfter(stateAfter());
+                    return unsafeStoreNode;
                 }
             } else if (object().stamp() instanceof ObjectStamp) { // TODO (gd) remove that once
                                                                   // UnsafeAccess only have an
@@ -113,7 +113,9 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                     ResolvedJavaType receiverType = receiverStamp.type();
                     ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement());
                     if (field != null) {
-                        return this.graph().add(new StoreFieldNode(object(), field, value()));
+                        StoreFieldNode storeFieldNode = graph().add(new StoreFieldNode(object(), field, value()));
+                        storeFieldNode.setStateAfter(stateAfter());
+                        return storeFieldNode;
                     }
                 }
             }
