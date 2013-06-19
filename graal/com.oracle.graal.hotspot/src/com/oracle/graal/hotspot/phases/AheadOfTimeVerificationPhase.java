@@ -27,8 +27,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Checking for embedded oops in the graph. (Interned) Strings are an exception as they live in CDS
- * space.
+ * Checks for illegal object constants in a graph processed for AOT compilation. The only legal
+ * object constants are {@linkplain String#intern() interned} strings as they will be installed in
+ * the Class Data Sharing (CDS) space.
  * 
  * @see LoadJavaMirrorWithKlassPhase
  */
@@ -37,20 +38,30 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase {
     @Override
     protected boolean verify(StructuredGraph graph) {
         for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
-            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
+            assert !isObject(node) || isNullReference(node) || isInternedString(node) : "illegal object constant: " + node;
         }
         return true;
     }
 
-    private static boolean isOop(ConstantNode node) {
+    private static boolean isObject(ConstantNode node) {
         return node.kind() == Kind.Object;
     }
 
     private static boolean isNullReference(ConstantNode node) {
-        return isOop(node) && node.asConstant().asObject() == null;
+        return isObject(node) && node.asConstant().asObject() == null;
     }
 
-    private static boolean isString(ConstantNode node) {
-        return isOop(node) && node.asConstant().asObject() instanceof String;
+    private static boolean isInternedString(ConstantNode node) {
+        if (!isObject(node)) {
+            return false;
+        }
+
+        Object o = node.asConstant().asObject();
+        if (!(o instanceof String)) {
+            return false;
+        }
+
+        String s = (String) o;
+        return s == s.intern();
     }
 }
