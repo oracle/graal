@@ -669,6 +669,8 @@ public class AMD64Move {
             // Otherwise the narrow heap base, which resides always in register 12, is subtracted
             // followed by right shift.
             masm.testq(scratchRegister, scratchRegister);
+            // If the stored reference is null, move the heap to scratch
+            // register and then calculate the compressed oop value.
             masm.cmovq(ConditionFlag.Equal, scratchRegister, AMD64.r12);
             masm.subq(scratchRegister, AMD64.r12);
             masm.shrq(scratchRegister, logMinObjAlignment);
