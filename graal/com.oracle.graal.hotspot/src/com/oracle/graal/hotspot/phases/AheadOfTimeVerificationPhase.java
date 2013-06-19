@@ -32,7 +32,7 @@ import com.oracle.graal.phases.*;
  * 
  * @see LoadJavaMirrorWithKlassPhase
  */
-public class AheadOfTimeVerifcationPhase extends VerifyPhase {
+public class AheadOfTimeVerificationPhase extends VerifyPhase {
 
     @Override
     protected boolean verify(StructuredGraph graph) {
