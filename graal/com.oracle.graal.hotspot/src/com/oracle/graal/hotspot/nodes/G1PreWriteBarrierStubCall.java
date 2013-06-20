@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public class G1PreWriteBarrierStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private ValueNode object;
-    public static final ForeignCallDescriptor G1WBPRECALL = new ForeignCallDescriptor("g1WBPreCall", void.class, Object.class);
+    public static final ForeignCallDescriptor G1WBPRECALL = new ForeignCallDescriptor("write_barrier_pre", void.class, Object.class);
 
     public G1PreWriteBarrierStubCall(ValueNode object) {
         super(StampFactory.forVoid());

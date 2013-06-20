@@ -33,7 +33,7 @@ import com.oracle.graal.word.*;
 public class G1PostWriteBarrierStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
     @Input private ValueNode cardAddress;
-    public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("g1WBPostCall", void.class, Word.class);
+    public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("write_barrier_post", void.class, Word.class);
 
     public G1PostWriteBarrierStubCall(ValueNode cardAddress) {
         super(StampFactory.forVoid());
