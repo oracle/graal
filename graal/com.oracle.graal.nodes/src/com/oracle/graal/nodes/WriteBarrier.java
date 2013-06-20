@@ -20,24 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+public class WriteBarrier extends FixedWithNextNode implements Lowerable, Node.IterableNodeType {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+    @Input private ValueNode object;
+    @Input private LocationNode location;
+    private final boolean precise;
 
-        appendPhase(new FrameStateAssignmentPhase());
+    public ValueNode getObject() {
+        return object;
+    }
 
-        appendPhase(new ExpandLogicPhase());
+    public LocationNode getLocation() {
+        return location;
+    }
 
-        appendPhase(new DeadCodeEliminationPhase());
+    public boolean usePrecise() {
+        return precise;
+    }
 
-        appendPhase(new RemoveValueProxyPhase());
+    public WriteBarrier(ValueNode object, LocationNode location, boolean precise) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.location = location;
+        this.precise = precise;
+    }
+
+    @Override
+    public void lower(LoweringTool generator, LoweringType loweringType) {
+        assert loweringType == LoweringType.AFTER_GUARDS;
+        generator.getRuntime().lower(this, generator);
     }
 }

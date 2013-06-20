@@ -20,24 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+/**
+ * Base class for nodes that modify a range of an array.
+ */
+public abstract class ArrayRangeWriteNode extends AbstractStateSplit implements Node.IterableNodeType {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
-
-        appendPhase(new FrameStateAssignmentPhase());
-
-        appendPhase(new ExpandLogicPhase());
-
-        appendPhase(new DeadCodeEliminationPhase());
-
-        appendPhase(new RemoveValueProxyPhase());
+    protected ArrayRangeWriteNode(Stamp stamp) {
+        super(stamp);
     }
+
+    /**
+     * The array that is written to.
+     */
+    public abstract ValueNode getArray();
+
+    /**
+     * The first modified index.
+     */
+    public abstract ValueNode getIndex();
+
+    /**
+     * The length of the modified range.
+     */
+    public abstract ValueNode getLength();
+
+    /**
+     * Return true if the written array is an object array, false if it is a primitive array.
+     */
+    public abstract boolean isObjectArray();
 }

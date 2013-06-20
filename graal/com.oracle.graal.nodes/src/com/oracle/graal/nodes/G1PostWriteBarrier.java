@@ -20,24 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.nodes.extended.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+public class G1PostWriteBarrier extends WriteBarrier {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+    @Input private ValueNode value;
 
-        appendPhase(new FrameStateAssignmentPhase());
+    public ValueNode getValue() {
+        return value;
+    }
 
-        appendPhase(new ExpandLogicPhase());
-
-        appendPhase(new DeadCodeEliminationPhase());
-
-        appendPhase(new RemoveValueProxyPhase());
+    public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
+        super(object, location, precise);
+        this.value = value;
     }
 }

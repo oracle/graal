@@ -4,7 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
++ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,24 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+public class G1PreWriteBarrierStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+    @Input private ValueNode object;
+    public static final ForeignCallDescriptor G1WBPRECALL = new ForeignCallDescriptor("write_barrier_pre", void.class, Object.class);
 
-        appendPhase(new FrameStateAssignmentPhase());
-
-        appendPhase(new ExpandLogicPhase());
-
-        appendPhase(new DeadCodeEliminationPhase());
-
-        appendPhase(new RemoveValueProxyPhase());
+    public G1PreWriteBarrierStubCall(ValueNode object) {
+        super(StampFactory.forVoid());
+        this.object = object;
     }
+
+    @Override
+    public void generate(LIRGenerator gen) {
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(G1PreWriteBarrierStubCall.G1WBPRECALL);
+        gen.emitForeignCall(linkage, this, gen.operand(object));
+    }
+
+    @NodeIntrinsic
+    public static native void call(Object hub);
 }

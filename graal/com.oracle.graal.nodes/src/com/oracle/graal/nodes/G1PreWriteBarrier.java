@@ -22,35 +22,24 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.extended.*;
 
-public final class GenericArrayRangeWriteBarrier extends FixedWithNextNode implements Node.IterableNodeType {
+public class G1PreWriteBarrier extends WriteBarrier {
 
-    @Input private ValueNode dstObject;
-    @Input private ValueNode dstPos;
-    @Input private ValueNode length;
+    @Input private ValueNode expectedObject;
+    private final boolean doLoad;
 
-    public ValueNode getDstObject() {
-        return dstObject;
+    public ValueNode getExpectedObject() {
+        return expectedObject;
     }
 
-    public ValueNode getDstPos() {
-        return dstPos;
+    public boolean doLoad() {
+        return doLoad;
     }
 
-    public ValueNode getLength() {
-        return length;
+    public G1PreWriteBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
+        super(object, location, true);
+        this.doLoad = doLoad;
+        this.expectedObject = expectedObject;
     }
-
-    public GenericArrayRangeWriteBarrier(ValueNode dstObject, ValueNode dstPos, ValueNode length) {
-        super(StampFactory.forVoid());
-        this.dstObject = dstObject;
-        this.dstPos = dstPos;
-        this.length = length;
-
-    }
-
-    @NodeIntrinsic
-    public static native void insertWriteBarrier(Object dstObject, int dstPos, int length);
 }

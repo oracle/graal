@@ -20,24 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.phases;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
-public class LowTier extends PhaseSuite<LowTierContext> {
+public class G1PostWriteBarrierStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    public LowTier() {
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+    @Input private ValueNode cardAddress;
+    public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("write_barrier_post", void.class, Word.class);
 
-        appendPhase(new FrameStateAssignmentPhase());
-
-        appendPhase(new ExpandLogicPhase());
-
-        appendPhase(new DeadCodeEliminationPhase());
-
-        appendPhase(new RemoveValueProxyPhase());
+    public G1PostWriteBarrierStubCall(ValueNode cardAddress) {
+        super(StampFactory.forVoid());
+        this.cardAddress = cardAddress;
     }
+
+    @Override
+    public void generate(LIRGenerator gen) {
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(G1PostWriteBarrierStubCall.G1WBPOSTCALL);
+        gen.emitForeignCall(linkage, this, gen.operand(cardAddress));
+    }
+
+    @NodeIntrinsic
+    public static native void call(Word cardAddress);
 }
