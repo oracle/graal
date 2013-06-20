@@ -31,6 +31,8 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
@@ -85,6 +87,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
          * @param workingSet the initial working set of nodes on which the canonicalizer works,
          *            should be an auto-grow node bitmap
          * @param customCanonicalizer
+         * @param canonicalizeReads flag to indicate if
+         *            {@link LoadFieldNode#canonical(CanonicalizerTool)} and
+         *            {@link ReadNode#canonical(CanonicalizerTool)} should canonicalize reads of
+         *            constant fields.
          */
         public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, workingSet, 0, customCanonicalizer);

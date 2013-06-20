@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -35,7 +33,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 
-public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint {
+public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single {
 
     @Input protected final NodeInputList<ValueNode> arguments;
 
@@ -111,7 +109,7 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 }

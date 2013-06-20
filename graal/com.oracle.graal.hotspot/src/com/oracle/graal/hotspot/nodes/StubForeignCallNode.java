@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call from within a stub.
  */
 @NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}")
-public class StubForeignCallNode extends FixedWithNextNode implements DeoptimizingNode, LIRLowerable, MemoryCheckpoint {
+public class StubForeignCallNode extends FixedWithNextNode implements DeoptimizingNode, LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final MetaAccessProvider runtime;

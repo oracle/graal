@@ -70,6 +70,11 @@ public class DynamicNewArrayTest extends GraalCompilerTest {
 
     @Test
     public void test7() {
+        test("dynamic", void.class, 5);
+    }
+
+    @Test
+    public void testDeopt() {
         Method method = getMethod("dynamic");
         Result actual1 = executeActual(method, null, Element.class, 7);
         Result actual2 = executeActualCheckDeopt(method, Collections.<DeoptimizationReason> singleton(DeoptimizationReason.Unresolved), null, Element.class, 7);

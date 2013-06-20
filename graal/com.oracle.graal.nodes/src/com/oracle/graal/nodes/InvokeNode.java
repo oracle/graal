@@ -22,22 +22,20 @@
  */
 package com.oracle.graal.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.Stamp;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
  * The {@code InvokeNode} represents all kinds of method calls.
  */
 @NodeInfo(nameTemplate = "Invoke#{p#targetMethod/s}")
-public final class InvokeNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint {
+public final class InvokeNode extends AbstractStateSplit implements StateSplit, Node.IterableNodeType, Invoke, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private CallTargetNode callTarget;
     @Input private FrameState deoptState;
@@ -105,8 +103,8 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

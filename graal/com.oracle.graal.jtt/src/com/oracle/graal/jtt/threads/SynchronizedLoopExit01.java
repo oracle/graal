@@ -20,37 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.phases;
+/*
+ */
+package com.oracle.graal.jtt.threads;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
+import org.junit.*;
+
+import com.oracle.graal.jtt.*;
 
 /**
- * Checking for embedded oops in the graph. (Interned) Strings are an exception as they live in CDS
- * space.
+ * Inspired by {@code com.sun.media.sound.DirectAudioDevice$DirectDL.drain()}.
  * 
- * @see LoadJavaMirrorWithKlassPhase
+ * Two loop exits hold a monitor while merging.
+ * 
  */
-public class AheadOfTimeVerifcationPhase extends VerifyPhase {
+public final class SynchronizedLoopExit01 extends JTTTest {
 
-    @Override
-    protected boolean verify(StructuredGraph graph) {
-        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
-            assert !isOop(node) || isNullReference(node) || isString(node) : "embedded oop: " + node;
+    protected Object object = new Object();
+    protected volatile boolean drained = false;
+    protected volatile boolean someBoolean = true;
+
+    public boolean test() {
+        boolean b = true;
+        while (!drained) {
+            synchronized (object) {
+                boolean c = b = someBoolean;
+                if (c || drained) {
+                    break;
+                }
+            }
         }
-        return true;
+        return b;
     }
 
-    private static boolean isOop(ConstantNode node) {
-        return node.kind() == Kind.Object;
+    @Test
+    public void run0() throws Throwable {
+        runTest("test");
     }
 
-    private static boolean isNullReference(ConstantNode node) {
-        return isOop(node) && node.asConstant().asObject() == null;
-    }
-
-    private static boolean isString(ConstantNode node) {
-        return isOop(node) && node.asConstant().asObject() instanceof String;
-    }
 }

@@ -83,7 +83,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         this.entryBCI = entryBCI;
         this.id = id;
         this.priority = priority;
-        this.status = new AtomicReference<>();
+        this.status = new AtomicReference<>(CompilationStatus.Queued);
     }
 
     public ResolvedJavaMethod getMethod() {

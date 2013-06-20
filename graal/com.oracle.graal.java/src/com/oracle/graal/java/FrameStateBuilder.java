@@ -172,6 +172,9 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize(); i++) {
             storeStack(i, merge(stackAt(i), other.stackAt(i), block));
         }
+        for (int i = 0; i < locks.length; i++) {
+            locks[i] = merge(locks[i], other.locks[i], block);
+        }
     }
 
     private ValueNode merge(ValueNode currentValue, ValueNode otherValue, MergeNode block) {

@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
@@ -40,7 +38,7 @@ import com.oracle.graal.word.*;
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter {
+public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter, MemoryCheckpoint.Single {
 
     private int lockDepth;
 
@@ -55,8 +53,8 @@ public final class BeginLockScopeNode extends AbstractStateSplit implements LIRG
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
-        return new LocationIdentity[]{ANY_LOCATION};
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 
     @Override

@@ -83,8 +83,8 @@ public class InstanceOfSnippets implements Snippets {
         if (probability(NOT_FREQUENT_PROBABILITY, checkNull && object == null)) {
             isNull.inc();
             if (!nullSeen) {
-                // In this case, the execution is contradicting the profile
-                // so invalidating and re-profiling is justified.
+                // See comment below for other deoptimization path; the
+                // same reasoning applies here.
                 DeoptimizeNode.deopt(InvalidateReprofile, OptimizedTypeCheckViolated);
             }
             return falseValue;
@@ -100,9 +100,11 @@ public class InstanceOfSnippets implements Snippets {
                 return positive ? trueValue : falseValue;
             }
         }
-        // Don't throw away the code as we assume this is a rare event
-        // that will periodically occur.
-        DeoptimizeNode.deopt(DeoptimizationAction.None, OptimizedTypeCheckViolated);
+        // This maybe just be a rare event but it might also indicate a phase change
+        // in the application. Ideally we want to use DeoptimizationAction.None for
+        // the former but the cost is too high if indeed it is the latter. As such,
+        // we defensively opt for InvalidateReprofile.
+        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, OptimizedTypeCheckViolated);
         return falseValue;
     }
 
