@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 
-public final class UnsafeArrayCopyNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single {
+public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode src;
     @Input private ValueNode srcPos;
@@ -60,6 +60,26 @@ public final class UnsafeArrayCopyNode extends AbstractStateSplit implements Low
 
     private UnsafeArrayCopyNode(ValueNode src, ValueNode srcPos, ValueNode dest, ValueNode destPos, ValueNode length, ValueNode layoutHelper) {
         this(src, srcPos, dest, destPos, length, layoutHelper, null);
+    }
+
+    @Override
+    public ValueNode getArray() {
+        return dest;
+    }
+
+    @Override
+    public ValueNode getIndex() {
+        return destPos;
+    }
+
+    @Override
+    public ValueNode getLength() {
+        return length;
+    }
+
+    @Override
+    public boolean isObjectArray() {
+        return elementKind == Kind.Object;
     }
 
     public Kind getElementKind() {

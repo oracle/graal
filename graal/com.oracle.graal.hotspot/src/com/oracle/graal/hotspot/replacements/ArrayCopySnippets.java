@@ -180,9 +180,6 @@ public class ArrayCopySnippets implements Snippets {
     public static void arrayObjectCopy(Object src, int srcPos, Object dest, int destPos, int length) {
         objectCounter.inc();
         checkedCopy(src, srcPos, dest, destPos, length, Kind.Object);
-        if (length > 0) {
-            GenericArrayRangeWriteBarrier.insertWriteBarrier(dest, destPos, length);
-        }
     }
 
     @Snippet
