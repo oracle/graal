@@ -131,6 +131,8 @@ public class NewObjectSnippets implements Snippets {
 
         int layoutHelper = readLayoutHelper(hub);
         //@formatter:off
+        // from src/share/vm/oops/klass.hpp:
+        //
         // For arrays, layout helper is a negative number, containing four
         // distinct bytes, as follows:
         //    MSB:[tag, hsz, ebt, log2(esz)]:LSB
