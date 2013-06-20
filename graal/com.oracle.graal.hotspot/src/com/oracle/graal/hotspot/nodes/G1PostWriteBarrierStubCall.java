@@ -20,13 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.word.*;
 
-public class SerialWriteBarrier extends WriteBarrier {
+public class G1PostWriteBarrierStubCall extends DeoptimizingStubCall implements LIRGenLowerable {
 
-    public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
-        super(object, location, precise);
+    @Input private ValueNode cardAddress;
+    public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("write_barrier_post", void.class, Word.class);
+
+    public G1PostWriteBarrierStubCall(ValueNode cardAddress) {
+        super(StampFactory.forVoid());
+        this.cardAddress = cardAddress;
     }
+
+    @Override
+    public void generate(LIRGenerator gen) {
+        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(G1PostWriteBarrierStubCall.G1WBPOSTCALL);
+        gen.emitForeignCall(linkage, this, gen.operand(cardAddress));
+    }
+
+    @NodeIntrinsic
+    public static native void call(Word cardAddress);
 }

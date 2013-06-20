@@ -24,9 +24,16 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.nodes.extended.*;
 
-public class SerialWriteBarrier extends WriteBarrier {
+public class G1PostWriteBarrier extends WriteBarrier {
 
-    public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
+    @Input private ValueNode value;
+
+    public ValueNode getValue() {
+        return value;
+    }
+
+    public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
         super(object, location, precise);
+        this.value = value;
     }
 }
