@@ -328,6 +328,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, r, graalRuntime.getTarget());
         boxingSnippets = new BoxingSnippets.Templates(this, r, graalRuntime.getTarget());
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, r, graalRuntime.getTarget());
+
+        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(this, r, graalRuntime.getTarget()));
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {
