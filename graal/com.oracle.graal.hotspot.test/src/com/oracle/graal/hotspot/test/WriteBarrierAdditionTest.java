@@ -20,11 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.test;
+package com.oracle.graal.hotspot.test;
 
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
