@@ -143,7 +143,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
     }
 
-    private CodeTree createTemplateMethodCall(CodeTreeBuilder parent, CodeTree target, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName) {
+    private CodeTree createTemplateMethodCall(CodeTreeBuilder parent, CodeTree target, TemplateMethod sourceMethod, TemplateMethod targetMethod, String unexpectedValueName,
+                    String... customSignatureValueNames) {
         CodeTreeBuilder builder = parent.create();
 
         boolean castedValues = sourceMethod != targetMethod;
@@ -199,8 +200,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
         builder.startCall(method.getSimpleName().toString());
 
+        int signatureIndex = 0;
+
         for (ActualParameter targetParameter : targetMethod.getParameters()) {
-            ActualParameter valueParameter = sourceMethod.findParameter(targetParameter.getLocalName());
+            ActualParameter valueParameter = null;
+            if (sourceMethod != null) {
+                valueParameter = sourceMethod.findParameter(targetParameter.getLocalName());
+            }
             if (valueParameter == null) {
                 valueParameter = targetParameter;
             }
@@ -215,7 +221,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 valueType = valueParameter.getTypeSystemType();
             }
 
-            if (targetParameter.getSpecification().isLocal()) {
+            if (signatureIndex < customSignatureValueNames.length && targetParameter.getSpecification().isSignature()) {
+                builder.string(customSignatureValueNames[signatureIndex]);
+                signatureIndex++;
+            } else if (targetParameter.getSpecification().isLocal()) {
                 builder.startGroup();
                 if (builder.findMethod().getModifiers().contains(Modifier.STATIC)) {
                     builder.string(THIS_NODE_LOCAL_VAR_NAME).string(".");
@@ -522,8 +531,25 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private void emitEncounteredSynthetic(CodeTreeBuilder builder) {
-        builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
+    private void emitEncounteredSynthetic(CodeTreeBuilder builder, SpecializationData current) {
+        builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class));
+        builder.startGroup();
+        String sep = null;
+        for (ActualParameter parameters : current.getParameters()) {
+            if (parameters.getSpecification().isSignature()) {
+                if (sep == null) {
+                    builder.doubleQuote("Unsupported values: " + parameters.getLocalName() + " = ");
+                    sep = ", ";
+                } else {
+                    builder.string(" + ");
+                    builder.doubleQuote(sep + parameters.getLocalName() + " = ");
+                }
+                builder.string(" + ");
+                builder.string(parameters.getLocalName());
+            }
+        }
+        builder.end();
+        builder.end().end();
     }
 
     private static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
@@ -669,7 +695,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             for (VariableElement var : type.getFields()) {
-                method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
+                NodeChildData child = getModel().findChild(var.getSimpleName().toString());
+                if (child != null) {
+                    method.getParameters().add(new CodeVariableElement(child.getOriginalType(), child.getName()));
+                } else {
+                    method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
+                }
             }
 
             if (superConstructor != null) {
@@ -682,14 +713,25 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             for (VariableElement var : type.getFields()) {
                 builder.startStatement();
-                String varName = var.getSimpleName().toString();
-                builder.string("this.").string(varName);
+                String fieldName = var.getSimpleName().toString();
+
+                CodeTree fieldInit = CodeTreeBuilder.singleString(var.getSimpleName().toString());
+                builder.string("this.").string(var.getSimpleName().toString());
+
+                NodeChildData child = getModel().findChild(fieldName);
+                if (child != null) {
+                    CreateCastData createCast = getModel().findCast(child.getName());
+                    if (createCast != null) {
+                        fieldInit = createTemplateMethodCall(builder, null, getModel().getGenericSpecialization(), createCast, null, child.getName());
+                    }
+                }
+
                 if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
-                    builder.string(" = adoptChild(").string(varName).string(")");
+                    builder.string(" = adoptChild(").tree(fieldInit).string(")");
                 } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    builder.string(" = adoptChildren(").string(varName).string(")");
+                    builder.string(" = adoptChildren(").tree(fieldInit).string(")");
                 } else {
-                    builder.string(" = ").string(varName);
+                    builder.string(" = ").tree(fieldInit);
                 }
                 builder.end();
             }
@@ -832,7 +874,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         unreachableSpecializations.add(specialization);
                     } else {
                         filteredSpecializations.add(specialization);
-                        if (!specialization.isUninitialized() && !specialization.hasRewrite(getContext())) {
+                        if (!specialization.isUninitialized() && specialization.isGenericSpecialization(getContext())) {
                             unreachable = true;
                         }
                     }
@@ -877,7 +919,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             if (specialize && executeCall == null && !current.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                emitEncounteredSynthetic(builder);
+                emitEncounteredSynthetic(builder, current);
             } else if (specialize) {
 
                 if (current.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
@@ -890,7 +932,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         }
                         builder.statement("resultIsSet = true");
                     } else {
-                        emitEncounteredSynthetic(builder);
+                        emitEncounteredSynthetic(builder, current);
                     }
                     builder.end();
                 }
@@ -922,7 +964,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
             } else {
                 if (executeCall == null) {
-                    emitEncounteredSynthetic(builder);
+                    emitEncounteredSynthetic(builder, current);
                 } else {
                     builder.startReturn().tree(executeCall).end();
                 }
@@ -1165,7 +1207,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTreeBuilder builder = method.createBuilder();
             if (!node.needsRewrites(getContext())) {
-                builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
+                builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).doubleQuote("No specialized version.").end().end();
             } else {
                 builder.startIf();
                 builder.string("types.length == 1");
@@ -1668,7 +1710,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 returnBuilder.doubleQuote("Uninitialized");
                 returnBuilder.end();
             } else if (specialization.getMethod() == null && !node.needsRewrites(context)) {
-                emitEncounteredSynthetic(builder);
+                emitEncounteredSynthetic(builder, specialization);
             } else if (specialization.isGeneric()) {
                 returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
                 addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);

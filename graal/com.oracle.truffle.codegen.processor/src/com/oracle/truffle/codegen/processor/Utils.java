@@ -583,8 +583,13 @@ public class Utils {
         List<? extends AnnotationValue> values = getAnnotationValue(List.class, mirror, name);
         List<T> result = new ArrayList<>();
 
-        for (AnnotationValue value : values) {
-            result.add(resolveAnnotationValue(expectedListType, value));
+        if (values != null) {
+            for (AnnotationValue value : values) {
+                T annotationValue = resolveAnnotationValue(expectedListType, value);
+                if (annotationValue != null) {
+                    result.add(annotationValue);
+                }
+            }
         }
         return result;
     }
@@ -595,6 +600,10 @@ public class Utils {
 
     @SuppressWarnings({"unchecked"})
     private static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
+        if (value == null) {
+            return null;
+        }
+
         Object unboxedValue = value.accept(new AnnotationValueVisitorImpl(), null);
         if (unboxedValue != null) {
             if (expectedType == TypeMirror.class && unboxedValue instanceof String) {

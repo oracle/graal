@@ -50,6 +50,7 @@ public class NodeData extends Template {
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
     private List<ShortCircuitData> shortCircuits;
     private List<String> assumptions;
+    private List<CreateCastData> casts;
 
     private String shortName;
 
@@ -72,6 +73,14 @@ public class NodeData extends Template {
         this.fields = splitSource.fields;
         this.children = splitSource.children;
         this.assumptions = splitSource.assumptions;
+    }
+
+    public List<CreateCastData> getCasts() {
+        return casts;
+    }
+
+    void setCasts(List<CreateCastData> casts) {
+        this.casts = casts;
     }
 
     void setShortName(String shortName) {
@@ -132,6 +141,9 @@ public class NodeData extends Template {
         }
         if (fields != null) {
             containerChildren.addAll(fields);
+        }
+        if (casts != null) {
+            containerChildren.addAll(casts);
         }
         return containerChildren;
     }
@@ -230,6 +242,9 @@ public class NodeData extends Template {
         methods.addAll(getSpecializationListeners());
         methods.addAll(getExecutableTypes());
         methods.addAll(getShortCircuits());
+        if (getCasts() != null) {
+            methods.addAll(getCasts());
+        }
 
         return methods;
     }
@@ -367,6 +382,7 @@ public class NodeData extends Template {
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
         dumpProperty(builder, indent, "assumptions", getAssumptions());
+        dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());
         if (getDeclaredNodes().size() > 0) {
             builder.append(String.format("\n%s  children = [", indent));
@@ -487,6 +503,17 @@ public class NodeData extends Template {
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" + getNodeId() + "]";
+    }
+
+    public CreateCastData findCast(String name) {
+        if (getCasts() != null) {
+            for (CreateCastData cast : getCasts()) {
+                if (cast.getChildNames().contains(name)) {
+                    return cast;
+                }
+            }
+        }
+        return null;
     }
 
 }

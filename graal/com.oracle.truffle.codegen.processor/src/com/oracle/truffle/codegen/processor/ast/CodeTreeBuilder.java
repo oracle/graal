@@ -563,7 +563,7 @@ public class CodeTreeBuilder {
 
     public ExecutableElement findMethod() {
         Element element = currentElement;
-        while (element != null && (element.getKind() != ElementKind.METHOD)) {
+        while (element != null && (element.getKind() != ElementKind.METHOD && (element.getKind() != ElementKind.CONSTRUCTOR))) {
             element = element.getEnclosingElement();
         }
         ExecutableElement found = element != null ? (ExecutableElement) element : null;

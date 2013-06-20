@@ -211,6 +211,7 @@ public class NodeParser extends TemplateParser<NodeData> {
     private static List<NodeData> splitNodeData(NodeData node) {
         SortedMap<String, List<SpecializationData>> groupedSpecializations = groupByNodeId(node.getSpecializations());
         SortedMap<String, List<SpecializationListenerData>> groupedListeners = groupByNodeId(node.getSpecializationListeners());
+        SortedMap<String, List<CreateCastData>> groupedCasts = groupByNodeId(node.getCasts());
 
         Set<String> ids = new TreeSet<>();
         ids.addAll(groupedSpecializations.keySet());
@@ -220,6 +221,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (String id : ids) {
             List<SpecializationData> specializations = groupedSpecializations.get(id);
             List<SpecializationListenerData> listeners = groupedListeners.get(id);
+            List<CreateCastData> casts = groupedCasts.get(id);
 
             if (specializations == null) {
                 specializations = new ArrayList<>();
@@ -238,12 +240,14 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             copy.setSpecializations(specializations);
             copy.setSpecializationListeners(listeners);
+            copy.setCasts(casts);
 
             splitted.add(copy);
         }
 
         node.setSpecializations(new ArrayList<SpecializationData>());
         node.setSpecializationListeners(new ArrayList<SpecializationListenerData>());
+        node.setCasts(new ArrayList<CreateCastData>());
 
         return splitted;
     }
@@ -266,6 +270,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         node.setSpecializationListeners(new SpecializationListenerParser(context, node).parse(elements));
         List<SpecializationData> generics = new GenericParser(context, node).parse(elements);
         List<SpecializationData> specializations = new SpecializationMethodParser(context, node).parse(elements);
+        node.setCasts(new CreateCastParser(context, node).parse(elements));
 
         List<SpecializationData> allSpecializations = new ArrayList<>();
         allSpecializations.addAll(generics);
@@ -736,6 +741,18 @@ public class NodeParser extends TemplateParser<NodeData> {
                 shortCircuits.add(Utils.getAnnotationValue(String.class, mirror, "value"));
             }
         }
+        Map<String, TypeMirror> castNodeTypes = new HashMap<>();
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, CreateCast.class);
+            if (mirror != null) {
+                List<String> children = (Utils.getAnnotationValueList(String.class, mirror, "value"));
+                if (children != null) {
+                    for (String child : children) {
+                        castNodeTypes.put(child, method.getReturnType());
+                    }
+                }
+            }
+        }
 
         List<NodeChildData> parsedChildren = new ArrayList<>();
         List<TypeElement> typeHierarchyReversed = new ArrayList<>(typeHierarchy);
@@ -768,6 +785,12 @@ public class NodeParser extends TemplateParser<NodeData> {
                     cardinality = Cardinality.MANY;
                 }
 
+                TypeMirror originalChildType = childType;
+                TypeMirror castNodeType = castNodeTypes.get(name);
+                if (castNodeType != null) {
+                    childType = castNodeType;
+                }
+
                 Element getter = findGetter(elements, name, childType);
 
                 ExecutionKind kind = ExecutionKind.DEFAULT;
@@ -775,7 +798,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                     kind = ExecutionKind.SHORT_CIRCUIT;
                 }
 
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, getter, cardinality, kind);
+                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
 
                 parsedChildren.add(nodeChild);
 
@@ -883,7 +906,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.typeEquals(method.getReturnType(), type)) {
+            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.isAssignable(context, type, method.getReturnType())) {
                 return method;
             }
         }

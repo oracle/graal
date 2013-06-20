@@ -74,6 +74,24 @@ public class SpecializationData extends TemplateMethod {
         return sinks;
     }
 
+    public boolean isGenericSpecialization(ProcessorContext context) {
+        if (hasRewrite(context)) {
+            return false;
+        }
+
+        for (ActualParameter parameter : getParameters()) {
+            NodeChildData child = getNode().findChild(parameter.getSpecification().getName());
+            if (child == null) {
+                continue;
+            }
+            if (!parameter.getTypeSystemType().isGeneric()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public boolean hasRewrite(ProcessorContext context) {
         if (!getExceptions().isEmpty()) {
             return true;

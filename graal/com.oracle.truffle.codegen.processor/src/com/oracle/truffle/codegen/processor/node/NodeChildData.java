@@ -54,6 +54,7 @@ public class NodeChildData extends MessageContainer {
 
     private final String name;
     private final TypeMirror type;
+    private final TypeMirror originalType;
     private final Element accessElement;
 
     private final Cardinality cardinality;
@@ -63,11 +64,13 @@ public class NodeChildData extends MessageContainer {
 
     private NodeData nodeData;
 
-    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, Element accessElement, Cardinality cardinality, ExecutionKind executionKind) {
+    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality,
+                    ExecutionKind executionKind) {
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
         this.name = name;
         this.type = nodeType;
+        this.originalType = originalNodeType;
         this.accessElement = accessElement;
         this.cardinality = cardinality;
         this.executionKind = executionKind;
@@ -99,6 +102,10 @@ public class NodeChildData extends MessageContainer {
 
     public List<ExecutableTypeData> findExecutableTypes() {
         return nodeData.getExecutableTypes(getExecuteWith().size());
+    }
+
+    public TypeMirror getOriginalType() {
+        return originalType;
     }
 
     @Override

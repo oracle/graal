@@ -78,20 +78,15 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
     protected final MethodSpec createDefaultMethodSpec(ExecutableElement method, AnnotationMirror mirror, boolean shortCircuitsEnabled, String shortCircuitName) {
         MethodSpec methodSpec = new MethodSpec(createReturnParameterSpec());
 
-        if (getNode().supportsFrame()) {
-            methodSpec.addOptional(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame()));
-        }
+        addDefaultFrame(methodSpec);
+        addDefaultImplicitThis(method, methodSpec);
+        addDefaultFieldMethodSpec(method, methodSpec);
+        addDefaultChildren(shortCircuitsEnabled, shortCircuitName, methodSpec);
 
-        resolveAndAddImplicitThis(methodSpec, method);
+        return methodSpec;
+    }
 
-        for (NodeFieldData field : getNode().getFields()) {
-            if (!Utils.isFieldAccessible(method, field.getVariable())) {
-                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
-                spec.setLocal(true);
-                methodSpec.addOptional(spec);
-            }
-        }
-
+    private void addDefaultChildren(boolean shortCircuitsEnabled, String shortCircuitName, MethodSpec methodSpec) {
         // children are null when parsing executable types
         if (getNode().getChildren() != null) {
             for (NodeChildData child : getNode().getChildren()) {
@@ -117,11 +112,25 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                 }
             }
         }
-
-        return methodSpec;
     }
 
-    protected void resolveAndAddImplicitThis(MethodSpec methodSpec, ExecutableElement method) {
+    private void addDefaultFrame(MethodSpec methodSpec) {
+        if (getNode().supportsFrame()) {
+            methodSpec.addOptional(new ParameterSpec("frame", getContext().getTruffleTypes().getFrame()));
+        }
+    }
+
+    protected void addDefaultFieldMethodSpec(ExecutableElement method, MethodSpec methodSpec) {
+        for (NodeFieldData field : getNode().getFields()) {
+            if (!Utils.isFieldAccessible(method, field.getVariable())) {
+                ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
+                spec.setLocal(true);
+                methodSpec.addOptional(spec);
+            }
+        }
+    }
+
+    protected void addDefaultImplicitThis(ExecutableElement method, MethodSpec methodSpec) {
         TypeMirror declaredType = Utils.findNearestEnclosingType(method).asType();
 
         if (!method.getModifiers().contains(Modifier.STATIC) && !Utils.isAssignable(getContext(), declaredType, getContext().getTruffleTypes().getNode())) {
