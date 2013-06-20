@@ -46,9 +46,6 @@ public class WriteBarrierAdditionPhase extends Phase {
                 addArrayRangeBarriers(node, graph);
             }
         }
-        for (GenericArrayRangeWriteBarrier node : graph.getNodes(GenericArrayRangeWriteBarrier.class)) {
-            graph.removeFixed(node);
-        }
     }
 
     private static void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
