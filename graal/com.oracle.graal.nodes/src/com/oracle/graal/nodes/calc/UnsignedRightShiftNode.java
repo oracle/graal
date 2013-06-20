@@ -71,7 +71,7 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
                     if (other instanceof UnsignedRightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forInt(0, graph());
+                            return ConstantNode.forIntegerKind(kind(), 0, graph());
                         }
                         return graph().unique(new UnsignedRightShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if (other instanceof LeftShiftNode && otherAmount == amount) {

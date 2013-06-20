@@ -68,7 +68,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable, 
                     if (other instanceof RightShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forInt(0, graph());
+                            return ConstantNode.forIntegerKind(kind(), 0, graph());
                         }
                         return graph().unique(new RightShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
                     }

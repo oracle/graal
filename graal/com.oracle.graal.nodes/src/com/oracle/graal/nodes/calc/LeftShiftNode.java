@@ -71,7 +71,7 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable, L
                     if (other instanceof LeftShiftNode) {
                         int total = amount + otherAmount;
                         if (total != (total & mask)) {
-                            return ConstantNode.forInt(0, graph());
+                            return ConstantNode.forIntegerKind(kind(), 0, graph());
                         }
                         return graph().unique(new LeftShiftNode(kind(), other.x(), ConstantNode.forInt(total, graph())));
                     } else if ((other instanceof RightShiftNode || other instanceof UnsignedRightShiftNode) && otherAmount == amount) {
