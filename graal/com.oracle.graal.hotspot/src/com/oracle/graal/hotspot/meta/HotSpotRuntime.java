@@ -51,6 +51,8 @@ import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
+import static com.oracle.graal.hotspot.nodes.G1PostWriteBarrierStubCall.*;
+import static com.oracle.graal.hotspot.nodes.G1PreWriteBarrierStubCall.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -294,7 +296,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(r, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, NOT_REEXECUTABLE, ANY_LOCATION);
         linkForeignCall(r, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(r, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, NOT_REEXECUTABLE, NO_LOCATIONS);
-
+        linkForeignCall(r, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, REEXECUTABLE, NO_LOCATIONS);
         if (IntrinsifyObjectMethods.getValue()) {
             r.registerSubstitutions(ObjectSubstitutions.class);
         }
