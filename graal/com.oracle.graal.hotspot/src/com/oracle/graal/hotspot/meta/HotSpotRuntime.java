@@ -32,6 +32,8 @@ import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.nodes.G1PostWriteBarrierStubCall.*;
+import static com.oracle.graal.hotspot.nodes.G1PreWriteBarrierStubCall.*;
 import static com.oracle.graal.hotspot.nodes.MonitorExitStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewArrayStubCall.*;
 import static com.oracle.graal.hotspot.nodes.NewInstanceStubCall.*;
@@ -51,8 +53,6 @@ import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.Log.*;
 import static com.oracle.graal.replacements.MathSubstitutionsX86.*;
-import static com.oracle.graal.hotspot.nodes.G1PostWriteBarrierStubCall.*;
-import static com.oracle.graal.hotspot.nodes.G1PreWriteBarrierStubCall.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -617,15 +617,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
-            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
-            // Unsafe Accesses to the metaspace or to any
-            // absolute address do not perform uncompression.
-            boolean compress = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
-            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, compress));
-            // An unsafe read must not floating outside its block as may float above an explicit
-            // null check on its object.
-            memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
-            graph.replaceFixedWithFixed(load, memoryRead);
+            lowerUnsafeLoad(load);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
@@ -782,6 +774,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
+        } else if (n instanceof G1PreWriteBarrier) {
+            writeBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
+        } else if (n instanceof G1PostWriteBarrier) {
+            writeBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
         } else if (n instanceof SerialWriteBarrier) {
             writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
@@ -827,6 +823,99 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         ReadNode hub = graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind()), WriteBarrierType.NONE, false));
         tool.createNullCheckGuard(hub, object);
         return hub;
+    }
+
+    public static long referentOffset() {
+        try {
+            return unsafe.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
+    /**
+     * The following method lowers the unsafe load node. If any GC besides G1 is used, the unsafe
+     * load is lowered normally to a read node. However, if the G1 is used and the unsafe load could
+     * not be canonicalized to a load field, a runtime check has to be inserted in order to a add a
+     * g1-pre barrier if the loaded field is the referent field of the java.lang.ref.Reference
+     * class. The following code constructs the runtime check:
+     * 
+     * <pre>
+     * if (offset == referentOffset() && type == java.lang.ref.Reference) {
+     *     read;
+     *     G1PreWriteBarrier(read);
+     * } else {
+     *     read;
+     * }
+     * 
+     * </pre>
+     * 
+     * TODO (ck): Replace the code below with a snippet.
+     * 
+     */
+    private void lowerUnsafeLoad(UnsafeLoadNode load) {
+        StructuredGraph graph = load.graph();
+        boolean compress = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
+        if (config().useG1GC && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object && !load.object().objectStamp().alwaysNull() && load.object().objectStamp().type() != null &&
+                        !(load.object().objectStamp().type().isArray())) {
+            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
+            // Calculate offset+displacement
+            IntegerAddNode addNode = graph.add(new IntegerAddNode(Kind.Long, load.offset(), ConstantNode.forInt(load.displacement(), graph)));
+            // Compare previous result with referent offset (16)
+            CompareNode offsetCondition = CompareNode.createCompareNode(Condition.EQ, addNode, ConstantNode.forLong(referentOffset(), graph));
+            // Instance of unsafe load is java.lang.ref.Reference
+            InstanceOfNode instanceOfNode = graph.add(new InstanceOfNode(lookupJavaType(java.lang.ref.Reference.class), load.object(), null));
+            // The two barriers
+            ReadNode memoryReadNoBarrier = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, compress));
+            ReadNode memoryReadBarrier = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.PRECISE, compress));
+
+            // EndNodes
+            EndNode leftTrue = graph.add(new EndNode());
+            EndNode leftFalse = graph.add(new EndNode());
+            EndNode rightFirst = graph.add(new EndNode());
+            EndNode rightSecond = graph.add(new EndNode());
+
+            // MergeNodes
+            MergeNode mergeNoBarrier = graph.add(new MergeNode());
+            MergeNode mergeFinal = graph.add(new MergeNode());
+
+            // IfNodes
+            IfNode ifNodeType = graph.add(new IfNode(instanceOfNode, memoryReadBarrier, leftFalse, 1));
+            IfNode ifNodeOffset = graph.add(new IfNode(offsetCondition, ifNodeType, rightFirst, 1));
+
+            // Both branches are true (i.e. Add the barrier)
+            memoryReadBarrier.setNext(leftTrue);
+            mergeNoBarrier.addForwardEnd(rightFirst);
+            mergeNoBarrier.addForwardEnd(leftFalse);
+            mergeNoBarrier.setNext(memoryReadNoBarrier);
+            memoryReadNoBarrier.setNext(rightSecond);
+            mergeFinal.addForwardEnd(leftTrue);
+            mergeFinal.addForwardEnd(rightSecond);
+
+            PhiNode phiNode = graph.add(new PhiNode(load.accessKind(), mergeFinal));
+            phiNode.addInput(memoryReadBarrier);
+            phiNode.addInput(memoryReadNoBarrier);
+
+            // An unsafe read must not floating outside its block as may float above an explicit
+            // null check on its object.
+            memoryReadNoBarrier.setGuard(AbstractBeginNode.prevBegin(memoryReadNoBarrier));
+            memoryReadBarrier.setGuard(AbstractBeginNode.prevBegin(memoryReadBarrier));
+
+            assert load.successors().count() == 1;
+            Node next = load.successors().first();
+            load.replaceAndDelete(ifNodeOffset);
+            mergeFinal.setNext((FixedNode) next);
+            ifNodeOffset.replaceAtUsages(phiNode);
+        } else {
+            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
+            // Unsafe Accesses to the metaspace or to any
+            // absolute address do not perform uncompression.
+            ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, compress));
+            // An unsafe read must not floating outside its block as may float above an explicit
+            // null check on its object.
+            memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
+            graph.replaceFixedWithFixed(load, memoryRead);
+        }
     }
 
     private static WriteBarrierType getFieldLoadBarrierType(HotSpotResolvedJavaField loadField) {
