@@ -76,6 +76,15 @@ public class WriteBarrierSnippets implements Snippets {
         }
     }
 
+    /**
+     * Log method of debugging purposes.
+     */
+    static void log(boolean enabled, String format, WordBase value) {
+        if (enabled) {
+            Log.printf(format, value.rawValue());
+        }
+    }
+
     @Snippet
     public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad) {
         Word thread = thread();
