@@ -43,7 +43,6 @@ public class SPARCTestOp extends SPARCLIRInstruction {
     }
 
     @Override
-    @SuppressWarnings("unused")
     public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
         if (isRegister(y)) {
             switch (x.getKind()) {

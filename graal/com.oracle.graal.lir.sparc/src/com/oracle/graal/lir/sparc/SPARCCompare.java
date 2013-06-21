@@ -62,7 +62,6 @@ public enum SPARCCompare {
         }
     }
 
-    @SuppressWarnings("unused")
     public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCCompare opcode, Value x, Value y) {
         if (isRegister(y)) {
             switch (opcode) {

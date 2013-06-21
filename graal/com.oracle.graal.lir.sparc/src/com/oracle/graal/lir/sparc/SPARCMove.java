@@ -34,7 +34,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.sparc.*;
 
 import static com.oracle.graal.sparc.SPARC.*;
 
@@ -55,7 +54,6 @@ public class SPARCMove {
         }
 
         @Override
-        @SuppressWarnings("unused")
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
             SPARCAddress addr = address.toAddress();
             switch (kind) {
@@ -89,7 +87,6 @@ public class SPARCMove {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class MembarOp extends SPARCLIRInstruction {
 
         private final int barriers;
@@ -176,7 +173,6 @@ public class SPARCMove {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class StackLoadAddressOp extends SPARCLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
@@ -208,7 +204,6 @@ public class SPARCMove {
         }
 
         @Override
-        @SuppressWarnings("unused")
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
             assert isRegister(input);
             SPARCAddress addr = address.toAddress();
@@ -254,7 +249,6 @@ public class SPARCMove {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void reg2reg(SPARCAssembler masm, Value result, Value input) {
         if (asRegister(input).equals(asRegister(result))) {
             return;

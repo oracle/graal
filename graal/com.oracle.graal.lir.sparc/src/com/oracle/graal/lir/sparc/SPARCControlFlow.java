@@ -31,13 +31,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.sparc.*;
 
 import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 
@@ -54,7 +52,6 @@ public class SPARCControlFlow {
         }
 
         @Override
-        @SuppressWarnings("unused")
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
             switch (condition) {
                 case GT:
@@ -140,7 +137,6 @@ public class SPARCControlFlow {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void cmove(TargetMethodAssembler tasm, SPARCAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
@@ -328,7 +324,6 @@ public class SPARCControlFlow {
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
             assert isSorted(lowKeys) && isSorted(highKeys);
 
-            @SuppressWarnings("unused")
             Label actualDefaultTarget = defaultTarget == null ? new Label() : defaultTarget.label();
             int prevHighKey = 0;
             boolean skipLowCheck = false;
@@ -408,7 +403,6 @@ public class SPARCControlFlow {
         }
     }
 
-    @SuppressWarnings("unused")
     private static void tableswitch(TargetMethodAssembler tasm, SPARCAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
@@ -434,5 +428,6 @@ public class SPARCControlFlow {
         tasm.compilationResult.addAnnotation(jt);
 
         // SPARC: unimp: tableswitch extract
+        throw GraalInternalError.shouldNotReachHere();
     }
 }
