@@ -22,32 +22,70 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.api.meta.Value.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
+import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
+
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.spi.*;
+
+//import com.oracle.graal.replacements.sparc.*;
 
 public class SPARCHotSpotRuntime extends HotSpotRuntime {
 
     public SPARCHotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
-        // SPARC: Register stubs.
+    }
+
+// private AMD64ConvertSnippets.Templates convertSnippets;
+
+    @Override
+    public void registerReplacements(Replacements replacements) {
+        Kind word = graalRuntime.getTarget().wordKind;
+
+        // The calling convention for the exception handler stub is (only?) defined in
+        // TemplateInterpreterGenerator::generate_throw_exception()
+        // in templateInterpreter_sparc.cpp around line 1925
+        RegisterValue exception = o0.asValue(Kind.Object);  // XXX should this be i0?
+        RegisterValue exceptionPc = o1.asValue(word);  // XXX should this be i1?
+        CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
+        register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+        register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+
+// convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements,
+// graalRuntime.getTarget());
+        super.registerReplacements(replacements);
+    }
+
+    @Override
+    public void lower(Node n, LoweringTool tool) {
+// if (n instanceof ConvertNode) {
+// convertSnippets.lower((ConvertNode) n, tool);
+// } else {
+        super.lower(n, tool);
+// }
     }
 
     @Override
     public Register threadRegister() {
-        // SPARC: Define thread register.
-        return null;
+        throw new InternalError("NYI: SPARC: Define thread register.");
     }
 
     @Override
     public Register stackPointerRegister() {
-        // SPARC: Define stack pointer register.
-        return null;
+        throw new InternalError("NYI: SPARC: Define stack pointer register.");
     }
 
     @Override
     protected RegisterConfig createRegisterConfig() {
-        // SPARC: Create register configuration.
-        return null;
+        return new SPARCHotSpotRegisterConfig(graalRuntime.getTarget().arch, config);
     }
 }
