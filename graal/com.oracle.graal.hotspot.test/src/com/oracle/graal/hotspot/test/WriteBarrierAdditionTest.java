@@ -69,7 +69,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * Expected 2 barriers for the Serial GC and 4 for G1 (2 pre + 2 post)
+     * Expected 2 barriers for the Serial GC and 4 for G1 (2 pre + 2 post).
      */
     @Test
     public void test1() throws Exception {
@@ -85,7 +85,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post)
+     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post).
      */
     @Test
     public void test2() throws Exception {
@@ -108,7 +108,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post)
+     * Expected 4 barriers for the Serial GC and 8 for G1 (4 pre + 4 post).
      */
     @Test
     public void test3() throws Exception {
