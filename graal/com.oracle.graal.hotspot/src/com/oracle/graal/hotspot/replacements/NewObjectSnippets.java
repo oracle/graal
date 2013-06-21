@@ -126,7 +126,7 @@ public class NewObjectSnippets implements Snippets {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset());
         if (hub.equal(Word.zero())) {
             // the array class is not yet loaded
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.Unresolved);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved);
         }
 
         int layoutHelper = readLayoutHelper(hub);
@@ -143,8 +143,8 @@ public class NewObjectSnippets implements Snippets {
         //    esz is the element size in bytes
         //@formatter:on
 
-        int headerSize = (layoutHelper >> 16) & 0xFF;
-        int log2ElementSize = layoutHelper & 0xFF;
+        int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
+        int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
         return allocateArray(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
