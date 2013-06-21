@@ -260,7 +260,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Ret extends Jmpl {
 
         public Ret() {
