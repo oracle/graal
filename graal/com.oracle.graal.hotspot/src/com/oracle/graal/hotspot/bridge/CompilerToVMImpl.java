@@ -170,10 +170,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
     @Override
-    public native void invalidateInstalledCode(long nativeMethod);
-
-    @Override
-    public native boolean isInstalledCodeValid(long nativeMethod);
+    public native void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {

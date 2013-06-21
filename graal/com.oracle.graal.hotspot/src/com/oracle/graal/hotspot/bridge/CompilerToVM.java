@@ -229,7 +229,5 @@ public interface CompilerToVM {
      */
     void reprofile(long metaspaceMethod);
 
-    void invalidateInstalledCode(long nativeMethod);
-
-    boolean isInstalledCodeValid(long nativeMethod);
+    void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 }
