@@ -880,8 +880,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             MergeNode mergeFinal = graph.add(new MergeNode());
 
             // IfNodes
-            IfNode ifNodeType = graph.add(new IfNode(instanceOfNode, memoryReadBarrier, leftFalse, 1));
-            IfNode ifNodeOffset = graph.add(new IfNode(offsetCondition, ifNodeType, rightFirst, 1));
+            IfNode ifNodeType = graph.add(new IfNode(instanceOfNode, memoryReadBarrier, leftFalse, 0.1));
+            IfNode ifNodeOffset = graph.add(new IfNode(offsetCondition, ifNodeType, rightFirst, 0.1));
 
             // Both branches are true (i.e. Add the barrier)
             memoryReadBarrier.setNext(leftTrue);
