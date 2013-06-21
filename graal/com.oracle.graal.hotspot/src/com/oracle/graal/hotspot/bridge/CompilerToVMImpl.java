@@ -143,7 +143,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
-    public native Object executeCompiledMethodVarargs(Object[] args, long nmethod);
+    public native Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
     public native int getVtableEntryOffset(long metaspaceMethod);
@@ -176,8 +176,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean isInstalledCodeValid(long nativeMethod);
 
     @Override
-    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nmethod) throws InvalidInstalledCodeException {
-        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, nmethod);
+    public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
+        return executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
     }
 
     /**
@@ -187,5 +187,5 @@ public class CompilerToVMImpl implements CompilerToVM {
      * stub that does the necessary argument shuffling and a tail call via an indirect jump to the
      * verified entry point of the given native method.
      */
-    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, long nmethod);
+    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode);
 }
