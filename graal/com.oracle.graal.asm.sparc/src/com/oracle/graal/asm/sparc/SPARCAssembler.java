@@ -25,9 +25,7 @@ package com.oracle.graal.asm.sparc;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime;
-import com.oracle.graal.sparc.SPARC;
 
 import static com.oracle.graal.sparc.SPARC.*;
 
@@ -35,6 +33,18 @@ import static com.oracle.graal.sparc.SPARC.*;
  * This class implements an assembler that can encode most SPARC instructions.
  */
 public abstract class SPARCAssembler extends AbstractAssembler {
+
+    /**
+     * Constructs an assembler for the AMD64 architecture.
+     * 
+     * @param registerConfig the register configuration used to bind {@link Register#Frame} and
+     *            {@link Register#CallerFrame} to physical registers. This value can be null if this
+     *            assembler instance will not be used to assemble instructions using these logical
+     *            registers.
+     */
+    public SPARCAssembler(TargetDescription target, RegisterConfig registerConfig) {
+        super(target);
+    }
 
     public static class Fmt00a {
 
@@ -871,10 +881,6 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         assert reg < 64 && ((reg & 3) == 0);
         // ignore v8 assertion for now
         return (reg & 0x1c) | ((reg & 0x20) >> 5);
-    }
-
-    public SPARCAssembler(TargetDescription target, @SuppressWarnings("unused") RegisterConfig registerConfig) {
-        super(target);
     }
 
     public static final int sx1 = 0x00001000;

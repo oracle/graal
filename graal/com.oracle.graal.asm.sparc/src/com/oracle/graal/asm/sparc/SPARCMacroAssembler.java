@@ -27,9 +27,6 @@ import static com.oracle.graal.asm.sparc.SPARCAssembler.CC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.sparc.*;
 
 public class SPARCMacroAssembler extends SPARCAssembler {
 
@@ -48,7 +45,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     }
 
     @Override
-    @SuppressWarnings("unused")
     public void jmp(Label l) {
         new Bpa(l).emit(this);
         new Nop().emit(this);
@@ -72,7 +68,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         throw new InternalError("NYI");
     }
 
-    @SuppressWarnings("unused")
     public static class Bclr extends Andn {
 
         public Bclr(Register src, Register dst) {
@@ -84,7 +79,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Bset extends Or {
 
         public Bset(Register src, Register dst) {
@@ -96,7 +90,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Btst extends Andcc {
 
         public Btst(Register src1, Register src2) {
@@ -108,7 +101,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Clr {
 
         public Clr(SPARCAssembler asm, Register dst) {
@@ -120,7 +112,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Clrb extends Stb {
 
         public Clrb(SPARCAddress addr) {
@@ -128,7 +119,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Clrh extends Sth {
 
         public Clrh(SPARCAddress addr) {
@@ -136,7 +126,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Clrx extends Stx {
 
         public Clrx(SPARCAddress addr) {
@@ -144,7 +133,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Clruw extends Srl {
 
         public Clruw(Register src1, Register dst) {
@@ -157,7 +145,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Cmp extends Subcc {
 
         public Cmp(Register a, Register b) {
@@ -169,7 +156,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Dec extends Sub {
 
         public Dec(Register dst) {
@@ -181,7 +167,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Deccc extends Subcc {
 
         public Deccc(Register dst) {
@@ -225,7 +210,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Neg extends Sub {
 
         public Neg(Register src2, Register dst) {
@@ -238,7 +222,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Mov extends Or {
 
         public Mov(Register src1, Register dst) {
@@ -258,7 +241,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Not extends Xnor {
 
         public Not(Register src1, Register dst) {
@@ -271,7 +253,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class RestoreWindow extends Restore {
 
         public RestoreWindow() {
@@ -287,7 +268,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class SaveWindow extends Save {
 
         public SaveWindow() {
@@ -312,7 +292,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Setx {
 
         public Setx(SPARCAssembler asm, long value, Register tmp, Register dst) {
@@ -354,7 +333,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class Signx extends Sra {
 
         public Signx(Register src1, Register dst) {
