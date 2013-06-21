@@ -218,18 +218,8 @@ public final class CompileTheWorld {
      */
     private void compileMethod(HotSpotResolvedJavaMethod method) {
         try {
-            System.gc();
             long start = System.currentTimeMillis();
-            long before = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
             vmToCompiler.compileMethod(method, StructuredGraph.INVOCATION_ENTRY_BCI, true, 10);
-            long after = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-            System.gc();
-            long afterGC = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-
-//            TTY.println(String.format("used: %6dK (before: %6dK, after: %6dK, after GC: %6dK)", (after - before) / 1024, before / 1024, after / 1024, afterGC / 1024) + 
-//                    " " + String.format("%s (%d bytes)", MetaUtil.format("%H::%n(%p)", method), method.getCodeSize()));
-            TTY.println("| %d | %d |", method.getCodeSize(), (after - before) / 1024);
-
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;
             method.reprofile();  // makes the method also not-entrant
