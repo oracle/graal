@@ -76,10 +76,105 @@ public class WriteBarrierSnippets implements Snippets {
         }
     }
 
+    @Snippet
+    public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad) {
+        Word thread = thread();
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
+        Object fixedExpectedObject = FixedValueAnchorNode.getObject(expectedObject);
+        Word field = (Word) Word.fromArray(fixedObject, location);
+        Word previousOop = (Word) Word.fromObject(fixedExpectedObject);
+        byte markingValue = thread.readByte(HotSpotReplacementsUtil.g1SATBQueueMarkingOffset());
+        Word bufferAddress = thread.readWord(HotSpotReplacementsUtil.g1SATBQueueBufferOffset());
+        Word indexAddress = thread.add(HotSpotReplacementsUtil.g1SATBQueueIndexOffset());
+        Word indexValue = indexAddress.readWord(0);
+
+        // If the concurrent marker is enabled, the barrier is issued.
+        if (markingValue != (byte) 0) {
+            // If the previous value has to be loaded (before the write), the load is issued.
+            // The load is always issued except the cases of CAS and referent field.
+            if (doLoad) {
+                previousOop = (Word) Word.fromObject(field.readObject(0));
+            }
+            // If the previous value is null the barrier should not be issued.
+            if (previousOop.notEqual(0)) {
+                // If the thread-local SATB buffer is full issue a native call which will
+                // initialize a new one and add the entry.
+                if (indexValue.notEqual(0)) {
+                    Word nextIndex = indexValue.subtract(HotSpotReplacementsUtil.wordSize());
+                    Word logAddress = bufferAddress.add(nextIndex);
+                    // Log the object to be marked as well as update the SATB's buffer next index.
+                    logAddress.writeWord(0, previousOop);
+                    indexAddress.writeWord(0, nextIndex);
+                } else {
+                    G1PreWriteBarrierStubCall.call(previousOop.toObject());
+                }
+            }
+        }
+    }
+
+    @Snippet
+    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise) {
+        Word thread = thread();
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
+        Object fixedValue = FixedValueAnchorNode.getObject(value);
+        Word oop = (Word) Word.fromObject(fixedObject);
+        Word field;
+        if (usePrecise) {
+            field = (Word) Word.fromArray(fixedObject, location);
+        } else {
+            field = oop;
+        }
+
+        Word writtenValue = (Word) Word.fromObject(fixedValue);
+        Word bufferAddress = thread.readWord(HotSpotReplacementsUtil.g1CardQueueBufferOffset());
+        Word indexAddress = thread.add(HotSpotReplacementsUtil.g1CardQueueIndexOffset());
+        Word indexValue = thread.readWord(HotSpotReplacementsUtil.g1CardQueueIndexOffset());
+        // The result of the xor reveals whether the installed pointer crosses heap regions.
+        // In case it does the write barrier has to be issued.
+        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(HotSpotReplacementsUtil.logOfHRGrainBytes());
+
+        // Calculate the address of the card to be enqueued to the
+        // thread local card queue.
+        Word cardBase = field.unsignedShiftRight(cardTableShift());
+        long startAddress = cardTableStart();
+        int displacement = 0;
+        if (((int) startAddress) == startAddress) {
+            displacement = (int) startAddress;
+        } else {
+            cardBase = cardBase.add(Word.unsigned(cardTableStart()));
+        }
+        Word cardAddress = cardBase.add(displacement);
+
+        if (xorResult.notEqual(0)) {
+            // If the written value is not null continue with the barrier addition.
+            if (writtenValue.notEqual(0)) {
+                byte cardByte = cardAddress.readByte(0);
+                // If the card is already dirty, (hence already enqueued) skip the insertion.
+                if (cardByte != (byte) 0) {
+                    cardAddress.writeByte(0, (byte) 0);
+                    // If the thread local card queue is full, issue a native call which will
+                    // initialize a new one and add the card entry.
+                    if (indexValue.notEqual(0)) {
+                        Word nextIndex = indexValue.subtract(HotSpotReplacementsUtil.wordSize());
+                        Word logAddress = bufferAddress.add(nextIndex);
+                        // Log the object to be scanned as well as update
+                        // the card queue's next index.
+                        logAddress.writeWord(0, cardAddress);
+                        indexAddress.writeWord(0, nextIndex);
+                    } else {
+                        G1PostWriteBarrierStubCall.call(cardAddress);
+                    }
+                }
+            }
+        }
+    }
+
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo serialArrayWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayWriteBarrier");
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
+        private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
+        private final SnippetInfo g1PostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PostWriteBarrier");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target);
@@ -99,6 +194,24 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
             template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(G1PreWriteBarrier writeBarrierPre, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(g1PreWriteBarrier);
+            args.add("object", writeBarrierPre.getObject());
+            args.add("expectedObject", writeBarrierPre.getExpectedObject());
+            args.add("location", writeBarrierPre.getLocation());
+            args.addConst("doLoad", writeBarrierPre.doLoad());
+            template(args).instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(G1PostWriteBarrier writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(g1PostWriteBarrier);
+            args.add("object", writeBarrierPost.getObject());
+            args.add("value", writeBarrierPost.getValue());
+            args.add("location", writeBarrierPost.getLocation());
+            args.addConst("usePrecise", writeBarrierPost.usePrecise());
+            template(args).instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, args);
         }
     }
 }
