@@ -121,6 +121,11 @@ public class NewInstanceStub extends SnippetStub {
      *         operation was unsuccessful
      */
     static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
+        // If G1 is enabled, the "eden" allocation space is not the same always
+        // and therefore we have to go to slowpath to allocate a new TLAB.
+        if (HotSpotReplacementsUtil.useG1GC()) {
+            return Word.zero();
+        }
         if (!useTLAB()) {
             return edenAllocate(Word.unsigned(sizeInBytes), log);
         }
