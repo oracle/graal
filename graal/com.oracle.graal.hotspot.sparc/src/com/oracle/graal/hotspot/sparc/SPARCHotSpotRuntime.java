@@ -23,22 +23,18 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
-import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.*;
-import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
 //import com.oracle.graal.replacements.sparc.*;
