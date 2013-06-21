@@ -20,37 +20,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class GenericArrayRangeWriteBarrier extends FixedWithNextNode implements Node.IterableNodeType {
+/**
+ * Base class for nodes that modify a range of an array.
+ */
+public abstract class ArrayRangeWriteNode extends AbstractStateSplit implements Node.IterableNodeType {
 
-    @Input private ValueNode dstObject;
-    @Input private ValueNode dstPos;
-    @Input private ValueNode length;
-
-    public ValueNode getDstObject() {
-        return dstObject;
+    protected ArrayRangeWriteNode(Stamp stamp) {
+        super(stamp);
     }
 
-    public ValueNode getDstPos() {
-        return dstPos;
-    }
+    /**
+     * The array that is written to.
+     */
+    public abstract ValueNode getArray();
 
-    public ValueNode getLength() {
-        return length;
-    }
+    /**
+     * The first modified index.
+     */
+    public abstract ValueNode getIndex();
 
-    public GenericArrayRangeWriteBarrier(ValueNode dstObject, ValueNode dstPos, ValueNode length) {
-        super(StampFactory.forVoid());
-        this.dstObject = dstObject;
-        this.dstPos = dstPos;
-        this.length = length;
+    /**
+     * The length of the modified range.
+     */
+    public abstract ValueNode getLength();
 
-    }
-
-    @NodeIntrinsic
-    public static native void insertWriteBarrier(Object dstObject, int dstPos, int length);
+    /**
+     * Return true if the written array is an object array, false if it is a primitive array.
+     */
+    public abstract boolean isObjectArray();
 }
