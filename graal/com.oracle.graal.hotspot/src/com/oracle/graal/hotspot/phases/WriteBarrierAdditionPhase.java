@@ -41,8 +41,10 @@ public class WriteBarrierAdditionPhase extends Phase {
         for (CompareAndSwapNode node : graph.getNodes(CompareAndSwapNode.class)) {
             addCASBarriers(node, graph);
         }
-        for (GenericArrayRangeWriteBarrier node : graph.getNodes(GenericArrayRangeWriteBarrier.class)) {
-            addArrayRangeBarriers(node, graph);
+        for (ArrayRangeWriteNode node : graph.getNodes(ArrayRangeWriteNode.class)) {
+            if (node.isObjectArray()) {
+                addArrayRangeBarriers(node, graph);
+            }
         }
     }
 
@@ -69,9 +71,9 @@ public class WriteBarrierAdditionPhase extends Phase {
         }
     }
 
-    private static void addArrayRangeBarriers(GenericArrayRangeWriteBarrier node, StructuredGraph graph) {
-        SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(node.getDstObject(), node.getDstPos(), node.getLength()));
-        graph.replaceFixedWithFixed(node, serialArrayRangeWriteBarrier);
+    private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
+        SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
+        graph.addAfterFixed(node, serialArrayRangeWriteBarrier);
     }
 
 }
