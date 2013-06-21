@@ -127,6 +127,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
             setCc(cc);
             setP(p);
             setDisp19(disp19);
+            verify();
         }
 
         public Fmt00c(int a, ConditionFlag cond, Op2s op2, CC cc, int p, int disp19) {
@@ -446,17 +447,104 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
-    public static class Fmt4c {
+    public static class Fmt10c {
 
-        public Fmt4c(SPARCAssembler masm, int op, int op3, int cond, int cc, int rs2, int rd) {
-            assert op == 2;
-            assert op3 >= 0 && op3 < 0x40;
-            assert cc >= 0 && cc < 0x8;
-            assert cond >= 0 && cond < 0x10;
-            assert rs2 >= 0 && rs2 < 0x20;
-            assert rd >= 0 && rd < 0x20;
+        private static final int OP_SHIFT = 30;
+        private static final int RD_SHIFT = 25;
+        private static final int OP3_SHIFT = 19;
+        private static final int CC2_SHIFT = 18;
+        private static final int COND_SHIFT = 14;
+        private static final int I_SHIFT = 13;
+        private static final int CC_SHIFT = 11;
+        private static final int RS2_SHIFT = 0;
+        private static final int SIMM11_SHIFT = 0;
 
-            masm.emitInt(op << 30 | rd << 25 | op3 << 19 | ((cc << 15) & 0x00040000) | cond << 14 | ((cc << 11) & 0x3) | rs2);
+        // @formatter:off
+        private static final int OP_MASK     = 0b11000000000000000000000000000000;
+        private static final int RD_MASK     = 0b00111110000000000000000000000000;
+        private static final int OP3_MASK    = 0b00000001111110000000000000000000;
+        private static final int CC2_MASK    = 0b00000000000001000000000000000000;
+        private static final int COND_MASK   = 0b00000000000000111100000000000000;
+        private static final int I_MASK      = 0b00000000000000000010000000000000;
+        private static final int CC_MASK     = 0b00000000000000000001100000000000;
+        private static final int RS2_MASK    = 0b00000000000000000000000000011111;
+        private static final int SIMM11_MASK = 0b00000000000000000000011111111111;
+        // @formatter:on
+
+        private int rd;
+        private int op3;
+        private int cond;
+        private int i;
+        private int cc;
+        private int rs2;
+        private int simm11;
+
+        private Fmt10c(int rd, int op3, int cond, int i, int cc, int rs2, int simm11) {
+            this.rd = rd;
+            this.op3 = op3;
+            this.cond = cond;
+            this.i = i;
+            this.cc = cc;
+            this.rs2 = rs2;
+            this.simm11 = simm11;
+            verify();
+        }
+
+        public Fmt10c(Op3s op3, ConditionFlag cond, CC cc, Register rs2, Register rd) {
+            this(rd.encoding(), op3.getValue(), cond.getValue(), 0, cc.getValue(), rs2.encoding(), 0);
+        }
+
+        public Fmt10c(Op3s op3, ConditionFlag cond, CC cc, int simm11, Register rd) {
+            this(rd.encoding(), op3.getValue(), cond.getValue(), 1, cc.getValue(), 0, simm11);
+        }
+
+        private int getInstructionBits() {
+            if (i == 0) {
+                return Ops.ArithOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | ((cc << CC2_SHIFT) & CC2_MASK) | cond << COND_SHIFT | i << I_SHIFT | ((cc << CC_SHIFT) & CC_MASK) |
+                                rs2 << RS2_SHIFT;
+            } else {
+                return Ops.ArithOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | ((cc << CC2_SHIFT) & CC2_MASK) | cond << COND_SHIFT | i << I_SHIFT | ((cc << CC_SHIFT) & CC_MASK) |
+                                ((simm11 << SIMM11_SHIFT) & SIMM11_MASK);
+            }
+        }
+
+        public static Fmt10c read(SPARCAssembler masm, int pos) {
+            final int inst = masm.codeBuffer.getInt(pos);
+
+            // Make sure it's the right instruction:
+            final int op = (inst & OP_MASK) >> OP_SHIFT;
+            assert op == Ops.ArithOp.getValue();
+
+            // Get the instruction fields:
+            final int rd = (inst & RD_MASK) >> RD_SHIFT;
+            final int op3 = (inst & OP3_MASK) >> OP3_SHIFT;
+            final int cond = (inst & COND_MASK) >> COND_SHIFT;
+            final int i = (inst & I_MASK) >> I_SHIFT;
+            final int cc = (inst & CC2_MASK) >> CC2_SHIFT | (inst & CC_MASK) >> CC_SHIFT;
+            final int rs2 = (inst & RS2_MASK) >> RS2_SHIFT;
+            final int simm11 = (inst & SIMM11_MASK) >> SIMM11_SHIFT;
+
+            return new Fmt10c(rd, op3, cond, i, cc, rs2, simm11);
+        }
+
+        public void write(SPARCAssembler masm, int pos) {
+            verify();
+            masm.codeBuffer.emitInt(getInstructionBits(), pos);
+        }
+
+        public void emit(SPARCAssembler masm) {
+            verify();
+            masm.emitInt(getInstructionBits());
+        }
+
+        public void verify() {
+            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
+            assert ((op3 << OP3_SHIFT) & OP3_MASK) == (op3 << OP3_SHIFT);
+            assert ((cond << COND_SHIFT) & COND_MASK) == (cond << COND_SHIFT);
+            assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
+            // assert cc >= 0 && cc < 0x8;
+            assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
+            // assert isSimm11(simm11);
         }
     }
 
@@ -2002,14 +2090,14 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
-    public static class Movcc extends Fmt4c {
+    public static class Movcc extends Fmt10c {
 
-        public Movcc(SPARCAssembler masm, ConditionFlag cond, CC cca, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Movcc.getValue(), cond.getValue(), cca.getValue(), src2.encoding(), dst.encoding());
+        public Movcc(ConditionFlag cond, CC cca, Register src2, Register dst) {
+            super(Op3s.Movcc, cond, cca, src2, dst);
         }
 
-        public Movcc(SPARCAssembler masm, ConditionFlag cond, CC cca, int simm11a, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Movcc.getValue(), cond.getValue(), cca.getValue(), simm11a, dst.encoding());
+        public Movcc(ConditionFlag cond, CC cca, int simm11, Register dst) {
+            super(Op3s.Movcc, cond, cca, simm11, dst);
         }
     }
 

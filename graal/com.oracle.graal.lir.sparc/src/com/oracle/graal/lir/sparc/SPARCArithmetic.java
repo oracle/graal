@@ -216,7 +216,6 @@ public enum SPARCArithmetic {
         }
     }
 
-    @SuppressWarnings("unused")
     protected static void emit(SPARCAssembler masm, SPARCArithmetic opcode, Value result) {
         switch (opcode) {
             case L2I:
