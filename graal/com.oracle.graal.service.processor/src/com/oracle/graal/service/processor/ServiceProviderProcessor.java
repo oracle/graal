@@ -88,10 +88,10 @@ public class ServiceProviderProcessor extends AbstractProcessor {
             return true;
         }
 
-// for (Element element : roundEnv.getElementsAnnotatedWith(ServiceProvider.class)) {
-// assert element.getKind().isClass();
-// processElement((TypeElement) element);
-// }
+        for (Element element : roundEnv.getElementsAnnotatedWith(ServiceProvider.class)) {
+            assert element.getKind().isClass();
+            processElement((TypeElement) element);
+        }
 
         return true;
     }
