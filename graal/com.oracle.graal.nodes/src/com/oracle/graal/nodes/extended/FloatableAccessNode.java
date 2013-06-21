@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -43,4 +44,13 @@ public abstract class FloatableAccessNode extends AccessNode {
     }
 
     public abstract FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess);
+
+    /**
+     * AccessNodes can float only if their location identities are not ANY_LOCATION. Furthermore, in
+     * case G1 is enabled any access (read) to the java.lang.ref.Reference.referent field which has
+     * an attached write barrier with pre-semantics can not also float.
+     */
+    public boolean canFloat() {
+        return location().getLocationIdentity() != LocationIdentity.ANY_LOCATION && getWriteBarrierType() == WriteBarrierType.NONE;
+    }
 }
