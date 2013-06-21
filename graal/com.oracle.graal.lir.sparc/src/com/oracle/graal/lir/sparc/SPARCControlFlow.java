@@ -30,16 +30,16 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Bpe;
-import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
-import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Subcc;
+import com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.sparc.*;
+
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 
 public class SPARCControlFlow {
 
@@ -56,11 +56,15 @@ public class SPARCControlFlow {
         @Override
         @SuppressWarnings("unused")
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
-            // masm.at();
-            Label l = destination.label();
-            // l.addPatchAt(tasm.asm.codeBuffer.position());
-            String target = l.isBound() ? "L" + l.toString() : AbstractSPARCAssembler.UNBOUND_TARGET;
-            // masm.bra(target);
+            switch (condition) {
+                case GT:
+                    // FIXME xcc is wrong! It depends on the compare.
+                    new Bpg(CC.Xcc, destination.label()).emit(masm);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+            new Nop().emit(masm);
         }
 
         @Override
@@ -143,10 +147,10 @@ public class SPARCControlFlow {
             switch (other.getKind()) {
                 case Int:
                     // masm.cmovl(cond, asRegister(result), asRegister(other));
-                    break;
+                    // break;
                 case Long:
                     // masm.cmovq(cond, asRegister(result), asRegister(other));
-                    break;
+                    // break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -155,10 +159,10 @@ public class SPARCControlFlow {
             switch (other.getKind()) {
                 case Int:
                     // masm.cmovl(cond, asRegister(result), addr);
-                    break;
+                    // break;
                 case Long:
                     // masm.cmovq(cond, asRegister(result), addr);
-                    break;
+                    // break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
@@ -226,10 +230,9 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
-            if (tasm.frameContext != null) {
-                tasm.frameContext.leave(tasm);
-            }
-            // masm.return();
+            new Ret().emit(masm);
+            // On SPARC we always leave the frame.
+            tasm.frameContext.leave(tasm);
         }
     }
 
@@ -261,10 +264,10 @@ public class SPARCControlFlow {
                     }
                     long lc = keyConstants[i].asLong();
                     assert NumUtil.isInt(lc);
-                    new Subcc(masm, intKey, (int) lc, SPARC.r0); // CMP
+                    new Cmp(intKey, (int) lc).emit(masm);
                     Label l = keyTargets[i].label();
                     l.addPatchAt(tasm.asm.codeBuffer.position());
-                    new Bpe(masm, CC.Icc, l);
+                    new Bpe(CC.Icc, l).emit(masm);
                 }
             } else if (key.getKind() == Kind.Long) {
                 Register longKey = asLongReg(key);
@@ -274,15 +277,15 @@ public class SPARCControlFlow {
                     // masm.at();
                     Label l = keyTargets[i].label();
                     l.addPatchAt(tasm.asm.codeBuffer.position());
-                    new Bpe(masm, CC.Xcc, l);
+                    new Bpe(CC.Xcc, l).emit(masm);
                 }
             } else if (key.getKind() == Kind.Object) {
                 Register intKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
                     SPARCMove.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
-                    new Subcc(masm, intKey, temp, SPARC.r0); // CMP
-                    new Bpe(masm, CC.Icc, keyTargets[i].label());
+                    new Cmp(intKey, temp).emit(masm);
+                    new Bpe(CC.Ptrcc, keyTargets[i].label()).emit(masm);
                 }
             } else {
                 throw new GraalInternalError("sequential switch only supported for int, long and object");

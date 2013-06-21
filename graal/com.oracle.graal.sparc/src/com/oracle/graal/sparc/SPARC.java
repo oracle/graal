@@ -83,6 +83,24 @@ public class SPARC extends Architecture {
     public static final Register g6 = r6;
     public static final Register g7 = r7;
 
+    public static final Register o0 = r8;
+    public static final Register o1 = r9;
+    public static final Register o2 = r10;
+    public static final Register o3 = r11;
+    public static final Register o4 = r12;
+    public static final Register o5 = r13;
+    public static final Register o6 = r14;
+    public static final Register o7 = r15;
+
+    public static final Register l0 = r16;
+    public static final Register l1 = r17;
+    public static final Register l2 = r18;
+    public static final Register l3 = r19;
+    public static final Register l4 = r20;
+    public static final Register l5 = r21;
+    public static final Register l6 = r22;
+    public static final Register l7 = r23;
+
     public static final Register i0 = r24;
     public static final Register i1 = r25;
     public static final Register i2 = r26;
@@ -92,14 +110,8 @@ public class SPARC extends Architecture {
     public static final Register i6 = r30;
     public static final Register i7 = r31;
 
-    public static final Register o0 = r8;
-    public static final Register o1 = r9;
-    public static final Register o2 = r10;
-    public static final Register o3 = r11;
-    public static final Register o4 = r12;
-    public static final Register o5 = r13;
-    public static final Register o6 = r14;
-    public static final Register o7 = r15;
+    public static final Register fp = i6;
+    public static final Register sp = o6;
 
     public static final Register[] gprRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
@@ -129,19 +141,47 @@ public class SPARC extends Architecture {
     };
 
     public SPARC() {
-        super("SPARC", 8, ByteOrder.LITTLE_ENDIAN, allRegisters, LOAD_STORE | STORE_STORE, 1, 0, 8);
-        // SPARC: Fix architecture parameters.
+        super("SPARC",
+              8,
+              ByteOrder.BIG_ENDIAN,
+              allRegisters,
+              LOAD_STORE | STORE_STORE,
+              1,
+              r31.encoding + 1,
+              8);
     }
 
     @Override
-    public boolean canStoreValue(RegisterCategory category, PlatformKind kind) {
-        // TODO Auto-generated method stub
+    public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {
+        if (!(platformKind instanceof Kind)) {
+            return false;
+        }
+
+        Kind kind = (Kind) platformKind;
+        if (category == CPU) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                case Char:
+                case Short:
+                case Int:
+                case Long:
+                case Object:
+                    return true;
+            }
+        } else if (category == FPU) {
+            switch (kind) {
+                case Float:
+                case Double:
+                    return true;
+            }
+        }
+
         return false;
     }
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        // TODO Auto-generated method stub
-        return null;
+        throw new InternalError("NYI");
     }
 }
