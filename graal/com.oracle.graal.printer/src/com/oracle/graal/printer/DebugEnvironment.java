@@ -43,6 +43,9 @@ public class DebugEnvironment {
             }
             dumpHandlers.add(new CFGPrinterObserver());
         }
+        if (DecompileAfterPhase.getValue() != null) {
+            dumpHandlers.add(new DecompilerDebugDumpHandler());
+        }
         GraalDebugConfig hotspotDebugConfig = new GraalDebugConfig(Log.getValue(), Meter.getValue(), Time.getValue(), Dump.getValue(), MethodFilter.getValue(), log, dumpHandlers);
         Debug.setConfig(hotspotDebugConfig);
     }
