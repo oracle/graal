@@ -57,6 +57,10 @@ public abstract class Node implements Cloneable {
     public @interface Child {
     }
 
+    protected Node() {
+        CompilerAsserts.neverPartOfCompilation();
+    }
+
     /**
      * Assigns a link to a guest language source section to this node.
      * 
@@ -86,6 +90,18 @@ public abstract class Node implements Cloneable {
     }
 
     /**
+     * Retrieves the guest language source code section that is currently assigned to this node.
+     * 
+     * @return the assigned source code section
+     */
+    public final SourceSection getEncapsulatingSourceSection() {
+        if (sourceSection == null && getParent() != null) {
+            return getParent().getEncapsulatingSourceSection();
+        }
+        return sourceSection;
+    }
+
+    /**
      * Method that updates the link to the parent in the array of specified new child nodes to this
      * node.
      * 
@@ -109,6 +125,9 @@ public abstract class Node implements Cloneable {
      */
     protected final <T extends Node> T adoptChild(T newChild) {
         if (newChild != null) {
+            if (newChild == this) {
+                throw new IllegalStateException("The parent of a node can never be the node itself.");
+            }
             ((Node) newChild).parent = this;
         }
         return newChild;
@@ -144,7 +163,9 @@ public abstract class Node implements Cloneable {
      */
     @SuppressWarnings({"unchecked"})
     public final <T extends Node> T replace(T newNode, String reason) {
-        assert this.getParent() != null;
+        if (this.getParent() == null) {
+            throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
+        }
         if (sourceSection != null) {
             // Pass on the source section to the new node.
             newNode.assignSourceSection(sourceSection);

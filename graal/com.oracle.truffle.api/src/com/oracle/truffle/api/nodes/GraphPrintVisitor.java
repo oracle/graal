@@ -209,13 +209,15 @@ public class GraphPrintVisitor {
 
             setNodeProperty(node, "name", node.getClass().getSimpleName().replaceFirst("Node$", ""));
             NodeInfo nodeInfo = node.getClass().getAnnotation(NodeInfo.class);
-            if (nodeInfo != null && !nodeInfo.shortName().isEmpty()) {
-                setNodeProperty(node, "shortName", nodeInfo.shortName());
+            if (nodeInfo != null) {
+                setNodeProperty(node, "kind", nodeInfo.kind());
+                if (!nodeInfo.shortName().isEmpty()) {
+                    setNodeProperty(node, "shortName", nodeInfo.shortName());
+                }
             }
-            setNodeProperty(node, "nodeType", (Node.class.isAssignableFrom(node.getClass()) ? Node.class.getSimpleName() : "other"));
-            setNodeProperty(node, "nodeClass", node.getClass().getSimpleName());
-            copyDebugProperties(node); // TODO: may overwrite property "name"? (currently allowed)
+            setNodeProperty(node, "class", node.getClass().getSimpleName());
             readNodeProperties((Node) node);
+            copyDebugProperties(node);
         }
     }
 
