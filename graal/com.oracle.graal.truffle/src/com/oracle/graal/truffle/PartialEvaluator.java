@@ -216,10 +216,11 @@ public class PartialEvaluator {
                         inlineGraph = parseGraph(config, methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, !AOTCompilation.getValue());
                         otherNewFrame = inlineGraph.getNodes(NewFrameNode.class).first();
                     }
-                    int mark = graph.getMark();
+                    int nodeCountBefore = graph.getNodeCount();
                     Map<Node, Node> mapping = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                     if (Debug.isDumpEnabled()) {
-                        Debug.dump(graph, "After inlining %s +%d (%d)", methodCallTargetNode.targetMethod().toString(), graph.getNewNodes(mark).count(), graph.getNodeCount());
+                        int nodeCountAfter = graph.getNodeCount();
+                        Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                     }
 
                     if (newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty()) {
