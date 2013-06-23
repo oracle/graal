@@ -30,6 +30,7 @@ import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
+@Ignore("Currently ignored due to problems with code coverage tools.")
 public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
 
     public static Object constant42() {
