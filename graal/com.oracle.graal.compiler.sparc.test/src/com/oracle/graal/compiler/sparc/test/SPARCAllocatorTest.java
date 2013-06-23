@@ -22,31 +22,38 @@
  */
 package com.oracle.graal.compiler.sparc.test;
 
-import java.lang.reflect.Method;
+import org.junit.*;
 
-import org.junit.Test;
+import com.oracle.graal.compiler.test.backend.*;
 
-public class BasicSPARCTest extends SPARCTestBase {
+public class SPARCAllocatorTest extends AllocatorTest {
 
     @Test
-    public void testAdd() {
-        compile("testAddConst1I");
+    public void test1() {
+        test("test1snippet", 3, 1, 0);
     }
 
-    public int testAddConst1I(int a) {
-        return a + 1;
+    public static long test1snippet(long x) {
+        return x + 5;
     }
 
-    public static void main(String[] args) {
-        BasicSPARCTest test = new BasicSPARCTest();
-        Method[] methods = BasicSPARCTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
+    @Test
+    public void test2() {
+        test("test2snippet", 3, 0, 0);
     }
+
+    public static long test2snippet(long x) {
+        return x * 5;
+    }
+
+    @Ignore
+    @Test
+    public void test3() {
+        test("test3snippet", 4, 1, 0);
+    }
+
+    public static long test3snippet(long x) {
+        return x / 3 + x % 3;
+    }
+
 }
