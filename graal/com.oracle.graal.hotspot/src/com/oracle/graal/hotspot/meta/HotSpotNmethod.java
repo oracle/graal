@@ -87,11 +87,7 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        Object result = graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, this);
-        if (isValid()) {
-            return result;
-        }
-        throw new InvalidInstalledCodeException();
+        return graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, this);
     }
 
     private boolean checkArgs(Object... args) {
@@ -111,11 +107,7 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
-        Object result = graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
-        if (isValid()) {
-            return result;
-        }
-        throw new InvalidInstalledCodeException();
+        return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
     }
 
     @Override
