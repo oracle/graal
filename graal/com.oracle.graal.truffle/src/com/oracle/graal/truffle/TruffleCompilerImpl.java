@@ -112,8 +112,10 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         Assumptions assumptions = new Assumptions(true);
         graph = nodeCompiler.createGraph(compilable, assumptions);
         compilable.timePartialEvaluationFinished = System.nanoTime();
+        compilable.nodeCountPartialEval = graph.getNodeCount();
         InstalledCode compiledMethod = compileMethodHelper(graph, config, compilable, assumptions);
         compilable.timeCompilationFinished = System.nanoTime();
+        compilable.nodeCountLowered = graph.getNodeCount();
         return compiledMethod;
     }
 
