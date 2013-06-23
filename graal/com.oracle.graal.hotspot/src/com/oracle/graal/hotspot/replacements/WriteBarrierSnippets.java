@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
@@ -40,14 +41,20 @@ import com.oracle.graal.word.*;
 
 public class WriteBarrierSnippets implements Snippets {
 
+    private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue() ? new SnippetCounter.Group("WriteBarriers") : null;
+    private static final SnippetCounter serialFieldWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialFieldWriteBarrier", "Number of Serial Field Write Barriers");
+    private static final SnippetCounter serialArrayWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialArrayWriteBarrier", "Number of Serial Array Write Barriers");
+
     @Snippet
     public static void serialArrayWriteBarrier(Object obj, Object location, @ConstantParameter boolean usePrecise) {
         Object object = FixedValueAnchorNode.getObject(obj);
         Pointer oop;
         if (usePrecise) {
             oop = Word.fromArray(object, location);
+            serialArrayWriteBarrierCounter.inc();
         } else {
             oop = Word.fromObject(object);
+            serialFieldWriteBarrierCounter.inc();
         }
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
