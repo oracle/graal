@@ -42,7 +42,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         Assert.assertTrue(nmethod.isValid());
         Object result;
         try {
-            result = nmethod.execute("a", "b", "c");
+            result = nmethod.execute(null, "b", "c");
             assertEquals(43, result);
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");
@@ -59,6 +59,21 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testInstallCodeInvalidationWhileRunning() {
+        final ResolvedJavaMethod testJavaMethod = runtime.lookupJavaMethod(getMethod("foo"));
+        final StructuredGraph graph = parse("otherFoo");
+        final HotSpotNmethod nmethod = (HotSpotNmethod) getCode(testJavaMethod, graph);
+        Object result;
+        try {
+            result = nmethod.execute(nmethod, null, null);
+            assertEquals(43, result);
+        } catch (InvalidInstalledCodeException e) {
+            Assert.fail("Code was invalidated");
+        }
+        Assert.assertFalse(nmethod.isValid());
+    }
+
+    @Test
     public void testInstalledCodeCalledFromCompiledCode() {
         final ResolvedJavaMethod testJavaMethod = runtime.lookupJavaMethod(getMethod("foo"));
         final StructuredGraph graph = parse("otherFoo");
@@ -66,7 +81,7 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
         Assert.assertTrue(nmethod.isValid());
         try {
             for (int i = 0; i < ITERATION_COUNT; ++i) {
-                nmethod.execute("a", "b", "c");
+                nmethod.execute(null, "b", "c");
             }
         } catch (InvalidInstalledCodeException e) {
             Assert.fail("Code was invalidated");
@@ -74,12 +89,15 @@ public class HotSpotNmethodTest extends GraalCompilerTest {
     }
 
     @SuppressWarnings("unused")
-    public static Object foo(Object a1, Object a2, Object a3) {
+    public static Object foo(HotSpotNmethod method, Object a2, Object a3) {
         return 42;
     }
 
     @SuppressWarnings("unused")
-    public static Object otherFoo(Object a1, Object a2, Object a3) {
+    public static Object otherFoo(HotSpotNmethod method, Object a2, Object a3) {
+        if (method != null) {
+            method.invalidate();
+        }
         return 43;
     }
 }
