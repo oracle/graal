@@ -38,9 +38,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (ReadNode node : graph.getNodes(ReadNode.class)) {
-            if (node.getWriteBarrierType() == WriteBarrierType.PRECISE) {
-                addReadNodeBarriers(node, graph);
-            }
+            addReadNodeBarriers(node, graph);
         }
         for (WriteNode node : graph.getNodes(WriteNode.class)) {
             addWriteNodeBarriers(node, graph);
@@ -56,8 +54,12 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     private static void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
-        assert HotSpotReplacementsUtil.useG1GC();
-        graph.addAfterFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node, node.location(), false)));
+        if (node.getWriteBarrierType() == WriteBarrierType.PRECISE) {
+            assert HotSpotReplacementsUtil.useG1GC();
+            graph.addAfterFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node, node.location(), false)));
+        } else {
+            assert node.getWriteBarrierType() == WriteBarrierType.NONE : "Non precise write barrier has been attached to read node.";
+        }
     }
 
     private static void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
