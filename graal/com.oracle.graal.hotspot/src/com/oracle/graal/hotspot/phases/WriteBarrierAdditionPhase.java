@@ -107,7 +107,7 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
         if (HotSpotReplacementsUtil.useG1GC()) {
-            throw new GraalInternalError("G1 does not yet suppot barriers for ArrayCopy Intrinsics. Run with -G:-IntrinsifyArrayCopy");
+            throw new GraalInternalError("G1 does not yet support barriers for ArrayCopy Intrinsics. Run with -G:-IntrinsifyArrayCopy");
         } else {
             SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
             graph.addAfterFixed(node, serialArrayRangeWriteBarrier);
