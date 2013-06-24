@@ -170,6 +170,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     }
 
     @Test
+    @Ignore
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
