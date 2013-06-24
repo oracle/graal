@@ -43,8 +43,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
     private static final String THIS_NODE_LOCAL_VAR_NAME = "thisNode";
 
-    private static final String EXECUTE_GENERIC_NAME = "executeGeneric_";
-    private static final String EXECUTE_SPECIALIZE_NAME = "executeAndSpecialize_";
+    private static final String EXECUTE_GENERIC_NAME = "executeGeneric0";
+    private static final String EXECUTE_SPECIALIZE_NAME = "executeAndSpecialize0";
 
     public NodeCodeGenerator(ProcessorContext context) {
         super(context);
@@ -1350,7 +1350,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTreeBuilder body = method.createBuilder();
             body.startReturn();
             if (node.getSpecializations().isEmpty()) {
-                body.null_();
+                body.nullLiteral();
             } else {
                 body.startNew(nodeSpecializationClassName(node.getSpecializations().get(0)));
                 for (VariableElement var : method.getParameters()) {

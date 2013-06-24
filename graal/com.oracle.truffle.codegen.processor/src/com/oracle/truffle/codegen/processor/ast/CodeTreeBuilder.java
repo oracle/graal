@@ -654,7 +654,7 @@ public class CodeTreeBuilder {
         return startBlock();
     }
 
-    public CodeTreeBuilder null_() {
+    public CodeTreeBuilder nullLiteral() {
         return string("null");
     }
 
