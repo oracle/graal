@@ -48,7 +48,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
 
     @Override
     public double probability(AbstractBeginNode successor) {
-        return successor == scheduledNext() ? 1 : 0;
+        return successor == next ? 1 : 0;
     }
 
     @Override
