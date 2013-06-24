@@ -89,25 +89,47 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         runtime.compilerToVm = toVM;
     }
 
-    private static final String DEFAULT_GRAAL_RUNTIME = "basic";
-
     // @formatter:off
     @Option(help = "The runtime configuration to use")
-    private static final OptionValue<String> GraalRuntime = new OptionValue<>(DEFAULT_GRAAL_RUNTIME);
+    private static final OptionValue<String> GraalRuntime = new OptionValue<>("");
     // @formatter:on
 
     protected static HotSpotGraalRuntimeFactory findFactory(String architecture) {
+        HotSpotGraalRuntimeFactory basic = null;
+        HotSpotGraalRuntimeFactory selected = null;
+        HotSpotGraalRuntimeFactory nonBasic = null;
+        int nonBasicCount = 0;
+
         for (HotSpotGraalRuntimeFactory factory : ServiceLoader.loadInstalled(HotSpotGraalRuntimeFactory.class)) {
-            if (factory.getArchitecture().equals(architecture) && factory.getName().equals(GraalRuntime.getValue())) {
-                return factory;
+            if (factory.getArchitecture().equals(architecture)) {
+                if (factory.getName().equals(GraalRuntime.getValue())) {
+                    assert selected == null;
+                    selected = factory;
+                }
+                if (factory.getName().equals("basic")) {
+                    assert basic == null;
+                    basic = factory;
+                } else {
+                    nonBasic = factory;
+                    nonBasicCount++;
+                }
             }
         }
-        if (!DEFAULT_GRAAL_RUNTIME.equals(GraalRuntime.getValue())) {
-            // Fail fast if a non-default value for GraalRuntime was specified
-            // and the corresponding factory is not available
-            throw new GraalInternalError("Specified runtime \"%s\" not available for the %s architecture", GraalRuntime.getValue(), architecture);
+
+        if (selected != null) {
+            return selected;
+        } else {
+            if (!GraalRuntime.getValue().equals("")) {
+                // Fail fast if a non-default value for GraalRuntime was specified
+                // and the corresponding factory is not available
+                throw new GraalInternalError("Specified runtime \"%s\" not available for the %s architecture", GraalRuntime.getValue(), architecture);
+            } else if (nonBasicCount == 1) {
+                // If there is exactly one non-basic runtime, select this one.
+                return nonBasic;
+            } else {
+                return basic;
+            }
         }
-        return null;
     }
 
     private static Kind wordKind;
