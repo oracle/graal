@@ -149,7 +149,7 @@ public class WriteBarrierSnippets implements Snippets {
         Word indexValue = thread.readWord(HotSpotReplacementsUtil.g1CardQueueIndexOffset());
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
-        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(HotSpotReplacementsUtil.logOfHRGrainBytes());
+        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(HotSpotReplacementsUtil.logOfHeapRegionGrainBytes());
 
         // Calculate the address of the card to be enqueued to the
         // thread local card queue.
