@@ -22,7 +22,7 @@
       <property name="format" value="^(([a-z][a-zA-Z0-9]*$)|(_[A-Z][a-zA-Z0-9]*_[a-z][a-zA-Z0-9]*$))"/>
     </module>
     <module name="MethodName">
-      <property name="format" value="^[a-z][a-z_A-Z0-9]*$"/>
+      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
     </module>
     <module name="PackageName"/>
     <module name="ParameterName"/>
@@ -168,16 +168,6 @@
     <property name="offCommentFormat" value="Checkstyle: stop"/>
     <property name="onCommentFormat" value="Checkstyle: resume"/>
     <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="// START GENERATED RAW ASSEMBLER METHODS"/>
-    <property name="onCommentFormat" value="// END GENERATED RAW ASSEMBLER METHODS"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks for generated raw assembler methods"/>
-  </module>
-  <module name="SuppressionCommentFilter">
-    <property name="offCommentFormat" value="// START GENERATED LABEL ASSEMBLER METHODS"/>
-    <property name="onCommentFormat" value="// END GENERATED LABEL ASSEMBLER METHODS"/>
-    <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable all checks for generated label assembler methods"/>
   </module>
   <module name="SuppressionCommentFilter">
     <property name="offCommentFormat" value="CheckStyle: stop inner assignment check"/>

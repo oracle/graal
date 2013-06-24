@@ -75,7 +75,7 @@ public class InstanceOfTest extends TypeCheckTest {
     }
 
     @LongTest
-    public void test2_1() {
+    public void test201() {
         test("isStringIntComplex", profile(), "object");
         test("isStringIntComplex", profile(String.class), "object");
 
@@ -96,7 +96,7 @@ public class InstanceOfTest extends TypeCheckTest {
     }
 
     @LongTest
-    public void test3_1() {
+    public void test301() {
         onlyFirstIsException(new Exception(), new Error());
         test("onlyFirstIsException", profile(), new Exception(), new Error());
         test("onlyFirstIsException", profile(), new Error(), new Exception());
@@ -304,7 +304,7 @@ public class InstanceOfTest extends TypeCheckTest {
      * need to remove use of special JumpNodes in the {@code InstanceOfSnippets}.
      */
     @LongTest
-    public void test_removeIntermediateMaterialization() {
+    public void testRemoveIntermediateMaterialization() {
         List<String> list = Arrays.asList("1", "2", "3", "4");
         test("removeIntermediateMaterialization", profile(), list, "2", "yes", "no");
         test("removeIntermediateMaterialization", profile(), list, null, "yes", "no");

@@ -59,52 +59,52 @@ public class WordTest extends GraalCompilerTest implements Snippets {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
         for (long word : words) {
-            test("unsigned_long", word);
-            test("unsigned_int", (int) word);
-            test("signed_long", word);
-            test("signed_int", (int) word);
+            test("unsignedLong", word);
+            test("unsignedInt", (int) word);
+            test("signedLong", word);
+            test("signedInt", (int) word);
         }
     }
 
     @LongTest
-    public void test_arithmetic() {
+    public void testArithmetic() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE, Integer.MAX_VALUE - 1L, Integer.MAX_VALUE, Integer.MAX_VALUE + 1L,
                         Integer.MIN_VALUE - 1L, Integer.MIN_VALUE, Integer.MIN_VALUE + 1L};
         for (long word : words) {
-            test("unsigned_not", word);
-            test("signed_not", word);
+            test("unsignedNot", word);
+            test("signedNot", word);
             for (long addend : words) {
-                test("unsigned_plus_int", word, (int) addend);
-                test("unsigned_minus_int", word, (int) addend);
-                test("unsigned_plus_int", word, -((int) addend));
-                test("unsigned_minus_int", word, -((int) addend));
-                test("unsigned_plus_long", word, addend);
-                test("unsigned_minus_long", word, addend);
-                test("unsigned_plus_long", word, -addend);
-                test("unsigned_minus_long", word, -addend);
-                test("signed_plus_int", word, (int) addend);
-                test("signed_minus_int", word, (int) addend);
-                test("signed_plus_int", word, -((int) addend));
-                test("signed_minus_int", word, -((int) addend));
-                test("signed_plus_long", word, addend);
-                test("signed_minus_long", word, addend);
-                test("signed_plus_long", word, -addend);
-                test("signed_minus_long", word, -addend);
+                test("unsignedPlusInt", word, (int) addend);
+                test("unsignedMinusInt", word, (int) addend);
+                test("unsignedPlusInt", word, -((int) addend));
+                test("unsignedMinusInt", word, -((int) addend));
+                test("unsignedPlusLong", word, addend);
+                test("unsignedMinusLong", word, addend);
+                test("unsignedPlusLong", word, -addend);
+                test("unsignedMinusLong", word, -addend);
+                test("signedPlusInt", word, (int) addend);
+                test("signedMinusInt", word, (int) addend);
+                test("signedPlusInt", word, -((int) addend));
+                test("signedMinusInt", word, -((int) addend));
+                test("signedPlusLong", word, addend);
+                test("signedMinusLong", word, addend);
+                test("signedPlusLong", word, -addend);
+                test("signedMinusLong", word, -addend);
 
-                test("and_int", word, (int) addend);
-                test("or_int", word, (int) addend);
-                test("and_int", word, -((int) addend));
-                test("or_int", word, -((int) addend));
-                test("and_long", word, addend);
-                test("or_long", word, addend);
-                test("and_long", word, -addend);
-                test("or_long", word, -addend);
+                test("andInt", word, (int) addend);
+                test("orInt", word, (int) addend);
+                test("andInt", word, -((int) addend));
+                test("orInt", word, -((int) addend));
+                test("andLong", word, addend);
+                test("orLong", word, addend);
+                test("andLong", word, -addend);
+                test("orLong", word, -addend);
             }
         }
     }
 
     @LongTest
-    public void test_compare() {
+    public void testCompare() {
         long[] words = new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, -1L, 0L, 1L, Long.MAX_VALUE - 1, Long.MAX_VALUE};
         for (long word1 : words) {
             for (long word2 : words) {
@@ -117,72 +117,72 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     }
 
     @Snippet
-    public static long unsigned_long(long word) {
+    public static long unsignedLong(long word) {
         return Word.unsigned(word).rawValue();
     }
 
     @Snippet
-    public static long unsigned_int(int word) {
+    public static long unsignedInt(int word) {
         return Word.unsigned(word).rawValue();
     }
 
     @Snippet
-    public static long signed_long(long word) {
+    public static long signedLong(long word) {
         return Word.signed(word).rawValue();
     }
 
     @Snippet
-    public static long signed_int(int word) {
+    public static long signedInt(int word) {
         return Word.signed(word).rawValue();
     }
 
     @Snippet
-    public static long unsigned_plus_int(long word, int addend) {
+    public static long unsignedPlusInt(long word, int addend) {
         return Word.unsigned(word).add(addend).rawValue();
     }
 
     @Snippet
-    public static long unsigned_minus_int(long word, int addend) {
+    public static long unsignedMinusInt(long word, int addend) {
         return Word.unsigned(word).subtract(addend).rawValue();
     }
 
     @Snippet
-    public static long unsigned_plus_long(long word, long addend) {
+    public static long unsignedPlusLong(long word, long addend) {
         return Word.unsigned(word).add(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
-    public static long unsigned_minus_long(long word, long addend) {
+    public static long unsignedMinusLong(long word, long addend) {
         return Word.unsigned(word).subtract(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
-    public static long signed_plus_int(long word, int addend) {
+    public static long signedPlusInt(long word, int addend) {
         return Word.signed(word).add(addend).rawValue();
     }
 
     @Snippet
-    public static long signed_minus_int(long word, int addend) {
+    public static long signedMinusInt(long word, int addend) {
         return Word.signed(word).subtract(addend).rawValue();
     }
 
     @Snippet
-    public static long signed_plus_long(long word, long addend) {
+    public static long signedPlusLong(long word, long addend) {
         return Word.signed(word).add(Word.signed(addend)).rawValue();
     }
 
     @Snippet
-    public static long signed_minus_long(long word, long addend) {
+    public static long signedMinusLong(long word, long addend) {
         return Word.signed(word).subtract(Word.signed(addend)).rawValue();
     }
 
     @Snippet
-    public static long signed_not(long word) {
+    public static long signedNot(long word) {
         return Word.signed(word).not().rawValue();
     }
 
     @Snippet
-    public static long unsigned_not(long word) {
+    public static long unsignedNot(long word) {
         return Word.unsigned(word).not().rawValue();
     }
 
@@ -207,22 +207,22 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     }
 
     @Snippet
-    public static long and_int(long word, int addend) {
+    public static long andInt(long word, int addend) {
         return Word.unsigned(word).and(addend).rawValue();
     }
 
     @Snippet
-    public static long or_int(long word, int addend) {
+    public static long orInt(long word, int addend) {
         return Word.unsigned(word).or(addend).rawValue();
     }
 
     @Snippet
-    public static long and_long(long word, long addend) {
+    public static long andLong(long word, long addend) {
         return Word.unsigned(word).and(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
-    public static long or_long(long word, long addend) {
+    public static long orLong(long word, long addend) {
         return Word.unsigned(word).or(Word.unsigned(addend)).rawValue();
     }
 }

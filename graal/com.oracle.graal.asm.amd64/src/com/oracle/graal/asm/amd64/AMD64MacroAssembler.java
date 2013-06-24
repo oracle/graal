@@ -258,13 +258,13 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         AMD64Address tmp = new AMD64Address(AMD64.rsp);
         subq(AMD64.rsp, target.arch.getSizeInBytes(Kind.Double));
         movsd(tmp, value);
-        fld_d(tmp);
+        fldd(tmp);
         return tmp;
     }
 
     private void trigEpilogue(Register dest, AMD64Address tmp) {
         assert dest.getRegisterCategory() == AMD64.XMM;
-        fstp_d(tmp);
+        fstpd(tmp);
         movsd(dest, tmp);
         addq(AMD64.rsp, target.arch.getSizeInBytes(Kind.Double));
     }

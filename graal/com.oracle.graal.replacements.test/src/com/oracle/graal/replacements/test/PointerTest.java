@@ -61,42 +61,42 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     @Test
-    public void test_read1() {
+    public void testRead1() {
         for (Kind kind : KINDS) {
             assertRead(parse("read" + kind.name() + "1"), kind, false, ID);
         }
     }
 
     @Test
-    public void test_read2() {
+    public void testRead2() {
         for (Kind kind : KINDS) {
             assertRead(parse("read" + kind.name() + "2"), kind, true, ID);
         }
     }
 
     @Test
-    public void test_read3() {
+    public void testRead3() {
         for (Kind kind : KINDS) {
             assertRead(parse("read" + kind.name() + "3"), kind, false, LocationIdentity.ANY_LOCATION);
         }
     }
 
     @Test
-    public void test_write1() {
+    public void testWrite1() {
         for (Kind kind : KINDS) {
             assertWrite(parse("write" + kind.name() + "1"), kind, false, ID);
         }
     }
 
     @Test
-    public void test_write2() {
+    public void testWrite2() {
         for (Kind kind : KINDS) {
             assertWrite(parse("write" + kind.name() + "2"), kind, true, ID);
         }
     }
 
     @Test
-    public void test_write3() {
+    public void testWrite3() {
         for (Kind kind : KINDS) {
             assertWrite(parse("write" + kind.name() + "3"), kind, false, LocationIdentity.ANY_LOCATION);
         }
