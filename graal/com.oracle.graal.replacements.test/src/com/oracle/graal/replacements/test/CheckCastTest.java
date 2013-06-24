@@ -101,7 +101,7 @@ public class CheckCastTest extends TypeCheckTest {
     }
 
     @LongTest
-    public void test8_1() {
+    public void test801() {
         test("arrayFill", new Object[100], "111");
     }
 

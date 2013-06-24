@@ -37,23 +37,23 @@ public class MonitorTest extends GraalCompilerTest {
     }
 
     @Test
-    public void test0_1() {
+    public void test01() {
         test("lockThisSimple", "test1", new Object());
         test("lockThisSimple", "test1", null);
     }
 
     @Test
-    public void test0_2() {
+    public void test02() {
         test("lockObjectSimple", null, "test1");
     }
 
     @Test
-    public void test1_1() {
+    public void test101() {
         test("lockObject", new Object(), "test1", new String[1]);
     }
 
     @Test
-    public void test1_2() {
+    public void test102() {
         test("lockObject", null, "test1_1", new String[1]);
     }
 

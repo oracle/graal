@@ -2420,12 +2420,12 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(b2 + i);
     }
 
-    public final void fld_d(AMD64Address src) {
+    public final void fldd(AMD64Address src) {
         emitByte(0xDD);
         emitOperandHelper(0, src);
     }
 
-    public final void fld_s(AMD64Address src) {
+    public final void flds(AMD64Address src) {
         emitByte(0xD9);
         emitOperandHelper(0, src);
     }
@@ -2445,12 +2445,12 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xF1);
     }
 
-    public final void fstp_s(AMD64Address src) {
+    public final void fstps(AMD64Address src) {
         emitByte(0xD9);
         emitOperandHelper(3, src);
     }
 
-    public final void fstp_d(AMD64Address src) {
+    public final void fstpd(AMD64Address src) {
         emitByte(0xDD);
         emitOperandHelper(3, src);
     }
@@ -2474,7 +2474,7 @@ public class AMD64Assembler extends AbstractAssembler {
         emitFPUArith(0xD9, 0xC8, i);
     }
 
-    public void fnstsw_ax() {
+    public void fnstswAX() {
         emitByte(0xDF);
         emitByte(0xE0);
     }

@@ -301,32 +301,32 @@ public enum AMD64Arithmetic {
             masm.subq(AMD64.rsp, 8);
             if (opcode == FREM) {
                 masm.movflt(tmp, asRegister(y));
-                masm.fld_s(tmp);
+                masm.flds(tmp);
                 masm.movflt(tmp, asRegister(x));
-                masm.fld_s(tmp);
+                masm.flds(tmp);
             } else {
                 assert opcode == DREM;
                 masm.movsd(tmp, asRegister(y));
-                masm.fld_d(tmp);
+                masm.fldd(tmp);
                 masm.movsd(tmp, asRegister(x));
-                masm.fld_d(tmp);
+                masm.fldd(tmp);
             }
 
             Label label = new Label();
             masm.bind(label);
             masm.fprem();
             masm.fwait();
-            masm.fnstsw_ax();
+            masm.fnstswAX();
             masm.testl(AMD64.rax, 0x400);
             masm.jcc(ConditionFlag.NotZero, label);
             masm.fxch(1);
             masm.fpop();
 
             if (opcode == FREM) {
-                masm.fstp_s(tmp);
+                masm.fstps(tmp);
                 masm.movflt(asRegister(result), tmp);
             } else {
-                masm.fstp_d(tmp);
+                masm.fstpd(tmp);
                 masm.movsd(asRegister(result), tmp);
             }
             masm.addq(AMD64.rsp, 8);

@@ -38,6 +38,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("@%q" + " " + "");
     }
 
+    // Checkstyle: stop method name check
     public final void add_f32(Register d, Register a, Register b) {
         emitString("add.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
@@ -198,7 +199,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("div.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-   public final void div_s16(Register d, Register a, Register b) {
+    public final void div_s16(Register d, Register a, Register b) {
         emitString("div.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
@@ -350,8 +351,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
 
-    public final void mov_u64(@SuppressWarnings("unused") Register d,
-                              @SuppressWarnings("unused") AbstractAddress a) {
+    public final void mov_u64(@SuppressWarnings("unused") Register d, @SuppressWarnings("unused") AbstractAddress a) {
         // emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
 

@@ -35,7 +35,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
     @Test
     public void testObjectSubstitutions() {
-        test("getClass_");
+        test("getClass0");
         test("objectHashCode");
 
         Object obj = new Object();
@@ -45,7 +45,7 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
     }
 
     @SuppressWarnings("all")
-    public static boolean getClass_(Object obj, Class<?> clazz) {
+    public static boolean getClass0(Object obj, Class<?> clazz) {
         return obj.getClass() == clazz;
     }
 
