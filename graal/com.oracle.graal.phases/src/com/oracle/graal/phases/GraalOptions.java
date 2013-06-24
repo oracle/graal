@@ -41,7 +41,7 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Double> MegamorphicInliningMinMethodProbability = new OptionValue<>(0.33D);
     @Option(help = "")
-    public static final OptionValue<Integer> MaximumDesiredSize = new OptionValue<>(5000);
+    public static final OptionValue<Integer> MaximumDesiredSize = new OptionValue<>(20000);
     @Option(help = "")
     public static final OptionValue<Integer> MaximumRecursiveInlining = new OptionValue<>(1);
 
