@@ -28,8 +28,10 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -122,7 +124,7 @@ public class WriteBarrierSnippets implements Snippets {
                     logAddress.writeWord(0, previousOop);
                     indexAddress.writeWord(0, nextIndex);
                 } else {
-                    G1PreWriteBarrierStubCall.call(previousOop.toObject());
+                    g1PreBarrierStub(G1WBPRECALL, previousOop.toObject());
                 }
             }
         }
@@ -178,12 +180,22 @@ public class WriteBarrierSnippets implements Snippets {
                         logAddress.writeWord(0, cardAddress);
                         indexAddress.writeWord(0, nextIndex);
                     } else {
-                        G1PostWriteBarrierStubCall.call(cardAddress);
+                        g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
                     }
                 }
             }
         }
     }
+
+    public static final ForeignCallDescriptor G1WBPRECALL = new ForeignCallDescriptor("write_barrier_pre", void.class, Object.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void g1PreBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
+
+    public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("write_barrier_post", void.class, Word.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native void g1PostBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word card);
 
     public static class Templates extends AbstractTemplates {
 
