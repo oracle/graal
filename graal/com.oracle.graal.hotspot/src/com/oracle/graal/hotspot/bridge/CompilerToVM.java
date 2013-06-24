@@ -206,9 +206,9 @@ public interface CompilerToVM {
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
-    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, long nmethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
-    Object executeCompiledMethodVarargs(Object[] args, long nmethod) throws InvalidInstalledCodeException;
+    Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     int getVtableEntryOffset(long metaspaceMethod);
 
@@ -229,7 +229,5 @@ public interface CompilerToVM {
      */
     void reprofile(long metaspaceMethod);
 
-    void invalidateInstalledCode(long nativeMethod);
-
-    boolean isInstalledCodeValid(long nativeMethod);
+    void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 }

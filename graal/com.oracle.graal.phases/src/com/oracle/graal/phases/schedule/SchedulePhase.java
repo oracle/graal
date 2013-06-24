@@ -209,25 +209,6 @@ public final class SchedulePhase extends Phase {
         sortNodesWithinBlocks(graph, selectedStrategy);
     }
 
-    /**
-     * Sets {@link ScheduledNode#scheduledNext} on all scheduled nodes in all blocks using the
-     * scheduling built by {@link #run(StructuredGraph)}. This method should thus only be called
-     * when run has been successfully executed.
-     */
-    public void scheduleGraph() {
-        assert blockToNodesMap != null : "cannot set scheduledNext before run has been executed";
-        for (Block block : cfg.getBlocks()) {
-            List<ScheduledNode> nodeList = blockToNodesMap.get(block);
-            ScheduledNode last = null;
-            for (ScheduledNode node : nodeList) {
-                if (last != null) {
-                    last.setScheduledNext(node);
-                }
-                last = node;
-            }
-        }
-    }
-
     public ControlFlowGraph getCFG() {
         return cfg;
     }

@@ -183,6 +183,8 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
+    @Option(help = "Sets a phase after which the decompiler dumps the graph, -G:Dump= required")
+    public static final OptionValue<String> DecompileAfterPhase = new OptionValue<>(null);
 
     // HotSpot command line options
     @Option(help = "")
@@ -308,6 +310,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> IntrinsifyInstalledCodeMethods = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> IntrinsifyCallSiteTarget = new OptionValue<>(true);
+
     /**
      * Counts the various paths taken through snippets.
      */

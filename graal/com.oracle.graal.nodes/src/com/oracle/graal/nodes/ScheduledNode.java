@@ -26,17 +26,6 @@ import com.oracle.graal.graph.*;
 
 public abstract class ScheduledNode extends Node {
 
-    @Successor private ScheduledNode scheduledNext; // the immediate successor of the current node
-
-    public ScheduledNode scheduledNext() {
-        return scheduledNext;
-    }
-
-    public void setScheduledNext(ScheduledNode x) {
-        updatePredecessor(scheduledNext, x);
-        scheduledNext = x;
-    }
-
     @Override
     public StructuredGraph graph() {
         return (StructuredGraph) super.graph();
