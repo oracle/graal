@@ -173,6 +173,9 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
+    public native Object readUnsafeUncompressedPointer(Object o, long displacement);
+
+    @Override
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
         return executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
     }

@@ -1113,7 +1113,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     @Override
-    public Constant readUnsafeConstant(Kind kind, Object base, long displacement) {
+    public Constant readUnsafeConstant(Kind kind, Object base, long displacement, boolean compressedPointer) {
         switch (kind) {
             case Boolean:
                 return Constant.forBoolean(base == null ? unsafe.getByte(displacement) != 0 : unsafe.getBoolean(base, displacement));
@@ -1131,8 +1131,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return Constant.forFloat(base == null ? unsafe.getFloat(displacement) : unsafe.getFloat(base, displacement));
             case Double:
                 return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
-            case Object:
-                return Constant.forObject(unsafe.getObject(base, displacement));
+            case Object: {
+                Object o = null;
+                if (compressedPointer) {
+                    o = unsafe.getObject(base, displacement);
+                } else {
+                    o = this.getGraalRuntime().getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
+                }
+                return Constant.forObject(o);
+            }
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

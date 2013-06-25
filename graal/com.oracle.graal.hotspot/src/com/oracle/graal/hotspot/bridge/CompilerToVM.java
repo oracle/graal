@@ -222,6 +222,8 @@ public interface CompilerToVM {
 
     String getFileName(HotSpotResolvedJavaType method);
 
+    Object readUnsafeUncompressedPointer(Object o, long displacement);
+
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.
      * 
