@@ -451,6 +451,9 @@ public abstract class GraalCompilerTest extends GraalTest {
                     @Override
                     public InstalledCode call() throws Exception {
                         InstalledCode code = addMethod(method, compResult);
+                        if (code == null) {
+                            throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", method));
+                        }
                         if (Debug.isDumpEnabled()) {
                             Debug.dump(new Object[]{compResult, code}, "After code installation");
                         }
