@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
@@ -72,16 +71,16 @@ public class PartialEvaluator {
     private Set<Constant> constantReceivers;
     private final HotSpotGraphCache cache;
 
-    public PartialEvaluator(GraalCodeCacheProvider runtime, MetaAccessProvider metaAccessProvider) {
+    public PartialEvaluator(MetaAccessProvider metaAccessProvider, Replacements replacements) {
         this.metaAccessProvider = metaAccessProvider;
-        this.nodeClass = runtime.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
-        this.customCanonicalizer = new PartialEvaluatorCanonicalizer(runtime, nodeClass);
+        this.nodeClass = metaAccessProvider.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
+        this.customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccessProvider, nodeClass);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(metaAccessProvider);
-        this.replacements = Graal.getRequiredCapability(Replacements.class);
+        this.replacements = replacements;
         this.cache = HotSpotGraalRuntime.graalRuntime().getCache();
 
         try {
-            executeHelperMethod = runtime.lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
+            executeHelperMethod = metaAccessProvider.lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
