@@ -65,7 +65,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private static final Class[] SKIPPED_EXCEPTION_CLASSES = new Class[]{SlowPathException.class, UnexpectedResultException.class, ArithmeticException.class};
 
     public static final OptimisticOptimizations Optimizations = OptimisticOptimizations.ALL.remove(OptimisticOptimizations.Optimization.UseExceptionProbability,
-                    OptimisticOptimizations.Optimization.RemoveNeverExecutedCode);
+                    OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
     public TruffleCompilerImpl() {
         this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
