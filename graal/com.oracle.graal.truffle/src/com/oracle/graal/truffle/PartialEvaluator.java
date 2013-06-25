@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
@@ -72,16 +71,16 @@ public class PartialEvaluator {
     private Set<Constant> constantReceivers;
     private final HotSpotGraphCache cache;
 
-    public PartialEvaluator(GraalCodeCacheProvider runtime, MetaAccessProvider metaAccessProvider) {
+    public PartialEvaluator(MetaAccessProvider metaAccessProvider, Replacements replacements) {
         this.metaAccessProvider = metaAccessProvider;
-        this.nodeClass = runtime.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
-        this.customCanonicalizer = new PartialEvaluatorCanonicalizer(runtime, nodeClass);
+        this.nodeClass = metaAccessProvider.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
+        this.customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccessProvider, nodeClass);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(metaAccessProvider);
-        this.replacements = Graal.getRequiredCapability(Replacements.class);
+        this.replacements = replacements;
         this.cache = HotSpotGraalRuntime.graalRuntime().getCache();
 
         try {
-            executeHelperMethod = runtime.lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
+            executeHelperMethod = metaAccessProvider.lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
         } catch (NoSuchMethodException ex) {
             throw new RuntimeException(ex);
         }
@@ -198,44 +197,47 @@ public class PartialEvaluator {
     }
 
     private void expandTree(GraphBuilderConfiguration config, StructuredGraph graph, NewFrameNode newFrameNode, Assumptions assumptions) {
-        for (Node usage : newFrameNode.usages().snapshot()) {
-            if (usage instanceof MethodCallTargetNode && !usage.isDeleted()) {
-                MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) usage;
-                InvokeKind kind = methodCallTargetNode.invokeKind();
-                if (kind == InvokeKind.Special || kind == InvokeKind.Static) {
-                    if (TruffleInlinePrinter.getValue()) {
-                        InlinePrinterProcessor.addInlining(MethodHolder.getNewTruffleExecuteMethod(methodCallTargetNode));
-                    }
-                    if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special && methodCallTargetNode.arguments().first() instanceof ConstantNode) {
-                        ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
-                        constantReceivers.add(constantNode.asConstant());
-                    }
-                    StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                    NewFrameNode otherNewFrame = null;
-                    if (inlineGraph == null) {
-                        inlineGraph = parseGraph(config, methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, !AOTCompilation.getValue());
-                        otherNewFrame = inlineGraph.getNodes(NewFrameNode.class).first();
-                    }
-                    int nodeCountBefore = graph.getNodeCount();
-                    Map<Node, Node> mapping = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
-                    if (Debug.isDumpEnabled()) {
-                        int nodeCountAfter = graph.getNodeCount();
-                        Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
-                    }
+        boolean changed;
+        do {
+            changed = false;
+            for (Node usage : newFrameNode.usages().snapshot()) {
+                if (usage instanceof MethodCallTargetNode && !usage.isDeleted()) {
+                    MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) usage;
+                    InvokeKind kind = methodCallTargetNode.invokeKind();
+                    if (kind == InvokeKind.Special || kind == InvokeKind.Static) {
+                        if (TruffleInlinePrinter.getValue()) {
+                            InlinePrinterProcessor.addInlining(MethodHolder.getNewTruffleExecuteMethod(methodCallTargetNode));
+                        }
+                        if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special && methodCallTargetNode.arguments().first() instanceof ConstantNode) {
+                            ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
+                            constantReceivers.add(constantNode.asConstant());
+                        }
+                        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
+                        NewFrameNode otherNewFrame = null;
+                        if (inlineGraph == null) {
+                            inlineGraph = parseGraph(config, methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, !AOTCompilation.getValue());
+                            otherNewFrame = inlineGraph.getNodes(NewFrameNode.class).first();
+                        }
 
-                    if (newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty()) {
-                        expandTree(config, graph, newFrameNode, assumptions);
-                    }
+                        int nodeCountBefore = graph.getNodeCount();
+                        Map<Node, Node> mapping = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                        if (Debug.isDumpEnabled()) {
+                            int nodeCountAfter = graph.getNodeCount();
+                            Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
+                        }
 
-                    if (otherNewFrame != null) {
-                        otherNewFrame = (NewFrameNode) mapping.get(otherNewFrame);
-                        if (otherNewFrame.isAlive() && otherNewFrame.usages().isNotEmpty()) {
-                            expandTree(config, graph, otherNewFrame, assumptions);
+                        changed = true;
+
+                        if (otherNewFrame != null) {
+                            otherNewFrame = (NewFrameNode) mapping.get(otherNewFrame);
+                            if (otherNewFrame.isAlive() && otherNewFrame.usages().isNotEmpty()) {
+                                expandTree(config, graph, otherNewFrame, assumptions);
+                            }
                         }
                     }
                 }
             }
-        }
+        } while (changed && newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty());
     }
 
     private StructuredGraph parseGraph(final GraphBuilderConfiguration config, final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions,

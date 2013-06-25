@@ -26,9 +26,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.util.*;
 
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.substitutions.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
@@ -44,20 +42,11 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     private TruffleCompiler truffleCompiler;
+    private Replacements truffleReplacements;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
 
     private GraalTruffleRuntime() {
-        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
-        replacements.registerSubstitutions(CompilerAssertsSubstitutions.class);
-        replacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);
-        replacements.registerSubstitutions(ExactMathSubstitutions.class);
-        replacements.registerSubstitutions(UnexpectedResultExceptionSubstitutions.class);
-        replacements.registerSubstitutions(SlowPathExceptionSubstitutions.class);
-        replacements.registerSubstitutions(FrameWithoutBoxingSubstitutions.class);
-        replacements.registerSubstitutions(OptimizedAssumptionSubstitutions.class);
-        replacements.registerSubstitutions(OptimizedCallTargetSubstitutions.class);
-        replacements.registerSubstitutions(DefaultCallTargetSubstitutions.class);
     }
 
     public String getName() {
@@ -98,6 +87,13 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     @Override
     public Assumption createAssumption(String name) {
         return new OptimizedAssumption(name);
+    }
+
+    public Replacements getReplacements() {
+        if (truffleReplacements == null) {
+            truffleReplacements = TruffleReplacements.makeInstance();
+        }
+        return truffleReplacements;
     }
 
     private boolean acceptForCompilation(RootNode rootNode) {
