@@ -101,7 +101,10 @@ public class NewObjectSnippets implements Snippets {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
+    }
 
+    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
@@ -124,9 +127,8 @@ public class NewObjectSnippets implements Snippets {
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents) {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset());
-        if (hub.equal(Word.zero())) {
-            // the array class is not yet loaded
-            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.Unresolved);
+        if (hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
+            return DynamicNewArrayStubCall.call(elementType, length);
         }
 
         int layoutHelper = readLayoutHelper(hub);
@@ -147,7 +149,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArray(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
     }
 
     /**

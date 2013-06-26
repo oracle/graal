@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -81,7 +79,5 @@ public class DynamicNewArrayNode extends FixedWithNextNode implements Canonicali
     }
 
     @NodeIntrinsic
-    public static Object newArray(Class<?> componentType, int length) {
-        return Array.newInstance(componentType, length);
-    }
+    public static native Object newArray(Class<?> componentType, int length);
 }

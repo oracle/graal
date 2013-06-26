@@ -20,25 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * Substitutions for {@link java.lang.reflect.Array} methods.
+ * Node implementing a call to {@code GraalRuntime::dynamic_new_array}.
  */
-@ClassSubstitution(java.lang.reflect.Array.class)
-public class ArraySubstitutions {
+public class DynamicNewArrayStubCall extends ForeignCallNode {
 
-    @MethodSubstitution
-    public static Object newInstance(Class<?> componentType, int length) throws NegativeArraySizeException {
-        if (componentType == null) {
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.NullCheckException);
-        }
-        return DynamicNewArrayNode.newArray(componentType, length);
+    private static final Stamp defaultStamp = StampFactory.objectNonNull();
+
+    @Input private ValueNode elementType;
+    @Input private ValueNode length;
+
+    public static final ForeignCallDescriptor DYNAMIC_NEW_ARRAY = new ForeignCallDescriptor("dynamic_new_array", Object.class, Class.class, int.class);
+
+    public DynamicNewArrayStubCall(MetaAccessProvider runtime, ValueNode elementType, ValueNode length) {
+        super(runtime, DYNAMIC_NEW_ARRAY, defaultStamp);
+        this.elementType = elementType;
+        this.length = length;
     }
+
+    @Override
+    protected Value[] operands(LIRGeneratorTool gen) {
+        return new Value[]{gen.operand(elementType), gen.operand(length)};
+    }
+
+    @NodeIntrinsic
+    public static native Object call(Class<?> elementType, int length);
 }
