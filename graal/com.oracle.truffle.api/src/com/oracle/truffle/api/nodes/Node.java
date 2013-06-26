@@ -26,6 +26,7 @@ import java.lang.annotation.*;
 import java.util.*;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 /**
  * Abstract base class for all Truffle nodes.
@@ -199,6 +200,72 @@ public abstract class Node implements Cloneable {
      * @param reason the reason the replace supplied
      */
     protected void onReplace(Node newNode, String reason) {
+        if (TruffleOptions.TraceRewrites) {
+            Class<? extends Node> from = getClass();
+            Class<? extends Node> to = newNode.getClass();
+
+            if (TruffleOptions.TraceRewritesFilterFromKind != null) {
+                if (filterByKind(from, TruffleOptions.TraceRewritesFilterFromKind)) {
+                    return;
+                }
+            }
+
+            if (TruffleOptions.TraceRewritesFilterToKind != null) {
+                if (filterByKind(to, TruffleOptions.TraceRewritesFilterToKind)) {
+                    return;
+                }
+            }
+
+            String filter = TruffleOptions.TraceRewritesFilterClass;
+            if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
+                return;
+            }
+
+            // CheckStyle: stop system..print check
+            System.out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(from), formatNodeInfo(to), reason);
+            // CheckStyle: resume system..print check
+        }
+    }
+
+    private static String formatNodeInfo(Class<? extends Node> clazz) {
+        NodeInfo nodeInfo = clazz.getAnnotation(NodeInfo.class);
+        String kind = "?";
+        if (nodeInfo != null) {
+            switch (nodeInfo.kind()) {
+                case GENERIC:
+                    kind = "G";
+                    break;
+                case SPECIALIZED:
+                    kind = "S";
+                    break;
+                case UNINITIALIZED:
+                    kind = "U";
+                    break;
+                default:
+                    kind = "?";
+                    break;
+            }
+        }
+        return kind + " " + clazz.getSimpleName();
+    }
+
+    private static boolean filterByKind(Class<?> clazz, Kind kind) {
+        NodeInfo info = clazz.getAnnotation(NodeInfo.class);
+        if (info != null) {
+            return info.kind() != kind;
+        }
+        return true;
+    }
+
+    private static boolean filterByContainsClassName(Class<? extends Node> from, String filter) {
+        Class<?> currentFrom = from;
+        while (currentFrom != null) {
+            if (currentFrom.getName().contains(filter)) {
+                return false;
+            }
+            currentFrom = currentFrom.getSuperclass();
+        }
+        return true;
     }
 
     /**
