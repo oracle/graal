@@ -111,7 +111,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (doLoad) {
-                previousOop = (Word) Word.fromObject(UnsafeLoadNode.load(field, 0, 0, Kind.Object));
+                previousOop = (Word) Word.fromObject(field.readObjectCompressed(0));
             }
             // If the previous value is null the barrier should not be issued.
             if (previousOop.notEqual(0)) {
