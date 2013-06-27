@@ -33,7 +33,6 @@ import org.junit.*;
  */
 public class BC_newarray extends JTTTest {
 
-    @SuppressWarnings("unused")
     public static int test(int a) {
         if (new boolean[a] == null) {
             return -1;
