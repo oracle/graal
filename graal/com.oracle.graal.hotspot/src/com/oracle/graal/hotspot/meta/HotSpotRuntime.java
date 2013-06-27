@@ -861,7 +861,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         !(load.object().objectStamp().type().isArray())) {
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
             // Calculate offset+displacement
-            IntegerAddNode addNode = graph.add(new IntegerAddNode(Kind.Long, load.offset(), ConstantNode.forInt(load.displacement(), graph)));
+            IntegerAddNode addNode = graph.add(new IntegerAddNode(Kind.Long, load.offset(), ConstantNode.forLong(load.displacement(), graph)));
             // Compare previous result with referent offset (16)
             CompareNode offsetCondition = CompareNode.createCompareNode(Condition.EQ, addNode, ConstantNode.forLong(referentOffset(), graph));
             // Instance of unsafe load is java.lang.ref.Reference
