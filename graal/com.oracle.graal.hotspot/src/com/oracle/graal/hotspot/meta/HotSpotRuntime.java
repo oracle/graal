@@ -1135,7 +1135,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return Constant.forDouble(base == null ? unsafe.getDouble(displacement) : unsafe.getDouble(base, displacement));
             case Object: {
                 Object o = null;
-                if (compressedPointer) {
+                if (compressedPointer || !this.getGraalRuntime().getRuntime().config.useCompressedOops) {
                     o = unsafe.getObject(base, displacement);
                 } else {
                     o = this.getGraalRuntime().getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);

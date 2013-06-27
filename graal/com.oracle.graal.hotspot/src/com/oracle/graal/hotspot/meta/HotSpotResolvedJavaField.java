@@ -200,12 +200,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (holder.isInitialized()) {
-                return graalRuntime().getRuntime().readUnsafeConstant(getKind(), holder.mirror(), offset, true);
+                return graalRuntime().getRuntime().readUnsafeConstant(getKind(), holder.mirror(), offset, graalRuntime().getRuntime().config.useCompressedOops);
             }
             return null;
         } else {
             assert !Modifier.isStatic(flags);
-            return graalRuntime().getRuntime().readUnsafeConstant(getKind(), receiver.asObject(), offset, true);
+            return graalRuntime().getRuntime().readUnsafeConstant(getKind(), receiver.asObject(), offset, graalRuntime().getRuntime().config.useCompressedOops);
         }
     }
 
