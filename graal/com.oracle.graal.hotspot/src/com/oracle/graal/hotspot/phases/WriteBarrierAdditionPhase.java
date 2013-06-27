@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -108,7 +107,10 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
         if (useG1GC()) {
-            throw new GraalInternalError("G1 does not yet support barriers for ArrayCopy Intrinsics. Run with -G:-IntrinsifyArrayCopy");
+            G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
+            G1ArrayRangePostWriteBarrier g1ArrayRangePostWriteBarrier = graph.add(new G1ArrayRangePostWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
+            graph.addBeforeFixed(node, g1ArrayRangePreWriteBarrier);
+            graph.addAfterFixed(node, g1ArrayRangePostWriteBarrier);
         } else {
             SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
             graph.addAfterFixed(node, serialArrayRangeWriteBarrier);
