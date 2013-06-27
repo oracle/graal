@@ -586,6 +586,19 @@ public interface Pointer extends Unsigned {
     Object readObject(WordBase offset);
 
     /**
+     * Reads the memory at address {@code (this + offset)} and uncompresses it. Both the base
+     * address and offset are in bytes.
+     * <p>
+     * The offset is always treated as a {@link Signed} value. However, the static type is
+     * {@link WordBase} to avoid the frequent casts to of {@link Unsigned} values (where the caller
+     * knows that the highest-order bit of the unsigned value is never used).
+     * 
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    Object readObjectCompressed(WordBase offset);
+
+    /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
      * bytes.
      * 
@@ -665,6 +678,15 @@ public interface Pointer extends Unsigned {
      * @return the result of the memory access
      */
     Object readObject(int offset);
+
+    /**
+     * Reads the memory at address {@code (this + offset)} and decompressed it. Both the base
+     * address and offset are in bytes.
+     * 
+     * @param offset the signed offset for the memory access
+     * @return the result of the memory access
+     */
+    Object readObjectCompressed(int offset);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in
