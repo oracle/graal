@@ -111,7 +111,7 @@ public class WriteBarrierSnippets implements Snippets {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (doLoad) {
-                previousOop = (Word) Word.fromObject(UnsafeLoadNode.load(field, 0, 0, Kind.Object));
+                previousOop = (Word) Word.fromObject(field.readObjectCompressed(0));
             }
             // If the previous value is null the barrier should not be issued.
             if (previousOop.notEqual(0)) {
@@ -187,6 +187,79 @@ public class WriteBarrierSnippets implements Snippets {
         }
     }
 
+    @Snippet
+    public static void g1ArrayRangePreWriteBarrier(Object object, int startIndex, int length) {
+        Object dest = FixedValueAnchorNode.getObject(object);
+        Word thread = thread();
+        byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
+        Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
+        Word indexAddress = thread.add(g1SATBQueueIndexOffset());
+        Word indexValue = indexAddress.readWord(0);
+
+        // If the concurrent marker is not enabled return.
+        if (markingValue == (byte) 0) {
+            return;
+        }
+        Word oop;
+        final int scale = arrayIndexScale(Kind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+
+        for (int i = startIndex; i < length; i++) {
+            Word address = (Word) Word.fromObject(dest).add(header).add(Word.unsigned(i * (long) scale));
+            oop = (Word) Word.fromObject(address.readObjectCompressed(0));
+            if (oop.notEqual(0)) {
+                if (indexValue.notEqual(0)) {
+                    Word nextIndex = indexValue.subtract(wordSize());
+                    Word logAddress = bufferAddress.add(nextIndex);
+                    // Log the object to be marked as well as update the SATB's buffer next index.
+                    logAddress.writeWord(0, oop);
+                    indexAddress.writeWord(0, nextIndex);
+                } else {
+                    g1PreBarrierStub(G1WBPRECALL, oop.toObject());
+                }
+            }
+        }
+    }
+
+    @Snippet
+    public static void g1ArrayRangePostWriteBarrier(Object object, int startIndex, int length) {
+        Object dest = FixedValueAnchorNode.getObject(object);
+        Word thread = thread();
+        Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
+        Word indexAddress = thread.add(g1CardQueueIndexOffset());
+        Word indexValue = thread.readWord(g1CardQueueIndexOffset());
+
+        int cardShift = cardTableShift();
+        long cardStart = cardTableStart();
+        final int scale = arrayIndexScale(Kind.Object);
+        int header = arrayBaseOffset(Kind.Object);
+        long dstAddr = GetObjectAddressNode.get(dest);
+        long start = (dstAddr + header + (long) startIndex * scale) >>> cardShift;
+        long end = (dstAddr + header + ((long) startIndex + length - 1) * scale) >>> cardShift;
+        long count = end - start + 1;
+
+        while (count-- > 0) {
+            Word cardAddress = Word.unsigned((start + cardStart) + count);
+            byte cardByte = cardAddress.readByte(0);
+            // If the card is already dirty, (hence already enqueued) skip the insertion.
+            if (cardByte != (byte) 0) {
+                cardAddress.writeByte(0, (byte) 0);
+                // If the thread local card queue is full, issue a native call which will
+                // initialize a new one and add the card entry.
+                if (indexValue.notEqual(0)) {
+                    Word nextIndex = indexValue.subtract(wordSize());
+                    Word logAddress = bufferAddress.add(nextIndex);
+                    // Log the object to be scanned as well as update
+                    // the card queue's next index.
+                    logAddress.writeWord(0, cardAddress);
+                    indexAddress.writeWord(0, nextIndex);
+                } else {
+                    g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
+                }
+            }
+        }
+    }
+
     public static final ForeignCallDescriptor G1WBPRECALL = new ForeignCallDescriptor("write_barrier_pre", void.class, Object.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
@@ -203,6 +276,8 @@ public class WriteBarrierSnippets implements Snippets {
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
         private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
         private final SnippetInfo g1PostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PostWriteBarrier");
+        private final SnippetInfo g1ArrayRangePreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier");
+        private final SnippetInfo g1ArrayRangePostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier");
 
         public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
             super(runtime, replacements, target);
@@ -240,6 +315,22 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("location", writeBarrierPost.getLocation());
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
             template(args).instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(G1ArrayRangePreWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(g1ArrayRangePreWriteBarrier);
+            args.add("object", arrayRangeWriteBarrier.getObject());
+            args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
+            args.add("length", arrayRangeWriteBarrier.getLength());
+            template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(G1ArrayRangePostWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(g1ArrayRangePostWriteBarrier);
+            args.add("object", arrayRangeWriteBarrier.getObject());
+            args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
+            args.add("length", arrayRangeWriteBarrier.getLength());
+            template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
     }
 }

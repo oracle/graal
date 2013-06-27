@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
+public final class G1ArrayRangePostWriteBarrier extends ArrayRangeWriteBarrier {
 
-    public SerialArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
+    public G1ArrayRangePostWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
         super(object, startIndex, length);
     }
 }

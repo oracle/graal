@@ -169,7 +169,19 @@ public class WordTypeRewriterPhase extends Phase {
                         } else {
                             location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                         }
-                        replace(invoke, readOp(graph, arguments.get(0), invoke, location));
+                        replace(invoke, readOp(graph, arguments.get(0), invoke, location, false));
+                        break;
+                    }
+                    case READ_COMPRESSED: {
+                        assert arguments.size() == 2 || arguments.size() == 3;
+                        Kind readKind = asKind(callTargetNode.returnType());
+                        LocationNode location;
+                        if (arguments.size() == 2) {
+                            location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                        } else {
+                            location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
+                        }
+                        replace(invoke, readOp(graph, arguments.get(0), invoke, location, true));
                         break;
                     }
                     case WRITE: {
@@ -309,8 +321,8 @@ public class WordTypeRewriterPhase extends Phase {
         return IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
     }
 
-    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location) {
-        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp(), WriteBarrierType.NONE, false));
+    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, boolean compress) {
+        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp(), WriteBarrierType.NONE, compress));
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
         // check on its base address
