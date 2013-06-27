@@ -26,6 +26,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.HotSpotGraalRuntime;
+import com.oracle.graal.sparc.*;
 
 import static com.oracle.graal.sparc.SPARC.*;
 
@@ -401,7 +402,23 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Fmt3p {
 
-        public Fmt3p(SPARCAssembler masm, int op, int op3, int opf, int rs1, int rs2, int rd) {
+        private int op;
+        private int op3;
+        private int opf;
+        private int rs1;
+        private int rs2;
+        private int rd;
+
+        public Fmt3p(Ops op, Op3s op3, Opfs opf, Register rs1, Register rs2, Register rd) {
+            this.op = op.getValue();
+            this.op3 = op3.getValue();
+            this.opf = opf.getValue();
+            this.rs1 = rs1.encoding();
+            this.rs2 = rs2.encoding();
+            this.rd = rd.encoding();
+        }
+
+        public void emit(SPARCAssembler masm) {
             assert op == 2 || op == 3;
             assert op3 >= 0 && op3 < 0x40;
             assert opf >= 0 && opf < 0x200;
@@ -754,6 +771,14 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         Array32(0x14, "array32"),
         AlignAddress(0x18, "alignaddress"),
         AlignAddressLittle(0x1A, "alignaddress_little"),
+        Fpcmple16(0x20, "fpcmple16"),
+        Fpcmpne16(0x22, "fpcmpne16"),
+        Fpcmple32(0x24, "fpcmple32"),
+        Fpcmpne32(0x26, "fpcmpne32"),
+        Fpcmpgt16(0x28, "fpcmpgt16"),
+        Fpcmpeq16(0x2A, "fpcmpeq16"),
+        Fpcmpgt32(0x2C, "fpcmpgt32"),
+        Fpcmpeq32(0x2E, "fpcmpeq32"),
         Fmul8x16(0x31, "fmul8x16"),
         Fmul8x16au(0x33, "fmul8x16au"),
         Fmul8x16al(0x35, "fmul8x16al"),
@@ -761,9 +786,31 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         Fmul8ulx16(0x37, "fmul8ulx16"),
         Fmuld8sux16(0x38, "fmuld8sux16"),
         Fmuld8ulx16(0x39, "fmuld8ulx16"),
+        Fpack32(0x3A, "fpack32"),
+        Fpack16(0x3B, "fpack16"),
+        Fpackfix(0x3D, "fpackfix"),
         Faligndatag(0x48, "faligndata"),
-        Fnhadds(0x71, "fnhadds"),
-        Fnhaddd(0x72, "fnhaddd"),
+        Fpmerge(0x4B, "fpmerge"),
+        Fpadd16(0x50, "fpadd16"),
+        Fpadd16s(0x51, "fpadd16s"),
+        Fpadd32(0x52, "fpadd32"),
+        Fpadd32s(0x53, "fpadd32s"),
+        Fpsub16(0x54, "fpadd16"),
+        Fpsub16s(0x55, "fpadd16s"),
+        Fpsub32(0x56, "fpadd32"),
+        Fpsub32s(0x57, "fpadd32s"),
+        Fzerod(0x60, "fzerod"),
+        Fzeros(0x61, "fzeros"),
+        Fnot2d(0x66, "fnot1d"),
+        Fnot2s(0x67, "fnot1s"),
+        Fnot1d(0x6A, "fnot1d"),
+        Fnot1s(0x6B, "fnot1s"),
+        Fsrc1d(0x74, "fsrc1d"),
+        Fsrc1s(0x75, "fsrc1s"),
+        Fsrc2d(0x78, "fsrc2d"),
+        Fsrc2s(0x79, "fsrc2s"),
+        Foned(0x7E, "foned"),
+        Fones(0x7F, "fones"),
         // end VIS1
 
         // start VIS2
@@ -780,6 +827,11 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         Fmean16(0x40, "fmean16"),
         Fnadds(0x51, "fnadds"),
         Fnaddd(0x52, "fnaddd"),
+        Fnmuls(0x59, "fnmuls"),
+        Fnmuld(0x5A, "fnmuld"),
+        Fnsmuld(0x79, "fnsmuld"),
+        Fnhadds(0x71, "fnhadds"),
+        Fnhaddd(0x72, "fnhaddd"),
         // end VIS3
 
         // start CAMMELLIA
@@ -790,6 +842,21 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         // start CRYPTO
         Crc32c(0x147, "crc32c"),
         // end CRYPTO
+
+        // start OSA 2011
+        Fpadd64(0x44, "fpadd64"),
+        Fpsub64(0x46, "fpsub64"),
+        Fpadds16(0x58, "fpadds16"),
+        Fpadds16s(0x59, "fpadds16"),
+        Fpadds32(0x5A, "fpadds32"),
+        Fpadds32s(0x5B, "fpadds32s"),
+        Fpsubs16(0x5C, "fpsubs16"),
+        Fpsubs16s(0x5D, "fpsubs16s"),
+        Fpsubs32(0x5E, "fpsubs32"),
+        Fpsubs32s(0x5F, "fpsubs32s"),
+        Fpcmpne8(0x122, "fpcmpne8"),
+        Fpcmpeq8(0x12C, "fpcmpeq8"),
+        // end OSA 2011
 
         Fadds(0x41, "fadds"),
         Faddd(0x42, "faddd"),
@@ -1039,33 +1106,33 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Addxc extends Fmt3p {
 
-        public Addxc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Addxc(Register src1, Register src2, Register dst) {
             /* VIS3 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Addxc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Addxc, src1, src2, dst);
         }
     }
 
     public static class Addxccc extends Fmt3p {
 
-        public Addxccc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Addxccc(Register src1, Register src2, Register dst) {
             /* VIS3 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Addxccc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Addxccc, src1, src2, dst);
         }
     }
 
     public static class Alignaddr extends Fmt3p {
 
-        public Alignaddr(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Alignaddr(Register src1, Register src2, Register dst) {
             /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.AlignAddress.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.AlignAddress, src1, src2, dst);
         }
     }
 
     public static class Alignaddrl extends Fmt3p {
 
-        public Alignaddrl(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Alignaddrl(Register src1, Register src2, Register dst) {
             /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.AlignAddressLittle.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.AlignAddressLittle, src1, src2, dst);
         }
     }
 
@@ -1115,33 +1182,33 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Array8 extends Fmt3p {
 
-        public Array8(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Array8(Register src1, Register src2, Register dst) {
             /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array8.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array8, src1, src2, dst);
         }
     }
 
     public static class Array16 extends Fmt3p {
 
-        public Array16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Array16(Register src1, Register src2, Register dst) {
             /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array16, src1, src2, dst);
         }
     }
 
     public static class Array32 extends Fmt3p {
 
-        public Array32(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Array32(Register src1, Register src2, Register dst) {
             /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Array32.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Array32, src1, src2, dst);
         }
     }
 
     public static class Bmask extends Fmt3p {
 
-        public Bmask(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Bmask(Register src1, Register src2, Register dst) {
             /* VIS2 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Bmask.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Bmask, src1, src2, dst);
         }
     }
 
@@ -1323,25 +1390,25 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Bshuffle extends Fmt3p {
 
-        public Bshuffle(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Bshuffle(Register src1, Register src2, Register dst) {
             /* VIS2 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Bshuffle.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Bshuffle, src1, src2, dst);
         }
     }
 
     public static class CammelliaFl extends Fmt3p {
 
-        public CammelliaFl(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public CammelliaFl(Register src1, Register src2, Register dst) {
             /* CAMELLIA only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.CammelliaFl.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.CammelliaFl, src1, src2, dst);
         }
     }
 
     public static class CammelliaFli extends Fmt3p {
 
-        public CammelliaFli(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public CammelliaFli(Register src1, Register src2, Register dst) {
             /* CAMELLIA only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.CammelliaFli.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.CammelliaFli, src1, src2, dst);
         }
     }
 
@@ -1373,9 +1440,9 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Crc32c extends Fmt3p {
 
-        public Crc32c(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Crc32c(Register src1, Register src2, Register dst) {
             /* CRYPTO only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Crc32c.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Crc32c, src1, src2, dst);
         }
     }
 
@@ -1689,127 +1756,127 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Edge8cc extends Fmt3p {
 
-        public Edge8cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8cc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge8cc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge8cc, src1, src2, dst);
         }
     }
 
     public static class Edge8n extends Fmt3p {
 
-        public Edge8n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8n.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge8n(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge8n, src1, src2, dst);
         }
     }
 
     public static class Edge8lcc extends Fmt3p {
 
-        public Edge8lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8lcc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge8lcc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge8lcc, src1, src2, dst);
         }
     }
 
     public static class Edge8ln extends Fmt3p {
 
-        public Edge8ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge8ln.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge8ln(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge8ln, src1, src2, dst);
         }
     }
 
     public static class Edge16cc extends Fmt3p {
 
-        public Edge16cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16cc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge16cc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge16cc, src1, src2, dst);
         }
     }
 
     public static class Edge16n extends Fmt3p {
 
-        public Edge16n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16n.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge16n(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge16n, src1, src2, dst);
         }
     }
 
     public static class Edge16lcc extends Fmt3p {
 
-        public Edge16lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16lcc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge16lcc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge16lcc, src1, src2, dst);
         }
     }
 
     public static class Edge16ln extends Fmt3p {
 
-        public Edge16ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge16ln.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge16ln(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge16ln, src1, src2, dst);
         }
     }
 
     public static class Edge32cc extends Fmt3p {
 
-        public Edge32cc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32cc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge32cc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge32cc, src1, src2, dst);
         }
     }
 
     public static class Edge32n extends Fmt3p {
 
-        public Edge32n(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32n.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge32n(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge32n, src1, src2, dst);
         }
     }
 
     public static class Edge32lcc extends Fmt3p {
 
-        public Edge32lcc(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32lcc.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge32lcc(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge32lcc, src1, src2, dst);
         }
     }
 
     public static class Edge32ln extends Fmt3p {
 
-        public Edge32ln(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Edge32ln.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Edge32ln(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Edge32ln, src1, src2, dst);
         }
     }
 
     public static class Fadds extends Fmt3p {
 
-        public Fadds(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fadds.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fadds(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fadds, src1, src2, dst);
         }
     }
 
     public static class Faddd extends Fmt3p {
 
-        public Faddd(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Faddd.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Faddd(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Faddd, src1, src2, dst);
         }
     }
 
     public static class Faddq extends Fmt3p {
 
-        public Faddq(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Faddq.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Faddq(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Faddq, src1, src2, dst);
         }
     }
 
     public static class Faligndata extends Fmt3p {
 
-        public Faligndata(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Faligndatag.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Faligndata(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Faligndatag, src1, src2, dst);
         }
     }
 
     public static class Fdivs extends Fmt3p {
 
-        public Fdivs(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdivs.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fdivs(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fdivs, src1, src2, dst);
         }
     }
 
     public static class Fdivd extends Fmt3p {
 
-        public Fdivd(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fdivd.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fdivd(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fdivd, src1, src2, dst);
         }
     }
 
@@ -1829,9 +1896,9 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Fmean16 extends Fmt3p {
 
-        public Fmean16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Fmean16(Register src1, Register src2, Register dst) {
             /* VIS3 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmean16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmean16, src1, src2, dst);
         }
     }
 
@@ -1849,19 +1916,119 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
+    public static class Fmuls extends Fmt3p {
+
+        public Fmuls(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmuls, src1, src2, dst);
+        }
+    }
+
+    public static class Fmuld extends Fmt3p {
+
+        public Fmuld(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fmuld, src1, src2, dst);
+        }
+    }
+
+    public static class Fmul8x16 extends Fmt3p {
+
+        public Fmul8x16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmul8x16, src1, src2, dst);
+        }
+    }
+
+    public static class Fmul8x16au extends Fmt3p {
+
+        public Fmul8x16au(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmul8x16, src1, src2, dst);
+        }
+    }
+
+    public static class Fmul8x16al extends Fmt3p {
+
+        public Fmul8x16al(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmul8x16al, src1, src2, dst);
+        }
+    }
+
+    public static class Fmul8sux16 extends Fmt3p {
+
+        public Fmul8sux16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmul8sux16, src1, src2, dst);
+        }
+    }
+
+    public static class Fmul8ulx16 extends Fmt3p {
+
+        public Fmul8ulx16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmul8ulx16, src1, src2, dst);
+        }
+    }
+
+    public static class Fmuld8sux16 extends Fmt3p {
+
+        public Fmuld8sux16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmuld8sux16, src1, src2, dst);
+        }
+    }
+
+    public static class Fmuld8ulx16 extends Fmt3p {
+
+        public Fmuld8ulx16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fmuld8ulx16, src1, src2, dst);
+        }
+    }
+
     public static class Fnadds extends Fmt3p {
 
-        public Fnadds(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Fnadds(Register src1, Register src2, Register dst) {
             /* VIS3 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnadds.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnadds, src1, src2, dst);
         }
     }
 
     public static class Fnaddd extends Fmt3p {
 
-        public Fnaddd(SPARCAssembler asm, Register src1, Register src2, Register dst) {
+        public Fnaddd(Register src1, Register src2, Register dst) {
             /* VIS3 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnaddd.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnaddd, src1, src2, dst);
+        }
+    }
+
+    public static class Fnegs extends Fmt3n {
+
+        public Fnegs(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegs.getValue(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnegd extends Fmt3n {
+
+        public Fnegd(SPARCAssembler masm, Register src2, Register dst) {
+            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegd.getValue(), src2.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fnhadds extends Fmt3p {
+
+        public Fnhadds(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnhadds, src1, src2, dst);
+        }
+    }
+
+    public static class Fnhaddd extends Fmt3p {
+
+        public Fnhaddd(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnhaddd, src1, src2, dst);
         }
     }
 
@@ -1893,87 +2060,27 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
-    public static class Fmuls extends Fmt3p {
+    public static class Fnmuls extends Fmt3p {
 
-        public Fmuls(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuls.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fnmuls(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnmuls, src1, src2, dst);
         }
     }
 
-    public static class Fmuld extends Fmt3p {
+    public static class Fnmuld extends Fmt3p {
 
-        public Fmuld(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fmuld.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fnmuld(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnmuld, src1, src2, dst);
         }
     }
 
-    public static class Fmul8x16 extends Fmt3p {
+    public static class Fnsmuld extends Fmt3p {
 
-        public Fmul8x16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmul8x16au extends Fmt3p {
-
-        public Fmul8x16au(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmul8x16al extends Fmt3p {
-
-        public Fmul8x16al(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8x16al.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmul8sux16 extends Fmt3p {
-
-        public Fmul8sux16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8sux16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmul8ulx16 extends Fmt3p {
-
-        public Fmul8ulx16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmul8ulx16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmuld8sux16 extends Fmt3p {
-
-        public Fmuld8sux16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmuld8sux16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fmuld8ulx16 extends Fmt3p {
-
-        public Fmuld8ulx16(SPARCAssembler asm, Register src1, Register src2, Register dst) {
-            /* VIS1 only */
-            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep1.getValue(), Opfs.Fmuld8ulx16.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fnegs extends Fmt3n {
-
-        public Fnegs(SPARCAssembler masm, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegs.getValue(), src2.encoding(), dst.encoding());
-        }
-    }
-
-    public static class Fnegd extends Fmt3n {
-
-        public Fnegd(SPARCAssembler masm, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fnegd.getValue(), src2.encoding(), dst.encoding());
+        public Fnsmuld(Register src1, Register src2, Register dst) {
+            /* VIS3 only */
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fnsmuld, src1, src2, dst);
         }
     }
 
@@ -1998,31 +2105,194 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
+    public static class Fpack16 extends Fmt3p {
+
+        public Fpack16(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpack16, src1, src2, dst);
+        }
+    }
+
+    public static class Fpack32 extends Fmt3p {
+
+        public Fpack32(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpack32, src1, src2, dst);
+        }
+    }
+
+    public static class Fpackfix extends Fmt3p {
+
+        public Fpackfix(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpackfix, src1, src2, dst);
+        }
+    }
+
+    public static class Fpmaddx extends Fmt5a {
+
+        public Fpmaddx(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), 0, src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fpmaddxhi extends Fmt5a {
+
+        public Fpmaddxhi(SPARCAssembler asm, Register src1, Register src2, Register src3, Register dst) {
+            super(asm, Ops.ArithOp.getValue(), Op3s.Impdep2.getValue(), 4, src1.encoding(), src2.encoding(), src3.encoding(), dst.encoding());
+        }
+    }
+
+    public static class Fpmerge extends Fmt3p {
+
+        public Fpmerge(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpmerge, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsub16 extends Fmt3p {
+
+        public Fpsub16(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsub16, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsub16s extends Fmt3p {
+
+        public Fpsub16s(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsub16s, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsub32 extends Fmt3p {
+
+        public Fpsub32(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsub32, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsub32s extends Fmt3p {
+
+        public Fpsub32s(Register src1, Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsub32s, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsub64 extends Fmt3p {
+
+        public Fpsub64(Register src1, Register src2, Register dst) {
+            /* OSA 2011 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsub64, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsubs16 extends Fmt3p {
+
+        public Fpsubs16(Register src1, Register src2, Register dst) {
+            /* OSA 2011 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsubs16, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsubs16s extends Fmt3p {
+
+        public Fpsubs16s(Register src1, Register src2, Register dst) {
+            /* OSA 2011 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsubs16s, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsubs32 extends Fmt3p {
+
+        public Fpsubs32(Register src1, Register src2, Register dst) {
+            /* OSA 2011 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsubs32, src1, src2, dst);
+        }
+    }
+
+    public static class Fpsubs32s extends Fmt3p {
+
+        public Fpsubs32s(Register src1, Register src2, Register dst) {
+            /* OSA 2011 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fpsubs32s, src1, src2, dst);
+        }
+    }
+
     public static class Fsqrtd extends Fmt3p {
 
-        public Fsqrtd(SPARCAssembler masm, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fsqrtd.getValue(), 0, src2.encoding(), dst.encoding());
+        public Fsqrtd(Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsqrtd, SPARC.r0, src2, dst);
+        }
+    }
+
+    public static class Fsrc1d extends Fmt3p {
+
+        public Fsrc1d(Register src1, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fsrc1d, src1, SPARC.r0, dst);
+        }
+    }
+
+    public static class Fsrc1s extends Fmt3p {
+
+        public Fsrc1s(Register src1, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fsrc1s, src1, SPARC.r0, dst);
+        }
+    }
+
+    public static class Fsrc2d extends Fmt3p {
+
+        public Fsrc2d(Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fsrc2d, SPARC.r0, src2, dst);
+        }
+    }
+
+    public static class Fsrc2s extends Fmt3p {
+
+        public Fsrc2s(Register src2, Register dst) {
+            /* VIS1 only */
+            super(Ops.ArithOp, Op3s.Impdep1, Opfs.Fsrc2s, SPARC.r0, src2, dst);
         }
     }
 
     public static class Fsubs extends Fmt3p {
 
-        public Fsubs(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fsubs.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fsubs(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsubs, src1, src2, dst);
         }
     }
 
     public static class Fsubd extends Fmt3p {
 
-        public Fsubd(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fsubd.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fsubd(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsubd, src1, src2, dst);
         }
     }
 
     public static class Fsubq extends Fmt3p {
 
-        public Fsubq(SPARCAssembler masm, Register src1, Register src2, Register dst) {
-            super(masm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fsubq.getValue(), src1.encoding(), src2.encoding(), dst.encoding());
+        public Fsubq(Register src1, Register src2, Register dst) {
+            super(Ops.ArithOp, Op3s.Fpop1, Opfs.Fsubq, src1, src2, dst);
+        }
+    }
+
+    public static class Fzeros extends Fmt3n {
+
+        public Fzeros(SPARCAssembler asm, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fzeros.getValue(), 0, dst.encoding());
+        }
+    }
+
+    public static class Fzerod extends Fmt3n {
+
+        public Fzerod(SPARCAssembler asm, Register dst) {
+            /* VIS1 only */
+            super(asm, Ops.ArithOp.getValue(), Op3s.Fpop1.getValue(), Opfs.Fzerod.getValue(), 0, dst.encoding());
         }
     }
 
