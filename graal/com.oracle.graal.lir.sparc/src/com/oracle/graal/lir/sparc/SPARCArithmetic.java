@@ -230,7 +230,6 @@ public enum SPARCArithmetic {
         }
     }
 
-    @SuppressWarnings("unused")
     public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isConstant(src1)) {

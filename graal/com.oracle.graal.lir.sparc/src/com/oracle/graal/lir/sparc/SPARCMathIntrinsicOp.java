@@ -48,7 +48,6 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
     }
 
     @Override
-    @SuppressWarnings("unused")
     public void emitCode(TargetMethodAssembler tasm, SPARCAssembler asm) {
         switch (opcode) {
             case SQRT:
