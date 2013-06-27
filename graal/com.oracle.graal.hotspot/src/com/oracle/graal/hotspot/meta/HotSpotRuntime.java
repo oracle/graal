@@ -618,7 +618,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
-            lowerUnsafeLoad(load);
+            lowerUnsafeLoad(load, tool);
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
@@ -854,11 +854,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * TODO (ck): Replace the code below with a snippet.
      * 
      */
-    private void lowerUnsafeLoad(UnsafeLoadNode load) {
+    private void lowerUnsafeLoad(UnsafeLoadNode load, LoweringTool tool) {
         StructuredGraph graph = load.graph();
         boolean compress = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
         if (config().useG1GC && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object && !load.object().objectStamp().alwaysNull() && load.object().objectStamp().type() != null &&
-                        !(load.object().objectStamp().type().isArray())) {
+                        !(load.object().objectStamp().type().isArray()) && tool.getLoweringType() != LoweringType.AFTER_GUARDS) {
             IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
             // Calculate offset+displacement
             IntegerAddNode addNode = graph.add(new IntegerAddNode(Kind.Long, load.offset(), ConstantNode.forLong(load.displacement(), graph)));
