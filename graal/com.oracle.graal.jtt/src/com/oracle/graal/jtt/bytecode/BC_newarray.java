@@ -23,12 +23,14 @@
 package com.oracle.graal.jtt.bytecode;
 
 import com.oracle.graal.jtt.*;
+
 import org.junit.*;
 
 /*
  */
 public class BC_newarray extends JTTTest {
 
+    @SuppressWarnings("unused")
     public static int test(int a) {
         if (new boolean[3] == null) {
             return -1;
