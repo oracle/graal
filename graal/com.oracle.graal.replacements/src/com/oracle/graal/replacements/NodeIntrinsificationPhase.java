@@ -304,7 +304,7 @@ public class NodeIntrinsificationPhase extends Phase {
         } else if (usage instanceof UnboxNode) {
             UnboxNode unbox = (UnboxNode) usage;
             unbox.replaceAtUsages(intrinsifiedNode);
-            graph.removeFixed(unbox);
+            graph.removeFloating(unbox);
             Debug.log("%s: Removed an UnboxNode", Debug.contextSnapshot(JavaMethod.class));
         } else if (usage instanceof MethodCallTargetNode) {
             MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) usage;

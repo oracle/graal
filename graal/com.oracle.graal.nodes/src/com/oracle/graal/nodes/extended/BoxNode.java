@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
@@ -32,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
  * This node represents the boxing of a primitive value. This corresponds to a call to the valueOf
  * methods in Integer, Long, etc.
  */
-public class BoxNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
+public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lowerable, Canonicalizable {
 
     @Input private ValueNode value;
     private final Kind boxingKind;

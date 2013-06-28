@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
@@ -213,28 +214,30 @@ public class BoxingSnippets implements Snippets {
             }
         }
 
-        public void lower(BoxNode box) {
+        public void lower(BoxNode box, LoweringTool tool) {
             FloatingNode canonical = canonicalizeBoxing(box, runtime);
             // if in AOT mode, we don't want to embed boxed constants.
-            if (!AOTCompilation.getValue() && canonical != null) {
-                box.graph().replaceFixedWithFloating(box, canonical);
+            if (canonical != null && !AOTCompilation.getValue()) {
+                box.graph().replaceFloating(box, canonical);
             } else {
                 Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()));
                 args.add("value", box.getValue());
 
                 SnippetTemplate template = template(args);
                 Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-                template.instantiate(runtime, box, DEFAULT_REPLACER, args);
+                template.instantiate(runtime, box, DEFAULT_REPLACER, tool, args);
+                GraphUtil.killWithUnusedFloatingInputs(box);
             }
         }
 
-        public void lower(UnboxNode unbox) {
+        public void lower(UnboxNode unbox, LoweringTool tool) {
             Arguments args = new Arguments(unboxSnippets.get(unbox.getBoxingKind()));
             args.add("value", unbox.getValue());
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
-            template.instantiate(runtime, unbox, DEFAULT_REPLACER, args);
+            template.instantiate(runtime, unbox, DEFAULT_REPLACER, tool, args);
+            GraphUtil.killWithUnusedFloatingInputs(unbox);
         }
     }
 

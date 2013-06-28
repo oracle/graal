@@ -799,9 +799,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof UnwindNode || n instanceof DeoptimizeNode) {
             // Nothing to do, using direct LIR lowering for these nodes.
         } else if (n instanceof BoxNode) {
-            boxingSnippets.lower((BoxNode) n);
+            boxingSnippets.lower((BoxNode) n, tool);
         } else if (n instanceof UnboxNode) {
-            boxingSnippets.lower((UnboxNode) n);
+            boxingSnippets.lower((UnboxNode) n, tool);
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
