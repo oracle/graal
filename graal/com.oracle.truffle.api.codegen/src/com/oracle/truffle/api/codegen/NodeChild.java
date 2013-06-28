@@ -36,7 +36,7 @@ public @interface NodeChild {
 
     String value() default "";
 
-    Class<?> type() default NodeClass.InheritNode.class;
+    Class<?> type() default Node.class;
 
     /**
      * The {@link #executeWith()} property allows a node to pass the result of one child's

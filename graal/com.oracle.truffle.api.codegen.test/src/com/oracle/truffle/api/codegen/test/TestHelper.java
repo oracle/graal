@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.codegen.test.BuiltinTest.*;
+import com.oracle.truffle.api.codegen.test.NodeContainerTest.*;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.*;
 
 /**

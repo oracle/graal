@@ -41,7 +41,7 @@
  *
  * <ul>
  * <li>What do I need to get started? {@link com.oracle.truffle.api.codegen.test.TypeSystemTest}</li>
- * <li>How would you generate function nodes for runtime objects? {@link com.oracle.truffle.api.codegen.test.BuiltinTest}</li>
+ * <li>How would you generate function nodes for runtime objects? {@link com.oracle.truffle.api.codegen.test.NodeContainerTest}</li>
  * </ul>
  * </p>
  *

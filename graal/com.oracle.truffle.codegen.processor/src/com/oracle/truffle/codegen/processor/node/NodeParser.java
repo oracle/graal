@@ -31,7 +31,6 @@ import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.codegen.NodeClass.InheritNode;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
@@ -42,7 +41,7 @@ import com.oracle.truffle.codegen.processor.typesystem.*;
 public class NodeParser extends TemplateParser<NodeData> {
 
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
-                    NodeClass.class, NodeChild.class, NodeChildren.class, NodeId.class);
+                    NodeContainer.class, NodeChild.class, NodeChildren.class, NodeId.class);
 
     private Map<String, NodeData> parsedNodes;
 
@@ -90,6 +89,16 @@ public class NodeParser extends TemplateParser<NodeData> {
         return true;
     }
 
+    @Override
+    public Class<? extends Annotation> getAnnotationType() {
+        return null;
+    }
+
+    @Override
+    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
+        return ANNOTATIONS;
+    }
+
     private NodeData resolveNode(TypeElement rootType) {
         String typeName = Utils.getQualifiedName(rootType);
         if (parsedNodes.containsKey(typeName)) {
@@ -133,7 +142,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         List<TypeElement> lookupTypes = findSuperClasses(new ArrayList<TypeElement>(), templateType);
         Collections.reverse(lookupTypes);
 
-        AnnotationMirror nodeClass = findFirstAnnotation(lookupTypes, NodeClass.class);
+        AnnotationMirror nodeClass = findFirstAnnotation(lookupTypes, NodeContainer.class);
         TypeMirror nodeType = null;
         if (Utils.isAssignable(context, templateType.asType(), context.getTruffleTypes().getNode())) {
             nodeType = templateType.asType();
@@ -152,9 +161,10 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
         }
 
-        Set<Element> elementSet = new HashSet<>(context.getEnvironment().getElementUtils().getAllMembers(templateType));
+        Elements elementUtil = context.getEnvironment().getElementUtils();
+        Set<Element> elementSet = new HashSet<>(elementUtil.getAllMembers(templateType));
         if (!Utils.typeEquals(templateType.asType(), nodeType)) {
-            elementSet.addAll(context.getEnvironment().getElementUtils().getAllMembers(Utils.fromTypeMirror(nodeType)));
+            elementSet.addAll(elementUtil.getAllMembers(Utils.fromTypeMirror(nodeType)));
 
             List<TypeElement> nodeLookupTypes = findSuperClasses(new ArrayList<TypeElement>(), Utils.fromTypeMirror(nodeType));
             Collections.reverse(nodeLookupTypes);
@@ -186,7 +196,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         List<NodeData> nodes;
 
-        if (node.isSplitByMethodName()) {
+        if (node.isNodeContainer()) {
             nodes = splitNodeData(node);
         } else {
             nodes = new ArrayList<>();
@@ -198,7 +208,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             verifyNode(splittedNode, elements);
         }
 
-        if (node.isSplitByMethodName()) {
+        if (node.isNodeContainer()) {
             node.setDeclaredNodes(nodes);
             node.setSpecializationListeners(new ArrayList<SpecializationListenerData>());
             node.setSpecializations(new ArrayList<SpecializationData>());
@@ -206,6 +216,226 @@ public class NodeParser extends TemplateParser<NodeData> {
         } else {
             return node;
         }
+    }
+
+    private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> lookupTypes) {
+        NodeData nodeData = new NodeData(templateType, templateType.getSimpleName().toString());
+
+        AnnotationMirror typeSystemMirror = findFirstAnnotation(lookupTypes, TypeSystemReference.class);
+        if (typeSystemMirror == null) {
+            nodeData.addError("No @%s annotation found in type hierarchy of %s.", TypeSystemReference.class.getSimpleName(), Utils.getQualifiedName(nodeType));
+            return nodeData;
+        }
+
+        TypeMirror typeSytemType = Utils.getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
+        final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSytemType, true);
+        if (typeSystem == null) {
+            nodeData.addError("The used type system '%s' is invalid or not a Node.", Utils.getQualifiedName(typeSytemType));
+            return nodeData;
+        }
+
+        List<String> assumptionsList = new ArrayList<>();
+
+        for (int i = lookupTypes.size() - 1; i >= 0; i--) {
+            TypeElement type = lookupTypes.get(i);
+            AnnotationMirror assumptions = Utils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
+            if (assumptions != null) {
+                List<String> assumptionStrings = Utils.getAnnotationValueList(String.class, assumptions, "value");
+                for (String string : assumptionStrings) {
+                    if (assumptionsList.contains(string)) {
+                        assumptionsList.remove(string);
+                    }
+                    assumptionsList.add(string);
+                }
+            }
+        }
+        AnnotationMirror nodeInfoMirror = findFirstAnnotation(lookupTypes, NodeInfo.class);
+        if (nodeInfoMirror != null) {
+            nodeData.setShortName(Utils.getAnnotationValue(String.class, nodeInfoMirror, "shortName"));
+        }
+
+        nodeData.setAssumptions(new ArrayList<>(assumptionsList));
+        nodeData.setNodeType(nodeType);
+        AnnotationMirror nodeContainer = findFirstAnnotation(lookupTypes, NodeContainer.class);
+        nodeData.setNodeContainer(nodeContainer != null);
+        nodeData.setTypeSystem(typeSystem);
+        nodeData.setFields(parseFields(elements));
+        parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
+        // parseChildren invokes cyclic parsing.
+        nodeData.setChildren(parseChildren(elements, lookupTypes));
+        nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
+
+        return nodeData;
+    }
+
+    private static List<NodeFieldData> parseFields(List<? extends Element> elements) {
+        List<NodeFieldData> fields = new ArrayList<>();
+        for (VariableElement field : ElementFilter.fieldsIn(elements)) {
+            if (field.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            if (field.getModifiers().contains(Modifier.PUBLIC) || field.getModifiers().contains(Modifier.PROTECTED)) {
+                fields.add(new NodeFieldData(field));
+            }
+        }
+        return fields;
+    }
+
+    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
+        Set<String> shortCircuits = new HashSet<>();
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
+            if (mirror != null) {
+                shortCircuits.add(Utils.getAnnotationValue(String.class, mirror, "value"));
+            }
+        }
+        Map<String, TypeMirror> castNodeTypes = new HashMap<>();
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, CreateCast.class);
+            if (mirror != null) {
+                List<String> children = (Utils.getAnnotationValueList(String.class, mirror, "value"));
+                if (children != null) {
+                    for (String child : children) {
+                        castNodeTypes.put(child, method.getReturnType());
+                    }
+                }
+            }
+        }
+
+        List<NodeChildData> parsedChildren = new ArrayList<>();
+        List<TypeElement> typeHierarchyReversed = new ArrayList<>(typeHierarchy);
+        Collections.reverse(typeHierarchyReversed);
+        for (TypeElement type : typeHierarchyReversed) {
+            AnnotationMirror nodeClassMirror = Utils.findAnnotationMirror(processingEnv, type, NodeContainer.class);
+            AnnotationMirror nodeChildrenMirror = Utils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
+
+            TypeMirror nodeClassType = type.getSuperclass();
+            if (!Utils.isAssignable(context, nodeClassType, context.getTruffleTypes().getNode())) {
+                nodeClassType = null;
+            }
+
+            if (nodeClassMirror != null) {
+                nodeClassType = inheritType(nodeClassMirror, "value", nodeClassType);
+            }
+
+            List<AnnotationMirror> children = Utils.collectAnnotations(context, nodeChildrenMirror, "value", type, NodeChild.class);
+            int index = 0;
+            for (AnnotationMirror childMirror : children) {
+                String name = Utils.getAnnotationValue(String.class, childMirror, "value");
+                if (name.equals("")) {
+                    name = "child" + index;
+                }
+
+                Cardinality cardinality = Cardinality.ONE;
+
+                TypeMirror childType = inheritType(childMirror, "type", nodeClassType);
+                if (childType.getKind() == TypeKind.ARRAY) {
+                    cardinality = Cardinality.MANY;
+                }
+
+                TypeMirror originalChildType = childType;
+                TypeMirror castNodeType = castNodeTypes.get(name);
+                if (castNodeType != null) {
+                    childType = castNodeType;
+                }
+
+                Element getter = findGetter(elements, name, childType);
+
+                ExecutionKind kind = ExecutionKind.DEFAULT;
+                if (shortCircuits.contains(name)) {
+                    kind = ExecutionKind.SHORT_CIRCUIT;
+                }
+
+                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
+
+                parsedChildren.add(nodeChild);
+
+                verifyNodeChild(nodeChild);
+                if (nodeChild.hasErrors()) {
+                    continue;
+                }
+
+                NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(childType));
+                nodeChild.setNode(fieldNodeData);
+                if (fieldNodeData == null) {
+                    nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
+                }
+
+            }
+            index++;
+        }
+
+        List<NodeChildData> filteredChildren = new ArrayList<>();
+        Set<String> encounteredNames = new HashSet<>();
+        for (int i = parsedChildren.size() - 1; i >= 0; i--) {
+            NodeChildData child = parsedChildren.get(i);
+            if (!encounteredNames.contains(child.getName())) {
+                filteredChildren.add(0, child);
+                encounteredNames.add(child.getName());
+            }
+        }
+
+        for (NodeChildData child : filteredChildren) {
+            List<String> executeWithStrings = Utils.getAnnotationValueList(String.class, child.getMessageAnnotation(), "executeWith");
+            AnnotationValue executeWithValue = Utils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
+            List<NodeChildData> executeWith = new ArrayList<>();
+            for (String executeWithString : executeWithStrings) {
+
+                if (child.getName().equals(executeWithString)) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with itself.", executeWithString);
+                    continue;
+                }
+
+                NodeChildData found = null;
+                boolean before = true;
+                for (NodeChildData resolveChild : filteredChildren) {
+                    if (resolveChild == child) {
+                        before = false;
+                        continue;
+                    }
+                    if (resolveChild.getName().equals(executeWithString)) {
+                        found = resolveChild;
+                        break;
+                    }
+                }
+
+                if (found == null) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
+                    continue;
+                } else if (!before) {
+                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
+                                    executeWithString);
+                    continue;
+                }
+                executeWith.add(found);
+            }
+            child.setExecuteWith(executeWith);
+            if (child.getNodeData() == null) {
+                continue;
+            }
+
+            List<ExecutableTypeData> types = child.findGenericExecutableTypes(context);
+            if (types.isEmpty()) {
+                child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s.", executeWith.size(), Utils.getSimpleName(child.getNodeType()));
+                continue;
+            }
+        }
+
+        return filteredChildren;
+    }
+
+    private void parseMethods(final NodeData node, List<Element> elements) {
+        node.setShortCircuits(new ShortCircuitParser(context, node).parse(elements));
+        node.setSpecializationListeners(new SpecializationListenerParser(context, node).parse(elements));
+        List<SpecializationData> generics = new GenericParser(context, node).parse(elements);
+        List<SpecializationData> specializations = new SpecializationMethodParser(context, node).parse(elements);
+        node.setCasts(new CreateCastParser(context, node).parse(elements));
+
+        List<SpecializationData> allSpecializations = new ArrayList<>();
+        allSpecializations.addAll(generics);
+        allSpecializations.addAll(specializations);
+
+        node.setSpecializations(allSpecializations);
     }
 
     private static List<NodeData> splitNodeData(NodeData node) {
@@ -250,33 +480,6 @@ public class NodeParser extends TemplateParser<NodeData> {
         node.setCasts(new ArrayList<CreateCastData>());
 
         return splitted;
-    }
-
-    private static <M extends TemplateMethod> SortedMap<String, List<M>> groupByNodeId(List<M> methods) {
-        SortedMap<String, List<M>> grouped = new TreeMap<>();
-        for (M m : methods) {
-            List<M> list = grouped.get(m.getId());
-            if (list == null) {
-                list = new ArrayList<>();
-                grouped.put(m.getId(), list);
-            }
-            list.add(m);
-        }
-        return grouped;
-    }
-
-    private void parseMethods(final NodeData node, List<Element> elements) {
-        node.setShortCircuits(new ShortCircuitParser(context, node).parse(elements));
-        node.setSpecializationListeners(new SpecializationListenerParser(context, node).parse(elements));
-        List<SpecializationData> generics = new GenericParser(context, node).parse(elements);
-        List<SpecializationData> specializations = new SpecializationMethodParser(context, node).parse(elements);
-        node.setCasts(new CreateCastParser(context, node).parse(elements));
-
-        List<SpecializationData> allSpecializations = new ArrayList<>();
-        allSpecializations.addAll(generics);
-        allSpecializations.addAll(specializations);
-
-        node.setSpecializations(allSpecializations);
     }
 
     private void finalizeSpecializations(List<Element> elements, final NodeData node) {
@@ -391,6 +594,87 @@ public class NodeParser extends TemplateParser<NodeData> {
             for (int i = 0; i < ids.size(); i++) {
                 needsId.get(i).setId(ids.get(i));
             }
+        }
+    }
+
+    private void assignShortCircuitsToSpecializations(NodeData node) {
+        Map<String, List<ShortCircuitData>> groupedShortCircuits = groupShortCircuits(node.getShortCircuits());
+
+        boolean valid = true;
+        for (NodeChildData field : node.filterFields(ExecutionKind.SHORT_CIRCUIT)) {
+            String valueName = field.getName();
+            List<ShortCircuitData> availableCircuits = groupedShortCircuits.get(valueName);
+
+            if (availableCircuits == null || availableCircuits.isEmpty()) {
+                node.addError("@%s method for short cut value '%s' required.", ShortCircuit.class.getSimpleName(), valueName);
+                valid = false;
+                continue;
+            }
+
+            boolean sameMethodName = true;
+            String methodName = availableCircuits.get(0).getMethodName();
+            for (ShortCircuitData circuit : availableCircuits) {
+                if (!circuit.getMethodName().equals(methodName)) {
+                    sameMethodName = false;
+                }
+            }
+
+            if (!sameMethodName) {
+                for (ShortCircuitData circuit : availableCircuits) {
+                    circuit.addError("All short circuits for short cut value '%s' must have the same method name.", valueName);
+                }
+                valid = false;
+                continue;
+            }
+
+            ShortCircuitData genericCircuit = null;
+            for (ShortCircuitData circuit : availableCircuits) {
+                if (isGenericShortCutMethod(node, circuit)) {
+                    genericCircuit = circuit;
+                    break;
+                }
+            }
+
+            if (genericCircuit == null) {
+                node.addError("No generic @%s method available for short cut value '%s'.", ShortCircuit.class.getSimpleName(), valueName);
+                valid = false;
+                continue;
+            }
+
+            for (ShortCircuitData circuit : availableCircuits) {
+                if (circuit != genericCircuit) {
+                    circuit.setGenericShortCircuitMethod(genericCircuit);
+                }
+            }
+        }
+
+        if (!valid) {
+            return;
+        }
+
+        NodeChildData[] fields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
+        for (SpecializationData specialization : node.getSpecializations()) {
+            List<ShortCircuitData> assignedShortCuts = new ArrayList<>(fields.length);
+
+            for (int i = 0; i < fields.length; i++) {
+                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(fields[i].getName());
+
+                ShortCircuitData genericShortCircuit = null;
+                ShortCircuitData compatibleShortCircuit = null;
+                for (ShortCircuitData circuit : availableShortCuts) {
+                    if (circuit.isGeneric()) {
+                        genericShortCircuit = circuit;
+                    } else if (circuit.isCompatibleTo(specialization)) {
+                        compatibleShortCircuit = circuit;
+                    }
+                }
+
+                if (compatibleShortCircuit == null) {
+                    compatibleShortCircuit = genericShortCircuit;
+                }
+                assignedShortCuts.add(compatibleShortCircuit);
+            }
+            specialization.setShortCircuits(assignedShortCuts);
         }
     }
 
@@ -546,83 +830,12 @@ public class NodeParser extends TemplateParser<NodeData> {
         verifySpecializationThrows(nodeData);
     }
 
-    private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> lookupTypes) {
-        NodeData nodeData = new NodeData(templateType, templateType.getSimpleName().toString());
-
-        AnnotationMirror typeSystemMirror = findFirstAnnotation(lookupTypes, TypeSystemReference.class);
-        if (typeSystemMirror == null) {
-            nodeData.addError("No @%s annotation found in type hierarchy of %s.", TypeSystemReference.class.getSimpleName(), Utils.getQualifiedName(nodeType));
-            return nodeData;
+    private static void verifyNodeChild(NodeChildData nodeChild) {
+        if (nodeChild.getNodeType() == null) {
+            nodeChild.addError("No valid node type could be resoleved.");
         }
-
-        TypeMirror typeSytemType = Utils.getAnnotationValue(TypeMirror.class, typeSystemMirror, "value");
-        final TypeSystemData typeSystem = (TypeSystemData) context.getTemplate(typeSytemType, true);
-        if (typeSystem == null) {
-            nodeData.addError("The used type system '%s' is invalid or not a Node.", Utils.getQualifiedName(typeSytemType));
-            return nodeData;
-        }
-
-        boolean splitByMethodName = false;
-        AnnotationMirror nodeClass = findFirstAnnotation(lookupTypes, NodeClass.class);
-        if (nodeClass != null) {
-            splitByMethodName = Utils.getAnnotationValue(Boolean.class, nodeClass, "splitByMethodName");
-        }
-
-        List<String> assumptionsList = new ArrayList<>();
-
-        for (int i = lookupTypes.size() - 1; i >= 0; i--) {
-            TypeElement type = lookupTypes.get(i);
-            AnnotationMirror assumptions = Utils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
-            if (assumptions != null) {
-                List<String> assumptionStrings = Utils.getAnnotationValueList(String.class, assumptions, "value");
-                for (String string : assumptionStrings) {
-                    if (assumptionsList.contains(string)) {
-                        assumptionsList.remove(string);
-                    }
-                    assumptionsList.add(string);
-                }
-            }
-        }
-        AnnotationMirror nodeInfoMirror = findFirstAnnotation(lookupTypes, NodeInfo.class);
-        if (nodeInfoMirror != null) {
-            nodeData.setShortName(Utils.getAnnotationValue(String.class, nodeInfoMirror, "shortName"));
-        }
-
-        nodeData.setAssumptions(new ArrayList<>(assumptionsList));
-        nodeData.setNodeType(nodeType);
-        nodeData.setSplitByMethodName(splitByMethodName);
-        nodeData.setTypeSystem(typeSystem);
-        nodeData.setFields(parseFields(elements));
-        parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
-        // parseChildren invokes cyclic parsing.
-        nodeData.setChildren(parseChildren(elements, lookupTypes));
-        nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
-
-        return nodeData;
-    }
-
-    private static boolean verifySpecializationParameters(NodeData nodeData) {
-        boolean valid = true;
-        int args = -1;
-        for (SpecializationData specializationData : nodeData.getSpecializations()) {
-            int signatureArgs = 0;
-            for (ActualParameter param : specializationData.getParameters()) {
-                if (param.getSpecification().isSignature()) {
-                    signatureArgs++;
-                }
-            }
-            if (args != -1 && args != signatureArgs) {
-                valid = false;
-                break;
-            }
-            args = signatureArgs;
-        }
-        if (!valid) {
-            for (SpecializationData specialization : nodeData.getSpecializations()) {
-                specialization.addError("All specializations must have the same number of arguments.");
-            }
-        }
-        return valid;
+        // FIXME verify node child
+        // FIXME verify node type set
     }
 
     private static void verifyMissingAbstractMethods(NodeData nodeData, List<? extends Element> originalElements) {
@@ -691,361 +904,28 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.addError("Specialization constructor '%s(%s previousNode) { this(...); }' is required.", Utils.getSimpleName(type), Utils.getSimpleName(type));
     }
 
-    private static Map<Integer, List<ExecutableTypeData>> groupExecutableTypes(List<ExecutableTypeData> executableTypes) {
-        Map<Integer, List<ExecutableTypeData>> groupedTypes = new HashMap<>();
-        for (ExecutableTypeData type : executableTypes) {
-            int evaluatedCount = type.getEvaluatedCount();
-
-            List<ExecutableTypeData> types = groupedTypes.get(evaluatedCount);
-            if (types == null) {
-                types = new ArrayList<>();
-                groupedTypes.put(evaluatedCount, types);
-            }
-            types.add(type);
-        }
-
-        for (List<ExecutableTypeData> types : groupedTypes.values()) {
-            Collections.sort(types);
-        }
-        return groupedTypes;
-    }
-
-    private AnnotationMirror findFirstAnnotation(List<? extends Element> elements, Class<? extends Annotation> annotation) {
-        for (Element element : elements) {
-            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, element, annotation);
-            if (mirror != null) {
-                return mirror;
-            }
-        }
-        return null;
-    }
-
-    private static List<NodeFieldData> parseFields(List<? extends Element> elements) {
-        List<NodeFieldData> fields = new ArrayList<>();
-        for (VariableElement field : ElementFilter.fieldsIn(elements)) {
-            if (field.getModifiers().contains(Modifier.STATIC)) {
-                continue;
-            }
-            if (field.getModifiers().contains(Modifier.PUBLIC) || field.getModifiers().contains(Modifier.PROTECTED)) {
-                fields.add(new NodeFieldData(field));
-            }
-        }
-        return fields;
-    }
-
-    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
-        Set<String> shortCircuits = new HashSet<>();
-        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
-            if (mirror != null) {
-                shortCircuits.add(Utils.getAnnotationValue(String.class, mirror, "value"));
-            }
-        }
-        Map<String, TypeMirror> castNodeTypes = new HashMap<>();
-        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, CreateCast.class);
-            if (mirror != null) {
-                List<String> children = (Utils.getAnnotationValueList(String.class, mirror, "value"));
-                if (children != null) {
-                    for (String child : children) {
-                        castNodeTypes.put(child, method.getReturnType());
-                    }
-                }
-            }
-        }
-
-        List<NodeChildData> parsedChildren = new ArrayList<>();
-        List<TypeElement> typeHierarchyReversed = new ArrayList<>(typeHierarchy);
-        Collections.reverse(typeHierarchyReversed);
-        for (TypeElement type : typeHierarchyReversed) {
-            AnnotationMirror nodeClassMirror = Utils.findAnnotationMirror(processingEnv, type, NodeClass.class);
-            AnnotationMirror nodeChildrenMirror = Utils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
-
-            TypeMirror nodeClassType = type.getSuperclass();
-            if (!Utils.isAssignable(context, nodeClassType, context.getTruffleTypes().getNode())) {
-                nodeClassType = null;
-            }
-
-            if (nodeClassMirror != null) {
-                nodeClassType = inheritType(nodeClassMirror, "value", nodeClassType);
-            }
-
-            List<AnnotationMirror> children = Utils.collectAnnotations(context, nodeChildrenMirror, "value", type, NodeChild.class);
-            int index = 0;
-            for (AnnotationMirror childMirror : children) {
-                String name = Utils.getAnnotationValue(String.class, childMirror, "value");
-                if (name.equals("")) {
-                    name = "child" + index;
-                }
-
-                Cardinality cardinality = Cardinality.ONE;
-
-                TypeMirror childType = inheritType(childMirror, "type", nodeClassType);
-                if (childType.getKind() == TypeKind.ARRAY) {
-                    cardinality = Cardinality.MANY;
-                }
-
-                TypeMirror originalChildType = childType;
-                TypeMirror castNodeType = castNodeTypes.get(name);
-                if (castNodeType != null) {
-                    childType = castNodeType;
-                }
-
-                Element getter = findGetter(elements, name, childType);
-
-                ExecutionKind kind = ExecutionKind.DEFAULT;
-                if (shortCircuits.contains(name)) {
-                    kind = ExecutionKind.SHORT_CIRCUIT;
-                }
-
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
-
-                parsedChildren.add(nodeChild);
-
-                verifyNodeChild(nodeChild);
-                if (nodeChild.hasErrors()) {
-                    continue;
-                }
-
-                NodeData fieldNodeData = resolveNode(Utils.fromTypeMirror(childType));
-                nodeChild.setNode(fieldNodeData);
-                if (fieldNodeData == null) {
-                    nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
-                }
-
-            }
-            index++;
-        }
-
-        List<NodeChildData> filteredChildren = new ArrayList<>();
-        Set<String> encounteredNames = new HashSet<>();
-        for (int i = parsedChildren.size() - 1; i >= 0; i--) {
-            NodeChildData child = parsedChildren.get(i);
-            if (!encounteredNames.contains(child.getName())) {
-                filteredChildren.add(0, child);
-                encounteredNames.add(child.getName());
-            }
-        }
-
-        for (NodeChildData child : filteredChildren) {
-            List<String> executeWithStrings = Utils.getAnnotationValueList(String.class, child.getMessageAnnotation(), "executeWith");
-            AnnotationValue executeWithValue = Utils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
-            List<NodeChildData> executeWith = new ArrayList<>();
-            for (String executeWithString : executeWithStrings) {
-
-                if (child.getName().equals(executeWithString)) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with itself.", executeWithString);
-                    continue;
-                }
-
-                NodeChildData found = null;
-                boolean before = true;
-                for (NodeChildData resolveChild : filteredChildren) {
-                    if (resolveChild == child) {
-                        before = false;
-                        continue;
-                    }
-                    if (resolveChild.getName().equals(executeWithString)) {
-                        found = resolveChild;
-                        break;
-                    }
-                }
-
-                if (found == null) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
-                    continue;
-                } else if (!before) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
-                                    executeWithString);
-                    continue;
-                }
-                executeWith.add(found);
-            }
-            child.setExecuteWith(executeWith);
-            if (child.getNodeData() == null) {
-                continue;
-            }
-
-            List<ExecutableTypeData> types = child.findGenericExecutableTypes(context);
-            if (types.isEmpty()) {
-                child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s.", executeWith.size(), Utils.getSimpleName(child.getNodeType()));
-                continue;
-            }
-        }
-
-        return filteredChildren;
-    }
-
-    private static void verifyNodeChild(NodeChildData nodeChild) {
-        if (nodeChild.getNodeType() == null) {
-            nodeChild.addError("No valid node type could be resoleved.");
-        }
-        // FIXME verify node child
-        // FIXME verify node type set
-    }
-
-    private TypeMirror inheritType(AnnotationMirror annotation, String valueName, TypeMirror parentType) {
-        TypeMirror inhertNodeType = context.getType(InheritNode.class);
-        TypeMirror value = Utils.getAnnotationValue(TypeMirror.class, annotation, valueName);
-        if (Utils.typeEquals(inhertNodeType, value)) {
-            return parentType;
-        } else {
-            return value;
-        }
-    }
-
-    private Element findGetter(List<? extends Element> elements, String variableName, TypeMirror type) {
-        if (type == null) {
-            return null;
-        }
-        String methodName;
-        if (Utils.typeEquals(type, context.getType(boolean.class))) {
-            methodName = "is" + Utils.firstLetterUpperCase(variableName);
-        } else {
-            methodName = "get" + Utils.firstLetterUpperCase(variableName);
-        }
-
-        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
-            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.isAssignable(context, type, method.getReturnType())) {
-                return method;
-            }
-        }
-        return null;
-    }
-
-    private void assignShortCircuitsToSpecializations(NodeData node) {
-        Map<String, List<ShortCircuitData>> groupedShortCircuits = groupShortCircuits(node.getShortCircuits());
-
+    private static boolean verifySpecializationParameters(NodeData nodeData) {
         boolean valid = true;
-        for (NodeChildData field : node.filterFields(ExecutionKind.SHORT_CIRCUIT)) {
-            String valueName = field.getName();
-            List<ShortCircuitData> availableCircuits = groupedShortCircuits.get(valueName);
-
-            if (availableCircuits == null || availableCircuits.isEmpty()) {
-                node.addError("@%s method for short cut value '%s' required.", ShortCircuit.class.getSimpleName(), valueName);
+        int args = -1;
+        for (SpecializationData specializationData : nodeData.getSpecializations()) {
+            int signatureArgs = 0;
+            for (ActualParameter param : specializationData.getParameters()) {
+                if (param.getSpecification().isSignature()) {
+                    signatureArgs++;
+                }
+            }
+            if (args != -1 && args != signatureArgs) {
                 valid = false;
-                continue;
+                break;
             }
-
-            boolean sameMethodName = true;
-            String methodName = availableCircuits.get(0).getMethodName();
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (!circuit.getMethodName().equals(methodName)) {
-                    sameMethodName = false;
-                }
-            }
-
-            if (!sameMethodName) {
-                for (ShortCircuitData circuit : availableCircuits) {
-                    circuit.addError("All short circuits for short cut value '%s' must have the same method name.", valueName);
-                }
-                valid = false;
-                continue;
-            }
-
-            ShortCircuitData genericCircuit = null;
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (isGenericShortCutMethod(node, circuit)) {
-                    genericCircuit = circuit;
-                    break;
-                }
-            }
-
-            if (genericCircuit == null) {
-                node.addError("No generic @%s method available for short cut value '%s'.", ShortCircuit.class.getSimpleName(), valueName);
-                valid = false;
-                continue;
-            }
-
-            for (ShortCircuitData circuit : availableCircuits) {
-                if (circuit != genericCircuit) {
-                    circuit.setGenericShortCircuitMethod(genericCircuit);
-                }
-            }
+            args = signatureArgs;
         }
-
         if (!valid) {
-            return;
-        }
-
-        NodeChildData[] fields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
-        for (SpecializationData specialization : node.getSpecializations()) {
-            List<ShortCircuitData> assignedShortCuts = new ArrayList<>(fields.length);
-
-            for (int i = 0; i < fields.length; i++) {
-                List<ShortCircuitData> availableShortCuts = groupedShortCircuits.get(fields[i].getName());
-
-                ShortCircuitData genericShortCircuit = null;
-                ShortCircuitData compatibleShortCircuit = null;
-                for (ShortCircuitData circuit : availableShortCuts) {
-                    if (circuit.isGeneric()) {
-                        genericShortCircuit = circuit;
-                    } else if (circuit.isCompatibleTo(specialization)) {
-                        compatibleShortCircuit = circuit;
-                    }
-                }
-
-                if (compatibleShortCircuit == null) {
-                    compatibleShortCircuit = genericShortCircuit;
-                }
-                assignedShortCuts.add(compatibleShortCircuit);
-            }
-            specialization.setShortCircuits(assignedShortCuts);
-        }
-    }
-
-    private static void verifyNamingConvention(List<? extends TemplateMethod> methods, String prefix) {
-        for (int i = 0; i < methods.size(); i++) {
-            TemplateMethod m1 = methods.get(i);
-            if (m1.getMethodName().length() < 3 || !m1.getMethodName().startsWith(prefix)) {
-                m1.addError("Naming convention: method name must start with '%s'.", prefix);
+            for (SpecializationData specialization : nodeData.getSpecializations()) {
+                specialization.addError("All specializations must have the same number of arguments.");
             }
         }
-    }
-
-    private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
-        for (ActualParameter parameter : method.getParameters()) {
-            NodeChildData field = node.findChild(parameter.getSpecification().getName());
-            if (field == null) {
-                continue;
-            }
-            ExecutableTypeData found = null;
-            List<ExecutableTypeData> executableElements = field.findGenericExecutableTypes(context);
-            for (ExecutableTypeData executable : executableElements) {
-                if (executable.getType().equalsType(parameter.getTypeSystemType())) {
-                    found = executable;
-                    break;
-                }
-            }
-            if (found == null) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static Map<String, List<ShortCircuitData>> groupShortCircuits(List<ShortCircuitData> shortCircuits) {
-        Map<String, List<ShortCircuitData>> group = new HashMap<>();
-        for (ShortCircuitData shortCircuit : shortCircuits) {
-            List<ShortCircuitData> circuits = group.get(shortCircuit.getValueName());
-            if (circuits == null) {
-                circuits = new ArrayList<>();
-                group.put(shortCircuit.getValueName(), circuits);
-            }
-            circuits.add(shortCircuit);
-        }
-        return group;
-    }
-
-    private static List<TypeElement> findSuperClasses(List<TypeElement> collection, TypeElement element) {
-        if (element.getSuperclass() != null) {
-            TypeElement superElement = Utils.fromTypeMirror(element.getSuperclass());
-            if (superElement != null) {
-                findSuperClasses(collection, superElement);
-            }
-        }
-        collection.add(element);
-        return collection;
+        return valid;
     }
 
     private static void verifySpecializationOrder(NodeData node) {
@@ -1094,14 +974,129 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
     }
 
-    @Override
-    public Class<? extends Annotation> getAnnotationType() {
+    private static void verifyNamingConvention(List<? extends TemplateMethod> methods, String prefix) {
+        for (int i = 0; i < methods.size(); i++) {
+            TemplateMethod m1 = methods.get(i);
+            if (m1.getMethodName().length() < 3 || !m1.getMethodName().startsWith(prefix)) {
+                m1.addError("Naming convention: method name must start with '%s'.", prefix);
+            }
+        }
+    }
+
+    private static Map<Integer, List<ExecutableTypeData>> groupExecutableTypes(List<ExecutableTypeData> executableTypes) {
+        Map<Integer, List<ExecutableTypeData>> groupedTypes = new HashMap<>();
+        for (ExecutableTypeData type : executableTypes) {
+            int evaluatedCount = type.getEvaluatedCount();
+
+            List<ExecutableTypeData> types = groupedTypes.get(evaluatedCount);
+            if (types == null) {
+                types = new ArrayList<>();
+                groupedTypes.put(evaluatedCount, types);
+            }
+            types.add(type);
+        }
+
+        for (List<ExecutableTypeData> types : groupedTypes.values()) {
+            Collections.sort(types);
+        }
+        return groupedTypes;
+    }
+
+    private AnnotationMirror findFirstAnnotation(List<? extends Element> elements, Class<? extends Annotation> annotation) {
+        for (Element element : elements) {
+            AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, element, annotation);
+            if (mirror != null) {
+                return mirror;
+            }
+        }
         return null;
     }
 
-    @Override
-    public List<Class<? extends Annotation>> getTypeDelegatedAnnotationTypes() {
-        return ANNOTATIONS;
+    private TypeMirror inheritType(AnnotationMirror annotation, String valueName, TypeMirror parentType) {
+        TypeMirror inhertNodeType = context.getTruffleTypes().getNode();
+        TypeMirror value = Utils.getAnnotationValue(TypeMirror.class, annotation, valueName);
+        if (Utils.typeEquals(inhertNodeType, value)) {
+            return parentType;
+        } else {
+            return value;
+        }
+    }
+
+    private Element findGetter(List<? extends Element> elements, String variableName, TypeMirror type) {
+        if (type == null) {
+            return null;
+        }
+        String methodName;
+        if (Utils.typeEquals(type, context.getType(boolean.class))) {
+            methodName = "is" + Utils.firstLetterUpperCase(variableName);
+        } else {
+            methodName = "get" + Utils.firstLetterUpperCase(variableName);
+        }
+
+        for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
+            if (method.getSimpleName().toString().equals(methodName) && method.getParameters().size() == 0 && Utils.isAssignable(context, type, method.getReturnType())) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    private boolean isGenericShortCutMethod(NodeData node, TemplateMethod method) {
+        for (ActualParameter parameter : method.getParameters()) {
+            NodeChildData field = node.findChild(parameter.getSpecification().getName());
+            if (field == null) {
+                continue;
+            }
+            ExecutableTypeData found = null;
+            List<ExecutableTypeData> executableElements = field.findGenericExecutableTypes(context);
+            for (ExecutableTypeData executable : executableElements) {
+                if (executable.getType().equalsType(parameter.getTypeSystemType())) {
+                    found = executable;
+                    break;
+                }
+            }
+            if (found == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Map<String, List<ShortCircuitData>> groupShortCircuits(List<ShortCircuitData> shortCircuits) {
+        Map<String, List<ShortCircuitData>> group = new HashMap<>();
+        for (ShortCircuitData shortCircuit : shortCircuits) {
+            List<ShortCircuitData> circuits = group.get(shortCircuit.getValueName());
+            if (circuits == null) {
+                circuits = new ArrayList<>();
+                group.put(shortCircuit.getValueName(), circuits);
+            }
+            circuits.add(shortCircuit);
+        }
+        return group;
+    }
+
+    private static <M extends TemplateMethod> SortedMap<String, List<M>> groupByNodeId(List<M> methods) {
+        SortedMap<String, List<M>> grouped = new TreeMap<>();
+        for (M m : methods) {
+            List<M> list = grouped.get(m.getId());
+            if (list == null) {
+                list = new ArrayList<>();
+                grouped.put(m.getId(), list);
+            }
+            list.add(m);
+        }
+        return grouped;
+    }
+
+    private static List<TypeElement> findSuperClasses(List<TypeElement> collection, TypeElement element) {
+        if (element.getSuperclass() != null) {
+            TypeElement superElement = Utils.fromTypeMirror(element.getSuperclass());
+            if (superElement != null) {
+                findSuperClasses(collection, superElement);
+            }
+        }
+        collection.add(element);
+        return collection;
     }
 
 }

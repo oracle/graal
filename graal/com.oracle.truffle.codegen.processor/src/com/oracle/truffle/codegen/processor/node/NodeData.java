@@ -37,7 +37,7 @@ public class NodeData extends Template {
     private final String nodeId;
     private NodeData declaringNode;
     private List<NodeData> declaredNodes = new ArrayList<>();
-    private boolean splitByMethodName;
+    private boolean nodeContainer;
 
     private TypeSystemData typeSystem;
     private List<NodeChildData> children;
@@ -91,8 +91,8 @@ public class NodeData extends Template {
         return shortName;
     }
 
-    public boolean isSplitByMethodName() {
-        return splitByMethodName;
+    public boolean isNodeContainer() {
+        return nodeContainer;
     }
 
     void setTypeSystem(TypeSystemData typeSystem) {
@@ -107,8 +107,8 @@ public class NodeData extends Template {
         return fields;
     }
 
-    void setSplitByMethodName(boolean splitByMethodName) {
-        this.splitByMethodName = splitByMethodName;
+    void setNodeContainer(boolean splitByMethodName) {
+        this.nodeContainer = splitByMethodName;
     }
 
     @Override

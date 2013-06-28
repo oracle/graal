@@ -26,15 +26,17 @@ import java.lang.annotation.*;
 
 import com.oracle.truffle.api.nodes.*;
 
+/**
+ * A node container can be used to enable Truffle-DSL in classes which do not extend {@link Node}.
+ * Compared to normal {@link Node} implementation the nodes are not identified by a class but by
+ * their method name. There are cases were method signatures are matching exactly but should be in
+ * the same {@link Node}. In this case use {@link NodeId} to disambiguate such cases.
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.TYPE})
-public @interface NodeClass {
+public @interface NodeContainer {
 
-    public static final class InheritNode extends Node {
-    }
-
-    Class<? extends Node> value() default InheritNode.class;
-
-    boolean splitByMethodName() default false;
+    /** The node class to use as base class for {@link Node} definitions grouped by method names. */
+    Class<? extends Node> value();
 
 }

@@ -28,14 +28,14 @@ import static org.junit.Assert.*;
 import org.junit.*;
 
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrAccessContextFactory;
-import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrConcatFactory;
-import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrLengthFactory;
-import com.oracle.truffle.api.codegen.test.BuiltinTestFactory.StrFactory.StrSubstrFactory;
+import com.oracle.truffle.api.codegen.test.NodeContainerTestFactory.StrFactory.StrAccessContextFactory;
+import com.oracle.truffle.api.codegen.test.NodeContainerTestFactory.StrFactory.StrConcatFactory;
+import com.oracle.truffle.api.codegen.test.NodeContainerTestFactory.StrFactory.StrLengthFactory;
+import com.oracle.truffle.api.codegen.test.NodeContainerTestFactory.StrFactory.StrSubstrFactory;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.codegen.test.TypeSystemTest.ValueNode;
 
-public class BuiltinTest {
+public class NodeContainerTest {
 
     @Test
     public void testConcat() {
@@ -96,7 +96,7 @@ public class BuiltinTest {
         assertSame(context, executeWith(node));
     }
 
-    @NodeClass(value = BuiltinNode.class, splitByMethodName = true)
+    @NodeContainer(BuiltinNode.class)
     static class Str {
 
         private final String internal;
