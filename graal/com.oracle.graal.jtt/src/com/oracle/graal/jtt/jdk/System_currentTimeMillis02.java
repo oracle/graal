@@ -34,7 +34,7 @@ public class System_currentTimeMillis02 extends JTTTest {
     }
 
     public static boolean test() {
-        long times[] = new long[2];  // { start, delta }
+        long[] times = new long[2];  // { start, delta }
         times[0] = System.currentTimeMillis();
         times[1] = 0;
         // force compilation:
