@@ -72,10 +72,13 @@ public class GraalCompiler {
      *            argument can be null.
      * @return the result of the compilation
      */
-    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
-                    final Replacements replacements, final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog, final Suites suites) {
-        final CompilationResult compilationResult = new CompilationResult();
+    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc,
+                                                 final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
+                                                 final Replacements replacements, final Backend backend,
+                                                 final TargetDescription target, final GraphCache cache,
+                                                 final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                                                 final SpeculationLog speculationLog, final Suites suites,
+                                                 final CompilationResult compilationResult) {
         Debug.scope("GraalCompiler", new Object[]{graph, runtime}, new Runnable() {
 
             public void run() {

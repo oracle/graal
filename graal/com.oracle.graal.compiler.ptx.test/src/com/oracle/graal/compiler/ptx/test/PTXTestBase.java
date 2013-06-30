@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.ptx.PTXBackend;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.hotspot.meta.HotSpotRuntime;
 import com.oracle.graal.java.GraphBuilderConfiguration;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -63,9 +64,14 @@ public abstract class PTXTestBase extends GraalCompilerTest {
          * GraalCompilerTest.suites variable contains the Suites for the HotSpotRuntime. This code
          * will not run on hotspot, so it should use the plain Graal default suites, without hotspot
          * specific phases.
+         *
+         * Ultimately we might want to have both the kernel and the code natively compiled for GPU fallback to CPU in cases
+         * of ECC failure on kernel invocation.  
          */
-        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                        new SpeculationLog(), Suites.createDefaultSuites());
+        CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime,
+                                                              graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan,
+                                                              OptimisticOptimizations.NONE, new SpeculationLog(),
+                                                              Suites.createDefaultSuites(), new ExternalCompilationResult());
         return result;
     }
 
@@ -76,11 +82,10 @@ public abstract class PTXTestBase extends GraalCompilerTest {
     @SuppressWarnings("unused")
     protected void invoke(CompilationResult result, Object... args) {
         try {
-            // not quite yet - need multi-architecture Method changes from JDK-8013168
-            // Object[] executeArgs = argsWithReceiver(this, args);
-            // InstalledCode installedCode =
-            // runtime.addMethod(getStructuredGraph().method(), result);
-            // installedCode.executeVarargs(executeArgs);
+            Object[] executeArgs = argsWithReceiver(this, args);
+            HotSpotRuntime hsr = (HotSpotRuntime)runtime;
+            InstalledCode installedCode = hsr.addExternalMethod(sg.method(), result, sg);
+            installedCode.executeVarargs(executeArgs);
         } catch (Throwable th) {
             th.printStackTrace();
         }

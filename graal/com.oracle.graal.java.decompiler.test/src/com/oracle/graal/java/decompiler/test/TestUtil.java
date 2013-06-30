@@ -50,6 +50,6 @@ public class TestUtil {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(Backend.class);
-        GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites);
+        GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
     }
 }

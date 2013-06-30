@@ -45,16 +45,29 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
 
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
+    private final boolean isExternal;
     private final Graph graph;
 
     public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, Graph graph) {
         this.method = method;
         this.isDefault = isDefault;
+        this.isExternal = false;
+        this.graph = graph;
+    }
+
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, boolean isExternal, Graph graph) {
+        this.method = method;
+        this.isDefault = isDefault;
+        this.isExternal = isExternal;
         this.graph = graph;
     }
 
     public boolean isDefault() {
         return isDefault;
+    }
+  
+    public boolean isExternal() {
+        return isExternal;
     }
 
     public Graph getGraph() {
@@ -107,7 +120,11 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
-        return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
+        if (isExternal()) {
+            return graalRuntime().getCompilerToGPU().executeExternalMethodVarargs(args, this);
+        } else {
+            return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
+        }
     }
 
     @Override

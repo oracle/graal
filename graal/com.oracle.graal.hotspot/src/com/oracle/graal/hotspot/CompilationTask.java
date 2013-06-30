@@ -161,7 +161,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
                         HotSpotRuntime runtime = graalRuntime.getRuntime();
                         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
                         return GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
-                                        method.getSpeculationLog(), suitesProvider.getDefaultSuites());
+                                        method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }
                 });
             } finally {

@@ -156,7 +156,7 @@ public abstract class Stub {
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     CallingConvention cc = linkage.getCallingConvention();
                     final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
-                                    OptimisticOptimizations.ALL, new SpeculationLog(), runtime.getDefaultSuites());
+                                    OptimisticOptimizations.ALL, new SpeculationLog(), runtime.getDefaultSuites(), new CompilationResult());
 
                     assert destroyedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {

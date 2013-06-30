@@ -38,7 +38,8 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
     // detach ??
 
-    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
+    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap,
+                                    AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
         super(target, runtime, frameMap, asm, frameContext, compilationResult);
     }
 
@@ -46,16 +47,17 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
     public CompilationResult finishTargetMethod(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         assert method != null : graph + " is not associated wth a method";
-        CompilationResult graalCompile = super.finishTargetMethod(graph);
+        ExternalCompilationResult graalCompile = (ExternalCompilationResult)super.finishTargetMethod(graph);
 
         try {
             if (validDevice) {
-                toGPU.generateKernel(graalCompile.getTargetCode(), method.getName());
+                long kernel = toGPU.generateKernel(graalCompile.getTargetCode(), method.getName());
+                graalCompile.setKernel(kernel);
             }
         } catch (Throwable th) {
             th.printStackTrace();
         }
 
-        return graalCompile;  // for now
+        return graalCompile;
     }
 }

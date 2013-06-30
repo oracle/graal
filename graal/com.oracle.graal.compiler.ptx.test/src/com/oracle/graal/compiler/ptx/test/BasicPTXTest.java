@@ -34,16 +34,16 @@ public class BasicPTXTest extends PTXTestBase {
 
     @Test
     public void testAdd() {
-        compile("testAddConst1I");
+        compile("testConstI");
     }
 
-    @Ignore
-    public void testAddInvoke() {
-        invoke(compile("testAddConst1I"), new Integer(42));
+    @Test
+    public void testInvoke() {
+        invoke(compile("testConstI"));
     }
 
-    public int testAddConst1I(int a) {
-        return a + 1;
+    public int testConstI() {
+        return 42;
     }
 
     public static void main(String[] args) {
