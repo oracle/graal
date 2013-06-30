@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.api.code;
 
+import java.util.*;
 
 public class ExternalCompilationResult extends CompilationResult {
+  
+  private static final long serialVersionUID = 1L;
   
     private long kernel;
   
