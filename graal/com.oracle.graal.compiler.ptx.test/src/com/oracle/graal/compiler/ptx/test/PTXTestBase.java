@@ -79,7 +79,6 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         return sg;
     }
 
-    @SuppressWarnings("unused")
     protected void invoke(CompilationResult result, Object... args) {
         try {
             Object[] executeArgs = argsWithReceiver(this, args);
