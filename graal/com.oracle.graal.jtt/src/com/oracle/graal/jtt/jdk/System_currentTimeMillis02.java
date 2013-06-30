@@ -29,15 +29,26 @@ import org.junit.*;
  */
 public class System_currentTimeMillis02 extends JTTTest {
 
+    static void m(long[] times) {
+        times[1] = System.currentTimeMillis() - times[0];
+    }
+
     public static boolean test() {
-        long start = System.currentTimeMillis();
-        long delta = 0;
-        for (int i = 0; delta == 0 && i < 5000000; i++) {
-            delta = System.currentTimeMillis() - start;
+        long times[] = new long[2];  // { start, delta }
+        times[0] = System.currentTimeMillis();
+        times[1] = 0;
+        // force compilation:
+        for (int i = 0; i < 5000; i++) {
+            m(times);
+        }
+        times[0] = System.currentTimeMillis();
+        times[1] = 0;
+        for (int i = 0; times[1] == 0 && i < 5000000; i++) {
+            m(times);
             // do nothing.
         }
         // better get at least 100 millisecond resolution.
-        return delta >= 1 && delta < 100;
+        return times[1] >= 1 && times[1] < 100;
     }
 
     @Test
