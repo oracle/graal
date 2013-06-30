@@ -1054,9 +1054,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public InstalledCode addExternalMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph) {
-      
+
         // compResult.getTargetCode() == assembled PTX method string
-      
+
         HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) method;
         HotSpotInstalledCode icode = new HotSpotNmethod(javaMethod, false, true, graph);
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, -1, compResult);

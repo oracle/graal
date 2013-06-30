@@ -65,7 +65,7 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
     public boolean isDefault() {
         return isDefault;
     }
-  
+
     public boolean isExternal() {
         return isExternal;
     }

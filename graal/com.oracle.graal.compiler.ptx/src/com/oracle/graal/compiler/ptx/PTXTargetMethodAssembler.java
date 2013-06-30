@@ -47,7 +47,7 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
     public CompilationResult finishTargetMethod(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         assert method != null : graph + " is not associated wth a method";
-        ExternalCompilationResult graalCompile = (ExternalCompilationResult)super.finishTargetMethod(graph);
+        ExternalCompilationResult graalCompile = (ExternalCompilationResult) super.finishTargetMethod(graph);
 
         try {
             if (validDevice) {

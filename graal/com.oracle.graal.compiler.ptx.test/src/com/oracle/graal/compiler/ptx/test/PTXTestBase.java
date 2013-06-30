@@ -82,7 +82,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
     protected void invoke(CompilationResult result, Object... args) {
         try {
             Object[] executeArgs = argsWithReceiver(this, args);
-            HotSpotRuntime hsr = (HotSpotRuntime)runtime;
+            HotSpotRuntime hsr = (HotSpotRuntime) runtime;
             InstalledCode installedCode = hsr.addExternalMethod(sg.method(), result, sg);
             installedCode.executeVarargs(executeArgs);
         } catch (Throwable th) {

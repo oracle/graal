@@ -23,19 +23,19 @@
 package com.oracle.graal.api.code;
 
 public class ExternalCompilationResult extends CompilationResult {
-  
+
   private static final long serialVersionUID = 1L;
-  
+
     private long kernel;
-  
+
     public ExternalCompilationResult() {
         super();
     }
-  
+
     public void setKernel(long k) {
         kernel = k;
     }
-  
+
     public long getKernel() {
       return kernel;
     }
