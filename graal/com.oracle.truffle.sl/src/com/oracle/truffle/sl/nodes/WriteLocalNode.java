@@ -48,7 +48,7 @@ public abstract class WriteLocalNode extends FrameSlotNode {
         return right;
     }
 
-    @Generic(useSpecializations = false)
+    @Specialization
     public Object writeGeneric(VirtualFrame frame, Object right) {
         try {
             frame.setObject(slot, right);
@@ -56,11 +56,6 @@ public abstract class WriteLocalNode extends FrameSlotNode {
             FrameUtil.setObjectSafe(frame, slot, right);
         }
         return right;
-    }
-
-    @Override
-    protected FrameSlotNode specialize(Class<?> clazz) {
-        return WriteLocalNodeFactory.createSpecialized(this, clazz);
     }
 
 }

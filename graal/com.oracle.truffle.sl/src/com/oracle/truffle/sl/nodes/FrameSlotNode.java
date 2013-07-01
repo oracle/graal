@@ -32,5 +32,4 @@ public abstract class FrameSlotNode extends TypedNode {
         this.slot = slot;
     }
 
-    protected abstract FrameSlotNode specialize(Class<?> clazz);
 }

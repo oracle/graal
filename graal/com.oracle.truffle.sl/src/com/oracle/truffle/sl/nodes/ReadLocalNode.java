@@ -45,18 +45,13 @@ public abstract class ReadLocalNode extends FrameSlotNode {
         return frame.getBoolean(slot);
     }
 
-    @Generic(useSpecializations = false)
+    @Specialization
     public Object doObject(VirtualFrame frame) {
         try {
             return frame.getObject(slot);
         } catch (FrameSlotTypeException e) {
             throw new RuntimeException("uninitialized variable " + slot.getIdentifier());
         }
-    }
-
-    @Override
-    protected FrameSlotNode specialize(Class<?> clazz) {
-        return ReadLocalNodeFactory.createSpecialized(this, clazz);
     }
 
 }

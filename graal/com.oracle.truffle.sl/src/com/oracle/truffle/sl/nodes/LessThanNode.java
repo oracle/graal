@@ -42,9 +42,4 @@ public abstract class LessThanNode extends BinaryNode {
     public boolean doString(Object left, Object right) {
         return left.toString().compareTo(right.toString()) < 0;
     }
-
-    @Generic
-    public boolean doGeneric(Object left, Object right) {
-        throw new RuntimeException("comparison not defined for types " + left.getClass().getSimpleName() + ", " + right.getClass().getSimpleName());
-    }
 }

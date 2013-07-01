@@ -54,7 +54,7 @@ public abstract class PrintNode extends StatementNode {
         output.print(value);
     }
 
-    @Generic
+    @Specialization
     public void doGeneric(Object value) {
         output.print(value.toString());
     }
