@@ -38,6 +38,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -124,11 +125,16 @@ public class NewObjectSnippets implements Snippets {
         return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
+    public static final ForeignCallDescriptor DYNAMIC_NEW_ARRAY = new ForeignCallDescriptor("dynamic_new_array", Object.class, Class.class, int.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    public static native Object dynamicNewArrayStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType, int length);
+
     @Snippet
     public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents) {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset());
         if (hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
-            return DynamicNewArrayStubCall.call(elementType, length);
+            return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
         }
 
         int layoutHelper = readLayoutHelper(hub);
