@@ -52,7 +52,7 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
         try {
             if (validDevice) {
                 long kernel = toGPU.generateKernel(graalCompile.getTargetCode(), method.getName());
-                graalCompile.setKernel(kernel);
+                graalCompile.setEntryPoint(kernel);
             }
         } catch (Throwable th) {
             th.printStackTrace();
