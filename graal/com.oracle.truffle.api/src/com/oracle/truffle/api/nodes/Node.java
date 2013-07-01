@@ -241,6 +241,9 @@ public abstract class Node implements Cloneable {
                 case UNINITIALIZED:
                     kind = "U";
                     break;
+                case POLYMORPHIC:
+                    kind = "P";
+                    break;
                 default:
                     kind = "?";
                     break;

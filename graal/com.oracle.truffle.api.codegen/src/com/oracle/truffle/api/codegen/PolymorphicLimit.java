@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.nodes;
+package com.oracle.truffle.api.codegen;
 
 import java.lang.annotation.*;
 
-/**
- * Annotation for providing additional information on nodes.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface NodeInfo {
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.TYPE})
+public @interface PolymorphicLimit {
 
-    /**
-     * Short name representing the node that can be used for debugging.
-     * 
-     * @return the short name
-     */
-    String shortName() default "";
-
-    Kind kind() default Kind.SPECIALIZED;
-
-    public enum Kind {
-        UNINITIALIZED, SPECIALIZED, POLYMORPHIC, GENERIC
-    }
+    /** Specifies the maximum polymorphic cache depth until it falls back to the generic case. */
+    int value();
 
 }
