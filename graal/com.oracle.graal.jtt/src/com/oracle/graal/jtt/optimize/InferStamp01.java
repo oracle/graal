@@ -43,6 +43,11 @@ public class InferStamp01 extends JTTTest {
         runTest("testi0", 0x7788_99aa);
     }
 
+    @Test
+    public void runi0neg() throws Throwable {
+        runTest("testi0", 0xf788_99aa);
+    }
+
     public static int testi1(int arg) {
         int a = arg;
         for (int i = 0; i < 2; i++) {
@@ -54,6 +59,11 @@ public class InferStamp01 extends JTTTest {
     @Test
     public void runi1() throws Throwable {
         runTest("testi1", 0x7788_99aa);
+    }
+
+    @Test
+    public void runi1neg() throws Throwable {
+        runTest("testi1", 0xf788_99aa);
     }
 
     public static int testi2(int arg) {
@@ -69,6 +79,11 @@ public class InferStamp01 extends JTTTest {
         runTest("testi2", 0x7788_99aa);
     }
 
+    @Test
+    public void runi2neg() throws Throwable {
+        runTest("testi2", 0xf788_99aa);
+    }
+
     public static long testl0(long arg) {
         long a = arg;
         for (long i = 0; i < 2; i++) {
@@ -80,6 +95,11 @@ public class InferStamp01 extends JTTTest {
     @Test
     public void runl0() throws Throwable {
         runTest("testl0", 0x3344_5566_7788_99aaL);
+    }
+
+    @Test
+    public void runl0neg() throws Throwable {
+        runTest("testl0", 0xf344_5566_7788_99aaL);
     }
 
     public static long testl1(long arg) {
@@ -95,6 +115,11 @@ public class InferStamp01 extends JTTTest {
         runTest("testl1", 0x3344_5566_7788_99aaL);
     }
 
+    @Test
+    public void runl1neg() throws Throwable {
+        runTest("testl1", 0xf344_5566_7788_99aaL);
+    }
+
     public static long testl2(long arg) {
         long a = arg;
         for (long i = 0; i < 2; i++) {
@@ -106,5 +131,10 @@ public class InferStamp01 extends JTTTest {
     @Test
     public void runl2() throws Throwable {
         runTest("testl2", 0x3344_5566_7788_99aaL);
+    }
+
+    @Test
+    public void runl2neg() throws Throwable {
+        runTest("testl2", 0xf344_5566_7788_99aaL);
     }
 }
