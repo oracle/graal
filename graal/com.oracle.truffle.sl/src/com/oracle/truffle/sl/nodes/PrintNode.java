@@ -24,7 +24,7 @@ package com.oracle.truffle.sl.nodes;
 
 import java.io.*;
 
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 
 @NodeChild(type = TypedNode.class)
 public abstract class PrintNode extends StatementNode {

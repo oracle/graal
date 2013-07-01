@@ -23,7 +23,8 @@
 package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
-import com.oracle.truffle.api.codegen.*;
+
+import com.oracle.truffle.api.dsl.*;
 
 @SuppressWarnings("unused")
 @NodeChildren({@NodeChild(value = "conditionNode", type = ConditionNode.class), @NodeChild("ifPartNode"), @NodeChild("elsePartNode")})

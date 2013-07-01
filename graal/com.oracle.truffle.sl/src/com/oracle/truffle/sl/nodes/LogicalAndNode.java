@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 
 @SuppressWarnings("unused")
 public abstract class LogicalAndNode extends BinaryNode {

@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl;
 
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 
 @TypeSystemReference(SLTypes.class)

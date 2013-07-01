@@ -25,7 +25,7 @@ package com.oracle.truffle.sl.nodes;
 import java.math.*;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 
 public abstract class ArithmeticNode extends BinaryNode {
 

@@ -24,7 +24,7 @@ package com.oracle.truffle.sl;
 
 import java.math.*;
 
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 
 @TypeSystem({int.class, BigInteger.class, boolean.class, String.class})
 public class SLTypes {

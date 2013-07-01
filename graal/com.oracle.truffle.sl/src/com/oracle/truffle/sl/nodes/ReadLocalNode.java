@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 
 public abstract class ReadLocalNode extends FrameSlotNode {
