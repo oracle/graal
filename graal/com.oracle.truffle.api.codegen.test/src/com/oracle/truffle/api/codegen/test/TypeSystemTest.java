@@ -24,13 +24,13 @@ package com.oracle.truffle.api.codegen.test;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.codegen.*;
-import com.oracle.truffle.api.codegen.test.BuiltinTest.Str;
+import com.oracle.truffle.api.codegen.test.NodeContainerTest.Str;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, Str.class, CallTarget.class, Object[].class})
+    @TypeSystem({int.class, boolean.class, String.class, Str.class, CallTarget.class, Object[].class})
     static class SimpleTypes {
     }
 
@@ -43,6 +43,14 @@ public class TypeSystemTest {
 
         public Str executeStr(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectStr(execute(frame));
+        }
+
+        public String executeString(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectString(execute(frame));
+        }
+
+        public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectBoolean(execute(frame));
         }
 
         public Object[] executeIntArray(VirtualFrame frame) throws UnexpectedResultException {
