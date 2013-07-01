@@ -32,6 +32,7 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.codegen.*;
+import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.ast.*;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
@@ -70,6 +71,22 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return name;
     }
 
+    private static String nodePolymorphicClassName(NodeData node, SpecializationData specialization) {
+        String nodeid = node.getNodeId();
+        if (nodeid.endsWith("Node") && !nodeid.equals("Node")) {
+            nodeid = nodeid.substring(0, nodeid.length() - 4);
+        }
+
+        String name = Utils.firstLetterUpperCase(nodeid);
+        int index = specialization == null ? 0 : node.getPolymorphicSpecializations().indexOf(specialization);
+        if (index == 0) {
+            name += "PolymorphicNode";
+        } else {
+            name += "Polymorphic" + index + "Node";
+        }
+        return name;
+    }
+
     private static String valueNameEvaluated(ActualParameter targetParameter) {
         return valueName(targetParameter) + "Evaluated";
     }
@@ -82,7 +99,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return valueName(parameter) + "Cast";
     }
 
-    private void addInternalValueParameters(CodeExecutableElement method, TemplateMethod specialization, boolean forceFrame) {
+    private void addInternalValueParameters(CodeExecutableElement method, TemplateMethod specialization, boolean forceFrame, boolean evaluated) {
         if (forceFrame && specialization.getSpecification().findParameterSpec("frame") != null) {
             method.addParameter(new CodeVariableElement(getContext().getTruffleTypes().getFrame(), "frameValue"));
         }
@@ -95,7 +112,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 continue;
             }
 
-            method.addParameter(new CodeVariableElement(parameter.getType(), valueName(parameter)));
+            String name = valueName(parameter);
+            if (evaluated && spec.isSignature()) {
+                name = valueNameEvaluated(parameter);
+            }
+
+            method.addParameter(new CodeVariableElement(parameter.getType(), name));
         }
     }
 
@@ -152,7 +174,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         builder.startGroup();
         ExecutableElement method = targetMethod.getMethod();
         if (method == null) {
-            throw new IllegalStateException("Cannot call synthetic operation methods.");
+            throw new UnsupportedOperationException();
         }
         TypeElement targetClass = Utils.findNearestEnclosingType(method.getEnclosingElement());
         NodeData node = (NodeData) targetMethod.getTemplate();
@@ -283,7 +305,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
     }
 
     private CodeTree createGuardAndCast(CodeTreeBuilder parent, String conditionPrefix, SpecializationData sourceSpecialization, SpecializationData targetSpecialization, boolean castValues,
-                    CodeTree guardedStatements, CodeTree elseStatements, boolean emitAssumptions) {
+                    CodeTree guardedStatements, CodeTree elseStatements, boolean emitAssumptions, boolean forceElse) {
 
         NodeData node = targetSpecialization.getNode();
         CodeTreeBuilder builder = new CodeTreeBuilder(parent);
@@ -347,7 +369,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         builder.tree(guardedStatements);
 
         builder.end(ifCount);
-        if (elseStatements != null && ifCount > 0) {
+        if (elseStatements != null && (forceElse || ifCount > 0)) {
             builder.tree(elseStatements);
         }
         return builder.getRoot();
@@ -531,25 +553,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return builder.getRoot();
     }
 
-    private void emitEncounteredSynthetic(CodeTreeBuilder builder, SpecializationData current) {
+    protected void emitEncounteredSynthetic(CodeTreeBuilder builder, TemplateMethod current) {
         builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class));
-        builder.startGroup();
-        String sep = null;
-        for (ActualParameter parameters : current.getParameters()) {
-            if (parameters.getSpecification().isSignature()) {
-                if (sep == null) {
-                    builder.doubleQuote("Unsupported values: " + parameters.getLocalName() + " = ");
-                    sep = ", ";
-                } else {
-                    builder.string(" + ");
-                    builder.doubleQuote(sep + parameters.getLocalName() + " = ");
-                }
-                builder.string(" + ");
-                builder.string(parameters.getLocalName());
-            }
-        }
-        builder.end();
-        builder.end().end();
+        builder.startCall("createInfo0");
+        builder.doubleQuote("Unsupported values");
+        addInternalValueParameterNames(builder, current, current, null, false, true);
+        builder.end().end().end();
     }
 
     private static List<ExecutableElement> findUserConstructors(TypeMirror nodeType) {
@@ -597,16 +606,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return true;
     }
 
-    private static CodeTree createReturnNewSpecialization(CodeTreeBuilder parent, SpecializationData specialization, String thisLocalVariableName, boolean hasCopyConstructor) {
-        CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-        builder.startReturn().startNew(nodeSpecializationClassName(specialization));
-        if (hasCopyConstructor) {
-            builder.string(thisLocalVariableName);
-        }
-        builder.end().end();
-        return builder.getRoot();
-    }
-
     @Override
     protected void createChildren(NodeData node) {
         Map<NodeData, List<TypeElement>> childTypes = new LinkedHashMap<>();
@@ -619,374 +618,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         if (node.needsFactory() || node.getNodeDeclaringChildren().size() > 0) {
             add(new NodeFactoryFactory(context, childTypes), node);
-        }
-    }
-
-    private class NodeBaseFactory extends ClassElementFactory<NodeData> {
-
-        public NodeBaseFactory(ProcessorContext context) {
-            super(context);
-        }
-
-        @Override
-        protected CodeTypeElement create(NodeData node) {
-            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, ABSTRACT, STATIC), baseClassName(node), node.getNodeType(), false);
-
-            for (NodeChildData child : node.getChildren()) {
-                clazz.add(createChildField(child));
-
-                if (child.getAccessElement() != null && child.getAccessElement().getModifiers().contains(Modifier.ABSTRACT)) {
-                    ExecutableElement getter = (ExecutableElement) child.getAccessElement();
-                    CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), getter);
-                    method.getModifiers().remove(Modifier.ABSTRACT);
-                    method.createBuilder().startReturn().string("this.").string(child.getName()).end();
-                    clazz.add(method);
-                }
-            }
-
-            for (String assumption : node.getAssumptions()) {
-                clazz.add(createAssumptionField(assumption));
-            }
-
-            createConstructors(node, clazz);
-
-            if (node.getExtensionElements() != null) {
-                clazz.getEnclosedElements().addAll(node.getExtensionElements());
-            }
-
-            return clazz;
-        }
-
-        @Override
-        protected void createChildren(NodeData node) {
-            CodeTypeElement clazz = getElement();
-
-            if (node.needsRewrites(context)) {
-                clazz.add(createGenericExecute(node, EXECUTE_SPECIALIZE_NAME, true));
-            }
-
-            if (node.getGenericSpecialization() != null) {
-                clazz.add(createGenericExecute(node, EXECUTE_GENERIC_NAME, false));
-            }
-        }
-
-        private void createConstructors(NodeData node, CodeTypeElement clazz) {
-            List<ExecutableElement> constructors = findUserConstructors(node.getNodeType());
-            if (constructors.isEmpty()) {
-                clazz.add(createUserConstructor(clazz, null));
-            } else {
-                for (ExecutableElement constructor : constructors) {
-                    clazz.add(createUserConstructor(clazz, constructor));
-                }
-            }
-            if (node.needsRewrites(getContext())) {
-                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType())));
-            }
-        }
-
-        private CodeExecutableElement createUserConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
-            CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
-            CodeTreeBuilder builder = method.createBuilder();
-
-            if (superConstructor != null) {
-                for (VariableElement param : superConstructor.getParameters()) {
-                    method.getParameters().add(CodeVariableElement.clone(param));
-                }
-            }
-
-            for (VariableElement var : type.getFields()) {
-                NodeChildData child = getModel().findChild(var.getSimpleName().toString());
-                if (child != null) {
-                    method.getParameters().add(new CodeVariableElement(child.getOriginalType(), child.getName()));
-                } else {
-                    method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
-                }
-            }
-
-            if (superConstructor != null) {
-                builder.startStatement().startSuperCall();
-                for (VariableElement param : superConstructor.getParameters()) {
-                    builder.string(param.getSimpleName().toString());
-                }
-                builder.end().end();
-            }
-
-            for (VariableElement var : type.getFields()) {
-                builder.startStatement();
-                String fieldName = var.getSimpleName().toString();
-
-                CodeTree fieldInit = CodeTreeBuilder.singleString(var.getSimpleName().toString());
-                builder.string("this.").string(var.getSimpleName().toString());
-
-                NodeChildData child = getModel().findChild(fieldName);
-                if (child != null) {
-                    CreateCastData createCast = getModel().findCast(child.getName());
-                    if (createCast != null) {
-                        fieldInit = createTemplateMethodCall(builder, null, getModel().getGenericSpecialization(), createCast, null, child.getName());
-                    }
-                }
-
-                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
-                    builder.string(" = adoptChild(").tree(fieldInit).string(")");
-                } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    builder.string(" = adoptChildren(").tree(fieldInit).string(")");
-                } else {
-                    builder.string(" = ").tree(fieldInit);
-                }
-                builder.end();
-            }
-            return method;
-        }
-
-        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
-            CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
-            CodeTreeBuilder builder = method.createBuilder();
-            if (!(superConstructor == null && type.getFields().isEmpty())) {
-                method.getParameters().add(new CodeVariableElement(type.asType(), "copy"));
-            }
-
-            if (superConstructor != null) {
-                builder.startStatement().startSuperCall().string("copy").end().end();
-            }
-
-            for (VariableElement var : type.getFields()) {
-                builder.startStatement();
-                String varName = var.getSimpleName().toString();
-                builder.string("this.").string(varName);
-                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
-                    builder.string(" = adoptChild(copy.").string(varName).string(")");
-                } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    builder.string(" = adoptChildren(copy.").string(varName).string(")");
-                } else {
-                    builder.string(" = copy.").string(varName);
-                }
-                builder.end();
-            }
-            return method;
-        }
-
-        private CodeVariableElement createAssumptionField(String assumption) {
-            CodeVariableElement var = new CodeVariableElement(getContext().getTruffleTypes().getAssumption(), assumption);
-            var.getModifiers().add(Modifier.FINAL);
-            return var;
-        }
-
-        private CodeVariableElement createChildField(NodeChildData child) {
-            CodeVariableElement var = new CodeVariableElement(child.getNodeType(), child.getName());
-            var.getModifiers().add(Modifier.PROTECTED);
-
-            DeclaredType annotationType;
-            if (child.getCardinality() == Cardinality.MANY) {
-                var.getModifiers().add(Modifier.FINAL);
-                annotationType = getContext().getTruffleTypes().getChildrenAnnotation();
-            } else {
-                annotationType = getContext().getTruffleTypes().getChildAnnotation();
-            }
-
-            var.getAnnotationMirrors().add(new CodeAnnotationMirror(annotationType));
-            return var;
-        }
-
-        private CodeExecutableElement createGenericExecute(NodeData node, String name, boolean specialize) {
-            TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
-
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, name);
-            CodeTreeBuilder builder = method.createBuilder();
-
-            String prefix = null;
-            if (specialize) {
-                method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "minimumState"));
-
-                builder.startStatement();
-                builder.startStaticCall(getContext().getTruffleTypes().getCompilerAsserts(), "neverPartOfCompilation").end();
-                builder.end();
-
-                emitSpecializationListeners(builder, node);
-                builder.defaultDeclaration(node.getGenericSpecialization().getReturnSignature().getPrimitiveType(), "result");
-                if (node.getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                    builder.defaultDeclaration(getContext().getType(boolean.class), "resultIsSet");
-                }
-                builder.startStatement().string("boolean allowed = (minimumState == ").string(nodeSpecializationClassName(node.getSpecializations().get(0))).string(".class)").end();
-                prefix = null;
-
-                builder.startStatement().string("StringBuilder message = new StringBuilder(reason)").end();
-                builder.startStatement().startCall("message", "append").doubleQuote(" (").end().end();
-
-                String sep = null;
-                for (ActualParameter parameter : node.getGenericSpecialization().getParameters()) {
-                    if (!parameter.getSpecification().isSignature()) {
-                        continue;
-                    }
-
-                    builder.startStatement();
-                    builder.string("message");
-                    if (sep != null) {
-                        builder.startCall(".append").doubleQuote(sep).end();
-                    }
-                    builder.startCall(".append").doubleQuote(parameter.getLocalName()).end();
-                    builder.startCall(".append").doubleQuote(" = ").end();
-                    builder.startCall(".append").string(parameter.getLocalName()).end();
-                    builder.end();
-
-                    if (!Utils.isPrimitive(parameter.getType())) {
-                        builder.startIf().string(parameter.getLocalName() + " != null").end();
-                        builder.startBlock();
-                    }
-                    builder.startStatement();
-                    if (Utils.isPrimitive(parameter.getType())) {
-                        builder.startCall("message.append").doubleQuote(" (" + Utils.getSimpleName(parameter.getType()) + ")").end();
-                    } else {
-                        builder.startCall("message.append").doubleQuote(" (").end();
-                        builder.startCall(".append").string(parameter.getLocalName() + ".getClass().getSimpleName()").end();
-                        builder.startCall(".append").doubleQuote(")").end();
-                    }
-                    builder.end();
-                    if (!Utils.isPrimitive(parameter.getType())) {
-                        builder.end();
-                    }
-
-                    sep = ", ";
-                }
-
-                builder.startStatement().startCall("message", "append").doubleQuote(")").end().end();
-            }
-
-            addInternalValueParameters(method, node.getGenericSpecialization(), true);
-
-            if (specialize) {
-                method.addParameter(new CodeVariableElement(getContext().getType(String.class), "reason"));
-            }
-
-            List<SpecializationData> specializations = node.getSpecializations();
-            if (!specialize && !node.getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                specializations = Arrays.asList(node.getGenericSpecialization());
-            }
-
-            // group specializations for reachabiltiy
-            List<SpecializationData> unreachableSpecializations = new ArrayList<>();
-            List<SpecializationData> filteredSpecializations = new ArrayList<>();
-            if (!specialize) {
-                unreachableSpecializations = new ArrayList<>();
-                filteredSpecializations = new ArrayList<>();
-                boolean unreachable = false;
-                for (SpecializationData specialization : specializations) {
-                    if (unreachable) {
-                        unreachableSpecializations.add(specialization);
-                    } else {
-                        filteredSpecializations.add(specialization);
-                        if (!specialization.isUninitialized() && specialization.isGenericSpecialization(getContext())) {
-                            unreachable = true;
-                        }
-                    }
-                }
-            } else {
-                unreachableSpecializations = Collections.emptyList();
-                filteredSpecializations = specializations;
-            }
-
-            for (SpecializationData current : filteredSpecializations) {
-                if (current.isUninitialized()) {
-                    continue;
-                }
-                CodeTreeBuilder execute = new CodeTreeBuilder(builder);
-
-                execute.tree(createGenericInvoke(builder, current, specialize));
-
-                if (specialize && !current.isGeneric()) {
-                    builder.startStatement().string("allowed = allowed || (minimumState == ").string(nodeSpecializationClassName(current)).string(".class)").end();
-                }
-
-                builder.tree(createGuardAndCast(builder, prefix, current.getNode().getGenericSpecialization(), current, true, execute.getRoot(), null, true));
-            }
-
-            for (SpecializationData specializationData : unreachableSpecializations) {
-                builder.string("// unreachable ").string(specializationData.getId()).newLine();
-            }
-
-            return method;
-        }
-
-        private CodeTree createGenericInvoke(CodeTreeBuilder parent, SpecializationData current, boolean specialize) {
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-
-            if (!current.getExceptions().isEmpty()) {
-                builder.startTryBlock();
-            }
-
-            CodeTree executeCall = null;
-            if (current.getMethod() != null) {
-                executeCall = createTemplateMethodCall(builder, null, current.getNode().getGenericSpecialization(), current, null);
-            }
-
-            if (specialize && executeCall == null && !current.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                emitEncounteredSynthetic(builder, current);
-            } else if (specialize) {
-
-                if (current.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                    builder.startIf().string("!resultIsSet").end().startBlock();
-                    if (executeCall != null) {
-                        if (current.getReturnSignature().isVoid()) {
-                            builder.statement(executeCall);
-                        } else {
-                            builder.startStatement().string("result = ").tree(executeCall).end();
-                        }
-                        builder.statement("resultIsSet = true");
-                    } else {
-                        emitEncounteredSynthetic(builder, current);
-                    }
-                    builder.end();
-                }
-
-                if (!current.isGeneric()) {
-                    builder.startIf().string("allowed").end().startBlock();
-                }
-
-                if (!current.getNode().getGenericSpecialization().isUseSpecializationsForGeneric()) {
-                    if (current.getReturnSignature().isVoid()) {
-                        builder.statement(executeCall);
-                    } else {
-                        builder.startStatement().string("result = ").tree(executeCall).end();
-                    }
-                }
-
-                builder.startStatement().startCall("super", "replace");
-                builder.startGroup().startNew(nodeSpecializationClassName(current)).string("this").end().end();
-                builder.string("message.toString()");
-                builder.end().end();
-
-                if (current.getReturnSignature().isVoid()) {
-                    builder.returnStatement();
-                } else {
-                    builder.startReturn().string("result").end();
-                }
-                if (!current.isGeneric()) {
-                    builder.end();
-                }
-            } else {
-                if (executeCall == null) {
-                    emitEncounteredSynthetic(builder, current);
-                } else {
-                    builder.startReturn().tree(executeCall).end();
-                }
-            }
-
-            if (!current.getExceptions().isEmpty()) {
-                for (SpecializationThrowsData exception : current.getExceptions()) {
-                    builder.end().startCatchBlock(exception.getJavaClass(), "rewriteEx");
-                    builder.string("// fall through").newLine();
-                }
-                builder.end();
-            }
-
-            return builder.getRoot();
-        }
-
-        private void emitSpecializationListeners(CodeTreeBuilder builder, NodeData node) {
-            for (TemplateMethod listener : node.getSpecializationListeners()) {
-                builder.startStatement();
-                builder.tree(createTemplateMethodCall(builder, null, listener, listener, null));
-                builder.end(); // statement
-            }
         }
     }
 
@@ -1021,23 +652,35 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             if (node.needsFactory()) {
                 NodeBaseFactory factory = new NodeBaseFactory(context);
-                add(factory, node);
+                add(factory, node.getGenericSpecialization() == null ? node.getSpecializations().get(0) : node.getGenericSpecialization());
                 generatedNode = factory.getElement();
 
                 if (node.needsRewrites(context)) {
-                    clazz.add(createCreateSpecializedMethod(node, createVisibility));
+                    clazz.add(createCreateGenericMethod(node, createVisibility));
                 }
 
                 createFactoryMethods(node, clazz, createVisibility);
 
+                PolymorphicNodeFactory generic = null;
+                for (SpecializationData specialization : node.getPolymorphicSpecializations()) {
+                    PolymorphicNodeFactory polymorphicFactory = new PolymorphicNodeFactory(context, generic == null ? generatedNode : generic.getElement(), generic == null);
+                    add(polymorphicFactory, specialization);
+                    if (generic == null) {
+                        generic = polymorphicFactory;
+                    }
+                }
+
                 for (SpecializationData specialization : node.getSpecializations()) {
+                    if (!specialization.isReachable()) {
+                        continue;
+                    }
                     add(new SpecializedNodeFactory(context, generatedNode), specialization);
                 }
 
                 TypeMirror nodeFactory = Utils.getDeclaredType(Utils.fromTypeMirror(getContext().getType(NodeFactory.class)), node.getNodeType());
                 clazz.getImplements().add(nodeFactory);
                 clazz.add(createCreateNodeMethod(node));
-                clazz.add(createCreateNodeSpecializedMethod(node));
+                clazz.add(createCreateNodeGenericMethod(node));
                 clazz.add(createGetNodeClassMethod(node));
                 clazz.add(createGetNodeSignaturesMethod());
                 clazz.add(createGetChildrenSignatureMethod(node));
@@ -1197,38 +840,19 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-        private CodeExecutableElement createCreateNodeSpecializedMethod(NodeData node) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNodeSpecialized");
+        private CodeExecutableElement createCreateNodeGenericMethod(NodeData node) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), node.getNodeType(), "createNodeGeneric");
             CodeVariableElement nodeParam = new CodeVariableElement(node.getNodeType(), THIS_NODE_LOCAL_VAR_NAME);
-            CodeVariableElement arguments = new CodeVariableElement(getContext().getType(Class.class), "types");
             method.addParameter(nodeParam);
-            method.addParameter(arguments);
-            method.setVarArgs(true);
 
             CodeTreeBuilder builder = method.createBuilder();
             if (!node.needsRewrites(getContext())) {
                 builder.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).doubleQuote("No specialized version.").end().end();
             } else {
-                builder.startIf();
-                builder.string("types.length == 1");
-                builder.end();
-                builder.startBlock();
-
-                builder.startReturn().startCall("createSpecialized");
-                builder.startGroup();
+                builder.startReturn().startCall("createGeneric");
                 builder.string(THIS_NODE_LOCAL_VAR_NAME);
-                builder.end();
-                builder.string("types[0]");
                 builder.end().end();
-
-                builder.end();
-                builder.startElseBlock();
-                builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class));
-                builder.doubleQuote("Invalid createSpecialized signature.");
-                builder.end().end();
-                builder.end();
             }
-
             return method;
         }
 
@@ -1362,207 +986,586 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return method;
         }
 
-        private CodeExecutableElement createCreateSpecializedMethod(NodeData node, Modifier visibility) {
-            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createSpecialized");
+        private CodeExecutableElement createCreateGenericMethod(NodeData node, Modifier visibility) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(), node.getNodeType(), "createGeneric");
             if (visibility != null) {
                 method.getModifiers().add(visibility);
             }
             method.getModifiers().add(Modifier.STATIC);
-
             method.addParameter(new CodeVariableElement(node.getNodeType(), THIS_NODE_LOCAL_VAR_NAME));
-            method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "specializationClass"));
 
             CodeTreeBuilder body = method.createBuilder();
 
-            boolean hasCopyConstructor = findCopyConstructor(generatedNode.asType()) != null;
-
-            final String thisLocalVariableName = THIS_NODE_LOCAL_VAR_NAME + "Cast";
-
-            if (hasCopyConstructor) {
-                body.startStatement();
-                body.type(generatedNode.asType()).string(" ").string(thisLocalVariableName);
-                body.string(" = ").string("(").type(generatedNode.asType()).string(") ").string(THIS_NODE_LOCAL_VAR_NAME);
-                body.end();
-            }
-
-            boolean first = true;
-            for (TypeData type : node.getTypeSystem().getTypes()) {
-                SpecializationData specialization = node.findUniqueSpecialization(type);
-                if (specialization != null && !type.isGeneric()) {
-                    if (first) {
-                        body.startIf();
-                        first = false;
-                    } else {
-                        body.startElseIf();
-                    }
-                    body.string("specializationClass == ").type(type.getBoxedType()).string(".class").end().startBlock();
-                    body.tree(createReturnNewSpecialization(body, specialization, thisLocalVariableName, hasCopyConstructor));
-
-                    body.end(); // if
+            SpecializationData found = null;
+            List<SpecializationData> specializations = node.getSpecializations();
+            for (int i = 0; i < specializations.size(); i++) {
+                if (specializations.get(i).isReachable()) {
+                    found = specializations.get(i);
                 }
             }
-            body.tree(createReturnNewSpecialization(body, node.getGenericSpecialization(), thisLocalVariableName, hasCopyConstructor));
+
+            if (found == null) {
+                body.startThrow().startNew(getContext().getType(UnsupportedOperationException.class)).end().end();
+            } else {
+                body.startReturn().startNew(nodeSpecializationClassName(found)).startGroup().cast(baseClassName(node)).string(THIS_NODE_LOCAL_VAR_NAME).end().end().end();
+            }
             return method;
         }
-
     }
 
-    private class SpecializedNodeFactory extends ClassElementFactory<SpecializationData> {
+    private class NodeBaseFactory extends ClassElementFactory<SpecializationData> {
 
-        private final CodeTypeElement nodeGen;
-
-        public SpecializedNodeFactory(ProcessorContext context, CodeTypeElement nodeGen) {
+        public NodeBaseFactory(ProcessorContext context) {
             super(context);
-            this.nodeGen = nodeGen;
         }
 
         @Override
-        public CodeTypeElement create(SpecializationData specialization) {
+        protected CodeTypeElement create(SpecializationData specialization) {
             NodeData node = specialization.getNode();
-            TypeMirror baseType = node.getNodeType();
-            if (nodeGen != null) {
-                baseType = nodeGen.asType();
-            }
-            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodeSpecializationClassName(specialization), baseType, false);
+            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, ABSTRACT, STATIC), baseClassName(node), node.getNodeType(), false);
 
-            String shortName = specialization.getNode().getShortName();
-            CodeAnnotationMirror nodeInfoMirror = new CodeAnnotationMirror(getContext().getTruffleTypes().getNodeInfoAnnotation());
-            if (shortName != null) {
-                nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("shortName"), new CodeAnnotationValue(shortName));
-            }
+            for (NodeChildData child : node.getChildren()) {
+                clazz.add(createChildField(child));
 
-            DeclaredType nodeinfoKind = getContext().getTruffleTypes().getNodeInfoKind();
-            VariableElement kind;
-            if (specialization.isGeneric()) {
-                kind = Utils.findVariableElement(nodeinfoKind, "GENERIC");
-            } else if (specialization.isUninitialized()) {
-                kind = Utils.findVariableElement(nodeinfoKind, "UNINITIALIZED");
-            } else {
-                kind = Utils.findVariableElement(nodeinfoKind, "SPECIALIZED");
+                if (child.getAccessElement() != null && child.getAccessElement().getModifiers().contains(Modifier.ABSTRACT)) {
+                    ExecutableElement getter = (ExecutableElement) child.getAccessElement();
+                    CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), getter);
+                    method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.createBuilder().startReturn().string("this.").string(child.getName()).end();
+                    clazz.add(method);
+                }
             }
 
-            nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("kind"), new CodeAnnotationValue(kind));
+            for (String assumption : node.getAssumptions()) {
+                clazz.add(createAssumptionField(assumption));
+            }
 
-            clazz.getAnnotationMirrors().add(nodeInfoMirror);
+            createConstructors(node, clazz);
 
             return clazz;
         }
 
+        protected String typeGetterName(ActualParameter parameter) {
+            return "get" + Utils.firstLetterUpperCase(parameter.getLocalName()) + "Type";
+        }
+
         @Override
         protected void createChildren(SpecializationData specialization) {
-            CodeTypeElement clazz = getElement();
             NodeData node = specialization.getNode();
+            CodeTypeElement clazz = getElement();
 
-            TypeElement superTypeElement = Utils.fromTypeMirror(clazz.getSuperclass());
-            for (ExecutableElement constructor : ElementFilter.constructorsIn(superTypeElement.getEnclosedElements())) {
-                ExecutableElement superConstructor = createSuperConstructor(clazz, constructor);
-                if (superConstructor != null) {
-                    clazz.add(superConstructor);
+            if (node.needsRewrites(context)) {
+
+                if (node.getPolymorphicDepth() > 1) {
+
+                    CodeVariableElement var = new CodeVariableElement(modifiers(PROTECTED), clazz.asType(), "next0");
+                    var.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getChildAnnotation()));
+                    clazz.add(var);
+
+                    CodeExecutableElement setter = new CodeExecutableElement(modifiers(PROTECTED), context.getType(void.class), "setNext0");
+                    setter.getParameters().add(new CodeVariableElement(clazz.asType(), "next0"));
+                    CodeTreeBuilder builder = setter.createBuilder();
+                    builder.statement("this.next0 = adoptChild(next0)");
+                    clazz.add(setter);
+
+                    createTypeGetters(clazz, node.getGenericSpecialization());
+
+                    clazz.add(createCreateSpecialization(node));
+
+                    CodeExecutableElement genericCachedExecute = null;
+                    for (SpecializationData polymorph : node.getPolymorphicSpecializations()) {
+                        CodeExecutableElement cachedExecute = createCachedExecute(node, polymorph, genericCachedExecute);
+                        clazz.add(cachedExecute);
+                        if (genericCachedExecute == null) {
+                            genericCachedExecute = cachedExecute;
+                        }
+                    }
                 }
+
+                clazz.add(createGenericExecuteAndSpecialize(node));
+                clazz.add(createInfoMessage(node));
             }
 
-            for (ExecutableTypeData execType : node.getExecutableTypes()) {
-                if (execType.isFinal()) {
-                    continue;
-                }
-                CodeExecutableElement executeMethod = createExecutableTypeOverride(execType);
-                clazz.add(executeMethod);
-                CodeTreeBuilder builder = executeMethod.createBuilder();
-                CodeTree result = createExecuteBody(builder, specialization, execType);
-                if (result != null) {
-                    builder.tree(result);
-                } else {
-                    clazz.remove(executeMethod);
-                }
+            if (node.getGenericSpecialization() != null && node.getGenericSpecialization().isReachable()) {
+                clazz.add(createGenericExecute(node));
             }
         }
 
-        private CodeTree createExecuteBody(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData execType) {
-            TypeData primaryType = specialization.getReturnType().getTypeSystemType();
+        private Element createInfoMessage(NodeData node) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, STATIC), getContext().getType(String.class), "createInfo0");
+            method.addParameter(new CodeVariableElement(getContext().getType(String.class), "message"));
+            addInternalValueParameters(method, node.getGenericSpecialization(), false, false);
 
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startStatement().string("StringBuilder builder = new StringBuilder(message)").end();
+            builder.startStatement().startCall("builder", "append").doubleQuote(" (").end().end();
+
+            String sep = null;
+            for (ActualParameter parameter : node.getGenericSpecialization().getParameters()) {
+                if (!parameter.getSpecification().isSignature()) {
+                    continue;
+                }
+
+                builder.startStatement();
+                builder.string("builder");
+                if (sep != null) {
+                    builder.startCall(".append").doubleQuote(sep).end();
+                }
+                builder.startCall(".append").doubleQuote(parameter.getLocalName()).end();
+                builder.startCall(".append").doubleQuote(" = ").end();
+                builder.startCall(".append").string(parameter.getLocalName()).end();
+                builder.end();
+
+                if (!Utils.isPrimitive(parameter.getType())) {
+                    builder.startIf().string(parameter.getLocalName() + " != null").end();
+                    builder.startBlock();
+                }
+                builder.startStatement();
+                if (Utils.isPrimitive(parameter.getType())) {
+                    builder.startCall("builder.append").doubleQuote(" (" + Utils.getSimpleName(parameter.getType()) + ")").end();
+                } else {
+                    builder.startCall("builder.append").doubleQuote(" (").end();
+                    builder.startCall(".append").string(parameter.getLocalName() + ".getClass().getSimpleName()").end();
+                    builder.startCall(".append").doubleQuote(")").end();
+                }
+                builder.end();
+                if (!Utils.isPrimitive(parameter.getType())) {
+                    builder.end();
+                }
+
+                sep = ", ";
+            }
+
+            builder.startStatement().startCall("builder", "append").doubleQuote(")").end().end();
+
+            builder.startReturn().string("builder.toString()").end();
+
+            return method;
+        }
+
+        protected void createTypeGetters(CodeTypeElement clazz, SpecializationData specialization) {
+            for (ActualParameter parameter : specialization.getReturnTypeAndParameters()) {
+                if (!parameter.getSpecification().isSignature()) {
+                    continue;
+                }
+                CodeExecutableElement typeGetter = new CodeExecutableElement(modifiers(PROTECTED), context.getType(Class.class), typeGetterName(parameter));
+                CodeTreeBuilder builder = typeGetter.createBuilder();
+                builder.startReturn().typeLiteral(parameter.getType()).end();
+                clazz.add(typeGetter);
+            }
+        }
+
+        private CodeExecutableElement createCachedExecute(NodeData node, SpecializationData polymorph, CodeExecutableElement genericPolymorphMethod) {
+            int index = node.getPolymorphicSpecializations().indexOf(polymorph);
+            assert index != -1;
+            boolean generic = index == 0;
+
+            String name = "executeCached" + index;
+            CodeExecutableElement cachedExecute = new CodeExecutableElement(modifiers(PROTECTED), polymorph.getReturnType().getType(), name);
+            addInternalValueParameters(cachedExecute, polymorph, true, true);
+
+            if (generic) {
+                cachedExecute.getModifiers().add(ABSTRACT);
+            } else {
+                SpecializationData genericPolymorph = node.getPolymorphicSpecializations().get(0);
+                CodeTreeBuilder builder = cachedExecute.createBuilder();
+                ExecutableTypeData genericExecutable = new ExecutableTypeData(genericPolymorph, genericPolymorphMethod, node.getTypeSystem(), genericPolymorph.getReturnType().getTypeSystemType());
+                ExecutableTypeData specificExecutable = new ExecutableTypeData(polymorph, cachedExecute, node.getTypeSystem(), polymorph.getReturnType().getTypeSystemType());
+                builder.tree(createCastingExecute(builder, polymorph, specificExecutable, genericExecutable));
+            }
+
+            return cachedExecute;
+
+        }
+
+        private CodeExecutableElement createCreateSpecialization(NodeData node) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PRIVATE), getElement().asType(), "createSpezialization0");
+            method.getParameters().add(new CodeVariableElement(context.getType(Class.class), "clazz"));
+            CodeTreeBuilder builder = method.createBuilder();
+
+            builder.startStatement().type(getElement().asType()).string(" node").end();
+
+            boolean elseIf = false;
+            for (SpecializationData specialization : node.getSpecializations()) {
+                if (specialization.isGeneric() || specialization.isUninitialized()) {
+                    continue;
+                }
+
+                elseIf = builder.startIf(elseIf);
+                builder.startGroup().string("clazz == ").string(nodeSpecializationClassName(specialization)).string(".class").end();
+                builder.end();
+                builder.startBlock();
+                builder.startStatement();
+                builder.string("node = ");
+                builder.startNew(nodeSpecializationClassName(specialization)).string("this").end();
+                builder.end();
+                builder.end();
+            }
+
+            builder.startElseBlock();
+            builder.startThrow().startNew(context.getType(AssertionError.class)).end().end();
+            builder.end();
+
+            builder.startStatement().startCall("node", "setNext0");
+            builder.startNew(nodeSpecializationClassName(node.getUninitializedSpecialization())).string("this").end();
+            builder.end().end();
+
+            builder.startReturn().string("node").end();
+
+            return method;
+        }
+
+        private void createConstructors(NodeData node, CodeTypeElement clazz) {
+            List<ExecutableElement> constructors = findUserConstructors(node.getNodeType());
+            if (constructors.isEmpty()) {
+                clazz.add(createUserConstructor(clazz, null));
+            } else {
+                for (ExecutableElement constructor : constructors) {
+                    clazz.add(createUserConstructor(clazz, constructor));
+                }
+            }
+            if (node.needsRewrites(getContext())) {
+                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType())));
+            }
+        }
+
+        private CodeExecutableElement createUserConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
+            CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
+            CodeTreeBuilder builder = method.createBuilder();
+
+            NodeData node = getModel().getNode();
+
+            if (superConstructor != null) {
+                for (VariableElement param : superConstructor.getParameters()) {
+                    method.getParameters().add(CodeVariableElement.clone(param));
+                }
+            }
+
+            for (VariableElement var : type.getFields()) {
+                NodeChildData child = node.findChild(var.getSimpleName().toString());
+                if (child != null) {
+                    method.getParameters().add(new CodeVariableElement(child.getOriginalType(), child.getName()));
+                } else {
+                    method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
+                }
+            }
+
+            if (superConstructor != null) {
+                builder.startStatement().startSuperCall();
+                for (VariableElement param : superConstructor.getParameters()) {
+                    builder.string(param.getSimpleName().toString());
+                }
+                builder.end().end();
+            }
+
+            for (VariableElement var : type.getFields()) {
+                builder.startStatement();
+                String fieldName = var.getSimpleName().toString();
+
+                CodeTree fieldInit = CodeTreeBuilder.singleString(var.getSimpleName().toString());
+                builder.string("this.").string(var.getSimpleName().toString());
+
+                NodeChildData child = node.findChild(fieldName);
+                if (child != null) {
+                    CreateCastData createCast = node.findCast(child.getName());
+                    if (createCast != null) {
+                        fieldInit = createTemplateMethodCall(builder, null, node.getGenericSpecialization(), createCast, null, child.getName());
+                    }
+                }
+
+                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
+                    builder.string(" = adoptChild(").tree(fieldInit).string(")");
+                } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
+                    builder.string(" = adoptChildren(").tree(fieldInit).string(")");
+                } else {
+                    builder.string(" = ").tree(fieldInit);
+                }
+                builder.end();
+            }
+            return method;
+        }
+
+        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
+            CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
+            CodeTreeBuilder builder = method.createBuilder();
+            if (!(superConstructor == null && type.getFields().isEmpty())) {
+                method.getParameters().add(new CodeVariableElement(type.asType(), "copy"));
+            }
+
+            if (superConstructor != null) {
+                builder.startStatement().startSuperCall().string("copy").end().end();
+            }
+
+            for (VariableElement var : type.getFields()) {
+                builder.startStatement();
+                String varName = var.getSimpleName().toString();
+                builder.string("this.").string(varName);
+                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
+                    builder.string(" = adoptChild(copy.").string(varName).string(")");
+                } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
+                    builder.string(" = adoptChildren(copy.").string(varName).string(")");
+                } else {
+                    builder.string(" = copy.").string(varName);
+                }
+                builder.end();
+            }
+            if (getModel().getNode().getPolymorphicDepth() > 1) {
+                builder.statement("this.next0 = adoptChild(copy.next0)");
+            }
+
+            return method;
+        }
+
+        private CodeVariableElement createAssumptionField(String assumption) {
+            CodeVariableElement var = new CodeVariableElement(getContext().getTruffleTypes().getAssumption(), assumption);
+            var.getModifiers().add(Modifier.FINAL);
+            return var;
+        }
+
+        private CodeVariableElement createChildField(NodeChildData child) {
+            CodeVariableElement var = new CodeVariableElement(child.getNodeType(), child.getName());
+            var.getModifiers().add(Modifier.PROTECTED);
+
+            DeclaredType annotationType;
+            if (child.getCardinality() == Cardinality.MANY) {
+                annotationType = getContext().getTruffleTypes().getChildrenAnnotation();
+            } else {
+                annotationType = getContext().getTruffleTypes().getChildAnnotation();
+            }
+
+            var.getAnnotationMirrors().add(new CodeAnnotationMirror(annotationType));
+            return var;
+        }
+
+        private CodeExecutableElement createGenericExecuteAndSpecialize(NodeData node) {
+
+            TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, EXECUTE_SPECIALIZE_NAME);
+            method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "minimumState"));
+            addInternalValueParameters(method, node.getGenericSpecialization(), true, false);
+            method.addParameter(new CodeVariableElement(getContext().getType(String.class), "reason"));
+
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startStatement();
+            builder.startStaticCall(getContext().getTruffleTypes().getCompilerAsserts(), "neverPartOfCompilation").end();
+            builder.end();
+
+            emitSpecializationListeners(builder, node);
+            builder.defaultDeclaration(node.getGenericSpecialization().getReturnType().getTypeSystemType().getPrimitiveType(), "result");
+
+            builder.defaultDeclaration(getContext().getType(Class.class), "resultClass");
+
+            builder.startStatement().string("boolean allowed = (minimumState == ").string(nodeSpecializationClassName(node.getSpecializations().get(0))).string(".class)").end();
+
+            builder.startStatement().string("String message = ").startCall("createInfo0").string("reason");
+            addInternalValueParameterNames(builder, node.getGenericSpecialization(), node.getGenericSpecialization(), null, false, true);
+            builder.end().end();
+
+            String prefix = null;
+
+            List<SpecializationData> specializations = node.getSpecializations();
+
+            for (SpecializationData current : specializations) {
+                if (current.isUninitialized() || !current.isReachable()) {
+                    continue;
+                }
+                CodeTreeBuilder execute = new CodeTreeBuilder(builder);
+
+                execute.tree(createGenericInvokeAndSpecialize(builder, node.getGenericSpecialization(), current));
+
+                if (!current.isGeneric()) {
+                    builder.startStatement().string("allowed = allowed || (minimumState == ").string(nodeSpecializationClassName(current)).string(".class)").end();
+                }
+
+                builder.tree(createGuardAndCast(builder, prefix, current.getNode().getGenericSpecialization(), current, true, execute.getRoot(), null, true, false));
+            }
+
+            for (SpecializationData current : specializations) {
+                if (current.isUninitialized() || current.isReachable()) {
+                    continue;
+                }
+                builder.string("// unreachable ").string(current.getId()).newLine();
+            }
+
+            return method;
+        }
+
+        private CodeExecutableElement createGenericExecute(NodeData node) {
+            TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, EXECUTE_GENERIC_NAME);
+            addInternalValueParameters(method, node.getGenericSpecialization(), true, false);
+            CodeTreeBuilder builder = method.createBuilder();
+
+            String prefix = null;
+            List<SpecializationData> specializations = node.getSpecializations();
+
+            for (SpecializationData current : specializations) {
+                if (current.isUninitialized() || !current.isReachable()) {
+                    continue;
+                }
+                CodeTreeBuilder execute = new CodeTreeBuilder(builder);
+                execute.tree(createGenericInvoke(builder, node.getGenericSpecialization(), current));
+                builder.tree(createGuardAndCast(builder, prefix, current.getNode().getGenericSpecialization(), current, true, execute.getRoot(), null, true, false));
+            }
+
+            for (SpecializationData current : specializations) {
+                if (current.isUninitialized() || current.isReachable()) {
+                    continue;
+                }
+                builder.string("// unreachable ").string(current.getId()).newLine();
+            }
+
+            return method;
+        }
+
+        protected CodeTree createGenericInvoke(CodeTreeBuilder parent, SpecializationData source, SpecializationData current) {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
 
-            List<ExecutableTypeData> primaryExecutes = findFunctionalExecutableType(specialization, execType.getEvaluatedCount());
-
-            if (primaryExecutes.contains(execType) || primaryExecutes.isEmpty()) {
-                builder.tree(createFunctionalExecute(builder, specialization, execType));
-            } else if (needsCastingExecuteMethod(execType, primaryType)) {
-                assert !primaryExecutes.isEmpty();
-                builder.tree(createCastingExecute(builder, specialization, execType, primaryExecutes.get(0)));
+            if (current.getMethod() == null) {
+                emitEncounteredSynthetic(builder, current);
             } else {
-                return null;
+                builder.startReturn().tree(createTemplateMethodCall(builder, null, source, current, null)).end();
             }
+
+            return encloseThrowsWithFallThrough(current, builder.getRoot());
+        }
+
+        protected CodeTree createGenericInvokeAndSpecialize(CodeTreeBuilder parent, SpecializationData source, SpecializationData current) {
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+
+            NodeData node = current.getNode();
+
+            builder.startIf().string("resultClass == null").end().startBlock();
+            if (current.getMethod() != null) {
+                CodeTree executeCall = createTemplateMethodCall(builder, null, source, current, null);
+                if (current.getReturnType().getTypeSystemType().isVoid()) {
+                    builder.statement(executeCall);
+                } else {
+                    builder.startStatement().string("result = ").tree(executeCall).end();
+                }
+                builder.startStatement();
+                builder.string("resultClass = ").string(nodeSpecializationClassName(current)).string(".class");
+                builder.end();
+            } else {
+                emitEncounteredSynthetic(builder, current);
+            }
+            builder.end();
+
+            boolean ifAllowed = current.hasRewrite(getContext());
+            if (ifAllowed) {
+                builder.startIf().string("allowed").end().startBlock();
+            }
+
+            if (!current.isGeneric() || node.getPolymorphicDepth() <= 1) {
+                // generic rewrite
+                builder.tree(createRewriteGeneric(builder, current));
+            } else {
+                boolean rewriteableToGeneric = node.getGenericSpecialization().getMethod() != null && node.getGenericSpecialization().isReachable();
+                if (rewriteableToGeneric) {
+                    builder.startIf().string("resultClass == ").string(nodeSpecializationClassName(node.getGenericSpecialization())).string(".class").end();
+                    builder.startBlock();
+
+                    boolean maybePolymorphic = node.getPolymorphicDepth() > 1;
+                    if (maybePolymorphic) {
+                        builder.startIf().string("next0 == null").end();
+                        builder.startBlock();
+                    }
+                    builder.tree(createRewriteGeneric(builder, current));
+                    if (maybePolymorphic) {
+                        builder.end().startElseBlock();
+                        builder.statement("Node searchNode = super.getParent()");
+                        builder.startWhile().string("searchNode != null").end();
+                        builder.startBlock();
+                        builder.statement("searchNode = searchNode.getParent()");
+                        builder.startIf().instanceOf("searchNode", nodePolymorphicClassName(node, node.getPolymorphicSpecializations().get(0))).end();
+                        builder.startBlock().breakStatement().end();
+                        builder.end();
+                        builder.startStatement().startCall("searchNode", "replace");
+                        builder.startGroup().startNew(nodeSpecializationClassName(current)).startGroup().cast(baseClassName(node)).string("searchNode").end().end().end();
+                        builder.string("message");
+                        builder.end().end().end();
+                    }
+
+                    builder.end().startElseBlock();
+                }
+
+                // polymorphic rewrite
+                builder.tree(createRewritePolymorphic(builder, node));
+
+                if (rewriteableToGeneric) {
+                    builder.end();
+                }
+            }
+
+            if (current.getReturnType().getTypeSystemType().isVoid()) {
+                builder.returnStatement();
+            } else {
+                builder.startReturn().string("result").end();
+            }
+            if (ifAllowed) {
+                builder.end();
+            }
+
+            return encloseThrowsWithFallThrough(current, builder.getRoot());
+        }
+
+        private CodeTree encloseThrowsWithFallThrough(SpecializationData current, CodeTree tree) {
+            if (current.getExceptions().isEmpty()) {
+                return tree;
+            }
+            CodeTreeBuilder builder = new CodeTreeBuilder(null);
+
+            builder.startTryBlock();
+            builder.tree(tree);
+            for (SpecializationThrowsData exception : current.getExceptions()) {
+                builder.end().startCatchBlock(exception.getJavaClass(), "rewriteEx");
+                builder.string("// fall through").newLine();
+            }
+            builder.end();
 
             return builder.getRoot();
         }
 
-        private CodeExecutableElement createExecutableTypeOverride(ExecutableTypeData execType) {
-            CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), execType.getMethod());
-
-            int i = 0;
-            for (VariableElement param : method.getParameters()) {
-                CodeVariableElement var = CodeVariableElement.clone(param);
-                ActualParameter actualParameter = execType.getParameters().get(i);
-                if (actualParameter.getSpecification().isSignature()) {
-                    var.setName(valueNameEvaluated(actualParameter));
-                } else {
-                    var.setName(valueName(actualParameter));
-                }
-                method.getParameters().set(i, var);
-                i++;
-            }
-
-            method.getAnnotationMirrors().clear();
-            method.getModifiers().remove(Modifier.ABSTRACT);
-            return method;
+        private CodeTree createRewriteGeneric(CodeTreeBuilder parent, SpecializationData current) {
+            CodeTreeBuilder builder = parent.create();
+            builder.startStatement().startCall("super", "replace");
+            builder.startGroup().startNew(nodeSpecializationClassName(current)).string("this").end().end();
+            builder.string("message");
+            builder.end().end();
+            return builder.getRoot();
         }
 
-        private boolean needsCastingExecuteMethod(ExecutableTypeData execType, TypeData primaryType) {
-            if (execType.isAbstract()) {
-                return true;
+        private CodeTree createRewritePolymorphic(CodeTreeBuilder parent, NodeData node) {
+            CodeTreeBuilder builder = parent.create();
+            builder.startStatement();
+            builder.string(nodePolymorphicClassName(node, null));
+            builder.string(" polymorphic = ");
+            builder.startNew(nodePolymorphicClassName(node, null)).string("this").end();
+            builder.end();
+            for (NodeChildData child : node.getChildren()) {
+                builder.startStatement().string("this.").string(child.getName()).string(" = null").end();
             }
-            if (Utils.isPrimitiveOrVoid(primaryType.getPrimitiveType()) && Utils.isPrimitiveOrVoid(execType.getType().getPrimitiveType())) {
-                return true;
-            }
-            if (execType.getType().isGeneric()) {
-                return true;
-            }
-            return false;
+            builder.startStatement().startCall("super", "replace");
+            builder.string("polymorphic");
+            builder.string("message");
+            builder.end().end();
+
+            builder.statement("polymorphic.setNext0(this)");
+            builder.statement("setNext0(createSpezialization0(resultClass))");
+
+            builder.statement("polymorphic.optimizeTypes()");
+            return builder.getRoot();
         }
 
-        private List<ExecutableTypeData> findFunctionalExecutableType(SpecializationData specialization, int evaluatedCount) {
-            TypeData primaryType = specialization.getReturnType().getTypeSystemType();
-            List<ExecutableTypeData> otherTypes = specialization.getNode().getExecutableTypes(evaluatedCount);
-
-            List<ExecutableTypeData> filteredTypes = new ArrayList<>();
-            for (ExecutableTypeData compareType : otherTypes) {
-                if (!Utils.typeEquals(compareType.getType().getPrimitiveType(), primaryType.getPrimitiveType())) {
-                    continue;
-                }
-                filteredTypes.add(compareType);
+        private void emitSpecializationListeners(CodeTreeBuilder builder, NodeData node) {
+            for (TemplateMethod listener : node.getSpecializationListeners()) {
+                builder.startStatement();
+                builder.tree(createTemplateMethodCall(builder, null, listener, listener, null));
+                builder.end(); // statement
             }
-
-            // no direct matches found use generic where the type is Object
-            if (filteredTypes.isEmpty()) {
-                for (ExecutableTypeData compareType : otherTypes) {
-                    if (compareType.getType().isGeneric() && !compareType.hasUnexpectedValue(getContext())) {
-                        filteredTypes.add(compareType);
-                    }
-                }
-            }
-
-            if (filteredTypes.isEmpty()) {
-                for (ExecutableTypeData compareType : otherTypes) {
-                    if (compareType.getType().isGeneric()) {
-                        filteredTypes.add(compareType);
-                    }
-                }
-            }
-
-            return filteredTypes;
         }
 
-        private CodeTree createCastingExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable, ExecutableTypeData castExecutable) {
+        protected CodeTree createCastingExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable, ExecutableTypeData castExecutable) {
             TypeData type = executable.getType();
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             NodeData node = specialization.getNode();
@@ -1615,7 +1618,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 if (!returnVoid) {
                     builder.startReturn();
-                    builder.tree(createExpectExecutableType(node, castExecutable.getReturnSignature(), executable, CodeTreeBuilder.singleString("value")));
+                    builder.tree(createExpectExecutableType(node, castExecutable.getReturnType().getTypeSystemType(), executable, CodeTreeBuilder.singleString("value")));
                     builder.end();
                 }
             } else {
@@ -1623,7 +1626,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.statement(primaryExecuteCall);
                 } else {
                     builder.startReturn();
-                    builder.tree(createExpectExecutableType(node, castExecutable.getReturnSignature(), executable, primaryExecuteCall));
+                    builder.tree(createExpectExecutableType(node, castExecutable.getReturnType().getTypeSystemType(), executable, primaryExecuteCall));
                     builder.end();
                 }
             }
@@ -1631,12 +1634,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createExpectExecutableType(NodeData node, TypeData sourceType, ExecutableTypeData castedType, CodeTree value) {
+        protected CodeTree createExpectExecutableType(NodeData node, TypeData sourceType, ExecutableTypeData castedType, CodeTree value) {
             boolean hasUnexpected = castedType.hasUnexpectedValue(getContext());
             return createCastType(node, sourceType, castedType.getType(), hasUnexpected, value);
         }
 
-        private CodeTree createCastType(NodeData node, TypeData sourceType, TypeData targetType, boolean expect, CodeTree value) {
+        protected CodeTree createCastType(NodeData node, TypeData sourceType, TypeData targetType, boolean expect, CodeTree value) {
             if (targetType == null) {
                 return value;
             } else if (!sourceType.needsCastTo(getContext(), targetType)) {
@@ -1657,102 +1660,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createFunctionalExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable) {
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            if (specialization.isUninitialized()) {
-                builder.tree(createDeoptimize(builder));
-            }
-
-            builder.tree(createExecuteChildren(builder, executable, specialization, specialization.getParameters(), null, false));
-
-            CodeTree executeNode;
-            executeNode = createExecute(builder, executable, specialization);
-
-            SpecializationData next = specialization.findNextSpecialization();
-            CodeTree returnSpecialized = null;
-            if (next != null) {
-                CodeTreeBuilder returnBuilder = new CodeTreeBuilder(builder);
-                returnBuilder.tree(createDeoptimize(builder));
-                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, next, null, "One of guards " + specialization.getGuards() + " failed"));
-                returnSpecialized = returnBuilder.getRoot();
-            }
-            builder.tree(createGuardAndCast(builder, null, specialization, specialization, true, executeNode, returnSpecialized, false));
-
-            return builder.getRoot();
-        }
-
-        private CodeTree createDeoptimize(CodeTreeBuilder parent) {
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            builder.startStatement();
-            builder.startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end();
-            builder.end();
-            return builder.getRoot();
-        }
-
-        private CodeTree createExecute(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData specialization) {
-            NodeData node = specialization.getNode();
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            if (!specialization.getExceptions().isEmpty() || !specialization.getAssumptions().isEmpty()) {
-                builder.startTryBlock();
-            }
-
-            for (String assumption : specialization.getAssumptions()) {
-                builder.startStatement();
-                builder.string("this.").string(assumption).string(".check()");
-                builder.end();
-            }
-
-            CodeTreeBuilder returnBuilder = new CodeTreeBuilder(parent);
-            if (specialization.isUninitialized()) {
-                returnBuilder.startCall("super", EXECUTE_SPECIALIZE_NAME);
-                returnBuilder.startGroup().string(nodeSpecializationClassName(specialization)).string(".class").end();
-                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
-                returnBuilder.doubleQuote("Uninitialized");
-                returnBuilder.end();
-            } else if (specialization.getMethod() == null && !node.needsRewrites(context)) {
-                emitEncounteredSynthetic(builder, specialization);
-            } else if (specialization.isGeneric()) {
-                returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
-                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
-                returnBuilder.end();
-            } else {
-                returnBuilder.tree(createTemplateMethodCall(returnBuilder, null, specialization, specialization, null));
-            }
-
-            if (!returnBuilder.isEmpty()) {
-                builder.startReturn();
-
-                TypeData targetType = node.getTypeSystem().findTypeData(builder.findMethod().getReturnType());
-                TypeData sourceType = specialization.getReturnType().getTypeSystemType();
-
-                if (targetType == null || sourceType == null) {
-                    builder.tree(returnBuilder.getRoot());
-                } else if (sourceType.needsCastTo(getContext(), targetType)) {
-                    builder.tree(createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.expectTypeMethodName(targetType), returnBuilder.getRoot()));
-                } else {
-                    builder.tree(returnBuilder.getRoot());
-                }
-                builder.end();
-            }
-
-            if (!specialization.getExceptions().isEmpty()) {
-                for (SpecializationThrowsData exception : specialization.getExceptions()) {
-                    builder.end().startCatchBlock(exception.getJavaClass(), "ex");
-                    builder.tree(createDeoptimize(builder));
-                    builder.tree(createReturnExecuteAndSpecialize(parent, executable, exception.getTransitionTo(), null, "Thrown " + Utils.getSimpleName(exception.getJavaClass())));
-                }
-                builder.end();
-            }
-            if (!specialization.getAssumptions().isEmpty()) {
-                builder.end().startCatchBlock(getContext().getTruffleTypes().getInvalidAssumption(), "ex");
-                builder.tree(createReturnExecuteAndSpecialize(parent, executable, specialization.findNextSpecialization(), null, "Assumption failed"));
-                builder.end();
-            }
-
-            return builder.getRoot();
-        }
-
-        private CodeTree createExecuteChildren(CodeTreeBuilder parent, ExecutableTypeData sourceExecutable, SpecializationData specialization, List<ActualParameter> targetParameters,
+        protected CodeTree createExecuteChildren(CodeTreeBuilder parent, ExecutableTypeData sourceExecutable, SpecializationData specialization, List<ActualParameter> targetParameters,
                         ActualParameter unexpectedParameter, boolean cast) {
             NodeData sourceNode = specialization.getNode();
 
@@ -1817,6 +1725,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 cast = true;
             }
 
+            if (specialization.isGeneric() && unexpected) {
+                throw new AssertionError("Generic has unexpected parameters. " + specialization.toString());
+            }
+
             builder.startStatement();
 
             if (!shortCircuit) {
@@ -1850,11 +1762,37 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 List<ActualParameter> genericParameters = generic.getParametersAfter(genericParameter);
                 builder.tree(createDeoptimize(builder));
                 builder.tree(createExecuteChildren(parent, currentExecutable, generic, genericParameters, genericParameter, false));
-                builder.tree(createReturnExecuteAndSpecialize(builder, currentExecutable, specialization.findNextSpecialization(), param,
-                                "Expected " + param.getLocalName() + " instanceof " + Utils.getSimpleName(param.getType())));
+                if (specialization.isPolymorphic()) {
+                    builder.tree(createReturnOptimizeTypes(builder, specialization, param));
+                } else {
+                    builder.tree(createReturnExecuteAndSpecialize(builder, currentExecutable, specialization.findNextSpecialization(), param, "Expected " + param.getLocalName() + " instanceof " +
+                                    Utils.getSimpleName(param.getType())));
+                }
                 builder.end(); // catch block
             }
 
+            return builder.getRoot();
+        }
+
+        private CodeTree createReturnOptimizeTypes(CodeTreeBuilder parent, SpecializationData specialization, ActualParameter param) {
+            NodeData node = specialization.getNode();
+            assert !node.getPolymorphicSpecializations().isEmpty();
+            SpecializationData generic = node.getPolymorphicSpecializations().get(0);
+
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+            builder.startReturn();
+
+            CodeTreeBuilder execute = new CodeTreeBuilder(builder);
+            execute.startCall("next0", "executeCached0");
+            addInternalValueParameterNames(execute, specialization, generic, param.getLocalName(), true, true);
+            execute.end();
+
+            TypeData sourceType = generic.getReturnType().getTypeSystemType();
+            TypeData targetType = specialization.getReturnType().getTypeSystemType();
+
+            builder.tree(createCastType(node, sourceType, targetType, true, execute.getRoot()));
+
+            builder.end();
             return builder.getRoot();
         }
 
@@ -1862,11 +1800,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             TypeData type = sourceParameter.getTypeSystemType();
             ExecutableTypeData execType = targetField.findExecutableType(getContext(), type);
 
-            /*
-             * FIXME Temporary deactivated due to partial evaluation failure else if
-             * (accessElement.getKind() == ElementKind.METHOD) {
-             * builder.startCall(accessElement.getSimpleName().toString()).end(); }
-             */
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
             if (targetField != null) {
                 Element accessElement = targetField.getAccessElement();
@@ -1977,9 +1910,16 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createReturnExecuteAndSpecialize(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData nextSpecialization, ActualParameter exceptionParam, String reason) {
+        protected CodeTree createDeoptimize(CodeTreeBuilder parent) {
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+            builder.startStatement();
+            builder.startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end();
+            builder.end();
+            return builder.getRoot();
+        }
 
-            SpecializationData generic = nextSpecialization.getNode().getGenericSpecialization();
+        protected CodeTree createReturnExecuteAndSpecialize(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData nextSpecialization, ActualParameter exceptionParam, String reason) {
+            SpecializationData generic = getModel().getNode().getGenericSpecialization();
             CodeTreeBuilder specializeCall = new CodeTreeBuilder(parent);
             specializeCall.startCall(EXECUTE_SPECIALIZE_NAME);
             specializeCall.string(nodeSpecializationClassName(nextSpecialization) + ".class");
@@ -1990,8 +1930,505 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
 
             builder.startReturn();
-            builder.tree(createExpectExecutableType(nextSpecialization.getNode(), generic.getReturnSignature(), executable, specializeCall.getRoot()));
+            builder.tree(createExpectExecutableType(nextSpecialization.getNode(), generic.getReturnType().getTypeSystemType(), executable, specializeCall.getRoot()));
             builder.end();
+
+            return builder.getRoot();
+        }
+    }
+
+    private class PolymorphicNodeFactory extends SpecializedNodeFactory {
+
+        private final boolean generic;
+
+        public PolymorphicNodeFactory(ProcessorContext context, CodeTypeElement nodeGen, boolean generic) {
+            super(context, nodeGen);
+            this.generic = generic;
+        }
+
+        @Override
+        public CodeTypeElement create(SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            TypeMirror baseType = node.getNodeType();
+            if (nodeGen != null) {
+                baseType = nodeGen.asType();
+            }
+            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC), nodePolymorphicClassName(node, specialization), baseType, false);
+
+            if (!generic) {
+                clazz.getModifiers().add(Modifier.FINAL);
+            }
+
+            clazz.getAnnotationMirrors().add(createNodeInfo(node, Kind.POLYMORPHIC));
+
+            return clazz;
+        }
+
+        @Override
+        protected void createChildren(SpecializationData specialization) {
+// super.createChildren(specialization);
+            CodeTypeElement clazz = getElement();
+
+            createConstructors(clazz);
+            createExecuteMethods(specialization);
+
+            if (generic) {
+                getElement().add(createOptimizeTypes());
+                createCachedExecuteMethods(specialization);
+            }
+        }
+
+        private CodeExecutableElement createOptimizeTypes() {
+            NodeData node = getModel().getNode();
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), getContext().getType(void.class), "optimizeTypes");
+            CodeTreeBuilder builder = method.createBuilder();
+            builder.startStatement().string(baseClassName(node)).string(" node = this.next0").end();
+            TypeMirror classType = getContext().getType(Class.class);
+
+            SpecializationData genericSpecialization = node.getGenericSpecialization();
+
+            CodeTreeBuilder whileBodyBuilder = builder.create();
+            for (ActualParameter parameter : node.getGenericSpecialization().getReturnTypeAndParameters()) {
+                if (!parameter.getSpecification().isSignature()) {
+                    continue;
+                }
+
+                ActualParameter genericParameter = genericSpecialization.findParameter(parameter.getLocalName());
+
+                String name = parameter.getLocalName() + "Type";
+
+                builder.declaration(classType, name, builder.create().startCall("node", typeGetterName(parameter)).end().getRoot());
+
+                whileBodyBuilder.startIf().string(name).string(" != ").startCall("node", typeGetterName(parameter)).end().end();
+                whileBodyBuilder.startBlock();
+                whileBodyBuilder.startStatement().string(name).string(" = ").typeLiteral(genericParameter.getType()).end();
+                whileBodyBuilder.end();
+            }
+
+            builder.startWhile().string("node != null && !(").instanceOf("node", nodeSpecializationClassName(node.getUninitializedSpecialization())).string(")").end();
+            builder.startBlock();
+            builder.tree(whileBodyBuilder.getRoot());
+            builder.statement("node = node.next0");
+            builder.end();
+
+            boolean elseIf = false;
+            for (SpecializationData polymorph : node.getPolymorphicSpecializations()) {
+                elseIf = builder.startIf(elseIf);
+                String and = "";
+                StringBuilder reason = new StringBuilder("Optimized polymorphic types for (");
+                for (ActualParameter parameter : polymorph.getReturnTypeAndParameters()) {
+                    if (!parameter.getSpecification().isSignature()) {
+                        continue;
+                    }
+                    String name = parameter.getLocalName() + "Type";
+                    builder.string(and).string(name).string(" == ").typeLiteral(parameter.getType());
+
+                    if (!and.isEmpty()) {
+                        reason.append(", ");
+                    }
+                    reason.append(Utils.getSimpleName(parameter.getType()));
+                    and = " && ";
+                }
+                reason.append(")");
+                builder.end();
+                builder.startBlock();
+
+                String className = nodePolymorphicClassName(node, polymorph);
+                builder.startIf().string("getClass() != ").string(className).string(".class").end();
+                builder.startBlock();
+                builder.startStatement().startCall("super", "replace");
+                builder.startNew(className).string("this").end();
+                builder.doubleQuote(reason.toString());
+                builder.end().end(); // call
+                builder.end(); // block
+                builder.end();
+            }
+            return method;
+        }
+    }
+
+    private class SpecializedNodeFactory extends NodeBaseFactory {
+
+        protected final CodeTypeElement nodeGen;
+
+        public SpecializedNodeFactory(ProcessorContext context, CodeTypeElement nodeGen) {
+            super(context);
+            this.nodeGen = nodeGen;
+        }
+
+        @Override
+        public CodeTypeElement create(SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            TypeMirror baseType = node.getNodeType();
+            if (nodeGen != null) {
+                baseType = nodeGen.asType();
+            }
+            CodeTypeElement clazz = createClass(node, modifiers(PRIVATE, STATIC, FINAL), nodeSpecializationClassName(specialization), baseType, false);
+
+            Kind kind;
+            if (specialization.isGeneric()) {
+                kind = Kind.GENERIC;
+            } else if (specialization.isUninitialized()) {
+                kind = Kind.UNINITIALIZED;
+            } else {
+                kind = Kind.SPECIALIZED;
+            }
+            clazz.getAnnotationMirrors().add(createNodeInfo(node, kind));
+
+            return clazz;
+        }
+
+        protected CodeAnnotationMirror createNodeInfo(NodeData node, Kind kind) {
+            String shortName = node.getShortName();
+            CodeAnnotationMirror nodeInfoMirror = new CodeAnnotationMirror(getContext().getTruffleTypes().getNodeInfoAnnotation());
+            if (shortName != null) {
+                nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("shortName"), new CodeAnnotationValue(shortName));
+            }
+
+            DeclaredType nodeinfoKind = getContext().getTruffleTypes().getNodeInfoKind();
+            VariableElement varKind = Utils.findVariableElement(nodeinfoKind, kind.name());
+
+            nodeInfoMirror.setElementValue(nodeInfoMirror.findExecutableElement("kind"), new CodeAnnotationValue(varKind));
+            return nodeInfoMirror;
+        }
+
+        @Override
+        protected void createChildren(SpecializationData specialization) {
+            CodeTypeElement clazz = getElement();
+            createConstructors(clazz);
+
+            NodeData node = specialization.getNode();
+
+            if (!specialization.isGeneric() && !specialization.isUninitialized() && !specialization.isPolymorphic() && node.needsRewrites(getContext()) && node.getPolymorphicDepth() > 1) {
+
+                createTypeGetters(clazz, specialization);
+            }
+
+            createExecuteMethods(specialization);
+            createCachedExecuteMethods(specialization);
+        }
+
+        protected void createConstructors(CodeTypeElement clazz) {
+            TypeElement superTypeElement = Utils.fromTypeMirror(clazz.getSuperclass());
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(superTypeElement.getEnclosedElements())) {
+                if (getModel().getNode().getUninitializedSpecialization() != null && !getModel().isUninitialized() && constructor.getParameters().size() != 1 ||
+                                constructor.getParameters().get(0).getSimpleName().toString().equals(baseClassName(getModel().getNode()))) {
+                    continue;
+                }
+
+                CodeExecutableElement superConstructor = createSuperConstructor(clazz, constructor);
+                if (superConstructor != null) {
+                    if (getModel().isGeneric() && getModel().getNode().getPolymorphicDepth() > 1) {
+                        CodeTree body = superConstructor.getBodyTree();
+                        CodeTreeBuilder builder = superConstructor.createBuilder();
+                        builder.tree(body);
+                        builder.statement("this.next0 = null");
+                    }
+
+                    clazz.add(superConstructor);
+                }
+            }
+        }
+
+        protected void createExecuteMethods(SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            CodeTypeElement clazz = getElement();
+
+            for (ExecutableTypeData execType : node.getExecutableTypes()) {
+                if (execType.isFinal()) {
+                    continue;
+                }
+                CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, true);
+                clazz.add(executeMethod);
+                CodeTreeBuilder builder = executeMethod.createBuilder();
+                CodeTree result = createExecuteBody(builder, specialization, execType);
+                if (result != null) {
+                    builder.tree(result);
+                } else {
+                    clazz.remove(executeMethod);
+                }
+            }
+        }
+
+        protected void createCachedExecuteMethods(SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            CodeTypeElement clazz = getElement();
+            int index = 0;
+            for (SpecializationData polymorphic : node.getPolymorphicSpecializations()) {
+                boolean matchFound = false;
+                if (!specialization.isGeneric() && !specialization.isUninitialized() && !specialization.isPolymorphic()) {
+                    matchFound = polymorphic.getSignature().hasAnyParameterMatch(specialization.getSignature());
+                }
+
+                if (matchFound || index == 0) {
+                    ExecutableElement executeCached = nodeGen.getMethod("executeCached" + index);
+                    ExecutableTypeData execType = new ExecutableTypeData(polymorphic, executeCached, node.getTypeSystem(), polymorphic.getReturnType().getTypeSystemType());
+
+                    CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, false);
+                    CodeTreeBuilder builder = executeMethod.createBuilder();
+
+                    if (specialization.isGeneric() || specialization.isPolymorphic()) {
+                        builder.startThrow().startNew(getContext().getType(AssertionError.class));
+                        builder.doubleQuote("Should not be reached.");
+                        builder.end().end();
+                    } else if (specialization.isUninitialized()) {
+                        builder.tree(createAppendPolymorphic(builder, specialization));
+                    } else {
+                        CodeTreeBuilder elseBuilder = new CodeTreeBuilder(builder);
+                        elseBuilder.startReturn().startCall("this.next0", "executeCached" + index);
+                        addInternalValueParameterNames(elseBuilder, polymorphic, polymorphic, null, true, true);
+                        elseBuilder.end().end();
+                        CodeTreeBuilder execute = new CodeTreeBuilder(builder);
+                        execute.tree(createGenericInvoke(builder, polymorphic, specialization));
+                        boolean forceElse = !specialization.getExceptions().isEmpty();
+                        builder.tree(createGuardAndCast(builder, null, polymorphic, specialization, true, execute.getRoot(), elseBuilder.getRoot(), true, forceElse));
+                    }
+                    clazz.add(executeMethod);
+                }
+                index++;
+            }
+        }
+
+        private CodeTree createAppendPolymorphic(CodeTreeBuilder parent, SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            String genericClassName = nodePolymorphicClassName(node, null);
+
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+
+            builder.declaration(getContext().getTruffleTypes().getNode(), "searchNode", "super.getParent()");
+            builder.declaration(getContext().getType(int.class), "depth", "0");
+            builder.startWhile().string("searchNode != null").end();
+            builder.startBlock();
+            builder.statement("depth++");
+            builder.statement("searchNode = searchNode.getParent()");
+
+            builder.startIf().instanceOf("searchNode", genericClassName).end();
+            builder.startBlock().breakStatement().end();
+            builder.end(); // if
+            builder.end(); // while
+
+            builder.startAssert().instanceOf("searchNode", genericClassName).end();
+
+            builder.startStatement();
+            builder.string(genericClassName).string(" ").string("polymorphic = ").string("(").string(genericClassName).string(") searchNode");
+            builder.end();
+
+            builder.startIf().string("depth >= ").string(String.valueOf(node.getPolymorphicDepth())).end();
+            builder.startBlock();
+            builder.startStatement();
+            builder.startCall("searchNode", "replace");
+            builder.startNew(nodeSpecializationClassName(node.getGenericSpecialization())).string("this").end();
+            builder.doubleQuote("Polymorphic limit reached (" + node.getPolymorphicDepth() + ")");
+            builder.end();
+            builder.end();
+
+            builder.startReturn().startCall("super", EXECUTE_GENERIC_NAME);
+            addInternalValueParameterNames(builder, specialization, node.getGenericSpecialization(), null, true, true);
+            builder.end().end();
+
+            builder.end().startElseBlock();
+            builder.startStatement().startCall("super", "setNext0");
+            builder.startNew(nodeSpecializationClassName(node.getUninitializedSpecialization())).string("this").end();
+            builder.end().end();
+
+            CodeTreeBuilder specializeCall = new CodeTreeBuilder(builder);
+            specializeCall.startCall(EXECUTE_SPECIALIZE_NAME);
+            specializeCall.string(nodeSpecializationClassName(node.getUninitializedSpecialization()) + ".class");
+            addInternalValueParameterNames(specializeCall, specialization, node.getGenericSpecialization(), null, true, true);
+            specializeCall.startGroup().doubleQuote("Uninitialized polymorphic (").string(" + depth + ").doubleQuote("/" + node.getPolymorphicDepth() + ")").end();
+            specializeCall.end().end();
+
+            builder.declaration(node.getGenericSpecialization().getReturnType().getType(), "result", specializeCall.getRoot());
+
+            builder.statement("polymorphic.optimizeTypes()");
+
+            if (Utils.isVoid(builder.findMethod().getReturnType())) {
+                builder.returnStatement();
+            } else {
+                builder.startReturn().string("result").end();
+            }
+
+            builder.end();
+
+            return builder.getRoot();
+        }
+
+        private CodeTree createExecuteBody(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData execType) {
+            TypeData primaryType = specialization.getReturnType().getTypeSystemType();
+
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+
+            List<ExecutableTypeData> primaryExecutes = findFunctionalExecutableType(specialization, execType.getEvaluatedCount());
+
+            if (primaryExecutes.contains(execType) || primaryExecutes.isEmpty()) {
+                builder.tree(createFunctionalExecute(builder, specialization, execType));
+            } else if (needsCastingExecuteMethod(execType, primaryType)) {
+                assert !primaryExecutes.isEmpty();
+                builder.tree(createCastingExecute(builder, specialization, execType, primaryExecutes.get(0)));
+            } else {
+                return null;
+            }
+
+            return builder.getRoot();
+        }
+
+        private CodeExecutableElement createExecutableTypeOverride(ExecutableTypeData execType, boolean evaluated) {
+            CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), execType.getMethod());
+
+            int i = 0;
+            for (VariableElement param : method.getParameters()) {
+                CodeVariableElement var = CodeVariableElement.clone(param);
+                ActualParameter actualParameter = execType.getParameters().get(i);
+                if (evaluated && actualParameter.getSpecification().isSignature()) {
+                    var.setName(valueNameEvaluated(actualParameter));
+                } else {
+                    var.setName(valueName(actualParameter));
+                }
+                method.getParameters().set(i, var);
+                i++;
+            }
+
+            method.getAnnotationMirrors().clear();
+            method.getModifiers().remove(Modifier.ABSTRACT);
+            return method;
+        }
+
+        private boolean needsCastingExecuteMethod(ExecutableTypeData execType, TypeData primaryType) {
+            if (execType.isAbstract()) {
+                return true;
+            }
+            if (Utils.isPrimitiveOrVoid(primaryType.getPrimitiveType()) && Utils.isPrimitiveOrVoid(execType.getType().getPrimitiveType())) {
+                return true;
+            }
+            if (execType.getType().isGeneric()) {
+                return true;
+            }
+            return false;
+        }
+
+        private List<ExecutableTypeData> findFunctionalExecutableType(SpecializationData specialization, int evaluatedCount) {
+            TypeData primaryType = specialization.getReturnType().getTypeSystemType();
+            List<ExecutableTypeData> otherTypes = specialization.getNode().getExecutableTypes(evaluatedCount);
+
+            List<ExecutableTypeData> filteredTypes = new ArrayList<>();
+            for (ExecutableTypeData compareType : otherTypes) {
+                if (!Utils.typeEquals(compareType.getType().getPrimitiveType(), primaryType.getPrimitiveType())) {
+                    continue;
+                }
+                filteredTypes.add(compareType);
+            }
+
+            // no direct matches found use generic where the type is Object
+            if (filteredTypes.isEmpty()) {
+                for (ExecutableTypeData compareType : otherTypes) {
+                    if (compareType.getType().isGeneric() && !compareType.hasUnexpectedValue(getContext())) {
+                        filteredTypes.add(compareType);
+                    }
+                }
+            }
+
+            if (filteredTypes.isEmpty()) {
+                for (ExecutableTypeData compareType : otherTypes) {
+                    if (compareType.getType().isGeneric()) {
+                        filteredTypes.add(compareType);
+                    }
+                }
+            }
+
+            return filteredTypes;
+        }
+
+        private CodeTree createFunctionalExecute(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData executable) {
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+            if (specialization.isUninitialized()) {
+                builder.tree(createDeoptimize(builder));
+            }
+
+            builder.tree(createExecuteChildren(builder, executable, specialization, specialization.getParameters(), null, false));
+
+            CodeTree executeNode = createExecute(builder, executable, specialization);
+
+            SpecializationData next = specialization.findNextSpecialization();
+            CodeTree returnSpecialized = null;
+            if (next != null) {
+                CodeTreeBuilder returnBuilder = new CodeTreeBuilder(builder);
+                returnBuilder.tree(createDeoptimize(builder));
+                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, next, null, "One of guards " + specialization.getGuards() + " failed"));
+                returnSpecialized = returnBuilder.getRoot();
+            }
+            builder.tree(createGuardAndCast(builder, null, specialization, specialization, true, executeNode, returnSpecialized, false, false));
+
+            return builder.getRoot();
+        }
+
+        private CodeTree createExecute(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData specialization) {
+            NodeData node = specialization.getNode();
+            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+            if (!specialization.getExceptions().isEmpty() || !specialization.getAssumptions().isEmpty()) {
+                builder.startTryBlock();
+            }
+
+            for (String assumption : specialization.getAssumptions()) {
+                builder.startStatement();
+                builder.string("this.").string(assumption).string(".check()");
+                builder.end();
+            }
+
+            CodeTreeBuilder returnBuilder = new CodeTreeBuilder(parent);
+            if (specialization.isPolymorphic()) {
+                int index = 0;
+                if (executable.hasUnexpectedValue(getContext())) {
+                    index = specialization.getNode().getPolymorphicSpecializations().indexOf(specialization);
+                }
+                returnBuilder.startCall("next0", "executeCached" + index);
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
+                returnBuilder.end();
+            } else if (specialization.isUninitialized()) {
+                returnBuilder.startCall("super", EXECUTE_SPECIALIZE_NAME);
+                returnBuilder.startGroup().string(nodeSpecializationClassName(specialization)).string(".class").end();
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
+                returnBuilder.doubleQuote("Uninitialized monomorphic");
+                returnBuilder.end();
+            } else if (specialization.getMethod() == null && !node.needsRewrites(context)) {
+                emitEncounteredSynthetic(builder, specialization);
+            } else if (specialization.isGeneric()) {
+                returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
+                returnBuilder.end();
+            } else {
+                returnBuilder.tree(createTemplateMethodCall(returnBuilder, null, specialization, specialization, null));
+            }
+
+            if (!returnBuilder.isEmpty()) {
+                builder.startReturn();
+
+                TypeData targetType = node.getTypeSystem().findTypeData(builder.findMethod().getReturnType());
+                TypeData sourceType = specialization.getReturnType().getTypeSystemType();
+
+                if (targetType == null || sourceType == null) {
+                    builder.tree(returnBuilder.getRoot());
+                } else if (sourceType.needsCastTo(getContext(), targetType)) {
+                    builder.tree(createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.expectTypeMethodName(targetType), returnBuilder.getRoot()));
+                } else {
+                    builder.tree(returnBuilder.getRoot());
+                }
+                builder.end();
+            }
+
+            if (!specialization.getExceptions().isEmpty()) {
+                for (SpecializationThrowsData exception : specialization.getExceptions()) {
+                    builder.end().startCatchBlock(exception.getJavaClass(), "ex");
+                    builder.tree(createDeoptimize(builder));
+                    builder.tree(createReturnExecuteAndSpecialize(parent, executable, exception.getTransitionTo(), null, "Thrown " + Utils.getSimpleName(exception.getJavaClass())));
+                }
+                builder.end();
+            }
+            if (!specialization.getAssumptions().isEmpty()) {
+                builder.end().startCatchBlock(getContext().getTruffleTypes().getInvalidAssumption(), "ex");
+                builder.tree(createReturnExecuteAndSpecialize(parent, executable, specialization.findNextSpecialization(), null, "Assumption failed"));
+                builder.end();
+            }
 
             return builder.getRoot();
         }

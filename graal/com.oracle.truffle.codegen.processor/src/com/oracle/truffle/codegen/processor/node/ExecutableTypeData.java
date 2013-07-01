@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.codegen.processor.node;
 
-import java.util.*;
-
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.codegen.processor.*;
@@ -35,8 +33,8 @@ public class ExecutableTypeData extends TemplateMethod {
     private final TypeSystemData typeSystem;
     private final TypeData type;
 
-    public ExecutableTypeData(TemplateMethod method, TypeSystemData typeSystem, TypeData type) {
-        super(method);
+    public ExecutableTypeData(TemplateMethod method, ExecutableElement executable, TypeSystemData typeSystem, TypeData type) {
+        super(method, executable);
         this.typeSystem = typeSystem;
         this.type = type;
     }
@@ -73,16 +71,6 @@ public class ExecutableTypeData extends TemplateMethod {
             }
         }
         return count;
-    }
-
-    public boolean hasGenericSignature() {
-        List<TypeData> types = getSignature();
-        for (TypeData typeData : types) {
-            if (!typeData.isGeneric()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override

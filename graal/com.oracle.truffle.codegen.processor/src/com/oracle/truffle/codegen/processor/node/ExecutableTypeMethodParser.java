@@ -81,7 +81,7 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
     @Override
     public ExecutableTypeData create(TemplateMethod method) {
         TypeData resolvedType = method.getReturnType().getTypeSystemType();
-        return new ExecutableTypeData(method, getNode().getTypeSystem(), resolvedType);
+        return new ExecutableTypeData(method, method.getMethod(), getNode().getTypeSystem(), resolvedType);
     }
 
     @Override

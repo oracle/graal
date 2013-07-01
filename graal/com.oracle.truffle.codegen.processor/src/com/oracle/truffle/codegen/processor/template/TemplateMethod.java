@@ -50,18 +50,22 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         this.method = method;
         this.markerAnnotation = markerAnnotation;
         this.returnType = returnType;
-        this.parameters = parameters;
-        this.id = id;
-
-        if (parameters != null) {
-            for (ActualParameter param : parameters) {
-                param.setMethod(this);
-            }
+        this.parameters = new ArrayList<>();
+        for (ActualParameter param : parameters) {
+            ActualParameter newParam = new ActualParameter(param);
+            this.parameters.add(newParam);
+            newParam.setMethod(this);
         }
+        this.id = id;
     }
 
     public TemplateMethod(TemplateMethod method) {
         this(method.id, method.template, method.specification, method.method, method.markerAnnotation, method.returnType, method.parameters);
+        getMessages().addAll(method.getMessages());
+    }
+
+    public TemplateMethod(TemplateMethod method, ExecutableElement executable) {
+        this(method.id, method.template, method.specification, executable, method.markerAnnotation, method.returnType, method.parameters);
         getMessages().addAll(method.getMessages());
     }
 
@@ -198,33 +202,32 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return prev;
     }
 
-    public TypeData getReturnSignature() {
-        return getReturnType().getTypeSystemType();
-    }
-
-    public List<TypeData> getSignature() {
-        List<TypeData> types = new ArrayList<>();
-        for (ActualParameter parameter : getParameters()) {
+    public Signature getSignature() {
+        Signature signature = new Signature();
+        for (ActualParameter parameter : getReturnTypeAndParameters()) {
             if (!parameter.getSpecification().isSignature()) {
                 continue;
             }
             TypeData typeData = parameter.getTypeSystemType();
             if (typeData != null) {
-                types.add(typeData);
+                signature.types.add(typeData);
             }
         }
-        return types;
+        return signature;
     }
 
-    public List<ActualParameter> getSignatureParameters() {
-        List<ActualParameter> types = new ArrayList<>();
-        for (ActualParameter parameter : getParameters()) {
+    public void updateSignature(Signature signature) {
+        assert signature.size() >= 1;
+        int signatureIndex = 0;
+        for (ActualParameter parameter : getReturnTypeAndParameters()) {
             if (!parameter.getSpecification().isSignature()) {
                 continue;
             }
-            types.add(parameter);
+            TypeData newType = signature.get(signatureIndex++);
+            if (!parameter.getTypeSystemType().equals(newType)) {
+                replaceParameter(parameter.getLocalName(), new ActualParameter(parameter, newType));
+            }
         }
-        return types;
     }
 
     @Override
@@ -266,14 +269,14 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             throw new IllegalStateException("Cannot compare two methods with different type systems.");
         }
 
-        List<TypeData> signature1 = getSignature();
-        List<TypeData> signature2 = compareMethod.getSignature();
+        Signature signature1 = getSignature();
+        Signature signature2 = compareMethod.getSignature();
         if (signature1.size() != signature2.size()) {
             return signature2.size() - signature1.size();
         }
 
         int result = 0;
-        for (int i = 0; i < signature1.size(); i++) {
+        for (int i = 1; i < signature1.size(); i++) {
             int typeResult = compareActualParameter(typeSystem, signature1.get(i), signature2.get(i));
             if (result == 0) {
                 result = typeResult;
@@ -282,11 +285,8 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
                 return 0;
             }
         }
-        if (result == 0) {
-            TypeData returnSignature1 = getReturnSignature();
-            TypeData returnSignature2 = compareMethod.getReturnSignature();
-
-            result = compareActualParameter(typeSystem, returnSignature1, returnSignature2);
+        if (result == 0 && signature1.size() > 0) {
+            result = compareActualParameter(typeSystem, signature1.get(0), signature2.get(0));
         }
 
         return result;
@@ -296,6 +296,98 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         int index1 = typeSystem.findType(t1);
         int index2 = typeSystem.findType(t2);
         return index1 - index2;
+    }
+
+    public static class Signature implements Iterable<TypeData>, Comparable<Signature> {
+
+        final List<TypeData> types;
+
+        public Signature() {
+            this.types = new ArrayList<>();
+        }
+
+        public Signature(List<TypeData> signature) {
+            this.types = signature;
+        }
+
+        @Override
+        public int hashCode() {
+            return types.hashCode();
+        }
+
+        public int compareTo(Signature o) {
+            if (o.size() != size()) {
+                return size() - o.size();
+            }
+
+            int typeSum = 0;
+            int otherTypeSum = 0;
+            for (int i = 0; i < types.size(); i++) {
+                TypeData type = types.get(i);
+                TypeData otherType = o.get(i);
+                typeSum += type.isGeneric() ? 1 : 0;
+                otherTypeSum += otherType.isGeneric() ? 1 : 0;
+            }
+
+            return typeSum - otherTypeSum;
+        }
+
+        public int size() {
+            return types.size();
+        }
+
+        public TypeData get(int index) {
+            return types.get(index);
+        }
+
+        public Signature combine(Signature genericSignature, Signature other) {
+            assert types.size() == other.types.size();
+            assert genericSignature.types.size() == other.types.size();
+
+            if (this.equals(other)) {
+                return this;
+            }
+
+            Signature signature = new Signature();
+            for (int i = 0; i < types.size(); i++) {
+                TypeData type1 = types.get(i);
+                TypeData type2 = other.types.get(i);
+                if (type1.equals(type2)) {
+                    signature.types.add(type1);
+                } else {
+                    signature.types.add(genericSignature.types.get(i));
+                }
+            }
+            return signature;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Signature) {
+                return ((Signature) obj).types.equals(types);
+            }
+            return super.equals(obj);
+        }
+
+        public Iterator<TypeData> iterator() {
+            return types.iterator();
+        }
+
+        @Override
+        public String toString() {
+            return types.toString();
+        }
+
+        public boolean hasAnyParameterMatch(Signature other) {
+            for (int i = 1; i < types.size(); i++) {
+                TypeData type1 = types.get(i);
+                TypeData type2 = other.types.get(i);
+                if (type1.equals(type2)) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
 }

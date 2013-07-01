@@ -36,6 +36,7 @@ import com.oracle.truffle.codegen.processor.*;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.Cardinality;
 import com.oracle.truffle.codegen.processor.node.NodeChildData.ExecutionKind;
 import com.oracle.truffle.codegen.processor.template.*;
+import com.oracle.truffle.codegen.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.codegen.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
@@ -152,13 +153,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         if (nodeType == null) {
-            if (nodeClass == null) {
-                // no node
-                return null;
-            } else {
-                // FIXME nodeType not specified error
-                return null;
-            }
+            return null;
         }
 
         Elements elementUtil = context.getEnvironment().getElementUtils();
@@ -206,16 +201,71 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (NodeData splittedNode : nodes) {
             finalizeSpecializations(elements, splittedNode);
             verifyNode(splittedNode, elements);
+            splittedNode.setPolymorphicSpecializations(createPolymorphicSpecializations(splittedNode));
+            assignShortCircuitsToSpecializations(splittedNode);
         }
 
         if (node.isNodeContainer()) {
             node.setDeclaredNodes(nodes);
             node.setSpecializationListeners(new ArrayList<SpecializationListenerData>());
             node.setSpecializations(new ArrayList<SpecializationData>());
-            return node;
-        } else {
-            return node;
         }
+        return node;
+    }
+
+    private List<SpecializationData> createPolymorphicSpecializations(NodeData node) {
+        if (!node.needsRewrites(context) || node.getPolymorphicDepth() <= 1) {
+            return Collections.emptyList();
+        }
+
+        Signature genericSignature = node.getGenericSpecialization().getSignature();
+        Set<Signature> signatures = new HashSet<>();
+
+        for (SpecializationData specialization1 : node.getSpecializations()) {
+            Signature signature = specialization1.getSignature();
+
+            for (SpecializationData specialization2 : node.getSpecializations()) {
+                if (specialization1 == specialization2) {
+                    continue;
+                }
+                signatures.add(signature.combine(genericSignature, specialization2.getSignature()));
+            }
+        }
+
+        while (true) {
+            List<Signature> newSignatures = new ArrayList<>();
+            for (Signature signature1 : signatures) {
+                for (Signature signature2 : signatures) {
+                    if (signature1 == signature2) {
+                        continue;
+                    }
+                    newSignatures.add(signature1.combine(genericSignature, signature2));
+                }
+            }
+            if (!signatures.addAll(newSignatures)) {
+                break;
+            }
+        }
+
+        List<Signature> sortedSignatures = new ArrayList<>(signatures);
+        Collections.sort(sortedSignatures);
+
+        List<SpecializationData> specializations = new ArrayList<>();
+        SpecializationData generic = node.getGenericSpecialization();
+        for (Signature signature : sortedSignatures) {
+            SpecializationData specialization = new SpecializationData(generic, false, false, true);
+            specialization.forceFrame(context.getTruffleTypes().getFrame());
+            specialization.setNode(node);
+            specialization.updateSignature(signature);
+
+            if (specialization.isGenericSpecialization(context)) {
+                specializations.add(0, specialization);
+            } else {
+                specializations.add(specialization);
+            }
+        }
+
+        return specializations;
     }
 
     private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> lookupTypes) {
@@ -234,8 +284,17 @@ public class NodeParser extends TemplateParser<NodeData> {
             return nodeData;
         }
 
-        List<String> assumptionsList = new ArrayList<>();
+        AnnotationMirror polymorphicMirror = findFirstAnnotation(lookupTypes, PolymorphicLimit.class);
+        if (polymorphicMirror != null) {
+            AnnotationValue limitValue = Utils.getAnnotationValue(polymorphicMirror, "value");
+            int polymorphicLimit = Utils.getAnnotationValue(Integer.class, polymorphicMirror, "value");
+            if (polymorphicLimit < 1) {
+                nodeData.addError(limitValue, "Invalid polymorphic limit %s.", polymorphicLimit);
+            }
+            nodeData.setPolymorphicDepth(polymorphicLimit);
+        }
 
+        List<String> assumptionsList = new ArrayList<>();
         for (int i = lookupTypes.size() - 1; i >= 0; i--) {
             TypeElement type = lookupTypes.get(i);
             AnnotationMirror assumptions = Utils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
@@ -543,34 +602,32 @@ public class NodeParser extends TemplateParser<NodeData> {
                 }
             }
             TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
-            genericSpecialization = new SpecializationData(genericMethod, true, false);
+            genericSpecialization = new SpecializationData(genericMethod, true, false, false);
 
             specializations.add(genericSpecialization);
         }
 
         if (genericSpecialization != null) {
-            if (genericSpecialization.isUseSpecializationsForGeneric()) {
-                for (ActualParameter parameter : genericSpecialization.getReturnTypeAndParameters()) {
-                    if (Utils.isObject(parameter.getType())) {
-                        continue;
+            for (ActualParameter parameter : genericSpecialization.getReturnTypeAndParameters()) {
+                if (Utils.isObject(parameter.getType())) {
+                    continue;
+                }
+                Set<String> types = new HashSet<>();
+                for (SpecializationData specialization : specializations) {
+                    ActualParameter actualParameter = specialization.findParameter(parameter.getLocalName());
+                    if (actualParameter != null) {
+                        types.add(Utils.getQualifiedName(actualParameter.getType()));
                     }
-                    Set<String> types = new HashSet<>();
-                    for (SpecializationData specialization : specializations) {
-                        ActualParameter actualParameter = specialization.findParameter(parameter.getLocalName());
-                        if (actualParameter != null) {
-                            types.add(Utils.getQualifiedName(actualParameter.getType()));
-                        }
-                    }
-                    if (types.size() > 1) {
-                        genericSpecialization.replaceParameter(parameter.getLocalName(), new ActualParameter(parameter, node.getTypeSystem().getGenericTypeData()));
-                    }
+                }
+                if (types.size() > 1) {
+                    genericSpecialization.replaceParameter(parameter.getLocalName(), new ActualParameter(parameter, node.getTypeSystem().getGenericTypeData()));
                 }
             }
             TemplateMethod uninializedMethod = new TemplateMethod("Uninitialized", node, genericSpecialization.getSpecification(), null, null, genericSpecialization.getReturnType(),
                             genericSpecialization.getParameters());
             // should not use messages from generic specialization
             uninializedMethod.getMessages().clear();
-            specializations.add(new SpecializationData(uninializedMethod, false, true));
+            specializations.add(new SpecializationData(uninializedMethod, false, true, false));
         }
 
         Collections.sort(specializations);
@@ -594,6 +651,35 @@ public class NodeParser extends TemplateParser<NodeData> {
             for (int i = 0; i < ids.size(); i++) {
                 needsId.get(i).setId(ids.get(i));
             }
+        }
+
+        // calculate reachability
+        int specializationCount = 0;
+        boolean reachable = true;
+        for (SpecializationData specialization : specializations) {
+            if (specialization.isUninitialized()) {
+                specialization.setReachable(true);
+                continue;
+            }
+            if (!reachable && specialization.getMethod() != null) {
+                specialization.addError("%s is not reachable.", specialization.isGeneric() ? "Generic" : "Specialization");
+            }
+            specialization.setReachable(reachable);
+            if (!specialization.hasRewrite(context)) {
+                reachable = false;
+            }
+            if (!specialization.isGeneric()) {
+                specializationCount++;
+            }
+        }
+
+        if (node.getPolymorphicDepth() < 0) {
+            node.setPolymorphicDepth(specializationCount - 1);
+        }
+
+        // reduce polymorphicness if generic is not reachable
+        if (node.getGenericSpecialization() != null && !node.getGenericSpecialization().isReachable()) {
+            node.setPolymorphicDepth(1);
         }
     }
 
@@ -653,7 +739,11 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         NodeChildData[] fields = node.filterFields(ExecutionKind.SHORT_CIRCUIT);
-        for (SpecializationData specialization : node.getSpecializations()) {
+        List<SpecializationData> specializations = new ArrayList<>();
+        specializations.addAll(node.getSpecializations());
+        specializations.addAll(node.getPolymorphicSpecializations());
+
+        for (SpecializationData specialization : specializations) {
             List<ShortCircuitData> assignedShortCuts = new ArrayList<>(fields.length);
 
             for (int i = 0; i < fields.length; i++) {
@@ -820,8 +910,6 @@ public class NodeParser extends TemplateParser<NodeData> {
         verifySpecializationOrder(nodeData);
 
         verifyMissingAbstractMethods(nodeData, elements);
-
-        assignShortCircuitsToSpecializations(nodeData);
 
         verifyConstructors(nodeData);
 

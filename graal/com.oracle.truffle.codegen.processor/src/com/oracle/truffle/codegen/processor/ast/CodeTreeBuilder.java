@@ -75,6 +75,10 @@ public class CodeTreeBuilder {
         return new CodeTreeBuilder(null).string(s).getTree();
     }
 
+    public static CodeTree singleType(TypeMirror s) {
+        return new CodeTreeBuilder(null).type(s).getTree();
+    }
+
     private CodeTreeBuilder push(CodeTreeKind kind) {
         return push(new BuilderCodeTree(kind, null, null));
     }
@@ -472,6 +476,10 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    public CodeTreeBuilder declaration(TypeMirror type, String name, String init) {
+        return declaration(type, name, singleString(init));
+    }
+
     public CodeTreeBuilder declaration(TypeMirror type, String name, CodeTree init) {
         if (Utils.isVoid(type)) {
             startStatement();
@@ -537,6 +545,11 @@ public class CodeTreeBuilder {
         return root;
     }
 
+    public CodeTreeBuilder cast(String baseClassName) {
+        string("(").string(baseClassName).string(") ");
+        return this;
+    }
+
     public CodeTreeBuilder cast(TypeMirror type, CodeTree content) {
         if (Utils.isVoid(type)) {
             tree(content);
@@ -577,15 +590,21 @@ public class CodeTreeBuilder {
         return startReturn().string("true").end();
     }
 
+    public CodeTreeBuilder instanceOf(CodeTree var, CodeTree type) {
+        tree(var).string(" instanceof ").tree(type);
+        return this;
+    }
+
+    public CodeTreeBuilder instanceOf(String var, String type) {
+        return instanceOf(singleString(var), singleString(type));
+    }
+
     public CodeTreeBuilder instanceOf(String var, TypeMirror type) {
-        string(var);
         TypeElement element = Utils.fromTypeMirror(type);
         if (element == null) {
             throw new IllegalArgumentException("Cannot call instanceof for a non supported type: " + type.getKind());
         }
-
-        string(" instanceof ").type(type);
-        return this;
+        return instanceOf(singleString(var), singleType(type));
     }
 
     public CodeTreeBuilder defaultValue(TypeMirror mirror) {

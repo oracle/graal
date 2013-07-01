@@ -62,8 +62,7 @@ public class GenericParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     public SpecializationData create(TemplateMethod method) {
-        SpecializationData data = new SpecializationData(method, true, false);
-        data.setUseSpecializationsForGeneric(Utils.getAnnotationValueBoolean(data.getMarkerAnnotation(), "useSpecializations"));
+        SpecializationData data = new SpecializationData(method, true, false, false);
         return data;
     }
 

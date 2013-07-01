@@ -46,12 +46,14 @@ public class NodeData extends Template {
     private ParameterSpec instanceParameterSpec;
 
     private List<SpecializationData> specializations;
+    private List<SpecializationData> polymorphicSpecializations;
     private List<SpecializationListenerData> specializationListeners;
     private Map<Integer, List<ExecutableTypeData>> executableTypes;
     private List<ShortCircuitData> shortCircuits;
     private List<String> assumptions;
     private List<CreateCastData> casts;
 
+    private int polymorphicDepth = -1;
     private String shortName;
 
     public NodeData(TypeElement type, String id) {
@@ -73,6 +75,14 @@ public class NodeData extends Template {
         this.fields = splitSource.fields;
         this.children = splitSource.children;
         this.assumptions = splitSource.assumptions;
+    }
+
+    public int getPolymorphicDepth() {
+        return polymorphicDepth;
+    }
+
+    void setPolymorphicDepth(int polymorphicDepth) {
+        this.polymorphicDepth = polymorphicDepth;
     }
 
     public List<CreateCastData> getCasts() {
@@ -272,6 +282,10 @@ public class NodeData extends Template {
                 return type;
             }
         }
+
+        for (ExecutableTypeData type : types) {
+            return type;
+        }
         return null;
     }
 
@@ -358,6 +372,15 @@ public class NodeData extends Template {
         return null;
     }
 
+    public SpecializationData getUninitializedSpecialization() {
+        for (SpecializationData specialization : specializations) {
+            if (specialization.isUninitialized()) {
+                return specialization;
+            }
+        }
+        return null;
+    }
+
     @Override
     public TypeSystemData getTypeSystem() {
         return typeSystem;
@@ -381,6 +404,8 @@ public class NodeData extends Template {
         dumpProperty(builder, indent, "fields", getChildren());
         dumpProperty(builder, indent, "executableTypes", getExecutableTypes());
         dumpProperty(builder, indent, "specializations", getSpecializations());
+        dumpProperty(builder, indent, "polymorphicDepth", getPolymorphicDepth());
+        dumpProperty(builder, indent, "polymorphic", getPolymorphicSpecializations());
         dumpProperty(builder, indent, "assumptions", getAssumptions());
         dumpProperty(builder, indent, "casts", getCasts());
         dumpProperty(builder, indent, "messages", collectMessages());
@@ -486,6 +511,14 @@ public class NodeData extends Template {
                 specialization.setNode(this);
             }
         }
+    }
+
+    void setPolymorphicSpecializations(List<SpecializationData> polymorphicSpecializations) {
+        this.polymorphicSpecializations = polymorphicSpecializations;
+    }
+
+    public List<SpecializationData> getPolymorphicSpecializations() {
+        return polymorphicSpecializations;
     }
 
     void setSpecializationListeners(List<SpecializationListenerData> specializationListeners) {

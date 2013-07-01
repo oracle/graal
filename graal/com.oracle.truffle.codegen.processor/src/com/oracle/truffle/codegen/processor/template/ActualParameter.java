@@ -60,6 +60,15 @@ public class ActualParameter {
         this(parameter.specification, otherType, parameter.index, parameter.implicit);
     }
 
+    public ActualParameter(ActualParameter parameter) {
+        this.specification = parameter.specification;
+        this.type = parameter.type;
+        this.typeSystemType = parameter.typeSystemType;
+        this.index = parameter.index;
+        this.implicit = parameter.implicit;
+        this.localName = parameter.localName;
+    }
+
     public boolean isImplicit() {
         return implicit;
     }
