@@ -44,14 +44,13 @@ public interface NodeFactory<T> {
     T createNode(Object... arguments);
 
     /**
-     * Instantiates a new specialized variant of the node. This is an optional method and throws an
+     * Instantiates a new generic variant of the node. This is an optional method and throws an
      * {@link UnsupportedOperationException} if not supported.
      * 
      * @param thisNode the current node
-     * @param specializionClasses
      * @return the specialized node
      */
-    T createNodeSpecialized(T thisNode, Class<?>... specializionClasses);
+    T createNodeGeneric(T thisNode);
 
     /**
      * Returns the node class that will get created by {@link #createNode(Object...)}. The node
