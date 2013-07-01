@@ -31,7 +31,7 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 public class TruffleOptions {
 
     /** Enables/disables the rewriting of traces in the truffle runtime to stdout. */
-    public static final boolean TraceRewrites = true;
+    public static final boolean TraceRewrites = false;
 
     /**
      * Filters rewrites that do not contain the given string in the qualified name of the source or
