@@ -31,34 +31,21 @@ import com.oracle.graal.nodes.type.*;
  * The {@code DynamicNewArrayNode} is used for allocation of arrays when the type is not a
  * compile-time constant.
  */
-public class DynamicNewArrayNode extends FixedWithNextNode implements Canonicalizable, Lowerable, ArrayLengthProvider {
+public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonicalizable {
 
     @Input private ValueNode elementType;
-    @Input private ValueNode length;
-    private final boolean fillContents;
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length) {
         this(elementType, length, true);
     }
 
     public DynamicNewArrayNode(ValueNode elementType, ValueNode length, boolean fillContents) {
-        super(StampFactory.objectNonNull());
-        this.length = length;
+        super(StampFactory.objectNonNull(), length, fillContents);
         this.elementType = elementType;
-        this.fillContents = fillContents;
     }
 
     public ValueNode getElementType() {
         return elementType;
-    }
-
-    @Override
-    public ValueNode length() {
-        return length;
-    }
-
-    public boolean fillContents() {
-        return fillContents;
     }
 
     @Override
@@ -67,15 +54,10 @@ public class DynamicNewArrayNode extends FixedWithNextNode implements Canonicali
             Class<?> elementClass = (Class<?>) elementType.asConstant().asObject();
             if (elementClass != null && !(elementClass.equals(void.class))) {
                 ResolvedJavaType javaType = tool.runtime().lookupJavaType(elementClass);
-                return graph().add(new NewArrayNode(javaType, length, fillContents));
+                return graph().add(new NewArrayNode(javaType, length(), fillContents()));
             }
         }
         return this;
-    }
-
-    @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
     }
 
     @NodeIntrinsic

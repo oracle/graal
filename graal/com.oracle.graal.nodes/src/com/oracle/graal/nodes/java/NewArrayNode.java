@@ -23,25 +23,18 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * The {@code NewArrayNode} is used for all 1-dimensional array allocations.
+ * The {@code NewArrayNode} is used for all array allocations where the element type is know at
+ * compile time.
  */
-public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, Lowerable, VirtualizableAllocation, ArrayLengthProvider, Node.IterableNodeType {
+public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
-    @Input private ValueNode length;
     private final ResolvedJavaType elementType;
-    private final boolean fillContents;
-
-    @Override
-    public ValueNode length() {
-        return length;
-    }
 
     /**
      * Constructs a new NewArrayNode.
@@ -52,25 +45,8 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      */
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        super(StampFactory.exactNonNull(elementType.getArrayClass()));
-        this.length = length;
+        super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
         this.elementType = elementType;
-        this.fillContents = fillContents;
-    }
-
-    /**
-     * @return <code>true</code> if the elements of the array will be initialized.
-     */
-    public boolean fillContents() {
-        return fillContents;
-    }
-
-    /**
-     * The list of node which produce input for this instruction.
-     */
-    public ValueNode dimension(int index) {
-        assert index == 0;
-        return length();
     }
 
     /**
@@ -80,27 +56,6 @@ public class NewArrayNode extends FixedWithNextNode implements Canonicalizable, 
      */
     public ResolvedJavaType elementType() {
         return elementType;
-    }
-
-    /**
-     * The rank of the array allocated by this node, i.e. how many array dimensions.
-     */
-    public int dimensionCount() {
-        return 1;
-    }
-
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty() && length.integerStamp().isPositive()) {
-            return null;
-        } else {
-            return this;
-        }
-    }
-
-    @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
     }
 
     @Override
