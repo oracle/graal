@@ -33,9 +33,10 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.node.NodeChildData.*;
+import com.oracle.truffle.dsl.processor.node.NodeChildData.Cardinality;
+import com.oracle.truffle.dsl.processor.node.NodeChildData.ExecutionKind;
 import com.oracle.truffle.dsl.processor.template.*;
-import com.oracle.truffle.dsl.processor.template.TemplateMethod.*;
+import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
@@ -200,7 +201,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         for (NodeData splittedNode : nodes) {
             finalizeSpecializations(elements, splittedNode);
             verifyNode(splittedNode, elements);
-            splittedNode.setPolymorphicSpecializations(createPolymorphicSpecializations(splittedNode));
+            createPolymorphicSpecializations(splittedNode);
             assignShortCircuitsToSpecializations(splittedNode);
         }
 
@@ -212,13 +213,14 @@ public class NodeParser extends TemplateParser<NodeData> {
         return node;
     }
 
-    private List<SpecializationData> createPolymorphicSpecializations(NodeData node) {
+    private void createPolymorphicSpecializations(NodeData node) {
         if (!node.needsRewrites(context) || node.getPolymorphicDepth() <= 1) {
-            return Collections.emptyList();
+            node.setPolymorphicSpecializations(Collections.<SpecializationData> emptyList());
+            return;
         }
 
         Signature genericSignature = node.getGenericSpecialization().getSignature();
-        Set<Signature> signatures = new HashSet<>();
+        Set<Signature> signatures = new TreeSet<>();
 
         for (SpecializationData specialization1 : node.getSpecializations()) {
             Signature signature = specialization1.getSignature();
@@ -247,8 +249,8 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         List<Signature> sortedSignatures = new ArrayList<>(signatures);
-        Collections.sort(sortedSignatures);
 
+        SpecializationData polymorphicGeneric = null;
         List<SpecializationData> specializations = new ArrayList<>();
         SpecializationData generic = node.getGenericSpecialization();
         for (Signature signature : sortedSignatures) {
@@ -256,15 +258,15 @@ public class NodeParser extends TemplateParser<NodeData> {
             specialization.forceFrame(context.getTruffleTypes().getFrame());
             specialization.setNode(node);
             specialization.updateSignature(signature);
+            specializations.add(specialization);
 
-            if (specialization.isGenericSpecialization(context)) {
-                specializations.add(0, specialization);
-            } else {
-                specializations.add(specialization);
+            if (genericSignature.equals(signature)) {
+                polymorphicGeneric = specialization;
             }
         }
 
-        return specializations;
+        node.setGenericPolymoprhicSpecialization(polymorphicGeneric);
+        node.setPolymorphicSpecializations(specializations);
     }
 
     private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> lookupTypes) {
@@ -1071,7 +1073,7 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     private static Map<Integer, List<ExecutableTypeData>> groupExecutableTypes(List<ExecutableTypeData> executableTypes) {
-        Map<Integer, List<ExecutableTypeData>> groupedTypes = new HashMap<>();
+        Map<Integer, List<ExecutableTypeData>> groupedTypes = new TreeMap<>();
         for (ExecutableTypeData type : executableTypes) {
             int evaluatedCount = type.getEvaluatedCount();
 

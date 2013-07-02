@@ -76,7 +76,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         }
 
         TypeMirror genericType = context.getType(Object.class);
-        TypeData voidType = new TypeData(typeSystem, null, context.getType(void.class), context.getType(Void.class));
+        TypeData voidType = new TypeData(typeSystem, typeSystem.getTypes().size(), null, context.getType(void.class), context.getType(Void.class));
 
         typeSystem.setGenericType(genericType);
         typeSystem.setVoidType(voidType);
@@ -151,9 +151,10 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         final AnnotationValue annotationValue = Utils.getAnnotationValue(typeSystem.getTemplateTypeAnnotation(), "value");
         final TypeMirror objectType = context.getType(Object.class);
 
+        int index = 0;
         for (TypeMirror primitiveType : typeMirrors) {
             TypeMirror boxedType = Utils.boxType(context, primitiveType);
-            TypeData typeData = new TypeData(typeSystem, annotationValue, primitiveType, boxedType);
+            TypeData typeData = new TypeData(typeSystem, index, annotationValue, primitiveType, boxedType);
 
             if (isPrimitiveWrapper(primitiveType)) {
                 typeData.addError("Types must not contain primitive wrapper types.");
@@ -164,11 +165,12 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
             }
 
             types.add(typeData);
+            index++;
         }
 
         verifyTypeOrder(types);
 
-        types.add(new TypeData(typeSystem, annotationValue, objectType, objectType));
+        types.add(new TypeData(typeSystem, index, annotationValue, objectType, objectType));
 
         return types;
     }

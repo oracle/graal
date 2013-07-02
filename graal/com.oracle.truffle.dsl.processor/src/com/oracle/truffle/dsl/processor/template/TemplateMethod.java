@@ -28,6 +28,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 /**
@@ -315,29 +316,34 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             return types.hashCode();
         }
 
-        public int compareTo(Signature o) {
-            if (o.size() != size()) {
-                return size() - o.size();
-            }
-
-            int typeSum = 0;
-            int otherTypeSum = 0;
-            for (int i = 0; i < types.size(); i++) {
-                TypeData type = types.get(i);
-                TypeData otherType = o.get(i);
-                typeSum += type.isGeneric() ? 1 : 0;
-                otherTypeSum += otherType.isGeneric() ? 1 : 0;
-            }
-
-            return typeSum - otherTypeSum;
-        }
-
         public int size() {
             return types.size();
         }
 
         public TypeData get(int index) {
             return types.get(index);
+        }
+
+        public int compareTo(Signature other) {
+            if (this == other) {
+                return 0;
+            } else if (types.size() != other.types.size()) {
+                return types.size() - other.types.size();
+            } else if (types.isEmpty()) {
+                return 0;
+            }
+
+            for (int i = 0; i < types.size(); i++) {
+                TypeData type1 = types.get(i);
+                TypeData type2 = other.types.get(i);
+
+                int comparison = type1.compareTo(type2);
+                if (comparison != 0) {
+                    return comparison;
+                }
+            }
+
+            return 0;
         }
 
         public Signature combine(Signature genericSignature, Signature other) {
@@ -387,6 +393,25 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
                 }
             }
             return false;
+        }
+
+        public boolean isCompatibleTo(Signature signature) {
+            if (size() != signature.size()) {
+                return false;
+            }
+
+            for (int i = 0; i < size(); i++) {
+                TypeData o1 = get(i);
+                TypeData o2 = signature.get(i);
+                if (o1.equals(o2)) {
+                    continue;
+                } else if (o2.isGeneric()) {
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

@@ -30,17 +30,19 @@ import javax.lang.model.type.*;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.template.*;
 
-public class TypeData extends MessageContainer {
+public class TypeData extends MessageContainer implements Comparable<TypeData> {
 
     private final TypeSystemData typeSystem;
     private final AnnotationValue annotationValue;
     private final TypeMirror primitiveType;
     private final TypeMirror boxedType;
 
+    private final int index;
     private final List<TypeCastData> typeCasts = new ArrayList<>();
     private final List<TypeCheckData> typeChecks = new ArrayList<>();
 
-    public TypeData(TypeSystemData typeSystem, AnnotationValue value, TypeMirror primitiveType, TypeMirror boxedType) {
+    public TypeData(TypeSystemData typeSystem, int index, AnnotationValue value, TypeMirror primitiveType, TypeMirror boxedType) {
+        this.index = index;
         this.typeSystem = typeSystem;
         this.annotationValue = value;
         this.primitiveType = primitiveType;
@@ -99,6 +101,13 @@ public class TypeData extends MessageContainer {
             return false;
         }
         return Utils.typeEquals(boxedType, getTypeSystem().getVoidType().getBoxedType());
+    }
+
+    public int compareTo(TypeData o) {
+        if (this.equals(o)) {
+            return 0;
+        }
+        return index - o.index;
     }
 
     @Override
