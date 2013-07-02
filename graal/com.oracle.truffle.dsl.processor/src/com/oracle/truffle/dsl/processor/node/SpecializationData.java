@@ -107,7 +107,8 @@ public class SpecializationData extends TemplateMethod {
             if (child == null) {
                 continue;
             }
-            if (!parameter.getTypeSystemType().isGeneric()) {
+            ActualParameter genericParameter = getNode().getGenericSpecialization().findParameter(parameter.getLocalName());
+            if (!parameter.getTypeSystemType().equals(genericParameter.getTypeSystemType())) {
                 return false;
             }
         }
@@ -221,6 +222,16 @@ public class SpecializationData extends TemplateMethod {
 
     void setAssumptions(List<String> assumptions) {
         this.assumptions = assumptions;
+    }
+
+    public SpecializationData findPreviousSpecialization() {
+        List<SpecializationData> specializations = node.getSpecializations();
+        for (int i = 0; i < specializations.size() - 1; i++) {
+            if (specializations.get(i) == this && i > 0) {
+                return specializations.get(i - 1);
+            }
+        }
+        return null;
     }
 
     public SpecializationData findNextSpecialization() {

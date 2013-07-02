@@ -28,7 +28,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 /**
@@ -141,7 +140,7 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     public List<ActualParameter> findParameters(ParameterSpec spec) {
         List<ActualParameter> foundParameters = new ArrayList<>();
         for (ActualParameter param : getReturnTypeAndParameters()) {
-            if (param.getSpecification().equals(spec)) {
+            if (param.getSpecification().getName().equals(spec.getName())) {
                 foundParameters.add(param);
             }
         }

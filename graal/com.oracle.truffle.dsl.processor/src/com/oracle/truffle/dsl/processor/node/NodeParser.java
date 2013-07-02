@@ -255,6 +255,14 @@ public class NodeParser extends TemplateParser<NodeData> {
         SpecializationData generic = node.getGenericSpecialization();
         for (Signature signature : sortedSignatures) {
             SpecializationData specialization = new SpecializationData(generic, false, false, true);
+
+            for (Iterator<ActualParameter> iterator = specialization.getParameters().iterator(); iterator.hasNext();) {
+                ActualParameter param = iterator.next();
+                if (param.getSpecification().isLocal()) {
+                    iterator.remove();
+                }
+            }
+
             specialization.forceFrame(context.getTruffleTypes().getFrame());
             specialization.setNode(node);
             specialization.updateSignature(signature);
@@ -265,7 +273,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
         }
 
-        node.setGenericPolymoprhicSpecialization(polymorphicGeneric);
+        node.setGenericPolymorphicSpecialization(polymorphicGeneric);
         node.setPolymorphicSpecializations(specializations);
     }
 
@@ -575,36 +583,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         } else if (generics.size() == 1) {
             genericSpecialization = generics.get(0);
         } else if (node.needsRewrites(context)) {
-            SpecializationData specialization = specializations.get(0);
-            GenericParser parser = new GenericParser(context, node);
-            MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, true, null);
-
-            ExecutableTypeData anyGenericReturnType = node.findAnyGenericExecutableType(context, 0);
-            assert anyGenericReturnType != null;
-
-            ActualParameter returnType = new ActualParameter(specification.getReturnType(), anyGenericReturnType.getType(), 0, false);
-            List<ActualParameter> parameters = new ArrayList<>();
-            for (ActualParameter specializationParameter : specialization.getParameters()) {
-                ParameterSpec parameterSpec = specification.findParameterSpec(specializationParameter.getSpecification().getName());
-                NodeChildData child = node.findChild(parameterSpec.getName());
-                TypeData actualType;
-                if (child == null) {
-                    actualType = specializationParameter.getTypeSystemType();
-                } else {
-                    ExecutableTypeData paramType = child.findAnyGenericExecutableType(context);
-                    assert paramType != null;
-                    actualType = paramType.getType();
-                }
-
-                if (actualType != null) {
-                    parameters.add(new ActualParameter(parameterSpec, actualType, specializationParameter.getIndex(), specializationParameter.isImplicit()));
-                } else {
-                    parameters.add(new ActualParameter(parameterSpec, specializationParameter.getType(), specializationParameter.getIndex(), specializationParameter.isImplicit()));
-                }
-            }
-            TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
-            genericSpecialization = new SpecializationData(genericMethod, true, false, false);
-
+            genericSpecialization = createGenericSpecialization(node, specializations);
             specializations.add(genericSpecialization);
         }
 
@@ -682,6 +661,57 @@ public class NodeParser extends TemplateParser<NodeData> {
         if (node.getGenericSpecialization() != null && !node.getGenericSpecialization().isReachable()) {
             node.setPolymorphicDepth(1);
         }
+    }
+
+    private SpecializationData createGenericSpecialization(final NodeData node, List<SpecializationData> specializations) {
+        SpecializationData genericSpecialization;
+        SpecializationData specialization = specializations.get(0);
+        GenericParser parser = new GenericParser(context, node);
+        MethodSpec specification = parser.createDefaultMethodSpec(specialization.getMethod(), null, true, null);
+
+        List<ActualParameter> parameters = new ArrayList<>();
+        for (ActualParameter parameter : specialization.getReturnTypeAndParameters()) {
+            if (!parameter.getSpecification().isSignature()) {
+                parameters.add(new ActualParameter(parameter));
+                continue;
+            }
+            NodeData childNode = node;
+            NodeChildData child = node.findChild(parameter.getSpecification().getName());
+            if (child != null) {
+                childNode = child.getNodeData();
+            }
+
+            TypeData genericType = null;
+
+            Set<TypeData> types = new HashSet<>();
+            for (SpecializationData otherSpecialization : specializations) {
+                ActualParameter otherParameter = otherSpecialization.findParameter(parameter.getLocalName());
+                if (otherParameter != null) {
+                    types.add(otherParameter.getTypeSystemType());
+                }
+            }
+
+            assert !types.isEmpty();
+
+            if (types.size() == 1) {
+                ExecutableTypeData executable = childNode.findExecutableType(types.iterator().next(), 0);
+                if (executable != null && !executable.hasUnexpectedValue(context)) {
+                    genericType = types.iterator().next();
+                } else {
+                    genericType = childNode.findAnyGenericExecutableType(context, 0).getType();
+                }
+            } else {
+                genericType = childNode.findAnyGenericExecutableType(context, 0).getType();
+            }
+
+            parameters.add(new ActualParameter(parameter, genericType));
+        }
+        ActualParameter returnType = parameters.get(0);
+        parameters = parameters.subList(1, parameters.size());
+
+        TemplateMethod genericMethod = new TemplateMethod("Generic", node, specification, null, null, returnType, parameters);
+        genericSpecialization = new SpecializationData(genericMethod, true, false, false);
+        return genericSpecialization;
     }
 
     private void assignShortCircuitsToSpecializations(NodeData node) {
