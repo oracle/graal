@@ -73,10 +73,15 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
     private void virtualizeNonVirtualComparison(State state, ValueNode other, VirtualizerTool tool) {
         if (!state.getVirtualObject().hasIdentity() && state.getVirtualObject().entryKind(0) == Kind.Boolean) {
             if (other.isConstant()) {
-                int expectedValue = ((Boolean) other.asConstant().asObject()) ? 1 : 0;
-                IntegerEqualsNode equals = new IntegerEqualsNode(state.getEntry(0), ConstantNode.forInt(expectedValue, graph()));
-                tool.addNode(equals);
-                tool.replaceWithValue(equals);
+                Object otherValue = other.asConstant().asObject();
+                if (otherValue == Boolean.TRUE || otherValue == Boolean.FALSE) {
+                    int expectedValue = (otherValue == Boolean.TRUE) ? 1 : 0;
+                    IntegerEqualsNode equals = new IntegerEqualsNode(state.getEntry(0), ConstantNode.forInt(expectedValue, graph()));
+                    tool.addNode(equals);
+                    tool.replaceWithValue(equals);
+                } else {
+                    tool.replaceWithValue(LogicConstantNode.contradiction(graph()));
+                }
             }
         } else {
             // one of them is virtual: they can never be the same objects
