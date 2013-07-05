@@ -49,7 +49,7 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
     }
 
     protected JavaTypeProfile profile(Class... types) {
-        return profile(TriState.UNKNOWN, types);
+        return profile(TriState.FALSE, types);
     }
 
     protected JavaTypeProfile profile(TriState nullSeen, Class... types) {
