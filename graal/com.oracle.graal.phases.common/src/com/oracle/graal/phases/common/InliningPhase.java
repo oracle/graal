@@ -423,7 +423,7 @@ public class InliningPhase extends Phase {
         }
     }
 
-    private static class GreedyInliningPolicy extends AbstractInliningPolicy {
+    private static final class GreedyInliningPolicy extends AbstractInliningPolicy {
 
         public GreedyInliningPolicy(Replacements replacements, Map<Invoke, Double> hints) {
             super(replacements, hints);
@@ -477,6 +477,20 @@ public class InliningPhase extends Phase {
 
             return InliningUtil.logNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes,
                             maximumNodes);
+        }
+    }
+
+    public static final class InlineEverythingPolicy implements InliningPolicy {
+
+        public boolean continueInlining(StructuredGraph graph) {
+            if (graph.getNodeCount() >= MaximumDesiredSize.getValue()) {
+                throw new BailoutException("Inline all calls failed. The resulting graph is too large.");
+            }
+            return true;
+        }
+
+        public boolean isWorthInlining(InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed) {
+            return true;
         }
     }
 
