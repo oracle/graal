@@ -46,6 +46,9 @@ public abstract class Stamp {
      */
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
+    /**
+     * Determines if the stamped value is guaranteed to be non-null.
+     */
     public boolean nonNull() {
         return false;
     }
