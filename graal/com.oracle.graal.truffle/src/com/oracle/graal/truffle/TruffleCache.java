@@ -147,7 +147,7 @@ public final class TruffleCache {
         PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(true));
         partialEscapePhase.apply(newGraph, context);
 
-        if (newGraph.getNodeCount() > maxNodes && TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+        if (newGraph.getNodeCount() > maxNodes && (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue() || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue())) {
             TTY.println(String.format("[truffle] PERFORMANCE WARNING: method %s got too large with %d nodes.", newGraph.method(), newGraph.getNodeCount()));
         }
     }
