@@ -90,7 +90,11 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad, @ConstantParameter boolean trace) {
+    public static void g1PreWriteBarrier(Object object, Object expectedObject, Object location, @ConstantParameter boolean doLoad, @ConstantParameter boolean nullCheck,
+                    @ConstantParameter boolean trace) {
+        if (nullCheck && object == null) {
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
+        }
         Word thread = thread();
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         verifyOop(fixedObject);
@@ -323,6 +327,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("expectedObject", writeBarrierPre.getExpectedObject());
             args.add("location", writeBarrierPre.getLocation());
             args.addConst("doLoad", writeBarrierPre.doLoad());
+            args.addConst("nullCheck", !writeBarrierPre.getObject().stamp().nonNull());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, args);
         }
