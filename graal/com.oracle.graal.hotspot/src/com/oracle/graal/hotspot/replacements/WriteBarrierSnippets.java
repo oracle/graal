@@ -42,6 +42,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
+import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 public class WriteBarrierSnippets implements Snippets {
 
@@ -110,10 +111,10 @@ public class WriteBarrierSnippets implements Snippets {
             log(trace, "[%d] G1-Pre Thread %p DoLoad %d\n", gcCycle, thread.rawValue(), doLoad ? 1L : 0L);
         }
         // If the concurrent marker is enabled, the barrier is issued.
-        if (markingValue != (byte) 0) {
+        if (probability(NOT_LIKELY_PROBABILITY, markingValue != (byte) 0)) {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
-            if (doLoad) {
+            if (probability(LIKELY_PROBABILITY, doLoad)) {
                 previousOop = (Word) Word.fromObject(field.readObjectCompressed(0));
                 if (trace) {
                     if (previousOop.notEqual(Word.zero())) {
@@ -123,10 +124,10 @@ public class WriteBarrierSnippets implements Snippets {
                 }
             }
             // If the previous value is null the barrier should not be issued.
-            if (previousOop.notEqual(0)) {
+            if (probability(FREQUENT_PROBABILITY, previousOop.notEqual(0))) {
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
-                if (indexValue.notEqual(0)) {
+                if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
                     Word nextIndex = indexValue.subtract(wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
                     // Log the object to be marked as well as update the SATB's buffer next index.
@@ -179,17 +180,17 @@ public class WriteBarrierSnippets implements Snippets {
         }
         Word cardAddress = cardBase.add(displacement);
 
-        if (xorResult.notEqual(0)) {
+        if (probability(LIKELY_PROBABILITY, xorResult.notEqual(0))) {
             // If the written value is not null continue with the barrier addition.
-            if (writtenValue.notEqual(0)) {
+            if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 byte cardByte = cardAddress.readByte(0);
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
-                if (cardByte != (byte) 0) {
+                if (probability(LIKELY_PROBABILITY, cardByte != (byte) 0)) {
                     log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                     cardAddress.writeByte(0, (byte) 0);
                     // If the thread local card queue is full, issue a native call which will
                     // initialize a new one and add the card entry.
-                    if (indexValue.notEqual(0)) {
+                    if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
                         Word nextIndex = indexValue.subtract(wordSize());
                         Word logAddress = bufferAddress.add(nextIndex);
                         // Log the object to be scanned as well as update
