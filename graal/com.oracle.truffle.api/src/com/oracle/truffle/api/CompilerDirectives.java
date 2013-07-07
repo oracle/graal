@@ -126,4 +126,16 @@ public class CompilerDirectives {
     @Target({ElementType.METHOD})
     public @interface Unsafe {
     }
+
+    /**
+     * Treats the given value as a value of the given class. The class must evaluate to a constant.
+     * 
+     * @param value the value that is known to have the specified type
+     * @param clazz the specified type of the value
+     * @return the value
+     */
+    @Unsafe
+    public static Object unsafeCast(Object value, Class clazz) {
+        return value;
+    }
 }
