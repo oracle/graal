@@ -68,41 +68,8 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                     return ConstantNode.forObject(value, metaAccessProvider, node.graph());
                 }
             }
-        } else if (node instanceof UnsafeLoadNode) {
-            UnsafeLoadNode unsafeLoadNode = (UnsafeLoadNode) node;
-            if (unsafeLoadNode.offset().isConstant()) {
-                long offset = unsafeLoadNode.offset().asConstant().asLong() + unsafeLoadNode.displacement();
-                ResolvedJavaType type = unsafeLoadNode.object().objectStamp().type();
-                ResolvedJavaField field = recursiveFindFieldWithOffset(type, offset);
-                if (field != null) {
-                    return node.graph().add(new LoadFieldNode(unsafeLoadNode.object(), field));
-                }
-            }
-        } else if (node instanceof UnsafeStoreNode) {
-            UnsafeStoreNode unsafeStoreNode = (UnsafeStoreNode) node;
-            if (unsafeStoreNode.offset().isConstant()) {
-                long offset = unsafeStoreNode.offset().asConstant().asLong() + unsafeStoreNode.displacement();
-                ResolvedJavaType type = unsafeStoreNode.object().objectStamp().type();
-                ResolvedJavaField field = recursiveFindFieldWithOffset(type, offset);
-                if (field != null) {
-                    StoreFieldNode storeFieldNode = node.graph().add(new StoreFieldNode(unsafeStoreNode.object(), field, unsafeStoreNode.value()));
-                    storeFieldNode.setStateAfter(unsafeStoreNode.stateAfter());
-                    return storeFieldNode;
-                }
-            }
         }
 
         return node;
-    }
-
-    private ResolvedJavaField recursiveFindFieldWithOffset(ResolvedJavaType type, long offset) {
-        if (type != null) {
-            ResolvedJavaField field = type.findInstanceFieldWithOffset(offset);
-            if (field != null) {
-                return field;
-            }
-            return recursiveFindFieldWithOffset(type.getSuperclass(), offset);
-        }
-        return null;
     }
 }
