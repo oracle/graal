@@ -216,25 +216,25 @@ public final class TruffleCache {
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             final MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) invoke.callTarget();
             if ((methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) &&
-                            !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
-                if (methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) != null) {
-                    // Do not inline explode loop methods, they need canonicalization and forced
-                    // unrolling.
-                    return invoke.asNode();
-                }
-                StructuredGraph inlinedGraph = Debug.scope("ExpandInvoke", methodCallTargetNode.targetMethod(), new Callable<StructuredGraph>() {
+                            !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null) {
+                Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
+                if (macroSubstitution != null) {
+                    return InliningUtil.inlineMacroNode(invoke, methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                } else {
+                    StructuredGraph inlinedGraph = Debug.scope("ExpandInvoke", methodCallTargetNode.targetMethod(), new Callable<StructuredGraph>() {
 
-                    public StructuredGraph call() {
-                        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                        if (inlineGraph == null) {
-                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod());
+                        public StructuredGraph call() {
+                            StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
+                            if (inlineGraph == null) {
+                                inlineGraph = parseGraph(methodCallTargetNode.targetMethod());
+                            }
+                            return inlineGraph;
                         }
-                        return inlineGraph;
-                    }
-                });
-                FixedNode fixedNode = (FixedNode) invoke.predecessor();
-                InliningUtil.inline(invoke, inlinedGraph, true);
-                return fixedNode;
+                    });
+                    FixedNode fixedNode = (FixedNode) invoke.predecessor();
+                    InliningUtil.inline(invoke, inlinedGraph, true);
+                    return fixedNode;
+                }
             }
         }
         return invoke.asNode();
