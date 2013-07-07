@@ -57,4 +57,7 @@ public class CompilerDirectivesSubstitutions {
 
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
+
+    @MacroSubstitution(macro = UnsafeCastMacroNode.class, isStatic = true)
+    public static native Object unsafeCast(Object value, Class clazz);
 }
