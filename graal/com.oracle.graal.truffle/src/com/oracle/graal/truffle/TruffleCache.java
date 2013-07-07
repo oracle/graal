@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -44,6 +45,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
  * Implementation of a cache for Truffle graphs for improving partial evaluation time.
@@ -122,34 +124,41 @@ public final class TruffleCache {
 
         Integer maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
 
+        contractGraph(newGraph, eliminate, convertDeoptimizeToGuardPhase, canonicalizerPhase);
+
         while (newGraph.getNodeCount() <= maxNodes) {
 
             int mark = newGraph.getMark();
 
             expandGraph(newGraph, maxNodes);
 
-            // Canonicalize / constant propagate.
-            canonicalizerPhase.apply(newGraph);
-
-            // Convert deopt to guards.
-            convertDeoptimizeToGuardPhase.apply(newGraph);
-
-            // Conditional elimination.
-            eliminate.apply(newGraph);
-
             if (newGraph.getNewNodes(mark).count() == 0) {
                 // No progress => exit iterative optimization.
                 break;
             }
+
+            contractGraph(newGraph, eliminate, convertDeoptimizeToGuardPhase, canonicalizerPhase);
         }
 
         HighTierContext context = new HighTierContext(metaAccessProvider, assumptions, replacements);
         PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(true));
         partialEscapePhase.apply(newGraph, context);
 
-        if (newGraph.getNodeCount() > maxNodes && TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+        if (newGraph.getNodeCount() > maxNodes && (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue() || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue())) {
             TTY.println(String.format("[truffle] PERFORMANCE WARNING: method %s got too large with %d nodes.", newGraph.method(), newGraph.getNodeCount()));
         }
+    }
+
+    private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase eliminate, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
+                    CanonicalizerPhase.Instance canonicalizerPhase) {
+        // Canonicalize / constant propagate.
+        canonicalizerPhase.apply(newGraph);
+
+        // Convert deopt to guards.
+        convertDeoptimizeToGuardPhase.apply(newGraph);
+
+        // Conditional elimination.
+        eliminate.apply(newGraph);
     }
 
     private void expandGraph(StructuredGraph newGraph, int maxNodes) {
@@ -208,6 +217,11 @@ public final class TruffleCache {
             final MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) invoke.callTarget();
             if ((methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) &&
                             !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
+                if (methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) != null) {
+                    // Do not inline explode loop methods, they need canonicalization and forced
+                    // unrolling.
+                    return invoke.asNode();
+                }
                 StructuredGraph inlinedGraph = Debug.scope("ExpandInvoke", methodCallTargetNode.targetMethod(), new Callable<StructuredGraph>() {
 
                     public StructuredGraph call() {
@@ -223,7 +237,7 @@ public final class TruffleCache {
                 return fixedNode;
             }
         }
-        return invoke.next();
+        return invoke.asNode();
     }
 
     private StructuredGraph parseGraph(ResolvedJavaMethod method) {
