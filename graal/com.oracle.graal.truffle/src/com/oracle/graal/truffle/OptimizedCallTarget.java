@@ -260,7 +260,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
                 @Override
                 public boolean visit(Node node) {
-                    if (node instanceof RootNode && node != root) {
+                    if (node instanceof RootNode && visitedCount > 0) {
                         return false;
                     }
 
