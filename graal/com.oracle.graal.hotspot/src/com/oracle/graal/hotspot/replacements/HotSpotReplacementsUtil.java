@@ -692,4 +692,9 @@ public class HotSpotReplacementsUtil {
     public static int verifiedEntryPointOffset() {
         return config().nmethodEntryOffset;
     }
+
+    @Fold
+    public static long gcTotalCollectionsAddress() {
+        return config().gcTotalCollectionsAddress;
+    }
 }
