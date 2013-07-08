@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.GuardingPiNode.*;
+import static com.oracle.graal.nodes.calc.IsNullNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
@@ -35,10 +37,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
@@ -77,17 +82,19 @@ public class ArrayCopySnippets implements Snippets {
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
     private static void checkedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind) {
-        checkNonNull(src);
-        checkNonNull(dest);
-        checkLimits(src, srcPos, dest, destPos, length);
-        UnsafeArrayCopyNode.arraycopy(src, srcPos, dest, destPos, length, baseKind);
+        Object nonNullSrc = checkNonNull(src);
+        Object nonNullDest = checkNonNull(dest);
+        checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
+        UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, baseKind);
     }
 
-    public static void checkNonNull(Object obj) {
-        if (obj == null) {
-            checkNPECounter.inc();
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
-        }
+    @Fold
+    private static Stamp nonNull() {
+        return StampFactory.objectNonNull();
+    }
+
+    public static Object checkNonNull(Object obj) {
+        return guardingPi(obj, isNull(obj), true, DeoptimizationReason.RuntimeConstraint, DeoptimizationAction.None, nonNull());
     }
 
     public static int checkArrayType(Word hub) {
@@ -184,24 +191,25 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopy(Object src, int srcPos, Object dest, int destPos, int length) {
-        // loading the hubs also checks for nullness
-        Word srcHub = loadHub(src);
-        Word destHub = loadHub(dest);
-        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, src != dest)) {
+        Object nonNullSrc = checkNonNull(src);
+        Object nonNullDest = checkNonNull(dest);
+        Word srcHub = loadHub(nonNullSrc);
+        Word destHub = loadHub(nonNullDest);
+        if (probability(FAST_PATH_PROBABILITY, srcHub.equal(destHub)) && probability(FAST_PATH_PROBABILITY, nonNullSrc != nonNullDest)) {
             int layoutHelper = checkArrayType(srcHub);
             final boolean isObjectArray = ((layoutHelper & layoutHelperElementTypePrimitiveInPlace()) == 0);
 
-            checkLimits(src, srcPos, dest, destPos, length);
+            checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
-                arrayObjectCopy(src, srcPos, dest, destPos, length);
+                arrayObjectCopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
             } else {
                 genericPrimitiveCallCounter.inc();
-                UnsafeArrayCopyNode.arraycopyPrimitive(src, srcPos, dest, destPos, length, layoutHelper);
+                UnsafeArrayCopyNode.arraycopyPrimitive(nonNullSrc, srcPos, nonNullDest, destPos, length, layoutHelper);
             }
         } else {
             genericObjectCallCounter.inc();
-            System.arraycopy(src, srcPos, dest, destPos, length);
+            System.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
         }
     }
 

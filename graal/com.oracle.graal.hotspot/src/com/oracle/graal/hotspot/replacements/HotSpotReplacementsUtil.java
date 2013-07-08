@@ -437,17 +437,10 @@ public class HotSpotReplacementsUtil {
     }
 
     /**
-     * Loads the hub from a object, null checking it first.
+     * Loads the hub of an object (without null checking it first).
      */
     public static Word loadHub(Object object) {
         return loadHubIntrinsic(object, getWordKind());
-    }
-
-    /**
-     * Loads the hub from a object.
-     */
-    public static Word loadHubNoNullcheck(Object object) {
-        return loadWordFromObject(object, hubOffset());
     }
 
     public static Object verifyOop(Object object) {
