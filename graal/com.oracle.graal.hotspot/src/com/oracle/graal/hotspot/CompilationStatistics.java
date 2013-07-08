@@ -75,8 +75,6 @@ public final class CompilationStatistics {
 
     @NotReported private final long startTime;
     @NotReported private long threadAllocatedBytesStart;
-    @NotReported private int startInvCount;
-    @NotReported private int endInvCount;
 
     private int bytecodeCount;
     private int codeSize;
@@ -94,7 +92,6 @@ public final class CompilationStatistics {
             name = method.getName();
             signature = method.getSignature().getMethodDescriptor();
             startTime = System.nanoTime();
-            startInvCount = method.invocationCount();
             bytecodeCount = method.getCodeSize();
             threadAllocatedBytesStart = getThreadAllocatedBytes();
         } else {
@@ -108,7 +105,6 @@ public final class CompilationStatistics {
     public void finish(HotSpotResolvedJavaMethod method) {
         if (ENABLED) {
             duration = System.nanoTime() - startTime;
-            endInvCount = method.invocationCount();
             codeSize = method.getCompiledCodeSize();
             memoryUsed = getThreadAllocatedBytes() - threadAllocatedBytesStart;
             if (current.get().getLast() != this) {

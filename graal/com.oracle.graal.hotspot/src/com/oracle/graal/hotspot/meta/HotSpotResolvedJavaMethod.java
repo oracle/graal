@@ -262,8 +262,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return graalRuntime().getCompilerToVM().getCompiledCodeSize(metaspaceMethod);
     }
 
-    public int invocationCount() {
-        return graalRuntime().getCompilerToVM().getInvocationCount(metaspaceMethod);
+    public boolean hasCompiledCode() {
+        return getCompiledCodeSize() > 0;
     }
 
     @Override

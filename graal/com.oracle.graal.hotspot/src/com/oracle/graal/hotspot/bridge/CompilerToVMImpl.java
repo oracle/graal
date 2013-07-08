@@ -73,9 +73,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native ResolvedJavaType getUniqueImplementor(HotSpotResolvedObjectType interfaceType);
 
     @Override
-    public native int getInvocationCount(long metaspaceMethod);
-
-    @Override
     public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
     @Override
