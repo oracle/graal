@@ -71,23 +71,27 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     @Override
     public Object call(PackedFrame caller, Arguments args) {
-        if (compiledMethod != null) {
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, compiledMethod != null)) {
             try {
                 return compiledMethod.execute(this, caller, args);
             } catch (InvalidInstalledCodeException ex) {
-                compiledMethod = null;
-                invokeCounter = invalidationReprofileCount;
-                if (TruffleFunctionInlining.getValue()) {
-                    originalInvokeCounter += invalidationReprofileCount;
-                }
-                if (TraceTruffleCompilation.getValue()) {
-                    OUT.printf("[truffle] invalidated %-48s |Alive %5.0fms\n", rootNode, (System.nanoTime() - timeCompilationFinished) / 1e6);
-                }
-                return call(caller, args);
+                return compiledCodeInvalidated(caller, args);
             }
         } else {
             return interpreterCall(caller, args);
         }
+    }
+
+    protected Object compiledCodeInvalidated(PackedFrame caller, Arguments args) {
+        compiledMethod = null;
+        invokeCounter = invalidationReprofileCount;
+        if (TruffleFunctionInlining.getValue()) {
+            originalInvokeCounter += invalidationReprofileCount;
+        }
+        if (TraceTruffleCompilation.getValue()) {
+            OUT.printf("[truffle] invalidated %-48s |Alive %5.0fms\n", rootNode, (System.nanoTime() - timeCompilationFinished) / 1e6);
+        }
+        return call(caller, args);
     }
 
     private Object interpreterCall(PackedFrame caller, Arguments args) {

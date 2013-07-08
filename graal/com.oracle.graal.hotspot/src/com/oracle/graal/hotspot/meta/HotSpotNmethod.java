@@ -97,15 +97,16 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {
+        assert checkThreeObjectArgs();
+        return CompilerToVMImpl.executeCompiledMethodIntrinsic(arg1, arg2, arg3, this);
+    }
+
+    protected boolean checkThreeObjectArgs() {
         assert method.getSignature().getParameterCount(!Modifier.isStatic(method.getModifiers())) == 3;
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return executeHelper(arg1, arg2, arg3, this);
-    }
-
-    private static Object executeHelper(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
-        return CompilerToVMImpl.executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
+        return true;
     }
 
     private boolean checkArgs(Object... args) {
