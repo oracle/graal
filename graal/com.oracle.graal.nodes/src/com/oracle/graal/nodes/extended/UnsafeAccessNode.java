@@ -69,13 +69,14 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 // TODO (gd) remove that once UnsafeAccess only have an object base
                 ObjectStamp receiverStamp = object().objectStamp();
                 ResolvedJavaType receiverType = receiverStamp.type();
-                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement() + constantOffset);
-
-                // No need for checking that the receiver is non-null. The field access includes the
-                // null check and if a field is found, the offset is so small that this is never a
-                // valid access of an arbitrary address.
-                if (field != null && field.getKind() == this.accessKind()) {
-                    return cloneAsFieldAccess(field);
+                if (receiverType != null) {
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement() + constantOffset);
+                    // No need for checking that the receiver is non-null. The field access includes
+                    // the null check and if a field is found, the offset is so small that this is
+                    // never a valid access of an arbitrary address.
+                    if (field != null && field.getKind() == this.accessKind()) {
+                        return cloneAsFieldAccess(field);
+                    }
                 }
             }
 
