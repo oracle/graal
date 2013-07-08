@@ -75,6 +75,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id, int priority) {
+        assert id >= 0;
         this.graalRuntime = graalRuntime;
         this.plan = plan;
         this.suitesProvider = graalRuntime.getCapability(SuitesProvider.class);
@@ -88,6 +89,10 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     public ResolvedJavaMethod getMethod() {
         return method;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public int getPriority() {
@@ -105,9 +110,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
-            if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running)) {
-                return;
-            }
             if (DynamicCompilePriority.getValue()) {
                 int threadPriority = priority < VMToCompilerImpl.SlowQueueCutoff.getValue() ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
                 if (Thread.currentThread().getPriority() != threadPriority) {
@@ -129,6 +131,10 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
 
     public void runCompilation() {
+        if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running) || method.hasCompiledCode()) {
+            return;
+        }
+
         CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
         try (TimerCloseable a = CompilationTime.start()) {
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
@@ -229,13 +235,11 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
 
     @Override
     public int compareTo(CompilationTask o) {
-        if (priority < o.priority) {
-            return -1;
+        if (priority != o.priority) {
+            return priority - o.priority;
+        } else {
+            return id - o.id;
         }
-        if (priority > o.priority) {
-            return 1;
-        }
-        return id < o.id ? -1 : (id > o.id ? 1 : 0);
     }
 
     @Override
