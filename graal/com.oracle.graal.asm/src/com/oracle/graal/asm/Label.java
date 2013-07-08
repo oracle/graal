@@ -23,12 +23,26 @@
 package com.oracle.graal.asm;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This class represents a label within assembly code.
  */
 public final class Label {
 
+    /**
+     * Counter used for sequential numbering.
+     */
+    private static AtomicInteger globalId = new AtomicInteger(0);
+
+    /**
+     * Unique identifier of this label.
+     */
+    private int id;
+
+    /**
+     * Position of this label in the code buffer.
+     */
     private int position = -1;
 
     /**
@@ -37,6 +51,10 @@ public final class Label {
      * method.
      */
     private ArrayList<Integer> patchPositions = new ArrayList<>(4);
+
+    public Label() {
+        id = globalId.getAndIncrement();
+    }
 
     /**
      * Returns the position of this label in the code buffer.
@@ -48,7 +66,13 @@ public final class Label {
         return position;
     }
 
-    public Label() {
+    /**
+     * Returns the unique identifier of this Label.
+     * 
+     * @return the unique identifier
+     */
+    public int id() {
+        return id;
     }
 
     /**
@@ -66,7 +90,7 @@ public final class Label {
     }
 
     public void addPatchAt(int branchLocation) {
-        assert !isBound() : "Label is already bound";
+        assert !isBound() : "Label " + name() + " is already bound: position=" + position + ", branchLocation=" + branchLocation;
         patchPositions.add(branchLocation);
     }
 
@@ -82,5 +106,14 @@ public final class Label {
     @Override
     public String toString() {
         return isBound() ? String.valueOf(position()) : "?";
+    }
+
+    /**
+     * Returns a unique name of this Label. The name is based on the unique identifier.
+     * 
+     * @return the unique name
+     */
+    public String name() {
+        return "L" + id();
     }
 }
