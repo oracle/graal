@@ -121,10 +121,8 @@ public class WriteBarrierSnippets implements Snippets {
             if (probability(LIKELY_PROBABILITY, doLoad)) {
                 previousOop = (Word) Word.fromObject(field.readObjectCompressed(0));
                 if (trace) {
-                    if (previousOop.notEqual(Word.zero())) {
-                        verifyOop(previousOop.toObject());
-                    }
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
+                    verifyOop(previousOop.toObject());
                 }
             }
             // If the previous value is null the barrier should not be issued.
@@ -161,7 +159,7 @@ public class WriteBarrierSnippets implements Snippets {
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Post Thread: %p Object: %p Field: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), field.rawValue());
         }
         Word writtenValue = (Word) Word.fromObject(fixedValue);

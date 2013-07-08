@@ -92,4 +92,7 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
         }
         return false;
     }
+
+    @NodeIntrinsic
+    public static native IsNullNode isNull(Object object);
 }

@@ -127,6 +127,45 @@ public class InliningTest extends GraalCompilerTest {
                         fields.subClassBField.publicOverriddenMethod() + fields.subClassCField.publicOverriddenMethod();
     }
 
+    public interface Attributes {
+
+        int getLength();
+    }
+
+    public class NullAttributes implements Attributes {
+
+        @Override
+        public int getLength() {
+            return 0;
+        }
+
+    }
+
+    public class TenAttributes implements Attributes {
+
+        @Override
+        public int getLength() {
+            return 10;
+        }
+
+    }
+
+    public int getAttributesLength(Attributes a) {
+        return a.getLength();
+    }
+
+    @Test
+    public void testGuardedInline() {
+        NullAttributes nullAttributes = new NullAttributes();
+        for (int i = 0; i < 10000; i++) {
+            getAttributesLength(nullAttributes);
+        }
+        getAttributesLength(new TenAttributes());
+
+        test("getAttributesLength", nullAttributes);
+        test("getAttributesLength", (Object) null);
+    }
+
     @Test
     public void testClassHierarchyAnalysis() {
         assertInlined(getGraph("invokeLeafClassMethodSnippet", false));
