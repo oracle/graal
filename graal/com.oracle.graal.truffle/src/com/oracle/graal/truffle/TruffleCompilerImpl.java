@@ -62,6 +62,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private final Backend backend;
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final HotSpotGraalRuntime graalRuntime;
+    private final TruffleCache truffleCache;
 
     private static final Class[] SKIPPED_EXCEPTION_CLASSES = new Class[]{SlowPathException.class, UnexpectedResultException.class, ArithmeticException.class};
 
@@ -75,9 +76,13 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.replacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
         this.graalRuntime = HotSpotGraalRuntime.graalRuntime();
-
-        this.partialEvaluator = new PartialEvaluator(metaAccessProvider, replacements);
         this.skippedExceptionTypes = getSkippedExceptionTypes(metaAccessProvider);
+
+        final GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
+        config.setSkippedExceptionTypes(skippedExceptionTypes);
+        this.truffleCache = new TruffleCache(this.runtime, config, TruffleCompilerImpl.Optimizations, this.replacements);
+
+        this.partialEvaluator = new PartialEvaluator(metaAccessProvider, replacements, truffleCache);
 
         if (DebugEnabled.getValue()) {
             DebugEnvironment.initialize(System.out);
@@ -142,7 +147,8 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             @Override
             public CompilationResult call() {
                 CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                return GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, plan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+                return GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, plan, OptimisticOptimizations.ALL, new SpeculationLog(),
+                                suites, new CompilationResult());
             }
         });
 

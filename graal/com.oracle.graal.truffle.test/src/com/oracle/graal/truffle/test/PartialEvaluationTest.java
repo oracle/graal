@@ -57,7 +57,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     public PartialEvaluationTest() {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
-        this.partialEvaluator = new PartialEvaluator(runtime, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements());
+        this.partialEvaluator = new PartialEvaluator(runtime, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements(), new TruffleCache(runtime, GraphBuilderConfiguration.getDefault(),
+                        TruffleCompilerImpl.Optimizations, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements()));
 
         DebugEnvironment.initialize(System.out);
     }

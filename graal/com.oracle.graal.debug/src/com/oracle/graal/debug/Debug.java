@@ -101,6 +101,23 @@ public class Debug {
         }
     }
 
+    /**
+     * Creates a new debug scope that is unrelated to the current scope and runs a given task in the
+     * new scope.
+     * 
+     * @param name new scope name
+     * @param context the context objects of the new scope
+     * @param config the debug configuration to use for the new scope
+     * @param callable the task to run in the new scope
+     */
+    public static <T> T sandbox(String name, Object[] context, DebugConfig config, Callable<T> callable) {
+        if (ENABLED) {
+            return DebugScope.getInstance().scope(name, null, callable, true, config, context);
+        } else {
+            return DebugScope.call(callable);
+        }
+    }
+
     public static void scope(String name, Runnable runnable) {
         scope(name, new Object[0], runnable);
     }

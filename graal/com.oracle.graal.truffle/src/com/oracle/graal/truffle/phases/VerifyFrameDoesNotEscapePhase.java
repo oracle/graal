@@ -41,7 +41,9 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
         if (frame != null) {
             for (MethodCallTargetNode callTarget : frame.usages().filter(MethodCallTargetNode.class)) {
                 if (callTarget.invoke() != null) {
-                    Throwable exception = new VerificationError("Frame escapes at: %s#%s", callTarget, callTarget.targetMethod());
+                    String properties = callTarget.getDebugProperties().toString();
+                    String arguments = callTarget.arguments().toString();
+                    Throwable exception = new VerificationError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
                     throw GraphUtil.approxSourceException(callTarget, exception);
                 }
             }

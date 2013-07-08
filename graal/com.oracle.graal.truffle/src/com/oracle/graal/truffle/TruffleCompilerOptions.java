@@ -53,12 +53,18 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleConstantUnrollLimit = new OptionValue<>(32);
+    @Option(help = "")
+    public static final OptionValue<Integer> TruffleOperationCacheMaxNodes = new OptionValue<>(200);
 
     // tracing
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleCacheDetails = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceTrufflePerformanceWarnings = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleInlinePrinter = new OptionValue<>(false);
     @Option(help = "")

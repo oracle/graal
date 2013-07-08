@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -630,10 +631,15 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 new SafepointInsertionPhase().apply(graph);
                 new WriteBarrierAdditionPhase().apply(graph);
 
+                int barriers = 0;
                 // First, the total number of expected barriers is checked.
-                final int barriers = graph.getNodes(SerialWriteBarrier.class).count();
-                Assert.assertTrue(expectedBarriers == barriers);
-
+                if (((HotSpotRuntime) runtime()).config.useG1GC) {
+                    barriers = graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count();
+                    Assert.assertTrue(expectedBarriers * 2 == barriers);
+                } else {
+                    barriers = graph.getNodes(SerialWriteBarrier.class).count();
+                    Assert.assertTrue(expectedBarriers == barriers);
+                }
                 // Iterate over all write nodes and remove barriers according to input indices.
                 NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
 
@@ -653,10 +659,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                                     }
                                 }
                             }
-                        } else if (node instanceof SerialWriteBarrier) {
+                        } else if (node instanceof SerialWriteBarrier || node instanceof G1PostWriteBarrier) {
                             // Remove flagged write barriers.
                             if (currentState) {
-                                graph.removeFixed(((SerialWriteBarrier) node));
+                                graph.removeFixed(((FixedWithNextNode) node));
                                 return false;
                             }
                         }
@@ -692,7 +698,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 try {
                     ReentrantNodeIterator.apply(closure, graph.start(), false, null);
                     Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
-                    new WriteBarrierVerificationPhase().apply(graph);
+                    new WriteBarrierVerificationPhase(((HotSpotRuntime) runtime()).config.useG1GC).apply(graph);
                 } catch (AssertionError error) {
                     /*
                      * Catch assertion, test for expected one and re-throw in order to validate unit
