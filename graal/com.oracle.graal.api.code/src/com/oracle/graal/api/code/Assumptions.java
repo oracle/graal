@@ -372,4 +372,21 @@ public final class Assumptions implements Serializable, Iterable<Assumptions.Ass
             record(assumptions.list[i]);
         }
     }
+
+    public void print(PrintStream out) {
+        List<Assumption> nonNullList = new ArrayList<>();
+        if (list != null) {
+            for (int i = 0; i < list.length; ++i) {
+                Assumption a = list[i];
+                if (a != null) {
+                    nonNullList.add(a);
+                }
+            }
+        }
+
+        out.printf("%d assumptions:\n", nonNullList.size());
+        for (Assumption a : nonNullList) {
+            out.println(a.toString());
+        }
+    }
 }

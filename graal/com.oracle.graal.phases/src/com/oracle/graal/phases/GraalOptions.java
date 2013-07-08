@@ -143,7 +143,8 @@ public final class GraalOptions {
     // Debug settings:
     @Option(help = "")
     public static final OptionValue<Boolean> BootstrapReplacements = new OptionValue<>(false);
-
+    @Option(help = "")
+    public static final OptionValue<Integer> GCDebugStartCycle = new OptionValue<>(-1);
     // Ideal graph visualizer output settings
     @Option(help = "")
     public static final OptionValue<Boolean> PrintBinaryGraphs = new OptionValue<>(true);

@@ -50,6 +50,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public boolean usePopCountInstruction;
     public boolean useAESIntrinsics;
     public boolean useG1GC;
+    public long gcTotalCollectionsAddress;
 
     // Compressed Oops related values.
     public boolean useCompressedOops;
