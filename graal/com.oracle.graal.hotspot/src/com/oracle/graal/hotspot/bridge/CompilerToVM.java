@@ -92,14 +92,6 @@ public interface CompilerToVM {
     ResolvedJavaType getUniqueImplementor(HotSpotResolvedObjectType interfaceType);
 
     /**
-     * Gets the invocation count for a method.
-     * 
-     * @param metaspaceMethod the metaspace Method object to query
-     * @return the invocation count for the method
-     */
-    int getInvocationCount(long metaspaceMethod);
-
-    /**
      * Initializes a {@link HotSpotResolvedJavaMethod} object from a metaspace Method object.
      * 
      * @param metaspaceMethod the metaspace Method object
