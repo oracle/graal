@@ -40,8 +40,6 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
-import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.tiers.*;
 
 /**
@@ -206,7 +204,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             public void run() {
                 StructuredGraph graph = parse(snippet);
                 HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
-                new InliningPhase(runtime(), replacements, context.getAssumptions(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new InlineAllPolicy()).apply(graph);
+                new InliningPhase(runtime(), replacements, context.getAssumptions(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new InliningPhase.InlineEverythingPolicy()).apply(graph);
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");
@@ -252,18 +250,5 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private void test2(final String snippet, Object a, Object b, Object c) throws Exception {
         HotSpotInstalledCode code = getInstalledCode(snippet);
         code.execute(a, b, c);
-    }
-
-    final class InlineAllPolicy implements InliningPolicy {
-
-        @Override
-        public boolean continueInlining(StructuredGraph graph) {
-            return true;
-        }
-
-        @Override
-        public boolean isWorthInlining(InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed) {
-            return true;
-        }
     }
 }
