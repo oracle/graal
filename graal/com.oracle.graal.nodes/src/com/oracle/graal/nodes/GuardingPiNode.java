@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -43,6 +44,10 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
 
     public ValueNode object() {
         return object;
+    }
+
+    public GuardingPiNode(ValueNode object) {
+        this(object, object.graph().unique(new IsNullNode(object)), true, DeoptimizationReason.NullCheckException, DeoptimizationAction.None, object.stamp().join(StampFactory.objectNonNull()));
     }
 
     public GuardingPiNode(ValueNode object, ValueNode condition, boolean negateCondition, DeoptimizationReason reason, DeoptimizationAction action, Stamp stamp) {
@@ -81,6 +86,9 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
         }
         return this;
     }
+
+    @NodeIntrinsic
+    public static native <T> T guardingNonNull(T object);
 
     @NodeIntrinsic
     public static native Object guardingPi(Object object, LogicNode condition, @ConstantNodeParameter boolean negateCondition, @ConstantNodeParameter DeoptimizationReason reason,
