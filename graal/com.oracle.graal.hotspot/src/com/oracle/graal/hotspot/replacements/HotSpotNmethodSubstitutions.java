@@ -22,19 +22,17 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 
 @ClassSubstitution(HotSpotNmethod.class)
 public class HotSpotNmethodSubstitutions {
 
-    @MethodSubstitution(isStatic = false)
-    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
-        return HotSpotNmethodExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
-    }
+    @MacroSubstitution(macro = HotSpotNmethodExecuteNode.class, isStatic = true)
+    public static native Object executeHelper(final Object arg1, final Object arg2, final Object arg3, HotSpotInstalledCode code);
 
     @Fold
     private static Class[] getSignature() {

@@ -241,6 +241,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+        AllocatableValue targetAddress = AMD64.rax.asValue();
+        emitMove(targetAddress, operand(callTarget.computedAddress()));
+        append(new AMD64Call.IndirectCallOp(callTarget.target(), result, parameters, temps, targetAddress, callState));
+    }
+
+    @Override
     public void emitOverflowCheckBranch(LabelRef destination, boolean negated) {
         append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, destination));
     }

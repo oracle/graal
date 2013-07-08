@@ -22,95 +22,45 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
-import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.replacements.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.common.*;
+import com.oracle.graal.replacements.nodes.*;
 
-public class HotSpotNmethodExecuteNode extends AbstractCallNode implements Lowerable, MemoryCheckpoint.Single {
+public class HotSpotNmethodExecuteNode extends MacroNode implements Lowerable {
 
-    @Input private ValueNode code;
-    private final Class[] signature;
-
-    public HotSpotNmethodExecuteNode(Kind kind, Class[] signature, ValueNode code, ValueNode arg1, ValueNode arg2, ValueNode arg3) {
-        super(StampFactory.forKind(kind), new ValueNode[]{arg1, arg2, arg3});
-        this.code = code;
-        this.signature = signature;
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+    public HotSpotNmethodExecuteNode(Invoke invoke) {
+        super(invoke);
     }
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (code.isConstant() && code.asConstant().asObject() instanceof HotSpotNmethod) {
-            HotSpotNmethod nmethod = (HotSpotNmethod) code.asConstant().asObject();
-            InvokeNode invoke = replaceWithInvoke(tool.getRuntime());
-            StructuredGraph graph = (StructuredGraph) nmethod.getGraph();
-            if (graph != null) {
-                InliningUtil.inline(invoke, graph, false);
+        if (loweringType == LoweringType.AFTER_GUARDS) {
+
+            ValueNode hotspotNmethod = arguments.get(3);
+
+            ReadNode readNode = graph().add(new ReadNode(hotspotNmethod, 16, LocationIdentity.ANY_LOCATION, Kind.Long));
+            graph().addBeforeFixed(this, readNode);
+            readNode.setNullCheck(true);
+
+            int verifiedEntryOffset = HotSpotGraalRuntime.graalRuntime().getConfig().nmethodEntryOffset;
+            ReadNode readAddressNode = graph().add(new ReadNode(readNode, verifiedEntryOffset, LocationIdentity.ANY_LOCATION, Kind.Long));
+            graph().addBeforeFixed(this, readAddressNode);
+            readAddressNode.setNullCheck(true);
+
+            JavaType[] signatureTypes = new JavaType[getTargetMethod().getSignature().getParameterCount(false)];
+            for (int i = 0; i < signatureTypes.length; ++i) {
+                signatureTypes[i] = getTargetMethod().getSignature().getParameterType(i, getTargetMethod().getDeclaringClass());
             }
-        } else {
-            replaceWithInvoke(tool.getRuntime());
+
+            IndirectCallTargetNode callTarget = graph().add(new IndirectCallTargetNode(readAddressNode, arguments, StampFactory.object(), signatureTypes, super.getTargetMethod(), Type.JavaCall));
+            InvokeNode invoke = graph().add(new InvokeNode(callTarget, super.getBci()));
+            invoke.setStateAfter(stateAfter());
+            graph().replaceFixedWithFixed(this, invoke);
         }
     }
-
-    protected InvokeNode replaceWithInvoke(MetaAccessProvider tool) {
-        ResolvedJavaMethod method = null;
-        ResolvedJavaField methodField = null;
-        ResolvedJavaField metaspaceMethodField = null;
-        ResolvedJavaField codeBlobField = null;
-        try {
-            method = tool.lookupJavaMethod(HotSpotNmethodExecuteNode.class.getMethod("placeholder", Object.class, Object.class, Object.class));
-            methodField = tool.lookupJavaField(HotSpotNmethod.class.getDeclaredField("method"));
-            codeBlobField = tool.lookupJavaField(HotSpotInstalledCode.class.getDeclaredField("codeBlob"));
-            metaspaceMethodField = tool.lookupJavaField(HotSpotResolvedJavaMethod.class.getDeclaredField("metaspaceMethod"));
-        } catch (NoSuchMethodException | SecurityException | NoSuchFieldException e) {
-            throw new IllegalStateException(e);
-        }
-        ResolvedJavaType[] signatureTypes = new ResolvedJavaType[signature.length];
-        for (int i = 0; i < signature.length; i++) {
-            signatureTypes[i] = tool.lookupJavaType(signature[i]);
-        }
-        final int verifiedEntryPointOffset = HotSpotReplacementsUtil.verifiedEntryPointOffset();
-
-        LoadFieldNode loadCodeBlob = graph().add(new LoadFieldNode(code, codeBlobField));
-        UnsafeLoadNode load = graph().add(new UnsafeLoadNode(loadCodeBlob, verifiedEntryPointOffset, ConstantNode.forLong(0, graph()), graalRuntime().getTarget().wordKind));
-
-        LoadFieldNode loadMethod = graph().add(new LoadFieldNode(code, methodField));
-        LoadFieldNode loadmetaspaceMethod = graph().add(new LoadFieldNode(loadMethod, metaspaceMethodField));
-
-        HotSpotIndirectCallTargetNode callTarget = graph().add(
-                        new HotSpotIndirectCallTargetNode(loadmetaspaceMethod, load, arguments(), stamp(), signatureTypes, method, CallingConvention.Type.JavaCall));
-
-        InvokeNode invoke = graph().add(new InvokeNode(callTarget, 0));
-
-        invoke.setStateAfter(stateAfter());
-        graph().replaceFixedWithFixed(this, invoke);
-
-        graph().addBeforeFixed(invoke, loadmetaspaceMethod);
-        graph().addBeforeFixed(loadmetaspaceMethod, loadMethod);
-        graph().addBeforeFixed(invoke, load);
-        graph().addBeforeFixed(load, loadCodeBlob);
-
-        return invoke;
-    }
-
-    public static Object placeholder(@SuppressWarnings("unused") Object a1, @SuppressWarnings("unused") Object a2, @SuppressWarnings("unused") Object a3) {
-        return 1;
-    }
-
-    @NodeIntrinsic
-    public static native <T> T call(@ConstantNodeParameter Kind kind, @ConstantNodeParameter Class[] signature, Object code, Object arg1, Object arg2, Object arg3);
-
 }

@@ -29,6 +29,7 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.bridge.*;
 
 /**
  * Implementation of {@link InstalledCode} for code installed as an nmethod. The nmethod stores a
@@ -100,7 +101,11 @@ public class HotSpotNmethod extends HotSpotInstalledCode {
         assert method.getSignature().getParameterKind(0) == Kind.Object;
         assert method.getSignature().getParameterKind(1) == Kind.Object;
         assert !Modifier.isStatic(method.getModifiers()) || method.getSignature().getParameterKind(2) == Kind.Object;
-        return graalRuntime().getCompilerToVM().executeCompiledMethod(arg1, arg2, arg3, this);
+        return executeHelper(arg1, arg2, arg3, this);
+    }
+
+    private static Object executeHelper(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
+        return CompilerToVMImpl.executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
     }
 
     private boolean checkArgs(Object... args) {

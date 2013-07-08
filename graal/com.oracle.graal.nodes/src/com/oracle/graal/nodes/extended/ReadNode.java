@@ -42,7 +42,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
         super(object, location, stamp, guard, barrierType, compress);
     }
 
-    private ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
+    public ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
         super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
     }
 
