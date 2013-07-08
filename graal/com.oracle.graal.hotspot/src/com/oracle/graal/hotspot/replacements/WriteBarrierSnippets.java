@@ -161,7 +161,7 @@ public class WriteBarrierSnippets implements Snippets {
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
-            log(trace, "[%d] G1-Post Thread: %p Object: %p Field: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
             log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), field.rawValue());
         }
         Word writtenValue = (Word) Word.fromObject(fixedValue);
