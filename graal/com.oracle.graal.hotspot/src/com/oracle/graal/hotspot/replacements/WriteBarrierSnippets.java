@@ -121,10 +121,8 @@ public class WriteBarrierSnippets implements Snippets {
             if (probability(LIKELY_PROBABILITY, doLoad)) {
                 previousOop = (Word) Word.fromObject(field.readObjectCompressed(0));
                 if (trace) {
-                    if (previousOop.notEqual(Word.zero())) {
-                        verifyOop(previousOop.toObject());
-                    }
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
+                    verifyOop(previousOop.toObject());
                 }
             }
             // If the previous value is null the barrier should not be issued.
