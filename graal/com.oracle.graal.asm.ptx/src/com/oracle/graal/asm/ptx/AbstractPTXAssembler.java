@@ -34,30 +34,25 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
         super(target);
     }
 
-    public static final String UNBOUND_TARGET = "L" + Integer.MAX_VALUE;
-
     @Override
     public final void bind(Label l) {
         super.bind(l);
-        emitString0("L" + l.toString() + ":\n");
+        emitString0(nameOf(l) + ":\n");
     }
 
     @Override
     public void align(int modulus) {
-        // TODO Auto-generated method stub
+        // Nothing to do
     }
 
     @Override
     public void jmp(Label l) {
-        // TODO Auto-generated method stub
+        // Nothing to do
     }
 
     @Override
     protected void patchJumpTarget(int branch, int jumpTarget) {
-        final int spaces = UNBOUND_TARGET.length();
-        String targetString = String.format("L%-" + spaces + "s", jumpTarget + ";");
-        int offset = "\tbra ".length();  // XXX we need a better way to figure this out
-        codeBuffer.emitString(targetString, branch + offset);
+        // Nothing to do. All branches already point to the right label.
     }
 
 }

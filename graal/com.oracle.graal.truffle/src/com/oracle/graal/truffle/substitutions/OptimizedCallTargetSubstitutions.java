@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.*;
 public class OptimizedCallTargetSubstitutions {
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
-    public static native Object call(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+    public static native Object interpreterCall(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 
     @MethodSubstitution
     private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {

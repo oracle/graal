@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.replacements.Snippet.Fold;
+package com.oracle.graal.compiler.hsail.test;
 
-@ClassSubstitution(HotSpotNmethod.class)
-public class HotSpotNmethodSubstitutions {
+import org.junit.Test;
 
-    @MethodSubstitution(isStatic = false)
-    public static Object execute(HotSpotInstalledCode code, final Object arg1, final Object arg2, final Object arg3) {
-        return HotSpotNmethodExecuteNode.call(Kind.Object, getSignature(), code, arg1, arg2, arg3);
+/**
+ * Tests array addition and multiplication.
+ */
+public class IntSqrAddTest extends StaticMethodThreeIntArrays {
+
+    /**
+     * The static "kernel" method we will be testing. By convention the gid is the last parameter.
+     * 
+     * @param out
+     * @param ina
+     * @param inb
+     * @param gid
+     */
+    public static void run(int[] out, int[] ina, int[] inb, int gid) {
+        out[gid] = (ina[gid] * ina[gid]) + inb[gid];
     }
 
-    @Fold
-    private static Class[] getSignature() {
-        return new Class[]{Object.class, Object.class, Object.class};
+    @Test
+    public void test() {
+        super.testGeneratedHsail();
     }
-
 }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.asm;
 
-import java.util.ArrayList;
+import java.util.*;
 
 /**
  * This class represents a label within assembly code.
@@ -66,7 +66,7 @@ public final class Label {
     }
 
     public void addPatchAt(int branchLocation) {
-        assert !isBound() : "Label is already bound";
+        assert !isBound() : "Label is already bound " + this + " " + branchLocation + " at position " + position;
         patchPositions.add(branchLocation);
     }
 

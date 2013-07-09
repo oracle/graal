@@ -184,5 +184,5 @@ public class CompilerToVMImpl implements CompilerToVM {
      * stub that does the necessary argument shuffling and a tail call via an indirect jump to the
      * verified entry point of the given native method.
      */
-    private static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode);
+    public static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 }

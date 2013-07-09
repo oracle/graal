@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.replacements;
+package com.oracle.graal.compiler.hsail.test;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import org.junit.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
-@ServiceProvider(ReplacementsProvider.class)
-public class HotSpotNmethodIntrinsics implements ReplacementsProvider {
+/**
+ * Tests direct method calls.
+ */
+public class CallTest extends GraalKernelTester {
+
+    static final int width = 768;
+    static final int height = width;
+    private int iterations = 100;
+    static final int range = width * height;
+    @Result public float[] inArray = new float[range];
+
+    public static int foo(int gid, int i) {
+        if (gid < 25) {
+            return gid * i;
+        } else {
+            return gid - i;
+        }
+    }
+
+    public void run(float[] inArray1, int gid) {
+        for (int i = 0; i < iterations; i++) {
+            inArray1[gid] = foo(gid, i);
+        }
+    }
 
     @Override
-    public void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-        if (IntrinsifyInstalledCodeMethods.getValue()) {
-            replacements.registerSubstitutions(HotSpotNmethodSubstitutions.class);
-        }
+    public void runTest() {
+        dispatchMethodKernel(range, inArray);
+    }
+
+    @Test
+    public void test() {
+        super.testGeneratedHsail();
     }
 }

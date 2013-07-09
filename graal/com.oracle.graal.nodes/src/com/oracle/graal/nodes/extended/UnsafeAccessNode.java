@@ -24,9 +24,10 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class UnsafeAccessNode extends FixedWithNextNode {
+public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
@@ -57,4 +58,39 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode {
     public Kind accessKind() {
         return accessKind;
     }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (offset().isConstant()) {
+            long constantOffset = offset().asConstant().asLong();
+
+            // Try to canonicalize to a field access.
+            if (object().stamp() instanceof ObjectStamp) {
+                // TODO (gd) remove that once UnsafeAccess only have an object base
+                ObjectStamp receiverStamp = object().objectStamp();
+                ResolvedJavaType receiverType = receiverStamp.type();
+                if (receiverType != null) {
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement() + constantOffset);
+                    // No need for checking that the receiver is non-null. The field access includes
+                    // the null check and if a field is found, the offset is so small that this is
+                    // never a valid access of an arbitrary address.
+                    if (field != null && field.getKind() == this.accessKind()) {
+                        return cloneAsFieldAccess(field);
+                    }
+                }
+            }
+
+            if (constantOffset != 0 && Integer.MAX_VALUE - displacement() >= constantOffset) {
+                int intDisplacement = (int) (constantOffset + displacement());
+                if (constantOffset == intDisplacement) {
+                    return cloneWithZeroOffset(intDisplacement);
+                }
+            }
+        }
+        return this;
+    }
+
+    protected abstract ValueNode cloneAsFieldAccess(ResolvedJavaField field);
+
+    protected abstract ValueNode cloneWithZeroOffset(int intDisplacement);
 }

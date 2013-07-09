@@ -331,27 +331,7 @@ public class InliningUtil {
                 assert inlineable instanceof InlineableMacroNode;
 
                 Class<? extends FixedWithNextNode> macroNodeClass = ((InlineableMacroNode) inlineable).getMacroNodeClass();
-                if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
-                    assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
-                    InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
-                }
-
-                FixedWithNextNode macroNode;
-                try {
-                    macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
-                } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
-                    throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
-                }
-
-                CallTargetNode callTarget = invoke.callTarget();
-                if (invoke instanceof InvokeNode) {
-                    graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
-                } else {
-                    InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
-                    invokeWithException.killExceptionEdge();
-                    graph.replaceSplitWithFixed(invokeWithException, graph.add(macroNode), invokeWithException.next());
-                }
-                GraphUtil.killWithUnusedFloatingInputs(callTarget);
+                inlineMacroNode(invoke, concrete, graph, macroNodeClass);
             }
 
             InlinedBytecodes.add(concrete.getCodeSize());
@@ -1479,5 +1459,30 @@ public class InliningUtil {
 
     public static Class<? extends FixedWithNextNode> getMacroNodeClass(Replacements replacements, ResolvedJavaMethod target) {
         return replacements.getMacroSubstitution(target);
+    }
+
+    public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, StructuredGraph graph, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalInternalError {
+        if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != concrete) {
+            assert ((MethodCallTargetNode) invoke.callTarget()).invokeKind() != InvokeKind.Static;
+            InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
+        }
+
+        FixedWithNextNode macroNode;
+        try {
+            macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
+        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
+            throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
+        }
+
+        CallTargetNode callTarget = invoke.callTarget();
+        if (invoke instanceof InvokeNode) {
+            graph.replaceFixedWithFixed((InvokeNode) invoke, graph.add(macroNode));
+        } else {
+            InvokeWithExceptionNode invokeWithException = (InvokeWithExceptionNode) invoke;
+            invokeWithException.killExceptionEdge();
+            graph.replaceSplitWithFixed(invokeWithException, graph.add(macroNode), invokeWithException.next());
+        }
+        GraphUtil.killWithUnusedFloatingInputs(callTarget);
+        return macroNode;
     }
 }
