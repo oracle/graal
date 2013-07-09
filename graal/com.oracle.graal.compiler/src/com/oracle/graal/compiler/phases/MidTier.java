@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.phases;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.loop.phases.*;
+import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -76,6 +77,10 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         appendPhase(new SafepointInsertionPhase());
 
         appendPhase(new GuardLoweringPhase());
+
+        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+
+        appendPhase(new FrameStateAssignmentPhase());
 
         if (OptCanonicalizer.getValue()) {
             appendPhase(canonicalizer);

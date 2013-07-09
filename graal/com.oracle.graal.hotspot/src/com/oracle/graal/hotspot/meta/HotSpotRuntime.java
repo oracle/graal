@@ -767,15 +767,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof InstanceOfDynamicNode) {
             instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
         } else if (n instanceof NewInstanceNode) {
-            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+            if (tool.getLoweringType() == LoweringType.AFTER_FSA) {
                 newObjectSnippets.lower((NewInstanceNode) n);
             }
         } else if (n instanceof NewArrayNode) {
-            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+            if (tool.getLoweringType() == LoweringType.AFTER_FSA) {
                 newObjectSnippets.lower((NewArrayNode) n);
             }
         } else if (n instanceof DynamicNewArrayNode) {
-            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+            if (tool.getLoweringType() == LoweringType.AFTER_FSA) {
                 newObjectSnippets.lower((DynamicNewArrayNode) n);
             }
         } else if (n instanceof MonitorEnterNode) {
@@ -799,7 +799,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof G1ArrayRangePostWriteBarrier) {
             writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+            if (tool.getLoweringType() == LoweringType.AFTER_FSA) {
                 newObjectSnippets.lower((NewMultiArrayNode) n);
             }
         } else if (n instanceof LoadExceptionObjectNode) {

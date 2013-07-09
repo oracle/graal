@@ -54,7 +54,7 @@ public abstract class WriteBarrier extends FixedWithNextNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool generator, LoweringType loweringType) {
-        assert loweringType == LoweringType.AFTER_GUARDS;
+        assert loweringType == LoweringType.AFTER_FSA;
         generator.getRuntime().lower(this, generator);
     }
 }
