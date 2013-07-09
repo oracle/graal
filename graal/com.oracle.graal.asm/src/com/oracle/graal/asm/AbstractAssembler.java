@@ -23,6 +23,7 @@
 package com.oracle.graal.asm;
 
 import java.nio.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 
@@ -55,6 +56,34 @@ public abstract class AbstractAssembler {
     public abstract void jmp(Label l);
 
     protected abstract void patchJumpTarget(int branch, int jumpTarget);
+
+    private Map<Label, String> nameMap;
+
+    /**
+     * Creates a name for a label.
+     * 
+     * @param l the label for which a name is being created
+     * @param id a label identifier that is unique with the scope of this assembler
+     */
+    protected String createLabelName(Label l, int id) {
+        return "@L" + id;
+    }
+
+    /**
+     * Gets a name for a label, creating it if it does not yet exist. By default, the returned name
+     * is only unique with the scope of this assembler.
+     */
+    public String nameOf(Label l) {
+        if (nameMap == null) {
+            nameMap = new HashMap<>();
+        }
+        String name = nameMap.get(l);
+        if (name == null) {
+            name = createLabelName(l, nameMap.size());
+            nameMap.put(l, name);
+        }
+        return name;
+    }
 
     protected final void emitByte(int x) {
         codeBuffer.emitByte(x);

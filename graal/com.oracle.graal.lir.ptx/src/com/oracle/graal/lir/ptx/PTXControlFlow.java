@@ -22,27 +22,19 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.api.code.ValueUtil.asIntReg;
-import static com.oracle.graal.api.code.ValueUtil.asLongReg;
-import static com.oracle.graal.api.code.ValueUtil.asObjectReg;
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
-import com.oracle.graal.api.code.Register;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
-import com.oracle.graal.api.meta.Constant;
-import com.oracle.graal.api.meta.Kind;
-import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.asm.Buffer;
-import com.oracle.graal.asm.Label;
-import com.oracle.graal.asm.NumUtil;
-import com.oracle.graal.asm.ptx.PTXAssembler;
-import com.oracle.graal.graph.GraalInternalError;
-import com.oracle.graal.lir.LabelRef;
-import com.oracle.graal.lir.StandardOp;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.ptx.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.FallThroughOp;
-import com.oracle.graal.lir.Variable;
-import com.oracle.graal.lir.asm.TargetMethodAssembler;
-import com.oracle.graal.nodes.calc.Condition;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.nodes.calc.*;
 
 public class PTXControlFlow {
 
@@ -76,8 +68,7 @@ public class PTXControlFlow {
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             masm.at();
-            Label l = destination.label();
-            masm.bra(l.name());
+            masm.bra(masm.nameOf(destination.label()));
         }
 
         @Override
@@ -169,16 +160,14 @@ public class PTXControlFlow {
                     assert NumUtil.isInt(lc);
                     masm.setp_eq_s32((int) lc, intKey);
                     masm.at();
-                    Label l = keyTargets[i].label();
-                    masm.bra(l.name());
+                    masm.bra(masm.nameOf(keyTargets[i].label()));
                 }
             } else if (key.getKind() == Kind.Long) {
                 Register longKey = asLongReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
                     masm.setp_eq_s64(tasm.asLongConst(keyConstants[i]), longKey);
                     masm.at();
-                    Label l = keyTargets[i].label();
-                    masm.bra(l.name());
+                    masm.bra(masm.nameOf(keyTargets[i].label()));
                 }
             } else if (key.getKind() == Kind.Object) {
                 Register intKey = asObjectReg(key);

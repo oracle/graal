@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code NewMultiArrayNode} represents an allocation of a multi-dimensional object array.
  */
-public final class NewMultiArrayNode extends FixedWithNextNode implements Lowerable {
+public final class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements Lowerable {
 
     @Input private final NodeInputList<ValueNode> dimensions;
     private final ResolvedJavaType type;
@@ -68,5 +68,15 @@ public final class NewMultiArrayNode extends FixedWithNextNode implements Lowera
 
     public ResolvedJavaType type() {
         return type;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return DeoptimizationReason.RuntimeConstraint;
     }
 }

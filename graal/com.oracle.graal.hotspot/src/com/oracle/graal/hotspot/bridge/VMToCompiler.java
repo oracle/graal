@@ -38,12 +38,12 @@ public interface VMToCompiler {
      * Compiles a method to machine code. This method is called from the VM
      * (VMToCompiler::compileMethod).
      */
-    void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking, int priority) throws Throwable;
+    void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking) throws Throwable;
 
     /**
      * Compiles a method to machine code.
      */
-    void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking, int priority) throws Throwable;
+    void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) throws Throwable;
 
     void shutdownCompiler() throws Throwable;
 

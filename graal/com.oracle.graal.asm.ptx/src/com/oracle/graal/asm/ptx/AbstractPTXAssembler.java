@@ -37,17 +37,17 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
     @Override
     public final void bind(Label l) {
         super.bind(l);
-        emitString0(l.name() + ":\n");
+        emitString0(nameOf(l) + ":\n");
     }
 
     @Override
     public void align(int modulus) {
-        // TODO Auto-generated method stub
+        // Nothing to do
     }
 
     @Override
     public void jmp(Label l) {
-        // TODO Auto-generated method stub
+        // Nothing to do
     }
 
     @Override

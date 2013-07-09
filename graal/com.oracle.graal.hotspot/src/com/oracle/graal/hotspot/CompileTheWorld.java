@@ -218,7 +218,7 @@ public final class CompileTheWorld {
     private void compileMethod(HotSpotResolvedJavaMethod method) {
         try {
             long start = System.currentTimeMillis();
-            vmToCompiler.compileMethod(method, StructuredGraph.INVOCATION_ENTRY_BCI, true, 10);
+            vmToCompiler.compileMethod(method, StructuredGraph.INVOCATION_ENTRY_BCI, true);
             compileTime += (System.currentTimeMillis() - start);
             compiledMethodsCounter++;
             method.reprofile();  // makes the method also not-entrant

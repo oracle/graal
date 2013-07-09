@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
-public final class NewInstanceNode extends FixedWithNextNode implements Node.IterableNodeType, Canonicalizable, Lowerable, VirtualizableAllocation {
+public final class NewInstanceNode extends DeoptimizingFixedWithNextNode implements Node.IterableNodeType, Canonicalizable, Lowerable, VirtualizableAllocation {
 
     private final ResolvedJavaType instanceClass;
     private final boolean fillContents;
@@ -94,5 +94,15 @@ public final class NewInstanceNode extends FixedWithNextNode implements Node.Ite
             tool.createVirtualObject(virtualObject, state, null);
             tool.replaceWithVirtual(virtualObject);
         }
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public DeoptimizationReason getDeoptimizationReason() {
+        return DeoptimizationReason.RuntimeConstraint;
     }
 }

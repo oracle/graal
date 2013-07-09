@@ -41,19 +41,11 @@ public final class CompilerThread extends Thread {
             return new CompilerThread(r);
         }
     };
-    public static final ThreadFactory LOW_PRIORITY_FACTORY = new ThreadFactory() {
-
-        @Override
-        public Thread newThread(Runnable r) {
-            CompilerThread thread = new CompilerThread(r);
-            thread.setPriority(MIN_PRIORITY);
-            return thread;
-        }
-    };
 
     private CompilerThread(Runnable r) {
         super(r);
         this.setName("GraalCompilerThread-" + this.getId());
+        this.setPriority(MAX_PRIORITY);
         this.setDaemon(true);
     }
 
