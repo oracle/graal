@@ -25,7 +25,7 @@ package com.oracle.graal.nodes.spi;
 public interface Lowerable {
 
     public enum LoweringType {
-        BEFORE_GUARDS, AFTER_GUARDS
+        BEFORE_GUARDS, AFTER_GUARDS, AFTER_FSA
     }
 
     void lower(LoweringTool tool, LoweringType loweringType);

@@ -488,6 +488,7 @@ public class SnippetTemplate {
         // Remove all frame states from inlined snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).
         ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
+        ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();
         ArrayList<ValueNode> curStampNodes = new ArrayList<>();
         for (Node node : snippetCopy.getNodes()) {
             if (node instanceof ValueNode && ((ValueNode) node).stamp() == StampFactory.forNodeIntrinsic()) {
@@ -501,6 +502,12 @@ public class SnippetTemplate {
                 }
                 if (frameState != null) {
                     stateSplit.setStateAfter(null);
+                }
+            }
+            if (node instanceof DeoptimizingNode) {
+                DeoptimizingNode deoptNode = (DeoptimizingNode) node;
+                if (deoptNode.canDeoptimize()) {
+                    curDeoptNodes.add(deoptNode);
                 }
             }
         }
@@ -528,6 +535,7 @@ public class SnippetTemplate {
         }
 
         this.sideEffectNodes = curSideEffectNodes;
+        this.deoptNodes = curDeoptNodes;
         this.stampNodes = curStampNodes;
         this.returnNode = retNode;
     }
@@ -587,6 +595,12 @@ public class SnippetTemplate {
      * instantiation.
      */
     private final ArrayList<StateSplit> sideEffectNodes;
+
+    /**
+     * Nodes that inherit the {@link DeoptimizingNode#getDeoptimizationState()} from the replacee
+     * during insantiation.
+     */
+    private final ArrayList<DeoptimizingNode> deoptNodes;
 
     /**
      * The nodes that inherit the {@link ValueNode#stamp()} from the replacee during instantiation.
@@ -743,6 +757,17 @@ public class SnippetTemplate {
                 ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
             }
         }
+
+        if (replacee instanceof DeoptimizingNode) {
+            DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+            FrameState state = replaceeDeopt.getDeoptimizationState();
+            for (DeoptimizingNode deoptNode : deoptNodes) {
+                DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode);
+                assert replaceeDeopt.canDeoptimize() || !deoptDup.canDeoptimize();
+                deoptDup.setDeoptimizationState(state);
+            }
+        }
+
         for (ValueNode stampNode : stampNodes) {
             Node stampDup = duplicates.get(stampNode);
             ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
