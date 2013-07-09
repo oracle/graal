@@ -237,6 +237,10 @@ public class PartialEvaluator {
                         }
                     }
                 }
+
+                if (graph.getNodeCount() > TruffleCompilerOptions.TruffleGraphMaxNodes.getValue()) {
+                    throw new BailoutException("Truffle compilation is exceeding maximum node count: " + graph.getNodeCount());
+                }
             }
         } while (changed && newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty());
     }

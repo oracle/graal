@@ -55,6 +55,8 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleConstantUnrollLimit = new OptionValue<>(32);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleOperationCacheMaxNodes = new OptionValue<>(200);
+    @Option(help = "")
+    public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(10000);
 
     // tracing
     @Option(help = "")
