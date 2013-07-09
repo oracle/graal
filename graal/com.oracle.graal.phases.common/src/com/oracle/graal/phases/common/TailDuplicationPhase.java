@@ -159,7 +159,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
      *            {@link PiNode} in the duplicated branch that corresponds to the entry.
      * @param phaseContext
      */
-    public static boolean tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<PiNode> replacements, PhaseContext phaseContext) {
+    public static boolean tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<GuardedValueNode> replacements, PhaseContext phaseContext) {
         assert !(merge instanceof LoopBeginNode);
         assert replacements == null || replacements.size() == merge.forwardEndCount();
         FixedNode fixed = merge;
@@ -188,7 +188,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         private final StructuredGraph graph;
 
         private final HashMap<ValueNode, PhiNode> bottomPhis = new HashMap<>();
-        private final List<PiNode> replacements;
+        private final List<GuardedValueNode> replacements;
 
         /**
          * Initializes the tail duplication operation without actually performing any work.
@@ -197,7 +197,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @param replacements A list of replacement {@link PiNode}s, or null. If this is non-null,
          *            then the size of the list needs to match the number of end nodes at the merge.
          */
-        public DuplicationOperation(MergeNode merge, List<PiNode> replacements) {
+        public DuplicationOperation(MergeNode merge, List<GuardedValueNode> replacements) {
             this.merge = merge;
             this.replacements = replacements;
             this.graph = merge.graph();

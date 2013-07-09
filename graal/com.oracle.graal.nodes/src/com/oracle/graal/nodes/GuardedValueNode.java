@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * A node that changes the type of its input, usually narrowing it. For example, a GuardedValueNode
@@ -37,13 +38,17 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     @Input private ValueNode object;
 
-    public ValueNode object() {
-        return object;
+    public GuardedValueNode(ValueNode object, GuardingNode guard, Stamp stamp) {
+        super(stamp, guard);
+        this.object = object;
     }
 
     public GuardedValueNode(ValueNode object, GuardingNode guard) {
-        super(object.stamp(), guard);
-        this.object = object;
+        this(object, guard, object.stamp());
+    }
+
+    public ValueNode object() {
+        return object;
     }
 
     @Override
@@ -68,7 +73,11 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     public ValueNode canonical(CanonicalizerTool tool) {
         if (getGuard() == graph().start()) {
-            return object();
+            if (stamp().equals(object().stamp())) {
+                return object();
+            } else {
+                return graph().unique(new PiNode(object(), stamp()));
+            }
         }
         return this;
     }

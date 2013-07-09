@@ -661,7 +661,7 @@ public class InliningUtil {
             invoke.asNode().replaceAtUsages(returnValuePhi);
             invoke.asNode().replaceAndDelete(null);
 
-            ArrayList<PiNode> replacementNodes = new ArrayList<>();
+            ArrayList<GuardedValueNode> replacementNodes = new ArrayList<>();
 
             // do the actual inlining for every invoke
             for (int i = 0; i < numberOfMethods; i++) {
@@ -677,7 +677,7 @@ public class InliningUtil {
 
                 ValueNode receiver = ((MethodCallTargetNode) invokeForInlining.callTarget()).receiver();
                 boolean exact = (getTypeCount(i) == 1 && !methodDispatch);
-                PiNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
+                GuardedValueNode anchoredReceiver = createAnchoredReceiver(graph, node, commonType, receiver, exact);
                 invokeForInlining.callTarget().replaceFirstInput(receiver, anchoredReceiver);
 
                 inline(invokeForInlining, methodAt(i), inlineableElementAt(i), assumptions, false);
@@ -956,7 +956,7 @@ public class InliningUtil {
 
             invocationEntry.setNext(invoke.asNode());
             ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
-            PiNode anchoredReceiver = createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
+            GuardedValueNode anchoredReceiver = createAnchoredReceiver(graph, invocationEntry, target.getDeclaringClass(), receiver, false);
             invoke.callTarget().replaceFirstInput(receiver, anchoredReceiver);
             replaceInvokeCallTarget(invoke, graph, kind, target);
         }
@@ -1216,13 +1216,13 @@ public class InliningUtil {
         }
     }
 
-    private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
+    private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ResolvedJavaType commonType, ValueNode receiver, boolean exact) {
         return createAnchoredReceiver(graph, anchor, receiver, exact ? StampFactory.exactNonNull(commonType) : StampFactory.declaredNonNull(commonType));
     }
 
-    private static PiNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
+    private static GuardedValueNode createAnchoredReceiver(StructuredGraph graph, GuardingNode anchor, ValueNode receiver, Stamp stamp) {
         // to avoid that floating reads on receiver fields float above the type check
-        return graph.unique(new PiNode(receiver, stamp, anchor));
+        return graph.unique(new GuardedValueNode(receiver, anchor, stamp));
     }
 
     // TODO (chaeubl): cleanup this method
