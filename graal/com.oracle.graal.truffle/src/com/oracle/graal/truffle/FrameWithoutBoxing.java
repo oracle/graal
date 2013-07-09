@@ -286,6 +286,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public boolean isInitialized(FrameSlot slot) {
-        return !(this.tags[slot.getIndex()] == FrameSlotKind.Illegal.ordinal());
+        return tags[slot.getIndex()] != FrameSlotKind.Illegal.ordinal();
     }
 }

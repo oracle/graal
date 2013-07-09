@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
@@ -145,6 +146,8 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
             if (!isValidAccessKind()) {
                 tool.deleteBranch(this.next());
                 this.replaceAndDelete(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode)));
+            } else {
+                tool.assumptions().record(new AssumptionValidAssumption((OptimizedAssumption) getFrameSlot().getFrameDescriptor().getVersion()));
             }
         }
     }
