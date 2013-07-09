@@ -243,7 +243,7 @@ public class PartialEvaluator {
 
     private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
 
-        final StructuredGraph graph = truffleCache.lookup(targetMethod, arguments);
+        final StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions);
         Debug.scope("parseGraph", targetMethod, new Runnable() {
 
             @Override
