@@ -178,7 +178,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             // record where preserved registers are saved
             for (Map.Entry<LIRFrameState, AMD64RegistersPreservationOp> e : gen.calleeSaveInfo.entrySet()) {
                 AMD64RegistersPreservationOp save = e.getValue();
-                save.update(definedRegisters, e.getKey().debugInfo(), frameMap);
+                DebugInfo info = e.getKey() == null ? null : e.getKey().debugInfo();
+                save.update(definedRegisters, info, frameMap);
             }
         }
 
