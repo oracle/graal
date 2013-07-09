@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import com.oracle.truffle.api.*;
+
 /**
  * An exception thrown to enter a slow path. The Truffle optimizer has special knowledge of this
  * exception class and will never compile a catch block that catches this exception type.
@@ -34,6 +36,7 @@ public class SlowPathException extends Exception {
      * Creates an exception thrown to enter a slow path.
      */
     public SlowPathException() {
+        CompilerDirectives.transferToInterpreter();
     }
 
     /**
@@ -41,6 +44,7 @@ public class SlowPathException extends Exception {
      */
     public SlowPathException(String message, Throwable cause) {
         super(message, cause);
+        CompilerDirectives.transferToInterpreter();
     }
 
     /**
@@ -48,6 +52,7 @@ public class SlowPathException extends Exception {
      */
     public SlowPathException(String message) {
         super(message);
+        CompilerDirectives.transferToInterpreter();
     }
 
     /**
@@ -55,6 +60,7 @@ public class SlowPathException extends Exception {
      */
     public SlowPathException(Throwable cause) {
         super(cause);
+        CompilerDirectives.transferToInterpreter();
     }
 
     /**

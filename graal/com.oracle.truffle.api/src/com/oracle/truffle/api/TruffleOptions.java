@@ -31,24 +31,24 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 public class TruffleOptions {
 
     /** Enables/disables the rewriting of traces in the truffle runtime to stdout. */
-    public static final boolean TraceRewrites = false;
+    public static boolean TraceRewrites = false;
 
     /**
      * Filters rewrites that do not contain the given string in the qualified name of the source or
      * target class hierarchy.
      */
-    public static final String TraceRewritesFilterClass = null;
+    public static String TraceRewritesFilterClass = null;
 
     /**
      * Filters rewrites which does not contain the {@link Kind} in its source {@link NodeInfo}. If
      * no {@link NodeInfo} is defined the element is filtered if the filter value is set.
      */
-    public static final NodeInfo.Kind TraceRewritesFilterFromKind = null;
+    public static NodeInfo.Kind TraceRewritesFilterFromKind = null;
 
     /**
      * Filters rewrites which does not contain the {@link Kind} in its target {@link NodeInfo}. If
      * no {@link NodeInfo} is defined the element is filtered if the filter value is set.
      */
-    public static final NodeInfo.Kind TraceRewritesFilterToKind = null;
+    public static NodeInfo.Kind TraceRewritesFilterToKind = null;
 
 }
