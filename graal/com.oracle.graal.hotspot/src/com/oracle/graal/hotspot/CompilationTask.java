@@ -36,7 +36,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -44,7 +43,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
-public final class CompilationTask implements Runnable, Comparable<CompilationTask> {
+public final class CompilationTask implements Runnable {
 
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
@@ -55,7 +54,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     };
 
     private enum CompilationStatus {
-        Queued, Running, Canceled
+        Queued, Running
     }
 
     private final HotSpotGraalRuntime graalRuntime;
@@ -65,16 +64,15 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     private final HotSpotResolvedJavaMethod method;
     private final int entryBCI;
     private final int id;
-    private final int priority;
     private final AtomicReference<CompilationStatus> status;
 
     private StructuredGraph graph;
 
-    public static CompilationTask create(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id, int priority) {
-        return new CompilationTask(graalRuntime, plan, optimisticOpts, method, entryBCI, id, priority);
+    public static CompilationTask create(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+        return new CompilationTask(graalRuntime, plan, optimisticOpts, method, entryBCI, id);
     }
 
-    private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id, int priority) {
+    private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
         assert id >= 0;
         this.graalRuntime = graalRuntime;
         this.plan = plan;
@@ -83,7 +81,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         this.optimisticOpts = optimisticOpts;
         this.entryBCI = entryBCI;
         this.id = id;
-        this.priority = priority;
         this.status = new AtomicReference<>(CompilationStatus.Queued);
     }
 
@@ -95,14 +92,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
         return id;
     }
 
-    public int getPriority() {
-        return priority;
-    }
-
-    public boolean tryToCancel() {
-        return tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Canceled);
-    }
-
     public int getEntryBCI() {
         return entryBCI;
     }
@@ -110,12 +99,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
-            if (DynamicCompilePriority.getValue()) {
-                int threadPriority = priority < VMToCompilerImpl.SlowQueueCutoff.getValue() ? Thread.NORM_PRIORITY : Thread.MIN_PRIORITY;
-                if (Thread.currentThread().getPriority() != threadPriority) {
-                    Thread.currentThread().setPriority(threadPriority);
-                }
-            }
             runCompilation();
         } finally {
             if (method.currentTask() == this) {
@@ -131,12 +114,16 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
 
     public void runCompilation() {
-        if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running) || method.hasCompiledCode()) {
-            return;
-        }
-
-        CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
+        /*
+         * no code must be outside this try/finally because it could happen otherwise that
+         * clearQueuedForCompilation() is not executed
+         */
         try (TimerCloseable a = CompilationTime.start()) {
+            if (!tryToChangeStatus(CompilationStatus.Queued, CompilationStatus.Running) || method.hasCompiledCode()) {
+                return;
+            }
+
+            CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
                 TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(),
@@ -178,6 +165,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             }
 
             installMethod(result);
+            stats.finish(method);
         } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();
             if (ExitVMOnBailout.getValue()) {
@@ -199,7 +187,6 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
             assert method.isQueuedForCompilation();
             method.clearQueuedForCompilation();
         }
-        stats.finish(method);
     }
 
     /**
@@ -234,16 +221,7 @@ public final class CompilationTask implements Runnable, Comparable<CompilationTa
     }
 
     @Override
-    public int compareTo(CompilationTask o) {
-        if (priority != o.priority) {
-            return priority - o.priority;
-        } else {
-            return id - o.id;
-        }
-    }
-
-    @Override
     public String toString() {
-        return "Compilation[id=" + id + ", prio=" + priority + " " + MetaUtil.format("%H.%n(%p)", method) + (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
+        return "Compilation[id=" + id + ", " + MetaUtil.format("%H.%n(%p)", method) + (entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "@" + entryBCI) + "]";
     }
 }
