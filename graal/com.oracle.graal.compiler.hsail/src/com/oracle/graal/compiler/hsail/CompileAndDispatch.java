@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+package com.oracle.graal.compiler.hsail;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Interface for compiling a Java program to HSAIL and dispatching execution to the GPU or an HSAIL
+ * simulator.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public interface CompileAndDispatch {
 
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
-    }
+    Object createKernel(Class<?> consumerClass);
 
-    @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
-    }
-
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
-    }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
-    }
-
+    boolean dispatchKernel(Object kernel, int jobSize, Object[] args);
 }

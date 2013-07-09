@@ -680,15 +680,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
                     ValueNode newObject = allocations[objIndex];
                     if (virtual instanceof VirtualInstanceNode) {
-                        VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
+                        VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
                         for (int i = 0; i < entryCount; i++) {
                             ValueNode value = commit.getValues().get(valuePos++);
                             if (value instanceof VirtualObjectNode) {
                                 value = allocations[commit.getVirtualObjects().indexOf(value)];
                             }
                             if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                                WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) instance.field(i)), WriteBarrierType.NONE,
-                                                instance.field(i).getKind() == Kind.Object);
+                                WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i)), WriteBarrierType.NONE,
+                                                virtualInstance.field(i).getKind() == Kind.Object);
 
                                 graph.addBeforeFixed(commit, graph.add(write));
                             }

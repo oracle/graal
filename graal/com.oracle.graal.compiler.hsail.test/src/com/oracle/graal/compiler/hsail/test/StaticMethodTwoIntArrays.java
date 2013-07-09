@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+package com.oracle.graal.compiler.hsail.test;
+
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Superclass that initializes one input array and one output array. Derived by some of the other
+ * test cases that take one array as input and write to an output array.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public abstract class StaticMethodTwoIntArrays extends GraalKernelTester {
 
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
+    static final int num = 20;
+    @Result protected int[] outArray = new int[num];
+
+    void setupArrays(int[] in) {
+        for (int i = 0; i < num; i++) {
+            in[i] = i;
+            outArray[i] = -i;
+        }
     }
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
-    }
-
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
-    }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
+    public void runTest() {
+        int[] inArray = new int[num];
+        setupArrays(inArray);
+        /**
+         * DumpArrayParameters(inArray); Call it for a range, specifying testmethod args (but not
+         * the fields it uses or the gid argument). Will put output in outArray.
+         */
+        dispatchMethodKernel(num, outArray, inArray);
     }
 
 }

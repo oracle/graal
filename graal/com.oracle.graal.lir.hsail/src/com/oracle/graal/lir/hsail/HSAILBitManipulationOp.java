@@ -20,39 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
+package com.oracle.graal.lir.hsail;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.hsail.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Defines bit manipulation operations.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public class HSAILBitManipulationOp extends HSAILLIRInstruction {
 
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
+    public enum IntrinsicOpcode {
+        IPOPCNT, LPOPCNT, IBSR, LBSR, BSF;
+    }
+
+    @Opcode private final IntrinsicOpcode opcode;
+    @Def protected Value result;
+    @Use({OperandFlag.REG}) protected Value input;
+
+    public HSAILBitManipulationOp(IntrinsicOpcode opcode, Value result, Value input) {
+        this.opcode = opcode;
+        this.result = result;
+        this.input = input;
     }
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
+    public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        switch (opcode) {
+            case IPOPCNT:
+                throw GraalInternalError.shouldNotReachHere();
+            case LPOPCNT:
+                throw GraalInternalError.shouldNotReachHere();
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
-
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
-    }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
-    }
-
 }

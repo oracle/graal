@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
+package com.oracle.graal.compiler.hsail.test;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+import org.junit.*;
+
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Tests direct method calls.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public class CallTest extends GraalKernelTester {
 
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
+    static final int width = 768;
+    static final int height = width;
+    private int iterations = 100;
+    static final int range = width * height;
+    @Result public float[] inArray = new float[range];
+
+    public static int foo(int gid, int i) {
+        if (gid < 25) {
+            return gid * i;
+        } else {
+            return gid - i;
+        }
+    }
+
+    public void run(float[] inArray1, int gid) {
+        for (int i = 0; i < iterations; i++) {
+            inArray1[gid] = foo(gid, i);
+        }
     }
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
+    public void runTest() {
+        dispatchMethodKernel(range, inArray);
     }
 
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
+    @Test
+    public void test() {
+        super.testGeneratedHsail();
     }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
-    }
-
 }

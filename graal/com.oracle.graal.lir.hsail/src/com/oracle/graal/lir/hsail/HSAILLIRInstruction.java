@@ -20,39 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
+package com.oracle.graal.lir.hsail;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.hsail.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.asm.*;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Convenience class to provide HSAILAssembler for the {@link #emitCode} method.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
-
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
-    }
+public abstract class HSAILLIRInstruction extends LIRInstruction {
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
+    public final void emitCode(TargetMethodAssembler tasm) {
+        emitCode(tasm, (HSAILAssembler) tasm.asm);
     }
 
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
-    }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
-    }
-
+    public abstract void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm);
 }

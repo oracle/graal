@@ -20,17 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
+package com.oracle.graal.asm.hsail;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.*;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * The platform-dependent base class for the HSAIL assembler.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public abstract class AbstractHSAILAssembler extends AbstractAssembler {
 
-    public AbstractPTXAssembler(TargetDescription target) {
+    public AbstractHSAILAssembler(TargetDescription target) {
         super(target);
     }
 
@@ -47,12 +47,11 @@ public abstract class AbstractPTXAssembler extends AbstractAssembler {
 
     @Override
     public void jmp(Label l) {
-        // Nothing to do
+        emitString("brn " + nameOf(l) + ";");
     }
 
     @Override
     protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
+        // Nothing to do
     }
-
 }

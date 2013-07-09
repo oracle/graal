@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.asm.ptx;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.asm.*;
+package com.oracle.graal.compiler.hsail.test;
+
+import java.util.*;
+import org.junit.*;
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
 /**
- * The platform-dependent base class for the PTX assembler.
+ * Tests floating point square root.
  */
-public abstract class AbstractPTXAssembler extends AbstractAssembler {
+public class FloatSqrtTest extends GraalKernelTester {
 
-    public AbstractPTXAssembler(TargetDescription target) {
-        super(target);
+    static final int size = 128;
+    static final float[] input = new float[size];
+    @Result static final float[] output = new float[size];
+    static float[] seed = new float[size];
+    {
+        for (int i = 0; i < seed.length; i++) {
+            seed[i] = (float) Math.random();
+        }
+
+    }
+
+    public static void run(float[] input1, float[] output1, int gid) {
+        output1[gid] = (float) Math.sqrt(input1[gid]);
     }
 
     @Override
-    public final void bind(Label l) {
-        super.bind(l);
-        emitString0(nameOf(l) + ":\n");
+    public void runTest() {
+        System.arraycopy(seed, 0, input, 0, seed.length);
+        Arrays.fill(output, 0f);
+        dispatchMethodKernel(64, input, output);
     }
 
-    @Override
-    public void align(int modulus) {
-        // Nothing to do
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
-
-    @Override
-    public void jmp(Label l) {
-        // Nothing to do
-    }
-
-    @Override
-    protected void patchJumpTarget(int branch, int jumpTarget) {
-        // Nothing to do. All branches already point to the right label.
-    }
-
 }
