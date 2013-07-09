@@ -25,35 +25,27 @@ package com.oracle.graal.compiler.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
-import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
-import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.sparc.SPARCArithmetic.*;
+import static com.oracle.graal.lir.sparc.SPARCBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.sparc.SPARCCompare.*;
+import static com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp.IntrinsicOpcode.*;
 
-import com.oracle.graal.api.code.CallingConvention;
-import com.oracle.graal.api.code.CodeCacheProvider;
-import com.oracle.graal.api.code.DeoptimizationAction;
-import com.oracle.graal.api.code.ForeignCallLinkage;
-import com.oracle.graal.api.code.StackSlot;
-import com.oracle.graal.api.code.TargetDescription;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.compiler.gen.LIRGenerator;
-import com.oracle.graal.compiler.target.LIRGenLowerable;
-import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
-import com.oracle.graal.lir.sparc.SPARCAddressValue;
+import com.oracle.graal.lir.StandardOp.JumpOp;
+import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegConst;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op1Stack;
-import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Stack;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Reg;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Stack;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.ShiftOp;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary1Op;
 import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary2Op;
-import com.oracle.graal.lir.sparc.SPARCBitManipulationOp;
-import com.oracle.graal.lir.sparc.SPARCBreakpointOp;
-import com.oracle.graal.lir.sparc.SPARCByteSwapOp;
 import com.oracle.graal.lir.sparc.SPARCCompare.CompareOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.BranchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
@@ -62,7 +54,6 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.SwitchRangesOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCMathIntrinsicOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
@@ -70,29 +61,21 @@ import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
-import com.oracle.graal.lir.sparc.SPARCTestOp;
-import com.oracle.graal.nodes.BreakpointNode;
-import com.oracle.graal.nodes.DeoptimizingNode;
-import com.oracle.graal.nodes.DirectCallTargetNode;
-import com.oracle.graal.nodes.IndirectCallTargetNode;
-import com.oracle.graal.nodes.InfopointNode;
-import com.oracle.graal.nodes.SafepointNode;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
-import com.oracle.graal.nodes.java.CompareAndSwapNode;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
  */
-public class SPARCLIRGenerator extends LIRGenerator {
+public abstract class SPARCLIRGenerator extends LIRGenerator {
 
-    public static class SPARCSpillMoveFactory implements LIR.SpillMoveFactory {
+    private class SPARCSpillMoveFactory implements LIR.SpillMoveFactory {
 
         @Override
         public LIRInstruction createMove(AllocatableValue result, Value input) {
-            throw new InternalError("NYI");
+            return SPARCLIRGenerator.this.createMove(result, input);
         }
     }
 
@@ -117,20 +100,20 @@ public class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    protected SPARCLIRInstruction createMove(AllocatableValue dst, Value src) {
+        if (src instanceof SPARCAddressValue) {
+            // return new LeaOp(dst, (AMD64AddressValue) src);
+            throw new InternalError("NYI");
+        } else if (isRegister(src) || isStackSlot(dst)) {
+            return new MoveFromRegOp(dst, src);
+        } else {
+            return new MoveToRegOp(dst, src);
+        }
+    }
+
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
-        // XXX SPARCAddress loads
-        /*
-         * if (src instanceof SPARCAddressValue) { public LoadOp(Kind kind, AllocatableValue result,
-         * SPARCAddressValue address, LIRFrameState state) {
-         * 
-         * return new LoadOp(result.getKind(), result, (SPARCAddressValue) src); }
-         */
-        if (isRegister(src) || isStackSlot(dst)) {
-            append(new MoveFromRegOp(dst, src));
-        } else {
-            append(new MoveToRegOp(dst, src));
-        }
+        append(createMove(dst, src));
     }
 
     @Override
@@ -297,16 +280,6 @@ public class SPARCLIRGenerator extends LIRGenerator {
         Variable result = newVariable(trueValue.getKind());
         append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue)));
         return result;
-    }
-
-    @Override
-    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
-    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
     }
 
     @Override

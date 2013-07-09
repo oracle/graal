@@ -52,7 +52,7 @@ public class SPARCBreakpointOp extends SPARCLIRInstruction {
 
     @Override
     @SuppressWarnings("unused")
-    public void emitCode(TargetMethodAssembler tasm, SPARCAssembler asm) {
-        new Trap(asm, ST_RESERVED_FOR_USER_0);
+    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        new Trap(masm, ST_RESERVED_FOR_USER_0);
     }
 }

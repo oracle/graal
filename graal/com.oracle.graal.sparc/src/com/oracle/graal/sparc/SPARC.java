@@ -113,9 +113,9 @@ public class SPARC extends Architecture {
     public static final Register fp = i6;
     public static final Register sp = o6;
 
-    public static final Register[] gprRegisters = {
+    public static final Register[] cpuRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
-         r8,  r9, r10, r11, r12, r13, r14, r15,
+        r8,  r9,  r10, r11, r12, r13, r14, r15,
         r16, r17, r18, r19, r20, r21, r22, r23,
         r24, r25, r26, r27, r28, r29, r30, r31
     };
@@ -131,7 +131,7 @@ public class SPARC extends Architecture {
     public static final Register f7 = new Register(39, 7, "f7", FPU);
 
     public static final Register[] allRegisters = {
-        // GPR
+        // CPU
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
         r8,  r9, r10, r11, r12, r13, r14, r15,
        r16, r17, r18, r19, r20, r21, r22, r23,
@@ -140,15 +140,12 @@ public class SPARC extends Architecture {
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
     };
 
+    // @formatter:on
+
     public SPARC() {
-        super("SPARC",
-              8,
-              ByteOrder.BIG_ENDIAN,
-              allRegisters,
-              LOAD_STORE | STORE_STORE,
-              1,
-              r31.encoding + 1,
-              8);
+        // The return address doesn't have an extra slot in the frame so we pass 0 for the return
+        // address size.
+        super("SPARC", 8, ByteOrder.BIG_ENDIAN, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 0);
     }
 
     @Override
@@ -176,12 +173,17 @@ public class SPARC extends Architecture {
                     return true;
             }
         }
-
         return false;
     }
 
     @Override
     public PlatformKind getLargestStorableKind(RegisterCategory category) {
-        throw new InternalError("NYI");
+        if (category == CPU) {
+            return Kind.Long;
+        } else if (category == FPU) {
+            return Kind.Double;
+        } else {
+            return Kind.Illegal;
+        }
     }
 }

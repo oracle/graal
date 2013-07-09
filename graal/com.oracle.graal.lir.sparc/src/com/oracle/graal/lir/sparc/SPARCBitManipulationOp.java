@@ -51,7 +51,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
         Register tmp = null;  // ??
         if (ValueUtil.isRegister(input)) {
