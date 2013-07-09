@@ -210,7 +210,10 @@ public final class TruffleCache {
                 }
             }
 
-            if (next instanceof ControlSplitNode) {
+            if (next instanceof InvokeWithExceptionNode) {
+                InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) next;
+                next = invokeWithExceptionNode.next();
+            } else if (next instanceof ControlSplitNode) {
                 ControlSplitNode controlSplitNode = (ControlSplitNode) next;
                 AbstractBeginNode maxProbNode = null;
                 for (Node succ : controlSplitNode.cfgSuccessors()) {
