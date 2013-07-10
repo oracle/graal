@@ -22,9 +22,13 @@
  */
 package com.oracle.graal.nodes.java;
 
+import static com.oracle.graal.api.code.DeoptimizationAction.*;
+import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -62,9 +66,48 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         return forStoreCheck;
     }
 
+    /**
+     * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
+     * 
+     * <pre>
+     * 1: A a = ...
+     * 2: B b = (B) a;
+     * </pre>
+     * 
+     * is lowered to:
+     * 
+     * <pre>
+     * 1: A a = ...
+     * 2: B b = guardingPi(a == null || a instanceof B, a, stamp(B))
+     * </pre>
+     * 
+     * or if a is known to be non-null:
+     * 
+     * <pre>
+     * 1: A a = ...
+     * 2: B b = guardingPi(a instanceof B, a, stamp(B, non-null))
+     * </pre>
+     * 
+     * Note: we use {@link Graph#add} as opposed to {@link Graph#unique} for the new
+     * {@link InstanceOfNode} to maintain the invariant checked by
+     * {@code LoweringPhase.checkUsagesAreScheduled()}.
+     */
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        tool.getRuntime().lower(this, tool);
+        InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
+        Stamp stamp = object.stamp().join(StampFactory.declared(type));
+        ValueNode condition;
+        if (stamp == null) {
+            // This is a check cast that will always fail
+            condition = LogicConstantNode.contradiction(graph());
+            stamp = StampFactory.declared(type);
+        } else if (object.stamp().nonNull()) {
+            condition = typeTest;
+        } else {
+            condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+        }
+        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
+        graph().replaceFixedWithFixed(this, checkedObject);
     }
 
     @Override

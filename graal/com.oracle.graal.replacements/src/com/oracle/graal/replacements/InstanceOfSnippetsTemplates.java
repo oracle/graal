@@ -65,13 +65,12 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
         assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode;
         List<Node> usages = instanceOf.usages().snapshot();
-        int nUsages = usages.size();
 
         Instantiation instantiation = new Instantiation();
         for (Node usage : usages) {
             final StructuredGraph graph = (StructuredGraph) usage.graph();
 
-            InstanceOfUsageReplacer replacer = createReplacer(instanceOf, tool, nUsages, instantiation, usage, graph);
+            InstanceOfUsageReplacer replacer = createReplacer(instanceOf, instantiation, usage, graph);
 
             if (instantiation.isInitialized()) {
                 // No need to re-instantiate the snippet - just re-use its result
@@ -91,18 +90,15 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     /**
      * Gets the specific replacer object used to replace the usage of an instanceof node with the
      * result of an instantiated instanceof snippet.
-     * 
-     * @param nUsages
-     * @param tool
      */
-    protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, LoweringTool tool, int nUsages, Instantiation instantiation, Node usage, final StructuredGraph graph) {
+    protected InstanceOfUsageReplacer createReplacer(FloatingNode instanceOf, Instantiation instantiation, Node usage, final StructuredGraph graph) {
         InstanceOfUsageReplacer replacer;
-        if (usage instanceof IfNode || usage instanceof FixedGuardNode) {
-            replacer = new IfUsageReplacer(instantiation, ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph), instanceOf, (FixedNode) usage);
+        if (usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof LogicBinaryNode || usage instanceof GuardingPiNode) {
+            replacer = new NonMaterializationUsageReplacer(instantiation, ConstantNode.forInt(1, graph), ConstantNode.forInt(0, graph), instanceOf, usage);
         } else {
             assert usage instanceof ConditionalNode : "unexpected usage of " + instanceOf + ": " + usage;
             ConditionalNode c = (ConditionalNode) usage;
-            replacer = new ConditionalUsageReplacer(instantiation, c.trueValue(), c.falseValue(), instanceOf, c);
+            replacer = new MaterializationUsageReplacer(instantiation, c.trueValue(), c.falseValue(), instanceOf, c);
         }
         return replacer;
     }
@@ -192,14 +188,14 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     }
 
     /**
-     * Replaces an {@link IfNode} usage of an {@link InstanceOfNode} or
-     * {@link InstanceOfDynamicNode}.
+     * Replaces the usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode} that does
+     * not materialize the result of the type test.
      */
-    public static class IfUsageReplacer extends InstanceOfUsageReplacer {
+    public static class NonMaterializationUsageReplacer extends InstanceOfUsageReplacer {
 
-        private final FixedNode usage;
+        private final Node usage;
 
-        public IfUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, FixedNode usage) {
+        public NonMaterializationUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, Node usage) {
             super(instantiation, instanceOf, trueValue, falseValue);
             this.usage = usage;
         }
@@ -211,14 +207,6 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode) {
-            if (newNode.isConstant()) {
-                LogicConstantNode logicConstant = LogicConstantNode.forBoolean(newNode.asConstant().asInt() != 0, newNode.graph());
-                usage.replaceFirstInput(oldNode, logicConstant);
-                // PrintStream out = System.out;
-                // out.println(newNode.graph() + ": " + this);
-                GraalInternalError.shouldNotReachHere(instanceOf.graph().toString());
-                return;
-            }
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();
@@ -228,14 +216,14 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     }
 
     /**
-     * Replaces a {@link ConditionalNode} usage of an {@link InstanceOfNode} or
-     * {@link InstanceOfDynamicNode}.
+     * Replaces the usage of an {@link InstanceOfNode} or {@link InstanceOfDynamicNode} that does
+     * materializes the result of the type test.
      */
-    public static class ConditionalUsageReplacer extends InstanceOfUsageReplacer {
+    public static class MaterializationUsageReplacer extends InstanceOfUsageReplacer {
 
         public final ConditionalNode usage;
 
-        public ConditionalUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, ConditionalNode usage) {
+        public MaterializationUsageReplacer(Instantiation instantiation, ValueNode trueValue, ValueNode falseValue, FloatingNode instanceOf, ConditionalNode usage) {
             super(instantiation, instanceOf, trueValue, falseValue);
             this.usage = usage;
         }
@@ -251,14 +239,6 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         @Override
         public void replace(ValueNode oldNode, ValueNode newNode) {
-            if (newNode.isConstant()) {
-                LogicConstantNode logicConstant = LogicConstantNode.forBoolean(newNode.asConstant().asInt() != 0, newNode.graph());
-                usage.replaceFirstInput(oldNode, logicConstant);
-                // PrintStream out = System.out;
-                // out.println(newNode.graph() + ": " + this);
-                GraalInternalError.shouldNotReachHere(instanceOf.graph().toString());
-                return;
-            }
             assert newNode instanceof PhiNode;
             assert oldNode == instanceOf;
             newNode.inferStamp();

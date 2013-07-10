@@ -253,11 +253,34 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
 
                 if (node instanceof Lowerable) {
+                    assert checkUsagesAreScheduled(node);
                     ((Lowerable) node).lower(loweringTool, loweringType);
                 }
 
                 loweringTool.setLastFixedNode((FixedWithNextNode) nextNode.predecessor());
             }
+        }
+
+        /**
+         * Checks that all usages of a floating, lowerable node are scheduled.
+         * <p>
+         * Given that the lowering of such nodes may introduce fixed nodes, they must be lowered in
+         * the context of a usage that dominates all other usages. The fixed nodes resulting from
+         * lowering are attached to the fixed node context of the dominating usage. This ensures the
+         * post-lowering graph still has a valid schedule.
+         * 
+         * @param node a {@link Lowerable} node
+         */
+        private boolean checkUsagesAreScheduled(Node node) {
+            if (node instanceof FloatingNode) {
+                for (Node usage : node.usages()) {
+                    if (usage instanceof ScheduledNode) {
+                        Block usageBlock = schedule.getCFG().blockFor(usage);
+                        assert usageBlock != null : node.graph() + ": cannot lower floatable node " + node + " that has non-scheduled usage " + usage;
+                    }
+                }
+            }
+            return true;
         }
     }
 }
