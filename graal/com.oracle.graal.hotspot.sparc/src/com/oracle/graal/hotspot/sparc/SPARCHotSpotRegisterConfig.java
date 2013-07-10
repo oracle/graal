@@ -75,6 +75,9 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] nativeGeneralParameterRegisters;
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
 
+    private final Register[] callerSaveRegisters = {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7};
+    private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3, i4, i5, i6, i7};
+
     private final CalleeSaveLayout csl;
 
     private static Register findRegister(String name, Register[] all) {
@@ -124,14 +127,14 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         javaGeneralParameterRegisters = new Register[]{i0, i1, i2, i3, i4, i5};
         nativeGeneralParameterRegisters = new Register[]{i0, i1, i2, i3, i4, i5};
 
-        csl = null;
+        csl = new CalleeSaveLayout(architecture, -1, -1, architecture.getWordSize(), calleeSaveRegisters);
         allocatable = initAllocatable(config.useCompressedOops);
         attributesMap = RegisterAttributes.createMap(this, SPARC.allRegisters);
     }
 
     @Override
     public Register[] getCallerSaveRegisters() {
-        return getAllocatableRegisters();
+        return callerSaveRegisters;
     }
 
     @Override

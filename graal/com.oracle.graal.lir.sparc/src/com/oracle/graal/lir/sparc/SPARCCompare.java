@@ -49,7 +49,7 @@ public enum SPARCCompare {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
             emit(tasm, masm, opcode, x, y);
         }
 
@@ -62,7 +62,7 @@ public enum SPARCCompare {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCCompare opcode, Value x, Value y) {
+    public static void emit(TargetMethodAssembler tasm, SPARCMacroAssembler masm, SPARCCompare opcode, Value x, Value y) {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP:

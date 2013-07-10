@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,14 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
- * Convenience class to provide SPARCAssembler for the {@link #emitCode} method.
+ * Convenience class to provide SPARCMacroAssembler for the {@link #emitCode} method.
  */
 public abstract class SPARCLIRInstruction extends LIRInstruction {
 
     @Override
     public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (SPARCAssembler) tasm.asm);
+        emitCode(tasm, (SPARCMacroAssembler) tasm.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm);
+    public abstract void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm);
 }

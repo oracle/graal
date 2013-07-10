@@ -22,29 +22,24 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import com.oracle.graal.api.code.CallingConvention;
-import com.oracle.graal.api.code.CodeCacheProvider;
-import com.oracle.graal.api.code.DeoptimizationAction;
-import com.oracle.graal.api.code.StackSlot;
-import com.oracle.graal.api.code.TargetDescription;
-import com.oracle.graal.api.meta.DeoptimizationReason;
-import com.oracle.graal.api.meta.Value;
-import com.oracle.graal.compiler.sparc.SPARCLIRGenerator;
-import com.oracle.graal.hotspot.HotSpotLIRGenerator;
-import com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode;
-import com.oracle.graal.hotspot.stubs.Stub;
-import com.oracle.graal.lir.FrameMap;
-import com.oracle.graal.lir.LIR;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.ValueNode;
+import java.lang.reflect.*;
 
-public class SPARCHotSpotLIRGenerator  extends SPARCLIRGenerator implements HotSpotLIRGenerator {
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.sparc.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.nodes.*;
+import com.oracle.graal.hotspot.stubs.*;
+import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+
+public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSpotLIRGenerator {
 
     public StackSlot deoptimizationRescueSlot;
 
-    public SPARCHotSpotLIRGenerator(StructuredGraph graph,
-            CodeCacheProvider runtime, TargetDescription target,
-            FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public SPARCHotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, runtime, target, frameMap, cc, lir);
         // TODO Auto-generated constructor stub
     }
@@ -55,8 +50,35 @@ public class SPARCHotSpotLIRGenerator  extends SPARCLIRGenerator implements HotS
     }
 
     @Override
-    public void emitDeoptimizeCaller(DeoptimizationAction action,
-            DeoptimizationReason reason) {
+    protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+        InvokeKind invokeKind = ((HotSpotDirectCallTargetNode) callTarget).invokeKind();
+        if (invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual) {
+// append(new SPARCHotspotDirectVirtualCallOp(callTarget.target(), result, parameters, temps,
+// callState, invokeKind));
+            throw new InternalError("NYI");
+        } else {
+            assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
+            HotSpotResolvedJavaMethod resolvedMethod = (HotSpotResolvedJavaMethod) callTarget.target();
+            assert !Modifier.isAbstract(resolvedMethod.getModifiers()) : "Cannot make direct call to abstract method.";
+            Constant metaspaceMethod = resolvedMethod.getMetaspaceMethodConstant();
+            append(new SPARCHotspotDirectStaticCallOp(callTarget.target(), result, parameters, temps, callState, invokeKind, metaspaceMethod));
+        }
+    }
+
+    @Override
+    protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
+// AllocatableValue metaspaceMethod = AMD64.rbx.asValue();
+// emitMove(metaspaceMethod, operand(((HotSpotIndirectCallTargetNode)
+// callTarget).metaspaceMethod()));
+// AllocatableValue targetAddress = AMD64.rax.asValue();
+// emitMove(targetAddress, operand(callTarget.computedAddress()));
+// append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod,
+// targetAddress, callState));
+        throw new InternalError("NYI");
+    }
+
+    @Override
+    public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
         // TODO Auto-generated method stub
     }
 
@@ -66,8 +88,7 @@ public class SPARCHotSpotLIRGenerator  extends SPARCLIRGenerator implements HotS
     }
 
     @Override
-    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc,
-            ValueNode exception, ValueNode exceptionPc) {
+    public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         // TODO Auto-generated method stub
     }
 

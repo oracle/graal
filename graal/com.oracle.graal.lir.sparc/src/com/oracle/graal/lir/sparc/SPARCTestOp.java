@@ -43,7 +43,7 @@ public class SPARCTestOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCAssembler masm) {
+    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         if (isRegister(y)) {
             switch (x.getKind()) {
                 case Int:

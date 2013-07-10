@@ -22,10 +22,16 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import com.oracle.graal.api.code.AbstractAddress;
-import com.oracle.graal.api.code.Register;
+import static com.oracle.graal.sparc.SPARC.*;
+
+import com.oracle.graal.api.code.*;
 
 public class SPARCAddress extends AbstractAddress {
+
+    /**
+     * Stack bias for stack and frame pointer loads.
+     */
+    private static final int STACK_BIAS = 0x7ff;
 
     private final Register base;
     private final int displacement; // need Register offset / displacement CompositeValue?
@@ -66,6 +72,10 @@ public class SPARCAddress extends AbstractAddress {
      * @return Optional additive displacement.
      */
     public int getDisplacement() {
+        // TODO Should we also hide the register save area size here?
+        if (getBase() == sp || getBase() == fp) {
+            return displacement + STACK_BIAS;
+        }
         return displacement;
     }
 }
