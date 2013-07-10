@@ -45,6 +45,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
 /**
@@ -244,8 +245,10 @@ public final class TruffleCache {
     private FixedNode expandInvoke(Invoke invoke) {
         if (invoke.callTarget() instanceof MethodCallTargetNode) {
             final MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) invoke.callTarget();
+
             if ((methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) &&
-                            !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null) {
+                            !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
+                            methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null) {
                 Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
                 if (macroSubstitution != null) {
                     return InliningUtil.inlineMacroNode(invoke, methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
