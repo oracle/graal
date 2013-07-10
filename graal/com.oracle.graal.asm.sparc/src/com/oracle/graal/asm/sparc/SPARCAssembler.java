@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.asm.sparc;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.Kind;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
-import com.oracle.graal.sparc.*;
-
 import static com.oracle.graal.sparc.SPARC.*;
+
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.sparc.*;
 
 /**
  * This class implements an assembler that can encode most SPARC instructions.
@@ -57,20 +57,66 @@ public abstract class SPARCAssembler extends AbstractAssembler {
     // @formatter:on
     public static class Fmt00a {
 
+        private static final int OP_SHIFT = 30;
+        private static final int RD_SHIFT = 25;
+        private static final int OP2_SHIFT = 22;
+        private static final int IMM22_SHIFT = 0;
+
+        // @formatter:off
+        private static final int OP_MASK    = 0b11000000000000000000000000000000;
+        private static final int RD_MASK    = 0b00111110000000000000000000000000;
+        private static final int OP2_MASK   = 0b00000001110000000000000000000000;
+        private static final int IMM22_MASK = 0b00000000001111111111111111111111;
+        // @formatter:on
+
         private int rd;
         private int op2;
         private int imm22;
 
-        public Fmt00a(Op2s op2, int imm22, Register rd) {
-            this.op2 = op2.getValue();
+        private Fmt00a(int rd, int op2, int imm22) {
+            this.rd = rd;
+            this.op2 = op2;
             this.imm22 = imm22;
-            this.rd = rd.encoding();
+            verify();
+        }
+
+        public Fmt00a(Op2s op2, int imm22, Register rd) {
+            this(rd.encoding(), op2.getValue(), hi22(imm22));
+        }
+
+        private int getInstructionBits() {
+            return Ops.BranchOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op2 << OP2_SHIFT | (imm22 & IMM22_MASK) << IMM22_SHIFT;
+        }
+
+        public static Fmt00a read(SPARCAssembler masm, int pos) {
+            final int inst = masm.codeBuffer.getInt(pos);
+
+            // Make sure it's the right instruction:
+            final int op = (inst & OP_MASK) >> OP_SHIFT;
+            assert op == Ops.BranchOp.getValue();
+
+            // Get the instruction fields:
+            final int rd = (inst & RD_MASK) >> RD_SHIFT;
+            final int op2 = (inst & OP2_MASK) >> OP2_SHIFT;
+            final int imm22 = (inst & IMM22_MASK) >> IMM22_SHIFT;
+
+            return new Fmt00a(op2, imm22, rd);
+        }
+
+        public void write(SPARCAssembler masm, int pos) {
+            verify();
+            masm.codeBuffer.emitInt(getInstructionBits(), pos);
         }
 
         public void emit(SPARCAssembler masm) {
-            assert rd < 0x40;
-            assert op2 < 0x8;
-            masm.emitInt(Ops.BranchOp.getValue() << 30 | rd << 25 | op2 << 22 | (imm22 & 0x003fffff));
+            verify();
+            masm.emitInt(getInstructionBits());
+        }
+
+        public void verify() {
+            assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
+            assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT);
+            assert ((imm22 << IMM22_SHIFT) & IMM22_MASK) == (imm22 << IMM22_SHIFT);
         }
     }
 
@@ -623,7 +669,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
             assert ((i << I_SHIFT) & I_MASK) == (i << I_SHIFT);
             assert ((immAsi << IMM_ASI_SHIFT) & IMM_ASI_MASK) == (immAsi << IMM_ASI_SHIFT);
             assert ((rs2 << RS2_SHIFT) & RS2_MASK) == (rs2 << RS2_SHIFT);
-            assert isSimm13(simm13);
+            assert isSimm13(simm13) : String.format("simm13: %d (%x)", simm13, simm13);
         }
     }
 
@@ -1224,6 +1270,10 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static boolean isSimm13(int src) {
         return min13 <= src && src <= max13;
+    }
+
+    public static boolean isSimm13(long src) {
+        return NumUtil.isInt(src) && min13 <= src && src <= max13;
     }
 
     public static final int hi22(int x) {
@@ -2866,15 +2916,31 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Stw extends Fmt11 {
 
+        public Stw(Register dst, Register src1, Register src2) {
+            super(Op3s.Stw, src1, src2, dst);
+        }
+
+        public Stw(Register dst, Register src1, int simm13) {
+            super(Op3s.Stw, src1, simm13, dst);
+        }
+
         public Stw(Register dst, SPARCAddress addr) {
-            super(Op3s.Stw, addr.getBase(), addr.getDisplacement(), dst);
+            this(dst, addr.getBase(), addr.getDisplacement());
         }
     }
 
     public static class Stx extends Fmt11 {
 
+        public Stx(Register dst, Register src1, Register src2) {
+            super(Op3s.Stx, src1, src2, dst);
+        }
+
+        public Stx(Register dst, Register src1, int simm13) {
+            super(Op3s.Stx, src1, simm13, dst);
+        }
+
         public Stx(Register dst, SPARCAddress addr) {
-            super(Op3s.Stx, addr.getBase(), addr.getDisplacement(), dst);
+            this(dst, addr.getBase(), addr.getDisplacement());
         }
     }
 

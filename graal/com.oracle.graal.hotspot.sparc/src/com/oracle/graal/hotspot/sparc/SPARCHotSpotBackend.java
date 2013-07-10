@@ -69,19 +69,26 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
      */
     protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
         if (StackShadowPages.getValue() > 0) {
-            // SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
+            SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
             final int frameSize = tasm.frameMap.frameSize();
             if (frameSize > 0) {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {
-                    // int disp = (i + StackShadowPages.getValue()) * unsafe.pageSize();
-                    // if (afterFrameInit) {
-                    // disp -= frameSize;
-                    // }
+                    int disp = (i + StackShadowPages.getValue()) * unsafe.pageSize();
+                    if (afterFrameInit) {
+                        disp -= frameSize;
+                    }
                     tasm.blockComment("[stack overflow check]");
-                    // FIXME currently doesn't work; maybe frame size is wrong
-                    // new Ldx(new SPARCAddress(sp, -disp), g0).emit(masm);
+                    // Use SPARCAddress to get the final displacement including the stack bias.
+                    SPARCAddress address = new SPARCAddress(sp, -disp);
+                    if (SPARCAssembler.isSimm13(address.getDisplacement())) {
+                        new Stx(g0, address).emit(masm);
+                    } else {
+                        // TODO Can't use g3 as scratch here.
+                        new Setx(address.getDisplacement(), g3, g3).emit(masm);
+                        new Stx(g0, sp, g3).emit(masm);
+                    }
                 }
             }
         }
@@ -193,7 +200,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         if (unverifiedStub != null) {
             masm.bind(unverifiedStub);
 // SPARCCall.directJmp(tasm, asm, runtime().lookupForeignCall(IC_MISS_HANDLER));
-            throw new InternalError("g0 must be scratch register");
+            // throw new InternalError("g0 must be scratch register");
         }
     }
 }

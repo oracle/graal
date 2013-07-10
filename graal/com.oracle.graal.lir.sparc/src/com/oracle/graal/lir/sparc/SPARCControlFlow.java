@@ -53,9 +53,12 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+            // FIXME Using xcc is wrong! It depends on the compare.
             switch (condition) {
+                case EQ:
+                    new Bpe(CC.Xcc, destination.label()).emit(masm);
+                    break;
                 case GT:
-                    // FIXME xcc is wrong! It depends on the compare.
                     new Bpg(CC.Xcc, destination.label()).emit(masm);
                     break;
                 default:

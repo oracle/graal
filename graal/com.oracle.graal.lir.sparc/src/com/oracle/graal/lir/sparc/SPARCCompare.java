@@ -72,8 +72,8 @@ public enum SPARCCompare {
                     new Cmp(asLongReg(x), asLongReg(y)).emit(masm);
                     break;
                 case ACMP:
-                    // masm.cmpptr(asObjectReg(x), asObjectReg(y));
-                    // break;
+// new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
+// break;
                 case FCMP:
                     // masm.ucomiss(asFloatReg(x), asFloatReg(y));
                     // break;
@@ -96,9 +96,8 @@ public enum SPARCCompare {
                     break;
                 case ACMP:
                     if (((Constant) y).isNull()) {
-                        // masm.cmpq(asObjectReg(x), 0);
-                        // break;
-                        throw GraalInternalError.shouldNotReachHere();
+                        new Cmp(asObjectReg(x), 0).emit(masm);
+                        break;
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
