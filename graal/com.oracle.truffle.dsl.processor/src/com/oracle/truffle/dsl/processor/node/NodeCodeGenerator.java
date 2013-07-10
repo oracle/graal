@@ -1449,7 +1449,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private CodeExecutableElement createGenericExecute(NodeData node) {
             TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, EXECUTE_GENERIC_NAME);
-            addInternalValueParameters(method, node.getGenericSpecialization(), true, false);
+
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
+
+            addInternalValueParameters(method, node.getGenericSpecialization(), false, false);
             CodeTreeBuilder builder = method.createBuilder();
 
             String prefix = null;
@@ -2251,7 +2254,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end();
 
             builder.startReturn().startCall("super", EXECUTE_GENERIC_NAME);
-            addInternalValueParameterNames(builder, specialization, node.getGenericSpecialization(), null, true, true);
+            addInternalValueParameterNames(builder, specialization, node.getGenericSpecialization(), null, false, true);
             builder.end().end();
 
             builder.end().startElseBlock();
@@ -2417,7 +2420,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 emitEncounteredSynthetic(builder, specialization);
             } else if (specialization.isGeneric()) {
                 returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
-                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, true, true);
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, false, true);
                 returnBuilder.end();
             } else {
                 returnBuilder.tree(createTemplateMethodCall(returnBuilder, null, specialization, specialization, null));

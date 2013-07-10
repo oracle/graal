@@ -41,6 +41,8 @@ import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class NodeParser extends TemplateParser<NodeData> {
 
+    private static final String FRAME_VALUE = "frameValue";
+
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Generic.class, TypeSystemReference.class, ShortCircuit.class, Specialization.class, SpecializationListener.class,
                     NodeContainer.class, NodeChild.class, NodeChildren.class, NodeId.class);
 
@@ -650,6 +652,27 @@ public class NodeParser extends TemplateParser<NodeData> {
             }
             if (!specialization.isGeneric()) {
                 specializationCount++;
+            }
+        }
+
+        // remove frame parameter of generic if not needed
+        if (genericSpecialization != null) {
+            ActualParameter frame = genericSpecialization.findParameter(FRAME_VALUE);
+            if (frame != null) {
+                boolean frameUsed = false;
+                for (SpecializationData specialization : specializations) {
+                    if (!specialization.isReachable()) {
+                        continue;
+                    }
+                    frameUsed = specialization.findParameter(FRAME_VALUE) != null;
+                    if (frameUsed) {
+                        break;
+                    }
+                }
+
+                if (!frameUsed) {
+                    genericSpecialization.getParameters().remove(frame);
+                }
             }
         }
 

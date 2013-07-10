@@ -29,6 +29,7 @@ import javax.lang.model.type.*;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -51,6 +52,7 @@ public final class TruffleTypes {
     private final DeclaredType nodeInfoKind;
     private final TypeMirror compilerDirectives;
     private final TypeMirror compilerAsserts;
+    private final DeclaredType slowPath;
 
     private final List<String> errors = new ArrayList<>();
 
@@ -67,6 +69,7 @@ public final class TruffleTypes {
         invalidAssumption = getRequired(context, InvalidAssumptionException.class);
         nodeInfoAnnotation = getRequired(context, NodeInfo.class);
         nodeInfoKind = getRequired(context, NodeInfo.Kind.class);
+        slowPath = getRequired(context, SlowPath.class);
     }
 
     public DeclaredType getNodeInfoAnnotation() {
@@ -135,5 +138,9 @@ public final class TruffleTypes {
 
     public TypeMirror getCompilerAsserts() {
         return compilerAsserts;
+    }
+
+    public DeclaredType getSlowPath() {
+        return slowPath;
     }
 }
