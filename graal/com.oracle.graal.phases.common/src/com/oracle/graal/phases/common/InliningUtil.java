@@ -1441,7 +1441,8 @@ public class InliningUtil {
         if (firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
             assert !firstParam.objectStamp().alwaysNull();
             IsNullNode condition = graph.unique(new IsNullNode(firstParam));
-            GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, objectNonNull()));
+            Stamp stamp = firstParam.stamp().join(objectNonNull());
+            GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));
             graph.addBeforeFixed(invoke.asNode(), nonNullReceiver);
             callTarget.replaceFirstInput(firstParam, nonNullReceiver);
             return nonNullReceiver;
