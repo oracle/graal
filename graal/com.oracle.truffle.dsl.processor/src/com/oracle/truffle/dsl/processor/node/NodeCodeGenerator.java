@@ -1466,7 +1466,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
 
-            addInternalValueParameters(method, node.getGenericSpecialization(), false, false);
+            addInternalValueParameters(method, node.getGenericSpecialization(), node.needsFrame(), false);
             CodeTreeBuilder builder = method.createBuilder();
 
             String prefix = null;
@@ -2268,7 +2268,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             builder.end();
 
             builder.startReturn().startCall("super", EXECUTE_GENERIC_NAME);
-            addInternalValueParameterNames(builder, specialization, node.getGenericSpecialization(), null, false, true);
+            addInternalValueParameterNames(builder, specialization, node.getGenericSpecialization(), null, node.needsFrame(), true);
             builder.end().end();
 
             builder.end().startElseBlock();
@@ -2434,7 +2434,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 emitEncounteredSynthetic(builder, specialization);
             } else if (specialization.isGeneric()) {
                 returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
-                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, false, true);
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, node.needsFrame(), true);
                 returnBuilder.end();
             } else {
                 returnBuilder.tree(createTemplateMethodCall(returnBuilder, null, specialization, specialization, null));
