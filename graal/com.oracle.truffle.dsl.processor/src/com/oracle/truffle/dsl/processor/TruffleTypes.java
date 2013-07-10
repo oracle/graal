@@ -40,6 +40,8 @@ import com.oracle.truffle.api.nodes.Node.Children;
  */
 public final class TruffleTypes {
 
+    public static final String OPTION_DETAILED_REWRITE_REASONS = "DetailedRewriteReasons";
+
     private final TypeMirror node;
     private final TypeMirror nodeArray;
     private final TypeMirror unexpectedValueException;
@@ -53,6 +55,7 @@ public final class TruffleTypes {
     private final TypeMirror compilerDirectives;
     private final TypeMirror compilerAsserts;
     private final DeclaredType slowPath;
+    private final DeclaredType truffleOptions;
 
     private final List<String> errors = new ArrayList<>();
 
@@ -70,6 +73,7 @@ public final class TruffleTypes {
         nodeInfoAnnotation = getRequired(context, NodeInfo.class);
         nodeInfoKind = getRequired(context, NodeInfo.Kind.class);
         slowPath = getRequired(context, SlowPath.class);
+        truffleOptions = getRequired(context, TruffleOptions.class);
     }
 
     public DeclaredType getNodeInfoAnnotation() {
@@ -138,6 +142,10 @@ public final class TruffleTypes {
 
     public TypeMirror getCompilerAsserts() {
         return compilerAsserts;
+    }
+
+    public DeclaredType getTruffleOptions() {
+        return truffleOptions;
     }
 
     public DeclaredType getSlowPath() {

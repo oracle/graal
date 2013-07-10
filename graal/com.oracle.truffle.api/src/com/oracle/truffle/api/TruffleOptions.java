@@ -34,6 +34,12 @@ public class TruffleOptions {
     public static boolean TraceRewrites = false;
 
     /**
+     * Enables the generation of detailed rewrite reasons. Enabling this may introduce some overhead
+     * for rewriting nodes.
+     */
+    public static final boolean DetailedRewriteReasons = false;
+
+    /**
      * Filters rewrites that do not contain the given string in the qualified name of the source or
      * target class hierarchy.
      */
