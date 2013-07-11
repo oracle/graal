@@ -99,7 +99,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-            if (loweringType == LoweringType.AFTER_GUARDS) {
+            if (loweringType != LoweringType.BEFORE_GUARDS) {
                 throw new GraalInternalError("Cannot create guards in after-guard lowering");
             }
             if (OptEliminateGuards.getValue()) {
