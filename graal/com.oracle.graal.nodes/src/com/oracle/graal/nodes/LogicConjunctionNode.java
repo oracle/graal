@@ -26,7 +26,6 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * This node is true if {@link #getX() x} <b>and</b> {@link #getY() y} are true.
- * 
  */
 public class LogicConjunctionNode extends LogicBinaryNode implements Canonicalizable {
 
@@ -43,7 +42,30 @@ public class LogicConjunctionNode extends LogicBinaryNode implements Canonicaliz
         LogicNode x = getX();
         LogicNode y = getY();
         if (x == y) {
-            return x;
+            // @formatter:off
+            //  a &&  a = a
+            //  a && !a = false
+            // !a &&  a = false
+            // !a && !a = !a
+            // @formatter:on
+            if (isXNegated()) {
+                if (isYNegated()) {
+                    // !a && !a = !a
+                    negateUsages();
+                    return x;
+                } else {
+                    // !a && a = false
+                    return LogicConstantNode.contradiction(graph());
+                }
+            } else {
+                if (isYNegated()) {
+                    // a && !a = false
+                    return LogicConstantNode.contradiction(graph());
+                } else {
+                    // a && a = a
+                    return x;
+                }
+            }
         }
         if (x instanceof LogicConstantNode) {
             if (((LogicConstantNode) x).getValue() ^ isXNegated()) {
