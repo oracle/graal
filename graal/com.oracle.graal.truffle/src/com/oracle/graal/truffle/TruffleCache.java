@@ -281,7 +281,7 @@ public final class TruffleCache {
     }
 
     private static boolean checkArgumentStamps(StructuredGraph graph, NodeInputList<ValueNode> arguments) {
-        assert graph.getNodes(LocalNode.class).count() == arguments.count();
+        assert graph.getNodes(LocalNode.class).count() <= arguments.count();
         for (LocalNode localNode : graph.getNodes(LocalNode.class)) {
             Stamp newStamp = localNode.stamp().meet(arguments.get(localNode.index()).stamp());
             if (!newStamp.equals(localNode.stamp())) {
