@@ -508,6 +508,26 @@ public class NodeUtil {
         return nodeList;
     }
 
+    public static int countNodes(Node root) {
+        NodeCountVisitor nodeCount = new NodeCountVisitor();
+        root.accept(nodeCount);
+        return nodeCount.nodeCount;
+    }
+
+    private static class NodeCountVisitor implements NodeVisitor {
+
+        int nodeCount;
+
+        @Override
+        public boolean visit(Node node) {
+            if (node instanceof RootNode && nodeCount > 0) {
+                return false;
+            }
+            nodeCount++;
+            return true;
+        }
+    }
+
     public static String printCompactTreeToString(Node node) {
         StringWriter out = new StringWriter();
         printCompactTree(new PrintWriter(out), null, node, 1);
