@@ -35,17 +35,14 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-
-//import com.oracle.graal.replacements.sparc.*;
 
 public class SPARCHotSpotRuntime extends HotSpotRuntime {
 
     public SPARCHotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
     }
-
-// private AMD64ConvertSnippets.Templates convertSnippets;
 
     @Override
     public void registerReplacements(Replacements replacements) {
@@ -60,23 +57,21 @@ public class SPARCHotSpotRuntime extends HotSpotRuntime {
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
 
-// convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements,
-// graalRuntime.getTarget());
         super.registerReplacements(replacements);
     }
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-// if (n instanceof ConvertNode) {
-// convertSnippets.lower((ConvertNode) n, tool);
-// } else {
-        super.lower(n, tool);
-// }
+        if (n instanceof ConvertNode) {
+            // ConvertNodes are handled in SPARCLIRGenerator.emitConvert
+        } else {
+            super.lower(n, tool);
+        }
     }
 
     @Override
     public Register threadRegister() {
-        throw new InternalError("NYI: SPARC: Define thread register.");
+        return g2;
     }
 
     @Override

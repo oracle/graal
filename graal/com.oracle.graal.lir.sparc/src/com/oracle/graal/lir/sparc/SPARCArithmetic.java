@@ -517,7 +517,7 @@ public enum SPARCArithmetic {
                 rk = result.getKind();
                 xsk = x.getKind().getStackKind();
                 ysk = y.getKind().getStackKind();
-                assert rk == Kind.Int && xsk == Kind.Int && ysk == Kind.Int;
+                assert rk == Kind.Int && xsk == Kind.Int && ysk == Kind.Int : "opcode=" + opcode + ", rk=" + rk + ", xsk=" + xsk + ", ysk=" + ysk;
                 break;
             case LADD:
             case LSUB:
