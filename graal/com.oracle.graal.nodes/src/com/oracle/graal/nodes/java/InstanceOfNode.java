@@ -61,8 +61,11 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
         assert object() != null : this;
 
         ObjectStamp stamp = object().objectStamp();
-        ResolvedJavaType stampType = stamp.type();
+        if (object().objectStamp().alwaysNull()) {
+            return LogicConstantNode.contradiction(graph());
+        }
 
+        ResolvedJavaType stampType = stamp.type();
         if (stamp.isExactType() || stampType != null) {
             boolean subType = type().isAssignableFrom(stampType);
 
@@ -83,13 +86,14 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
                     // also make the check fail.
                     return LogicConstantNode.contradiction(graph());
                 } else {
+                    boolean superType = stampType.isAssignableFrom(type());
+                    if (!superType && !stampType.isInterface() && !type().isInterface()) {
+                        return LogicConstantNode.contradiction(graph());
+                    }
                     // since the subtype comparison was only performed on a declared type we don't
                     // really know if it might be true at run time...
                 }
             }
-        }
-        if (object().objectStamp().alwaysNull()) {
-            return LogicConstantNode.contradiction(graph());
         }
         return this;
     }
