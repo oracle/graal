@@ -57,6 +57,10 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleOperationCacheMaxNodes = new OptionValue<>(200);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(12000);
+    @Option(help = "")
+    public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(300);
+    @Option(help = "")
+    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(62);
 
     // tracing
     @Option(help = "")
@@ -73,5 +77,9 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleCompilationExceptions = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleCompilationExceptionsAreFatal = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleInlining = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleInliningDetails = new OptionValue<>(false);
     // @formatter:on
 }

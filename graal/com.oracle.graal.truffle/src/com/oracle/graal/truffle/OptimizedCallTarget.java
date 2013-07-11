@@ -122,7 +122,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                 throw new BailoutException(String.format("code installation failed (codeSize=%s)", codeSize));
             } else {
                 if (TraceTruffleCompilation.getValue()) {
-                    int nodeCountTruffle = new InliningHelper.CallTargetProfile(rootNode).nodeCount;
+                    int nodeCountTruffle = NodeUtil.countNodes(rootNode);
                     OUT.printf("[truffle] optimized %-50s |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", rootNode, nodeCountTruffle,
                                     (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
                                     (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, codeSize);
@@ -172,9 +172,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     private static class InliningHelper {
 
-        private static final int MAX_SIZE = 300;
-        private static final int MAX_INLINE_SIZE = 62;
-
         private final OptimizedCallTarget target;
 
         public InliningHelper(OptimizedCallTarget target) {
@@ -182,101 +179,138 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         }
 
         public boolean inline() {
-            CallTargetProfile profile = new CallTargetProfile(target.getRootNode());
-
-            if (profile.inlinableCallSites.isEmpty()) {
-                return false;
-            }
-
-            if (profile.nodeCount > MAX_SIZE) {
-                return false;
-            }
-
-            double max = 0.0D;
-            ProfiledInlinableCallSite inliningDecision = null;
-            for (Node callNode : profile.inlinableCallSites) {
-                InlinableCallSite callSite = (InlinableCallSite) callNode;
-                Node inlineTree = callSite.getInlineTree();
-                if (inlineTree == null) {
-                    continue;
-                }
-                CallTargetProfile inlineProfile = new CallTargetProfile(inlineTree);
-                if (inlineProfile.nodeCount > MAX_INLINE_SIZE || inlineProfile.nodeCount + profile.nodeCount > MAX_SIZE) {
-                    continue;
-                }
-
-                ProfiledInlinableCallSite inlinable = new ProfiledInlinableCallSite(inlineProfile, callSite);
-                double metric = (inlinable.callCount / inlineProfile.nodeCount) + ((double) inlinable.callCount / (double) target.originalInvokeCounter);
-                if (metric >= max) {
-                    inliningDecision = inlinable;
-                    max = metric;
-                }
-            }
-
-            for (Node callSite : profile.inlinableCallSites) {
-                ((InlinableCallSite) callSite).resetCallCount();
-            }
-
-            if (inliningDecision != null) {
-                if (inliningDecision.callSite.inline(target)) {
-                    if (TraceTruffleCompilation.getValue()) {
-
-                        String calls = String.format("%4s/%4s", inliningDecision.callCount, target.originalInvokeCounter);
-                        String nodes = String.format("%3s/%3s", inliningDecision.profile.nodeCount, profile.nodeCount);
-
-                        OUT.printf("[truffle] inlined   %-50s |Nodes %6s |Calls %6s         |into %s\n", inliningDecision.callSite, nodes, calls, target.getRootNode());
+            final InliningPolicy policy = new InliningPolicy(target);
+            if (!policy.continueInlining()) {
+                if (TraceTruffleInliningDetails.getValue()) {
+                    List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(target);
+                    if (!inlinableCallSites.isEmpty()) {
+                        OUT.printf("[truffle] inlining hit caller size limit (%3d >= %3d).%3d remaining call sites in %s:\n", policy.callerNodeCount, TruffleInliningMaxCallerSize.getValue(),
+                                        inlinableCallSites.size(), target.getRootNode());
+                        policy.sortByRelevance(inlinableCallSites);
+                        printCallSiteInfo(policy, inlinableCallSites, "");
                     }
-                    return true;
+                }
+                return false;
+            }
+
+            List<InlinableCallSiteInfo> inlinableCallSites = getInlinableCallSites(target);
+            if (inlinableCallSites.isEmpty()) {
+                return false;
+            }
+
+            policy.sortByRelevance(inlinableCallSites);
+
+            boolean inlined = false;
+            for (InlinableCallSiteInfo inlinableCallSite : inlinableCallSites) {
+                if (policy.isWorthInlining(inlinableCallSite) && inlinableCallSite.getCallSite().inline(target)) {
+                    if (TraceTruffleInlining.getValue()) {
+                        printCallSiteInfo(policy, inlinableCallSite, "inlined");
+                    }
+                    inlined = true;
+                    break;
                 }
             }
-            return false;
+
+            if (inlined) {
+                for (InlinableCallSiteInfo callSite : inlinableCallSites) {
+                    callSite.getCallSite().resetCallCount();
+                }
+            } else {
+                if (TraceTruffleInliningDetails.getValue()) {
+                    OUT.printf("[truffle] inlining stopped.%3d remaining call sites in %s:\n", inlinableCallSites.size(), target.getRootNode());
+                    printCallSiteInfo(policy, inlinableCallSites, "");
+                }
+            }
+
+            return inlined;
         }
 
-        private static class ProfiledInlinableCallSite {
+        private void printCallSiteInfo(InliningPolicy policy, List<InlinableCallSiteInfo> inlinableCallSites, String msg) {
+            for (InlinableCallSiteInfo candidate : inlinableCallSites) {
+                printCallSiteInfo(policy, candidate, msg);
+            }
+        }
 
-            final CallTargetProfile profile;
-            final InlinableCallSite callSite;
-            final int callCount;
+        private void printCallSiteInfo(InliningPolicy policy, InlinableCallSiteInfo callSite, String msg) {
+            String calls = String.format("%4s/%4s", callSite.getCallCount(), policy.callerInvocationCount);
+            String nodes = String.format("%3s/%3s", callSite.getInlineNodeCount(), policy.callerNodeCount);
+            OUT.printf("[truffle] %-9s %-50s |Nodes %6s |Calls %6s %7.3f |into %s\n", msg, callSite.getCallSite(), nodes, calls, policy.metric(callSite), target.getRootNode());
+        }
 
-            public ProfiledInlinableCallSite(CallTargetProfile profile, InlinableCallSite callSite) {
-                this.profile = profile;
+        private static final class InliningPolicy {
+
+            private final int callerNodeCount;
+            private final int callerInvocationCount;
+
+            public InliningPolicy(OptimizedCallTarget caller) {
+                this.callerNodeCount = NodeUtil.countNodes(caller.getRootNode());
+                this.callerInvocationCount = caller.originalInvokeCounter;
+            }
+
+            public boolean continueInlining() {
+                return callerNodeCount < TruffleInliningMaxCallerSize.getValue();
+            }
+
+            public boolean isWorthInlining(InlinableCallSiteInfo callSite) {
+                return callSite.getInlineNodeCount() <= TruffleInliningMaxCalleeSize.getValue() && callSite.getInlineNodeCount() + callerNodeCount <= TruffleInliningMaxCallerSize.getValue() &&
+                                callSite.getCallCount() > 0;
+            }
+
+            public double metric(InlinableCallSiteInfo callSite) {
+                double frequency = (double) callSite.getCallCount() / (double) callerInvocationCount;
+                double metric = ((double) callSite.getCallCount() / (double) callSite.getInlineNodeCount()) + frequency;
+                return metric;
+            }
+
+            public void sortByRelevance(List<InlinableCallSiteInfo> inlinableCallSites) {
+                Collections.sort(inlinableCallSites, new Comparator<InlinableCallSiteInfo>() {
+
+                    @Override
+                    public int compare(InlinableCallSiteInfo cs1, InlinableCallSiteInfo cs2) {
+                        return Double.compare(metric(cs2), metric(cs1));
+                    }
+                });
+            }
+        }
+
+        private static final class InlinableCallSiteInfo {
+
+            private final InlinableCallSite callSite;
+            private final int callCount;
+            private final int nodeCount;
+
+            public InlinableCallSiteInfo(InlinableCallSite callSite) {
                 this.callSite = callSite;
                 this.callCount = callSite.getCallCount();
+                this.nodeCount = NodeUtil.countNodes(callSite.getInlineTree());
+            }
+
+            public InlinableCallSite getCallSite() {
+                return callSite;
+            }
+
+            public int getCallCount() {
+                return callCount;
+            }
+
+            public int getInlineNodeCount() {
+                return nodeCount;
             }
         }
 
-        private static class CallTargetProfile {
-
-            final Node root;
-            final int nodeCount;
-            final List<Node> inlinableCallSites = new ArrayList<>();
-
-            public CallTargetProfile(Node rootNode) {
-                root = rootNode;
-
-                VisitorImpl impl = new VisitorImpl();
-                root.accept(impl);
-
-                this.nodeCount = impl.visitedCount;
-            }
-
-            private class VisitorImpl implements NodeVisitor {
-
-                int visitedCount;
+        private static List<InlinableCallSiteInfo> getInlinableCallSites(final DefaultCallTarget target) {
+            final ArrayList<InlinableCallSiteInfo> inlinableCallSites = new ArrayList<>();
+            target.getRootNode().accept(new NodeVisitor() {
 
                 @Override
                 public boolean visit(Node node) {
-                    if (node instanceof RootNode && visitedCount > 0) {
-                        return false;
-                    }
-
                     if (node instanceof InlinableCallSite) {
-                        inlinableCallSites.add(node);
+                        inlinableCallSites.add(new InlinableCallSiteInfo((InlinableCallSite) node));
                     }
-                    visitedCount++;
                     return true;
                 }
-            }
+            });
+            return inlinableCallSites;
         }
     }
 }
