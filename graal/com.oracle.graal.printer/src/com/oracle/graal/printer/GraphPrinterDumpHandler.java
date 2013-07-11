@@ -46,6 +46,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
     private GraphPrinter printer;
     private List<String> previousInlineContext;
+    private int[] dumpIds = {};
     private int failuresCount;
 
     /**
@@ -67,6 +68,14 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 initializeNetworkPrinter();
             }
         }
+    }
+
+    private int nextDumpId() {
+        int depth = previousInlineContext.size();
+        if (dumpIds.length < depth) {
+            dumpIds = Arrays.copyOf(dumpIds, depth);
+        }
+        return dumpIds[depth - 1]++;
     }
 
     // This field must be lazily initialized as this class may be loaded in a version
@@ -169,7 +178,7 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                     public void run() {
                         // Finally, output the graph.
                         try {
-                            printer.print(graph, message, predefinedSchedule);
+                            printer.print(graph, nextDumpId() + ":" + message, predefinedSchedule);
                         } catch (IOException e) {
                             failuresCount++;
                             printer = null;
