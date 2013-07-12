@@ -88,12 +88,11 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
                 this.replaceAtUsages(BeginNode.prevBegin(this));
                 graph().removeFixed(this);
             } else {
-                FixedNode next = this.next();
-                if (next != null) {
-                    tool.deleteBranch(next);
-                }
-                setNext(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason)));
-                return;
+                FixedWithNextNode predecessor = (FixedWithNextNode) predecessor();
+                DeoptimizeNode deopt = graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason));
+                deopt.setDeoptimizationState(getDeoptimizationState());
+                tool.deleteBranch(this);
+                predecessor.setNext(deopt);
             }
         }
     }

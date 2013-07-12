@@ -132,18 +132,21 @@ public class StampFactory {
     }
 
     public static Stamp forConstant(Constant value) {
-        assert value.getKind() != Kind.Object;
-        if (value.getKind() == Kind.Object) {
-            throw new GraalInternalError("unexpected kind: %s", value.getKind());
-        } else {
-            if (value.getKind() == Kind.Int || value.getKind() == Kind.Long) {
-                return forInteger(value.getKind(), value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(value.getKind()));
-            } else if (value.getKind() == Kind.Float) {
-                return forFloat(value.getKind(), value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));
-            } else if (value.getKind() == Kind.Double) {
-                return forFloat(value.getKind(), value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
-            }
-            return forKind(value.getKind().getStackKind());
+        Kind kind = value.getKind();
+        switch (kind) {
+            case Boolean:
+            case Byte:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+                return forInteger(kind.getStackKind(), value.asLong(), value.asLong(), value.asLong() & IntegerStamp.defaultMask(kind));
+            case Float:
+                return forFloat(kind, value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));
+            case Double:
+                return forFloat(kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
+            default:
+                throw new GraalInternalError("unexpected kind: %s", kind);
         }
     }
 
