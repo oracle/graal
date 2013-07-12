@@ -213,7 +213,7 @@ public class StubUtil {
                     fatal("oop not in heap: %p", oop.rawValue());
                 }
 
-                Word klass = oop.readWord(hubOffset());
+                Word klass = loadHub(object);
                 if (klass.equal(Word.zero())) {
                     fatal("klass for oop %p is null", oop.rawValue());
                 }
