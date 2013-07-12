@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -39,21 +40,26 @@ import com.oracle.graal.phases.tiers.*;
 
 public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
+    //@formatter:off
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
+    //@formatter:on
+
+    private final boolean readElimination;
+
     public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer) {
+        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer);
+    }
+
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer) {
         super(iterative ? EscapeAnalysisIterations.getValue() : 1, canonicalizer);
+        this.readElimination = readElimination;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
-            boolean analyzableNodes = false;
-            for (Node node : graph.getNodes()) {
-                if (node instanceof VirtualizableAllocation) {
-                    analyzableNodes = true;
-                    break;
-                }
-            }
-            if (analyzableNodes) {
+            if (readElimination || graph.getNodes().filterInterface(VirtualizableAllocation.class).isNotEmpty()) {
                 runAnalysis(graph, context);
             }
         }
@@ -61,7 +67,11 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
     @Override
     protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule) {
-        return new PartialEscapeClosure.Final(schedule, context.getRuntime(), context.getAssumptions());
+        if (readElimination) {
+            return new ReadEliminationPEClosure(schedule, context.getRuntime(), context.getAssumptions());
+        } else {
+            return new PartialEscapeClosure.Final(schedule, context.getRuntime(), context.getAssumptions());
+        }
     }
 
     public static Map<Invoke, Double> getHints(StructuredGraph graph) {

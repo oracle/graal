@@ -66,6 +66,10 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         return forStoreCheck;
     }
 
+    // TODO (ds) remove once performance regression in compiler.sunflow (and other benchmarks)
+    // caused by new lowering is fixed
+    private static final boolean useNewLowering = Boolean.getBoolean("graal.checkcast.useNewLowering");
+
     /**
      * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
      * 
@@ -94,20 +98,24 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      */
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
-        Stamp stamp = StampFactory.declared(type).join(object.stamp());
-        ValueNode condition;
-        if (stamp == null) {
-            // This is a check cast that will always fail
-            condition = LogicConstantNode.contradiction(graph());
-            stamp = StampFactory.declared(type);
-        } else if (object.stamp().nonNull()) {
-            condition = typeTest;
+        if (useNewLowering) {
+            InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
+            Stamp stamp = StampFactory.declared(type).join(object.stamp());
+            ValueNode condition;
+            if (stamp == null) {
+                // This is a check cast that will always fail
+                condition = LogicConstantNode.contradiction(graph());
+                stamp = StampFactory.declared(type);
+            } else if (object.stamp().nonNull()) {
+                condition = typeTest;
+            } else {
+                condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+            }
+            GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
+            graph().replaceFixedWithFixed(this, checkedObject);
         } else {
-            condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+            tool.getRuntime().lower(this, tool);
         }
-        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
-        graph().replaceFixedWithFixed(this, checkedObject);
     }
 
     @Override
