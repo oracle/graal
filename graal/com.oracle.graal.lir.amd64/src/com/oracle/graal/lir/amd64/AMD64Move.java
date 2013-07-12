@@ -123,15 +123,12 @@ public class AMD64Move {
         private long narrowOopBase;
         private int narrowOopShift;
         private int logMinObjAlignment;
-        @Temp({REG}) private AllocatableValue scratch;
 
-        public LoadCompressedPointer(Kind kind, AllocatableValue result, AllocatableValue scratch, AMD64AddressValue address, LIRFrameState state, long narrowOopBase, int narrowOopShift,
-                        int logMinObjAlignment) {
+        public LoadCompressedPointer(Kind kind, AllocatableValue result, AMD64AddressValue address, LIRFrameState state, long narrowOopBase, int narrowOopShift, int logMinObjAlignment) {
             super(kind, result, address, state);
             this.narrowOopBase = narrowOopBase;
             this.narrowOopShift = narrowOopShift;
             this.logMinObjAlignment = logMinObjAlignment;
-            this.scratch = scratch;
             assert kind == Kind.Object;
         }
 

@@ -414,8 +414,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result = newVariable(kind);
         assert access == null || access instanceof HeapAccess;
         if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
+            append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
                             runtime().config.logMinObjAlignment));
         } else {
             append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
