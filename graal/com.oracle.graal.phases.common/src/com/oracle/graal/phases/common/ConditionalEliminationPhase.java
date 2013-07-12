@@ -397,15 +397,24 @@ public class ConditionalEliminationPhase extends Phase {
                 GraphUtil.killWithUnusedFloatingInputs(guard);
                 metricGuardsRemoved.increment();
             } else {
-                LogicNode replacement = evaluateCondition(condition, trueConstant, falseConstant);
-                if (replacement != null) {
-                    guard.setCondition(replacement);
-                    if (condition.usages().isEmpty()) {
-                        GraphUtil.killWithUnusedFloatingInputs(condition);
+                ValueNode anchor = state.trueConditions.get(condition);
+                if (anchor != null) {
+                    if (!guard.negated()) {
+                        guard.replaceAtUsages(anchor);
+                        metricGuardsRemoved.increment();
+                        GraphUtil.killWithUnusedFloatingInputs(guard);
                     }
-                    metricGuardsRemoved.increment();
                 } else {
-                    registerCondition(!guard.negated(), condition, guard);
+                    anchor = state.falseConditions.get(condition);
+                    if (anchor != null) {
+                        if (guard.negated()) {
+                            guard.replaceAtUsages(anchor);
+                            metricGuardsRemoved.increment();
+                            GraphUtil.killWithUnusedFloatingInputs(guard);
+                        }
+                    } else {
+                        registerCondition(!guard.negated(), condition, guard);
+                    }
                 }
             }
         }
