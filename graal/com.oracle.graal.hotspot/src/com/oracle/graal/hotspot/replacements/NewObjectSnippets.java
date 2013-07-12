@@ -203,12 +203,12 @@ public class NewObjectSnippets implements Snippets {
             if (size <= MAX_UNROLLED_OBJECT_ZEROING_SIZE) {
                 new_seqInit.inc();
                 explodeLoop();
-                for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                for (int offset = headerSize(); offset < size; offset += wordSize()) {
                     memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                 }
             } else {
                 new_loopInit.inc();
-                for (int offset = 2 * wordSize(); offset < size; offset += wordSize()) {
+                for (int offset = headerSize(); offset < size; offset += wordSize()) {
                     memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                 }
             }
