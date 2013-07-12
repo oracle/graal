@@ -265,6 +265,12 @@ public final class HotSpotVMConfig extends CompilerObject {
      */
     public int threadIsMethodHandleReturnOffset;
 
+    /**
+     * Bit pattern that represents a non-oop. Neither the high bits nor the low bits of this value
+     * are allowed to look like (respectively) the high or low bits of a real oop.
+     */
+    public long nonOopBits;
+
     public long verifyOopCounterAddress;
     public long verifyOopMask;
     public long verifyOopBits;
