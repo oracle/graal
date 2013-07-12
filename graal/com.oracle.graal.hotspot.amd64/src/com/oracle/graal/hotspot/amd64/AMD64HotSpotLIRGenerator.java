@@ -413,9 +413,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
         assert access == null || access instanceof HeapAccess;
-        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
-            append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
-                            runtime().config.logMinObjAlignment));
+        if (isCompressCandidate(access)) {
+            if (runtime().config.useCompressedOops && kind == Kind.Object) {
+                append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
+                                runtime().config.logMinObjAlignment));
+            } else if (runtime().config.useCompressedKlassPointers && kind == Kind.Long) {
+                append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowKlassBase, runtime().config.narrowKlassShift,
+                                runtime().config.logKlassAlignment));
+            } else {
+                append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
+            }
         } else {
             append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
         }
@@ -429,17 +436,26 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
-                append(new StoreConstantOp(kind, storeAddress, c, state, runtime().config.useCompressedOops && isCompressCandidate(access)));
+                if (inputVal.getKind() == Kind.Object) {
+                    append(new StoreConstantOp(kind, storeAddress, c, state, runtime().config.useCompressedOops && isCompressCandidate(access)));
+                } else if (inputVal.getKind() == Kind.Long) {
+                    append(new StoreConstantOp(kind, storeAddress, c, state, runtime().config.useCompressedKlassPointers && isCompressCandidate(access)));
+                } else {
+                    append(new StoreConstantOp(kind, storeAddress, c, state, false));
+                }
                 return;
             }
         }
         Variable input = load(inputVal);
-        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
-            if (input.getKind() == Kind.Object) {
+        if (isCompressCandidate(access)) {
+            if (runtime().config.useCompressedOops && kind == Kind.Object) {
                 Variable scratch = newVariable(Kind.Long);
                 append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
+            } else if (runtime().config.useCompressedKlassPointers && kind == Kind.Long) {
+                Variable scratch = newVariable(Kind.Long);
+                append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, runtime().config.narrowKlassBase, runtime().config.narrowKlassShift, runtime().config.logKlassAlignment));
             } else {
-                append(new StoreOp(input.getKind(), storeAddress, input, state));
+                append(new StoreOp(kind, storeAddress, input, state));
             }
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
