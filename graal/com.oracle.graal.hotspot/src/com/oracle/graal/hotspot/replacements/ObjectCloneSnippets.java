@@ -57,7 +57,7 @@ public class ObjectCloneSnippets implements Snippets {
         Object result = NewObjectSnippets.allocateInstance(instanceSize, hub, prototypeMarkWord, useG1GC());
 
         Pointer memory = Word.fromObject(result);
-        for (int offset = 2 * wordSize(); offset < instanceSize; offset += wordSize()) {
+        for (int offset = headerSize(); offset < instanceSize; offset += wordSize()) {
             memory.writeWord(offset, Word.fromObject(src).readWord(offset, ANY_LOCATION), ANY_LOCATION);
         }
 

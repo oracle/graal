@@ -351,6 +351,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static int headerSize() {
+        return config().useCompressedKlassPointers ? (2 * wordSize()) - 4 : 2 * wordSize();
+    }
+
+    @Fold
     public static int cardTableShift() {
         return config().cardtableShift;
     }

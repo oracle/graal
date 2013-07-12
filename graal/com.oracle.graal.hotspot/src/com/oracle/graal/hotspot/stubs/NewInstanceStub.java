@@ -94,7 +94,7 @@ public class NewInstanceStub extends SnippetStub {
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     initializeObjectHeader(memory, prototypeMarkWord, hub);
-                    for (int offset = 2 * wordSize(); offset < sizeInBytes; offset += wordSize()) {
+                    for (int offset = headerSize(); offset < sizeInBytes; offset += wordSize()) {
                         memory.writeWord(offset, Word.zero(), ANY_LOCATION);
                     }
                     return verifyObject(memory.toObject());
