@@ -25,7 +25,9 @@ package com.oracle.graal.nodes.java;
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -68,7 +70,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     // TODO (ds) remove once performance regression in compiler.sunflow (and other benchmarks)
     // caused by new lowering is fixed
-    private static final boolean useNewLowering = Boolean.getBoolean("graal.checkcast.useNewLowering");
+    private static final boolean useNewLowering = true; // Boolean.getBoolean("graal.checkcast.useNewLowering");
 
     /**
      * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
@@ -109,7 +111,14 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             } else if (object.stamp().nonNull()) {
                 condition = typeTest;
             } else {
-                condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+                if (profile != null && profile.getNullSeen() == TriState.FALSE) {
+                    FixedGuardNode nullGuard = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
+                    graph().addBeforeFixed(this, nullGuard);
+                    condition = typeTest;
+                    stamp = stamp.join(StampFactory.objectNonNull());
+                } else {
+                    condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+                }
             }
             GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
             graph().replaceFixedWithFixed(this, checkedObject);
