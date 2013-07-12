@@ -153,6 +153,13 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     /**
+     * Reads a klass pointer from a constant object.
+     */
+    public static long unsafeReadKlassPointer(Object object) {
+        return instance.getCompilerToVM().readUnsafeKlassPointer(object);
+    }
+
+    /**
      * Reads a word value from a given object.
      */
     public static long unsafeReadWord(Object object, long offset) {

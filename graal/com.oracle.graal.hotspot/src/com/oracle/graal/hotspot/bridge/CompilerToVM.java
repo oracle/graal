@@ -216,6 +216,8 @@ public interface CompilerToVM {
 
     Object readUnsafeUncompressedPointer(Object o, long displacement);
 
+    long readUnsafeKlassPointer(Object o);
+
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.
      * 
