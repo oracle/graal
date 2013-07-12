@@ -287,6 +287,103 @@ public class CompressedOopTest extends GraalCompilerTest {
         return "Test".equals(c1);
     }
 
+    @SuppressWarnings("unchecked")
+    public static Object[] unmodListTestByte(Object c1, @SuppressWarnings("unused") Object c2, @SuppressWarnings("unused") Object c3) {
+        List<Byte> queue = (ArrayList<Byte>) c1;
+        Byte[] result = Collections.unmodifiableCollection(queue).toArray(new Byte[queue.size()]);
+        return result;
+    }
+
+    @Test
+    public void test13() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("unmodListTestByte");
+        List<Byte> list = new ArrayList<>();
+        Byte[] array = (Byte[]) installedBenchmarkCode.execute(list, null, null);
+        Assert.assertTrue(list.size() == array.length);
+    }
+
+    @Test
+    public void test14() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferTest");
+        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        Assert.assertTrue(buffer.length() == 28);
+        String a = new String("TestTestTestTestTestTestTest");
+        installedBenchmarkCode.execute(buffer, a.toCharArray(), null);
+        Assert.assertTrue(buffer.length() == 56);
+        Assert.assertTrue(buffer.toString().equals("TestTestTestTestTestTestTestTestTestTestTestTestTestTest"));
+    }
+
+    public static void stringBufferTest(Object c1, Object c2, @SuppressWarnings("unused") Object c3) {
+        StringBuffer source = (StringBuffer) c1;
+        char[] add = (char[]) c2;
+        for (int i = 0; i < add.length; i++) {
+            source.append(add[i]);
+        }
+    }
+
+    @Test
+    public void test15() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferTestIn");
+        installedBenchmarkCode.execute(null, null, null);
+    }
+
+    @SuppressWarnings("unused")
+    public static void stringBufferTestIn(Object c1, Object c2, Object c3) {
+        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        Assert.assertTrue(buffer.length() == 28);
+        String a = new String("TestTestTestTestTestTestTest");
+        char[] add = a.toCharArray();
+        for (int i = 0; i < add.length; i++) {
+            buffer.append(add[i]);
+        }
+        Assert.assertTrue(buffer.length() == 56);
+        Assert.assertTrue(buffer.toString().equals("TestTestTestTestTestTestTestTestTestTestTestTestTestTest"));
+    }
+
+    @Test
+    public void test16() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBufferArrayCopy");
+        installedBenchmarkCode.execute(null, null, null);
+    }
+
+    @SuppressWarnings("unused")
+    public static void stringBufferArrayCopy(Object c1, Object c2, Object c3) {
+        StringBuffer buffer = new StringBuffer("TestTestTestTestTestTestTest");
+        Assert.assertTrue(buffer.length() == 28);
+        String a = new String("TestTestTestTestTestTestTest");
+        char[] dst = new char[buffer.length() * 2];
+        System.arraycopy(buffer.toString().toCharArray(), 0, dst, 0, buffer.length());
+        System.arraycopy(a.toCharArray(), 0, dst, buffer.length(), buffer.length());
+        Assert.assertTrue(dst.length == 56);
+        Assert.assertTrue(new String(dst).equals("TestTestTestTestTestTestTestTestTestTestTestTestTestTest"));
+    }
+
+    @Test
+    public void test17() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringFormat");
+        installedBenchmarkCode.execute(null, null, null);
+    }
+
+    @SuppressWarnings("unused")
+    public static void stringFormat(Object c1, Object c2, Object c3) {
+        String.format("Hello %d", 0);
+        String.format("Hello %d", -11);
+        String.format("Hello %d", -2147483648);
+    }
+
+    @Test
+    public void test18() throws Exception {
+        HotSpotInstalledCode installedBenchmarkCode = getInstalledCode("stringBuilder");
+        StringBuilder b = (StringBuilder) installedBenchmarkCode.execute(null, null, null);
+        Assert.assertTrue(b.capacity() == 16);
+        Assert.assertTrue(b.length() == 0);
+    }
+
+    @SuppressWarnings("unused")
+    public static Object stringBuilder(Object c1, Object c2, Object c3) {
+        return new StringBuilder();
+    }
+
     static class Container {
 
         public Object a = new Object();
@@ -352,5 +449,4 @@ public class CompressedOopTest extends GraalCompilerTest {
 
         }
     }
-
 }
