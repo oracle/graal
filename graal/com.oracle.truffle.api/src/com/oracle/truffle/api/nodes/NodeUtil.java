@@ -352,22 +352,51 @@ public class NodeUtil {
     public static void replaceChild(Node parent, Node oldChild, Node newChild) {
         NodeClass nodeClass = NodeClass.get(parent.getClass());
 
-        for (long fieldOffset : nodeClass.childOffsets) {
+        long[] fieldOffsets = nodeClass.childOffsets;
+        for (int i = 0; i < fieldOffsets.length; i++) {
+            long fieldOffset = fieldOffsets[i];
             if (unsafe.getObject(parent, fieldOffset) == oldChild) {
+                assert assertAssignable(nodeClass, parent, oldChild, newChild);
                 unsafe.putObject(parent, fieldOffset, newChild);
             }
         }
-        for (long fieldOffset : nodeClass.childrenOffsets) {
-            Node[] array = (Node[]) unsafe.getObject(parent, fieldOffset);
-            if (array != null) {
-                for (int i = 0; i < array.length; i++) {
-                    if (array[i] == oldChild) {
-                        array[i] = newChild;
+
+        long[] childrenOffsets = nodeClass.childrenOffsets;
+        for (int i = 0; i < childrenOffsets.length; i++) {
+            long fieldOffset = childrenOffsets[i];
+            Object arrayObject = unsafe.getObject(parent, fieldOffset);
+            if (arrayObject != null) {
+                assert arrayObject instanceof Node[] : "Children must be instanceof Node[] ";
+                Node[] array = (Node[]) arrayObject;
+                for (int j = 0; j < array.length; j++) {
+                    if (array[j] == oldChild) {
+                        assert newChild != null && array.getClass().getComponentType().isAssignableFrom(newChild.getClass()) : "Array type does not match";
+                        array[j] = newChild;
                         return;
                     }
                 }
             }
         }
+    }
+
+    private static boolean assertAssignable(NodeClass clazz, Node parent, Object oldValue, Object newValue) {
+        if (newValue == null) {
+            return true;
+        }
+        for (NodeField field : clazz.fields) {
+            if (field.kind != NodeFieldKind.CHILD) {
+                continue;
+            }
+            if (unsafe.getObject(parent, field.offset) == oldValue) {
+                if (!field.type.isAssignableFrom(newValue.getClass())) {
+                    assert false : "Child class " + newValue.getClass() + " is not assignable to field " + field.type.getName() + " at " + field.name + " in ";
+                    return false;
+                } else {
+                    break;
+                }
+            }
+        }
+        return true;
     }
 
     /** Returns all declared fields in the class hierarchy. */
@@ -660,4 +689,5 @@ public class NodeUtil {
             p.print("    ");
         }
     }
+
 }
