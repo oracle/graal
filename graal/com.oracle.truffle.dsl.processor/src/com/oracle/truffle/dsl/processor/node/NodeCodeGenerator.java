@@ -32,6 +32,7 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.ast.*;
@@ -1226,6 +1227,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private CodeExecutableElement createCachedExecute(NodeData node, SpecializationData polymorph, CodeExecutableElement genericPolymorphMethod) {
             String name = executeCachedName(polymorph);
             CodeExecutableElement cachedExecute = new CodeExecutableElement(modifiers(PROTECTED), polymorph.getReturnType().getType(), name);
+
+            ExecutableTypeData sourceExecutableType = node.findExecutableType(polymorph.getReturnType().getTypeSystemType(), 0);
+            boolean sourceThrowsUnexpected = sourceExecutableType != null && sourceExecutableType.hasUnexpectedValue(getContext());
+            if (sourceThrowsUnexpected) {
+                cachedExecute.getThrownTypes().add(getContext().getType(UnexpectedResultException.class));
+            }
             addInternalValueParameters(cachedExecute, polymorph, true, true);
 
             if (polymorph == node.getGenericPolymorphicSpecialization()) {
@@ -2441,11 +2448,18 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             if (!returnBuilder.isEmpty()) {
-                builder.startReturn();
+
+                ExecutableTypeData sourceExecutableType = node.findExecutableType(specialization.getReturnType().getTypeSystemType(), 0);
+                boolean sourceThrowsUnexpected = sourceExecutableType != null && sourceExecutableType.hasUnexpectedValue(getContext());
+                boolean targetSupportsUnexpected = executable.hasUnexpectedValue(getContext());
 
                 TypeData targetType = node.getTypeSystem().findTypeData(builder.findMethod().getReturnType());
                 TypeData sourceType = specialization.getReturnType().getTypeSystemType();
 
+                if (specialization.isPolymorphic() && sourceThrowsUnexpected && !targetSupportsUnexpected) {
+                    builder.startTryBlock();
+                }
+                builder.startReturn();
                 if (targetType == null || sourceType == null) {
                     builder.tree(returnBuilder.getRoot());
                 } else if (sourceType.needsCastTo(getContext(), targetType)) {
@@ -2454,6 +2468,19 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.tree(returnBuilder.getRoot());
                 }
                 builder.end();
+                if (specialization.isPolymorphic() && sourceThrowsUnexpected && !targetSupportsUnexpected) {
+                    builder.end();
+                    builder.startCatchBlock(getUnexpectedValueException(), "ex");
+                    builder.startReturn();
+                    CodeTree returns = CodeTreeBuilder.singleString("ex.getResult()");
+                    if (sourceType.needsCastTo(getContext(), targetType)) {
+                        builder.tree(createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.asTypeMethodName(targetType), returns));
+                    } else {
+                        builder.tree(returns);
+                    }
+                    builder.end();
+                    builder.end();
+                }
             }
 
             if (!specialization.getExceptions().isEmpty()) {
