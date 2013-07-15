@@ -53,6 +53,34 @@ public class HSAILControlFlow {
         }
     }
 
+
+    public static class ForeignCallNoArgOp extends HSAILLIRInstruction {
+
+        @Def({REG}) protected Value out;
+        String callName;
+
+        public ForeignCallNoArgOp(String callName, Value out) {
+            this.out = out;
+            this.callName = callName;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+            masm.emitComment("//ForeignCall to " + callName + " would have gone here");
+        }
+    }
+
+    public static class ForeignCall1ArgOp extends ForeignCallNoArgOp {
+
+        @Use({REG, ILLEGAL}) protected Value arg1;
+
+        public ForeignCall1ArgOp(String callName, Value out, Value arg1) {
+            super(callName, out);
+            this.arg1 = arg1;
+        }
+    }
+
+
     public static class CompareBranchOp extends HSAILLIRInstruction implements StandardOp.BranchOp {
 
         @Opcode protected final HSAILCompare opcode;

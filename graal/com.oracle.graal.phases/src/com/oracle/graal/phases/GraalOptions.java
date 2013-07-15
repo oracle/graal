@@ -63,6 +63,8 @@ public final class GraalOptions {
     public static final OptionValue<Integer> SmallCompiledLowLevelGraphSize = new OptionValue<>(300);
     @Option(help = "")
     public static final OptionValue<Double> LimitInlinedInvokes = new OptionValue<>(5.0);
+    @Option(help = "")
+    public static final OptionValue<Boolean> InlineEverything = new OptionValue<>(false);
 
     // escape analysis settings
     @Option(help = "")

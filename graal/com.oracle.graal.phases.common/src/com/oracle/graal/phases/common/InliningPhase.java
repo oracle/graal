@@ -448,6 +448,10 @@ public class InliningPhase extends Phase {
 
         @Override
         public boolean isWorthInlining(InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed) {
+            if (InlineEverything.getValue()) {
+                return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "inline everything");
+            }
+
             if (isIntrinsic(info)) {
                 return InliningUtil.logInlinedMethod(info, inliningDepth, fullyProcessed, "intrinsic");
             }
