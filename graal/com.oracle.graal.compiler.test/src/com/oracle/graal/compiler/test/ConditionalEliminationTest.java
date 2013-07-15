@@ -29,6 +29,7 @@ import org.junit.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
 import com.oracle.graal.phases.common.*;
 
 /**
@@ -172,4 +173,24 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
             assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
         }
     }
+
+    public static int testInvokeSnippet(Number n) {
+        if (n instanceof Integer) {
+            return n.intValue();
+        } else {
+            return 1;
+        }
+    }
+
+    @Test
+    public void testInvoke() {
+        test("testInvokeSnippet", new Integer(16));
+        StructuredGraph graph = parse("testInvokeSnippet");
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+
+        InvokeNode invoke = graph.getNodes(InvokeNode.class).first();
+        assertEquals(InvokeKind.Special, ((MethodCallTargetNode) invoke.callTarget()).invokeKind());
+    }
+
 }

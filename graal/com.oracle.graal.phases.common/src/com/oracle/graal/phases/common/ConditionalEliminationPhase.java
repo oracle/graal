@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.phases.common;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
@@ -33,6 +34,7 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -193,16 +195,16 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         public ResolvedJavaType getNodeType(ValueNode node) {
-            ResolvedJavaType result = knownTypes.get(node);
+            ResolvedJavaType result = knownTypes.get(GraphUtil.unproxify(node));
             return result == null ? node.objectStamp().type() : result;
         }
 
         public boolean isNull(ValueNode value) {
-            return value.objectStamp().alwaysNull() || knownNull.contains(value);
+            return value.objectStamp().alwaysNull() || knownNull.contains(GraphUtil.unproxify(value));
         }
 
         public boolean isNonNull(ValueNode value) {
-            return value.objectStamp().nonNull() || knownNonNull.contains(value);
+            return value.objectStamp().nonNull() || knownNonNull.contains(GraphUtil.unproxify(value));
         }
 
         @Override
@@ -245,25 +247,27 @@ public class ConditionalEliminationPhase extends Phase {
          * to be null, otherwise the value is known to be non-null.
          */
         public void addNullness(boolean isNull, ValueNode value) {
+            ValueNode original = GraphUtil.unproxify(value);
             if (isNull) {
-                if (!isNull(value)) {
+                if (!isNull(original)) {
                     metricNullnessRegistered.increment();
-                    knownNull.add(value);
+                    knownNull.add(original);
                 }
             } else {
-                if (!isNonNull(value)) {
+                if (!isNonNull(original)) {
                     metricNullnessRegistered.increment();
-                    knownNonNull.add(value);
+                    knownNonNull.add(original);
                 }
             }
         }
 
         public void addType(ResolvedJavaType type, ValueNode value) {
-            ResolvedJavaType knownType = getNodeType(value);
+            ValueNode original = GraphUtil.unproxify(value);
+            ResolvedJavaType knownType = getNodeType(original);
             ResolvedJavaType newType = tighten(type, knownType);
 
             if (newType != knownType) {
-                knownTypes.put(value, newType);
+                knownTypes.put(original, newType);
                 metricTypeRegistered.increment();
             }
         }
@@ -575,6 +579,25 @@ public class ConditionalEliminationPhase extends Phase {
                         }
                     }
                 }
+            } else if (node instanceof Invoke) {
+                Invoke invoke = (Invoke) node;
+                if (invoke.callTarget() instanceof MethodCallTargetNode) {
+                    MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+                    ValueNode receiver = callTarget.receiver();
+                    if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
+                        ResolvedJavaType type = state.getNodeType(receiver);
+                        if (type != receiver.objectStamp().type()) {
+                            ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
+                            if (method != null) {
+                                if ((method.getModifiers() & Modifier.FINAL) != 0 || (type.getModifiers() & Modifier.FINAL) != 0) {
+                                    callTarget.setInvokeKind(InvokeKind.Special);
+                                    callTarget.setTargetMethod(method);
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
         }
     }
