@@ -54,7 +54,7 @@ public class ObjectCloneSnippets implements Snippets {
     private static Object instanceClone(Object src, Word hub, int layoutHelper) {
         int instanceSize = layoutHelper;
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-        Object result = NewObjectSnippets.allocateInstance(instanceSize, hub, prototypeMarkWord, useG1GC());
+        Object result = NewObjectSnippets.allocateInstance(instanceSize, hub, prototypeMarkWord, false);
 
         Pointer memory = Word.fromObject(result);
         for (int offset = instanceHeaderSize(); offset < instanceSize; offset += wordSize()) {
@@ -71,7 +71,7 @@ public class ObjectCloneSnippets implements Snippets {
         int sizeInBytes = NewObjectSnippets.computeArrayAllocationSize(arrayLength, wordSize(), headerSize, log2ElementSize);
 
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-        Object result = NewObjectSnippets.allocateArray(hub, arrayLength, prototypeMarkWord, headerSize, log2ElementSize, useG1GC());
+        Object result = NewObjectSnippets.allocateArray(hub, arrayLength, prototypeMarkWord, headerSize, log2ElementSize, false);
 
         Pointer memory = Word.fromObject(result);
         for (int offset = headerSize; offset < sizeInBytes; offset += wordSize()) {

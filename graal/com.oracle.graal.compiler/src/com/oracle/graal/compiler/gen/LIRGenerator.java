@@ -70,6 +70,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private ValueNode lastInstructionPrinted; // Debugging only
 
     /**
+     * Records whether the code being generated makes at least one foreign call.
+     */
+    private boolean hasForeignCall;
+
+    /**
      * Checks whether the supplied constant can be used without loading it into a register for store
      * operations, i.e., on the right hand side of a memory access.
      * 
@@ -113,6 +118,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public StructuredGraph getGraph() {
         return graph;
+    }
+
+    /**
+     * Determines whether the code being generated makes at least one foreign call.
+     */
+    public boolean hasForeignCall() {
+        return hasForeignCall;
     }
 
     /**
@@ -601,6 +613,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             emitMove(loc, arg);
             argLocations[i] = loc;
         }
+        this.hasForeignCall = true;
         emitForeignCall(linkage, linkageCc.getReturn(), argLocations, linkage.getTemporaries(), state);
 
         if (isLegal(linkageCc.getReturn())) {

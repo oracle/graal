@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
 
 /**
@@ -189,7 +190,8 @@ public class WordTypeRewriterPhase extends Phase {
                         replace(invoke, readOp(graph, arguments.get(0), invoke, location, true));
                         break;
                     }
-                    case WRITE: {
+                    case WRITE:
+                    case INITIALIZE: {
                         assert arguments.size() == 3 || arguments.size() == 4;
                         Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
                         LocationNode location;
@@ -198,7 +200,7 @@ public class WordTypeRewriterPhase extends Phase {
                         } else {
                             location = makeLocation(graph, arguments.get(1), writeKind, arguments.get(3));
                         }
-                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location));
+                        replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location, operation.opcode()));
                         break;
                     }
                     case ZERO:
@@ -335,8 +337,9 @@ public class WordTypeRewriterPhase extends Phase {
         return read;
     }
 
-    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location) {
-        WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE, false));
+    private static ValueNode writeOp(StructuredGraph graph, ValueNode base, ValueNode value, Invoke invoke, LocationNode location, Opcode op) {
+        assert op == Opcode.WRITE || op == Opcode.INITIALIZE;
+        WriteNode write = graph.add(new WriteNode(base, value, location, WriteBarrierType.NONE, false, op == Opcode.WRITE));
         write.setStateAfter(invoke.stateAfter());
         graph.addBeforeFixed(invoke.asNode(), write);
         return write;

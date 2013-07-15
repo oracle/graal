@@ -259,7 +259,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("size", size);
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
-            args.addConst("fillContents", useG1GC() || newInstanceNode.fillContents());
+            args.addConst("fillContents", newInstanceNode.fillContents());
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
@@ -284,7 +284,7 @@ public class NewObjectSnippets implements Snippets {
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
-            args.addConst("fillContents", useG1GC() || newArrayNode.fillContents());
+            args.addConst("fillContents", newArrayNode.fillContents());
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
@@ -295,7 +295,7 @@ public class NewObjectSnippets implements Snippets {
             Arguments args = new Arguments(allocateArrayDynamic);
             args.add("elementType", newArrayNode.getElementType());
             args.add("length", newArrayNode.length());
-            args.addConst("fillContents", useG1GC() || newArrayNode.fillContents());
+            args.addConst("fillContents", newArrayNode.fillContents());
 
             SnippetTemplate template = template(args);
             template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
