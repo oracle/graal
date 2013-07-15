@@ -352,51 +352,52 @@ public class NodeUtil {
     public static void replaceChild(Node parent, Node oldChild, Node newChild) {
         NodeClass nodeClass = NodeClass.get(parent.getClass());
 
-        long[] fieldOffsets = nodeClass.childOffsets;
-        for (int i = 0; i < fieldOffsets.length; i++) {
-            long fieldOffset = fieldOffsets[i];
+        for (long fieldOffset : nodeClass.getChildOffsets()) {
             if (unsafe.getObject(parent, fieldOffset) == oldChild) {
-                assert assertAssignable(nodeClass, parent, oldChild, newChild);
+                assert assertAssignable(nodeClass, fieldOffset, newChild);
                 unsafe.putObject(parent, fieldOffset, newChild);
             }
         }
 
-        long[] childrenOffsets = nodeClass.childrenOffsets;
-        for (int i = 0; i < childrenOffsets.length; i++) {
-            long fieldOffset = childrenOffsets[i];
+        for (long fieldOffset : nodeClass.getChildrenOffsets()) {
             Object arrayObject = unsafe.getObject(parent, fieldOffset);
             if (arrayObject != null) {
-                assert arrayObject instanceof Node[] : "Children must be instanceof Node[] ";
+                assert arrayObject instanceof Node[] : "Children array must be instanceof Node[] ";
                 Node[] array = (Node[]) arrayObject;
-                for (int j = 0; j < array.length; j++) {
-                    if (array[j] == oldChild) {
-                        assert newChild != null && array.getClass().getComponentType().isAssignableFrom(newChild.getClass()) : "Array type does not match";
-                        array[j] = newChild;
-                        return;
+                for (int i = 0; i < array.length; i++) {
+                    if (array[i] == oldChild) {
+                        assert assertAssignable(nodeClass, fieldOffset, newChild);
+                        array[i] = newChild;
                     }
                 }
             }
         }
     }
 
-    private static boolean assertAssignable(NodeClass clazz, Node parent, Object oldValue, Object newValue) {
+    private static boolean assertAssignable(NodeClass clazz, long fieldOffset, Object newValue) {
         if (newValue == null) {
             return true;
         }
-        for (NodeField field : clazz.fields) {
-            if (field.kind != NodeFieldKind.CHILD) {
-                continue;
-            }
-            if (unsafe.getObject(parent, field.offset) == oldValue) {
-                if (!field.type.isAssignableFrom(newValue.getClass())) {
-                    assert false : "Child class " + newValue.getClass() + " is not assignable to field " + field.type.getName() + " at " + field.name + " in ";
-                    return false;
-                } else {
-                    break;
+        for (NodeField field : clazz.getFields()) {
+            if (field.getOffset() == fieldOffset) {
+                if (field.getKind() == NodeFieldKind.CHILD) {
+                    if (field.getType().isAssignableFrom(newValue.getClass())) {
+                        return true;
+                    } else {
+                        assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                        return false;
+                    }
+                } else if (field.getKind() == NodeFieldKind.CHILDREN) {
+                    if (field.getType().getComponentType().isAssignableFrom(newValue.getClass())) {
+                        return true;
+                    } else {
+                        assert false : "Child class " + newValue.getClass().getName() + " is not assignable to field \"" + field.getName() + "\" of type " + field.getType().getName();
+                        return false;
+                    }
                 }
             }
         }
-        return true;
+        throw new IllegalArgumentException();
     }
 
     /** Returns all declared fields in the class hierarchy. */
