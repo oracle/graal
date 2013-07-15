@@ -37,6 +37,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
+    private final boolean initialized;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -56,9 +57,22 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return value;
     }
 
+    /**
+     * If {@link #isInitialized()} is true, the memory location contains a valid value. If
+     * {@link #isInitialized()} is false, the memory location is uninitialized or zero.
+     */
+    public boolean isInitialized() {
+        return initialized;
+    }
+
     public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress) {
+        this(object, value, location, barrierType, compress, true);
+    }
+
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress, boolean initialized) {
         super(object, location, StampFactory.forVoid(), barrierType, compress);
         this.value = value;
+        this.initialized = initialized;
     }
 
     @Override
