@@ -44,7 +44,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         this.stamp = stamp;
     }
 
-    public Stamp stamp() {
+    public final Stamp stamp() {
         return stamp;
     }
 
@@ -80,7 +80,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         return false;
     }
 
-    public Kind kind() {
+    public final Kind kind() {
         return stamp().kind();
     }
 

@@ -69,15 +69,20 @@ public class WordTypeRewriterPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
         for (Node n : GraphOrder.forwardGraph(graph)) {
-            if (n instanceof ValueNode) {
+            if (n instanceof ValueNode && !(n instanceof PhiNode && ((PhiNode) n).isLoopPhi())) {
                 ValueNode valueNode = (ValueNode) n;
                 if (isWord(valueNode)) {
                     changeToWord(valueNode);
                 }
             }
         }
+        for (PhiNode phi : graph.getNodes(PhiNode.class)) {
+            if (phi.isLoopPhi() && isWord(phi)) {
+                changeToWord(phi);
+            }
+        }
 
-        // Remove casts between different word types (which are by now no longer have kind Object)
+        // Remove casts between different word types (which by now no longer have kind Object)
         for (CheckCastNode checkCastNode : graph.getNodes().filter(CheckCastNode.class).snapshot()) {
             if (!checkCastNode.isDeleted() && checkCastNode.kind() == wordKind) {
                 checkCastNode.replaceAtUsages(checkCastNode.object());
