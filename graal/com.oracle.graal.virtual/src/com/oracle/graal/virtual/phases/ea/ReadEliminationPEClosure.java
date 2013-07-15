@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationPEBlockState.ReadCacheEntry;
 
@@ -54,24 +55,26 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
         if (!deleted) {
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode load = (LoadFieldNode) node;
-                ValueNode cachedValue = state.getReadCache(load.object(), load.field());
+                ValueNode object = GraphUtil.unproxify(load.object());
+                ValueNode cachedValue = state.getReadCache(object, load.field());
                 if (cachedValue != null) {
                     effects.replaceAtUsages(load, cachedValue);
                     state.addScalarAlias(load, cachedValue);
+                    deleted = true;
                 } else {
-                    state.addReadCache(load.object(), load.field(), load);
+                    state.addReadCache(object, load.field(), load);
                 }
-                deleted = true;
             } else if (node instanceof StoreFieldNode) {
                 StoreFieldNode store = (StoreFieldNode) node;
-                ValueNode cachedValue = state.getReadCache(store.object(), store.field());
+                ValueNode object = GraphUtil.unproxify(store.object());
+                ValueNode cachedValue = state.getReadCache(object, store.field());
 
                 if (state.getScalarAlias(store.value()) == cachedValue) {
                     effects.deleteFixedNode(store);
                     deleted = true;
                 }
                 state.killReadCache(store.field());
-                state.addReadCache(store.object(), store.field(), store.value());
+                state.addReadCache(object, store.field(), store.value());
             } else if (node instanceof MemoryCheckpoint.Single) {
                 METRIC_MEMORYCHECKOINT.increment();
                 LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
