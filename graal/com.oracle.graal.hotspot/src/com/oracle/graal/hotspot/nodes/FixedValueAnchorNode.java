@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable {
+public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
 
     @Input private ValueNode object;
 
@@ -51,6 +51,11 @@ public final class FixedValueAnchorNode extends FixedWithNextNode implements LIR
     @Override
     public void generate(LIRGeneratorTool generator) {
         generator.setResult(this, generator.operand(object));
+    }
+
+    @Override
+    public ValueNode getOriginalValue() {
+        return object;
     }
 
 }
