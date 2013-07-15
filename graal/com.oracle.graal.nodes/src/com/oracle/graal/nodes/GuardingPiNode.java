@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * A node that changes the stamp of its input based on some condition being true.
  */
 @NodeInfo(nameTemplate = "GuardingPi(!={p#negated}) {p#reason/s}")
-public class GuardingPiNode extends FixedWithNextNode implements Lowerable, GuardingNode, Canonicalizable {
+public class GuardingPiNode extends FixedWithNextNode implements Lowerable, GuardingNode, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
     @Input private LogicNode condition;
@@ -108,5 +108,10 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
     @Override
     public ValueNode asNode() {
         return this;
+    }
+
+    @Override
+    public ValueNode getOriginalValue() {
+        return object;
     }
 }
