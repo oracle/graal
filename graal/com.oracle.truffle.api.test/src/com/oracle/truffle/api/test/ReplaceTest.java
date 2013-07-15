@@ -81,7 +81,7 @@ public class ReplaceTest {
 
     class TestRootNode extends RootNode {
 
-        @Children private ValueNode[] children;
+        @Children private final ValueNode[] children;
 
         public TestRootNode(ValueNode[] children) {
             this.children = adoptChildren(children);

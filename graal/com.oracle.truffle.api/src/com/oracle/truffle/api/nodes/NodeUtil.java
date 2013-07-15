@@ -163,9 +163,11 @@ public class NodeUtil {
                 } else if (Node.class.isAssignableFrom(field.getType()) && field.getAnnotation(Child.class) != null) {
                     kind = NodeFieldKind.CHILD;
                     childOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
+                    assert !Modifier.isFinal(field.getModifiers()) : "child field must not be final (\"" + field.getName() + "\", " + clazz + ")";
                 } else if (field.getType().isArray() && Node.class.isAssignableFrom(field.getType().getComponentType()) && field.getAnnotation(Children.class) != null) {
                     kind = NodeFieldKind.CHILDREN;
                     childrenOffsetsList.add(fieldOffsetProvider.objectFieldOffset(field));
+                    assert Modifier.isFinal(field.getModifiers()) : "children array field must be final (\"" + field.getName() + "\", " + clazz + ")";
                 } else {
                     kind = NodeFieldKind.DATA;
                 }
