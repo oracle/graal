@@ -153,11 +153,13 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
-        // - has no instructions with debug info
+        // - has no deoptimization points
+        // - makes no foreign calls (which require an aligned stack)
         AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         LIR lir = gen.lir;
-        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame();
+        assert gen.deoptimizationRescueSlot == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
+        boolean omitFrame = CanOmitFrame.getValue() && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
 
         Stub stub = gen.getStub();
         AbstractAssembler masm = createAssembler(frameMap);
