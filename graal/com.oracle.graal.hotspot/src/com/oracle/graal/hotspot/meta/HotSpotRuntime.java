@@ -1168,7 +1168,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
                 if (displacement == config().hubOffset && this.getGraalRuntime().getRuntime().config.useCompressedKlassPointers) {
-                    return Constant.forLong(this.getGraalRuntime().getCompilerToVM().readUnsafeKlassPointer(base));
+                    if (base == null) {
+                        throw new GraalInternalError("Base of object must not be null");
+                    } else {
+                        return Constant.forLong(this.getGraalRuntime().getCompilerToVM().readUnsafeKlassPointer(base));
+                    }
                 } else {
                     return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
                 }
