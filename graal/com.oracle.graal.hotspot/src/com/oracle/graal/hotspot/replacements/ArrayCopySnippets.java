@@ -26,8 +26,8 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.GuardingPiNode.*;
 import static com.oracle.graal.nodes.calc.IsNullNode.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.lang.reflect.*;
 import java.util.*;

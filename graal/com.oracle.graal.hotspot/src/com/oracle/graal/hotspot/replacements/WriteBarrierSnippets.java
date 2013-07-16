@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
@@ -42,7 +43,6 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 public class WriteBarrierSnippets implements Snippets {
 

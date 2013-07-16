@@ -25,11 +25,11 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeArrayCastNode.*;
 import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 
 import com.oracle.graal.api.code.*;

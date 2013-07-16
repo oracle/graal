@@ -27,8 +27,8 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;

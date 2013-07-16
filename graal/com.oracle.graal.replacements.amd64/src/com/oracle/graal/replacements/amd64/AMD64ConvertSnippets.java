@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
 

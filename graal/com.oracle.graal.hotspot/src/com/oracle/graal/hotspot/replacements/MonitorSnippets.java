@@ -27,8 +27,8 @@ import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.nodes.EndLockScopeNode.*;
 import static com.oracle.graal.hotspot.nodes.VMErrorNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import java.util.*;
 

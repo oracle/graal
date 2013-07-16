@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.replacements.nodes;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

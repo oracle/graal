@@ -28,8 +28,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
 

@@ -24,8 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
-import static com.oracle.graal.replacements.nodes.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
