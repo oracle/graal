@@ -37,7 +37,7 @@ import com.oracle.graal.virtual.phases.ea.*;
 
 public class PEAReadEliminationTest extends GraalCompilerTest {
 
-    private StructuredGraph graph;
+    protected StructuredGraph graph;
 
     public static Object staticField;
 
@@ -240,7 +240,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         return graph.getNodes(ReturnNode.class).first();
     }
 
-    private void processMethod(final String snippet) {
+    protected void processMethod(final String snippet) {
         graph = parse(snippet);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
