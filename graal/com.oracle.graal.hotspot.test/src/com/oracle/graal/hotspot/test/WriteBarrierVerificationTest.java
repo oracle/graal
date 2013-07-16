@@ -617,6 +617,15 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test12Snippet", 8, new int[]{8});
     }
 
+    public static void test13Snippet(Object[] a, Object[] b) {
+        System.arraycopy(a, 0, b, 0, a.length);
+    }
+
+    @Test
+    public void test61() {
+        test("test13Snippet", 1, new int[]{});
+    }
+
     private void test(final String snippet, final int expectedBarriers, final int... removedBarrierIndices) {
 
         AssertionError expectedError = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet), new Callable<AssertionError>() {
@@ -624,20 +633,25 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
             public AssertionError call() {
                 final StructuredGraph graph = parse(snippet);
                 HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements);
+                new InliningPhase(runtime(), null, replacements, new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+
                 MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
 
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);
                 new SafepointInsertionPhase().apply(graph);
+                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, highTierContext);
+
                 new WriteBarrierAdditionPhase().apply(graph);
 
                 int barriers = 0;
                 // First, the total number of expected barriers is checked.
                 if (((HotSpotRuntime) runtime()).config.useG1GC) {
-                    barriers = graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count();
+                    barriers = graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count() + graph.getNodes(G1ArrayRangePreWriteBarrier.class).count() +
+                                    graph.getNodes(G1ArrayRangePostWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers * 2 == barriers);
                 } else {
-                    barriers = graph.getNodes(SerialWriteBarrier.class).count();
+                    barriers = graph.getNodes(SerialWriteBarrier.class).count() + graph.getNodes(SerialArrayRangeWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers == barriers);
                 }
                 // Iterate over all write nodes and remove barriers according to input indices.
@@ -698,7 +712,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 try {
                     ReentrantNodeIterator.apply(closure, graph.start(), false, null);
                     Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
-                    new WriteBarrierVerificationPhase(((HotSpotRuntime) runtime()).config.useG1GC).apply(graph);
+                    new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {
                     /*
                      * Catch assertion, test for expected one and re-throw in order to validate unit

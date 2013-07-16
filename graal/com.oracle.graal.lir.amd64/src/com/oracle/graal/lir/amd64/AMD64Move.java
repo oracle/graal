@@ -715,7 +715,7 @@ public class AMD64Move {
 
     private static void decodeKlassPointer(AMD64MacroAssembler masm, Register resRegister, long base, int shift, int alignment) {
         if (shift != 0) {
-            assert alignment == shift : "Decode algorighm is wrong";
+            assert alignment == shift : "Decode algorithm is wrong";
             masm.shlq(resRegister, alignment);
             if (base != 0) {
                 masm.addq(resRegister, AMD64.r12);
