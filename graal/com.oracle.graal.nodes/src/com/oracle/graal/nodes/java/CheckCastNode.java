@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.java;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -119,13 +120,13 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
                 } else {
                     double shortCircuitProbability;
                     if (profile == null) {
-                        shortCircuitProbability = 0.1D;
+                        shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
                     } else {
                         // Tell the instanceof it does not need to do a null check
                         typeTest.setProfile(new JavaTypeProfile(TriState.FALSE, profile.getNotRecordedProbability(), profile.getTypes()));
 
                         // TODO (ds) replace with probability of null-seen when available
-                        shortCircuitProbability = 0.1D;
+                        shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
                     }
                     condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
                 }
