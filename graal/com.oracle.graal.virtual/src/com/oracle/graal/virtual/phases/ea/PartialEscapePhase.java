@@ -68,7 +68,7 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     @Override
     protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule) {
         if (readElimination) {
-            return new ReadEliminationPEClosure(schedule, context.getRuntime(), context.getAssumptions());
+            return new PEReadEliminationClosure(schedule, context.getRuntime(), context.getAssumptions());
         } else {
             return new PartialEscapeClosure.Final(schedule, context.getRuntime(), context.getAssumptions());
         }

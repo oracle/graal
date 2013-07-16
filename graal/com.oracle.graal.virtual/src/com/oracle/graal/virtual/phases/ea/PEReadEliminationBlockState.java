@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.virtual.*;
 
-public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEliminationPEBlockState> {
+public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadEliminationBlockState> {
 
     final HashMap<ReadCacheEntry, ValueNode> readCache;
 
@@ -60,11 +60,11 @@ public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEli
         }
     }
 
-    public ReadEliminationPEBlockState() {
+    public PEReadEliminationBlockState() {
         readCache = new HashMap<>();
     }
 
-    public ReadEliminationPEBlockState(ReadEliminationPEBlockState other) {
+    public PEReadEliminationBlockState(PEReadEliminationBlockState other) {
         super(other);
         readCache = new HashMap<>(other.readCache);
     }
@@ -85,7 +85,7 @@ public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEli
     }
 
     @Override
-    public boolean equivalentTo(ReadEliminationPEBlockState other) {
+    public boolean equivalentTo(PEReadEliminationBlockState other) {
         if (!compareMapsNoSize(readCache, other.readCache)) {
             return false;
         }

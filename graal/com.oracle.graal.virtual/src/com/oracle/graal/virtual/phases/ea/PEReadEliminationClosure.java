@@ -36,21 +36,21 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.virtual.phases.ea.ReadEliminationPEBlockState.ReadCacheEntry;
+import com.oracle.graal.virtual.phases.ea.PEReadEliminationBlockState.ReadCacheEntry;
 
-public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminationPEBlockState> {
+public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadEliminationBlockState> {
 
-    public ReadEliminationPEClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
+    public PEReadEliminationClosure(SchedulePhase schedule, MetaAccessProvider metaAccess, Assumptions assumptions) {
         super(schedule, metaAccess, assumptions);
     }
 
     @Override
-    protected ReadEliminationPEBlockState getInitialState() {
-        return new ReadEliminationPEBlockState();
+    protected PEReadEliminationBlockState getInitialState() {
+        return new PEReadEliminationBlockState();
     }
 
     @Override
-    protected boolean processNode(Node node, ReadEliminationPEBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
+    protected boolean processNode(Node node, PEReadEliminationBlockState state, GraphEffectList effects, FixedWithNextNode lastFixedNode) {
         boolean deleted = super.processNode(node, state, effects, lastFixedNode);
         if (!deleted) {
             if (node instanceof LoadFieldNode) {
@@ -89,7 +89,7 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
         return deleted;
     }
 
-    private static void processIdentity(ReadEliminationPEBlockState state, LocationIdentity identity) {
+    private static void processIdentity(PEReadEliminationBlockState state, LocationIdentity identity) {
         if (identity instanceof ResolvedJavaField) {
             state.killReadCache((ResolvedJavaField) identity);
         } else if (identity == ANY_LOCATION) {
@@ -98,7 +98,7 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
     }
 
     @Override
-    protected void processLoopExit(LoopExitNode exitNode, ReadEliminationPEBlockState initialState, ReadEliminationPEBlockState exitState, GraphEffectList effects) {
+    protected void processLoopExit(LoopExitNode exitNode, PEReadEliminationBlockState initialState, PEReadEliminationBlockState exitState, GraphEffectList effects) {
         super.processLoopExit(exitNode, initialState, exitState, effects);
 
         for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
@@ -111,8 +111,8 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
     }
 
     @Override
-    protected ReadEliminationPEBlockState cloneState(ReadEliminationPEBlockState other) {
-        return new ReadEliminationPEBlockState(other);
+    protected PEReadEliminationBlockState cloneState(PEReadEliminationBlockState other) {
+        return new PEReadEliminationBlockState(other);
     }
 
     @Override
@@ -127,13 +127,13 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
         }
 
         @Override
-        protected void merge(List<ReadEliminationPEBlockState> states) {
+        protected void merge(List<PEReadEliminationBlockState> states) {
             super.merge(states);
 
             mergeReadCache(states);
         }
 
-        private void mergeReadCache(List<ReadEliminationPEBlockState> states) {
+        private void mergeReadCache(List<PEReadEliminationBlockState> states) {
             for (Map.Entry<ReadCacheEntry, ValueNode> entry : states.get(0).readCache.entrySet()) {
                 ReadCacheEntry key = entry.getKey();
                 ValueNode value = entry.getValue();
@@ -172,7 +172,7 @@ public class ReadEliminationPEClosure extends PartialEscapeClosure<ReadEliminati
             }
         }
 
-        private void mergeReadCachePhi(PhiNode phi, ResolvedJavaField identity, List<ReadEliminationPEBlockState> states) {
+        private void mergeReadCachePhi(PhiNode phi, ResolvedJavaField identity, List<PEReadEliminationBlockState> states) {
             ValueNode[] values = new ValueNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
