@@ -499,6 +499,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         connectEnds(falseEnds, phiValues, oldFalseSuccessor, merge, tool);
         connectEnds(trueEnds, phiValues, oldTrueSuccessor, merge, tool);
 
+        /*
+         * Remove obsolete ends only after processing all ends, otherwise oldTrueSuccessor or
+         * oldFalseSuccessor might have been removed if it is a LoopExitNode.
+         */
+        if (falseEnds.isEmpty()) {
+            GraphUtil.killCFG(oldFalseSuccessor);
+        }
+        if (trueEnds.isEmpty()) {
+            GraphUtil.killCFG(oldTrueSuccessor);
+        }
+
         GraphUtil.killCFG(merge);
 
         assert !merge.isAlive() : merge;
@@ -550,17 +561,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     /**
      * Connects a set of ends to a given successor, inserting a merge node if there is more than one
-     * end. If {@code ends} is empty, then {@code successor} is
-     * {@linkplain GraphUtil#killCFG(FixedNode) killed} otherwise it is added to {@code tool}'s
+     * end. If {@code ends} is not empty, then {@code successor} is added to {@code tool}'s
      * {@linkplain SimplifierTool#addToWorkList(com.oracle.graal.graph.Node) work list}.
      * 
      * @param oldMerge the merge being removed
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
      */
     private void connectEnds(List<AbstractEndNode> ends, Map<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, MergeNode oldMerge, SimplifierTool tool) {
-        if (ends.isEmpty()) {
-            GraphUtil.killCFG(successor);
-        } else {
+        if (!ends.isEmpty()) {
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
