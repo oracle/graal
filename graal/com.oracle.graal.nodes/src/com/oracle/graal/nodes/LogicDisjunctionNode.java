@@ -25,17 +25,12 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * This node is true if {@link #getX() x} <b>or</b> {@link #getY() y} are true.
- * 
+ * The short-circuit <b>OR</b> (i.e. {@code ||} in Java) operator.
  */
 public class LogicDisjunctionNode extends LogicBinaryNode implements Canonicalizable {
 
-    public LogicDisjunctionNode(LogicNode x, LogicNode y) {
-        this(x, false, y, false);
-    }
-
-    public LogicDisjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated) {
-        super(x, xNegated, y, yNegated);
+    public LogicDisjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+        super(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 
     @Override

@@ -25,16 +25,12 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * This node is true if {@link #getX() x} <b>and</b> {@link #getY() y} are true.
+ * The short-circuit <b>AND</b> (i.e. {@code &&} in Java) operator.
  */
 public class LogicConjunctionNode extends LogicBinaryNode implements Canonicalizable {
 
-    public LogicConjunctionNode(LogicNode x, LogicNode y) {
-        this(x, false, y, false);
-    }
-
-    public LogicConjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated) {
-        super(x, xNegated, y, yNegated);
+    public LogicConjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+        super(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 
     @Override

@@ -25,22 +25,23 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
+/**
+ * Base class for the short-circuit boolean operators.
+ */
 public abstract class LogicBinaryNode extends LogicNode implements Negatable, Node.IterableNodeType {
 
     @Input private LogicNode x;
     @Input private LogicNode y;
     private boolean xNegated;
     private boolean yNegated;
+    private double shortCircuitProbability;
 
-    public LogicBinaryNode(LogicNode x, LogicNode y) {
-        this(x, false, y, false);
-    }
-
-    public LogicBinaryNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated) {
+    public LogicBinaryNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
         this.x = x;
         this.xNegated = xNegated;
         this.y = y;
         this.yNegated = yNegated;
+        this.shortCircuitProbability = shortCircuitProbability;
     }
 
     public LogicNode getX() {
@@ -57,6 +58,14 @@ public abstract class LogicBinaryNode extends LogicNode implements Negatable, No
 
     public boolean isYNegated() {
         return yNegated;
+    }
+
+    /**
+     * Gets the probability that the {@link #getY() y} part of this binary node is <b>not</b>
+     * evaluated. This is the probability that this operator will short-circuit its execution.
+     */
+    public double getShortCircuitProbability() {
+        return shortCircuitProbability;
     }
 
     @Override

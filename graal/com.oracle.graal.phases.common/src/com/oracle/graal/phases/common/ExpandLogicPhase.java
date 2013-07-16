@@ -44,9 +44,9 @@ public class ExpandLogicPhase extends Phase {
                 processBinary((LogicBinaryNode) usage);
             } else if (usage instanceof IfNode) {
                 if (binary instanceof LogicConjunctionNode) {
-                    processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, false);
+                    processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, false, binary.getShortCircuitProbability());
                 } else if (binary instanceof LogicDisjunctionNode) {
-                    processIf(binary.getX(), !binary.isXNegated(), binary.getY(), !binary.isYNegated(), (IfNode) usage, true);
+                    processIf(binary.getX(), !binary.isXNegated(), binary.getY(), !binary.isYNegated(), (IfNode) usage, true, binary.getShortCircuitProbability());
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
@@ -65,10 +65,11 @@ public class ExpandLogicPhase extends Phase {
         binary.safeDelete();
     }
 
-    private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, boolean negateTargets) {
+    private static void processIf(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, IfNode ifNode, boolean negateTargets, double shortCircuitProbability) {
         AbstractBeginNode trueTarget = negateTargets ? ifNode.falseSuccessor() : ifNode.trueSuccessor();
         AbstractBeginNode falseTarget = negateTargets ? ifNode.trueSuccessor() : ifNode.falseSuccessor();
-        double p = Math.sqrt(ifNode.probability(trueTarget));
+        double firstIfProbability = shortCircuitProbability;
+        double secondIfProbability = 1 - ifNode.probability(trueTarget);
         ifNode.clearSuccessors();
         Graph graph = ifNode.graph();
         MergeNode falseTargetMerge = graph.add(new MergeNode());
@@ -79,8 +80,8 @@ public class ExpandLogicPhase extends Phase {
         falseTargetMerge.addForwardEnd(secondFalseEnd);
         AbstractBeginNode firstFalseTarget = AbstractBeginNode.begin(firstFalseEnd);
         AbstractBeginNode secondFalseTarget = AbstractBeginNode.begin(secondFalseEnd);
-        AbstractBeginNode secondIf = AbstractBeginNode.begin(graph.add(new IfNode(y, yNegated ? firstFalseTarget : trueTarget, yNegated ? trueTarget : firstFalseTarget, yNegated ? 1 - p : p)));
-        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondFalseTarget : secondIf, xNegated ? secondIf : secondFalseTarget, xNegated ? 1 - p : p));
+        AbstractBeginNode secondIf = AbstractBeginNode.begin(graph.add(new IfNode(y, yNegated ? firstFalseTarget : trueTarget, yNegated ? trueTarget : firstFalseTarget, secondIfProbability)));
+        IfNode firstIf = graph.add(new IfNode(x, xNegated ? secondFalseTarget : secondIf, xNegated ? secondIf : secondFalseTarget, firstIfProbability));
         ifNode.replaceAtPredecessor(firstIf);
         ifNode.safeDelete();
     }

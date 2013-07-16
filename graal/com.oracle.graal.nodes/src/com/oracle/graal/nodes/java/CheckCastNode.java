@@ -27,7 +27,7 @@ import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.meta.ProfilingInfo.*;
+import com.oracle.graal.api.meta.ProfilingInfo.TriState;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -117,7 +117,17 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
                     condition = typeTest;
                     stamp = stamp.join(StampFactory.objectNonNull());
                 } else {
-                    condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), typeTest));
+                    double shortCircuitProbability;
+                    if (profile == null) {
+                        shortCircuitProbability = 0.1D;
+                    } else {
+                        // Tell the instanceof it does not need to do a null check
+                        typeTest.setProfile(new JavaTypeProfile(TriState.FALSE, profile.getNotRecordedProbability(), profile.getTypes()));
+
+                        // TODO (ds) replace with probability of null-seen when available
+                        shortCircuitProbability = 0.1D;
+                    }
+                    condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
                 }
             }
             GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
