@@ -53,6 +53,6 @@ public class ObjectSubstitutions {
         RegisterFinalizerNode.register(thisObj);
     }
 
-    @MacroSubstitution(macro = ObjectCloneNode.class, isStatic = false)
+    @MacroSubstitution(macro = ObjectCloneNode.class, isStatic = false, forced = true)
     public static native Object clone(Object obj);
 }
