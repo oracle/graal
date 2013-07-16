@@ -98,7 +98,7 @@ public class HSAILCompilationResult {
 
     public static HSAILCompilationResult getHSAILCompilationResult(StructuredGraph graph) {
         Debug.dump(graph, "Graph");
-        TargetDescription target = new TargetDescription(new HSAIL(), true, 1, 0, true);
+        TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
         HSAILBackend hsailBackend = new HSAILBackend(Graal.getRequiredCapability(GraalCodeCacheProvider.class), target);
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);

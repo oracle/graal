@@ -79,13 +79,15 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
      * created by JNI since these JNI global references do not move.
      */
     public final void mov(Register a, Object obj) {
+        String regName = "$d" + a.encoding();
         if (obj instanceof Class) {
             Class<?> clazz = (Class<?>) obj;
             long refHandle = OkraUtil.getRefHandle(clazz);
             String className = clazz.getName();
-            String regName = "$d" + a.encoding();
             emitString("mov_b64 " + regName + ", 0x" + Long.toHexString(refHandle) + ";  // handle for " + className);
             emitString("ld_global_u64 " + regName + ", [" + regName + "];");
+        } else if (obj == null) {
+            emitString("mov_b64 " + regName + ", 0x0;  // null object");
         } else {
             throw GraalInternalError.shouldNotReachHere("mov from object not a class");
         }
@@ -101,16 +103,32 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         }
     }
 
-    public final void emitLoad(Value dest, HSAILAddress addr) {
-        emitString("ld_global_" + getArgType(dest) + " " + HSAIL.mapRegister(dest) + ", " + mapAddress(addr) + ";");
+    private void emitAddrOp(String instr, Value reg, HSAILAddress addr) {
+        emitString(instr + " " + HSAIL.mapRegister(reg) + ", " + mapAddress(addr) + ";");
     }
 
-    public final void emitSpillLoad(Value dest, Value src) {
-        emitString("ld_spill_" + getArgType(dest) + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapStackSlot(src) + ";");
+    public final void emitLoad(Value dest, HSAILAddress addr) {
+        emitLoad(dest, addr, getArgType(dest));
+    }
+
+    public final void emitLoad(Value dest, HSAILAddress addr, String argTypeStr) {
+        emitAddrOp("ld_global_" + argTypeStr, dest, addr);
+    }
+
+    public final void emitLda(Value dest, HSAILAddress addr) {
+        emitAddrOp("lda_global_u64", dest, addr);
     }
 
     public final void emitStore(Value src, HSAILAddress addr) {
-        emitString("st_global_" + getArgType(src) + " " + HSAIL.mapRegister(src) + ", " + mapAddress(addr) + ";");
+        emitStore(src, addr, getArgType(src));
+    }
+
+    public final void emitStore(Value dest, HSAILAddress addr, String argTypeStr) {
+        emitAddrOp("st_global_" + argTypeStr, dest, addr);
+    }
+
+    public final void emitSpillLoad(Value dest, Value src) {
+        emitString("ld_spill_" + getArgType(dest) + " " + HSAIL.mapRegister(dest) + ", " + mapStackSlot(src, getArgSize(dest)) + ";");
     }
 
     public final void emitSpillStore(Value src, Value dest) {
@@ -122,7 +140,21 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         if (maxStackOffset < stackoffset) {
             maxStackOffset = stackoffset;
         }
-        emitString("st_spill_" + getArgType(src) + " " + HSAIL.mapRegister(src) + ", " + HSAIL.mapStackSlot(dest) + ";");
+        emitString("st_spill_" + getArgType(src) + " " + HSAIL.mapRegister(src) + ", " + mapStackSlot(dest, getArgSize(src)) + ";");
+    }
+
+    /**
+     * The mapping to stack slots is always relative to the beginning
+     * of the spillseg.  HSAIL.getStackOffset returns the positive
+     * version of the originally negative offset.  Then we back up
+     * from that by the argSize in bytes.  This ensures that slots of
+     * different size do not overlap, even though we have converted
+     * from negative to positive offsets.
+     */
+    public static String mapStackSlot(Value reg, int argSize) {
+        long offset = HSAIL.getStackOffset(reg);
+        int argSizeBytes = argSize / 8;
+        return "[%spillseg]" + "[" + (offset - argSizeBytes) + "]";
     }
 
     public void cbr(String target1) {
@@ -181,7 +213,9 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
 
     public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         String prefix = "cmp_" + condition + (unordered ? "u" : "") + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
-        emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";");
+        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object)
+                          && (asConstant(src1).asObject() == null) ? " // null test " : "");
+        emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
     public void emitConvert(Value dest, Value src) {
@@ -210,7 +244,14 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 case Double:
                     return Double.toString(consrc.asDouble());
                 case Long:
-                    return Long.toString(consrc.asLong());
+                    return "0x" + Long.toHexString(consrc.asLong());
+                case Object:
+                    Object obj = consrc.asObject();
+                    if (obj == null) {
+                        return "0";
+                    } else {
+                        throw GraalInternalError.shouldNotReachHere("unknown type: " + src);
+                    }
                 default:
                     throw GraalInternalError.shouldNotReachHere("unknown type: " + src);
             }
@@ -223,14 +264,68 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emit(mnemonic + "_" + prefix, dest, "", src0, src1);
     }
 
+    public final void emitForceUnsigned(String mnemonic, Value dest, Value src0, Value src1) {
+        String prefix = getArgTypeForceUnsigned(dest);
+        emit(mnemonic + "_" + prefix, dest, "", src0, src1);
+    }
+
+
     private void emit(String instr, Value dest, String controlRegString, Value src0, Value src1) {
         assert (!isConstant(dest));
         emitString(String.format("%s %s, %s%s, %s;", instr, HSAIL.mapRegister(dest), controlRegString, mapRegOrConstToString(src0), mapRegOrConstToString(src1)));
     }
+
+    private void emit(String instr, Value dest, Value src0, Value src1, Value src2) {
+        assert (!isConstant(dest));
+        emitString(String.format("%s %s, %s, %s, %s;", instr, HSAIL.mapRegister(dest), mapRegOrConstToString(src0),
+                                 mapRegOrConstToString(src1), mapRegOrConstToString(src2)));
+    }
+
 
     public final void cmovCommon(Value dest, Value trueReg, Value falseReg, int width) {
         String instr = (width == 32 ? "cmov_b32" : "cmov_b64");
         emit(instr, dest, "$c0, ", trueReg, falseReg);
     }
 
+
+    /**
+     * Emit code to build a 64-bit pointer from a compressed-oop and the associated base and shift.
+     * We only emit this if base and shift are not both zero.
+     */
+    public void emitCompressedOopDecode(Value result, long narrowOopBase, int narrowOopShift) {
+        if (narrowOopBase == 0) {
+            emit("shl", result, result, Constant.forInt(narrowOopShift));
+        } else if (narrowOopShift == 0) {
+            // only use add if result is not starting as null (unsigned compare)
+            emitCompare(result, Constant.forLong(0), "eq", false, true);
+            emit("add", result, result, Constant.forLong(narrowOopBase));
+            cmovCommon(result, Constant.forLong(0), result, 64);
+        } else {
+            // only use mad if result is not starting as null (unsigned compare)
+            emitCompare(result, Constant.forLong(0), "eq", false, true);
+            emit("mad_u64 ", result, result, Constant.forInt(1 << narrowOopShift), Constant.forLong(narrowOopBase));
+            cmovCommon(result, Constant.forLong(0), result, 64);
+        }
+    }
+
+    /**
+     * Emit code to build a 32-bit compressed pointer from a full
+     * 64-bit pointer using the associated base and shift.  We only
+     * emit this if base and shift are not both zero.
+     */
+    public void emitCompressedOopEncode(Value result, long narrowOopBase, int narrowOopShift) {
+        if (narrowOopBase != 0) {
+            // only use sub if result is not starting as null (unsigned compare)
+            emitCompare(result, Constant.forLong(0), "eq", false, true);
+            emit("sub", result, result, Constant.forLong(narrowOopBase));
+            cmovCommon(result, Constant.forLong(0), result, 64);
+        }
+        if (narrowOopShift != 0) {
+            emit("shr", result, result, Constant.forInt(narrowOopShift));
+        }
+    }
+
+    public void emitComment(String comment) {
+        emitString(comment);
+    }
 }

@@ -44,10 +44,11 @@ public enum HSAILArithmetic {
     IMIN, LMIN, IUMIN, LUMIN, IREM,
     LREM, FREM, DREM, IUREM, LUREM,
     ICARRY, LCARRY, IUCARRY, LUCARRY,
-    IAND, INEG, IUSHR, I2B, I2S, I2L,
+    IAND, LAND, INEG, I2B, I2S, I2L,
     F2D, F2I, F2L, D2F, I2F, I2D, D2I,
     L2F, D2L, MOV_F2I, MOV_D2L, L2D, MOV_I2F,
-    MOV_L2D, ISHL, SQRT, UNDEF, CALL, L2I;
+    MOV_L2D, ISHL, LSHL, ISHR, LSHR, IUSHR, LUSHR,
+    SQRT, UNDEF, CALL, L2I;
 
     public static class Op1Stack extends HSAILLIRInstruction {
         @Opcode private final HSAILArithmetic opcode;
@@ -245,6 +246,22 @@ public enum HSAILArithmetic {
     }
 
     public static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+        /**
+         * First check if one of src1 or src2 is an AddressValue.  If it is,
+         * convert the address to a register using an lda instruction.  We can
+         * just reuse the eventual dst register for this.
+         */
+        if (src1 instanceof HSAILAddressValue) {
+            assert (!(src2 instanceof HSAILAddressValue));
+            masm.emitLda(dst, ((HSAILAddressValue) src1).toAddress());
+            emit(tasm, masm, opcode, dst, dst, src2, info);
+            return;
+        } else if (src2 instanceof HSAILAddressValue) {
+            assert (!(src1 instanceof HSAILAddressValue));
+            masm.emitLda(dst, ((HSAILAddressValue) src2).toAddress());
+            emit(tasm, masm, opcode, dst, src1, dst, info);
+            return;
+        }
         int exceptionOffset = -1;
         switch (opcode) {
             case IADD:
@@ -276,7 +293,14 @@ public enum HSAILArithmetic {
             case LMIN:
                 masm.emit("min", dst, src1, src2); break;
             case ISHL:
+            case LSHL:
                 masm.emit("shl", dst, src1, src2); break;
+            case ISHR:
+            case LSHR:
+                masm.emit("shr", dst, src1, src2); break;
+            case IUSHR:
+            case LUSHR:
+                masm.emitForceUnsigned("shr", dst, src1, src2); break;
             case IREM:
                 masm.emit("rem", dst, src1, src2); break;
             default:    throw GraalInternalError.shouldNotReachHere();

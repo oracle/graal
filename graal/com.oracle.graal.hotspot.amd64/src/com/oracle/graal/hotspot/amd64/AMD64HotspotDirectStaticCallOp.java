@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
@@ -35,9 +36,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 /**
  * A direct call that complies with the conventions for such calls in HotSpot. In particular, for
  * calls using an inline cache, a MOVE instruction is emitted just prior to the aligned direct call.
- * This instruction (which moves 0L in RAX) is patched by the C++ Graal code to replace the 0L
- * constant with Universe::non_oop_word(), a special sentinel used for the initial value of the
- * Klass in an inline cache. It puts the called method into rbx before calling.
  */
 @Opcode("CALL_DIRECT")
 final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
@@ -55,12 +53,10 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction
-        // that loads the Klass from the inline cache so that the C++ code can find it
-        // and replace the inline 0L value with Universe::non_oop_word()
+        // instruction that loads the Klass from the inline cache.
         AMD64Move.move(tasm, masm, AMD64.rbx.asValue(Kind.Long), metaspaceMethod);
         tasm.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
-        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.LONG_0);
+        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits));
         super.emitCode(tasm, masm);
     }
 }

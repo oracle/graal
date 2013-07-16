@@ -30,6 +30,7 @@ package com.oracle.graal.compiler.hsail.test.infra;
 import com.oracle.graal.compiler.hsail.HSAILCompilationResult;
 import java.lang.reflect.Method;
 import java.io.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 public abstract class GraalKernelTester extends KernelTester {
 
@@ -61,4 +62,15 @@ public abstract class GraalKernelTester extends KernelTester {
         return hsailSource;
     }
 
+    public boolean aggressiveInliningEnabled() {
+        return (InlineEverything.getValue());
+    }
+
+    public boolean canHandleHSAILMethodCalls() {
+        // needs 2 things, backend needs to be able to generate such calls, and target needs to be
+        // able to run them
+        boolean canGenerateCalls = false;   // not implemented yet
+        boolean canExecuteCalls = runningOnSimulator();
+        return (canGenerateCalls && canExecuteCalls);
+    }
 }
