@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * Base class for the short-circuit boolean operators.
  */
-public abstract class LogicBinaryNode extends LogicNode implements Negatable, Node.IterableNodeType {
+public abstract class ShortCircuitBooleanNode extends LogicNode implements Negatable, Node.IterableNodeType {
 
     @Input private LogicNode x;
     @Input private LogicNode y;
@@ -36,7 +36,7 @@ public abstract class LogicBinaryNode extends LogicNode implements Negatable, No
     private boolean yNegated;
     private double shortCircuitProbability;
 
-    public LogicBinaryNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+    public ShortCircuitBooleanNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
         this.x = x;
         this.xNegated = xNegated;
         this.y = y;

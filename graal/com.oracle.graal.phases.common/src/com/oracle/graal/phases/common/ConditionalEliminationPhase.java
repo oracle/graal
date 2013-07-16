@@ -319,8 +319,8 @@ public class ConditionalEliminationPhase extends Phase {
         }
 
         private void registerCondition(boolean isTrue, LogicNode condition, ValueNode anchor) {
-            if (!isTrue && condition instanceof LogicDisjunctionNode) {
-                LogicDisjunctionNode disjunction = (LogicDisjunctionNode) condition;
+            if (!isTrue && condition instanceof ShortCircuitOrNode) {
+                ShortCircuitOrNode disjunction = (ShortCircuitOrNode) condition;
                 registerCondition(disjunction.isXNegated(), disjunction.getX(), anchor);
                 registerCondition(disjunction.isYNegated(), disjunction.getY(), anchor);
             } else {

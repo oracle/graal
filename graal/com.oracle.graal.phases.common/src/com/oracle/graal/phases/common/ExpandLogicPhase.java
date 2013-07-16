@@ -31,29 +31,29 @@ public class ExpandLogicPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (LogicBinaryNode logic : graph.getNodes(LogicBinaryNode.class)) {
+        for (ShortCircuitBooleanNode logic : graph.getNodes(ShortCircuitBooleanNode.class)) {
             processBinary(logic);
         }
-        assert graph.getNodes(LogicBinaryNode.class).isEmpty();
+        assert graph.getNodes(ShortCircuitBooleanNode.class).isEmpty();
     }
 
-    private static void processBinary(LogicBinaryNode binary) {
+    private static void processBinary(ShortCircuitBooleanNode binary) {
         while (binary.usages().isNotEmpty()) {
             Node usage = binary.usages().first();
-            if (usage instanceof LogicBinaryNode) {
-                processBinary((LogicBinaryNode) usage);
+            if (usage instanceof ShortCircuitBooleanNode) {
+                processBinary((ShortCircuitBooleanNode) usage);
             } else if (usage instanceof IfNode) {
-                if (binary instanceof LogicConjunctionNode) {
+                if (binary instanceof ShortCircuitAndNode) {
                     processIf(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (IfNode) usage, false, binary.getShortCircuitProbability());
-                } else if (binary instanceof LogicDisjunctionNode) {
+                } else if (binary instanceof ShortCircuitOrNode) {
                     processIf(binary.getX(), !binary.isXNegated(), binary.getY(), !binary.isYNegated(), (IfNode) usage, true, binary.getShortCircuitProbability());
                 } else {
                     throw GraalInternalError.shouldNotReachHere();
                 }
             } else if (usage instanceof ConditionalNode) {
-                if (binary instanceof LogicConjunctionNode) {
+                if (binary instanceof ShortCircuitOrNode) {
                     processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage, false);
-                } else if (binary instanceof LogicDisjunctionNode) {
+                } else if (binary instanceof ShortCircuitOrNode) {
                     processConditional(binary.getX(), !binary.isXNegated(), binary.getY(), !binary.isYNegated(), (ConditionalNode) usage, true);
                 } else {
                     throw GraalInternalError.shouldNotReachHere();

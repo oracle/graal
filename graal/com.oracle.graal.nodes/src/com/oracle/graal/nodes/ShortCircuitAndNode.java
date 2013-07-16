@@ -27,9 +27,9 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The short-circuit <b>AND</b> (i.e. {@code &&} in Java) operator.
  */
-public class LogicConjunctionNode extends LogicBinaryNode implements Canonicalizable {
+public class ShortCircuitAndNode extends ShortCircuitBooleanNode implements Canonicalizable {
 
-    public LogicConjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+    public ShortCircuitAndNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
         super(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 

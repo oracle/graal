@@ -166,7 +166,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
         IsNullNode x = graph.unique(new IsNullNode(graph.getLocal(0)));
         InstanceOfNode y = instanceOf;
-        LogicDisjunctionNode disjunction = graph.unique(new LogicDisjunctionNode(x, false, y, false, NOT_FREQUENT_PROBABILITY));
+        ShortCircuitOrNode disjunction = graph.unique(new ShortCircuitOrNode(x, false, y, false, NOT_FREQUENT_PROBABILITY));
         ifNode.setCondition(disjunction);
         ifNode.negate(disjunction);
         new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);

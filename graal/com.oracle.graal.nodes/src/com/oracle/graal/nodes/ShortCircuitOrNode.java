@@ -27,9 +27,9 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The short-circuit <b>OR</b> (i.e. {@code ||} in Java) operator.
  */
-public class LogicDisjunctionNode extends LogicBinaryNode implements Canonicalizable {
+public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canonicalizable {
 
-    public LogicDisjunctionNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
+    public ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
         super(x, xNegated, y, yNegated, shortCircuitProbability);
     }
 

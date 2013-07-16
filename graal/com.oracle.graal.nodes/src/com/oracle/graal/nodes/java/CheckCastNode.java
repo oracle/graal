@@ -128,7 +128,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
                         // TODO (ds) replace with probability of null-seen when available
                         shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
                     }
-                    condition = graph().unique(new LogicDisjunctionNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
+                    condition = graph().unique(new ShortCircuitOrNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
                 }
             }
             GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
