@@ -1241,7 +1241,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
         ret.getMidTier().appendPhase(new WriteBarrierAdditionPhase());
         if (VerifyPhases.getValue()) {
-            ret.getMidTier().appendPhase(new WriteBarrierVerificationPhase(config.useG1GC));
+            ret.getMidTier().appendPhase(new WriteBarrierVerificationPhase());
         }
 
         return ret;

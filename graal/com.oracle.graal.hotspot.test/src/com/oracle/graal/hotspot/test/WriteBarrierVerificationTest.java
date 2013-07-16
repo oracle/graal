@@ -712,7 +712,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 try {
                     ReentrantNodeIterator.apply(closure, graph.start(), false, null);
                     Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
-                    new WriteBarrierVerificationPhase(((HotSpotRuntime) runtime()).config.useG1GC).apply(graph);
+                    new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {
                     /*
                      * Catch assertion, test for expected one and re-throw in order to validate unit

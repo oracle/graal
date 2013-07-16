@@ -23,9 +23,12 @@
 
 package com.oracle.graal.hotspot.phases;
 
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -41,18 +44,12 @@ import com.oracle.graal.phases.*;
  */
 public class WriteBarrierVerificationPhase extends Phase {
 
-    private final boolean useG1GC;
-
-    public WriteBarrierVerificationPhase(boolean useG1GC) {
-        this.useG1GC = useG1GC;
-    }
-
     @Override
     protected void run(StructuredGraph graph) {
         processWrites(graph);
     }
 
-    private void processWrites(StructuredGraph graph) {
+    private static void processWrites(StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (isObjectWrite(node) || isObjectArrayRangeWrite(node)) {
                 validateWrite(node);
@@ -60,7 +57,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         }
     }
 
-    private void validateWrite(Node write) {
+    private static void validateWrite(Node write) {
         /*
          * The currently validated write is checked in order to discover if it has an appropriate
          * attached write barrier.
@@ -74,7 +71,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         while (iterator.hasNext()) {
             Node currentNode = iterator.next();
             assert !isSafepoint(currentNode) : "Write barrier must be present";
-            if (useG1GC) {
+            if (useG1GC()) {
                 if (!(currentNode instanceof G1PostWriteBarrier) || ((currentNode instanceof G1PostWriteBarrier) && !validateBarrier(write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
@@ -87,10 +84,10 @@ public class WriteBarrierVerificationPhase extends Phase {
         }
     }
 
-    private boolean hasAttachedBarrier(FixedWithNextNode node) {
+    private static boolean hasAttachedBarrier(FixedWithNextNode node) {
         final Node next = node.next();
         final Node previous = node.predecessor();
-        if (useG1GC) {
+        if (HotSpotReplacementsUtil.useG1GC()) {
             if (isObjectWrite(node)) {
                 return next instanceof G1PostWriteBarrier && previous instanceof G1PreWriteBarrier && validateBarrier(node, (G1PostWriteBarrier) next) &&
                                 validateBarrier(node, (G1PreWriteBarrier) previous);
