@@ -26,9 +26,8 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.virtual.*;
 
-public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEliminationPEBlockState> {
+public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
     final HashMap<ReadCacheEntry, ValueNode> readCache;
 
@@ -60,11 +59,11 @@ public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEli
         }
     }
 
-    public ReadEliminationPEBlockState() {
+    public ReadEliminationBlockState() {
         readCache = new HashMap<>();
     }
 
-    public ReadEliminationPEBlockState(ReadEliminationPEBlockState other) {
+    public ReadEliminationBlockState(ReadEliminationBlockState other) {
         super(other);
         readCache = new HashMap<>(other.readCache);
     }
@@ -75,17 +74,7 @@ public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEli
     }
 
     @Override
-    protected void objectMaterialized(VirtualObjectNode virtual, AllocatedObjectNode representation, List<ValueNode> values) {
-        if (virtual instanceof VirtualInstanceNode) {
-            VirtualInstanceNode instance = (VirtualInstanceNode) virtual;
-            for (int i = 0; i < instance.entryCount(); i++) {
-                readCache.put(new ReadCacheEntry(instance.field(i), representation), values.get(i));
-            }
-        }
-    }
-
-    @Override
-    public boolean equivalentTo(ReadEliminationPEBlockState other) {
+    public boolean equivalentTo(ReadEliminationBlockState other) {
         if (!compareMapsNoSize(readCache, other.readCache)) {
             return false;
         }
@@ -93,36 +82,11 @@ public class ReadEliminationPEBlockState extends PartialEscapeBlockState<ReadEli
     }
 
     public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
-        ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheObject = obj.getMaterializedValue();
-        } else {
-            cacheObject = object;
-        }
-        readCache.put(new ReadCacheEntry(identity, cacheObject), value);
+        readCache.put(new ReadCacheEntry(identity, object), value);
     }
 
     public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
-        ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheObject = obj.getMaterializedValue();
-        } else {
-            cacheObject = object;
-        }
-        ValueNode cacheValue = readCache.get(new ReadCacheEntry(identity, cacheObject));
-        obj = getObjectState(cacheValue);
-        if (obj != null) {
-            assert !obj.isVirtual();
-            cacheValue = obj.getMaterializedValue();
-        } else {
-            // assert !scalarAliases.containsKey(cacheValue);
-            cacheValue = getScalarAlias(cacheValue);
-        }
-        return cacheValue;
+        return readCache.get(new ReadCacheEntry(identity, object));
     }
 
     public void killReadCache() {
