@@ -491,6 +491,9 @@ public class ConditionalEliminationPhase extends Phase {
                 for (GuardNode guard : begin.guards().snapshot()) {
                     registerGuard(guard);
                 }
+            } else if (node instanceof FixedGuardNode) {
+                FixedGuardNode guard = (FixedGuardNode) node;
+                registerCondition(!guard.isNegated(), guard.condition(), guard);
             } else if (node instanceof CheckCastNode) {
                 CheckCastNode checkCast = (CheckCastNode) node;
                 ValueNode object = checkCast.object();
