@@ -129,14 +129,18 @@ public class AMD64Move {
             this.base = base;
             this.shift = shift;
             this.alignment = alignment;
-            assert kind == Kind.Object;
+            assert kind == Kind.Object || kind == Kind.Long;
         }
 
         @Override
         public void emitMemAccess(AMD64MacroAssembler masm) {
             Register resRegister = asRegister(result);
             masm.movl(resRegister, address.toAddress());
-            decodePointer(masm, resRegister, base, shift, alignment);
+            if (kind == Kind.Object) {
+                decodePointer(masm, resRegister, base, shift, alignment);
+            } else {
+                decodeKlassPointer(masm, resRegister, base, shift, alignment);
+            }
         }
     }
 
@@ -203,13 +207,17 @@ public class AMD64Move {
             this.address = address;
             this.state = state;
             this.input = input;
-            assert kind == Kind.Object;
+            assert kind == Kind.Object || kind == Kind.Long;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             masm.movq(asRegister(scratch), asRegister(input));
-            encodePointer(masm, asRegister(scratch), base, shift, alignment);
+            if (kind == Kind.Object) {
+                encodePointer(masm, asRegister(scratch), base, shift, alignment);
+            } else {
+                encodeKlassPointer(masm, asRegister(scratch), base, shift, alignment);
+            }
             if (state != null) {
                 tasm.recordImplicitException(masm.codeBuffer.position(), state);
             }
@@ -286,7 +294,11 @@ public class AMD64Move {
                     break;
                 case Long:
                     if (NumUtil.isInt(input.asLong())) {
-                        masm.movslq(address.toAddress(), (int) input.asLong());
+                        if (compress) {
+                            masm.movl(address.toAddress(), (int) input.asLong());
+                        } else {
+                            masm.movslq(address.toAddress(), (int) input.asLong());
+                        }
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
@@ -691,4 +703,30 @@ public class AMD64Move {
         }
     }
 
+    private static void encodeKlassPointer(AMD64MacroAssembler masm, Register scratchRegister, long base, int shift, int alignment) {
+        if (base != 0) {
+            masm.subq(scratchRegister, AMD64.r12);
+        }
+        if (shift != 0) {
+            assert alignment == shift : "Encode algorithm is wrong";
+            masm.shrq(scratchRegister, alignment);
+        }
+    }
+
+    private static void decodeKlassPointer(AMD64MacroAssembler masm, Register resRegister, long base, int shift, int alignment) {
+        if (shift != 0) {
+            assert alignment == shift : "Decode algorighm is wrong";
+            masm.shlq(resRegister, alignment);
+            if (base != 0) {
+                masm.addq(resRegister, AMD64.r12);
+            }
+        } else {
+            assert base == 0 : "Sanity";
+        }
+    }
+
+    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, AMD64Address address, long narrowKlassBase, int narrowKlassShift, int logKlassAlignment) {
+        masm.movl(register, address);
+        decodeKlassPointer(masm, register, narrowKlassBase, narrowKlassShift, logKlassAlignment);
+    }
 }

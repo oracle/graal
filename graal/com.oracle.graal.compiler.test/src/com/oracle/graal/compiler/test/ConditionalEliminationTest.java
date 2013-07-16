@@ -22,8 +22,14 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static org.junit.Assert.*;
+
 import org.junit.*;
 
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
 import com.oracle.graal.phases.common.*;
 
 /**
@@ -89,4 +95,102 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         test("search", e2, "e3", new Entry("e4"));
     }
+
+    @SuppressWarnings("unused")
+    public static int testNullnessSnippet(Object a, Object b) {
+        if (a == null) {
+            if (a == b) {
+                if (b == null) {
+                    return 1;
+                } else {
+                    return -2;
+                }
+            } else {
+                if (b == null) {
+                    return 3;
+                } else {
+                    return 4;
+                }
+            }
+        } else {
+            if (a == b) {
+                if (b == null) {
+                    return -5;
+                } else {
+                    return 6;
+                }
+            } else {
+                if (b == null) {
+                    return 7;
+                } else {
+                    return 8;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testNullness() {
+        test("testNullnessSnippet", null, null);
+        test("testNullnessSnippet", null, new Object());
+        test("testNullnessSnippet", new Object(), null);
+        test("testNullnessSnippet", new Object(), new Object());
+
+        StructuredGraph graph = parse("testNullnessSnippet");
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
+            assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static int testDisjunctionSnippet(Object a) {
+        if (a instanceof Integer) {
+            if (a == null) {
+                return -1;
+            } else {
+                return 2;
+            }
+        } else {
+            return 3;
+        }
+    }
+
+    @Test
+    public void testDisjunction() {
+        StructuredGraph graph = parse("testDisjunctionSnippet");
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        IfNode ifNode = (IfNode) graph.start().next();
+        InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
+        LogicDisjunctionNode disjunction = graph.unique(new LogicDisjunctionNode(graph.unique(new IsNullNode(graph.getLocal(0))), instanceOf));
+        ifNode.setCondition(disjunction);
+        ifNode.negate(disjunction);
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
+            assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
+        }
+    }
+
+    public static int testInvokeSnippet(Number n) {
+        if (n instanceof Integer) {
+            return n.intValue();
+        } else {
+            return 1;
+        }
+    }
+
+    @Test
+    public void testInvoke() {
+        test("testInvokeSnippet", new Integer(16));
+        StructuredGraph graph = parse("testInvokeSnippet");
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+
+        InvokeNode invoke = graph.getNodes(InvokeNode.class).first();
+        assertEquals(InvokeKind.Special, ((MethodCallTargetNode) invoke.callTarget()).invokeKind());
+    }
+
 }

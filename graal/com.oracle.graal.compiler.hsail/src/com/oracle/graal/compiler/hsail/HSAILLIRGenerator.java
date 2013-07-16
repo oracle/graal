@@ -47,19 +47,28 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCompareBranchOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
+import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
+import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
+import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.hotspot.meta.*;
 
 /**
  * This class implements the HSAIL specific portion of the LIR generator.
  */
 public class HSAILLIRGenerator extends LIRGenerator {
+
+    private HotSpotRuntime runtime() {
+        return (HotSpotRuntime) runtime;
+    }
 
     public static class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
 
@@ -123,6 +132,14 @@ public class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
+    protected HSAILAddressValue asAddressValue(Value address) {
+        if (address instanceof HSAILAddressValue) {
+            return (HSAILAddressValue) address;
+        } else {
+            return emitAddress(address, 0, Value.ILLEGAL, 0);
+        }
+    }
+
     public HSAILAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
         AllocatableValue baseRegister;
         long finalDisp = displacement;
@@ -163,27 +180,36 @@ public class HSAILLIRGenerator extends LIRGenerator {
         return new HSAILAddressValue(target().wordKind, baseRegister, finalDisp);
     }
 
-    private HSAILAddressValue asAddress(Value address) {
-        if (address instanceof HSAILAddressValue) {
-            return (HSAILAddressValue) address;
-        } else {
-            return emitAddress(address, 0, Value.ILLEGAL, 0);
-        }
+    private static boolean isCompressCandidate(DeoptimizingNode access) {
+        return access != null && ((HeapAccess) access).compress();
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
-        HSAILAddressValue loadAddress = asAddress(address);
+    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode access) {
+        HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        LIRFrameState state = access != null ? state(access) : null;
+        assert access == null || access instanceof HeapAccess;
+        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
+            Variable scratch = newVariable(Kind.Long);
+            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
+        } else {
+            append(new LoadOp(kind, result, loadAddress, state));
+        }
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
-        HSAILAddressValue storeAddress = asAddress(address);
+    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode access) {
+        HSAILAddressValue storeAddress = asAddressValue(address);
+        LIRFrameState state = access != null ? state(access) : null;
         Variable input = load(inputVal);
-        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
+        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
+            Variable scratch = newVariable(Kind.Long);
+            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
+        } else {
+            append(new StoreOp(kind, storeAddress, input, state));
+        }
     }
 
     @Override
@@ -460,6 +486,9 @@ public class HSAILLIRGenerator extends LIRGenerator {
             case Int:
                 append(new Op2Stack(IAND, result, a, loadNonConst(b)));
                 break;
+            case Long:
+                append(new Op2Stack(LAND, result, a, loadNonConst(b)));
+                break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -483,6 +512,9 @@ public class HSAILLIRGenerator extends LIRGenerator {
             case Int:
                 append(new ShiftOp(ISHL, result, a, b));
                 break;
+            case Long:
+                append(new ShiftOp(LSHL, result, a, b));
+                break;
             default:
                 GraalInternalError.shouldNotReachHere();
         }
@@ -500,6 +532,9 @@ public class HSAILLIRGenerator extends LIRGenerator {
         switch (a.getKind()) {
             case Int:
                 append(new ShiftOp(IUSHR, result, a, b));
+                break;
+            case Long:
+                append(new ShiftOp(LUSHR, result, a, b));
                 break;
             default:
                 GraalInternalError.shouldNotReachHere();
@@ -561,7 +596,23 @@ public class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        throw new InternalError("NYI emitForeignCall");
+        String callName = linkage.getDescriptor().getName();
+        if (callName.equals("createOutOfBoundsException") || callName.equals("createNullPointerException")) {
+            // hack Alert !!
+            switch (arguments.length) {
+                case 0:
+                    append(new ForeignCallNoArgOp(callName, result));
+                    break;
+                case 1:
+                    append(new ForeignCall1ArgOp(callName, result, arguments[0]));
+                    break;
+                default:
+                    throw new InternalError("NYI emitForeignCall");
+            }
+
+        } else {
+            throw new InternalError("NYI emitForeignCall");
+        }
     }
 
     @Override

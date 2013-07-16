@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.hsail.test;
 
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 import org.junit.Test;
+import static org.junit.Assume.*;
 
 /**
  * Unit test that simulates the Mandelbrot application. The run method here is a static method
@@ -79,6 +80,7 @@ public class StaticMandelTest extends GraalKernelTester {
 
     @Test
     public void test() {
+        assumeTrue(runningOnSimulator());
         testGeneratedHsail();
     }
 }

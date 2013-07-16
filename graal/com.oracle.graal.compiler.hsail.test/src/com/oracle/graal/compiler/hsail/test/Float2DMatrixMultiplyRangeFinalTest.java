@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+package com.oracle.graal.compiler.hsail.test;
 
-public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+import org.junit.*;
 
-    @Input private ValueNode object;
+/**
+ * Tests the mixing of 32-bit and 64-bit spills caused by loop unrolling.
+ */
+public class Float2DMatrixMultiplyRangeFinalTest extends Float2DMatrixBase {
 
-    public ValueNode object() {
-        return object;
-    }
+    static final int range = 6;
 
-    public FixedValueAnchorNode(ValueNode object) {
-        super(StampFactory.forNodeIntrinsic());
-        this.object = object;
-
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(object.stamp());
-    }
-
-    @NodeIntrinsic
-    public static native <T> T getObject(Object object);
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(object));
+    public void run(int gid) {
+        for (int j = 0; j < range; j++) {
+            float sum = 0;
+            for (int k = 0; k < range; k++) {
+                sum += (matrixA[gid][k] * matrixB[k][j]);
+            }
+            outMatrix[gid][j] = sum;
+        }
     }
 
     @Override
-    public ValueNode getOriginalValue() {
-        return object;
+    public void runTest() {
+        setupArrays(range);
+        dispatchMethodKernel(range);
     }
 
+    @Test
+    public void test() {
+        testGeneratedHsail();
+    }
 }

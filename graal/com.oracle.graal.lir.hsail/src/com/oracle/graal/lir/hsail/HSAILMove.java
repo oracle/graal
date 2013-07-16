@@ -129,48 +129,146 @@ public class HSAILMove {
         }
     }
 
-    public static class LoadOp extends HSAILLIRInstruction {
 
-        @SuppressWarnings("unused") private final Kind kind;
-        @Def({REG}) protected AllocatableValue result;
+    public abstract static class MemOp extends HSAILLIRInstruction {
+
+        protected final Kind kind;
         @Use({COMPOSITE}) protected HSAILAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Kind kind, AllocatableValue result, HSAILAddressValue address, LIRFrameState state) {
+        public MemOp(Kind kind, HSAILAddressValue address, LIRFrameState state) {
             this.kind = kind;
-            this.result = result;
             this.address = address;
             this.state = state;
         }
 
+        protected abstract void emitMemAccess(HSAILAssembler masm);
+
         @Override
         public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+            if (state != null) {
+                // tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                throw new InternalError("NYI");
+            }
+            emitMemAccess(masm);
+        }
+    }
+
+    public static class LoadOp extends MemOp {
+
+        @Def({REG}) protected AllocatableValue result;
+
+        public LoadOp(Kind kind, AllocatableValue result, HSAILAddressValue address, LIRFrameState state) {
+            super(kind, address, state);
+            this.result = result;
+        }
+
+        @Override
+        public void emitMemAccess(HSAILAssembler masm) {
             HSAILAddress addr = address.toAddress();
             masm.emitLoad(result, addr);
         }
     }
 
-    public static class StoreOp extends HSAILLIRInstruction {
+    public static class StoreOp extends MemOp {
 
-        @SuppressWarnings("unused") private final Kind kind;
-        @Use({COMPOSITE}) protected HSAILAddressValue address;
         @Use({REG}) protected AllocatableValue input;
-        @State protected LIRFrameState state;
 
         public StoreOp(Kind kind, HSAILAddressValue address, AllocatableValue input, LIRFrameState state) {
-            this.kind = kind;
-            this.address = address;
+            super(kind, address, state);
             this.input = input;
-            this.state = state;
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitMemAccess(HSAILAssembler masm) {
             assert isRegister(input);
             HSAILAddress addr = address.toAddress();
             masm.emitStore(input, addr);
         }
     }
+
+    public static class LoadCompressedPointer extends LoadOp {
+
+        private long narrowOopBase;
+        private int narrowOopShift;
+        private int logMinObjAlignment;
+        @Temp({REG}) private AllocatableValue scratch;
+
+        public LoadCompressedPointer(Kind kind, AllocatableValue result, AllocatableValue scratch, HSAILAddressValue address, LIRFrameState state, long narrowOopBase, int narrowOopShift,
+                        int logMinObjAlignment) {
+            super(kind, result, address, state);
+            this.narrowOopBase = narrowOopBase;
+            this.narrowOopShift = narrowOopShift;
+            this.logMinObjAlignment = logMinObjAlignment;
+            this.scratch = scratch;
+            assert kind == Kind.Object;
+        }
+
+        @Override
+        public void emitMemAccess(HSAILAssembler masm) {
+            // we will do a 32 bit load, zero extending into a 64 bit register
+            masm.emitLoad(result, address.toAddress(), "u32");
+            decodePointer(masm, result, narrowOopBase, narrowOopShift, logMinObjAlignment);
+        }
+    }
+
+    public static class StoreCompressedPointer extends HSAILLIRInstruction {
+
+        protected final Kind kind;
+        private long narrowOopBase;
+        private int narrowOopShift;
+        private int logMinObjAlignment;
+        @Temp({REG}) private AllocatableValue scratch;
+        @Alive({REG}) protected AllocatableValue input;
+        @Alive({COMPOSITE}) protected HSAILAddressValue address;
+        @State protected LIRFrameState state;
+
+        public StoreCompressedPointer(Kind kind, HSAILAddressValue address, AllocatableValue input, AllocatableValue scratch, LIRFrameState state, long narrowOopBase, int narrowOopShift,
+                        int logMinObjAlignment) {
+            this.narrowOopBase = narrowOopBase;
+            this.narrowOopShift = narrowOopShift;
+            this.logMinObjAlignment = logMinObjAlignment;
+            this.scratch = scratch;
+            this.kind = kind;
+            this.address = address;
+            this.state = state;
+            this.input = input;
+            assert kind == Kind.Object;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+            masm.emitMov(scratch, input);
+            encodePointer(masm, scratch, narrowOopBase, narrowOopShift, logMinObjAlignment);
+            if (state != null) {
+                throw new InternalError("NYI");
+                // tasm.recordImplicitException(masm.codeBuffer.position(), state);
+            }
+            masm.emitStore(scratch, address.toAddress(), "u32");
+        }
+    }
+
+    private static void encodePointer(HSAILAssembler masm, Value scratch, long narrowOopBase, int narrowOopShift, int logMinObjAlignment) {
+        if (narrowOopBase == 0 && narrowOopShift == 0) {
+            return;
+        }
+        if (narrowOopShift != 0) {
+            assert logMinObjAlignment == narrowOopShift : "Encode algorithm is wrong";
+        }
+        masm.emitCompressedOopEncode(scratch, narrowOopBase, narrowOopShift);
+    }
+
+    private static void decodePointer(HSAILAssembler masm, Value result, long narrowOopBase, int narrowOopShift, int logMinObjAlignment) {
+        if (narrowOopBase == 0 && narrowOopShift == 0) {
+            return;
+        }
+        if (narrowOopShift != 0) {
+            assert logMinObjAlignment == narrowOopShift : "Decode algorithm is wrong";
+        }
+        masm.emitCompressedOopDecode(result, narrowOopBase, narrowOopShift);
+    }
+
+
 
     public static class LeaOp extends HSAILLIRInstruction {
 

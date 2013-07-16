@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+package com.oracle.graal.compiler.hsail.test;
 
-public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+import org.junit.Test;
 
-    @Input private ValueNode object;
+/**
+ * Tests 2D array access for Matrix Multiplication.
+ */
+public class Float2DMatrixMultiplyTest extends Float2DMatrixBase {
+    int range = 20;
 
-    public ValueNode object() {
-        return object;
+    public void run(int gid) {
+        for (int j = 0; j < range; j++) {
+            float sum = 0;
+            for (int k = 0; k < range; k++) {
+                sum += (matrixA[gid][k] * matrixB[k][j]);
+            }
+            outMatrix[gid][j] = sum;
+        }
     }
-
-    public FixedValueAnchorNode(ValueNode object) {
-        super(StampFactory.forNodeIntrinsic());
-        this.object = object;
-
-    }
-
     @Override
-    public boolean inferStamp() {
-        return updateStamp(object.stamp());
+    public void runTest() {
+        setupArrays(range);
+        dispatchMethodKernel(range);
     }
 
-    @NodeIntrinsic
-    public static native <T> T getObject(Object object);
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(object));
+    @Test
+    public void test() {
+        testGeneratedHsail();
     }
-
-    @Override
-    public ValueNode getOriginalValue() {
-        return object;
-    }
-
 }

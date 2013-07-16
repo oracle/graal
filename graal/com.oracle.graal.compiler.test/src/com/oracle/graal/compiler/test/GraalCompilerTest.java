@@ -507,6 +507,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     private StructuredGraph parse0(Method m, GraphBuilderConfiguration conf) {
+        assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
         ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(runtime, conf, OptimisticOptimizations.ALL).apply(graph);

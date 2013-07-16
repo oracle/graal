@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+package com.oracle.graal.compiler.hsail.test;
 
-public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+import org.junit.*;
 
-    @Input private ValueNode object;
-
-    public ValueNode object() {
-        return object;
-    }
-
-    public FixedValueAnchorNode(ValueNode object) {
-        super(StampFactory.forNodeIntrinsic());
-        this.object = object;
-
-    }
+/**
+ * Tests the storing of null in an Object array.
+ */
+public class ObjectStoreNullTest extends ObjectStoreTest {
 
     @Override
-    public boolean inferStamp() {
-        return updateStamp(object.stamp());
+    public void run(int gid) {
+        outIntegerArray[gid] = (gid % 3 == 1 ? null : inIntegerArray[gid]);
     }
 
-    @NodeIntrinsic
-    public static native <T> T getObject(Object object);
-
+    @Test
     @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(object));
-    }
-
-    @Override
-    public ValueNode getOriginalValue() {
-        return object;
+    public void test() {
+        testGeneratedHsail();
     }
 
 }

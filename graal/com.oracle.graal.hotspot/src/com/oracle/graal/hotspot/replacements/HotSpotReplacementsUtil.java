@@ -277,7 +277,7 @@ public class HotSpotReplacementsUtil {
 
     public static void initializeObjectHeader(Word memory, Word markWord, Word hub) {
         memory.writeWord(markOffset(), markWord, MARK_WORD_LOCATION);
-        memory.writeWord(hubOffset(), hub, HUB_LOCATION);
+        StoreHubNode.write(memory.toObject(), hub);
     }
 
     @Fold
@@ -351,7 +351,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static int headerSize() {
+    public static int instanceHeaderSize() {
         return config().useCompressedKlassPointers ? (2 * wordSize()) - 4 : 2 * wordSize();
     }
 
@@ -473,6 +473,7 @@ public class HotSpotReplacementsUtil {
     }
 
     public static Word loadWordFromObject(Object object, int offset) {
+        assert offset != hubOffset() : "Use loadHubIntrinsic instead";
         return loadWordFromObjectIntrinsic(object, 0, offset, getWordKind());
     }
 
@@ -488,7 +489,10 @@ public class HotSpotReplacementsUtil {
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
     static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
-        return Word.box(unsafeReadWord(object, hubOffset()));
+        if (wordKind() == Kind.Int) {
+            return Word.box((int) unsafeReadKlassPointer(object));
+        }
+        return Word.box(unsafeReadKlassPointer(object));
     }
 
     @Fold

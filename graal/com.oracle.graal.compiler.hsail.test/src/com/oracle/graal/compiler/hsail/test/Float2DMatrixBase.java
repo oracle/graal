@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,42 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+package com.oracle.graal.compiler.hsail.test;
 
-public final class FixedValueAnchorNode extends FixedWithNextNode implements LIRLowerable, ValueProxy {
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 
-    @Input private ValueNode object;
+/**
+ * Base class used by other Float2DMatrix tests.
+ */
+public abstract class Float2DMatrixBase extends GraalKernelTester {
 
-    public ValueNode object() {
-        return object;
+    float[][] matrixA;
+    float[][] matrixB;
+    @Result float[][] outMatrix;
+
+    public void setupArrays(int range) {
+        matrixA = new float[range][];
+        matrixB = new float[range][];
+        outMatrix = new float[range][];
+        for (int j = 0; j < range; j++) {
+            matrixA[j] = new float[range];
+            matrixB[j] = new float[range];
+            outMatrix[j] = new float[range];
+            for (int k = 0; k < range; k++) {
+                matrixA[j][k] = (j + k) % 7;
+                matrixB[j][k] = (j + k + 1) % 8;
+            }
+        }
     }
-
-    public FixedValueAnchorNode(ValueNode object) {
-        super(StampFactory.forNodeIntrinsic());
-        this.object = object;
-
-    }
-
-    @Override
-    public boolean inferStamp() {
-        return updateStamp(object.stamp());
-    }
-
-    @NodeIntrinsic
-    public static native <T> T getObject(Object object);
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(object));
-    }
-
-    @Override
-    public ValueNode getOriginalValue() {
-        return object;
-    }
-
 }

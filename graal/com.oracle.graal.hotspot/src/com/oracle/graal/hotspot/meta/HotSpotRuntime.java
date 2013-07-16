@@ -649,6 +649,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             ResolvedJavaMethod method = loadMethodNode.getMethod();
             ReadNode metaspaceMethod = createReadVirtualMethod(graph, wordKind, loadMethodNode.getHub(), method);
             graph.replaceFixed(loadMethodNode, metaspaceMethod);
+        } else if (n instanceof StoreHubNode) {
+            StoreHubNode storeHub = (StoreHubNode) n;
+            WriteNode hub = createWriteHub(graph, wordKind, storeHub.getObject(), storeHub.getValue());
+            graph.replaceFixed(storeHub, hub);
         } else if (n instanceof FixedGuardNode) {
             FixedGuardNode node = (FixedGuardNode) n;
             GuardingNode guard = tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated());
@@ -836,7 +840,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private ReadNode createReadHub(StructuredGraph graph, Kind wordKind, ValueNode object) {
         LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        return graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind()), WriteBarrierType.NONE, false));
+        return graph.add(new ReadNode(object, location, StampFactory.forKind(wordKind()), WriteBarrierType.NONE, config.useCompressedKlassPointers));
+    }
+
+    private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
+        LocationNode location = ConstantLocationNode.create(ANY_LOCATION, wordKind, config.hubOffset, graph);
+        assert !object.isConstant() || object.asConstant().isNull();
+        return graph.add(new WriteNode(object, value, location, WriteBarrierType.NONE, config.useCompressedKlassPointers));
     }
 
     public static long referentOffset() {
@@ -1158,7 +1168,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
                 if (displacement == config().hubOffset && this.getGraalRuntime().getRuntime().config.useCompressedKlassPointers) {
-                    return Constant.forLong(this.getGraalRuntime().getCompilerToVM().readUnsafeKlassPointer(base));
+                    if (base == null) {
+                        throw new GraalInternalError("Base of object must not be null");
+                    } else {
+                        return Constant.forLong(this.getGraalRuntime().getCompilerToVM().readUnsafeKlassPointer(base));
+                    }
                 } else {
                     return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
                 }
