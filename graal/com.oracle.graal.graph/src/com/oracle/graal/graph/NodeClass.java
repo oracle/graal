@@ -537,6 +537,12 @@ public class NodeClass extends FieldIntrospection {
                     if (aLong != bLong) {
                         return false;
                     }
+                } else if (type == Double.TYPE) {
+                    double aDouble = unsafe.getDouble(a, dataOffsets[i]);
+                    double bDouble = unsafe.getDouble(b, dataOffsets[i]);
+                    if (aDouble != bDouble) {
+                        return false;
+                    }
                 } else {
                     assert false : "unhandled type: " + type;
                 }
