@@ -265,7 +265,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
             public boolean isWorthInlining(InlinableCallSiteInfo callSite) {
                 return callSite.getInlineNodeCount() <= TruffleInliningMaxCalleeSize.getValue() && callSite.getInlineNodeCount() + callerNodeCount <= TruffleInliningMaxCallerSize.getValue() &&
-                                callSite.getCallCount() > 0;
+                                callSite.getCallCount() > 0 && callSite.getRecursiveDepth() < TruffleInliningMaxRecursiveDepth.getValue();
             }
 
             public double metric(InlinableCallSiteInfo callSite) {
@@ -294,11 +294,33 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             private final InlinableCallSite callSite;
             private final int callCount;
             private final int nodeCount;
+            private final int recursiveDepth;
 
             public InlinableCallSiteInfo(InlinableCallSite callSite) {
                 this.callSite = callSite;
                 this.callCount = callSite.getCallCount();
                 this.nodeCount = NodeUtil.countNodes(callSite.getInlineTree());
+                this.recursiveDepth = calculateRecursiveDepth();
+            }
+
+            public int getRecursiveDepth() {
+                return recursiveDepth;
+            }
+
+            private int calculateRecursiveDepth() {
+                int depth = 0;
+                Node parent = ((Node) callSite).getParent();
+                while (!(parent instanceof RootNode)) {
+                    assert parent != null;
+                    if (parent instanceof InlinedCallSite && ((InlinedCallSite) parent).getCallTarget() == callSite.getCallTarget()) {
+                        depth++;
+                    }
+                    parent = parent.getParent();
+                }
+                if (((RootNode) parent).getCallTarget() == callSite.getCallTarget()) {
+                    depth++;
+                }
+                return depth;
             }
 
             public InlinableCallSite getCallSite() {
