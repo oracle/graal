@@ -64,7 +64,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     // TruffleProfiling
     private int callCount;
-    private int inlinedCallSiteCount;
 
     // TraceTruffleCompilation
     long timeCompilationStarted;
@@ -176,11 +175,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     }
 
     @Override
-    public String toString() {
-        return "CallTarget " + rootNode;
-    }
-
-    @Override
     public void reportLoopCount(int count) {
         loopAndInvokeCounter -= count;
     }
@@ -224,7 +218,6 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
                     if (TraceTruffleInlining.getValue()) {
                         printCallSiteInfo(policy, inlinableCallSite, "inlined");
                     }
-                    target.inlinedCallSiteCount++;
                     inlined = true;
                     break;
                 }
@@ -358,9 +351,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         int totalNotInlinedCallSiteCount = 0;
         int totalNodeCount = 0;
 
-        PrintStream out = TTY.out().out();
-        out.println();
-        out.printf("%-50s | %-10s | %s / %s | %s\n", "Call Target", "Call Count", "Calls Sites Inlined", "Not Inlined", "Node Count");
+        OUT.println();
+        OUT.printf("%-50s | %-10s | %s / %s | %s\n", "Call Target", "Call Count", "Calls Sites Inlined", "Not Inlined", "Node Count");
         for (OptimizedCallTarget callTarget : sortedCallTargets) {
             if (callTarget.callCount == 0) {
                 continue;
@@ -368,15 +360,16 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
             int notInlinedCallSiteCount = InliningHelper.getInlinableCallSites(callTarget).size();
             int nodeCount = NodeUtil.countNodes(callTarget.rootNode);
+            int inlinedCallSiteCount = NodeUtil.countNodes(callTarget.rootNode, InlinedCallSite.class);
             String comment = callTarget.compiledMethod == null ? " int" : "";
-            out.printf("%-50s | %10s | %15s | %15s | %10s%s\n", callTarget.getRootNode(), callTarget.callCount, callTarget.inlinedCallSiteCount, notInlinedCallSiteCount, nodeCount, comment);
+            OUT.printf("%-50s | %10s | %15s | %15s | %10s%s\n", callTarget.getRootNode(), callTarget.callCount, inlinedCallSiteCount, notInlinedCallSiteCount, nodeCount, comment);
 
             totalCallCount += callTarget.callCount;
-            totalInlinedCallSiteCount += callTarget.inlinedCallSiteCount;
+            totalInlinedCallSiteCount += inlinedCallSiteCount;
             totalNotInlinedCallSiteCount += notInlinedCallSiteCount;
             totalNodeCount += nodeCount;
         }
-        out.printf("%-50s | %10s | %15s | %15s | %10s\n", "Total", totalCallCount, totalInlinedCallSiteCount, totalNotInlinedCallSiteCount, totalNodeCount);
+        OUT.printf("%-50s | %10s | %15s | %15s | %10s\n", "Total", totalCallCount, totalInlinedCallSiteCount, totalNotInlinedCallSiteCount, totalNodeCount);
     }
 
     private static void registerCallTarget(OptimizedCallTarget callTarget) {
