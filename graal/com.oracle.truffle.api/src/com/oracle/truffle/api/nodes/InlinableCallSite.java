@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import com.oracle.truffle.api.*;
+
 public interface InlinableCallSite {
 
     int getCallCount();
@@ -30,6 +32,7 @@ public interface InlinableCallSite {
 
     Node getInlineTree();
 
-    boolean inline(FrameFactory factory);
+    CallTarget getCallTarget();
 
+    boolean inline(FrameFactory factory);
 }

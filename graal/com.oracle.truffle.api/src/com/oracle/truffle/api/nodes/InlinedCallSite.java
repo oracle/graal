@@ -20,35 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
+package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.frame.*;
-import com.oracle.truffle.api.nodes.*;
 
-public class DefaultCallTarget extends CallTarget {
+public interface InlinedCallSite {
 
-    protected final RootNode rootNode;
-    protected final FrameDescriptor frameDescriptor;
-
-    public DefaultCallTarget(RootNode function, FrameDescriptor frameDescriptor) {
-        this.rootNode = function;
-        this.frameDescriptor = frameDescriptor;
-        this.rootNode.setCallTarget(this);
-    }
-
-    @Override
-    public String toString() {
-        return rootNode.toString();
-    }
-
-    @Override
-    public Object call(PackedFrame caller, Arguments args) {
-        VirtualFrame frame = new DefaultVirtualFrame(frameDescriptor, caller, args);
-        return rootNode.execute(frame);
-    }
-
-    public RootNode getRootNode() {
-        return rootNode;
-    }
+    CallTarget getCallTarget();
 }
