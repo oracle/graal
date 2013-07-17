@@ -85,6 +85,17 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
     }
 
+    public static class Bpgeu extends Bpcc {
+
+        public Bpgeu(CC cc, int simm19) {
+            super(cc, simm19);
+        }
+
+        public Bpgeu(CC cc, Label label) {
+            super(cc, label);
+        }
+    }
+
     public static class Bset extends Or {
 
         public Bset(Register src, Register dst) {
@@ -104,6 +115,20 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Btst(Register src1, int simm13) {
             super(src1, simm13, g0);
+        }
+    }
+
+    public static class Cas extends Casa {
+
+        public Cas(Register src1, Register src2, Register dst) {
+            super(src1, src2, dst, Asi.ASI_PRIMARY);
+        }
+    }
+
+    public static class Casx extends Casxa {
+
+        public Casx(Register src1, Register src2, Register dst) {
+            super(src1, src2, dst, Asi.ASI_PRIMARY);
         }
     }
 
@@ -302,53 +327,87 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     public static class Setx {
 
         private long value;
-        private Register tmp;
         private Register dst;
+        private boolean forceRelocatable;
 
-        public Setx(long value, Register tmp, Register dst) {
+        public Setx(long value, Register dst, boolean forceRelocatable) {
             this.value = value;
-            this.tmp = tmp;
             this.dst = dst;
+            this.forceRelocatable = forceRelocatable;
+        }
+
+        public Setx(long value, Register dst) {
+            this(value, dst, false);
         }
 
         public void emit(SPARCMacroAssembler masm) {
             int hi = (int) (value >> 32);
             int lo = (int) (value & ~0);
 
-            if (isSimm13(lo) && value == lo) {
-                new Or(g0, lo, dst).emit(masm);
-            } else if (hi == 0) {
-                new Sethi(lo, dst).emit(masm);   // hardware version zero-extends to upper 32
-                if (lo10(lo) != 0) {
-                    new Or(dst, lo10(lo), dst).emit(masm);
-                }
+// if (isSimm13(lo) && value == lo) {
+// new Or(g0, lo, dst).emit(masm);
+// } else if (hi == 0) {
+// new Sethi(lo, dst).emit(masm); // hardware version zero-extends to upper 32
+// if (lo10(lo) != 0) {
+// new Or(dst, lo10(lo), dst).emit(masm);
+// }
+// } else if (hi == -1) {
+// new Sethi(~lo, dst).emit(masm); // hardware version zero-extends to upper 32
+// new Xor(dst, ~lo10(~0), dst).emit(masm);
+// new Add(dst, lo10(lo), dst).emit(masm);
+// } else if (lo == 0) {
+// if (isSimm13(hi)) {
+// new Or(g0, hi, dst).emit(masm);
+// } else {
+// new Sethi(hi, dst).emit(masm); // hardware version zero-extends to upper 32
+// if (lo10(hi) != 0) {
+// new Or(dst, lo10(hi), dst).emit(masm);
+// }
+// }
+// new Sllx(dst, 32, dst).emit(masm);
+
+            // This is the same logic as MacroAssembler::internal_set.
+            final int startPc = masm.codeBuffer.position();
+
+            if (hi == 0 && lo >= 0) {
+                new Sethi(lo, dst).emit(masm);
             } else if (hi == -1) {
-                new Sethi(~lo, dst).emit(masm);  // hardware version zero-extends to upper 32
+                new Sethi(~lo, dst).emit(masm);
                 new Xor(dst, ~lo10(~0), dst).emit(masm);
-                new Add(dst, lo10(lo), dst).emit(masm);
-            } else if (lo == 0) {
-                if (isSimm13(hi)) {
-                    new Or(g0, hi, dst).emit(masm);
-                } else {
-                    new Sethi(hi, dst).emit(masm);   // hardware version zero-extends to upper 32
-                    if (lo10(hi) != 0) {
-                        new Or(dst, lo10(hi), dst).emit(masm);
-                    }
-                }
-                new Sllx(dst, 32, dst).emit(masm);
             } else {
-                // TODO Use the same logic as in MacroAssembler::internal_sethi, which doesn't need
-// a scratch register.
-                new Sethi(hi, tmp).emit(masm);
-                new Sethi(lo, dst).emit(masm); // macro assembler version sign-extends
-                if (lo10(hi) != 0) {
-                    new Or(tmp, lo10(hi), tmp).emit(masm);
+                int shiftcnt = 0;
+                new Sethi(hi, dst).emit(masm);
+                if ((hi & 0x3ff) != 0) {                                       // Any bits?
+                    new Or(dst, hi & 0x3ff, dst).emit(masm);                   // msb 32-bits are now in lsb 32
                 }
-                if (lo10(lo) != 0) {
-                    new Or(dst, lo10(lo), dst).emit(masm);
+                if ((lo & 0xFFFFFC00) != 0) {                                  // done?
+                    if (((lo >> 20) & 0xfff) != 0) {                           // Any bits set?
+                        new Sllx(dst, 12, dst).emit(masm);                     // Make room for next 12 bits
+                        new Or(dst, (lo >> 20) & 0xfff, dst).emit(masm);       // Or in next 12
+                        shiftcnt = 0;                                          // We already shifted
+                    } else {
+                        shiftcnt = 12;
+                    }
+                    if (((lo >> 10) & 0x3ff) != 0) {
+                        new Sllx(dst, shiftcnt + 10, dst).emit(masm);          // Make room for last 10 bits
+                        new Or(dst, (lo >> 10) & 0x3ff, dst).emit(masm);       // Or in next 10
+                        shiftcnt = 0;
+                    } else {
+                        shiftcnt = 10;
+                    }
+                    new Sllx(dst, shiftcnt + 10, dst).emit(masm);              // Shift leaving disp field 0'd
+                } else {
+                    new Sllx(dst, 32, dst).emit(masm);
                 }
-                new Sllx(tmp, 32, tmp).emit(masm);
-                new Or(dst, tmp, dst).emit(masm);
+            }
+            // Pad out the instruction sequence so it can be patched later.
+            if (forceRelocatable) {
+                while (masm.codeBuffer.position() < (startPc + (7 * 4))) {
+                    new Nop().emit(masm);
+                }
+            }
+            if (lo10(lo) != 0 || forceRelocatable) {
+                new Add(dst, lo10(lo), dst).emit(masm);
             }
         }
     }

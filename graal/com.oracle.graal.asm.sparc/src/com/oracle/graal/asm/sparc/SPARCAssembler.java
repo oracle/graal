@@ -116,7 +116,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         public void verify() {
             assert ((rd << RD_SHIFT) & RD_MASK) == (rd << RD_SHIFT);
             assert ((op2 << OP2_SHIFT) & OP2_MASK) == (op2 << OP2_SHIFT);
-            assert ((imm22 << IMM22_SHIFT) & IMM22_MASK) == (imm22 << IMM22_SHIFT);
+            assert ((imm22 << IMM22_SHIFT) & IMM22_MASK) == (imm22 << IMM22_SHIFT) : String.format("imm22: %d (%x)", imm22, imm22);
         }
     }
 
@@ -285,6 +285,11 @@ public abstract class SPARCAssembler extends AbstractAssembler {
             }
             verify();
             masm.emitInt(getInstructionBits());
+        }
+
+        private static int patchUnbound(SPARCAssembler masm, Label label) {
+            label.addPatchAt(masm.codeBuffer.position());
+            return 0;
         }
 
         public void verify() {
@@ -625,6 +630,28 @@ public abstract class SPARCAssembler extends AbstractAssembler {
             this(rd.encoding(), op3.getValue(), rs1.encoding(), 0, 0, 0, 0);
         }
 
+        /**
+         * Special constructor for Casa and Casxa.
+         */
+        public Fmt11(Op3s op3, Register rs1, Register rs2, Register rd, Asi asi) {
+            this(rd.encoding(), op3.getValue(), rs1.encoding(), asi.isValid() ? 0 : 1, asi.isValid() ? asi.getValue() : 0, rs2.encoding(), 0);
+            assert asi.isValid() : "default asi is not supported yet";
+        }
+
+        /**
+         * Special constructor for loads and stores.
+         */
+        public Fmt11(Op3s op3, SPARCAddress addr, Register rd) {
+            this(rd.encoding(), op3.getValue(), addr.getBase().encoding(), 0, 0, 0, 0);
+            if (!addr.getIndex().equals(Register.None)) {
+                this.rs2 = addr.getIndex().encoding();
+            } else {
+                this.simm13 = addr.getDisplacement();
+                this.i = 1;
+            }
+            verify();
+        }
+
         private int getInstructionBits() {
             if (i == 0) {
                 return Ops.LdstOp.getValue() << OP_SHIFT | rd << RD_SHIFT | op3 << OP3_SHIFT | rs1 << RS1_SHIFT | i << I_SHIFT | immAsi << IMM_ASI_SHIFT | rs2 << RS2_SHIFT;
@@ -913,6 +940,8 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         Restore(0x3d, "restore"),
         Done(0x3e, "done"),
         Retry(0x3e, "retry"),
+        Casa(0b111100, "casa"),
+        Casxa(0b111110, "casxa"),
 
         Lduw(0x00, "lduw"),
         Ldub(0x01, "ldub"),
@@ -1241,6 +1270,28 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
+    public enum Asi {
+        INVALID(-1), ASI_PRIMARY(0x80), ASI_PRIMARY_NOFAULT(0x82), ASI_PRIMARY_LITTLE(0x88),
+        // Block initializing store
+        ASI_ST_BLKINIT_PRIMARY(0xE2),
+        // Most-Recently-Used (MRU) BIS variant
+        ASI_ST_BLKINIT_MRU_PRIMARY(0xF2);
+
+        private final int value;
+
+        private Asi(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public boolean isValid() {
+            return value != INVALID.getValue();
+        }
+    }
+
     public static int getFloatEncoding(int reg) {
         assert reg < 32;
         return reg;
@@ -1277,7 +1328,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
     }
 
     public static final int hi22(int x) {
-        return x >> 10;
+        return x >>> 10;
     }
 
     public static final int lo10(int x) {
@@ -1643,9 +1694,18 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
     }
 
-    private static int patchUnbound(SPARCAssembler masm, Label label) {
-        label.addPatchAt(masm.codeBuffer.position());
-        return 0;
+    public static class Casa extends Fmt11 {
+
+        public Casa(Register src1, Register src2, Register dst, Asi asi) {
+            super(Op3s.Casa, src1, src2, dst, asi);
+        }
+    }
+
+    public static class Casxa extends Fmt11 {
+
+        public Casxa(Register src1, Register src2, Register dst, Asi asi) {
+            super(Op3s.Casxa, src1, src2, dst, asi);
+        }
     }
 
     public static class Cmask8 extends Fmt3n {
@@ -2536,51 +2596,50 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Lddf extends Fmt11 {
 
-        // TODO remove address
         public Lddf(SPARCAddress src, Register dst) {
-            super(Op3s.Lddf, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Lddf, src, dst);
         }
     }
 
     public static class Ldf extends Fmt11 {
 
         public Ldf(SPARCAddress src, Register dst) {
-            super(Op3s.Ldf, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Ldf, src, dst);
         }
     }
 
     public static class Ldsb extends Fmt11 {
 
         public Ldsb(SPARCAddress src, Register dst) {
-            super(Op3s.Ldsb, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Ldsb, src, dst);
         }
     }
 
     public static class Ldsh extends Fmt11 {
 
         public Ldsh(SPARCAddress src, Register dst) {
-            super(Op3s.Ldsh, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Ldsh, src, dst);
         }
     }
 
     public static class Ldsw extends Fmt11 {
 
         public Ldsw(SPARCAddress src, Register dst) {
-            super(Op3s.Ldsw, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Ldsw, src, dst);
         }
     }
 
     public static class Lduw extends Fmt11 {
 
         public Lduw(SPARCAddress src, Register dst) {
-            super(Op3s.Lduw, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Lduw, src, dst);
         }
     }
 
     public static class Ldx extends Fmt11 {
 
         public Ldx(SPARCAddress src, Register dst) {
-            super(Op3s.Ldx, src.getBase(), src.getDisplacement(), dst);
+            super(Op3s.Ldx, src, dst);
         }
     }
 
@@ -2822,8 +2881,8 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
     public static class Sethi extends Fmt00a {
 
-        public Sethi(int simm22, Register dst) {
-            super(Op2s.Sethi, simm22, dst);
+        public Sethi(int imm22, Register dst) {
+            super(Op2s.Sethi, imm22, dst);
         }
     }
 
@@ -2903,44 +2962,28 @@ public abstract class SPARCAssembler extends AbstractAssembler {
     public static class Stb extends Fmt11 {
 
         public Stb(Register dst, SPARCAddress addr) {
-            super(Op3s.Stb, addr.getBase(), addr.getDisplacement(), dst);
+            super(Op3s.Stb, addr, dst);
         }
     }
 
     public static class Sth extends Fmt11 {
 
         public Sth(Register dst, SPARCAddress addr) {
-            super(Op3s.Sth, addr.getBase(), addr.getDisplacement(), dst);
+            super(Op3s.Sth, addr, dst);
         }
     }
 
     public static class Stw extends Fmt11 {
 
-        public Stw(Register dst, Register src1, Register src2) {
-            super(Op3s.Stw, src1, src2, dst);
-        }
-
-        public Stw(Register dst, Register src1, int simm13) {
-            super(Op3s.Stw, src1, simm13, dst);
-        }
-
         public Stw(Register dst, SPARCAddress addr) {
-            this(dst, addr.getBase(), addr.getDisplacement());
+            super(Op3s.Stw, addr, dst);
         }
     }
 
     public static class Stx extends Fmt11 {
 
-        public Stx(Register dst, Register src1, Register src2) {
-            super(Op3s.Stx, src1, src2, dst);
-        }
-
-        public Stx(Register dst, Register src1, int simm13) {
-            super(Op3s.Stx, src1, simm13, dst);
-        }
-
         public Stx(Register dst, SPARCAddress addr) {
-            this(dst, addr.getBase(), addr.getDisplacement());
+            super(Op3s.Stx, addr, dst);
         }
     }
 

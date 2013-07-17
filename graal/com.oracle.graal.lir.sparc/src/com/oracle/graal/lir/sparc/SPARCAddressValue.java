@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.lir.sparc;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
@@ -35,16 +36,22 @@ public class SPARCAddressValue extends CompositeValue {
     private static final long serialVersionUID = -3583286416638228207L;
 
     @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue base;
+    @Component({REG, OperandFlag.ILLEGAL}) protected AllocatableValue index;
     protected final int displacement;
 
-    public SPARCAddressValue(PlatformKind kind, AllocatableValue baseRegister, int finalDisp) {
+    public SPARCAddressValue(PlatformKind kind, AllocatableValue base, int displacement) {
+        this(kind, base, Value.ILLEGAL, displacement);
+    }
+
+    public SPARCAddressValue(PlatformKind kind, AllocatableValue base, AllocatableValue index, int displacement) {
         super(kind);
-        this.base = baseRegister;
-        this.displacement = finalDisp;
+        this.base = base;
+        this.index = index;
+        this.displacement = displacement;
     }
 
     private static Register toRegister(AllocatableValue value) {
-        if (value.equals(Value.ILLEGAL)) {
+        if (isIllegal(value)) {
             return Register.None;
         } else {
             RegisterValue reg = (RegisterValue) value;
@@ -53,7 +60,46 @@ public class SPARCAddressValue extends CompositeValue {
     }
 
     public SPARCAddress toAddress() {
-        return new SPARCAddress(toRegister(base), displacement);
+        if (isLegal(index)) {
+            return new SPARCAddress(toRegister(base), toRegister(index));
+        } else {
+            return new SPARCAddress(toRegister(base), displacement);
+        }
     }
 
+    @Override
+    public String toString() {
+        StringBuilder s = new StringBuilder("[");
+        String sep = "";
+        if (isLegal(base)) {
+            s.append(base);
+            sep = " + ";
+        }
+        if (isLegal(index)) {
+            s.append(sep).append(index);
+            sep = " + ";
+        } else {
+            if (displacement < 0) {
+                s.append(" - ").append(-displacement);
+            } else if (displacement > 0) {
+                s.append(sep).append(displacement);
+            }
+        }
+        s.append("]");
+        return s.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof SPARCAddressValue) {
+            SPARCAddressValue addr = (SPARCAddressValue) obj;
+            return getPlatformKind() == addr.getPlatformKind() && displacement == addr.displacement && base.equals(addr.base) && index.equals(addr.index);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return base.hashCode() ^ index.hashCode() ^ (displacement << 4) ^ getPlatformKind().hashCode();
+    }
 }

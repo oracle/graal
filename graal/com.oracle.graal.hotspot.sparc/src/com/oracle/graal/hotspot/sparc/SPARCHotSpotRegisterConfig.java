@@ -71,8 +71,9 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         return attributesMap.clone();
     }
 
-    private final Register[] javaGeneralParameterRegisters;
-    private final Register[] nativeGeneralParameterRegisters;
+    private final Register[] cpuCallerParameterRegisters = {o0, o1, o2, o3, o4, o5};
+    private final Register[] cpuCalleeParameterRegisters = {i0, i1, i2, i3, i4, i5};
+
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
 
     private final Register[] callerSaveRegisters = {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7};
@@ -124,9 +125,6 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     public SPARCHotSpotRegisterConfig(Architecture architecture, HotSpotVMConfig config) {
         this.architecture = architecture;
 
-        javaGeneralParameterRegisters = new Register[]{i0, i1, i2, i3, i4, i5};
-        nativeGeneralParameterRegisters = new Register[]{i0, i1, i2, i3, i4, i5};
-
         csl = new CalleeSaveLayout(architecture, -1, -1, architecture.getWordSize(), calleeSaveRegisters);
         allocatable = initAllocatable(config.useCompressedOops);
         attributesMap = RegisterAttributes.createMap(this, SPARC.allRegisters);
@@ -144,12 +142,13 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 
     @Override
     public CallingConvention getCallingConvention(Type type, JavaType returnType, JavaType[] parameterTypes, TargetDescription target, boolean stackOnly) {
-        if (type == Type.NativeCall) {
-            return callingConvention(nativeGeneralParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
+        if (type == Type.JavaCall || type == Type.NativeCall) {
+            return callingConvention(cpuCallerParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
         }
-        // On x64, parameter locations are the same whether viewed
-        // from the caller or callee perspective
-        return callingConvention(javaGeneralParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
+        if (type == Type.JavaCallee) {
+            return callingConvention(cpuCalleeParameterRegisters, returnType, parameterTypes, type, target, stackOnly);
+        }
+        throw GraalInternalError.shouldNotReachHere();
     }
 
     public Register[] getCallingConventionRegisters(Type type, Kind kind) {
@@ -157,7 +156,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             return fpuParameterRegisters;
         }
         assert architecture.canStoreValue(CPU, kind);
-        return type == Type.NativeCall ? nativeGeneralParameterRegisters : javaGeneralParameterRegisters;
+        return type == Type.JavaCallee ? cpuCalleeParameterRegisters : cpuCallerParameterRegisters;
     }
 
     private CallingConvention callingConvention(Register[] generalParameterRegisters, JavaType returnType, JavaType[] parameterTypes, Type type, TargetDescription target, boolean stackOnly) {

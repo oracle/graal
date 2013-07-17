@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,17 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
+import static com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
@@ -39,30 +40,28 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
  * calls using an inline cache, a MOVE instruction is emitted just prior to the aligned direct call.
  */
 @Opcode("CALL_DIRECT")
-final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
+final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
 
     private static final long nonOopBits = HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits;
-    private final Constant metaspaceMethod;
     private final InvokeKind invokeKind;
 
-    SPARCHotspotDirectStaticCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind, Constant metaspaceMethod) {
+    SPARCHotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
         super(target, result, parameters, temps, state);
-        assert invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special;
-        this.metaspaceMethod = metaspaceMethod;
         this.invokeKind = invokeKind;
+        assert invokeKind == InvokeKind.Interface || invokeKind == InvokeKind.Virtual;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-// SPARCMove.move(tasm, masm, g5.asValue(Kind.Long), tasm.asLongConstRef(metaspaceMethod));
+// new Rdpc(g3).emit(masm);
+// tasm.asLongConstRef(nonOopBitsConstant);
+// tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
+// new Ldx(new SPARCAddress(g3, 0), g3).emit(masm);
 
-        new Rdpc(g5).emit(masm);
-        tasm.asLongConstRef(metaspaceMethod);
-        new Ldx(new SPARCAddress(g5, 0), g5).emit(masm);
-        tasm.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
-        // SPARCMove.move(tasm, masm, g3.asValue(Kind.Long), Constant.LONG_0);
+        tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
+        // SPARCMove.move(tasm, masm, g3.asValue(Kind.Long), nonOopBitsConstant);
         new Setx(nonOopBits, g3, true).emit(masm);
         super.emitCode(tasm, masm);
     }

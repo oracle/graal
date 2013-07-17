@@ -127,6 +127,7 @@ public class SPARCMove {
         public void emitMemAccess(SPARCMacroAssembler masm) {
             SPARCAddress addr = address.toAddress();
             switch (kind) {
+                case Boolean:
                 case Byte:
                     new Ldsb(addr, asRegister(result)).emit(masm);
                     break;
@@ -189,6 +190,26 @@ public class SPARCMove {
         }
     }
 
+    @Opcode("CAS")
+    public static class CompareAndSwapOp extends SPARCLIRInstruction {
+
+// @Def protected AllocatableValue result;
+        @Use protected AllocatableValue address;
+        @Use protected AllocatableValue cmpValue;
+        @Use protected AllocatableValue newValue;
+
+        public CompareAndSwapOp(AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+            this.address = address;
+            this.cmpValue = cmpValue;
+            this.newValue = newValue;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+            compareAndSwap(masm, address, cmpValue, newValue);
+        }
+    }
+
     public static class StackLoadAddressOp extends SPARCLIRInstruction {
 
         @Def({REG}) protected AllocatableValue result;
@@ -219,6 +240,7 @@ public class SPARCMove {
             assert isRegister(input);
             SPARCAddress addr = address.toAddress();
             switch (kind) {
+                case Boolean:
                 case Byte:
                     new Stb(asRegister(input), addr).emit(masm);
                     break;
@@ -274,14 +296,12 @@ public class SPARCMove {
         }
         switch (input.getKind()) {
             case Int:
-                new Mov(asRegister(input), asRegister(result)).emit(masm);
-                break;
             case Long:
+            case Object:
                 new Mov(asRegister(input), asRegister(result)).emit(masm);
                 break;
             case Float:
             case Double:
-            case Object:
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
         }
@@ -325,24 +345,52 @@ public class SPARCMove {
                 }
                 new Setuw(input.asInt(), asRegister(result)).emit(masm);
                 break;
-            case Long:
+            case Long: {
                 if (tasm.runtime.needsDataPatch(input)) {
+                    new Nop().emit(masm);
                     tasm.recordDataReferenceInCode(input, 0, true);
+                    new Setx(input.asLong(), asRegister(result), true).emit(masm);
+                    new Nop().emit(masm);
+                } else {
+                    new Nop().emit(masm);
+                    new Nop().emit(masm);
+                    new Setx(input.asLong(), asRegister(result)).emit(masm);
+                    new Nop().emit(masm);
+                    new Nop().emit(masm);
                 }
-                new Setx(input.asLong(), null, asRegister(result)).emit(masm);
                 break;
-            case Object:
+            }
+            case Object: {
                 if (input.isNull()) {
                     new Clr(asRegister(result)).emit(masm);
                 } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
-                    new Setx(0xDEADDEADDEADDEADL, null, asRegister(result)).emit(masm);
+// tasm.recordDataReferenceInCode(input, 0, true);
+// new Setx(0xDEADDEADDEADDEADL, null, asRegister(result)).emit(masm);
+                    throw GraalInternalError.shouldNotReachHere();
                 } else {
-                    throw new InternalError("NYI");
+                    Register dst = asRegister(result);
+                    new Rdpc(dst).emit(masm);
+                    tasm.asObjectConstRef(input);
+                    new Ldx(new SPARCAddress(dst, 0), dst).emit(masm);
                 }
                 break;
+            }
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: " + input.getKind());
+        }
+    }
+
+    protected static void compareAndSwap(SPARCMacroAssembler masm, AllocatableValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        switch (cmpValue.getKind()) {
+            case Int:
+                new Cas(asRegister(address), asRegister(cmpValue), asRegister(newValue)).emit(masm);
+                break;
+            case Long:
+            case Object:
+                new Casx(asRegister(address), asRegister(cmpValue), asRegister(newValue)).emit(masm);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

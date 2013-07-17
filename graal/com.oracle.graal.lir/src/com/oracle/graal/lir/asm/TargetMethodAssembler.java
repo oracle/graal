@@ -211,7 +211,7 @@ public class TargetMethodAssembler {
     }
 
     /**
-     * Returns the address of a float constant that is embedded as a data references into the code.
+     * Returns the address of a float constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asFloatConstRef(Value value) {
         return asFloatConstRef(value, 4);
@@ -223,7 +223,7 @@ public class TargetMethodAssembler {
     }
 
     /**
-     * Returns the address of a double constant that is embedded as a data references into the code.
+     * Returns the address of a double constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asDoubleConstRef(Value value) {
         return asDoubleConstRef(value, 8);
@@ -235,10 +235,18 @@ public class TargetMethodAssembler {
     }
 
     /**
-     * Returns the address of a long constant that is embedded as a data references into the code.
+     * Returns the address of a long constant that is embedded as a data reference into the code.
      */
     public AbstractAddress asLongConstRef(Value value) {
         assert value.getKind() == Kind.Long && isConstant(value);
+        return recordDataReferenceInCode((Constant) value, 8, false);
+    }
+
+    /**
+     * Returns the address of an object constant that is embedded as a data reference into the code.
+     */
+    public AbstractAddress asObjectConstRef(Value value) {
+        assert value.getKind() == Kind.Object && isConstant(value);
         return recordDataReferenceInCode((Constant) value, 8, false);
     }
 

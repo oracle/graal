@@ -389,31 +389,53 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             baseRegister = asAllocatable(base);
         }
 
+        AllocatableValue indexRegister;
         if (!index.equals(Value.ILLEGAL) && scale != 0) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
+                indexRegister = Value.ILLEGAL;
             } else {
-                Value indexRegister;
                 if (scale != 1) {
                     Variable longIndex = newVariable(Kind.Long);
                     emitMove(longIndex, index);
                     indexRegister = emitMul(longIndex, Constant.forLong(scale));
                 } else {
-                    indexRegister = index;
+                    indexRegister = asAllocatable(index);
                 }
 
-                if (baseRegister.equals(Value.ILLEGAL)) {
-                    baseRegister = asAllocatable(indexRegister);
-                } else {
-                    Variable newBase = newVariable(Kind.Long);
-                    emitMove(newBase, baseRegister);
-                    baseRegister = newBase;
-                    baseRegister = emitAdd(baseRegister, indexRegister);
-                }
+// if (baseRegister.equals(Value.ILLEGAL)) {
+// baseRegister = asAllocatable(indexRegister);
+// } else {
+// Variable newBase = newVariable(Kind.Long);
+// emitMove(newBase, baseRegister);
+// baseRegister = newBase;
+// baseRegister = emitAdd(baseRegister, indexRegister);
+// }
+            }
+        } else {
+            indexRegister = Value.ILLEGAL;
+        }
+
+        int displacementInt;
+
+        // If we don't have an index register we can use a displacement, otherwise load the
+        // displacement into a register and add it to the base.
+        if (indexRegister.equals(Value.ILLEGAL)) {
+            // TODO What if displacement if too big?
+            displacementInt = (int) finalDisp;
+        } else {
+            displacementInt = 0;
+            AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
+            if (baseRegister.equals(Value.ILLEGAL)) {
+                baseRegister = displacementRegister;
+            } else {
+                Variable longBase = newVariable(Kind.Long);
+                emitMove(longBase, baseRegister);
+                baseRegister = emitAdd(longBase, displacementRegister);
             }
         }
 
-        return new SPARCAddressValue(target().wordKind, baseRegister, (int) finalDisp);
+        return new SPARCAddressValue(target().wordKind, baseRegister, indexRegister, displacementInt);
     }
 
     private SPARCAddressValue asAddress(Value address) {
@@ -488,7 +510,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitSub(Value a, Value b) {
+    public Variable emitSub(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -510,7 +532,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitMul(Value a, Value b) {
+    public Variable emitMul(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -602,7 +624,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAnd(Value a, Value b) {
+    public Variable emitAnd(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -619,7 +641,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitOr(Value a, Value b) {
+    public Variable emitOr(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -635,7 +657,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitXor(Value a, Value b) {
+    public Variable emitXor(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -651,7 +673,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitShl(Value a, Value b) {
+    public Variable emitShl(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -667,7 +689,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitShr(Value a, Value b) {
+    public Variable emitShr(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -683,7 +705,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitUShr(Value a, Value b) {
+    public Variable emitUShr(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
@@ -699,7 +721,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitConvert(Op opcode, Value inputVal) {
+    public Variable emitConvert(Op opcode, Value inputVal) {
         Variable input = load(inputVal);
         Variable result = newVariable(opcode.to);
         switch (opcode) {

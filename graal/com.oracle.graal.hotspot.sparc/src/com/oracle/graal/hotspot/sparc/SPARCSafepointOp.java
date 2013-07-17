@@ -61,7 +61,7 @@ public class SPARCSafepointOp extends SPARCLIRInstruction {
         final int pos = masm.codeBuffer.position();
         final int offset = SafepointPollOffset.getValue() % unsafe.pageSize();
         Register scratch = ((RegisterValue) temp).getRegister();
-        new Setx(config.safepointPollingAddress + offset, scratch, scratch).emit(masm);
+        new Setx(config.safepointPollingAddress + offset, scratch).emit(masm);
         tasm.recordMark(config.isPollingPageFar ? Marks.MARK_POLL_FAR : Marks.MARK_POLL_NEAR);
         tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
         new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);

@@ -72,8 +72,8 @@ public enum SPARCCompare {
                     new Cmp(asLongReg(x), asLongReg(y)).emit(masm);
                     break;
                 case ACMP:
-// new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
-// break;
+                    new Cmp(asObjectReg(x), asObjectReg(y)).emit(masm);
+                    break;
                 case FCMP:
                     // masm.ucomiss(asFloatReg(x), asFloatReg(y));
                     // break;
