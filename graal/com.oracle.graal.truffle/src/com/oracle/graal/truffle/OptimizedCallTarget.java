@@ -265,13 +265,18 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
             public boolean isWorthInlining(InlinableCallSiteInfo callSite) {
                 return callSite.getInlineNodeCount() <= TruffleInliningMaxCalleeSize.getValue() && callSite.getInlineNodeCount() + callerNodeCount <= TruffleInliningMaxCallerSize.getValue() &&
-                                callSite.getCallCount() > 0 && callSite.getRecursiveDepth() < TruffleInliningMaxRecursiveDepth.getValue();
+                                callSite.getCallCount() > 0 && callSite.getRecursiveDepth() < TruffleInliningMaxRecursiveDepth.getValue() &&
+                                (frequency(callSite) >= TruffleInliningMinFrequency.getValue() || callSite.getInlineNodeCount() <= TruffleInliningTrivialSize.getValue());
             }
 
             public double metric(InlinableCallSiteInfo callSite) {
-                double frequency = (double) callSite.getCallCount() / (double) callerInvocationCount;
-                double metric = ((double) callSite.getCallCount() / (double) callSite.getInlineNodeCount()) + frequency;
+                double cost = callSite.getInlineNodeCount();
+                double metric = frequency(callSite) / cost;
                 return metric;
+            }
+
+            private double frequency(InlinableCallSiteInfo callSite) {
+                return (double) callSite.getCallCount() / (double) callerInvocationCount;
             }
 
             public void sortByRelevance(List<InlinableCallSiteInfo> inlinableCallSites) {
