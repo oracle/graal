@@ -143,16 +143,4 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
             }
         }
     }
-
-    /**
-     * Reads a value from memory.
-     * 
-     * @param base the base pointer for the memory access
-     * @param displacement the displacement of the access
-     * @param locationIdentity the identity of the access
-     * @param kind the kind of the value read
-     * @return the value read from memory
-     */
-    @NodeIntrinsic(setStampFromReturnType = true)
-    public static native <T> T read(Object base, @ConstantNodeParameter int displacement, @ConstantNodeParameter LocationIdentity locationIdentity, @ConstantNodeParameter Kind kind);
 }
