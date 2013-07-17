@@ -849,14 +849,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         return graph.add(new WriteNode(object, value, location, WriteBarrierType.NONE, config.useCompressedKlassPointers));
     }
 
-    public static long referentOffset() {
-        try {
-            return unsafe.objectFieldOffset(java.lang.ref.Reference.class.getDeclaredField("referent"));
-        } catch (Exception e) {
-            throw new GraalInternalError(e);
-        }
-    }
-
     /**
      * The following method lowers the unsafe load node. If any GC besides G1 is used, the unsafe
      * load is lowered normally to a read node. However, if the G1 is used and the unsafe load could
