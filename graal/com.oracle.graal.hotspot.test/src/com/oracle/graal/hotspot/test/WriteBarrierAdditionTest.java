@@ -160,7 +160,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * The following test concern the runtime checks of the unsafe loads. In this test, we unsafely
+     * The following test concerns the runtime checks of the unsafe loads. In this test, we unsafely
      * load the java.lang.ref.Reference.referent field so the pre barier has to be executed.
      */
     @Test
@@ -169,7 +169,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * The following test concern the runtime checks of the unsafe loads. In this test, we unsafely
+     * The following test concerns the runtime checks of the unsafe loads. In this test, we unsafely
      * load a matching offset of a wrong object so the pre barier must not be executed.
      */
     @Test
@@ -178,7 +178,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     /**
-     * The following test concern the runtime checks of the unsafe loads. In this test, we unsafely
+     * The following test concerns the runtime checks of the unsafe loads. In this test, we unsafely
      * load a non-matching offset field of the java.lang.ref.Reference object so the pre barier must
      * not be executed.
      */
@@ -187,9 +187,30 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
         test2("test6Snippet", wr, new Long(32), null);
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * The following test concerns the runtime checks of the unsafe loads. In this test, we unsafely
+     * load a matching offset+disp field of the java.lang.ref.Reference object so the pre barier
+     * must be executed.
+     */
+    @Test
+    public void test10() throws Exception {
+        test2("test6Snippet", wr, new Long(8), new Integer(8));
+    }
+
+    /**
+     * The following test concerns the runtime checks of the unsafe loads. In this test, we unsafely
+     * load a non-matching offset+disp field of the java.lang.ref.Reference object so the pre barier
+     * must not be executed.
+     */
+    @Test
+    public void test9() throws Exception {
+        test2("test6Snippet", wr, new Long(16), new Integer(16));
+    }
+
     public static Object test6Snippet(Object a, Object b, Object c) throws Exception {
-        return UnsafeLoadNode.load(a, 0, ((Long) b).longValue(), Kind.Object);
+        final int offset = (c == null ? 0 : ((Integer) c).intValue());
+        final long displacement = (b == null ? 0 : ((Long) b).longValue());
+        return UnsafeLoadNode.load(a, offset, displacement, Kind.Object);
     }
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
