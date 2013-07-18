@@ -69,12 +69,13 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 ValueNode object = GraphUtil.unproxify(store.object());
                 ValueNode cachedValue = state.getReadCache(object, store.field());
 
-                if (state.getScalarAlias(store.value()) == cachedValue) {
+                ValueNode value = state.getScalarAlias(store.value());
+                if (value == cachedValue) {
                     effects.deleteFixedNode(store);
                     deleted = true;
                 }
                 state.killReadCache(store.field());
-                state.addReadCache(object, store.field(), store.value());
+                state.addReadCache(object, store.field(), value);
             } else if (node instanceof MemoryCheckpoint.Single) {
                 METRIC_MEMORYCHECKOINT.increment();
                 LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
