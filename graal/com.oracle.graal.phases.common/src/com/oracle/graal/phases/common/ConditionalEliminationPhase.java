@@ -247,16 +247,15 @@ public class ConditionalEliminationPhase extends Phase {
          * to be null, otherwise the value is known to be non-null.
          */
         public void addNullness(boolean isNull, ValueNode value) {
-            ValueNode original = GraphUtil.unproxify(value);
             if (isNull) {
-                if (!isNull(original)) {
+                if (!isNull(value)) {
                     metricNullnessRegistered.increment();
-                    knownNull.add(original);
+                    knownNull.add(GraphUtil.unproxify(value));
                 }
             } else {
-                if (!isNonNull(original)) {
+                if (!isNonNull(value)) {
                     metricNullnessRegistered.increment();
-                    knownNonNull.add(original);
+                    knownNonNull.add(GraphUtil.unproxify(value));
                 }
             }
         }
