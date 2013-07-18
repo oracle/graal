@@ -78,15 +78,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                             Debug.log("    %s", effect);
                         }
                     }
+                    if (TraceEscapeAnalysis.getValue()) {
+                        Debug.dump(graph, EffectsClosure.this.getClass().getSimpleName() + " - after processing %s", context);
+                    }
                 }
             }
 
             @Override
             protected Void processBlock(Block block, Void currentState) {
                 apply(blockEffects.get(block), block);
-                if (TraceEscapeAnalysis.getValue()) {
-                    Debug.dump(graph, "after processing block %s", block);
-                }
                 return currentState;
             }
 
