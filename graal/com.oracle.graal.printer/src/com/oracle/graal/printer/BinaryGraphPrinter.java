@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.printer;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import java.io.*;
 import java.nio.*;
 import java.nio.channels.*;
@@ -34,6 +36,8 @@ import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
@@ -371,11 +375,21 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     @SuppressWarnings("deprecation")
     private void writeNodes(Graph graph) throws IOException {
+        NodesToDoubles probabilities = null;
+        if (PrintGraphProbabilities.getValue()) {
+            try {
+                probabilities = new ComputeProbabilityClosure((StructuredGraph) graph).apply();
+            } catch (Throwable t) {
+            }
+        }
         Map<Object, Object> props = new HashMap<>();
         writeInt(graph.getNodeCount());
         for (Node node : graph.getNodes()) {
             NodeClass nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
+            if (probabilities != null && node instanceof FixedNode && probabilities.contains((FixedNode) node)) {
+                props.put("probability", probabilities.get((FixedNode) node));
+            }
             writeInt(node.getId());
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);

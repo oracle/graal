@@ -148,6 +148,8 @@ public final class GraalOptions {
     // Ideal graph visualizer output settings
     @Option(help = "")
     public static final OptionValue<Boolean> PrintBinaryGraphs = new OptionValue<>(true);
+    @Option(help = "outputs probabilities for fixed nodes during binary graph dumping")
+    public static final OptionValue<Boolean> PrintGraphProbabilities = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintCFG = new OptionValue<>(false);
     @Option(help = "")
