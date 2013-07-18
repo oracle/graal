@@ -202,7 +202,7 @@ public class ComputeProbabilityClosure {
         }
     }
 
-    private class Probability implements MergeableState<Probability> {
+    private class Probability extends MergeableState<Probability> {
 
         public double probability;
         public HashSet<LoopInfo> loops;
@@ -310,7 +310,7 @@ public class ComputeProbabilityClosure {
         }
     }
 
-    private class LoopCount implements MergeableState<LoopCount> {
+    private class LoopCount extends MergeableState<LoopCount> {
 
         public double count;
 
@@ -341,16 +341,6 @@ public class ComputeProbabilityClosure {
         @Override
         public void loopBegin(LoopBeginNode loopBegin) {
             count *= loopBegin.loopFrequency();
-        }
-
-        @Override
-        public void loopEnds(LoopBeginNode loopBegin, List<LoopCount> loopEndStates) {
-            // nothing to do...
-        }
-
-        @Override
-        public void afterSplit(AbstractBeginNode node) {
-            // nothing to do...
         }
     }
 
