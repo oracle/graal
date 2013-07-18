@@ -165,6 +165,14 @@ public class TargetMethodAssembler {
         return asm.getPlaceholder();
     }
 
+    public AbstractAddress recordDataReferenceInCode(byte[] data, int alignment) {
+        assert data != null;
+        int pos = asm.codeBuffer.position();
+        Debug.log("Raw data reference in code: pos = %d, data = %s", pos, data.toString());
+        compilationResult.recordDataReference(pos, data, alignment);
+        return asm.getPlaceholder();
+    }
+
     /**
      * Returns the integer value of any constant that can be represented by a 32-bit integer value,
      * including long constants that fit into the 32-bit range.

@@ -143,6 +143,7 @@ public class CompilationResult implements Serializable {
 
         private static final long serialVersionUID = 5771730331604867476L;
         public final Constant constant;
+        public final byte[] rawConstant;
         public final int alignment;
 
         /**
@@ -150,16 +151,29 @@ public class CompilationResult implements Serializable {
          */
         public final boolean inlined;
 
+        DataPatch(int pcOffset, byte[] data, int alignment) {
+            this(pcOffset, null, data, alignment, false);
+        }
+
         DataPatch(int pcOffset, Constant data, int alignment, boolean inlined) {
+            this(pcOffset, data, null, alignment, inlined);
+        }
+
+        private DataPatch(int pcOffset, Constant data, byte[] rawData, int alignment, boolean inlined) {
             super(pcOffset);
             this.constant = data;
+            this.rawConstant = rawData;
             this.alignment = alignment;
             this.inlined = inlined;
         }
 
         @Override
         public String toString() {
-            return String.format("%d[<data patch referring to data %s>]", pcOffset, constant);
+            if (constant == null) {
+                return String.format("%d[<data patch referring to %d bytes raw data>]", pcOffset, rawConstant.length);
+            } else {
+                return String.format("%d[<data patch referring to data %s>]", pcOffset, constant);
+            }
         }
     }
 
@@ -369,6 +383,20 @@ public class CompilationResult implements Serializable {
     public void recordDataReference(int codePos, Constant data, int alignment, boolean inlined) {
         assert codePos >= 0 && data != null;
         dataReferences.add(new DataPatch(codePos, data, alignment, inlined));
+    }
+
+    /**
+     * Records a reference to the data section in the code section (e.g. to load an integer or
+     * floating point constant).
+     * 
+     * @param codePos the position in the code where the data reference occurs
+     * @param data a byte array containing the raw data that is referenced
+     * @param alignment the alignment requirement of the data or 0 if there is no alignment
+     *            requirement
+     */
+    public void recordDataReference(int codePos, byte[] data, int alignment) {
+        assert codePos >= 0 && data != null && data.length > 0;
+        dataReferences.add(new DataPatch(codePos, data, alignment));
     }
 
     /**
