@@ -37,9 +37,9 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         if (OptPushThroughPi.getValue()) {
             appendPhase(new PushThroughPiPhase());
-            if (OptCanonicalizer.getValue()) {
-                appendPhase(canonicalizer);
-            }
+        }
+        if (OptCanonicalizer.getValue()) {
+            appendPhase(canonicalizer);
         }
 
         if (OptFloatingReads.getValue()) {
