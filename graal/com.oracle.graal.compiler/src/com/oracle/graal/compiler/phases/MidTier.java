@@ -42,6 +42,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
             appendPhase(canonicalizer);
         }
 
+        appendPhase(new ValueAnchorCleanupPhase());
         appendPhase(new LockEliminationPhase());
 
         if (OptFloatingReads.getValue()) {

@@ -24,10 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import static com.oracle.graal.graph.iterators.NodePredicates.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -63,6 +61,14 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
 
     public void removeAnchoredNode(ValueNode value) {
         this.anchored.remove(value);
+    }
+
+    public NodeInputList<ValueNode> getAnchoredNodes() {
+        return anchored;
+    }
+
+    public boolean isPermanent() {
+        return permanent;
     }
 
     @Override
