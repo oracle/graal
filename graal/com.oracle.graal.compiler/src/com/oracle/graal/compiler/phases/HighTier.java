@@ -52,8 +52,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(new ConvertDeoptimizeToGuardPhase());
         }
 
-        appendPhase(new LockEliminationPhase());
-
         if (OptLoopTransform.getValue()) {
             appendPhase(new LoopTransformHighPhase());
             appendPhase(new LoopTransformLowPhase());
