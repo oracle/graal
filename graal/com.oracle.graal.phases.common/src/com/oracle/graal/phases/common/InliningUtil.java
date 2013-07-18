@@ -1390,6 +1390,12 @@ public class InliningUtil {
                             frameState.setOuterFrameState(outerFrameState);
                         }
                     }
+                } else if (node instanceof ValueAnchorNode) {
+                    /*
+                     * Synchronized inlinees have a valid point to deopt to after the monitor exit
+                     * at the end, so there's no need for the value anchor to be permanent anymore.
+                     */
+                    ((ValueAnchorNode) node).setPermanent(false);
                 }
                 if (callerLockDepth != 0 && node instanceof MonitorReference) {
                     MonitorReference monitor = (MonitorReference) node;
