@@ -22,11 +22,13 @@
  */
 package com.oracle.graal.asm.amd64.test;
 
+import java.nio.*;
+
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
+import com.oracle.graal.asm.Buffer;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.test.*;
 
@@ -57,6 +59,26 @@ public class SimpleAssemblerTest extends AssemblerTest {
                 AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
                 Register ret = registerConfig.getReturnRegister(Kind.Double);
                 compResult.recordDataReference(asm.codeBuffer.position(), Constant.forDouble(84.72), 8, false);
+                asm.movdbl(ret, asm.getPlaceholder());
+                asm.ret(0);
+                return asm.codeBuffer;
+            }
+        };
+        assertReturn("doubleStub", test, 84.72);
+    }
+
+    @Test
+    public void rawDoubleTest() {
+        CodeGenTest test = new CodeGenTest() {
+
+            @Override
+            public Buffer generateCode(CompilationResult compResult, TargetDescription target, RegisterConfig registerConfig, CallingConvention cc) {
+                AMD64MacroAssembler asm = new AMD64MacroAssembler(target, registerConfig);
+                Register ret = registerConfig.getReturnRegister(Kind.Double);
+
+                byte[] rawBytes = new byte[8];
+                ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);
+                compResult.recordDataReference(asm.codeBuffer.position(), rawBytes, 8);
                 asm.movdbl(ret, asm.getPlaceholder());
                 asm.ret(0);
                 return asm.codeBuffer;
