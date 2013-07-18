@@ -26,20 +26,23 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
 public class ReadEliminationBlockState extends EffectsBlockState<ReadEliminationBlockState> {
 
-    final HashMap<ReadCacheEntry, ValueNode> readCache;
+    final HashMap<CacheEntry<?>, ValueNode> readCache;
 
-    static class ReadCacheEntry {
+    abstract static class CacheEntry<T> {
 
-        public final ResolvedJavaField identity;
         public final ValueNode object;
+        public final T identity;
 
-        public ReadCacheEntry(ResolvedJavaField identity, ValueNode object) {
-            this.identity = identity;
+        public CacheEntry(ValueNode object, T identity) {
             this.object = object;
+            this.identity = identity;
         }
+
+        public abstract CacheEntry<T> duplicateWithObject(ValueNode newObject);
 
         @Override
         public int hashCode() {
@@ -49,13 +52,49 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         @Override
         public boolean equals(Object obj) {
-            ReadCacheEntry other = (ReadCacheEntry) obj;
+            CacheEntry<?> other = (CacheEntry<?>) obj;
             return identity == other.identity && object == other.object;
         }
 
         @Override
         public String toString() {
             return object + ":" + identity;
+        }
+
+        public abstract boolean conflicts(LocationIdentity other);
+    }
+
+    static class LoadCacheEntry extends CacheEntry<ResolvedJavaField> {
+
+        public LoadCacheEntry(ValueNode object, ResolvedJavaField identity) {
+            super(object, identity);
+        }
+
+        @Override
+        public CacheEntry<ResolvedJavaField> duplicateWithObject(ValueNode newObject) {
+            return new LoadCacheEntry(newObject, identity);
+        }
+
+        @Override
+        public boolean conflicts(LocationIdentity other) {
+            return identity == other;
+        }
+    }
+
+    static class ReadCacheEntry extends CacheEntry<LocationNode> {
+
+        public ReadCacheEntry(ValueNode object, LocationNode identity) {
+            super(object, identity);
+        }
+
+        @Override
+        public CacheEntry<LocationNode> duplicateWithObject(ValueNode newObject) {
+            return new ReadCacheEntry(newObject, identity);
+        }
+
+        @Override
+        public boolean conflicts(LocationIdentity other) {
+            return identity.getLocationIdentity() == other;
         }
     }
 
@@ -81,29 +120,29 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         return super.equivalentTo(other);
     }
 
-    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
-        readCache.put(new ReadCacheEntry(identity, object), value);
+    public void addCacheEntry(CacheEntry<?> identifier, ValueNode value) {
+        readCache.put(identifier, value);
     }
 
-    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
-        return readCache.get(new ReadCacheEntry(identity, object));
+    public ValueNode getCacheEntry(CacheEntry<?> identifier) {
+        return readCache.get(identifier);
     }
 
     public void killReadCache() {
         readCache.clear();
     }
 
-    public void killReadCache(ResolvedJavaField identity) {
-        Iterator<Map.Entry<ReadCacheEntry, ValueNode>> iter = readCache.entrySet().iterator();
+    public void killReadCache(LocationIdentity identity) {
+        Iterator<Map.Entry<CacheEntry<?>, ValueNode>> iter = readCache.entrySet().iterator();
         while (iter.hasNext()) {
-            Map.Entry<ReadCacheEntry, ValueNode> entry = iter.next();
-            if (entry.getKey().identity == identity) {
+            Map.Entry<CacheEntry<?>, ValueNode> entry = iter.next();
+            if (entry.getKey().conflicts(identity)) {
                 iter.remove();
             }
         }
     }
 
-    public Map<ReadCacheEntry, ValueNode> getReadCache() {
+    public Map<CacheEntry<?>, ValueNode> getReadCache() {
         return readCache;
     }
 }
