@@ -582,7 +582,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             cas.setLocation(location);
             cas.setWriteBarrierType(getCompareAndSwapBarrier(cas));
             if (cas.expected().kind() == Kind.Object) {
-                cas.setCompress();
+                cas.setCompressible();
             }
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
@@ -628,12 +628,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof UnsafeLoadNode) {
             UnsafeLoadNode load = (UnsafeLoadNode) n;
             assert load.kind() != Kind.Illegal;
-            boolean compress = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
+            boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
             if (addReadBarrier(load, tool)) {
                 unsafeLoadSnippets.lower(load, tool);
             } else {
                 IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
-                ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, compress));
+                ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), WriteBarrierType.NONE, compressible));
                 // An unsafe read must not float outside its block otherwise
                 // it may float above an explicit null check on its object.
                 memoryRead.setGuard(AbstractBeginNode.prevBegin(load));

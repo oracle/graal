@@ -620,10 +620,10 @@ public interface Pointer extends Unsigned {
      * 
      * @param offset the signed offset for the memory access
      * @param barrierType the type of the read barrier to be added
-     * @param compress whether or not the object is a decompression candidate
+     * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(WordBase offset, WriteBarrierType barrierType, boolean compress);
+    Object readObject(WordBase offset, WriteBarrierType barrierType, boolean compressible);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -712,10 +712,10 @@ public interface Pointer extends Unsigned {
      * 
      * @param offset the signed offset for the memory access
      * @param barrierType the type of the read barrier to be added
-     * @param compress whether or not the object is a decompression candidate
+     * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(int offset, WriteBarrierType barrierType, boolean compress);
+    Object readObject(int offset, WriteBarrierType barrierType, boolean compressible);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in

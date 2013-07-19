@@ -34,12 +34,12 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, WriteBarrierType barrierType, boolean compress) {
-        super(object, location, stamp, barrierType, compress);
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, WriteBarrierType barrierType, boolean compressible) {
+        super(object, location, stamp, barrierType, compressible);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compress) {
-        super(object, location, stamp, guard, barrierType, compress);
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compressible) {
+        super(object, location, stamp, guard, barrierType, compressible);
     }
 
     public ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
@@ -62,12 +62,12 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        return canonicalizeRead(this, location(), object(), tool, compress());
+        return canonicalizeRead(this, location(), object(), tool, compressible());
     }
 
     @Override
     public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getWriteBarrierType(), compress()));
+        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getWriteBarrierType(), compressible()));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressedPointer) {

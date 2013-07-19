@@ -33,7 +33,7 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
     @Input private FrameState deoptState;
     private boolean nullCheck;
     private WriteBarrierType barrierType;
-    private boolean compress;
+    private boolean compressible;
 
     public ValueNode object() {
         return object;
@@ -61,12 +61,12 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
         this.location = location;
     }
 
-    public FloatingAccessNode(ValueNode object, LocationNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compress) {
+    public FloatingAccessNode(ValueNode object, LocationNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compressible) {
         super(stamp, guard);
         this.object = object;
         this.location = location;
         this.barrierType = barrierType;
-        this.compress = compress;
+        this.compressible = compressible;
     }
 
     @Override
@@ -101,8 +101,8 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
     }
 
     @Override
-    public boolean compress() {
-        return compress;
+    public boolean compressible() {
+        return compressible;
     }
 
     public abstract Access asFixedNode();

@@ -332,8 +332,8 @@ public class WordTypeRewriterPhase extends Phase {
         return IndexedLocationNode.create(locationIdentity, readKind, 0, offset, graph, 1);
     }
 
-    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, WriteBarrierType barrierType, boolean compress) {
-        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp(), barrierType, compress));
+    private static ValueNode readOp(StructuredGraph graph, ValueNode base, Invoke invoke, LocationNode location, WriteBarrierType barrierType, boolean compressible) {
+        ReadNode read = graph.add(new ReadNode(base, location, invoke.asNode().stamp(), barrierType, compressible));
         graph.addBeforeFixed(invoke.asNode(), read);
         // The read must not float outside its block otherwise it may float above an explicit zero
         // check on its base address
