@@ -26,6 +26,7 @@ package com.oracle.graal.asm.hsail;
 import com.oracle.graal.api.code.*;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.graph.GraalInternalError;
@@ -144,12 +145,10 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     /**
-     * The mapping to stack slots is always relative to the beginning
-     * of the spillseg.  HSAIL.getStackOffset returns the positive
-     * version of the originally negative offset.  Then we back up
-     * from that by the argSize in bytes.  This ensures that slots of
-     * different size do not overlap, even though we have converted
-     * from negative to positive offsets.
+     * The mapping to stack slots is always relative to the beginning of the spillseg.
+     * HSAIL.getStackOffset returns the positive version of the originally negative offset. Then we
+     * back up from that by the argSize in bytes. This ensures that slots of different size do not
+     * overlap, even though we have converted from negative to positive offsets.
      */
     public static String mapStackSlot(Value reg, int argSize) {
         long offset = HSAIL.getStackOffset(reg);
@@ -213,8 +212,7 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
 
     public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         String prefix = "cmp_" + condition + (unordered ? "u" : "") + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
-        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object)
-                          && (asConstant(src1).asObject() == null) ? " // null test " : "");
+        String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
@@ -269,7 +267,6 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emit(mnemonic + "_" + prefix, dest, "", src0, src1);
     }
 
-
     private void emit(String instr, Value dest, String controlRegString, Value src0, Value src1) {
         assert (!isConstant(dest));
         emitString(String.format("%s %s, %s%s, %s;", instr, HSAIL.mapRegister(dest), controlRegString, mapRegOrConstToString(src0), mapRegOrConstToString(src1)));
@@ -277,16 +274,13 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
 
     private void emit(String instr, Value dest, Value src0, Value src1, Value src2) {
         assert (!isConstant(dest));
-        emitString(String.format("%s %s, %s, %s, %s;", instr, HSAIL.mapRegister(dest), mapRegOrConstToString(src0),
-                                 mapRegOrConstToString(src1), mapRegOrConstToString(src2)));
+        emitString(String.format("%s %s, %s, %s, %s;", instr, HSAIL.mapRegister(dest), mapRegOrConstToString(src0), mapRegOrConstToString(src1), mapRegOrConstToString(src2)));
     }
-
 
     public final void cmovCommon(Value dest, Value trueReg, Value falseReg, int width) {
         String instr = (width == 32 ? "cmov_b32" : "cmov_b64");
         emit(instr, dest, "$c0, ", trueReg, falseReg);
     }
-
 
     /**
      * Emit code to build a 64-bit pointer from a compressed-oop and the associated base and shift.
@@ -309,9 +303,8 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     /**
-     * Emit code to build a 32-bit compressed pointer from a full
-     * 64-bit pointer using the associated base and shift.  We only
-     * emit this if base and shift are not both zero.
+     * Emit code to build a 32-bit compressed pointer from a full 64-bit pointer using the
+     * associated base and shift. We only emit this if base and shift are not both zero.
      */
     public void emitCompressedOopEncode(Value result, long narrowOopBase, int narrowOopShift) {
         if (narrowOopBase != 0) {
