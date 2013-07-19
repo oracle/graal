@@ -64,9 +64,10 @@ public abstract class AbstractAssembler {
      * 
      * @param l the label for which a name is being created
      * @param id a label identifier that is unique with the scope of this assembler
+     * @return a label name in the form of "L123"
      */
     protected String createLabelName(Label l, int id) {
-        return "@L" + id;
+        return "L" + id;
     }
 
     /**
