@@ -26,6 +26,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -40,9 +41,9 @@ public class UnsafeLoadSnippets implements Snippets {
     public static Object lowerUnsafeLoad(Object object, long offset, int disp) {
         long displacement = disp + offset;
         if (object instanceof java.lang.ref.Reference && referentOffset() == displacement) {
-            return Word.fromObject(object).readObject((int) displacement, 1, true);
+            return Word.fromObject(object).readObject((int) displacement, WriteBarrierType.PRECISE, true);
         } else {
-            return Word.fromObject(object).readObject((int) displacement, 0, true);
+            return Word.fromObject(object).readObject((int) displacement, WriteBarrierType.NONE, true);
         }
     }
 
