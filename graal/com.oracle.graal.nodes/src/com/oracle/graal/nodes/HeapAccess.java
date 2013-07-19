@@ -23,24 +23,23 @@
 package com.oracle.graal.nodes;
 
 /**
- * A HeapAccess is a node that access the heap and therefore may be subjected to certain rules of
- * the underlying runtime.
+ * Encapsulates properties of a node describing how it accesses the heap.
  */
 public interface HeapAccess {
 
-    /*
+    /**
      * The types of write barriers attached to stores.
      */
     public enum WriteBarrierType {
-        /*
+        /**
          * Primitive stores which do not necessitate write barriers.
          */
         NONE,
-        /*
+        /**
          * Array object stores which necessitate precise write barriers.
          */
         PRECISE,
-        /*
+        /**
          * Field object stores which necessitate imprecise write barriers.
          */
         IMPRECISE
