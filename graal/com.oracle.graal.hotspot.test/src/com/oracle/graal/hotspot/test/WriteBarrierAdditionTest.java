@@ -165,7 +165,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test6() throws Exception {
-        test2("test6Snippet", wr, new Long(referentOffset()), null);
+        test2("testUnsafeLoad", wr, new Long(referentOffset()), null);
     }
 
     /**
@@ -174,7 +174,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test7() throws Exception {
-        test2("test6Snippet", con, new Long(referentOffset()), null);
+        test2("testUnsafeLoad", con, new Long(referentOffset()), null);
     }
 
     /**
@@ -184,7 +184,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test8() throws Exception {
-        test2("test6Snippet", wr, new Long(32), null);
+        test2("testUnsafeLoad", wr, new Long(32), null);
     }
 
     /**
@@ -194,7 +194,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test10() throws Exception {
-        test2("test6Snippet", wr, new Long(8), new Integer(8));
+        test2("testUnsafeLoad", wr, new Long(8), new Integer(8));
     }
 
     /**
@@ -204,10 +204,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test9() throws Exception {
-        test2("test6Snippet", wr, new Long(16), new Integer(16));
+        test2("testUnsafeLoad", wr, new Long(16), new Integer(16));
     }
 
-    public static Object test6Snippet(Object a, Object b, Object c) throws Exception {
+    public static Object testUnsafeLoad(Object a, Object b, Object c) throws Exception {
         final int offset = (c == null ? 0 : ((Integer) c).intValue());
         final long displacement = (b == null ? 0 : ((Long) b).longValue());
         return UnsafeLoadNode.load(a, offset, displacement, Kind.Object);
