@@ -24,7 +24,7 @@ package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.*;
 
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Specialization {
 
