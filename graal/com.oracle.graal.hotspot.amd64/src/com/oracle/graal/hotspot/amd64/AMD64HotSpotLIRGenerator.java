@@ -405,7 +405,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private static boolean isCompressCandidate(DeoptimizingNode access) {
-        return access != null && ((HeapAccess) access).compressible();
+        return access != null && ((HeapAccess) access).isCompressible();
     }
 
     @Override
@@ -488,7 +488,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         RegisterValue raxRes = AMD64.rax.asValue(kind);
         emitMove(raxRes, expected);
-        if (runtime().config.useCompressedOops && node.compressible()) {
+        if (runtime().config.useCompressedOops && node.isCompressible()) {
             Variable scratch = newVariable(Kind.Long);
             append(new CompareAndSwapCompressedOp(raxRes, address, raxRes, newValue, scratch, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
         } else {

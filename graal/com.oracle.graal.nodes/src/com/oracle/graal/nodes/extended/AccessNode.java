@@ -109,7 +109,7 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
     }
 
     @Override
-    public boolean compressible() {
+    public boolean isCompressible() {
         return compressible;
     }
 }

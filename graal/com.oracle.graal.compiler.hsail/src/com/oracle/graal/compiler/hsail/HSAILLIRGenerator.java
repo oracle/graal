@@ -181,7 +181,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
     }
 
     private static boolean isCompressCandidate(DeoptimizingNode access) {
-        return access != null && ((HeapAccess) access).compressible();
+        return access != null && ((HeapAccess) access).isCompressible();
     }
 
     @Override

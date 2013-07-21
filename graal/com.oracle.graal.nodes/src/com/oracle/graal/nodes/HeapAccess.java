@@ -53,5 +53,5 @@ public interface HeapAccess {
     /**
      * Returns whether or not the heap access is a compressed pointer candidate.
      */
-    boolean compressible();
+    boolean isCompressible();
 }
