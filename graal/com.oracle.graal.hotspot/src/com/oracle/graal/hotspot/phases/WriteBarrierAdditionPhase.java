@@ -25,7 +25,7 @@ package com.oracle.graal.hotspot.phases;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
@@ -54,20 +54,20 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     private static void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
-        if (node.getWriteBarrierType() == WriteBarrierType.PRECISE) {
+        if (node.getBarrierType() == BarrierType.PRECISE) {
             assert useG1GC();
             G1PreWriteBarrier barrier = graph.add(new G1PreWriteBarrier(node.object(), node, node.location(), false, node.getNullCheck()));
             barrier.setDeoptimizationState(node.getDeoptimizationState());
             node.setNullCheck(false);
             graph.addAfterFixed(node, barrier);
         } else {
-            assert node.getWriteBarrierType() == WriteBarrierType.NONE : "Non precise write barrier has been attached to read node.";
+            assert node.getBarrierType() == BarrierType.NONE : "Non precise write barrier has been attached to read node.";
         }
     }
 
     private static void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
-        WriteBarrierType barrierType = node.getWriteBarrierType();
-        if (barrierType == WriteBarrierType.PRECISE) {
+        BarrierType barrierType = node.getBarrierType();
+        if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
                 if (node.isInitialized()) {
                     G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
@@ -79,7 +79,7 @@ public class WriteBarrierAdditionPhase extends Phase {
             } else {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.location(), true)));
             }
-        } else if (barrierType == WriteBarrierType.IMPRECISE) {
+        } else if (barrierType == BarrierType.IMPRECISE) {
             if (useG1GC()) {
                 G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                 preBarrier.setDeoptimizationState(node.getDeoptimizationState());
@@ -90,21 +90,21 @@ public class WriteBarrierAdditionPhase extends Phase {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.location(), false)));
             }
         } else {
-            assert barrierType == WriteBarrierType.NONE;
+            assert barrierType == BarrierType.NONE;
         }
 
     }
 
     private static void addCASBarriers(CompareAndSwapNode node, StructuredGraph graph) {
-        WriteBarrierType barrierType = node.getWriteBarrierType();
-        if (barrierType == WriteBarrierType.PRECISE) {
+        BarrierType barrierType = node.getBarrierType();
+        if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
                 graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.expected(), node.getLocation(), false, false)));
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.newValue(), node.getLocation(), true)));
             } else {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), true)));
             }
-        } else if (barrierType == WriteBarrierType.IMPRECISE) {
+        } else if (barrierType == BarrierType.IMPRECISE) {
             if (useG1GC()) {
                 graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.expected(), node.getLocation(), false, false)));
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.newValue(), node.getLocation(), false)));
@@ -112,7 +112,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), false)));
             }
         } else {
-            assert barrierType == WriteBarrierType.NONE;
+            assert barrierType == BarrierType.NONE;
         }
     }
 

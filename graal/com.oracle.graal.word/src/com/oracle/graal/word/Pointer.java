@@ -23,7 +23,7 @@
 package com.oracle.graal.word;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 
 public interface Pointer extends Unsigned {
@@ -623,7 +623,7 @@ public interface Pointer extends Unsigned {
      * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(WordBase offset, WriteBarrierType barrierType, boolean compressible);
+    Object readObject(WordBase offset, BarrierType barrierType, boolean compressible);
 
     /**
      * Reads the memory at address {@code (this + offset)}. Both the base address and offset are in
@@ -715,7 +715,7 @@ public interface Pointer extends Unsigned {
      * @param compressible whether or not the object is a decompression candidate
      * @return the result of the memory access
      */
-    Object readObject(int offset, WriteBarrierType barrierType, boolean compressible);
+    Object readObject(int offset, BarrierType barrierType, boolean compressible);
 
     /**
      * Writes the memory at address {@code (this + offset)}. Both the base address and offset are in

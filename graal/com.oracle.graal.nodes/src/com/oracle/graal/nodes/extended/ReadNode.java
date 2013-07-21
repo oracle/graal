@@ -34,11 +34,11 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, WriteBarrierType barrierType, boolean compressible) {
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, barrierType, compressible);
     }
 
-    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compressible) {
+    public ReadNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, guard, barrierType, compressible);
     }
 
@@ -51,7 +51,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
          * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
          * LocalNode, the constructor cannot use the declared type LocationNode.
          */
-        super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, WriteBarrierType.NONE, false);
+        super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, BarrierType.NONE, false);
     }
 
     @Override
@@ -67,7 +67,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
-        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getWriteBarrierType(), compressible()));
+        return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType(), compressible()));
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressedPointer) {

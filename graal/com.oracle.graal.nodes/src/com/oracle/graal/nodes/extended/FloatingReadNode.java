@@ -37,10 +37,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
     @Input private Node lastLocationAccess;
 
     public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp) {
-        this(object, location, lastLocationAccess, stamp, null, WriteBarrierType.NONE, false);
+        this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE, false);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compressible) {
+    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, guard, barrierType, compressible);
         this.lastLocationAccess = lastLocationAccess;
     }
@@ -62,6 +62,6 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
 
     @Override
     public Access asFixedNode() {
-        return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), getGuard(), getWriteBarrierType(), compressible()));
+        return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), getGuard(), getBarrierType(), compressible()));
     }
 }

@@ -65,11 +65,11 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return initialized;
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compressible) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible) {
         this(object, value, location, barrierType, compressible, true);
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compressible, boolean initialized) {
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialized) {
         super(object, location, StampFactory.forVoid(), barrierType, compressible);
         this.value = value;
         this.initialized = initialized;
@@ -82,7 +82,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType, @ConstantNodeParameter boolean compressible);
+    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType, @ConstantNodeParameter boolean compressible);
 
     @Override
     public LocationIdentity getLocationIdentity() {
