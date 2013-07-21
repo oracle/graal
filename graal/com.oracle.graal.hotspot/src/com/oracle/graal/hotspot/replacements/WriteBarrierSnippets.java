@@ -295,6 +295,8 @@ public class WriteBarrierSnippets implements Snippets {
         private final SnippetInfo serialArrayWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayWriteBarrier");
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
         private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
+
+        private final SnippetInfo g1ReferentReadBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
         private final SnippetInfo g1PostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PostWriteBarrier");
         private final SnippetInfo g1ArrayRangePreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier");
         private final SnippetInfo g1ArrayRangePostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier");
@@ -328,6 +330,17 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("nullCheck", writeBarrierPre.getNullCheck());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, args);
+        }
+
+        public void lower(G1ReferentFieldReadBarrier readBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(g1ReferentReadBarrier);
+            args.add("object", readBarrier.getObject());
+            args.add("expectedObject", readBarrier.getExpectedObject());
+            args.add("location", readBarrier.getLocation());
+            args.addConst("doLoad", readBarrier.doLoad());
+            args.addConst("nullCheck", readBarrier.getNullCheck());
+            args.addConst("trace", traceBarrier());
+            template(args).instantiate(runtime, readBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {

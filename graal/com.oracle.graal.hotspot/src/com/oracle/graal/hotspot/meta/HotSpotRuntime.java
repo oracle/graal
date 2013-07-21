@@ -806,6 +806,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             writeBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
         } else if (n instanceof G1PostWriteBarrier) {
             writeBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
+        } else if (n instanceof G1ReferentFieldReadBarrier) {
+            writeBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
         } else if (n instanceof SerialWriteBarrier) {
             writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
@@ -849,8 +851,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         assert vtableEntryOffset > 0;
         // We use LocationNode.ANY_LOCATION for the reads that access the vtable
         // entry as HotSpot does not guarantee that this is a final value.
-        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind()), BarrierType.NONE,
-                        false));
+        ReadNode metaspaceMethod = graph.add(new ReadNode(hub, ConstantLocationNode.create(ANY_LOCATION, wordKind, vtableEntryOffset, graph), StampFactory.forKind(wordKind()), BarrierType.NONE, false));
         return metaspaceMethod;
     }
 

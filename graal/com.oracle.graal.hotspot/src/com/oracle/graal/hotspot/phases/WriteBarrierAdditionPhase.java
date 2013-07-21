@@ -56,12 +56,12 @@ public class WriteBarrierAdditionPhase extends Phase {
     private static void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
         if (node.getBarrierType() == BarrierType.PRECISE) {
             assert useG1GC();
-            G1PreWriteBarrier barrier = graph.add(new G1PreWriteBarrier(node.object(), node, node.location(), false, node.getNullCheck()));
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.object(), node, node.location(), false, node.getNullCheck()));
             barrier.setDeoptimizationState(node.getDeoptimizationState());
             node.setNullCheck(false);
             graph.addAfterFixed(node, barrier);
         } else {
-            assert node.getBarrierType() == BarrierType.NONE : "Non precise write barrier has been attached to read node.";
+            assert node.getBarrierType() == BarrierType.NONE : "Non precise read barrier has been attached to read node.";
         }
     }
 
