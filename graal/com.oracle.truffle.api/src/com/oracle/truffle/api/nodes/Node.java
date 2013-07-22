@@ -188,6 +188,22 @@ public abstract class Node implements Cloneable {
     }
 
     /**
+     * Checks if this node is properly adopted by a parent and can be replaced.
+     * 
+     * @return {@code true} if it is safe to replace this node.
+     */
+    public final boolean isReplaceable() {
+        if (getParent() != null) {
+            for (Node sibling : getParent().getChildren()) {
+                if (sibling == this) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
      * node is rewritten. This method is invoked before the actual replace has happened.
      * 
