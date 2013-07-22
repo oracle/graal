@@ -25,6 +25,12 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.extended.*;
 
+/**
+ * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
+ * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
+ * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
+ * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
+ */
 public class G1ReferentFieldReadBarrier extends WriteBarrier implements DeoptimizingNode {
 
     @Input private ValueNode expectedObject;
