@@ -43,7 +43,7 @@ public class WriteBarrierAdditionPhase extends Phase {
         for (WriteNode node : graph.getNodes(WriteNode.class)) {
             addWriteNodeBarriers(node, graph);
         }
-        for (CompareAndSwapNode node : graph.getNodes(CompareAndSwapNode.class)) {
+        for (LoweredCompareAndSwapNode node : graph.getNodes(LoweredCompareAndSwapNode.class)) {
             addCASBarriers(node, graph);
         }
         for (ArrayRangeWriteNode node : graph.getNodes(ArrayRangeWriteNode.class)) {
@@ -93,19 +93,19 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     }
 
-    private static void addCASBarriers(CompareAndSwapNode node, StructuredGraph graph) {
+    private static void addCASBarriers(LoweredCompareAndSwapNode node, StructuredGraph graph) {
         BarrierType barrierType = node.getBarrierType();
         if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
-                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.expected(), node.getLocation(), false, false)));
-                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.newValue(), node.getLocation(), true)));
+                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.getLocation(), false, false)));
+                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), true)));
             } else {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), true)));
             }
         } else if (barrierType == BarrierType.IMPRECISE) {
             if (useG1GC()) {
-                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.expected(), node.getLocation(), false, false)));
-                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.newValue(), node.getLocation(), false)));
+                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.getLocation(), false, false)));
+                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), false)));
             } else {
                 graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getLocation(), false)));
             }

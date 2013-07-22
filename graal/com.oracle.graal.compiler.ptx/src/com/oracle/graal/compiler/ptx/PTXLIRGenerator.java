@@ -62,7 +62,7 @@ import com.oracle.graal.lir.ptx.PTXMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.Condition;
 import com.oracle.graal.nodes.calc.ConvertNode;
-import com.oracle.graal.nodes.java.CompareAndSwapNode;
+import com.oracle.graal.nodes.java.*;
 
 /**
  * This class implements the PTX specific portion of the LIR generator.
@@ -731,7 +731,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitCompareAndSwap(CompareAndSwapNode node) {
+    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
         throw new InternalError("NYI");
     }
 

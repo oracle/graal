@@ -808,7 +808,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitCompareAndSwap(CompareAndSwapNode i) {
+    public void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address) {
         throw new InternalError("NYI");
     }
 

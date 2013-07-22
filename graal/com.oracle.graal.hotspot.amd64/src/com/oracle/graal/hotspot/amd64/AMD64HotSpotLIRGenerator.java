@@ -468,31 +468,19 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public void visitCompareAndSwap(CompareAndSwapNode node) {
-        Kind kind = node.newValue().kind();
-        assert kind == node.expected().kind();
-
-        Value expected = loadNonConst(operand(node.expected()));
-        Variable newValue = load(operand(node.newValue()));
-
-        AMD64AddressValue address;
-        int displacement = node.displacement();
-        Value index = operand(node.offset());
-        if (isConstant(index) && NumUtil.isInt(asConstant(index).asLong() + displacement)) {
-            assert !runtime.needsDataPatch(asConstant(index));
-            displacement += (int) asConstant(index).asLong();
-            address = new AMD64AddressValue(kind, load(operand(node.object())), displacement);
-        } else {
-            address = new AMD64AddressValue(kind, load(operand(node.object())), load(index), Scale.Times1, displacement);
-        }
-
+    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
+        Kind kind = node.getNewValue().kind();
+        assert kind == node.getExpectedValue().kind();
+        Value expected = loadNonConst(operand(node.getExpectedValue()));
+        Variable newValue = load(operand(node.getNewValue()));
+        AMD64AddressValue addressValue = asAddressValue(address);
         RegisterValue raxRes = AMD64.rax.asValue(kind);
         emitMove(raxRes, expected);
         if (runtime().config.useCompressedOops && node.isCompressible()) {
             Variable scratch = newVariable(Kind.Long);
-            append(new CompareAndSwapCompressedOp(raxRes, address, raxRes, newValue, scratch, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
+            append(new CompareAndSwapCompressedOp(raxRes, addressValue, raxRes, newValue, scratch, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
         } else {
-            append(new CompareAndSwapOp(raxRes, address, raxRes, newValue));
+            append(new CompareAndSwapOp(raxRes, addressValue, raxRes, newValue));
         }
         Variable result = newVariable(node.kind());
         append(new CondMoveOp(result, Condition.EQ, load(Constant.TRUE), Constant.FALSE));

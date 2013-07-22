@@ -113,7 +113,7 @@ public class WriteBarrierVerificationPhase extends Phase {
 
     private static boolean isObjectWrite(Node node) {
         if ((node instanceof WriteNode && (((WriteNode) node).getBarrierType() != BarrierType.NONE)) ||
-                        (node instanceof CompareAndSwapNode && (((CompareAndSwapNode) node).getBarrierType() != BarrierType.NONE))) {
+                        (node instanceof LoweredCompareAndSwapNode && (((LoweredCompareAndSwapNode) node).getBarrierType() != BarrierType.NONE))) {
             return true;
         }
         return false;
@@ -146,9 +146,9 @@ public class WriteBarrierVerificationPhase extends Phase {
         if (write instanceof WriteNode) {
             writtenObject = ((WriteNode) write).object();
             writtenLocation = ((WriteNode) write).location();
-        } else if (write instanceof CompareAndSwapNode) {
-            writtenObject = ((CompareAndSwapNode) write).object();
-            writtenLocation = ((CompareAndSwapNode) write).getLocation();
+        } else if (write instanceof LoweredCompareAndSwapNode) {
+            writtenObject = ((LoweredCompareAndSwapNode) write).object();
+            writtenLocation = ((LoweredCompareAndSwapNode) write).getLocation();
         } else {
             assert false : "Node must be of type requiring a write barrier";
         }

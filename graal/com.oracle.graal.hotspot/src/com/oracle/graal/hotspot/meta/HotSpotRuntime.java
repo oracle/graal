@@ -580,11 +580,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
             LocationNode location = IndexedLocationNode.create(ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
-            cas.setLocation(location);
-            cas.setBarrierType(getCompareAndSwapBarrier(cas));
-            if (cas.expected().kind() == Kind.Object) {
-                cas.setCompressible();
-            }
+            LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
+                            cas.expected().kind() == Kind.Object));
+            graph.replaceFixedWithFixed(cas, atomicNode);
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
             GuardingNode boundsCheck = createBoundsCheck(loadIndexed, tool);

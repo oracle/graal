@@ -690,7 +690,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void visitCompareAndSwap(CompareAndSwapNode node) {
+    public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
         throw new InternalError("NYI");
     }
 

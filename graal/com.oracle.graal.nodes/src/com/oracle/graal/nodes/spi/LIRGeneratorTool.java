@@ -118,7 +118,7 @@ public interface LIRGeneratorTool {
 
     void visitLoopEnd(LoopEndNode i);
 
-    void visitCompareAndSwap(CompareAndSwapNode i);
+    void visitCompareAndSwap(LoweredCompareAndSwapNode i, Value address);
 
     // These methods define the contract a runtime specific backend must provide.
 
