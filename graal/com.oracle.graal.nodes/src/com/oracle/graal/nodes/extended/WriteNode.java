@@ -58,7 +58,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     /**
-     * Returns whether this write is the initialization of the written location. Fit it is true, the
+     * Returns whether this write is the initialization of the written location. If it is true, the
      * old value of the memory location is either uninitialized or zero. If it is false, the memory
      * location is guaranteed to contain a valid value or zero.
      */
