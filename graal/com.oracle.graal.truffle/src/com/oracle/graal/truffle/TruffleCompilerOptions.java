@@ -88,6 +88,6 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleInliningDetails = new OptionValue<>(false);
     @Option(help = "")
-    public static final OptionValue<Boolean> TruffleProfiling = new StableOptionValue<>(false);
+    public static final OptionValue<Boolean> TruffleCallTargetProfiling = new StableOptionValue<>(false);
     // @formatter:on
 }
