@@ -114,7 +114,7 @@ public class ConditionalEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type == null && type != node.objectStamp().type()) {
+                if (type != null && type != node.objectStamp().type()) {
                     newKnownTypes.put(node, type);
                 }
             }

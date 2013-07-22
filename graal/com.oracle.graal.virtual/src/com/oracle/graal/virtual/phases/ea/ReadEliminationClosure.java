@@ -36,8 +36,8 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.CacheEntry;
-import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.ReadCacheEntry;
 import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.LoadCacheEntry;
+import com.oracle.graal.virtual.phases.ea.ReadEliminationBlockState.ReadCacheEntry;
 
 public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockState> {
 
@@ -106,6 +106,8 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 }
                 state.killReadCache(write.location().getLocationIdentity());
                 state.addCacheEntry(identifier, value);
+            } else {
+                state.killReadCache(write.location().getLocationIdentity());
             }
         } else if (node instanceof MemoryCheckpoint.Single) {
             processIdentity(state, ((MemoryCheckpoint.Single) node).getLocationIdentity());

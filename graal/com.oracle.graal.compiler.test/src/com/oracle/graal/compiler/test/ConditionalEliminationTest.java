@@ -39,6 +39,8 @@ import com.oracle.graal.phases.common.*;
  */
 public class ConditionalEliminationTest extends GraalCompilerTest {
 
+    public static Object field;
+
     static class Entry {
 
         final String name;
@@ -108,7 +110,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
                 }
             } else {
                 if (b == null) {
-                    return 3;
+                    return -3;
                 } else {
                     return 4;
                 }
@@ -194,6 +196,36 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         InvokeNode invoke = graph.getNodes(InvokeNode.class).first();
         assertEquals(InvokeKind.Special, ((MethodCallTargetNode) invoke.callTarget()).invokeKind());
+    }
+
+    public static void testTypeMergingSnippet(Object o, boolean b) {
+        if (b) {
+            if (!(o instanceof Double)) {
+                return;
+            }
+        } else {
+            if (!(o instanceof Integer)) {
+                return;
+            }
+        }
+
+        /*
+         * For this test the conditional elimination has to correctly merge the type information it
+         * has about o, so that it can remove the check on Number.
+         */
+        if (!(o instanceof Number)) {
+            field = o;
+        }
+    }
+
+    @Test
+    public void testTypeMerging() {
+        StructuredGraph graph = parse("testTypeMergingSnippet");
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+
+        assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
     }
 
 }
