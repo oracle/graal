@@ -48,7 +48,7 @@ public interface GraalCodeCacheProvider extends CodeCacheProvider {
     void lower(Node n, LoweringTool tool);
 
     /**
-     * Reconstruct the array index from a location node that was created as a lowering of an indexed
+     * Reconstructs the array index from a location node that was created as a lowering of an indexed
      * access to an array.
      * 
      * @param location a location pointing to an element in an array
