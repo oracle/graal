@@ -108,7 +108,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
                 }
             } else {
                 if (b == null) {
-                    return 3;
+                    return -3;
                 } else {
                     return 4;
                 }
