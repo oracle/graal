@@ -56,8 +56,9 @@ public abstract class ArrayRangeWriteNode extends AbstractStateSplit implements 
     public abstract boolean isObjectArray();
 
     /**
-     * If {@link #isInitialized()} is true, the memory location contains a valid value. If
-     * {@link #isInitialized()} is false, the memory location is uninitialized or zero.
+     * Returns whether this write is the initialization of the written location. If it is true, the
+     * old value of the memory location is either uninitialized or zero. If it is false, the memory
+     * location is guaranteed to contain a valid value or zero.
      */
-    public abstract boolean isInitialized();
+    public abstract boolean isInitialization();
 }

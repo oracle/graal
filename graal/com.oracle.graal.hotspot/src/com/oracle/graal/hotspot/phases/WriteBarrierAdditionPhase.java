@@ -56,9 +56,7 @@ public class WriteBarrierAdditionPhase extends Phase {
     private static void addReadNodeBarriers(ReadNode node, StructuredGraph graph) {
         if (node.getBarrierType() == BarrierType.PRECISE) {
             assert useG1GC();
-            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.object(), node, node.location(), false, node.getNullCheck()));
-            barrier.setDeoptimizationState(node.getDeoptimizationState());
-            node.setNullCheck(false);
+            G1ReferentFieldReadBarrier barrier = graph.add(new G1ReferentFieldReadBarrier(node.object(), node, node.location(), false, false));
             graph.addAfterFixed(node, barrier);
         } else {
             assert node.getBarrierType() == BarrierType.NONE : "Non precise read barrier has been attached to read node.";
@@ -69,7 +67,7 @@ public class WriteBarrierAdditionPhase extends Phase {
         BarrierType barrierType = node.getBarrierType();
         if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
-                if (node.isInitialized()) {
+                if (!node.isInitialization()) {
                     G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                     preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                     node.setNullCheck(false);
@@ -118,7 +116,7 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
         if (useG1GC()) {
-            if (node.isInitialized()) {
+            if (!node.isInitialization()) {
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
                 graph.addBeforeFixed(node, g1ArrayRangePreWriteBarrier);
             }

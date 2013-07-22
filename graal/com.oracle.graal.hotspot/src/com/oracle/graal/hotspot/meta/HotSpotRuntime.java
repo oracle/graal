@@ -66,6 +66,7 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.code.CompilationResult.Infopoint;
 import com.oracle.graal.api.code.CompilationResult.Mark;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
@@ -932,6 +933,44 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index) {
         int scale = getScalingFactor(elementKind);
         return IndexedLocationNode.create(NamedLocationIdentity.getArrayLocation(elementKind), elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
+    }
+
+    @Override
+    public ValueNode reconstructArrayIndex(LocationNode location) {
+        Kind elementKind = location.getValueKind();
+        assert location.getLocationIdentity().equals(NamedLocationIdentity.getArrayLocation(elementKind));
+
+        long base;
+        ValueNode index;
+        int scale = getScalingFactor(elementKind);
+
+        if (location instanceof ConstantLocationNode) {
+            base = ((ConstantLocationNode) location).getDisplacement();
+            index = null;
+        } else if (location instanceof IndexedLocationNode) {
+            IndexedLocationNode indexedLocation = (IndexedLocationNode) location;
+            assert indexedLocation.getIndexScaling() == scale;
+            base = indexedLocation.getDisplacement();
+            index = indexedLocation.getIndex();
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+
+        base -= getArrayBaseOffset(elementKind);
+        assert base >= 0 && base % scale == 0;
+
+        base /= scale;
+        assert NumUtil.isInt(base);
+
+        if (index == null) {
+            return ConstantNode.forInt((int) base, location.graph());
+        } else {
+            if (base == 0) {
+                return index;
+            } else {
+                return IntegerArithmeticNode.add(ConstantNode.forInt((int) base, location.graph()), index);
+            }
+        }
     }
 
     private static GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
