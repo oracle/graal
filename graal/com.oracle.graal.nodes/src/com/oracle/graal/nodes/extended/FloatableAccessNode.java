@@ -35,12 +35,12 @@ public abstract class FloatableAccessNode extends AccessNode {
         super(object, location, stamp);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, WriteBarrierType barrierType, boolean compress) {
-        super(object, location, stamp, guard, barrierType, compress);
+    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
+        super(object, location, stamp, guard, barrierType, compressible);
     }
 
-    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, WriteBarrierType barrierType, boolean compress) {
-        super(object, location, stamp, barrierType, compress);
+    public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
+        super(object, location, stamp, barrierType, compressible);
     }
 
     public abstract FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess);
@@ -51,6 +51,6 @@ public abstract class FloatableAccessNode extends AccessNode {
      * an attached write barrier with pre-semantics can not also float.
      */
     public boolean canFloat() {
-        return location().getLocationIdentity() != LocationIdentity.ANY_LOCATION && getWriteBarrierType() == WriteBarrierType.NONE;
+        return location().getLocationIdentity() != LocationIdentity.ANY_LOCATION && getBarrierType() == BarrierType.NONE;
     }
 }

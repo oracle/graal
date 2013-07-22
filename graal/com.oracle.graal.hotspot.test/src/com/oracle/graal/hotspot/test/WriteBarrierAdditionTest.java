@@ -35,7 +35,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
@@ -165,7 +165,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test6() throws Exception {
-        test2("test6Snippet", wr, new Long(referentOffset()), null);
+        test2("testUnsafeLoad", wr, new Long(referentOffset()), null);
     }
 
     /**
@@ -174,7 +174,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test7() throws Exception {
-        test2("test6Snippet", con, new Long(referentOffset()), null);
+        test2("testUnsafeLoad", con, new Long(referentOffset()), null);
     }
 
     /**
@@ -184,7 +184,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test8() throws Exception {
-        test2("test6Snippet", wr, new Long(32), null);
+        test2("testUnsafeLoad", wr, new Long(32), null);
     }
 
     /**
@@ -194,7 +194,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test10() throws Exception {
-        test2("test6Snippet", wr, new Long(8), new Integer(8));
+        test2("testUnsafeLoad", wr, new Long(8), new Integer(8));
     }
 
     /**
@@ -204,10 +204,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test9() throws Exception {
-        test2("test6Snippet", wr, new Long(16), new Integer(16));
+        test2("testUnsafeLoad", wr, new Long(16), new Integer(16));
     }
 
-    public static Object test6Snippet(Object a, Object b, Object c) throws Exception {
+    public static Object testUnsafeLoad(Object a, Object b, Object c) throws Exception {
         final int offset = (c == null ? 0 : ((Integer) c).intValue());
         final long displacement = (b == null ? 0 : ((Long) b).longValue());
         return UnsafeLoadNode.load(a, offset, displacement, Kind.Object);
@@ -233,20 +233,20 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
                 int barriers = 0;
                 if (useG1GC()) {
-                    barriers = graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count();
+                    barriers = graph.getNodes(G1ReferentFieldReadBarrier.class).count() + graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count();
                 } else {
                     barriers = graph.getNodes(SerialWriteBarrier.class).count();
                 }
                 Assert.assertTrue(barriers == expectedBarriers);
                 for (WriteNode write : graph.getNodes(WriteNode.class)) {
                     if (useG1GC()) {
-                        if (write.getWriteBarrierType() != WriteBarrierType.NONE) {
+                        if (write.getBarrierType() != BarrierType.NONE) {
                             Assert.assertTrue(write.successors().count() == 1);
                             Assert.assertTrue(write.next() instanceof G1PostWriteBarrier);
                             Assert.assertTrue(write.predecessor() instanceof G1PreWriteBarrier);
                         }
                     } else {
-                        if (write.getWriteBarrierType() != WriteBarrierType.NONE) {
+                        if (write.getBarrierType() != BarrierType.NONE) {
                             Assert.assertTrue(write.successors().count() == 1);
                             Assert.assertTrue(write.next() instanceof SerialWriteBarrier);
                         }
@@ -254,15 +254,15 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                 }
 
                 for (ReadNode read : graph.getNodes(ReadNode.class)) {
-                    if (read.getWriteBarrierType() != WriteBarrierType.NONE) {
+                    if (read.getBarrierType() != BarrierType.NONE) {
                         if (read.location() instanceof ConstantLocationNode) {
                             Assert.assertTrue(((ConstantLocationNode) (read.location())).getDisplacement() == referentOffset());
                         } else {
                             Assert.assertTrue(((IndexedLocationNode) (read.location())).getDisplacement() == referentOffset());
                         }
                         Assert.assertTrue(useG1GC());
-                        Assert.assertTrue(read.getWriteBarrierType() == WriteBarrierType.PRECISE);
-                        Assert.assertTrue(read.next() instanceof G1PreWriteBarrier);
+                        Assert.assertTrue(read.getBarrierType() == BarrierType.PRECISE);
+                        Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
                     }
                 }
             }

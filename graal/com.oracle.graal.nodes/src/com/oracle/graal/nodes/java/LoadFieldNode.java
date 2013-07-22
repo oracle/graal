@@ -57,7 +57,20 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         MetaAccessProvider runtime = tool.runtime();
-        if (tool.canonicalizeReads() && runtime != null) {
+        if (tool.canonicalizeReads()) {
+            ConstantNode constant = asConstant(runtime);
+            if (constant != null) {
+                return constant;
+            }
+        }
+        return this;
+    }
+
+    /**
+     * Gets a constant value for this load if possible.
+     */
+    public ConstantNode asConstant(MetaAccessProvider runtime) {
+        if (runtime != null) {
             Constant constant = null;
             if (isStatic()) {
                 constant = field().readConstantValue(null);
@@ -68,7 +81,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
                 return ConstantNode.forConstant(constant, runtime, graph());
             }
         }
-        return this;
+        return null;
     }
 
     @Override

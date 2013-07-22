@@ -137,7 +137,9 @@ public class CompilationResult implements Serializable {
     }
 
     /**
-     * Represents a reference to data from the code. The associated data can be any constant.
+     * Represents a reference to data from the code. The associated data can be either a
+     * {@link Constant} or a raw byte array. The raw byte array is patched as is, no endian swapping
+     * is done on it.
      */
     public static final class DataPatch extends Site {
 
@@ -161,6 +163,8 @@ public class CompilationResult implements Serializable {
 
         private DataPatch(int pcOffset, Constant data, byte[] rawData, int alignment, boolean inlined) {
             super(pcOffset);
+            assert (data == null) != (rawData == null) : "only one of data and rawData is allowed";
+            assert !inlined || rawData == null : "rawData can not be inlined";
             this.constant = data;
             this.rawConstant = rawData;
             this.alignment = alignment;

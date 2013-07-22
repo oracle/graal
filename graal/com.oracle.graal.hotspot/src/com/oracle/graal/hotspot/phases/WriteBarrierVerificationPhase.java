@@ -30,7 +30,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
@@ -112,8 +112,8 @@ public class WriteBarrierVerificationPhase extends Phase {
     }
 
     private static boolean isObjectWrite(Node node) {
-        if ((node instanceof WriteNode && (((WriteNode) node).getWriteBarrierType() != WriteBarrierType.NONE)) ||
-                        (node instanceof CompareAndSwapNode && (((CompareAndSwapNode) node).getWriteBarrierType() != WriteBarrierType.NONE))) {
+        if ((node instanceof WriteNode && (((WriteNode) node).getBarrierType() != BarrierType.NONE)) ||
+                        (node instanceof CompareAndSwapNode && (((CompareAndSwapNode) node).getBarrierType() != BarrierType.NONE))) {
             return true;
         }
         return false;

@@ -54,4 +54,9 @@ public abstract class AbstractHSAILAssembler extends AbstractAssembler {
     protected void patchJumpTarget(int branch, int jumpTarget) {
         // Nothing to do
     }
+
+    @Override
+    protected String createLabelName(Label l, int id) {
+        return "@L" + id;
+    }
 }

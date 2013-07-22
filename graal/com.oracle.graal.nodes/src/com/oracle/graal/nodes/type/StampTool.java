@@ -68,7 +68,7 @@ public class StampTool {
         }
         long lowerBound = stamp1.lowerBound() + stamp2.lowerBound();
         long upperBound = stamp1.upperBound() + stamp2.upperBound();
-        long mask = IntegerStamp.maskFor(kind, lowerBound, upperBound) & (stamp1.mask() | stamp2.mask());
+        long mask = IntegerStamp.maskFor(kind, lowerBound, upperBound);
 
         return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
     }

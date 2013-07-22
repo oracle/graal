@@ -30,7 +30,7 @@ import sun.misc.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.HeapAccess.WriteBarrierType;
+import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -200,9 +200,9 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
             ConstantNode arrayConstant = ConstantNode.forObject(COUNTERS, runtime, graph);
             ConstantLocationNode location = ConstantLocationNode.create(NamedLocationIdentity.getArrayLocation(Kind.Long), Kind.Long, Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_LONG_INDEX_SCALE *
                             index, graph);
-            ReadNode read = graph.add(new ReadNode(arrayConstant, location, StampFactory.forKind(Kind.Long), WriteBarrierType.NONE, false));
+            ReadNode read = graph.add(new ReadNode(arrayConstant, location, StampFactory.forKind(Kind.Long), BarrierType.NONE, false));
             IntegerAddNode add = graph.add(new IntegerAddNode(Kind.Long, read, ConstantNode.forLong(increment, graph)));
-            WriteNode write = graph.add(new WriteNode(arrayConstant, add, location, WriteBarrierType.NONE, false));
+            WriteNode write = graph.add(new WriteNode(arrayConstant, add, location, BarrierType.NONE, false));
 
             graph.addBeforeFixed(position, read);
             graph.addBeforeFixed(position, write);

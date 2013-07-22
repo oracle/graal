@@ -46,6 +46,10 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
         return object;
     }
 
+    public LogicNode condition() {
+        return condition;
+    }
+
     /**
      * Constructor for {@link #guardingNonNull(Object)} node intrinsic.
      */

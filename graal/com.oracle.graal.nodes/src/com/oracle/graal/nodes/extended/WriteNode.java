@@ -37,7 +37,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
-    private final boolean initialized;
+    private final boolean initialization;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -58,21 +58,22 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     /**
-     * If {@link #isInitialized()} is true, the memory location contains a valid value. If
-     * {@link #isInitialized()} is false, the memory location is uninitialized or zero.
+     * Returns whether this write is the initialization of the written location. If it is true, the
+     * old value of the memory location is either uninitialized or zero. If it is false, the memory
+     * location is guaranteed to contain a valid value or zero.
      */
-    public boolean isInitialized() {
-        return initialized;
+    public boolean isInitialization() {
+        return initialization;
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress) {
-        this(object, value, location, barrierType, compress, true);
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible) {
+        this(object, value, location, barrierType, compressible, false);
     }
 
-    public WriteNode(ValueNode object, ValueNode value, ValueNode location, WriteBarrierType barrierType, boolean compress, boolean initialized) {
-        super(object, location, StampFactory.forVoid(), barrierType, compress);
+    public WriteNode(ValueNode object, ValueNode value, ValueNode location, BarrierType barrierType, boolean compressible, boolean initialization) {
+        super(object, location, StampFactory.forVoid(), barrierType, compressible);
         this.value = value;
-        this.initialized = initialized;
+        this.initialization = initialization;
     }
 
     @Override
@@ -82,7 +83,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     }
 
     @NodeIntrinsic
-    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter WriteBarrierType barrierType, @ConstantNodeParameter boolean compress);
+    public static native void writeMemory(Object object, Object value, Location location, @ConstantNodeParameter BarrierType barrierType, @ConstantNodeParameter boolean compressible);
 
     @Override
     public LocationIdentity getLocationIdentity() {
