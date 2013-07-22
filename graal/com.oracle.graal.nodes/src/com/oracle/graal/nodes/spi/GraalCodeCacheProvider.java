@@ -25,6 +25,8 @@ package com.oracle.graal.nodes.spi;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
 /**
  * Graal-specific extensions for the code cache provider interface.
@@ -44,4 +46,13 @@ public interface GraalCodeCacheProvider extends CodeCacheProvider {
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph);
 
     void lower(Node n, LoweringTool tool);
+
+    /**
+     * Reconstruct the array index from a location node that was created as a lowering of an indexed
+     * access to an array.
+     * 
+     * @param location a location pointing to an element in an array
+     * @return a node that gives the index of the element
+     */
+    ValueNode reconstructArrayIndex(LocationNode location);
 }
