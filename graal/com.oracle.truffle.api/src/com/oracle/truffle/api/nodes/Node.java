@@ -33,11 +33,6 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
  */
 public abstract class Node implements Cloneable {
 
-    /**
-     * Utility constant representing an empty node array.
-     */
-    public static final Node[] EMPTY_ARRAY = new Node[0];
-
     private Node parent;
 
     private SourceSection sourceSection;
