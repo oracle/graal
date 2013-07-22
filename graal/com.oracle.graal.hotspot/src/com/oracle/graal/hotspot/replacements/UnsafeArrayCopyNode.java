@@ -83,8 +83,8 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
     }
 
     @Override
-    public boolean isInitialized() {
-        return true;
+    public boolean isInitialization() {
+        return false;
     }
 
     public Kind getElementKind() {

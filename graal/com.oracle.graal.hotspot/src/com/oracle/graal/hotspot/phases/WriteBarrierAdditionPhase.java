@@ -67,7 +67,7 @@ public class WriteBarrierAdditionPhase extends Phase {
         BarrierType barrierType = node.getBarrierType();
         if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
-                if (node.isInitialized()) {
+                if (!node.isInitialization()) {
                     G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                     preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                     node.setNullCheck(false);
@@ -116,7 +116,7 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     private static void addArrayRangeBarriers(ArrayRangeWriteNode node, StructuredGraph graph) {
         if (useG1GC()) {
-            if (node.isInitialized()) {
+            if (!node.isInitialization()) {
                 G1ArrayRangePreWriteBarrier g1ArrayRangePreWriteBarrier = graph.add(new G1ArrayRangePreWriteBarrier(node.getArray(), node.getIndex(), node.getLength()));
                 graph.addBeforeFixed(node, g1ArrayRangePreWriteBarrier);
             }
