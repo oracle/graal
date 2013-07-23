@@ -1374,7 +1374,25 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNode())) {
                     builder.string(" = adoptChild(copy.").string(varName).string(")");
                 } else if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    builder.string(" = adoptChildren(copy.").string(varName).string(")");
+                    NodeData node = getModel().getNode();
+                    NodeChildData child = node.findChild(varName);
+                    if (child != null) {
+                        builder.string(" = adoptChildren(");
+                        builder.string("new ").type((child.getNodeType())).string(" {");
+                        builder.startCommaGroup();
+                        for (ActualParameter parameter : getModel().getParameters()) {
+                            NodeChildData foundChild = node.findChild(parameter.getSpecification().getName());
+                            if (foundChild == child) {
+                                builder.startGroup();
+                                builder.string("copy.").string(varName).string("[").string(String.valueOf(parameter.getIndex())).string("]");
+                                builder.end();
+                            }
+                        }
+
+                        builder.end().string("})");
+                    } else {
+                        builder.string(" = adoptChildren(copy.").string(varName).string(")");
+                    }
                 } else {
                     builder.string(" = copy.").string(varName);
                 }
