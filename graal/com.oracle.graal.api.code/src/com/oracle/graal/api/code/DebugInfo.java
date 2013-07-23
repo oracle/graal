@@ -31,7 +31,7 @@ import java.util.*;
  * <ul>
  * <li>a {@linkplain #getBytecodePosition() bytecode position}</li>
  * <li>a reference map for {@linkplain #getRegisterRefMap() registers}</li>
- * <li>a reference map for {@linkplain #getRegisterRefMap() stack slots} in the current frame</li>
+ * <li>a reference map for {@linkplain #getFrameRefMap() stack slots} in the current frame</li>
  * <li>a map from bytecode locals and operand stack slots to their values or locations from which
  * their values can be read</li>
  * <li>a map from the registers (in the caller's frame) to the slots where they are saved in the
