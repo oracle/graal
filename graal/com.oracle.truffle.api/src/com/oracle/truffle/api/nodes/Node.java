@@ -33,11 +33,6 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
  */
 public abstract class Node implements Cloneable {
 
-    /**
-     * Utility constant representing an empty node array.
-     */
-    public static final Node[] EMPTY_ARRAY = new Node[0];
-
     private Node parent;
 
     private SourceSection sourceSection;
@@ -190,6 +185,22 @@ public abstract class Node implements Cloneable {
      */
     public final <T extends Node> T replace(T newNode) {
         return replace(newNode, "");
+    }
+
+    /**
+     * Checks if this node is properly adopted by a parent and can be replaced.
+     * 
+     * @return {@code true} if it is safe to replace this node.
+     */
+    public final boolean isReplaceable() {
+        if (getParent() != null) {
+            for (Node sibling : getParent().getChildren()) {
+                if (sibling == this) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
