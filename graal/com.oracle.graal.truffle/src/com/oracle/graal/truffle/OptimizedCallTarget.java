@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.*;
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold.
  */
-public final class OptimizedCallTarget extends DefaultCallTarget implements LoopCountReceiver, FrameFactory {
+public final class OptimizedCallTarget extends DefaultCallTarget implements FrameFactory, LoopCountReceiver, ReplaceObserver {
 
     private static final PrintStream OUT = TTY.out().out();
     private static final int MIN_INVOKES_AFTER_INLINING = 2;
@@ -57,16 +57,15 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
 
     private InstalledCode compiledMethod;
     private final TruffleCompiler compiler;
+
     private int invokeCounter;
     private int originalInvokeCounter;
     private int loopAndInvokeCounter;
     private boolean disableCompilation;
 
-    // TruffleProfiling
     private int callCount;
     private int invalidationCount;
-
-    // TraceTruffleCompilation
+    private int replaceCount;
     long timeCompilationStarted;
     long timePartialEvaluationFinished;
     long timeCompilationFinished;
@@ -100,7 +99,8 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
             originalInvokeCounter += invalidationReprofileCount;
         }
         if (TraceTruffleCompilation.getValue()) {
-            OUT.printf("[truffle] invalidated %-48s |Alive %5.0fms |Inv %d\n", rootNode, (System.nanoTime() - timeCompilationFinished) / 1e6, invalidationCount);
+            OUT.printf("[truffle] invalidated %-48s |Alive %5.0fms |Inv# %d                                     |Replace# %d\n", rootNode, (System.nanoTime() - timeCompilationFinished) / 1e6,
+                            invalidationCount, replaceCount);
         }
         return call(caller, args);
     }
@@ -112,15 +112,19 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
         if (disableCompilation || loopAndInvokeCounter > 0 || invokeCounter > 0) {
             return executeHelper(caller, args);
         } else {
-            if (TruffleFunctionInlining.getValue() && inline()) {
-                invokeCounter = MIN_INVOKES_AFTER_INLINING;
-                int inliningReprofileCount = TruffleInliningReprofileCount.getValue();
-                loopAndInvokeCounter = inliningReprofileCount;
-                originalInvokeCounter = inliningReprofileCount;
-            } else {
-                compile();
-            }
+            compileOrInline();
             return call(caller, args);
+        }
+    }
+
+    private void compileOrInline() {
+        if (TruffleFunctionInlining.getValue() && inline()) {
+            invokeCounter = MIN_INVOKES_AFTER_INLINING;
+            int inliningReprofileCount = TruffleInliningReprofileCount.getValue();
+            loopAndInvokeCounter = inliningReprofileCount;
+            originalInvokeCounter = inliningReprofileCount;
+        } else {
+            compile();
         }
     }
 
@@ -181,6 +185,17 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     @Override
     public void reportLoopCount(int count) {
         loopAndInvokeCounter -= count;
+    }
+
+    @Override
+    public void nodeReplaced() {
+        replaceCount++;
+
+        // delay compilation until tree is deemed stable enough
+        int replaceBackoff = Math.min(TruffleInvalidationReprofileCount.getValue(), TruffleCompilationThreshold.getValue());
+        if (invokeCounter < replaceBackoff) {
+            invokeCounter = replaceBackoff;
+        }
     }
 
     private static class InliningHelper {
