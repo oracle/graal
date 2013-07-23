@@ -54,13 +54,11 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.SwitchRangesOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
 import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
-import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
@@ -94,6 +92,32 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public boolean canStoreConstant(Constant c) {
+        // SPARC can only store integer null constants (via g0)
+        switch (c.getKind()) {
+            case Float:
+            case Double:
+                return false;
+            default:
+                return c.isNull();
+        }
+    }
+
+    @Override
+    public boolean canInlineConstant(Constant c) {
+        switch (c.getKind()) {
+            case Int:
+                return SPARCAssembler.isSimm13(c.asInt()) && !runtime.needsDataPatch(c);
+            case Long:
+                return SPARCAssembler.isSimm13(c.asLong()) && !runtime.needsDataPatch(c);
+            case Object:
+                return c.isNull();
+            default:
+                return true;
+        }
+    }
+
+    @Override
     public Variable emitMove(Value input) {
         Variable result = newVariable(input.getKind());
         emitMove(result, input);
@@ -114,6 +138,87 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitMove(AllocatableValue dst, Value src) {
         append(createMove(dst, src));
+    }
+
+    @Override
+    public SPARCAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
+        AllocatableValue baseRegister;
+        long finalDisp = displacement;
+        if (isConstant(base)) {
+            if (asConstant(base).isNull()) {
+                baseRegister = Value.ILLEGAL;
+            } else if (asConstant(base).getKind() != Kind.Object) {
+                finalDisp += asConstant(base).asLong();
+                baseRegister = Value.ILLEGAL;
+            } else {
+                baseRegister = load(base);
+            }
+        } else {
+            baseRegister = asAllocatable(base);
+        }
+
+        AllocatableValue indexRegister;
+        if (!index.equals(Value.ILLEGAL) && scale != 0) {
+            if (isConstant(index)) {
+                finalDisp += asConstant(index).asLong() * scale;
+                indexRegister = Value.ILLEGAL;
+            } else {
+                if (scale != 1) {
+                    Variable longIndex = newVariable(Kind.Long);
+                    emitMove(longIndex, index);
+                    indexRegister = emitMul(longIndex, Constant.forLong(scale));
+                } else {
+                    indexRegister = asAllocatable(index);
+                }
+
+                // if (baseRegister.equals(Value.ILLEGAL)) {
+                // baseRegister = asAllocatable(indexRegister);
+                // } else {
+                // Variable newBase = newVariable(Kind.Long);
+                // emitMove(newBase, baseRegister);
+                // baseRegister = newBase;
+                // baseRegister = emitAdd(baseRegister, indexRegister);
+                // }
+            }
+        } else {
+            indexRegister = Value.ILLEGAL;
+        }
+
+        int displacementInt;
+
+        // If we don't have an index register we can use a displacement, otherwise load the
+        // displacement into a register and add it to the base.
+        if (indexRegister.equals(Value.ILLEGAL)) {
+            // TODO What if displacement if too big?
+            displacementInt = (int) finalDisp;
+        } else {
+            displacementInt = 0;
+            AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
+            if (baseRegister.equals(Value.ILLEGAL)) {
+                baseRegister = displacementRegister;
+            } else {
+                Variable longBase = newVariable(Kind.Long);
+                emitMove(longBase, baseRegister);
+                baseRegister = emitAdd(longBase, displacementRegister);
+            }
+        }
+
+        return new SPARCAddressValue(target().wordKind, baseRegister, indexRegister, displacementInt);
+    }
+
+    protected SPARCAddressValue asAddressValue(Value address) {
+        if (address instanceof SPARCAddressValue) {
+            return (SPARCAddressValue) address;
+        } else {
+            return emitAddress(address, 0, Value.ILLEGAL, 0);
+        }
+    }
+
+    @Override
+    public Value emitAddress(StackSlot address) {
+        Variable result = newVariable(target().wordKind);
+        append(new StackLoadAddressOp(result, address));
+        return result;
     }
 
     @Override
@@ -267,7 +372,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        throw new InternalError("NYI");
+        long maxOffset = linkage.getMaxCallTargetOffset();
+        if (SPARCAssembler.isWordDisp30(maxOffset)) {
+            append(new SPARCCall.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
+        } else {
+            append(new SPARCCall.DirectFarForeignCallOp(this, linkage, result, arguments, temps, info));
+        }
     }
 
     @Override
@@ -351,121 +461,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitByteSwap(Variable result, Value input) {
         append(new SPARCByteSwapOp(result, input));
-    }
-
-    @Override
-    public boolean canInlineConstant(Constant c) {
-        switch (c.getKind()) {
-            case Int:
-                return SPARCAssembler.isSimm13(c.asInt()) && !runtime.needsDataPatch(c);
-            case Long:
-                return SPARCAssembler.isSimm13(c.asLong()) && !runtime.needsDataPatch(c);
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
-    }
-
-    @Override
-    public boolean canStoreConstant(Constant c) {
-        throw new InternalError("NYI");
-    }
-
-    @Override
-    public SPARCAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
-        AllocatableValue baseRegister;
-        long finalDisp = displacement;
-        if (isConstant(base)) {
-            if (asConstant(base).isNull()) {
-                baseRegister = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object) {
-                finalDisp += asConstant(base).asLong();
-                baseRegister = Value.ILLEGAL;
-            } else {
-                baseRegister = load(base);
-            }
-        } else {
-            baseRegister = asAllocatable(base);
-        }
-
-        AllocatableValue indexRegister;
-        if (!index.equals(Value.ILLEGAL) && scale != 0) {
-            if (isConstant(index)) {
-                finalDisp += asConstant(index).asLong() * scale;
-                indexRegister = Value.ILLEGAL;
-            } else {
-                if (scale != 1) {
-                    Variable longIndex = newVariable(Kind.Long);
-                    emitMove(longIndex, index);
-                    indexRegister = emitMul(longIndex, Constant.forLong(scale));
-                } else {
-                    indexRegister = asAllocatable(index);
-                }
-
-// if (baseRegister.equals(Value.ILLEGAL)) {
-// baseRegister = asAllocatable(indexRegister);
-// } else {
-// Variable newBase = newVariable(Kind.Long);
-// emitMove(newBase, baseRegister);
-// baseRegister = newBase;
-// baseRegister = emitAdd(baseRegister, indexRegister);
-// }
-            }
-        } else {
-            indexRegister = Value.ILLEGAL;
-        }
-
-        int displacementInt;
-
-        // If we don't have an index register we can use a displacement, otherwise load the
-        // displacement into a register and add it to the base.
-        if (indexRegister.equals(Value.ILLEGAL)) {
-            // TODO What if displacement if too big?
-            displacementInt = (int) finalDisp;
-        } else {
-            displacementInt = 0;
-            AllocatableValue displacementRegister = load(Constant.forLong(finalDisp));
-            if (baseRegister.equals(Value.ILLEGAL)) {
-                baseRegister = displacementRegister;
-            } else {
-                Variable longBase = newVariable(Kind.Long);
-                emitMove(longBase, baseRegister);
-                baseRegister = emitAdd(longBase, displacementRegister);
-            }
-        }
-
-        return new SPARCAddressValue(target().wordKind, baseRegister, indexRegister, displacementInt);
-    }
-
-    private SPARCAddressValue asAddress(Value address) {
-        if (address instanceof SPARCAddressValue) {
-            return (SPARCAddressValue) address;
-        } else {
-            return emitAddress(address, 0, Value.ILLEGAL, 0);
-        }
-    }
-
-    @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
-        SPARCAddressValue loadAddress = asAddress(address);
-        Variable result = newVariable(kind);
-        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
-        return result;
-    }
-
-    @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
-        SPARCAddressValue storeAddress = asAddress(address);
-        Variable input = load(inputVal);
-        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
-    }
-
-    @Override
-    public Value emitAddress(StackSlot address) {
-        Variable result = newVariable(target().wordKind);
-        append(new StackLoadAddressOp(result, address));
-        return result;
     }
 
     @Override
@@ -680,7 +675,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new Op2Stack(ISHL, result, a, loadNonConst(b)));
                 break;
             case Long:
-                append(new Op1Stack(LSHL, result, loadNonConst(b)));
+                append(new Op2Stack(LSHL, result, a, loadNonConst(b)));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -696,7 +691,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
                 append(new Op2Stack(ISHR, result, a, loadNonConst(b)));
                 break;
             case Long:
-                append(new Op1Stack(LSHR, result, loadNonConst(b)));
+                append(new Op2Stack(LSHR, result, a, loadNonConst(b)));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

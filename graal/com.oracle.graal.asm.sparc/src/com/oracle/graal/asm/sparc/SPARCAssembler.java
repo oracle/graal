@@ -395,7 +395,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
 
         public void verify() {
-            assert (disp30 & DISP30_MASK) == 0;
+            assert isDisp30(disp30) : disp30;
         }
     }
 
@@ -1316,15 +1316,41 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         return x & ((1 << nbits) - 1);
     }
 
-    private static final int max13 = ((1 << 12) - 1);
-    private static final int min13 = -(1 << 12);
-
-    public static boolean isSimm13(int src) {
-        return min13 <= src && src <= max13;
+    /**
+     * Minimum value for signed immediate ranges.
+     */
+    public static long minSimm(long nbits) {
+        return -(1L << (nbits - 1));
     }
 
-    public static boolean isSimm13(long src) {
-        return NumUtil.isInt(src) && min13 <= src && src <= max13;
+    /**
+     * Maximum value for signed immediate ranges.
+     */
+    public static long maxSimm(long nbits) {
+        return (1L << (nbits - 1)) - 1;
+    }
+
+    /**
+     * Test if imm is within signed immediate range for nbits.
+     */
+    public static boolean isSimm(long imm, int nbits) {
+        return minSimm(nbits) <= imm && imm <= maxSimm(nbits);
+    }
+
+    public static boolean isSimm13(int imm) {
+        return isSimm(imm, 13);
+    }
+
+    public static boolean isSimm13(long imm) {
+        return NumUtil.isInt(imm) && isSimm(imm, 13);
+    }
+
+    public static boolean isDisp30(long imm) {
+        return isSimm(imm, 30);
+    }
+
+    public static boolean isWordDisp30(long imm) {
+        return isSimm(imm, 30 + 2);
     }
 
     public static final int hi22(int x) {

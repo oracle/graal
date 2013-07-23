@@ -264,6 +264,51 @@ public class SPARCMove {
         }
     }
 
+    public static class StoreConstantOp extends MemOp {
+
+        protected final Constant input;
+        private final boolean compress;
+
+        public StoreConstantOp(Kind kind, SPARCAddressValue address, Constant input, LIRFrameState state, boolean compress) {
+            super(kind, address, state);
+            this.input = input;
+            this.compress = compress;
+            if (input.isNonNull()) {
+                throw GraalInternalError.shouldNotReachHere("Can only store null constants to memory");
+            }
+        }
+
+        @Override
+        public void emitMemAccess(SPARCMacroAssembler masm) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                    new Stb(g0, address.toAddress()).emit(masm);
+                    break;
+                case Char:
+                case Short:
+                    new Sth(g0, address.toAddress()).emit(masm);
+                    break;
+                case Int:
+                    new Stw(g0, address.toAddress()).emit(masm);
+                    break;
+                case Long:
+                case Object:
+                    if (compress) {
+                        new Stw(g0, address.toAddress()).emit(masm);
+                    } else {
+                        new Stx(g0, address.toAddress()).emit(masm);
+                    }
+                    break;
+                case Float:
+                case Double:
+                    throw GraalInternalError.shouldNotReachHere("Cannot store float constants to memory");
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static void move(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
@@ -314,9 +359,11 @@ public class SPARCMove {
                 new Stw(asRegister(input), dest).emit(masm);
                 break;
             case Long:
+            case Object:
+                new Stx(asRegister(input), dest).emit(masm);
+                break;
             case Float:
             case Double:
-            case Object:
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -342,21 +389,25 @@ public class SPARCMove {
             case Int:
                 if (tasm.runtime.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
+                    new Setuw(input.asInt(), asRegister(result)).emit(masm);
+                } else {
+                    if (input.isDefaultForKind()) {
+                        new Clr(asRegister(result)).emit(masm);
+                    } else {
+                        new Setuw(input.asInt(), asRegister(result)).emit(masm);
+                    }
                 }
-                new Setuw(input.asInt(), asRegister(result)).emit(masm);
                 break;
             case Long: {
                 if (tasm.runtime.needsDataPatch(input)) {
-                    new Nop().emit(masm);
                     tasm.recordDataReferenceInCode(input, 0, true);
                     new Setx(input.asLong(), asRegister(result), true).emit(masm);
-                    new Nop().emit(masm);
                 } else {
-                    new Nop().emit(masm);
-                    new Nop().emit(masm);
-                    new Setx(input.asLong(), asRegister(result)).emit(masm);
-                    new Nop().emit(masm);
-                    new Nop().emit(masm);
+                    if (input.isDefaultForKind()) {
+                        new Clr(asRegister(result)).emit(masm);
+                    } else {
+                        new Setx(input.asLong(), asRegister(result)).emit(masm);
+                    }
                 }
                 break;
             }

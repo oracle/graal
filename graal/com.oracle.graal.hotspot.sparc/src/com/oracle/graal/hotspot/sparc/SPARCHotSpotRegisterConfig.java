@@ -95,14 +95,16 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         // @formatter:off
         if (reserveForHeapBase) {
             registers = new Register[] {
-                    // TODO this is not complete
+                        // TODO this is not complete
+                        o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ i7,
                         f0, f1, f2, f3, f4, f5, f6, f7
                       };
         } else {
             registers = new Register[] {
-                    // TODO this is not complete
+                        // TODO this is not complete
+                        o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
                         l0, l1, l2, l3, l4, l5, l6, l7,
                         i0, i1, i2, i3, i4, i5, /*i6,*/ i7,
                         f0, f1, f2, f3, f4, f5, f6, f7
