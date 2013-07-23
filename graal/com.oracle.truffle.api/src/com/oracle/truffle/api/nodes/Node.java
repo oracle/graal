@@ -211,6 +211,12 @@ public abstract class Node implements Cloneable {
      * @param reason the reason the replace supplied
      */
     protected void onReplace(Node newNode, String reason) {
+        RootNode rootNode = NodeUtil.findParent(this, RootNode.class);
+        if (rootNode != null) {
+            if (rootNode.getCallTarget() instanceof ReplaceObserver) {
+                ((ReplaceObserver) rootNode.getCallTarget()).nodeReplaced();
+            }
+        }
         if (TruffleOptions.TraceRewrites) {
             Class<? extends Node> from = getClass();
             Class<? extends Node> to = newNode.getClass();
