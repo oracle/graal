@@ -35,6 +35,9 @@ public class OptimizedCallTargetSubstitutions {
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
     public static native Object interpreterCall(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object compiledCodeInvalidated(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+
     @MethodSubstitution
     private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
         return NewFrameNode.allocate(descriptor, caller, args);

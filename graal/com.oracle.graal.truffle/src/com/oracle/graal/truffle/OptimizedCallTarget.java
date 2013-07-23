@@ -90,6 +90,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     }
 
     private Object compiledCodeInvalidated(PackedFrame caller, Arguments args) {
+        CompilerAsserts.neverPartOfCompilation();
         compiledMethod = null;
         int invalidationReprofileCount = TruffleInvalidationReprofileCount.getValue();
         invokeCounter = invalidationReprofileCount;
@@ -103,6 +104,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Loop
     }
 
     private Object interpreterCall(PackedFrame caller, Arguments args) {
+        CompilerAsserts.neverPartOfCompilation();
         invokeCounter--;
         loopAndInvokeCounter--;
         if (disableCompilation || loopAndInvokeCounter > 0 || invokeCounter > 0) {
