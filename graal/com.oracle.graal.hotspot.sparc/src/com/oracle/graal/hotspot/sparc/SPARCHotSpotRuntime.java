@@ -76,7 +76,7 @@ public class SPARCHotSpotRuntime extends HotSpotRuntime {
 
     @Override
     public Register stackPointerRegister() {
-        throw new InternalError("NYI: SPARC: Define stack pointer register.");
+        return sp;
     }
 
     @Override

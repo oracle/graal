@@ -377,7 +377,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
             }
             for (DataPatch site : compResult.getDataReferences()) {
-                hcf.addOperandComment(site.pcOffset, "{" + site.constant + "}");
+                hcf.addOperandComment(site.pcOffset, "{" + site.getDataString() + "}");
             }
             for (Mark mark : compResult.getMarks()) {
                 hcf.addComment(mark.pcOffset, getMarkName(mark));

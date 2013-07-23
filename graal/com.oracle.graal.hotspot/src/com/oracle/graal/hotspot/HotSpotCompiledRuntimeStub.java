@@ -51,8 +51,10 @@ public final class HotSpotCompiledRuntimeStub extends HotSpotCompiledCode {
         assert compResult.getExceptionHandlers().isEmpty();
         for (DataPatch data : compResult.getDataReferences()) {
             Constant constant = data.constant;
-            assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
-            assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
+            if (constant != null) {
+                assert constant.getKind() != Kind.Object : this + " cannot have embedded object constant: " + constant;
+                assert constant.getPrimitiveAnnotation() == null : this + " cannot have embedded metadata: " + constant;
+            }
         }
         for (Infopoint infopoint : compResult.getInfopoints()) {
             assert infopoint instanceof Call : this + " cannot have non-call infopoint: " + infopoint;
