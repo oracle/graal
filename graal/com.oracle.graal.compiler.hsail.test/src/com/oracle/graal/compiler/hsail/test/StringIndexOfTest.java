@@ -23,29 +23,37 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
+import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
 import org.junit.Test;
 
 /**
- * Tests 2D array access for Matrix Multiplication.
+ * Tests codegen for String.indexOf().
  */
-public class Float2DMatrixMultiplyTest extends Float2DMatrixBase {
+public class StringIndexOfTest extends GraalKernelTester {
 
-    int range = 20;
+    static final int NUM = 20;
+    @Result public int[] outArray = new int[NUM];
+    public String[] inArray = new String[NUM];
 
-    public void run(int gid) {
-        for (int j = 0; j < range; j++) {
-            float sum = 0;
-            for (int k = 0; k < range; k++) {
-                sum += (matrixA[gid][k] * matrixB[k][j]);
-            }
-            outMatrix[gid][j] = sum;
+    void setupArrays() {
+        char[] chars = new char[100];
+        for (int i = 0; i < chars.length; i++) {
+            chars[i] = (char) ('A' + i);
         }
+        for (int i = 0; i < NUM; i++) {
+            inArray[i] = new String(chars, i, 10);
+        }
+    }
+
+    public void run(String base, int gid) {
+        outArray[gid] = inArray[gid].indexOf(base);
     }
 
     @Override
     public void runTest() {
-        setupArrays(range);
-        dispatchMethodKernel(range);
+        setupArrays();
+        String base = "CDE";
+        dispatchMethodKernel(NUM, base);
     }
 
     @Test

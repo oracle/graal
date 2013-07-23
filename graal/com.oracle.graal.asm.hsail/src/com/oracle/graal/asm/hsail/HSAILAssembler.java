@@ -108,8 +108,8 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitString(instr + " " + HSAIL.mapRegister(reg) + ", " + mapAddress(addr) + ";");
     }
 
-    public final void emitLoad(Value dest, HSAILAddress addr) {
-        emitLoad(dest, addr, getArgType(dest));
+    public final void emitLoad(Kind kind, Value dest, HSAILAddress addr) {
+        emitLoad(dest, addr, getArgTypeFromKind(kind));
     }
 
     public final void emitLoad(Value dest, HSAILAddress addr, String argTypeStr) {
@@ -120,8 +120,8 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitAddrOp("lda_global_u64", dest, addr);
     }
 
-    public final void emitStore(Value src, HSAILAddress addr) {
-        emitStore(src, addr, getArgType(src));
+    public final void emitStore(Kind kind, Value src, HSAILAddress addr) {
+        emitStore(src, addr, getArgTypeFromKind(kind));
     }
 
     public final void emitStore(Value dest, HSAILAddress addr, String argTypeStr) {
@@ -175,8 +175,12 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     public static final String getArgType(Value src) {
+        return getArgTypeFromKind(src.getKind());
+    }
+
+    private static String getArgTypeFromKind(Kind kind) {
         String prefix = "";
-        switch (src.getKind()) {
+        switch (kind) {
             case Float:
                 prefix = "f32";
                 break;
@@ -191,6 +195,15 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
                 break;
             case Object:
                 prefix = "u64";
+                break;
+            case Char:
+                prefix = "u16";
+                break;
+            case Short:
+                prefix = "s16";
+                break;
+            case Byte:
+                prefix = "s8";
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();

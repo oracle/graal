@@ -24,32 +24,34 @@
 package com.oracle.graal.compiler.hsail.test;
 
 import org.junit.Test;
+import static org.junit.Assume.*;
 
 /**
- * Tests 2D array access for Matrix Multiplication.
+ * Tests codegen for String.contains() but with a wrapper method such as one would get in the
+ * IntConsumer.accept calls.
  */
-public class Float2DMatrixMultiplyTest extends Float2DMatrixBase {
+public class StringContainsAcceptTest extends StringContainsTest {
 
-    int range = 20;
+    String base = "CDE";
 
+    // the accept method which "captured" the base
     public void run(int gid) {
-        for (int j = 0; j < range; j++) {
-            float sum = 0;
-            for (int k = 0; k < range; k++) {
-                sum += (matrixA[gid][k] * matrixB[k][j]);
-            }
-            outMatrix[gid][j] = sum;
-        }
+        super.run(base, gid);
     }
 
     @Override
     public void runTest() {
-        setupArrays(range);
-        dispatchMethodKernel(range);
+        setupArrays();
+
+        dispatchMethodKernel(NUM);
     }
 
+    // fails on 3rd workitem
     @Test
+    @Override
     public void test() {
+        assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
         testGeneratedHsail();
     }
+
 }
