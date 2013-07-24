@@ -42,7 +42,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
 
     /**
      * Constants for specifying whether a foreign call destroys or preserves registers. A foreign
-     * call will always destroy {@link HotSpotForeignCallLinkage#getCallingConvention() its}
+     * call will always destroy {@link HotSpotForeignCallLinkage#getOutgoingCallingConvention() its}
      * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     public enum RegisterEffect {
@@ -81,7 +81,13 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     /**
      * The calling convention for this call.
      */
-    private final CallingConvention cc;
+    private final CallingConvention outgoingCallingConvention;
+
+    /**
+     * The calling convention for incoming arguments to the stub, iff this call uses a compiled
+     * {@linkplain Stub stub}.
+     */
+    private final CallingConvention incomingCallingConvention;
 
     private final RegisterEffect effect;
 
@@ -106,17 +112,19 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * @param address the address of the code to call
      * @param effect specifies if the call destroys or preserves all registers (apart from
      *            temporaries which are always destroyed)
-     * @param ccType calling convention type
+     * @param outgoingCcType outgoing (caller) calling convention type
+     * @param incomingCcType incoming (callee) calling convention type
      * @param transition specifies if this is a {@linkplain #canDeoptimize() leaf} call
      * @param reexecutable specifies if the call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a call that cannot be
      *            re-executed.
      * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type ccType, Transition transition, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
-        CallingConvention targetCc = createCallingConvention(descriptor, ccType);
-        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, targetCc, reexecutable, killedLocations);
+    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition,
+                    boolean reexecutable, LocationIdentity... killedLocations) {
+        CallingConvention outgoingCc = createCallingConvention(descriptor, outgoingCcType);
+        CallingConvention incomingCc = createCallingConvention(descriptor, incomingCcType);
+        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
     }
 
     /**
@@ -142,13 +150,14 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         }
     }
 
-    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention cc, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
+    public HotSpotForeignCallLinkage(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Transition transition, CallingConvention outgoingCallingConvention,
+                    CallingConvention incomingCallingConvention, boolean reexecutable, LocationIdentity... killedLocations) {
         this.address = address;
         this.effect = effect;
         this.transition = transition;
         this.descriptor = descriptor;
-        this.cc = cc;
+        this.outgoingCallingConvention = outgoingCallingConvention;
+        this.incomingCallingConvention = incomingCallingConvention;
         this.reexecutable = reexecutable;
         this.killedLocations = killedLocations;
     }
@@ -156,7 +165,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(stub == null ? descriptor.toString() : stub.toString());
-        sb.append("@0x").append(Long.toHexString(address)).append(':').append(cc);
+        sb.append("@0x").append(Long.toHexString(address)).append(':').append(outgoingCallingConvention).append(":").append(incomingCallingConvention);
         if (temporaries != null && temporaries.length != 0) {
             sb.append("; temps=");
             String sep = "";
@@ -176,8 +185,12 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         return killedLocations;
     }
 
-    public CallingConvention getCallingConvention() {
-        return cc;
+    public CallingConvention getOutgoingCallingConvention() {
+        return outgoingCallingConvention;
+    }
+
+    public CallingConvention getIncomingCallingConvention() {
+        return incomingCallingConvention;
     }
 
     public Value[] getTemporaries() {

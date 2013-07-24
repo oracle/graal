@@ -207,7 +207,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
      * @param killedLocations the memory locations killed by the stub call
      */
     protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
-        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
     }
 
     /**
@@ -222,7 +222,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
         assert transition == LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, ccType, transition, reexecutable, killedLocations));
     }
 
     private static void link(Stub stub) {

@@ -355,7 +355,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitUnwind(Value exception) {
         ForeignCallLinkage linkage = getRuntime().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention linkageCc = linkage.getCallingConvention();
+        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
         assert linkageCc.getArgumentCount() == 2;
         RegisterValue exceptionParameter = (RegisterValue) linkageCc.getArgument(0);
         emitMove(exceptionParameter, exception);
@@ -381,7 +381,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = getRuntime().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
-        CallingConvention linkageCc = linkage.getCallingConvention();
+        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
         assert linkageCc.getArgumentCount() == 2;
         RegisterValue exceptionFixed = (RegisterValue) linkageCc.getArgument(0);
         RegisterValue exceptionPcFixed = (RegisterValue) linkageCc.getArgument(1);

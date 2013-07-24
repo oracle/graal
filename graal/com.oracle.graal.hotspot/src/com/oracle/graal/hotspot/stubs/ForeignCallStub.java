@@ -86,11 +86,11 @@ public class ForeignCallStub extends Stub {
      */
     public ForeignCallStub(HotSpotRuntime runtime, Replacements replacements, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCallee, transition, reexecutable, killedLocations));
+        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
-        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, transition, reexecutable, killedLocations);
+        target = HotSpotForeignCallLinkage.create(targetSig, address, DESTROYS_REGISTERS, NativeCall, NativeCall, transition, reexecutable, killedLocations);
     }
 
     /**
@@ -220,7 +220,7 @@ public class ForeignCallStub extends Stub {
     @Override
     protected StructuredGraph getGraph() {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
-        boolean isObjectResult = linkage.getCallingConvention().getReturn().getKind() == Kind.Object;
+        boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
         GraphBuilder builder = new GraphBuilder(this);
         LocalNode[] locals = createLocals(builder, args);
 

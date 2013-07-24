@@ -603,7 +603,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         LIRFrameState state = !linkage.canDeoptimize() ? null : stateFor(info.getDeoptimizationState(), info.getDeoptimizationReason());
 
         // move the arguments into the correct location
-        CallingConvention linkageCc = linkage.getCallingConvention();
+        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
         frameMap.callsMethod(linkageCc);
         assert linkageCc.getArgumentCount() == args.length : "argument count mismatch";
         Value[] argLocations = new Value[args.length];
