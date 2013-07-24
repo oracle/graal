@@ -89,7 +89,7 @@ public class NewInstanceStub extends SnippetStub {
     private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), LocationIdentity.FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
-            if (hub.readInt(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
+            if (hub.readByte(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
                 Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
@@ -137,21 +137,21 @@ public class NewInstanceStub extends SnippetStub {
         Word end = readTlabEnd(thread);
 
         // calculate amount of free space
-        Word tlabFreeSpaceInBytes = end.subtract(top);
+        long tlabFreeSpaceInBytes = end.subtract(top).rawValue();
 
         if (log) {
             printf("refillTLAB: thread=%p\n", thread.rawValue());
             printf("refillTLAB: top=%p\n", top.rawValue());
             printf("refillTLAB: end=%p\n", end.rawValue());
-            printf("refillTLAB: tlabFreeSpaceInBytes=%d\n", tlabFreeSpaceInBytes.rawValue());
+            printf("refillTLAB: tlabFreeSpaceInBytes=%ld\n", tlabFreeSpaceInBytes);
         }
 
-        Word tlabFreeSpaceInWords = tlabFreeSpaceInBytes.unsignedShiftRight(log2WordSize());
+        long tlabFreeSpaceInWords = tlabFreeSpaceInBytes >>> log2WordSize();
 
         // Retain TLAB and allocate object in shared space if
         // the amount free in the TLAB is too large to discard.
         Word refillWasteLimit = thread.readWord(tlabRefillWasteLimitOffset(), TLAB_REFILL_WASTE_LIMIT_LOCATION);
-        if (tlabFreeSpaceInWords.belowOrEqual(refillWasteLimit)) {
+        if (tlabFreeSpaceInWords <= refillWasteLimit.rawValue()) {
             if (tlabStats()) {
                 // increment number of refills
                 thread.writeInt(tlabNumberOfRefillsOffset(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION) + 1, TLAB_NOF_REFILLS_LOCATION);
@@ -159,11 +159,11 @@ public class NewInstanceStub extends SnippetStub {
                     printf("thread: %p -- number_of_refills %d\n", thread.rawValue(), thread.readInt(tlabNumberOfRefillsOffset(), TLAB_NOF_REFILLS_LOCATION));
                 }
                 // accumulate wastage
-                Word wastage = thread.readWord(tlabFastRefillWasteOffset(), TLAB_FAST_REFILL_WASTE_LOCATION).add(tlabFreeSpaceInWords);
+                int wastage = thread.readInt(tlabFastRefillWasteOffset(), TLAB_FAST_REFILL_WASTE_LOCATION) + (int) tlabFreeSpaceInWords;
                 if (log) {
-                    printf("thread: %p -- accumulated wastage %d\n", thread.rawValue(), wastage.rawValue());
+                    printf("thread: %p -- accumulated wastage %d\n", thread.rawValue(), wastage);
                 }
-                thread.writeWord(tlabFastRefillWasteOffset(), wastage, TLAB_FAST_REFILL_WASTE_LOCATION);
+                thread.writeInt(tlabFastRefillWasteOffset(), wastage, TLAB_FAST_REFILL_WASTE_LOCATION);
             }
 
             // if TLAB is currently allocated (top or end != null) then
@@ -172,13 +172,13 @@ public class NewInstanceStub extends SnippetStub {
                 int headerSize = arrayBaseOffset(Kind.Int);
                 // just like the HotSpot assembler stubs, assumes that tlabFreeSpaceInInts fits in
                 // an int
-                int tlabFreeSpaceInInts = (int) tlabFreeSpaceInBytes.rawValue() >>> 2;
+                int tlabFreeSpaceInInts = (int) tlabFreeSpaceInBytes >>> 2;
                 int length = ((alignmentReserveInBytes - headerSize) >>> 2) + tlabFreeSpaceInInts;
                 NewObjectSnippets.formatArray(intArrayHub, -1, length, headerSize, top, intArrayMarkWord, false);
 
-                Word allocated = thread.readWord(threadAllocatedBytesOffset(), TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
-                allocated = allocated.add(top.subtract(readTlabStart(thread)));
-                thread.writeWord(threadAllocatedBytesOffset(), allocated, TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
+                long allocated = thread.readLong(threadAllocatedBytesOffset(), TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
+                allocated = allocated + top.subtract(readTlabStart(thread)).rawValue();
+                thread.writeLong(threadAllocatedBytesOffset(), allocated, TLAB_THREAD_ALLOCATED_BYTES_LOCATION);
             }
 
             // refill the TLAB with an eden allocation
