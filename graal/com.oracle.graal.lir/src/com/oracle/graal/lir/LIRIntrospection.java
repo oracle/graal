@@ -202,6 +202,8 @@ abstract class LIRIntrospection extends FieldIntrospection {
             return String.valueOf(unsafe.getFloat(obj, offset));
         } else if (type == double.class) {
             return String.valueOf(unsafe.getDouble(obj, offset));
+        } else if (type == byte.class) {
+            return String.valueOf(unsafe.getByte(obj, offset));
         } else if (!type.isPrimitive()) {
             Object value = unsafe.getObject(obj, offset);
             if (!type.isArray()) {
@@ -210,6 +212,8 @@ abstract class LIRIntrospection extends FieldIntrospection {
                 return Arrays.toString((int[]) value);
             } else if (type == double[].class) {
                 return Arrays.toString((double[]) value);
+            } else if (type == byte[].class) {
+                return Arrays.toString((byte[]) value);
             } else if (!type.getComponentType().isPrimitive()) {
                 return Arrays.toString((Object[]) value);
             }
