@@ -113,7 +113,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * @param effect specifies if the call destroys or preserves all registers (apart from
      *            temporaries which are always destroyed)
      * @param outgoingCcType outgoing (caller) calling convention type
-     * @param incomingCcType incoming (callee) calling convention type
+     * @param incomingCcType incoming (callee) calling convention type (can be null)
      * @param transition specifies if this is a {@linkplain #canDeoptimize() leaf} call
      * @param reexecutable specifies if the call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a call that cannot be
@@ -123,7 +123,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
         CallingConvention outgoingCc = createCallingConvention(descriptor, outgoingCcType);
-        CallingConvention incomingCc = createCallingConvention(descriptor, incomingCcType);
+        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(descriptor, incomingCcType);
         return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
     }
 
@@ -131,6 +131,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * Gets a calling convention for a given descriptor and call type.
      */
     public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
+        assert ccType != null;
         HotSpotRuntime runtime = graalRuntime().getRuntime();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];

@@ -201,9 +201,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     /**
      * Creates and registers the details for linking a foreign call to a {@link Stub}.
      * 
+     * @param descriptor the signature of the call to the stub
      * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
      *            effects. Deoptimization will not return to a point before a stub call that cannot
      *            be re-executed.
+     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
      * @param killedLocations the memory locations killed by the stub call
      */
     protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
@@ -213,16 +215,22 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     /**
      * Creates and registers the linkage for a foreign call.
      * 
-     * @param reexecutable specifies if the stub call can be re-executed without (meaningful) side
-     *            effects. Deoptimization will not return to a point before a stub call that cannot
-     *            be re-executed.
-     * @param killedLocations the memory locations killed by the stub call
+     * @param descriptor the signature of the foreign call
+     * @param address the address of the code to call
+     * @param outgoingCcType outgoing (caller) calling convention type
+     * @param effect specifies if the call destroys or preserves all registers (apart from
+     *            temporaries which are always destroyed)
+     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
+     * @param reexecutable specifies if the foreign call can be re-executed without (meaningful)
+     *            side effects. Deoptimization will not return to a point before a foreign call that
+     *            cannot be re-executed.
+     * @param killedLocations the memory locations killed by the foreign call
      */
-    protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type ccType, RegisterEffect effect, Transition transition,
+    protected HotSpotForeignCallLinkage registerForeignCall(ForeignCallDescriptor descriptor, long address, CallingConvention.Type outgoingCcType, RegisterEffect effect, Transition transition,
                     boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
         assert transition == LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, ccType, ccType, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
     private static void link(Stub stub) {
@@ -230,12 +238,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     /**
-     * Creates a {@linkplain ForeignCallStub stub} for a non-leaf foreign call.
+     * Creates a {@linkplain ForeignCallStub stub} for a foreign call.
      * 
-     * @param descriptor the signature of the call to this stub
-     * @param address the address of the code to call
+     * @param descriptor the signature of the call to the stub
+     * @param address the address of the foreign code to call
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
+     * @param transition specifies if this is a {@linkplain Transition#LEAF leaf} call
      * @param reexecutable specifies if the foreign call can be re-executed without (meaningful)
      *            side effects. Deoptimization will not return to a point before a foreign call that
      *            cannot be re-executed.

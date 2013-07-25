@@ -355,9 +355,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitUnwind(Value exception) {
         ForeignCallLinkage linkage = getRuntime().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
-        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        assert linkageCc.getArgumentCount() == 2;
-        RegisterValue exceptionParameter = (RegisterValue) linkageCc.getArgument(0);
+        CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
+        assert outgoingCc.getArgumentCount() == 2;
+        RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
         emitMove(exceptionParameter, exception);
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
@@ -381,10 +381,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = getRuntime().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
-        CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
-        assert linkageCc.getArgumentCount() == 2;
-        RegisterValue exceptionFixed = (RegisterValue) linkageCc.getArgument(0);
-        RegisterValue exceptionPcFixed = (RegisterValue) linkageCc.getArgument(1);
+        CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
+        assert outgoingCc.getArgumentCount() == 2;
+        RegisterValue exceptionFixed = (RegisterValue) outgoingCc.getArgument(0);
+        RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
         AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
