@@ -81,7 +81,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
         }
 
         public Fmt00a(Op2s op2, int imm22, Register rd) {
-            this(rd.encoding(), op2.getValue(), hi22(imm22));
+            this(rd.encoding(), op2.getValue(), imm22);
         }
 
         private int getInstructionBits() {

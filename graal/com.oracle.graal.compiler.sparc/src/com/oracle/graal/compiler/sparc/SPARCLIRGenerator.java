@@ -376,7 +376,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         if (SPARCAssembler.isWordDisp30(maxOffset)) {
             append(new SPARCCall.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
         } else {
-            append(new SPARCCall.DirectFarForeignCallOp(this, linkage, result, arguments, temps, info));
+            append(new SPARCCall.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
         }
     }
 

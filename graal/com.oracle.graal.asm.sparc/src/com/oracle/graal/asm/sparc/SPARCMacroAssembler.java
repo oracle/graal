@@ -353,13 +353,13 @@ public class SPARCMacroAssembler extends SPARCAssembler {
             final int startPc = masm.codeBuffer.position();
 
             if (hi == 0 && lo >= 0) {
-                new Sethi(lo, dst).emit(masm);
+                new Sethi(hi22(lo), dst).emit(masm);
             } else if (hi == -1) {
-                new Sethi(~lo, dst).emit(masm);
+                new Sethi(hi22(~lo), dst).emit(masm);
                 new Xor(dst, ~lo10(~0), dst).emit(masm);
             } else {
                 int shiftcnt = 0;
-                new Sethi(hi, dst).emit(masm);
+                new Sethi(hi22(hi), dst).emit(masm);
                 if ((hi & 0x3ff) != 0) {                                       // Any bits?
                     new Or(dst, hi & 0x3ff, dst).emit(masm);                   // msb 32-bits are now in lsb 32
                 }

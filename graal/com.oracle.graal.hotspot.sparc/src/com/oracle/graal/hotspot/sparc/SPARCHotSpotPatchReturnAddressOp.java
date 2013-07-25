@@ -50,6 +50,6 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
         // can patch the return address (see: frame::patch_pc).
         // int frameSize = tasm.frameMap.frameSize();
         // new Stx(asRegister(address), new SPARCAddress(sp, frameSize));
-        new Ldx(new SPARCAddress(g0, g0), g0).emit(masm);
+        new Ldx(new SPARCAddress(g0, 0x123), g0).emit(masm);
     }
 }

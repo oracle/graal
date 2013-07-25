@@ -23,36 +23,11 @@
 package com.oracle.graal.lir.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.asm.sparc.SPARCAssembler.*;
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
-import com.oracle.graal.asm.sparc.SPARCAssembler.And;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Faddd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fadds;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdivs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fdtoi;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuld;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fmuls;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fnegs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fstoi;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubd;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Fsubs;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Mulx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Or;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sdivx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sll;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sllx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sra;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srax;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srl;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Srlx;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Sub;
-import com.oracle.graal.asm.sparc.SPARCAssembler.Xor;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -323,9 +298,17 @@ public enum SPARCArithmetic {
                     assert isSimm13(tasm.asIntConst(src2));
                     new Mulx(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
+                case LAND:
+                    assert isSimm13(tasm.asIntConst(src2));
+                    new And(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    break;
+                case LOR:
+                    assert isSimm13(tasm.asIntConst(src2));
+                    new Or(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    break;
                 case LXOR:
                     assert isSimm13(tasm.asIntConst(src2));
-                    new Add(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    new Xor(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LSHL:
                     assert isSimm13(tasm.asIntConst(src2));
@@ -457,6 +440,9 @@ public enum SPARCArithmetic {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
+                case INEG:
+                    new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
+                    break;
                 case I2L:
                     new Sra(asIntReg(src), 0, asLongReg(dst)).emit(masm);
                     break;

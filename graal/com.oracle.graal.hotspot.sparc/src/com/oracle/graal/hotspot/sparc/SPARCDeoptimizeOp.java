@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,9 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import sun.misc.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -34,34 +34,35 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
 
-/**
- * Emits a safepoint poll.
- */
-@Opcode("SAFEPOINT")
-public class SPARCSafepointOp extends SPARCLIRInstruction {
+@Opcode("DEOPT")
+final class SPARCDeoptimizeOp extends SPARCLIRInstruction {
 
-    private static final Unsafe unsafe = Unsafe.getUnsafe();
+    private DeoptimizationAction action;
+    private DeoptimizationReason reason;
+    @State private LIRFrameState info;
 
-    @State protected LIRFrameState state;
-    @Temp({OperandFlag.REG}) private AllocatableValue temp;
-
-    private final HotSpotVMConfig config;
-
-    public SPARCSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
-        this.state = state;
-        this.config = config;
-        temp = tool.newVariable(tool.target().wordKind);
+    SPARCDeoptimizeOp(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
+        this.action = action;
+        this.reason = reason;
+        this.info = info;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        final int pos = masm.codeBuffer.position();
-        final int offset = SafepointPollOffset.getValue() % unsafe.pageSize();
-        Register scratch = ((RegisterValue) temp).getRegister();
-        new Setx(config.safepointPollingAddress + offset, scratch).emit(masm);
-        tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-        new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);
+        HotSpotGraalRuntime runtime = graalRuntime();
+        Register thread = runtime.getRuntime().threadRegister();
+        Register scratch = g3;
+        new Mov(tasm.runtime.encodeDeoptActionAndReason(action, reason), scratch).emit(masm);
+        new Stw(scratch, new SPARCAddress(thread, runtime.getConfig().pendingDeoptimizationOffset)).emit(masm);
+        // TODO the patched call address looks odd (and is invalid) compared to other runtime calls:
+// 0xffffffff749bb5fc: call 0xffffffff415a720c ; {runtime_call}
+// [Exception Handler]
+// 0xffffffff749bb604: call 0xffffffff749bb220 ; {runtime_call}
+// 0xffffffff749bb608: nop
+// [Deopt Handler Code]
+// 0xffffffff749bb60c: call 0xffffffff748da540 ; {runtime_call}
+// 0xffffffff749bb610: nop
+        SPARCCall.directCall(tasm, masm, tasm.runtime.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
     }
 }

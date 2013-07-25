@@ -26,6 +26,7 @@ import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.sparc.*;
 
 public class SPARCAddress extends AbstractAddress {
 
@@ -103,6 +104,9 @@ public class SPARCAddress extends AbstractAddress {
     }
 
     /**
+     * This method adds the stack-bias to the displacement if the base register is either
+     * {@link SPARC#sp} or {@link SPARC#fp}.
+     * 
      * @return Optional additive displacement.
      */
     public int getDisplacement() {

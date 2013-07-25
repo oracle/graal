@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,27 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.phases.GraalOptions.*;
-import sun.misc.*;
+import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
 
-/**
- * Emits a safepoint poll.
- */
-@Opcode("SAFEPOINT")
-public class SPARCSafepointOp extends SPARCLIRInstruction {
-
-    private static final Unsafe unsafe = Unsafe.getUnsafe();
-
-    @State protected LIRFrameState state;
-    @Temp({OperandFlag.REG}) private AllocatableValue temp;
-
-    private final HotSpotVMConfig config;
-
-    public SPARCSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
-        this.state = state;
-        this.config = config;
-        temp = tool.newVariable(tool.target().wordKind);
-    }
+@Opcode("CRUNTIME_CALL_EPILOGUE")
+final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        final int pos = masm.codeBuffer.position();
-        final int offset = SafepointPollOffset.getValue() % unsafe.pageSize();
-        Register scratch = ((RegisterValue) temp).getRegister();
-        new Setx(config.safepointPollingAddress + offset, scratch).emit(masm);
-        tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-        new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);
+        Register thread = graalRuntime().getRuntime().threadRegister();
+
+        // Restore the thread register when coming back from the runtime.
+        new Mov(l7, thread).emit(masm);
+
+        // Reset last Java frame.
+        new Stx(g0, new SPARCAddress(thread, graalRuntime().getConfig().threadLastJavaSpOffset)).emit(masm);
     }
 }

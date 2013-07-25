@@ -77,7 +77,9 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
 
     private final Register[] callerSaveRegisters = {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7};
-    private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3, i4, i5, i6, i7};
+// private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3,
+// i4, i5, i6, i7};
+    private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7};
 
     private final CalleeSaveLayout csl;
 
@@ -202,12 +204,16 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
         }
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(returnKind);
+        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : getReturnRegister(returnKind, type).asValue(returnKind);
         return new CallingConvention(currentStackOffset, returnLocation, locations);
     }
 
     @Override
     public Register getReturnRegister(Kind kind) {
+        return getReturnRegister(kind, Type.JavaCallee);
+    }
+
+    private static Register getReturnRegister(Kind kind, Type type) {
         switch (kind) {
             case Boolean:
             case Byte:
@@ -216,7 +222,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
             case Int:
             case Long:
             case Object:
-                return i0;
+                return type == Type.JavaCallee ? i0 : o0;
             case Float:
             case Double:
                 return f0;
