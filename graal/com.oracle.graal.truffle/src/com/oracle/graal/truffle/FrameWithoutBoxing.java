@@ -54,14 +54,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         this.tags = new byte[descriptor.getSize()];
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T extends Arguments> T getArguments(Class<T> clazz) {
-        return (T) unsafeCast(arguments, clazz);
-    }
-
-    private static Object unsafeCast(Object value, @SuppressWarnings("unused") Class clazz) {
-        return value;
+        return CompilerDirectives.unsafeCast(arguments, clazz);
     }
 
     @Override
@@ -212,6 +207,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private void verifySet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
         FrameSlotKind slotKind = slot.getKind();
         if (slotKind != accessKind) {
+            CompilerDirectives.transferToInterpreter();
             if (slotKind == FrameSlotKind.Illegal) {
                 slot.setKind(accessKind);
             } else {
@@ -229,6 +225,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
         FrameSlotKind slotKind = slot.getKind();
         if (slotKind != accessKind) {
+            CompilerDirectives.transferToInterpreter();
             if (slotKind == FrameSlotKind.Illegal && accessKind == FrameSlotKind.Object) {
                 slot.setKind(FrameSlotKind.Object);
                 this.setObject(slot, descriptor.getTypeConversion().getDefaultValue());

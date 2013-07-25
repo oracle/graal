@@ -27,7 +27,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.frame.*;
@@ -50,82 +49,79 @@ public class FrameWithoutBoxingSubstitutions {
         }
     }
 
-    @MacroSubstitution(macro = UnsafeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz);
-
     @SuppressWarnings("unused")
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static Object pack(FrameWithoutBoxing frame) {
         return null;
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static Object getObject(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Object);
         return getObjectUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setObject(FrameWithoutBoxing frame, FrameSlot slot, Object value) {
         verifySet(frame, slot, FrameSlotKind.Object);
         setObjectUnsafe(frame, slot, value);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static boolean getBoolean(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Boolean);
         return getBooleanUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setBoolean(FrameWithoutBoxing frame, FrameSlot slot, boolean value) {
         verifySet(frame, slot, FrameSlotKind.Boolean);
         setBooleanUnsafe(frame, slot, value);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static float getFloat(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Float);
         return getFloatUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setFloat(FrameWithoutBoxing frame, FrameSlot slot, float value) {
         verifySet(frame, slot, FrameSlotKind.Float);
         setFloatUnsafe(frame, slot, value);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static long getLong(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Long);
         return getLongUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setLong(FrameWithoutBoxing frame, FrameSlot slot, long value) {
         verifySet(frame, slot, FrameSlotKind.Long);
         setLongUnsafe(frame, slot, value);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static int getInt(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Int);
         return getIntUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setInt(FrameWithoutBoxing frame, FrameSlot slot, int value) {
         verifySet(frame, slot, FrameSlotKind.Int);
         setIntUnsafe(frame, slot, value);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static double getDouble(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Double);
         return getDoubleUnsafe(frame, slot);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static void setDouble(FrameWithoutBoxing frame, FrameSlot slot, double value) {
         verifySet(frame, slot, FrameSlotKind.Double);
         setDoubleUnsafe(frame, slot, value);
@@ -209,7 +205,7 @@ public class FrameWithoutBoxingSubstitutions {
         FrameSetNode.set(Kind.Byte, frame, slot, tag, TAGS_FIELD);
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static MaterializedFrame materialize(FrameWithoutBoxing frame) {
         return MaterializeFrameNode.materialize(frame);
     }
