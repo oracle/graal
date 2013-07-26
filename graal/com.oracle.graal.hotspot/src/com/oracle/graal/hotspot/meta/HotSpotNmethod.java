@@ -40,7 +40,7 @@ import com.oracle.graal.hotspot.bridge.*;
  * instance to be anything but weak. This is due to the fact that HotSpot does not treat nmethods as
  * strong GC roots.
  */
-public class HotSpotNmethod extends HotSpotInstalledCode {
+public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     private static final long serialVersionUID = -1784683588947054103L;
 

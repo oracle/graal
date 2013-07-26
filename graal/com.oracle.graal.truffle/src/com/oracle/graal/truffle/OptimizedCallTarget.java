@@ -29,6 +29,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
@@ -55,7 +56,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         }
     }
 
-    private InstalledCode compiledMethod;
+    private HotSpotNmethod compiledMethod;
     private final TruffleCompiler compiler;
 
     private int invokeCounter;
@@ -136,7 +137,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     public void compile() {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            compiledMethod = compiler.compile(this);
+            compiledMethod = (HotSpotNmethod) compiler.compile(this);
             if (compiledMethod == null) {
                 throw new BailoutException(String.format("code installation failed (codeSize=%s)", codeSize));
             } else {
