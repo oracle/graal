@@ -604,12 +604,8 @@ public final class SchedulePhase extends Phase {
         }
 
         FrameState state = null;
-        WriteNode write = null;
         for (Node input : i.inputs()) {
-            if (input instanceof WriteNode && !visited.isMarked(input) && cfg.getNodeToBlock().get(input) == b) {
-                assert write == null;
-                write = (WriteNode) input;
-            } else if (input instanceof FrameState) {
+            if (input instanceof FrameState) {
                 assert state == null;
                 state = (FrameState) input;
             } else {
@@ -626,8 +622,6 @@ public final class SchedulePhase extends Phase {
         addToLatestSorting(b, (ScheduledNode) i.predecessor(), sortedInstructions, visited);
         visited.mark(i);
         addUnscheduledToLatestSorting(b, state, sortedInstructions, visited);
-        assert write == null || !visited.isMarked(write);
-        addToLatestSorting(b, write, sortedInstructions, visited);
 
         // Now predecessors and inputs are scheduled => we can add this node.
         sortedInstructions.add(i);
