@@ -214,11 +214,11 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode) {
-        return Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Callable<SchedulePhase>() {
+        final StructuredGraph graph = parse(snippet);
+        return Debug.scope("FloatingReadTest", graph, new Callable<SchedulePhase>() {
 
             @Override
             public SchedulePhase call() throws Exception {
-                StructuredGraph graph = parse(snippet);
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
                 new CanonicalizerPhase(true).apply(graph, context);
