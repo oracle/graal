@@ -97,16 +97,16 @@ public class JTTTest extends GraalCompilerTest {
         runTest(Collections.<DeoptimizationReason> emptySet(), name, args);
     }
 
-    protected void runTest(Set<DeoptimizationReason> shoutNotDeopt, String name, Object... args) {
+    protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
         Method method = getMethod(name);
         Object receiver = Modifier.isStatic(method.getModifiers()) ? null : this;
 
         Result expect = executeExpected(method, receiver, args);
 
-        test(method, expect, shoutNotDeopt, receiver, args);
+        test(method, expect, shouldNotDeopt, receiver, args);
         if (args.length > 0) {
             this.argsToBind = args;
-            test(method, expect, shoutNotDeopt, receiver, args);
+            test(method, expect, shouldNotDeopt, receiver, args);
             this.argsToBind = null;
         }
     }
