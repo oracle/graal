@@ -515,7 +515,30 @@ public final class SchedulePhase extends Phase {
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
         }
+        assert sameOrderForFixedNodes(blockToNodesMap.get(b), sortedInstructions) : "fixed nodes in sorted block are not in the same order";
         blockToNodesMap.put(b, sortedInstructions);
+    }
+
+    private static boolean sameOrderForFixedNodes(List<ScheduledNode> fixed, List<ScheduledNode> sorted) {
+        Iterator<ScheduledNode> fixedIterator = fixed.iterator();
+        Iterator<ScheduledNode> sortedIterator = sorted.iterator();
+
+        while (sortedIterator.hasNext()) {
+            ScheduledNode sortedCurrent = sortedIterator.next();
+            if (sortedCurrent instanceof FixedNode) {
+                if (!(fixedIterator.hasNext() && fixedIterator.next() == sortedCurrent)) {
+                    return false;
+                }
+            }
+        }
+
+        while (fixedIterator.hasNext()) {
+            if (fixedIterator.next() instanceof FixedNode) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
