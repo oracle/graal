@@ -22,6 +22,9 @@
  */
 package com.oracle.graal.hotspot;
 
+import com.sun.management.HotSpotDiagnosticMXBean;
+import sun.management.ManagementFactoryHelper;
+
 /**
  * Used to communicate configuration details, runtime offsets, etc. to Graal upon compileMethod.
  */
@@ -29,45 +32,101 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     private static final long serialVersionUID = -4744897993263044184L;
 
+    private final HotSpotDiagnosticMXBean diagnostic = ManagementFactoryHelper.getDiagnosticMXBean();
+
     HotSpotVMConfig() {
+    }
+
+    /**
+     * Gets the value of an VM option.
+     * 
+     * @param name option's name
+     * @return value of option
+     * @throws IllegalArgumentException if option doesn't exist
+     */
+    private int getVMOptionInt(String name) {
+        String value = diagnostic.getVMOption(name).getValue();
+        return new Integer(value).intValue();
+    }
+
+    /**
+     * Gets the value of an VM option.
+     * 
+     * @param name option's name
+     * @param defaultValue default value if option is not exists (e.g. development options)
+     * @return value of option or defaultValue if option doesn't exist
+     */
+    private int getVMOption(String name, int defaultValue) {
+        try {
+            return getVMOptionInt(name);
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Gets the value of an VM option.
+     * 
+     * @param name option's name
+     * @return value of option
+     * @throws IllegalArgumentException if option doesn't exist
+     */
+    private boolean getVMOption(String name) {
+        String value = diagnostic.getVMOption(name).getValue();
+        return new Boolean(value).booleanValue();
+    }
+
+    /**
+     * Gets the value of an VM option.
+     * 
+     * @param name option's name
+     * @param defaultValue default value if option is not exists (e.g. development options)
+     * @return value of option or defaultValue if option doesn't exist
+     */
+    private boolean getVMOption(String name, boolean defaultValue) {
+        try {
+            return getVMOption(name);
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
+        }
     }
 
     // os information, register layout, code generation, ...
     public boolean cAssertions;
     public final boolean windowsOs = System.getProperty("os.name", "").startsWith("Windows");
     public int codeEntryAlignment;
-    public boolean verifyOops;
-    public boolean ciTime;
-    public int compileThreshold;
-    public boolean compileTheWorld;
-    public int compileTheWorldStartAt;
-    public int compileTheWorldStopAt;
-    public boolean printCompilation;
-    public boolean printInlining;
-    public boolean useFastLocking;
-    public boolean useTLAB;
-    public boolean useBiasedLocking;
-    public boolean usePopCountInstruction;
-    public boolean useAESIntrinsics;
-    public boolean useG1GC;
+    public final boolean verifyOops = getVMOption("VerifyOops", false);
+    public final boolean ciTime = getVMOption("CITime");
+    public final int compileThreshold = getVMOptionInt("CompileThreshold");
+    public final boolean compileTheWorld = getVMOption("CompileTheWorld", false);
+    public final int compileTheWorldStartAt = getVMOption("CompileTheWorldStartAt", 1);
+    public final int compileTheWorldStopAt = getVMOption("CompileTheWorldStopAt", Integer.MAX_VALUE);
+    public final boolean printCompilation = getVMOption("PrintCompilation");
+    public final boolean printInlining = getVMOption("PrintInlining", false);
+    public final boolean useFastLocking = getVMOption("GraalUseFastLocking", true);
+    public final boolean useTLAB = getVMOption("UseTLAB");
+    public final boolean useBiasedLocking = getVMOption("UseBiasedLocking");
+    public final boolean usePopCountInstruction = getVMOption("UsePopCountInstruction");
+    public final boolean useAESIntrinsics = getVMOption("UseAESIntrinsics");
+    public final boolean useG1GC = getVMOption("UseG1GC");
     public long gcTotalCollectionsAddress;
 
     // Compressed Oops related values.
-    public boolean useCompressedOops;
-    public boolean useCompressedKlassPointers;
+    public boolean useCompressedOops = getVMOption("UseCompressedOops");
+    public boolean useCompressedKlassPointers = getVMOption("UseCompressedKlassPointers");
     public long narrowOopBase;
     public int narrowOopShift;
-    public int logMinObjAlignment;
+    public final int logMinObjAlignment = (int) (Math.log(getVMOptionInt("ObjectAlignmentInBytes")) / Math.log(2));
     public long narrowKlassBase;
     public int narrowKlassShift;
     public int logKlassAlignment;
 
     // CPU capabilities
-    public int useSSE;
-    public int useAVX;
+    public final int useSSE = getVMOptionInt("UseSSE");
+    public final int useAVX = getVMOption("UseAVX", 99);
 
     // offsets, ...
-    public int stackShadowPages;
+    public final int stackShadowPages = getVMOptionInt("StackShadowPages");
 
     /**
      * The offset of the mark word in an object's header.
@@ -371,8 +430,18 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int threadTlabSizeOffset;
     public int threadAllocatedBytesOffset;
     public int threadLastJavaSpOffset;
-    public int threadLastJavaFpOffset;
     public int threadLastJavaPcOffset;
+
+    /**
+     * This value is only valid on AMD64.
+     */
+    public int threadLastJavaFpOffset;
+
+    /**
+     * This value is only valid on SPARC.
+     */
+    public int threadJavaFrameAnchorFlagsOffset;
+
     public int threadObjectResultOffset;
     public int tlabRefillWasteLimitOffset;
     public int tlabRefillWasteIncrement;
@@ -380,7 +449,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int tlabSlowAllocationsOffset;
     public int tlabFastRefillWasteOffset;
     public int tlabNumberOfRefillsOffset;
-    public boolean tlabStats;
+    public final boolean tlabStats = getVMOption("TLABStats");
     public int klassInstanceSizeOffset;
     public boolean inlineContiguousAllocationSupported;
     public long arrayPrototypeMarkWord;
@@ -402,9 +471,10 @@ public final class HotSpotVMConfig extends CompilerObject {
     public int dataLayoutBCIOffset;
     public int dataLayoutCellsOffset;
     public int dataLayoutCellSize;
-    public int bciProfileWidth;
-    public int typeProfileWidth;
-    public int methodProfileWidth;
+    public final int bciProfileWidth = getVMOption("BciProfileWidth", 2);  // develop flag; might
+// change
+    public final int typeProfileWidth = getVMOptionInt("TypeProfileWidth");
+    public final int methodProfileWidth = getVMOptionInt("MethodProfileWidth");
 
     public long inlineCacheMissStub;
     public long handleDeoptStub;
