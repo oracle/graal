@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.compiler.test;
 
 import static org.junit.Assert.*;
 
+import java.util.*;
 import java.util.concurrent.*;
 
 import org.junit.*;
@@ -31,13 +32,17 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.schedule.SchedulePhase.MemoryScheduling;
+import com.oracle.graal.phases.schedule.SchedulePhase.SchedulingStrategy;
 import com.oracle.graal.phases.tiers.*;
 
 /**
@@ -59,9 +64,12 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         public int a;
         public int b;
         public int c;
+
+        public Object obj;
     }
 
     private static final Container container = new Container();
+    private static final List<Container> containerList = new ArrayList<>();
 
     /**
      * In this test the read should be scheduled before the write.
@@ -77,8 +85,10 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testSimple() {
         for (TestMode mode : TestMode.values()) {
-            SchedulePhase schedule = getFinalSchedule("testSimpleSnippet", mode);
-            assertReadAfterWrite(schedule, false);
+            SchedulePhase schedule = getFinalSchedule("testSimpleSnippet", mode, MemoryScheduling.OPTIMAL, false);
+            StructuredGraph graph = schedule.getCFG().graph;
+            assertReadAndWriteInSameBlock(schedule, true);
+            assertOrderedAfterSchedule(schedule, graph.getNodes().filter(FloatingReadNode.class).first(), graph.getNodes().filter(WriteNode.class).first());
         }
     }
 
@@ -100,8 +110,9 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testSplit1() {
         for (TestMode mode : TestMode.values()) {
-            SchedulePhase schedule = getFinalSchedule("testSplitSnippet1", mode);
+            SchedulePhase schedule = getFinalSchedule("testSplitSnippet1", mode, MemoryScheduling.OPTIMAL, false);
             assertReadWithinStartBlock(schedule, true);
+            assertReadWithinReturnBlock(schedule, false);
         }
     }
 
@@ -122,8 +133,9 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testSplit2() {
-        SchedulePhase schedule = getFinalSchedule("testSplit2Snippet", TestMode.WITHOUT_FRAMESTATES);
+        SchedulePhase schedule = getFinalSchedule("testSplit2Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
         assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, true);
     }
 
     /**
@@ -145,9 +157,10 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop1() {
-        SchedulePhase schedule = getFinalSchedule("testLoop1Snippet", TestMode.WITHOUT_FRAMESTATES);
+        SchedulePhase schedule = getFinalSchedule("testLoop1Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
         assertEquals(6, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, true);
+        assertReadWithinReturnBlock(schedule, false);
     }
 
     /**
@@ -169,9 +182,10 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testLoop2() {
-        SchedulePhase schedule = getFinalSchedule("testLoop2Snippet", TestMode.WITHOUT_FRAMESTATES);
+        SchedulePhase schedule = getFinalSchedule("testLoop2Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
         assertEquals(6, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, true);
     }
 
     /**
@@ -184,23 +198,204 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
     @Test
     public void testArrayCopy() {
-        SchedulePhase schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES);
+        SchedulePhase schedule = getFinalSchedule("testArrayCopySnippet", TestMode.INLINED_WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
         StructuredGraph graph = schedule.getCFG().getStartBlock().getBeginNode().graph();
         ReturnNode ret = graph.getNodes(ReturnNode.class).first();
         assertTrue(ret.result() instanceof FloatingReadNode);
         assertEquals(schedule.getCFG().blockFor(ret), schedule.getCFG().blockFor(ret.result()));
+        assertReadWithinReturnBlock(schedule, true);
     }
 
-    private void assertReadAfterWrite(SchedulePhase schedule, boolean readAfterWrite) {
-        boolean writeEncountered = false;
+    /**
+     * Here the read should not float to the end.
+     */
+    public static int testIfRead1Snippet(int a) {
+        int res = container.a;
+        if (a < 0) {
+            container.a = 10;
+        }
+        return res;
+    }
+
+    @Test
+    public void testIfRead1() {
+        SchedulePhase schedule = getFinalSchedule("testIfRead1Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, true);
+        assertReadAndWriteInSameBlock(schedule, false);
+    }
+
+    /**
+     * Here the read should float in the else block.
+     */
+    public static int testIfRead2Snippet(int a) {
+        int res = 0;
+        if (a < 0) {
+            container.a = 10;
+        } else {
+            res = container.a;
+        }
+        return res;
+    }
+
+    @Test
+    public void testIfRead2() {
+        SchedulePhase schedule = getFinalSchedule("testIfRead2Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertEquals(1, schedule.getCFG().graph.getNodes().filter(FloatingReadNode.class).count());
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, false);
+        assertReadAndWriteInSameBlock(schedule, false);
+    }
+
+    /**
+     * Here the read should float to the end, right before the write.
+     */
+    public static int testIfRead3Snippet(int a) {
+        if (a < 0) {
+            container.a = 10;
+        }
+        int res = container.a;
+        container.a = 20;
+        return res;
+    }
+
+    @Test
+    public void testIfRead3() {
+        SchedulePhase schedule = getFinalSchedule("testIfRead3Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, true);
+    }
+
+    /**
+     * Here the read should be just in the if branch (with the write).
+     */
+    public static int testIfRead4Snippet(int a) {
+        if (a > 0) {
+            int res = container.a;
+            container.a = 0x20;
+            return res;
+        } else {
+            return 0x10;
+        }
+    }
+
+    @Test
+    public void testIfRead4() {
+        SchedulePhase schedule = getFinalSchedule("testIfRead4Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, false);
+        assertReadAndWriteInSameBlock(schedule, true);
+    }
+
+    /**
+     * testing scheduling within a block.
+     */
+    public static int testBlockScheduleSnippet() {
+        int res = 0;
+        container.a = 0x00;
+        container.a = 0x10;
+        container.a = 0x20;
+        container.a = 0x30;
+        container.a = 0x40;
+        res = container.a;
+        container.a = 0x50;
+        container.a = 0x60;
+        container.a = 0x70;
+        return res;
+    }
+
+    @Test
+    public void testBlockSchedule() {
+        SchedulePhase schedule = getFinalSchedule("testBlockScheduleSnippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        StructuredGraph graph = schedule.getCFG().graph;
+        NodeIterable<WriteNode> writeNodes = graph.getNodes().filter(WriteNode.class);
+
         assertEquals(1, schedule.getCFG().getBlocks().length);
-        for (Node node : schedule.getBlockToNodesMap().get(schedule.getCFG().getStartBlock())) {
-            if (node instanceof WriteNode) {
-                writeEncountered = true;
-            } else if (node instanceof FloatingReadNode) {
-                assertEquals(readAfterWrite, writeEncountered);
+        assertEquals(8, writeNodes.count());
+        assertEquals(1, graph.getNodes().filter(FloatingReadNode.class).count());
+
+        FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
+
+        WriteNode[] writes = new WriteNode[8];
+        int i = 0;
+        for (WriteNode n : writeNodes) {
+            writes[i] = n;
+            i++;
+        }
+        assertOrderedAfterSchedule(schedule, writes[4], read);
+        assertOrderedAfterSchedule(schedule, read, writes[5]);
+        for (int j = 0; j < 7; j++) {
+            assertOrderedAfterSchedule(schedule, writes[j], writes[j + 1]);
+        }
+    }
+
+    /*
+     * read of field a should be in first block, read of field b in loop begin block
+     */
+    public static void testProxy1Snippet() {
+        while (container.a < container.b) {
+            container.b--;
+        }
+        container.b++;
+    }
+
+    @Test
+    public void testProxy1() {
+        SchedulePhase schedule = getFinalSchedule("testProxy1Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertReadWithinStartBlock(schedule, true); // read of container.a should be in start block
+        /*
+         * read of container.b for increment operation should be in return block. TODO: not sure
+         * though, could be replaced by read of container.b of the loop header...
+         */
+        assertReadWithinReturnBlock(schedule, true);
+    }
+
+    public static void testProxy2Snippet() {
+        while (container.a < container.b) {
+            List<Container> list = new ArrayList<>(containerList);
+            while (container.c < list.size()) {
+                if (container.obj != null) {
+                    return;
+                }
+                container.c++;
+            }
+            container.a = 0;
+            container.b--;
+        }
+        container.b++;
+    }
+
+    @Test
+    public void testProxy2() {
+        SchedulePhase schedule = getFinalSchedule("testProxy2Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, false);
+    }
+
+    private void assertReadWithinReturnBlock(SchedulePhase schedule, boolean withinReturnBlock) {
+        StructuredGraph graph = schedule.getCFG().graph;
+        assertEquals(graph.getNodes().filter(ReturnNode.class).count(), 1);
+
+        Block end = null;
+        outer: for (Block b : schedule.getCFG().getBlocks()) {
+            for (Node n : b.getNodes()) {
+                if (n instanceof ReturnNode) {
+                    end = b;
+                    break outer;
+                }
             }
         }
+        assertNotNull("no block with ReturnNode found", end);
+        boolean readEncountered = false;
+        for (Node node : schedule.getBlockToNodesMap().get(end)) {
+            if (node instanceof FloatingReadNode) {
+                readEncountered = true;
+            }
+        }
+        assertEquals(readEncountered, withinReturnBlock);
     }
 
     private void assertReadWithinStartBlock(SchedulePhase schedule, boolean withinStartBlock) {
@@ -213,7 +408,14 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertEquals(withinStartBlock, readEncountered);
     }
 
-    private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode) {
+    private static void assertReadAndWriteInSameBlock(SchedulePhase schedule, boolean inSame) {
+        StructuredGraph graph = schedule.getCFG().graph;
+        FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
+        WriteNode write = graph.getNodes().filter(WriteNode.class).first();
+        assertTrue(!(inSame ^ schedule.getCFG().blockFor(read) == schedule.getCFG().blockFor(write)));
+    }
+
+    private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched, final boolean printSchedule) {
         final StructuredGraph graph = parse(snippet);
         return Debug.scope("FloatingReadTest", graph, new Callable<SchedulePhase>() {
 
@@ -237,12 +439,14 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                         }
                     }
                 }
-                new FloatingReadPhase().apply(graph);
+                Debug.dump(graph, "after removal of framestates");
 
+                new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
-                SchedulePhase schedule = new SchedulePhase();
+                SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched, printSchedule);
                 schedule.apply(graph);
+                assertEquals(1, graph.getNodes().filter(StartNode.class).count());
                 return schedule;
             }
         });

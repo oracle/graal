@@ -36,6 +36,10 @@ public class GraphScheduleTest extends GraalCompilerTest {
     protected void assertOrderedAfterSchedule(StructuredGraph graph, Node a, Node b) {
         SchedulePhase ibp = new SchedulePhase();
         ibp.apply(graph);
+        assertOrderedAfterSchedule(ibp, a, b);
+    }
+
+    protected void assertOrderedAfterSchedule(SchedulePhase ibp, Node a, Node b) {
         NodeMap<Block> nodeToBlock = ibp.getCFG().getNodeToBlock();
         Block bBlock = nodeToBlock.get(b);
         Block aBlock = nodeToBlock.get(a);
