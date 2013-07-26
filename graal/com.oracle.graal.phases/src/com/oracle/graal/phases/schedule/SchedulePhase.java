@@ -258,9 +258,9 @@ public final class SchedulePhase extends Phase {
         if (prevBlock != null) {
             return;
         }
-        // PhiNodes and FixedNodes should already have been placed in blocks by
+        // PhiNodes, ProxyNodes and FixedNodes should already have been placed in blocks by
         // ControlFlowGraph.identifyBlocks
-        if (node instanceof PhiNode || node instanceof FixedNode) {
+        if (node instanceof PhiNode || node instanceof ProxyNode || node instanceof FixedNode) {
             throw new SchedulingError("%s should already have been placed in a block", node);
         }
 
