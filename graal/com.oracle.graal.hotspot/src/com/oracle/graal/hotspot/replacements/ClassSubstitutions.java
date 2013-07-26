@@ -29,7 +29,9 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -108,6 +110,11 @@ public class ClassSubstitutions {
         return null;
     }
 
+    /**
+     * This is macro substitution that falls back to a normal method substitution if the macro node
+     * does not canonicalize away.
+     */
+    @MacroSubstitution(macro = ClassIsInstanceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isInstance(final Class<?> thisObj, Object obj) {
         return !isPrimitive(thisObj) && ConditionalNode.materializeIsInstance(thisObj, obj);
