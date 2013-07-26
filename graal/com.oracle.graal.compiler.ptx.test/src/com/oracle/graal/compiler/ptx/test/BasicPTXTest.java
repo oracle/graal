@@ -24,7 +24,6 @@ package com.oracle.graal.compiler.ptx.test;
 
 import java.lang.reflect.Method;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -34,10 +33,10 @@ public class BasicPTXTest extends PTXTestBase {
 
     @Test
     public void testAdd() {
-        compile("testConstI");
+        invoke(compile("testConstI"));
     }
 
-    @Ignore
+    @Test
     public void testInvoke() {
         invoke(compile("testConstI"));
     }

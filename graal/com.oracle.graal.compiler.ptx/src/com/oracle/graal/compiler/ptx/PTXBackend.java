@@ -90,8 +90,43 @@ public class PTXBackend extends Backend {
         codeBuffer.emitString("");
 
         Signature signature = codeCacheOwner.getSignature();
-        for (int i = 0; i < signature.getParameterCount(false); i++) {
-            String param = ".param .u32 param" + i;
+        int paramCount = signature.getParameterCount(false);
+        // TODO - Revisit this.
+        // Bit-size of registers to be declared and used by the kernel.
+        int regSize = 32;
+        for (int i = 0; i < paramCount; i++) {
+            String param;
+            // No unsigned types in Java. So using .s specifier
+            switch (signature.getParameterKind(i)) {
+                case Boolean:
+                case Byte:
+                    param = ".param .s8 param" + i;
+                    regSize = 8;
+                    break;
+                case Char:
+                case Short:
+                    param = ".param .s16 param" + i;
+                    regSize = 16;
+                    break;
+                case Int:
+                    param = ".param .s32 param" + i;
+                    regSize = 32;
+                    break;
+                case Long:
+                case Float:
+                case Double:
+                case Void:
+                    param = ".param .s64 param" + i;
+                    regSize = 32;
+                    break;
+                default:
+                    // Not sure but specify 64-bit specifier??
+                    param = ".param .s64 param" + i;
+                    break;
+            }    
+            if (i != (paramCount -1)) {
+                param += ",";
+            }
             codeBuffer.emitString(param);
         }
 
@@ -100,7 +135,7 @@ public class PTXBackend extends Backend {
 
         // XXX For now declare one predicate and all registers
         codeBuffer.emitString("  .reg .pred %p,%q;");
-        codeBuffer.emitString("  .reg .u32 %r<16>;");
+        codeBuffer.emitString("  .reg .s" + regSize +" %r<16>;");
 
         // Emit code for the LIR
         lirGen.lir.emitCode(tasm);
