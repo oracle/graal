@@ -123,8 +123,8 @@ public class PTXBackend extends Backend {
                     // Not sure but specify 64-bit specifier??
                     param = ".param .s64 param" + i;
                     break;
-            }    
-            if (i != (paramCount -1)) {
+            } 
+            if (i != (paramCount -1 )) {
                 param += ",";
             }
             codeBuffer.emitString(param);
@@ -135,7 +135,7 @@ public class PTXBackend extends Backend {
 
         // XXX For now declare one predicate and all registers
         codeBuffer.emitString("  .reg .pred %p,%q;");
-        codeBuffer.emitString("  .reg .s" + regSize +" %r<16>;");
+        codeBuffer.emitString("  .reg .s" + regSize + " %r<16>;");
 
         // Emit code for the LIR
         lirGen.lir.emitCode(tasm);
