@@ -235,6 +235,8 @@ public final class GraalOptions {
 
     @Option(help = "")
     public static final OptionValue<Boolean> MemoryAwareScheduling = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> NewMemoryAwareScheduling = new OptionValue<>(false);
 
     // Translating tableswitch instructions
     @Option(help = "")

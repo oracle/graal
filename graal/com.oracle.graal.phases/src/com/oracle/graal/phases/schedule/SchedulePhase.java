@@ -72,6 +72,10 @@ public final class SchedulePhase extends Phase {
         EARLIEST, LATEST, LATEST_OUT_OF_LOOPS
     }
 
+    public static enum MemoryScheduling {
+        NONE, CONSERVATIVE, OPTIMAL
+    }
+
     /**
      * This closure iterates over all nodes of a scheduled graph (it expects a
      * {@link SchedulingStrategy#EARLIEST} schedule) and keeps a list of "active" reads. Whenever it
@@ -178,6 +182,7 @@ public final class SchedulePhase extends Phase {
     private BlockMap<List<ScheduledNode>> blockToNodesMap;
     private final Map<FloatingNode, List<FixedNode>> phantomUsages = new IdentityHashMap<>();
     private final Map<FixedNode, List<FloatingNode>> phantomInputs = new IdentityHashMap<>();
+    private final MemoryScheduling memsched;
     private final SchedulingStrategy selectedStrategy;
 
     public SchedulePhase() {
@@ -185,7 +190,22 @@ public final class SchedulePhase extends Phase {
     }
 
     public SchedulePhase(SchedulingStrategy strategy) {
+        if (MemoryAwareScheduling.getValue() && NewMemoryAwareScheduling.getValue()) {
+            throw new SchedulingError("cannot enable both: MemoryAware- and NewMemoryAwareScheduling");
+        }
+        if (MemoryAwareScheduling.getValue()) {
+            this.memsched = MemoryScheduling.CONSERVATIVE;
+        } else if (NewMemoryAwareScheduling.getValue()) {
+            this.memsched = MemoryScheduling.OPTIMAL;
+        } else {
+            this.memsched = MemoryScheduling.NONE;
+        }
         this.selectedStrategy = strategy;
+    }
+
+    public SchedulePhase(SchedulingStrategy strategy, MemoryScheduling memsched) {
+        this.selectedStrategy = strategy;
+        this.memsched = memsched;
     }
 
     @Override
@@ -194,8 +214,7 @@ public final class SchedulePhase extends Phase {
         earliestCache = graph.createNodeMap();
         blockToNodesMap = new BlockMap<>(cfg);
 
-        if (MemoryAwareScheduling.getValue() && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
-
+        if (memsched == MemoryScheduling.CONSERVATIVE && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
             assignBlockToNodes(graph, SchedulingStrategy.EARLIEST);
             sortNodesWithinBlocks(graph, SchedulingStrategy.EARLIEST);
 
@@ -204,10 +223,15 @@ public final class SchedulePhase extends Phase {
 
             cfg.clearNodeToBlock();
             blockToNodesMap = new BlockMap<>(cfg);
-        }
 
-        assignBlockToNodes(graph, selectedStrategy);
-        sortNodesWithinBlocks(graph, selectedStrategy);
+            assignBlockToNodes(graph, selectedStrategy);
+            sortNodesWithinBlocks(graph, selectedStrategy);
+        } else if (memsched == MemoryScheduling.OPTIMAL && selectedStrategy != SchedulingStrategy.EARLIEST && graph.getNodes(FloatingReadNode.class).isNotEmpty()) {
+            // TODO
+        } else {
+            assignBlockToNodes(graph, selectedStrategy);
+            sortNodesWithinBlocks(graph, selectedStrategy);
+        }
     }
 
     public ControlFlowGraph getCFG() {
