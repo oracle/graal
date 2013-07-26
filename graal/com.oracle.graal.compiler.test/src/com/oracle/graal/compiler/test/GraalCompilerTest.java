@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import org.junit.*;
+import org.junit.internal.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
@@ -193,6 +194,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 Assert.assertArrayEquals((long[]) expected, (long[]) actual);
             } else if (expected instanceof double[]) {
                 Assert.assertArrayEquals((double[]) expected, (double[]) actual, 0.0d);
+            } else if (expected instanceof boolean[]) {
+                new ExactComparisonCriteria().arrayEquals(null, expected, actual);
             } else if (expected instanceof Object[]) {
                 Assert.assertArrayEquals((Object[]) expected, (Object[]) actual);
             } else {
