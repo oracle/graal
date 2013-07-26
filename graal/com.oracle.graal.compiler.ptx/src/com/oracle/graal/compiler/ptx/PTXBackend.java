@@ -123,8 +123,8 @@ public class PTXBackend extends Backend {
                     // Not sure but specify 64-bit specifier??
                     param = ".param .s64 param" + i;
                     break;
-            } 
-            if (i != (paramCount -1 )) {
+            }
+            if (i != (paramCount - 1)) {
                 param += ",";
             }
             codeBuffer.emitString(param);
