@@ -109,23 +109,17 @@ public class AMD64 extends Architecture {
         rip
     };
 
+    // @formatter:on
+
     private final int supportedSSEVersion;
     private final int supportedAVXVersion;
 
     public AMD64(int supportedSSEVersion, int supportedAVXVersion) {
-        super("AMD64",
-              8,
-              ByteOrder.LITTLE_ENDIAN,
-              allRegisters,
-              LOAD_STORE | STORE_STORE,
-              1,
-              r15.encoding + 1,
-              8);
+        super("AMD64", 8, ByteOrder.LITTLE_ENDIAN, true, allRegisters, LOAD_STORE | STORE_STORE, 1, r15.encoding + 1, 8);
         assert supportedSSEVersion >= 2;
         this.supportedSSEVersion = supportedSSEVersion;
         this.supportedAVXVersion = supportedAVXVersion;
     }
-    // @formatter:on
 
     public int getSupportedSSEVersion() {
         return supportedSSEVersion;

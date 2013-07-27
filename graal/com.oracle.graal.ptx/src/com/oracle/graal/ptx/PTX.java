@@ -108,17 +108,11 @@ public class PTX extends Architecture {
         f8,  f9,  f10, f11, f12, f13, f14, f15
     };
 
-    public PTX() {
-        super("PTX",
-              8,
-              ByteOrder.LITTLE_ENDIAN,
-              allRegisters,
-              LOAD_STORE | STORE_STORE,
-              0,
-              r15.encoding + 1,
-              8);
-    }
     // @formatter:on
+
+    public PTX() {
+        super("PTX", 8, ByteOrder.LITTLE_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 0, r15.encoding + 1, 8);
+    }
 
     @Override
     public boolean canStoreValue(RegisterCategory category, PlatformKind platformKind) {

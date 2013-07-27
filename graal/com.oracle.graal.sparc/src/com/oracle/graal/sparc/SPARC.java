@@ -110,8 +110,8 @@ public class SPARC extends Architecture {
     public static final Register i6 = r30;
     public static final Register i7 = r31;
 
-    public static final Register fp = i6;
     public static final Register sp = o6;
+    public static final Register fp = i6;
 
     public static final Register[] cpuRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
@@ -133,9 +133,9 @@ public class SPARC extends Architecture {
     public static final Register[] allRegisters = {
         // CPU
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
-        r8,  r9, r10, r11, r12, r13, r14, r15,
-       r16, r17, r18, r19, r20, r21, r22, r23,
-       r24, r25, r26, r27, r28, r29, r30, r31,
+        r8,  r9,  r10, r11, r12, r13, r14, r15,
+        r16, r17, r18, r19, r20, r21, r22, r23,
+        r24, r25, r26, r27, r28, r29, r30, r31,
         // FPU
         f0,  f1,  f2,  f3,  f4,  f5,  f6,  f7,
     };
@@ -145,7 +145,8 @@ public class SPARC extends Architecture {
     public SPARC() {
         // The return address doesn't have an extra slot in the frame so we pass 0 for the return
         // address size.
-        super("SPARC", 8, ByteOrder.BIG_ENDIAN, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 0);
+        // XXX think about the return address size again
+        super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 0);
     }
 
     @Override

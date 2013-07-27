@@ -63,6 +63,11 @@ public abstract class Architecture {
     private final ByteOrder byteOrder;
 
     /**
+     * Whether the architecture supports unaligned memory accesses.
+     */
+    private final boolean unalignedMemoryAccess;
+
+    /**
      * Mask of the barrier constants denoting the barriers that are not required to be explicitly
      * inserted under this architecture.
      */
@@ -79,12 +84,13 @@ public abstract class Architecture {
      */
     private final int returnAddressSize;
 
-    protected Architecture(String name, int wordSize, ByteOrder byteOrder, Register[] registers, int implicitMemoryBarriers, int nativeCallDisplacementOffset, int registerReferenceMapBitCount,
-                    int returnAddressSize) {
+    protected Architecture(String name, int wordSize, ByteOrder byteOrder, boolean unalignedMemoryAccess, Register[] registers, int implicitMemoryBarriers, int nativeCallDisplacementOffset,
+                    int registerReferenceMapBitCount, int returnAddressSize) {
         this.name = name;
         this.registers = registers;
         this.wordSize = wordSize;
         this.byteOrder = byteOrder;
+        this.unalignedMemoryAccess = unalignedMemoryAccess;
         this.implicitMemoryBarriers = implicitMemoryBarriers;
         this.machineCodeCallDisplacementOffset = nativeCallDisplacementOffset;
         this.registerReferenceMapBitCount = registerReferenceMapBitCount;
@@ -130,6 +136,13 @@ public abstract class Architecture {
 
     public ByteOrder getByteOrder() {
         return byteOrder;
+    }
+
+    /**
+     * @return true if the architecture supports unaligned memory accesses.
+     */
+    public boolean supportsUnalignedMemoryAccess() {
+        return unalignedMemoryAccess;
     }
 
     /**
