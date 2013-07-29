@@ -47,10 +47,16 @@ public class ReplaceIntrinsicsPhase extends Phase {
             if (methodCallTarget.isAlive()) {
                 InvokeKind invokeKind = methodCallTarget.invokeKind();
                 if (invokeKind == InvokeKind.Static || invokeKind == InvokeKind.Special) {
-                    StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTarget.targetMethod());
-                    if (inlineGraph != null) {
-                        InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, false);
+                    Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTarget.targetMethod());
+                    if (macroSubstitution != null) {
+                        InliningUtil.inlineMacroNode(methodCallTarget.invoke(), methodCallTarget.targetMethod(), graph, macroSubstitution);
                         Debug.dump(graph, "After inlining %s", methodCallTarget.targetMethod().toString());
+                    } else {
+                        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTarget.targetMethod());
+                        if (inlineGraph != null) {
+                            InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, true);
+                            Debug.dump(graph, "After inlining %s", methodCallTarget.targetMethod().toString());
+                        }
                     }
                 }
             }
