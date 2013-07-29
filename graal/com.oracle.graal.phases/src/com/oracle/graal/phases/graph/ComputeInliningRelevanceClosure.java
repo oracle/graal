@@ -24,6 +24,7 @@ package com.oracle.graal.phases.graph;
 
 import java.util.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.util.*;
@@ -93,7 +94,8 @@ public class ComputeInliningRelevanceClosure {
             HashMap<FixedNode, Scope> result = new HashMap<>();
 
             for (Scope scope : computeScopes()) {
-                scope.probability = Math.max(EPSILON, nodeProbabilities.get(scope.start));
+                double lowestPathProbability = computeLowestPathProbability(scope);
+                scope.probability = Math.max(EPSILON, lowestPathProbability);
                 result.put(scope.start, scope);
             }
 
@@ -125,6 +127,85 @@ public class ComputeInliningRelevanceClosure {
             Scope result = new Scope(loop.loopBegin(), parent);
             processedLoops.put(loop, result);
             return result;
+        }
+    }
+
+    private double computeLowestPathProbability(Scope scope) {
+        FixedNode scopeStart = scope.start;
+        ArrayList<FixedNode> pathBeginNodes = new ArrayList<>();
+        pathBeginNodes.add(scopeStart);
+        double minPathProbability = nodeProbabilities.get(scopeStart);
+        boolean isLoopScope = scopeStart instanceof LoopBeginNode;
+
+        do {
+            Node current = pathBeginNodes.remove(pathBeginNodes.size() - 1);
+            do {
+                if (isLoopScope && current instanceof LoopExitNode && ((LoopBeginNode) scopeStart).loopExits().contains((LoopExitNode) current)) {
+                    return minPathProbability;
+                } else if (current instanceof LoopBeginNode && current != scopeStart) {
+                    current = getMaxProbabilityLoopExit((LoopBeginNode) current, pathBeginNodes);
+                    minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
+                } else if (current instanceof ControlSplitNode) {
+                    current = getMaxProbabilitySux((ControlSplitNode) current, pathBeginNodes);
+                    minPathProbability = getMinPathProbability((FixedNode) current, minPathProbability);
+                } else {
+                    assert current.successors().count() <= 1;
+                    current = current.successors().first();
+                }
+            } while (current != null);
+        } while (!pathBeginNodes.isEmpty());
+
+        return minPathProbability;
+    }
+
+    private double getMinPathProbability(FixedNode current, double minPathProbability) {
+        if (current != null && nodeProbabilities.get(current) < minPathProbability) {
+            return nodeProbabilities.get(current);
+        }
+        return minPathProbability;
+    }
+
+    private static Node getMaxProbabilitySux(ControlSplitNode controlSplit, ArrayList<FixedNode> pathBeginNodes) {
+        Node maxSux = null;
+        double maxProbability = 0.0;
+        int pathBeginCount = pathBeginNodes.size();
+
+        for (Node sux : controlSplit.successors()) {
+            double probability = controlSplit.probability((AbstractBeginNode) sux);
+            if (probability > maxProbability) {
+                maxProbability = probability;
+                maxSux = sux;
+                truncate(pathBeginNodes, pathBeginCount);
+            } else if (probability == maxProbability) {
+                pathBeginNodes.add((FixedNode) sux);
+            }
+        }
+
+        return maxSux;
+    }
+
+    private Node getMaxProbabilityLoopExit(LoopBeginNode loopBegin, ArrayList<FixedNode> pathBeginNodes) {
+        Node maxSux = null;
+        double maxProbability = 0.0;
+        int pathBeginCount = pathBeginNodes.size();
+
+        for (LoopExitNode sux : loopBegin.loopExits()) {
+            double probability = nodeProbabilities.get(sux);
+            if (probability > maxProbability) {
+                maxProbability = probability;
+                maxSux = sux;
+                truncate(pathBeginNodes, pathBeginCount);
+            } else if (probability == maxProbability) {
+                pathBeginNodes.add(sux);
+            }
+        }
+
+        return maxSux;
+    }
+
+    private static void truncate(ArrayList<FixedNode> pathBeginNodes, int pathBeginCount) {
+        for (int i = pathBeginNodes.size() - pathBeginCount; i > 0; i--) {
+            pathBeginNodes.remove(pathBeginNodes.size() - 1);
         }
     }
 
