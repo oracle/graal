@@ -429,8 +429,8 @@ public class NodeParser extends TemplateParser<NodeData> {
                     nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
                 }
 
+                index++;
             }
-            index++;
         }
 
         List<NodeChildData> filteredChildren = new ArrayList<>();
