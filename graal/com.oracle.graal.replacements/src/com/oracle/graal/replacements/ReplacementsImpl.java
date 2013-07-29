@@ -123,12 +123,15 @@ public class ReplacementsImpl implements Replacements {
 
             int modifiers = substituteMethod.getModifiers();
             if (!Modifier.isStatic(modifiers)) {
-                throw new RuntimeException("Substitution methods must be static: " + substituteMethod);
+                throw new GraalInternalError("Substitution methods must be static: " + substituteMethod);
             }
 
             if (methodSubstitution != null) {
+                if (macroSubstitution != null && macroSubstitution.isStatic() != methodSubstitution.isStatic()) {
+                    throw new GraalInternalError("Macro and method substitution must agree on isStatic attribute: " + substituteMethod);
+                }
                 if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
-                    throw new RuntimeException("Substitution method must not be abstract or native: " + substituteMethod);
+                    throw new GraalInternalError("Substitution method must not be abstract or native: " + substituteMethod);
                 }
                 String originalName = originalName(substituteMethod, methodSubstitution.value());
                 Class[] originalParameters = originalParameters(substituteMethod, methodSubstitution.signature(), methodSubstitution.isStatic());
