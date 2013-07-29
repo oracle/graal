@@ -77,7 +77,7 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
         @Override
         public CodeTypeElement create(TypeSystemData typeSystem) {
             String name = typeName(typeSystem);
-            CodeTypeElement clazz = createClass(typeSystem, modifiers(PUBLIC), name, typeSystem.getTemplateType().asType(), false);
+            CodeTypeElement clazz = createClass(typeSystem, modifiers(PUBLIC, FINAL), name, typeSystem.getTemplateType().asType(), false);
 
             clazz.add(createConstructorUsingFields(modifiers(PROTECTED), clazz));
             CodeVariableElement singleton = createSingleton(clazz);
@@ -141,6 +141,11 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(boolean.class), TypeSystemCodeGenerator.isTypeMethodName(type));
             method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
 
+            DeclaredType suppressWarnings = (DeclaredType) getContext().getType(SuppressWarnings.class);
+            CodeAnnotationMirror annotationMirror = new CodeAnnotationMirror(suppressWarnings);
+            annotationMirror.setElementValue(annotationMirror.findExecutableElement("value"), new CodeAnnotationValue("static-method"));
+            method.getAnnotationMirrors().add(annotationMirror);
+
             CodeTreeBuilder body = method.createBuilder();
             body.startReturn().instanceOf(LOCAL_VALUE, type.getBoxedType()).end();
 
@@ -156,7 +161,8 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
 
             CodeTreeBuilder body = method.createBuilder();
-            body.startAssert().startCall(isTypeMethodName(type)).string(LOCAL_VALUE).end().end();
+            String assertMessage = typeName(getModel()) + "." + asTypeMethodName(type) + ": " + Utils.getSimpleName(type.getBoxedType()) + " expected";
+            body.startAssert().startCall(isTypeMethodName(type)).string(LOCAL_VALUE).end().string(" : ").doubleQuote(assertMessage).end();
             body.startReturn().cast(type.getPrimitiveType(), body.create().string(LOCAL_VALUE).getTree()).end();
 
             return method;
