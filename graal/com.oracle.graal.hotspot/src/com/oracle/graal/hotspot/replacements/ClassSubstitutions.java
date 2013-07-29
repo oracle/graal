@@ -64,6 +64,7 @@ public class ClassSubstitutions {
         }
     }
 
+    @MacroSubstitution(macro = ClassIsArrayNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isArray(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
