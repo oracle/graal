@@ -22,22 +22,19 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
- * {@link MacroNode Macro node} for {@link Class#isInstance(Object)}.
+ * {@link MacroNode Macro node} for {@link Class#getComponentType()}.
  * 
- * @see ClassSubstitutions#isInstance(Class, Object)
+ * @see ClassSubstitutions#getComponentType(Class)
  */
-public class ClassIsInstanceNode extends MacroNode implements Canonicalizable, Lowerable {
+public class ClassGetComponentTypeNode extends MacroNode implements Canonicalizable, Lowerable {
 
-    public ClassIsInstanceNode(Invoke invoke) {
+    public ClassGetComponentTypeNode(Invoke invoke) {
         super(invoke);
     }
 
@@ -45,25 +42,12 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable, L
         return arguments.get(0);
     }
 
-    private ValueNode getObject() {
-        return arguments.get(1);
-    }
-
     public ValueNode canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
-            ValueNode object = getObject();
             Class c = (Class) javaClass.asConstant().asObject();
-            if (c.isPrimitive()) {
-                return ConstantNode.forBoolean(false, graph());
-            }
-            if (object.isConstant()) {
-                Object o = object.asConstant().asObject();
-                return ConstantNode.forBoolean(o != null && c.isInstance(o), graph());
-            }
-            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-            InstanceOfNode instanceOf = graph().unique(new InstanceOfNode(type, object, null));
-            return graph().unique(new ConditionalNode(instanceOf, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph())));
+            Class componentType = c.getComponentType();
+            return ConstantNode.forObject(componentType, tool.runtime(), graph());
         }
         return this;
     }

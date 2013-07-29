@@ -22,12 +22,15 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
  * {@link MacroNode Macro node} for {@link Class#getSuperclass()}.
+ * 
+ * @see ClassSubstitutions#getSuperclass(Class)
  */
 public class ClassGetSuperclassNode extends MacroNode implements Canonicalizable, Lowerable {
 
