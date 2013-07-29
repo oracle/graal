@@ -32,7 +32,7 @@ import com.oracle.graal.replacements.nodes.*;
  * 
  * @see ClassSubstitutions#getSuperclass(Class)
  */
-public class ClassGetSuperclassNode extends MacroNode implements Canonicalizable, Lowerable {
+public class ClassGetSuperclassNode extends MacroNode implements Canonicalizable {
 
     public ClassGetSuperclassNode(Invoke invoke) {
         super(invoke);

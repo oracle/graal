@@ -35,7 +35,7 @@ import com.oracle.graal.replacements.nodes.*;
  * 
  * @see ClassSubstitutions#isInstance(Class, Object)
  */
-public class ClassIsInstanceNode extends MacroNode implements Canonicalizable, Lowerable {
+public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
 
     public ClassIsInstanceNode(Invoke invoke) {
         super(invoke);
