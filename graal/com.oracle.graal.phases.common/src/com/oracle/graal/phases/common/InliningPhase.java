@@ -674,21 +674,21 @@ public class InliningPhase extends Phase {
         }
 
         public MethodInvocation currentInvocation() {
-            return invocationQueue.peek();
+            return invocationQueue.peekFirst();
         }
 
         public MethodInvocation pushInvocation(InlineInfo info, Assumptions assumptions, double probability, double relevance) {
             MethodInvocation methodInvocation = new MethodInvocation(info, new Assumptions(assumptions.useOptimisticAssumptions()), probability, relevance);
-            invocationQueue.push(methodInvocation);
+            invocationQueue.addFirst(methodInvocation);
             maxGraphs += info.numberOfMethods();
             assert graphQueue.size() <= maxGraphs;
             return methodInvocation;
         }
 
         public void popInvocation() {
-            maxGraphs -= invocationQueue.peek().callee.numberOfMethods();
+            maxGraphs -= invocationQueue.peekFirst().callee.numberOfMethods();
             assert graphQueue.size() <= maxGraphs;
-            invocationQueue.pop();
+            invocationQueue.removeFirst();
         }
 
         public int countRecursiveInlining(ResolvedJavaMethod method) {
