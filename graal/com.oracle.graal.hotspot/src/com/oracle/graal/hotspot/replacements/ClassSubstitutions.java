@@ -74,6 +74,7 @@ public class ClassSubstitutions {
         }
     }
 
+    @MacroSubstitution(macro = ClassIsPrimitiveNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isPrimitive(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
