@@ -36,7 +36,7 @@ import com.oracle.truffle.dsl.processor.ast.*;
 
 public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> {
 
-    private static final int LINE_LENGTH = 200;
+    private static final int MAX_LINE_LENGTH = 200;
     private static final int LINE_WRAP_INDENTS = 3;
     private static final String IDENT_STRING = "    ";
     private static final String LN = "\n"; /* unix style */
@@ -622,36 +622,77 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
     }
 
     private AbstractCodeWriter write(String m) {
+        if (m.isEmpty()) {
+            return this;
+        }
         try {
-            lineLength += m.length();
-            if (newLine && m != LN) {
+            String s = m;
+            lineLength += s.length();
+            if (newLine && s != LN) {
                 writeIndent();
                 newLine = false;
             }
-            if (lineLength > LINE_LENGTH && m.length() > 0) {
-                char firstChar = m.charAt(0);
-                if (Character.isAlphabetic(firstChar)) {
-                    if (!lineWrapping) {
-                        indent(LINE_WRAP_INDENTS);
-                    }
-                    lineWrapping = true;
-                    lineLength = 0;
-                    write(LN);
-                    writeIndent();
-                }
+            if (lineLength > MAX_LINE_LENGTH) {
+                s = wrapLine(s);
             }
-            writer.write(m);
+            writer.write(s);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         return this;
     }
 
+    private String wrapLine(String m) throws IOException {
+        assert !m.isEmpty();
+
+        char firstCharacter = m.charAt(0);
+        char lastCharacter = m.charAt(m.length() - 1);
+        if (firstCharacter == '\"' && lastCharacter == '\"') {
+            // string line wrapping
+            String string = m.substring(1, m.length() - 1);
+            if (string.isEmpty()) {
+                return m;
+            }
+
+            // restore original line length
+            lineLength = lineLength - m.length();
+            int size = 0;
+            for (int i = 0; i < string.length(); i += size) {
+                if (i != 0) {
+                    write("+ ");
+                }
+                int nextSize = MAX_LINE_LENGTH - lineLength - 2;
+                int end = Math.min(i + nextSize, string.length());
+
+                assert lineLength + (end - i) + 2 < MAX_LINE_LENGTH;
+                write("\"" + string.substring(i, end) + "\"");
+                size = nextSize;
+            }
+
+            return "";
+        } else if (!Character.isAlphabetic(firstCharacter) && firstCharacter != '+') {
+            return m;
+        }
+
+        if (!lineWrapping) {
+            indent(LINE_WRAP_INDENTS);
+        }
+        lineWrapping = true;
+        lineLength = 0;
+        write(LN);
+        writeIndent();
+        return m;
+    }
+
     private void writeIndent() throws IOException {
+        lineLength += indentSize();
         for (int i = 0; i < indent; i++) {
-            lineLength += IDENT_STRING.length();
             writer.write(IDENT_STRING);
         }
+    }
+
+    private int indentSize() {
+        return IDENT_STRING.length() * indent;
     }
 
     private static class TrimTrailingSpaceWriter extends Writer {
