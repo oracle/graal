@@ -78,6 +78,7 @@ public class ClassSubstitutions {
         return klass.equal(0);
     }
 
+    @MacroSubstitution(macro = ClassGetSuperclassNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static Class<?> getSuperclass(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
@@ -110,10 +111,6 @@ public class ClassSubstitutions {
         return null;
     }
 
-    /**
-     * This is macro substitution that falls back to a normal method substitution if the macro node
-     * does not canonicalize away.
-     */
     @MacroSubstitution(macro = ClassIsInstanceNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static boolean isInstance(final Class<?> thisObj, Object obj) {
