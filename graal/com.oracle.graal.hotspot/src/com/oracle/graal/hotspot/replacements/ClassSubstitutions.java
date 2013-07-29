@@ -40,6 +40,7 @@ import com.oracle.graal.word.*;
 @ClassSubstitution(java.lang.Class.class)
 public class ClassSubstitutions {
 
+    @MacroSubstitution(macro = ClassGetModifiersNode.class, isStatic = false)
     @MethodSubstitution(isStatic = false)
     public static int getModifiers(final Class<?> thisObj) {
         Word klass = loadWordFromObject(thisObj, klassOffset());
