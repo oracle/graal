@@ -299,6 +299,15 @@ public class CodeTreeBuilder {
         return startGroup().string("while ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
 
+    public CodeTreeBuilder startDoBlock() {
+        return startGroup().string("do ").startBlock();
+    }
+
+    public CodeTreeBuilder startDoWhile() {
+        clearLast(CodeTreeKind.NEW_LINE);
+        return startStatement().string(" while ").startParanthesesCommaGroup().endAfter().startGroup().endAfter();
+    }
+
     public CodeTreeBuilder startIf() {
         return startGroup().string("if ").startParanthesesCommaGroup().endAndWhitespaceAfter().startGroup().endAfter();
     }
@@ -480,6 +489,23 @@ public class CodeTreeBuilder {
         return declaration(type, name, singleString(init));
     }
 
+    public CodeTreeBuilder declaration(String type, String name, CodeTree init) {
+        startStatement();
+        string(type);
+        string(" ");
+        string(name);
+        if (init != null) {
+            string(" = ");
+            tree(init);
+        }
+        end(); // statement
+        return this;
+    }
+
+    public CodeTreeBuilder declaration(String type, String name, String init) {
+        return declaration(type, name, singleString(init));
+    }
+
     public CodeTreeBuilder declaration(TypeMirror type, String name, CodeTree init) {
         if (Utils.isVoid(type)) {
             startStatement();
@@ -500,6 +526,13 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder declaration(TypeMirror type, String name, CodeTreeBuilder init) {
+        if (init == this) {
+            throw new IllegalArgumentException("Recursive builder usage.");
+        }
+        return declaration(type, name, init.getTree());
+    }
+
+    public CodeTreeBuilder declaration(String type, String name, CodeTreeBuilder init) {
         if (init == this) {
             throw new IllegalArgumentException("Recursive builder usage.");
         }
