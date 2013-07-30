@@ -55,27 +55,35 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         if (!deleted) {
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode load = (LoadFieldNode) node;
-                ValueNode object = GraphUtil.unproxify(load.object());
-                ValueNode cachedValue = state.getReadCache(object, load.field());
-                if (cachedValue != null) {
-                    effects.replaceAtUsages(load, cachedValue);
-                    state.addScalarAlias(load, cachedValue);
-                    deleted = true;
+                if (!load.isVolatile()) {
+                    ValueNode object = GraphUtil.unproxify(load.object());
+                    ValueNode cachedValue = state.getReadCache(object, load.field());
+                    if (cachedValue != null) {
+                        effects.replaceAtUsages(load, cachedValue);
+                        state.addScalarAlias(load, cachedValue);
+                        deleted = true;
+                    } else {
+                        state.addReadCache(object, load.field(), load);
+                    }
                 } else {
-                    state.addReadCache(object, load.field(), load);
+                    processIdentity(state, ANY_LOCATION);
                 }
             } else if (node instanceof StoreFieldNode) {
                 StoreFieldNode store = (StoreFieldNode) node;
-                ValueNode object = GraphUtil.unproxify(store.object());
-                ValueNode cachedValue = state.getReadCache(object, store.field());
+                if (!store.isVolatile()) {
+                    ValueNode object = GraphUtil.unproxify(store.object());
+                    ValueNode cachedValue = state.getReadCache(object, store.field());
 
-                ValueNode value = state.getScalarAlias(store.value());
-                if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
-                    effects.deleteFixedNode(store);
-                    deleted = true;
+                    ValueNode value = state.getScalarAlias(store.value());
+                    if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
+                        effects.deleteFixedNode(store);
+                        deleted = true;
+                    }
+                    state.killReadCache(store.field());
+                    state.addReadCache(object, store.field(), value);
+                } else {
+                    processIdentity(state, ANY_LOCATION);
                 }
-                state.killReadCache(store.field());
-                state.addReadCache(object, store.field(), value);
             } else if (node instanceof MemoryCheckpoint.Single) {
                 METRIC_MEMORYCHECKOINT.increment();
                 LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
