@@ -209,4 +209,9 @@ public class FrameWithoutBoxingSubstitutions {
     public static MaterializedFrame materialize(FrameWithoutBoxing frame) {
         return MaterializeFrameNode.materialize(frame);
     }
+
+    @MethodSubstitution(isStatic = false, forced = true)
+    public static boolean isInitialized(FrameWithoutBoxing frame, FrameSlot slot) {
+        return getTag(frame, slot) != 0;
+    }
 }
