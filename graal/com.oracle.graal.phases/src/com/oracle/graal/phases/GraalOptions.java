@@ -43,7 +43,7 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Integer> MaximumDesiredSize = new OptionValue<>(20000);
     @Option(help = "")
-    public static final OptionValue<Integer> MaximumRecursiveInlining = new OptionValue<>(1);
+    public static final OptionValue<Integer> MaximumRecursiveInlining = new OptionValue<>(5);
 
     // inlining settings
     @Option(help = "")
