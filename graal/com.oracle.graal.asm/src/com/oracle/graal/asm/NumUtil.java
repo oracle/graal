@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,8 @@
  * questions.
  */
 package com.oracle.graal.asm;
+
+// JaCoCo Exclude
 
 /**
  * A collection of static utility functions that check ranges of numbers.
@@ -95,5 +97,9 @@ public class NumUtil {
 
     public static int roundUp(int number, int mod) {
         return ((number + mod - 1) / mod) * mod;
+    }
+
+    public static long roundUp(long number, long mod) {
+        return ((number + mod - 1L) / mod) * mod;
     }
 }

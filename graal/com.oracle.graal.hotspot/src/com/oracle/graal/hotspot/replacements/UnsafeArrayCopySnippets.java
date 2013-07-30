@@ -24,11 +24,13 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
@@ -40,33 +42,88 @@ import com.oracle.graal.word.*;
 
 public class UnsafeArrayCopySnippets implements Snippets {
 
+    private static final boolean supportsUnalignedMemoryAccess = graalRuntime().getTarget().arch.supportsUnalignedMemoryAccess();
+
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
     private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind) {
-        int header = arrayBaseOffset(baseKind);
+        int arrayBaseOffset = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
         long byteLength = (long) length * elementSize;
-        long nonVectorBytes = byteLength % VECTOR_SIZE;
         long srcOffset = (long) srcPos * elementSize;
         long destOffset = (long) destPos * elementSize;
+
+        long preLoopBytes;
+        long mainLoopBytes;
+        long postLoopBytes;
+
+        // We can easily vectorize the loop if both offsets have the same alignment.
+        if ((srcOffset % VECTOR_SIZE) == (destOffset % VECTOR_SIZE)) {
+            preLoopBytes = NumUtil.roundUp(arrayBaseOffset + srcOffset, VECTOR_SIZE) - (arrayBaseOffset + srcOffset);
+            postLoopBytes = (byteLength - preLoopBytes) % VECTOR_SIZE;
+            mainLoopBytes = byteLength - preLoopBytes - postLoopBytes;
+        } else {
+            // Does the architecture support unaligned memory accesses?
+            if (supportsUnalignedMemoryAccess) {
+                preLoopBytes = byteLength % VECTOR_SIZE;
+                mainLoopBytes = byteLength - preLoopBytes;
+                postLoopBytes = 0;
+            } else {
+                // No. Let's do element-wise copying.
+                preLoopBytes = byteLength;
+                mainLoopBytes = 0;
+                postLoopBytes = 0;
+            }
+        }
+
         if (probability(NOT_FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case
-            for (long i = byteLength - elementSize; i >= byteLength - nonVectorBytes; i -= elementSize) {
-                UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
+            srcOffset += byteLength;
+            destOffset += byteLength;
+
+            // Post-loop
+            for (long i = 0; i < postLoopBytes; i += elementSize) {
+                srcOffset -= elementSize;
+                destOffset -= elementSize;
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, baseKind);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a, baseKind);
             }
-            long vectorLength = byteLength - nonVectorBytes;
-            for (long i = vectorLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+            // Main-loop
+            for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
+                srcOffset -= VECTOR_SIZE;
+                destOffset -= VECTOR_SIZE;
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a.longValue(), VECTOR_KIND);
+            }
+            // Pre-loop
+            for (long i = 0; i < preLoopBytes; i += elementSize) {
+                srcOffset -= elementSize;
+                destOffset -= elementSize;
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, baseKind);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a, baseKind);
             }
         } else {
-            for (long i = 0; i < nonVectorBytes; i += elementSize) {
-                UnsafeStoreNode.store(dest, header, i + destOffset, UnsafeLoadNode.load(src, header, i + srcOffset, baseKind), baseKind);
+            // Pre-loop
+            for (long i = 0; i < preLoopBytes; i += elementSize) {
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, baseKind);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a, baseKind);
+                srcOffset += elementSize;
+                destOffset += elementSize;
             }
-            for (long i = nonVectorBytes; i < byteLength; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+            // Main-loop
+            for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a.longValue(), VECTOR_KIND);
+                srcOffset += VECTOR_SIZE;
+                destOffset += VECTOR_SIZE;
+            }
+            // Post-loop
+            for (long i = 0; i < postLoopBytes; i += elementSize) {
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, srcOffset, baseKind);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, destOffset, a, baseKind);
+                srcOffset += elementSize;
+                destOffset += elementSize;
             }
         }
     }
@@ -104,19 +161,19 @@ public class UnsafeArrayCopySnippets implements Snippets {
     @Snippet
     public static void arraycopyLong(long[] src, int srcPos, long[] dest, int destPos, int length) {
         Kind baseKind = Kind.Long;
-        int header = arrayBaseOffset(baseKind);
+        int arrayBaseOffset = arrayBaseOffset(baseKind);
         long byteLength = (long) length * arrayIndexScale(baseKind);
         long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
         long destOffset = (long) destPos * arrayIndexScale(baseKind);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, i + srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, i + destOffset, a.longValue(), VECTOR_KIND);
             }
         } else {
             for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, i + srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, i + destOffset, a.longValue(), VECTOR_KIND);
             }
         }
     }
@@ -124,19 +181,19 @@ public class UnsafeArrayCopySnippets implements Snippets {
     @Snippet
     public static void arraycopyDouble(double[] src, int srcPos, double[] dest, int destPos, int length) {
         Kind baseKind = Kind.Double;
-        int header = arrayBaseOffset(baseKind);
+        int arrayBaseOffset = arrayBaseOffset(baseKind);
         long byteLength = (long) length * arrayIndexScale(baseKind);
         long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
         long destOffset = (long) destPos * arrayIndexScale(baseKind);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, i + srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, i + destOffset, a.longValue(), VECTOR_KIND);
             }
         } else {
             for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, header, i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, header, i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset, i + srcOffset, VECTOR_KIND);
+                UnsafeStoreNode.store(dest, arrayBaseOffset, i + destOffset, a.longValue(), VECTOR_KIND);
             }
         }
     }
@@ -147,18 +204,18 @@ public class UnsafeArrayCopySnippets implements Snippets {
     @Snippet
     public static void arraycopyObject(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
         final int scale = arrayIndexScale(Kind.Object);
-        int header = arrayBaseOffset(Kind.Object);
+        int arrayBaseOffset = arrayBaseOffset(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
             long start = (long) (length - 1) * scale;
             for (long i = start; i >= 0; i -= scale) {
-                Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
-                DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, i + (long) srcPos * scale, Kind.Object);
+                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a);
             }
         } else {
             long end = (long) length * scale;
             for (long i = 0; i < end; i += scale) {
-                Object a = UnsafeLoadNode.load(src, header, i + (long) srcPos * scale, Kind.Object);
-                DirectObjectStoreNode.storeObject(dest, header, i + (long) destPos * scale, a);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset, i + (long) srcPos * scale, Kind.Object);
+                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a);
             }
         }
     }
