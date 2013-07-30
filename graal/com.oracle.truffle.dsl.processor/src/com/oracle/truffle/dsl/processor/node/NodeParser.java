@@ -277,10 +277,10 @@ public class NodeParser extends TemplateParser<NodeData> {
         node.setPolymorphicSpecializations(specializations);
     }
 
-    private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> lookupTypes) {
+    private NodeData parseNodeData(TypeElement templateType, TypeMirror nodeType, List<? extends Element> elements, List<TypeElement> typeHierarchy) {
         NodeData nodeData = new NodeData(templateType, templateType.getSimpleName().toString());
 
-        AnnotationMirror typeSystemMirror = findFirstAnnotation(lookupTypes, TypeSystemReference.class);
+        AnnotationMirror typeSystemMirror = findFirstAnnotation(typeHierarchy, TypeSystemReference.class);
         if (typeSystemMirror == null) {
             nodeData.addError("No @%s annotation found in type hierarchy of %s.", TypeSystemReference.class.getSimpleName(), Utils.getQualifiedName(nodeType));
             return nodeData;
@@ -293,7 +293,7 @@ public class NodeParser extends TemplateParser<NodeData> {
             return nodeData;
         }
 
-        AnnotationMirror polymorphicMirror = findFirstAnnotation(lookupTypes, PolymorphicLimit.class);
+        AnnotationMirror polymorphicMirror = findFirstAnnotation(typeHierarchy, PolymorphicLimit.class);
         if (polymorphicMirror != null) {
             AnnotationValue limitValue = Utils.getAnnotationValue(polymorphicMirror, "value");
             int polymorphicLimit = Utils.getAnnotationValue(Integer.class, polymorphicMirror, "value");
@@ -304,8 +304,8 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
 
         List<String> assumptionsList = new ArrayList<>();
-        for (int i = lookupTypes.size() - 1; i >= 0; i--) {
-            TypeElement type = lookupTypes.get(i);
+        for (int i = typeHierarchy.size() - 1; i >= 0; i--) {
+            TypeElement type = typeHierarchy.get(i);
             AnnotationMirror assumptions = Utils.findAnnotationMirror(context.getEnvironment(), type, NodeAssumptions.class);
             if (assumptions != null) {
                 List<String> assumptionStrings = Utils.getAnnotationValueList(String.class, assumptions, "value");
@@ -317,35 +317,66 @@ public class NodeParser extends TemplateParser<NodeData> {
                 }
             }
         }
-        AnnotationMirror nodeInfoMirror = findFirstAnnotation(lookupTypes, NodeInfo.class);
+        AnnotationMirror nodeInfoMirror = findFirstAnnotation(typeHierarchy, NodeInfo.class);
         if (nodeInfoMirror != null) {
             nodeData.setShortName(Utils.getAnnotationValue(String.class, nodeInfoMirror, "shortName"));
         }
 
         nodeData.setAssumptions(new ArrayList<>(assumptionsList));
         nodeData.setNodeType(nodeType);
-        AnnotationMirror nodeContainer = findFirstAnnotation(lookupTypes, NodeContainer.class);
+        AnnotationMirror nodeContainer = findFirstAnnotation(typeHierarchy, NodeContainer.class);
         nodeData.setNodeContainer(nodeContainer != null);
         nodeData.setTypeSystem(typeSystem);
-        nodeData.setFields(parseFields(elements));
+        nodeData.setFields(parseFields(typeHierarchy, elements));
         parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
         // parseChildren invokes cyclic parsing.
-        nodeData.setChildren(parseChildren(elements, lookupTypes));
+        nodeData.setChildren(parseChildren(elements, typeHierarchy));
         nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         return nodeData;
     }
 
-    private static List<NodeFieldData> parseFields(List<? extends Element> elements) {
+    private List<NodeFieldData> parseFields(List<TypeElement> typeHierarchy, List<? extends Element> elements) {
+        Set<String> names = new HashSet<>();
+
         List<NodeFieldData> fields = new ArrayList<>();
         for (VariableElement field : ElementFilter.fieldsIn(elements)) {
             if (field.getModifiers().contains(Modifier.STATIC)) {
                 continue;
             }
             if (field.getModifiers().contains(Modifier.PUBLIC) || field.getModifiers().contains(Modifier.PROTECTED)) {
-                fields.add(new NodeFieldData(field));
+                String name = field.getSimpleName().toString();
+                fields.add(new NodeFieldData(field, null, field.asType(), name, false));
+                names.add(name);
             }
         }
+
+        List<TypeElement> reversedTypeHierarchy = new ArrayList<>(typeHierarchy);
+        Collections.reverse(reversedTypeHierarchy);
+        for (TypeElement typeElement : reversedTypeHierarchy) {
+            AnnotationMirror nodeChildrenMirror = Utils.findAnnotationMirror(processingEnv, typeElement, NodeFields.class);
+            List<AnnotationMirror> children = Utils.collectAnnotations(context, nodeChildrenMirror, "value", typeElement, NodeField.class);
+
+            for (AnnotationMirror mirror : children) {
+                String name = Utils.firstLetterLowerCase(Utils.getAnnotationValue(String.class, mirror, "name"));
+                TypeMirror type = Utils.getAnnotationValue(TypeMirror.class, mirror, "type");
+
+                NodeFieldData field = new NodeFieldData(typeElement, mirror, type, name, true);
+                if (name.isEmpty()) {
+                    field.addError(Utils.getAnnotationValue(mirror, "name"), "Field name cannot be empty.");
+                } else if (names.contains(name)) {
+                    field.addError(Utils.getAnnotationValue(mirror, "name"), "Duplicate field name '%s'.", name);
+                }
+                names.add(name);
+
+                fields.add(field);
+            }
+        }
+
+        for (NodeFieldData nodeFieldData : fields) {
+            nodeFieldData.setGetter(findGetter(elements, nodeFieldData.getName(), nodeFieldData.getType()));
+        }
+
         return fields;
     }
 
@@ -975,6 +1006,12 @@ public class NodeParser extends TemplateParser<NodeData> {
             unusedElements.removeAll(nodeData.getExtensionElements());
         }
 
+        for (NodeFieldData field : nodeData.getFields()) {
+            if (field.getGetter() != null) {
+                unusedElements.remove(field.getGetter());
+            }
+        }
+
         for (NodeChildData child : nodeData.getChildren()) {
             if (child.getAccessElement() != null) {
                 unusedElements.remove(child.getAccessElement());
@@ -1142,7 +1179,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
     }
 
-    private Element findGetter(List<? extends Element> elements, String variableName, TypeMirror type) {
+    private ExecutableElement findGetter(List<? extends Element> elements, String variableName, TypeMirror type) {
         if (type == null) {
             return null;
         }

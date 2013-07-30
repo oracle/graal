@@ -79,7 +79,7 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
 
         addDefaultFrame(methodSpec);
         addDefaultImplicitThis(method, methodSpec);
-        addDefaultFieldMethodSpec(method, methodSpec);
+        addDefaultFieldMethodSpec(methodSpec);
         addDefaultChildren(shortCircuitsEnabled, shortCircuitName, methodSpec);
 
         return methodSpec;
@@ -119,9 +119,9 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         }
     }
 
-    protected void addDefaultFieldMethodSpec(ExecutableElement method, MethodSpec methodSpec) {
+    protected void addDefaultFieldMethodSpec(MethodSpec methodSpec) {
         for (NodeFieldData field : getNode().getFields()) {
-            if (!Utils.isFieldAccessible(method, field.getVariable())) {
+            if (getNode().isNodeContainer() || field.getGetter() == null) {
                 ParameterSpec spec = new ParameterSpec(field.getName(), field.getType());
                 spec.setLocal(true);
                 methodSpec.addOptional(spec);

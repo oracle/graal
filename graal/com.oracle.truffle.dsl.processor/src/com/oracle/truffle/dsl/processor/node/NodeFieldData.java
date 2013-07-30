@@ -29,27 +29,49 @@ import com.oracle.truffle.dsl.processor.template.*;
 
 public class NodeFieldData extends MessageContainer {
 
-    private VariableElement variable;
+    private final Element messageElement;
+    private final AnnotationMirror messageAnnotation;
+    private final String name;
+    private final TypeMirror type;
+    private final boolean generated;
+    private ExecutableElement getter;
 
-    public NodeFieldData(VariableElement var) {
-        this.variable = var;
+    public NodeFieldData(Element messageElement, AnnotationMirror messageAnnotation, TypeMirror type, String name, boolean generated) {
+        this.messageElement = messageElement;
+        this.messageAnnotation = messageAnnotation;
+        this.name = name;
+        this.type = type;
+        this.generated = generated;
+    }
+
+    void setGetter(ExecutableElement getter) {
+        this.getter = getter;
     }
 
     @Override
     public Element getMessageElement() {
-        return variable;
+        return messageElement;
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return messageAnnotation;
     }
 
     public String getName() {
-        return variable.getSimpleName().toString();
+        return name;
     }
 
     public TypeMirror getType() {
-        return variable.asType();
+        return type;
     }
 
-    public VariableElement getVariable() {
-        return variable;
+    public boolean isGenerated() {
+        return generated;
+    }
+
+    public ExecutableElement getGetter() {
+        return getter;
     }
 
 }
