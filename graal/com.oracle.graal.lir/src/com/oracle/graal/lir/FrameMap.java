@@ -37,46 +37,8 @@ import com.oracle.graal.asm.*;
  * area and the spill are can grow until then. Therefore, outgoing arguments are indexed from the
  * stack pointer, while spill slots are indexed from the beginning of the frame (and the total frame
  * size has to be added to get the actual offset from the stack pointer).
- * <p>
- * This is the format of a stack frame:
- * 
- * <pre>
- *   Base       Contents
- * 
- *            :                                :  -----
- *   caller   | incoming overflow argument n   |    ^
- *   frame    :     ...                        :    | positive
- *            | incoming overflow argument 0   |    | offsets
- *   ---------+--------------------------------+---------------------
- *            | return address                 |    |            ^
- *   current  +--------------------------------+    |            |    -----
- *   frame    |                                |    |            |      ^
- *            : callee save area               :    |            |      |
- *            |                                |    |            |      |
- *            +--------------------------------+    |            |      |
- *            | spill slot 0                   |    | negative   |      |
- *            :     ...                        :    v offsets    |      |
- *            | spill slot n                   |  -----        total  frame
- *            +--------------------------------+               frame  size
- *            | alignment padding              |               size     |
- *            +--------------------------------+  -----          |      |
- *            | outgoing overflow argument n   |    ^            |      |
- *            :     ...                        :    | positive   |      |
- *            | outgoing overflow argument 0   |    | offsets    v      v
- *    %sp-->  +--------------------------------+---------------------------
- * 
- * </pre>
- * 
- * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size of such
- * a block may be greater than the size of a normal spill slot or the word size.
- * <p>
- * A runtime can reserve space at the beginning of the overflow argument area. The calling
- * convention can specify that the first overflow stack argument is not at offset 0, but at a
- * specified offset. Use {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that
- * call-free methods also have this space reserved. Then the VM can use the memory at offset 0
- * relative to the stack pointer.
  */
-public final class FrameMap {
+public abstract class FrameMap {
 
     public final CodeCacheProvider runtime;
     public final TargetDescription target;
@@ -92,7 +54,7 @@ public final class FrameMap {
     /**
      * Size of the area occupied by spill slots and other stack-allocated memory blocks.
      */
-    private int spillSize;
+    protected int spillSize;
 
     /**
      * Size of the area occupied by outgoing overflow arguments. This value is adjusted as calling
@@ -134,7 +96,7 @@ public final class FrameMap {
         return target.arch.getReturnAddressSize();
     }
 
-    private int calleeSaveAreaSize() {
+    protected int calleeSaveAreaSize() {
         CalleeSaveLayout csl = registerConfig.getCalleeSaveLayout();
         return csl != null ? csl.size : 0;
     }
@@ -238,13 +200,12 @@ public final class FrameMap {
     }
 
     /**
-     * Gets the offset to the stack area where callee-saved registers are stored.
+     * Gets the offset from the stack pointer to the stack area where callee-saved registers are
+     * stored.
      * 
      * @return The offset to the callee save area (in bytes).
      */
-    public int offsetToCalleeSaveArea() {
-        return frameSize() - calleeSaveAreaSize();
-    }
+    public abstract int offsetToCalleeSaveArea();
 
     /**
      * Informs the frame map that the compiled code calls a particular method, which may need stack
@@ -267,9 +228,16 @@ public final class FrameMap {
         hasOutgoingStackArguments = hasOutgoingStackArguments || argsSize > 0;
     }
 
-    private StackSlot getSlot(PlatformKind kind, int additionalOffset) {
-        return StackSlot.get(kind, -spillSize + additionalOffset, true);
-    }
+    /**
+     * Reserves a new spill slot in the frame of the method being compiled. The returned slot is
+     * aligned on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte
+     * boundary.
+     * 
+     * @param kind The kind of the spill slot to be reserved.
+     * @param additionalOffset
+     * @return A spill slot denoting the reserved memory area.
+     */
+    protected abstract StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset);
 
     /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned
@@ -294,7 +262,7 @@ public final class FrameMap {
         }
         int size = target.arch.getSizeInBytes(kind);
         spillSize = NumUtil.roundUp(spillSize + size, size);
-        return getSlot(kind, 0);
+        return allocateNewSpillSlot(kind, 0);
     }
 
     private Set<StackSlot> freedSlots;
@@ -329,15 +297,15 @@ public final class FrameMap {
 
         if (refs) {
             assert size % target.wordSize == 0;
-            StackSlot result = getSlot(Kind.Object, 0);
+            StackSlot result = allocateNewSpillSlot(Kind.Object, 0);
             objectStackBlocks.add(result);
             for (int i = target.wordSize; i < size; i += target.wordSize) {
-                objectStackBlocks.add(getSlot(Kind.Object, i));
+                objectStackBlocks.add(allocateNewSpillSlot(Kind.Object, i));
             }
             return result;
 
         } else {
-            return getSlot(target.wordKind, 0);
+            return allocateNewSpillSlot(target.wordKind, 0);
         }
     }
 

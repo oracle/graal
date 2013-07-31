@@ -47,9 +47,7 @@ public abstract class Backend {
         return runtime;
     }
 
-    public FrameMap newFrameMap() {
-        return new FrameMap(runtime, target, runtime.lookupRegisterConfig());
-    }
+    public abstract FrameMap newFrameMap();
 
     public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);
 
