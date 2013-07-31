@@ -407,6 +407,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             // Explicitly specified guards
             for (GuardData guard : guardedSpecialization.getGuards()) {
                 builder.string(andOperator);
+                if (guard.isNegated()) {
+                    builder.string("!");
+                }
                 builder.tree(createTemplateMethodCall(parent, null, valueSpecialization, guard, null));
                 andOperator = " && ";
             }
@@ -2388,7 +2391,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (specialization.findNextSpecialization() != null) {
                 CodeTreeBuilder returnBuilder = new CodeTreeBuilder(builder);
                 returnBuilder.tree(createDeoptimize(builder));
-                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, specialization, null, "One of guards " + specialization.getGuards() + " failed"));
+                returnBuilder.tree(createReturnExecuteAndSpecialize(builder, executable, specialization, null, "One of guards " + specialization.getGuardDefinitions() + " failed"));
                 returnSpecialized = returnBuilder.getRoot();
             }
 

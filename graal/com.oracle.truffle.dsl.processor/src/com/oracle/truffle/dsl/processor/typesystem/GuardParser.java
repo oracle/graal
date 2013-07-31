@@ -35,11 +35,18 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     private final SpecializationData specialization;
     private final String guardName;
+    private final boolean negated;
 
-    public GuardParser(ProcessorContext context, SpecializationData specialization, String guardName) {
+    public GuardParser(ProcessorContext context, SpecializationData specialization, String guardDefinition) {
         super(context, specialization.getNode());
         this.specialization = specialization;
-        this.guardName = guardName;
+        if (guardDefinition.startsWith("!")) {
+            this.guardName = guardDefinition.substring(1, guardDefinition.length());
+            this.negated = true;
+        } else {
+            this.guardName = guardDefinition;
+            this.negated = false;
+        }
         setEmitErrors(false);
         setParseNullOnError(false);
     }
@@ -71,7 +78,7 @@ public class GuardParser extends NodeMethodParser<GuardData> {
 
     @Override
     public GuardData create(TemplateMethod method) {
-        GuardData guard = new GuardData(method, specialization);
+        GuardData guard = new GuardData(method, specialization, negated);
         /*
          * Update parameters in way that parameter specifications match again the node field names
          * etc.

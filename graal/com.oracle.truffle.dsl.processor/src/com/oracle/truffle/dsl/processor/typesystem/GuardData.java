@@ -28,10 +28,16 @@ import com.oracle.truffle.dsl.processor.template.*;
 public class GuardData extends TemplateMethod {
 
     private final SpecializationData specialization;
+    private final boolean negated;
 
-    public GuardData(TemplateMethod method, SpecializationData specialization) {
+    public GuardData(TemplateMethod method, SpecializationData specialization, boolean negated) {
         super(method);
+        this.negated = negated;
         this.specialization = specialization;
+    }
+
+    public boolean isNegated() {
+        return negated;
     }
 
     public SpecializationData getSpecialization() {
