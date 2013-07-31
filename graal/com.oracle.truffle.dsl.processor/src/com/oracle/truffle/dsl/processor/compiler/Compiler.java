@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.compiler;
 
+import java.util.*;
+
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 
@@ -30,5 +32,7 @@ public interface Compiler {
     String getMethodBody(ProcessingEnvironment env, ExecutableElement method);
 
     String getHeaderComment(ProcessingEnvironment env, Element type);
+
+    List<? extends Element> getEnclosedElementsDeclarationOrder(TypeElement type);
 
 }

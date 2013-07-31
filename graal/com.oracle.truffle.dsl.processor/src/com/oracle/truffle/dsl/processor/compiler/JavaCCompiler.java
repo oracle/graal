@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.compiler;
 
+import java.util.*;
+
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 
@@ -36,6 +38,10 @@ public class JavaCCompiler extends AbstractCompiler {
         } catch (ClassNotFoundException e) {
             return false;
         }
+    }
+
+    public List<? extends Element> getEnclosedElementsDeclarationOrder(TypeElement type) {
+        return type.getEnclosedElements();
     }
 
     private static final Class[] getTreeAndTopLevelSignature = new Class[]{Element.class, AnnotationMirror.class, AnnotationValue.class};

@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.dsl.processor.compiler;
 
+import java.util.*;
+
 import javax.annotation.processing.*;
 import javax.lang.model.element.*;
 
@@ -35,6 +37,65 @@ public class JDTCompiler extends AbstractCompiler {
             return elementClass.isAssignableFrom(currentElement.getClass());
         } catch (ClassNotFoundException e) {
             return false;
+        }
+    }
+
+    public List<? extends Element> getEnclosedElementsDeclarationOrder(TypeElement type) {
+        try {
+            Object binding = field(type, "_binding");
+
+            Class<?> sourceTypeBinding = Class.forName("org.eclipse.jdt.internal.compiler.lookup.SourceTypeBinding");
+
+            final List<Object> declarationOrder;
+            if (sourceTypeBinding.isAssignableFrom(binding.getClass())) {
+                declarationOrder = findSourceOrder(binding);
+            } else {
+                return null;
+            }
+
+            List<Element> enclosedElements = new ArrayList<>(type.getEnclosedElements());
+            Collections.sort(enclosedElements, new Comparator<Element>() {
+
+                public int compare(Element o1, Element o2) {
+                    try {
+                        Object o1Binding = field(o1, "_binding");
+                        Object o2Binding = field(o2, "_binding");
+
+                        int i1 = declarationOrder.indexOf(o1Binding);
+                        int i2 = declarationOrder.indexOf(o2Binding);
+
+                        return i1 - i2;
+                    } catch (Exception e) {
+                        return 0;
+                    }
+                }
+
+            });
+            return enclosedElements;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static List<Object> findSourceOrder(Object binding) throws Exception {
+        Object referenceContext = field(field(binding, "scope"), "referenceContext");
+
+        TreeMap<Integer, Object> orderedBindings = new TreeMap<>();
+
+        collectSourceOrder(orderedBindings, referenceContext, "methods");
+        collectSourceOrder(orderedBindings, referenceContext, "fields");
+        collectSourceOrder(orderedBindings, referenceContext, "memberTypes");
+
+        return new ArrayList<>(orderedBindings.values());
+    }
+
+    private static void collectSourceOrder(TreeMap<Integer, Object> orderedBindings, Object referenceContext, String fieldName) throws Exception {
+        Object[] declarations = (Object[]) field(referenceContext, fieldName);
+        if (declarations != null) {
+            for (int i = 0; i < declarations.length; i++) {
+                Integer declarationSourceStart = (Integer) field(declarations[i], "declarationSourceStart");
+                orderedBindings.put(declarationSourceStart, field(declarations[i], "binding"));
+            }
         }
     }
 
