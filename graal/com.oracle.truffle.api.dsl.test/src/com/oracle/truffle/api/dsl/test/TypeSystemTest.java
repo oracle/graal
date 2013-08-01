@@ -32,6 +32,22 @@ public class TypeSystemTest {
 
     @TypeSystem({int.class, boolean.class, String.class, Str.class, CallTarget.class, Object[].class})
     static class SimpleTypes {
+
+        static int intCheck;
+        static int intCast;
+
+        @TypeCheck
+        public boolean isInteger(Object value) {
+            intCheck++;
+            return value instanceof Integer;
+        }
+
+        @TypeCast
+        public int asInteger(Object value) {
+            intCast++;
+            return (int) value;
+        }
+
     }
 
     @TypeSystemReference(SimpleTypes.class)
@@ -124,6 +140,16 @@ public class TypeSystemTest {
         public Object execute(VirtualFrame frame) {
             invocationCount++;
             return frame.getArguments(TestArguments.class).get(index);
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+            // avoid casts for some tests
+            Object o = frame.getArguments(TestArguments.class).get(index);
+            if (o instanceof Integer) {
+                return (int) o;
+            }
+            throw new UnexpectedResultException(o);
         }
 
     }

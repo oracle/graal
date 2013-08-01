@@ -40,6 +40,20 @@ public class GuardData extends TemplateMethod {
         return negated;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof GuardData) {
+            GuardData other = (GuardData) obj;
+            return getMethod().equals(other.getMethod()) && negated == other.negated;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return getMethod().hashCode();
+    }
+
     public SpecializationData getSpecialization() {
         return specialization;
     }
