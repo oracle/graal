@@ -852,8 +852,30 @@ public final class SchedulePhase extends Phase {
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
         }
+        assert filterSchedulableNodes(blockToNodesMap.get(b)).size() == removeProxies(sortedInstructions).size() : "sorted block does not contain the same amount of nodes: " +
+                        filterSchedulableNodes(blockToNodesMap.get(b)) + " vs. " + removeProxies(sortedInstructions);
         assert sameOrderForFixedNodes(blockToNodesMap.get(b), sortedInstructions) : "fixed nodes in sorted block are not in the same order";
         blockToNodesMap.put(b, sortedInstructions);
+    }
+
+    private static List<ScheduledNode> removeProxies(List<ScheduledNode> list) {
+        List<ScheduledNode> result = new ArrayList<>();
+        for (ScheduledNode n : list) {
+            if (!(n instanceof ProxyNode)) {
+                result.add(n);
+            }
+        }
+        return result;
+    }
+
+    private static List<ScheduledNode> filterSchedulableNodes(List<ScheduledNode> list) {
+        List<ScheduledNode> result = new ArrayList<>();
+        for (ScheduledNode n : list) {
+            if (!(n instanceof LocalNode) && !(n instanceof PhiNode)) {
+                result.add(n);
+            }
+        }
+        return result;
     }
 
     private static boolean sameOrderForFixedNodes(List<ScheduledNode> fixed, List<ScheduledNode> sorted) {
