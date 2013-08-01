@@ -529,7 +529,6 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched, printSchedule);
                 schedule.apply(graph);
                 assertEquals(1, graph.getNodes().filter(StartNode.class).count());
-                TTY.flush();
                 return schedule;
             }
         });
