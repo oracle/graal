@@ -819,8 +819,9 @@ public final class SchedulePhase extends Phase {
 
     private void sortNodesWithinBlocks(StructuredGraph graph, SchedulingStrategy strategy) {
         NodeBitMap visited = graph.createNodeBitMap();
+        NodeBitMap beforeLastLocation = graph.createNodeBitMap();
         for (Block b : cfg.getBlocks()) {
-            sortNodesWithinBlock(b, visited, strategy);
+            sortNodesWithinBlock(b, visited, beforeLastLocation, strategy);
             assert noDuplicatedNodesInBlock(b) : "duplicated nodes in " + b;
         }
     }
@@ -831,7 +832,7 @@ public final class SchedulePhase extends Phase {
         return list.size() == hashset.size();
     }
 
-    private void sortNodesWithinBlock(Block b, NodeBitMap visited, SchedulingStrategy strategy) {
+    private void sortNodesWithinBlock(Block b, NodeBitMap visited, NodeBitMap beforeLastLocation, SchedulingStrategy strategy) {
         if (visited.isMarked(b.getBeginNode()) || cfg.blockFor(b.getBeginNode()) != b) {
             throw new SchedulingError();
         }
@@ -846,7 +847,7 @@ public final class SchedulePhase extends Phase {
                 break;
             case LATEST:
             case LATEST_OUT_OF_LOOPS:
-                sortedInstructions = sortNodesWithinBlockLatest(b, visited);
+                sortedInstructions = sortNodesWithinBlockLatest(b, visited, beforeLastLocation);
                 break;
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
@@ -882,12 +883,10 @@ public final class SchedulePhase extends Phase {
      * all inputs. This means that a node is added to the list after all its inputs have been
      * processed.
      */
-    private List<ScheduledNode> sortNodesWithinBlockLatest(Block b, NodeBitMap visited) {
+    private List<ScheduledNode> sortNodesWithinBlockLatest(Block b, NodeBitMap visited, NodeBitMap beforeLastLocation) {
         List<ScheduledNode> instructions = blockToNodesMap.get(b);
         List<ScheduledNode> sortedInstructions = new ArrayList<>(blockToNodesMap.get(b).size() + 2);
         List<FloatingReadNode> reads = new ArrayList<>();
-        // TODO: need bitmap for just within a block
-        NodeBitMap beforeLastLocation = cfg.graph.createNodeBitMap();
 
         if (memsched == MemoryScheduling.OPTIMAL) {
             /*
