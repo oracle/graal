@@ -97,6 +97,9 @@ public class CodeTreeBuilder {
 
     private CodeTreeBuilder push(BuilderCodeTree tree) {
         if (currentElement != null) {
+            if (!removeLastIfEnqueued(tree)) {
+                return this;
+            }
             currentElement.add(tree);
         }
         switch (tree.getCodeKind()) {
@@ -110,9 +113,30 @@ public class CodeTreeBuilder {
         return this;
     }
 
+    private boolean removeLastIfEnqueued(BuilderCodeTree tree) {
+        if (tree.getCodeKind() == REMOVE_LAST) {
+            return !clearLastRec(tree.removeLast, currentElement.getEnclosedElements());
+        }
+        List<CodeTree> childTree = tree.getEnclosedElements();
+        if (!childTree.isEmpty()) {
+            CodeTree last = childTree.get(0);
+            if (last instanceof BuilderCodeTree) {
+                if (!removeLastIfEnqueued((BuilderCodeTree) last)) {
+                    childTree.remove(0);
+                }
+            }
+        }
+        return true;
+    }
+
     private void clearLast(CodeTreeKind kind) {
         if (clearLastRec(kind, currentElement.getEnclosedElements())) {
             treeCount--;
+        } else {
+            // delay clearing the last
+            BuilderCodeTree tree = new BuilderCodeTree(REMOVE_LAST, null, null);
+            tree.removeLast = kind;
+            push(tree);
         }
     }
 
@@ -713,6 +737,7 @@ public class CodeTreeBuilder {
     private static class BuilderCodeTree extends CodeTree {
 
         private EndCallback atEndListener;
+        private CodeTreeKind removeLast;
 
         public BuilderCodeTree(CodeTreeKind kind, TypeMirror type, String string) {
             super(kind, type, string);
