@@ -164,6 +164,12 @@ public class Debug {
         }
     }
 
+    public static void printf(String msg, Object... args) {
+        if (ENABLED && DebugScope.getInstance().isLogEnabled()) {
+            DebugScope.getInstance().printf(msg, args);
+        }
+    }
+
     public static void dump(Object object, String msg, Object... args) {
         if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
             DebugScope.getInstance().dump(object, msg, args);

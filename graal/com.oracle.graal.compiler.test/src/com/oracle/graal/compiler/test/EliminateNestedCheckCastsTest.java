@@ -106,11 +106,11 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
     }
 
     private StructuredGraph compileSnippet(final String snippet, final int checkcasts, final int afterCanon) {
-        return Debug.scope(snippet, new Callable<StructuredGraph>() {
+        final StructuredGraph graph = parse(snippet);
+        return Debug.scope("NestedCheckCastsTest", graph, new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() throws Exception {
-                StructuredGraph graph = parse(snippet);
                 Debug.dump(graph, "After parsing: " + snippet);
                 Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
                 new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);

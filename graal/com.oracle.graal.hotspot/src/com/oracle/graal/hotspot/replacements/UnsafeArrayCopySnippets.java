@@ -59,7 +59,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
         long postLoopBytes;
 
         // We can easily vectorize the loop if both offsets have the same alignment.
-        if ((srcOffset % VECTOR_SIZE) == (destOffset % VECTOR_SIZE)) {
+        if (byteLength >= VECTOR_SIZE && (srcOffset % VECTOR_SIZE) == (destOffset % VECTOR_SIZE)) {
             preLoopBytes = NumUtil.roundUp(arrayBaseOffset + srcOffset, VECTOR_SIZE) - (arrayBaseOffset + srcOffset);
             postLoopBytes = (byteLength - preLoopBytes) % VECTOR_SIZE;
             mainLoopBytes = byteLength - preLoopBytes - postLoopBytes;
