@@ -216,6 +216,20 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return signature;
     }
 
+    public ActualParameter getSignatureParameter(int searchIndex) {
+        int index = 0;
+        for (ActualParameter parameter : getParameters()) {
+            if (!parameter.getSpecification().isSignature()) {
+                continue;
+            }
+            if (index == searchIndex) {
+                return parameter;
+            }
+            index++;
+        }
+        return null;
+    }
+
     public void updateSignature(Signature signature) {
         assert signature.size() >= 1;
         int signatureIndex = 0;
@@ -364,6 +378,13 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
                 }
             }
             return signature;
+        }
+
+        public boolean equalsParameters(Signature other) {
+            if (size() != other.size()) {
+                return false;
+            }
+            return types.subList(1, types.size()).equals(other.types.subList(1, other.types.size()));
         }
 
         @Override

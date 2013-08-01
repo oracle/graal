@@ -259,4 +259,11 @@ public class SpecializationData extends TemplateMethod {
             getParameters().add(0, new ActualParameter(frameSpec, frameType, -1, false));
         }
     }
+
+    public boolean equalsGuards(SpecializationData specialization) {
+        if (assumptions.equals(specialization.getAssumptions()) && guards.equals(specialization.getGuards()) && getSignature().equalsParameters(specialization.getSignature())) {
+            return true;
+        }
+        return false;
+    }
 }
