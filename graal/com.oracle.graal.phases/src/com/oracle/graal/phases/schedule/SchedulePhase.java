@@ -202,10 +202,17 @@ public final class SchedulePhase extends Phase {
 
         @Override
         protected Map<LocationIdentity, Node> merge(Block merge, List<Map<LocationIdentity, Node>> states) {
+            return merge(merge, states, false);
+        }
+
+        protected Map<LocationIdentity, Node> merge(Block merge, List<Map<LocationIdentity, Node>> states, boolean loopbegin) {
             assert merge.getBeginNode() instanceof MergeNode;
             MergeNode mergeNode = (MergeNode) merge.getBeginNode();
 
-            Map<LocationIdentity, Node> initKillMap = cloneState(getBlockToKillMap().get(merge));
+            Map<LocationIdentity, Node> initKillMap = new HashMap<>();
+            if (loopbegin) {
+                initKillMap.putAll(getBlockToKillMap().get(merge));
+            }
             for (Map<LocationIdentity, Node> state : states) {
                 for (LocationIdentity locid : state.keySet()) {
                     if (initKillMap.containsKey(locid)) {
@@ -219,6 +226,9 @@ public final class SchedulePhase extends Phase {
             }
 
             getMergeToKillMap().set(mergeNode, cloneState(initKillMap));
+            if (!loopbegin) {
+                initKillMap.putAll(getBlockToKillMap().get(merge));
+            }
             return initKillMap;
         }
 
@@ -232,7 +242,7 @@ public final class SchedulePhase extends Phase {
             LoopInfo<Map<LocationIdentity, Node>> info = ReentrantBlockIterator.processLoop(this, loop, new HashMap<>(state));
 
             assert loop.header.getBeginNode() instanceof LoopBeginNode;
-            Map<LocationIdentity, Node> headerState = merge(loop.header, info.endStates);
+            Map<LocationIdentity, Node> headerState = merge(loop.header, info.endStates, true);
             getBlockToKillMap().put(loop.header, headerState);
 
             for (Map<LocationIdentity, Node> exitState : info.exitStates) {
