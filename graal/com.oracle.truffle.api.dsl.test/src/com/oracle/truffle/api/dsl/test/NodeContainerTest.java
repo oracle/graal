@@ -162,21 +162,10 @@ public class NodeContainerTest {
     }
 
     @NodeChild(value = "children", type = ValueNode[].class)
+    @NodeField(name = "context", type = Context.class)
     abstract static class BuiltinNode extends ValueNode {
 
-        protected final Context context;
-
-        public BuiltinNode(BuiltinNode node) {
-            this(node.context);
-        }
-
-        public BuiltinNode(Context context) {
-            this.context = context;
-        }
-
-        public Context getContext() {
-            return context;
-        }
+        public abstract Context getContext();
     }
 
     static class Context {

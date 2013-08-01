@@ -50,12 +50,12 @@ class TestHelper {
         ArgumentNode[] argumentNodes = arguments(factory.getExecutionSignature().size());
 
         List<Object> argumentList = new ArrayList<>();
-        argumentList.addAll(Arrays.asList(constants));
         if (ChildrenNode.class.isAssignableFrom(factory.getNodeClass()) || BuiltinNode.class.isAssignableFrom(factory.getNodeClass())) {
             argumentList.add(argumentNodes);
         } else {
             argumentList.addAll(Arrays.asList(argumentNodes));
         }
+        argumentList.addAll(Arrays.asList(constants));
         return factory.createNode(argumentList.toArray(new Object[argumentList.size()]));
     }
 
