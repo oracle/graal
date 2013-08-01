@@ -384,6 +384,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
             TTY.print("\n\n");
+            TTY.flush();
         }
     }
 
@@ -401,6 +402,8 @@ public final class SchedulePhase extends Phase {
             TTY.print(" // from %s", frn.location().getLocationIdentity());
             TTY.print(", lastAccess: %s", frn.lastLocationAccess());
             TTY.print(", object: %s", frn.object());
+        } else if (n instanceof GuardNode) {
+            TTY.print(", guard: %s", ((GuardNode) n).getGuard());
         }
         TTY.print("\n");
     }
@@ -474,39 +477,60 @@ public final class SchedulePhase extends Phase {
                 break;
             case LATEST:
             case LATEST_OUT_OF_LOOPS:
-                if (memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode) {
+                if (memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode && ((FloatingReadNode) node).location().getLocationIdentity() != FINAL_LOCATION) {
                     block = optimalBlock((FloatingReadNode) node, strategy);
                 } else {
                     block = latestBlock(node, strategy);
-                }
-                if (block == null) {
-                    block = earliestBlock(node);
-                } else if (strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS && !(node instanceof VirtualObjectNode)) {
-                    // schedule at the latest position possible in the outermost loop possible
-                    Block earliestBlock = earliestBlock(node);
-                    Block before = block;
-                    block = scheduleOutOfLoops(node, block, earliestBlock);
-                    if (!earliestBlock.dominates(block)) {
-                        throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s (before %s))", node.graph(), node, node.usages().count(),
-                                        earliestBlock, block, before);
+                    if (block == null) {
+                        block = earliestBlock(node);
+                    } else if (strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS && !(node instanceof VirtualObjectNode)) {
+                        // schedule at the latest position possible in the outermost loop possible
+                        Block earliestBlock = earliestBlock(node);
+                        Block before = block;
+                        block = scheduleOutOfLoops(node, block, earliestBlock);
+                        if (!earliestBlock.dominates(block)) {
+                            throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s (before %s))", node.graph(), node,
+                                            node.usages().count(), earliestBlock, block, before);
+                        }
                     }
                 }
                 break;
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
         }
+        assert earliestBlock(node).dominates(block) : "node " + node + " in block " + block + " is not dominated by earliest " + earliestBlock(node);
         cfg.getNodeToBlock().set(node, block);
         blockToNodesMap.get(block).add(node);
     }
 
-    // assign floating read to block according to kill maps
+    /**
+     * this method tries to find the latest position for a read, by taking the information gathered
+     * by {@link NewMemoryScheduleClosure} into account.
+     * 
+     * The idea is to iterate the dominator tree starting with the latest schedule of the read.
+     * 
+     * <pre>
+     *    U      upperbound block, defined by last access location of the floating read
+     *    &#9650;
+     *    E      earliest block
+     *    &#9650;
+     *    O      optimal block, first block that contains a kill of the read's location
+     *    &#9650;
+     *    L      latest block
+     * </pre>
+     * 
+     * i.e. <code>upperbound `dom` earliest `dom` optimal `dom` latest</code>. However, there're
+     * cases where <code>earliest `dom` optimal</code> is not true, because the position is
+     * (impliclitly) bounded by an anchor of the read's guard. In such cases, the earliest schedule
+     * is taken.
+     * 
+     */
     private Block optimalBlock(FloatingReadNode n, SchedulingStrategy strategy) {
         assert memsched == MemoryScheduling.OPTIMAL;
 
         LocationIdentity locid = n.location().getLocationIdentity();
-        if (locid == FINAL_LOCATION) {
-            return latestBlock(n, strategy);
-        }
+        assert locid != FINAL_LOCATION;
+
         Node upperBound = n.lastLocationAccess();
         Block upperBoundBlock = forKillLocation(upperBound);
         Block earliestBlock = earliestBlock(n);
@@ -516,35 +540,70 @@ public final class SchedulePhase extends Phase {
         assert currentBlock != null && earliestBlock.dominates(currentBlock) : "earliest (" + earliestBlock + ") should dominate latest block (" + currentBlock + ")";
         Block previousBlock = currentBlock;
 
+        if (dumpSchedule) {
+            TTY.print("processing %s (accessing %s): latest %s, earliest %s, upper bound %s (%s)\n", n, locid, currentBlock, earliestBlock, upperBoundBlock, upperBound);
+        }
+
         int iterations = 0;
-        // iterate the dominator tree until the last kill matches or reaching a upper bound
+        // iterate the dominator tree
         while (true) {
             iterations++;
+            assert earliestBlock.dominates(previousBlock) : "iterations: " + iterations;
             Node lastKill = blockToKillMap.get(currentBlock).get(locid);
+            boolean isAtEarliest = earliestBlock == previousBlock && previousBlock != currentBlock;
 
             if (lastKill.equals(upperBound)) {
                 // assign node to the block which kills the location
 
-                if (previousBlock.getBeginNode() instanceof MergeNode) {
-                    // merges kill locations right at the beginning of a block
+                boolean outOfLoop = false;
+
+                // schedule read out of the loop if possible, in terms of killMaps and earliest
+                // schedule
+                if (currentBlock != earliestBlock && previousBlock != earliestBlock) {
+                    assert earliestBlock.dominates(currentBlock);
+                    Block t = currentBlock;
+                    while (t.getLoop() != null && t.getDominator() != null && earliestBlock.dominates(t)) {
+                        Block dom = t.getDominator();
+                        if (dom.getLoopDepth() < currentBlock.getLoopDepth() && blockToKillMap.get(dom).get(locid) == upperBound && earliestBlock.dominates(dom)) {
+                            printIterations(iterations, "moved out of loop, from " + currentBlock + " to " + dom);
+                            previousBlock = currentBlock = dom;
+                            outOfLoop = true;
+                        }
+                        t = dom;
+                    }
+                }
+
+                if (!outOfLoop && previousBlock.getBeginNode() instanceof MergeNode) {
+                    // merges kill locations right at the beginning of a block. if a merge is the
+                    // killing node, we assign it to the dominating node.
+
                     MergeNode merge = (MergeNode) previousBlock.getBeginNode();
-                    if (getMergeToKillMap().get(merge).containsKey(locid)) {
-                        printIterations(iterations, "kill by merge");
+                    Node killer = getMergeToKillMap().get(merge).get(locid);
+
+                    if (killer != null && killer == merge) {
+                        // check if we violate earliest schedule condition
+                        if (isAtEarliest) {
+                            printIterations(iterations, "earliest bound in merge: " + earliestBlock);
+                            return earliestBlock;
+                        }
+                        printIterations(iterations, "kill by merge: " + currentBlock);
                         return currentBlock;
                     }
                 }
 
-                printIterations(iterations, "regular kill");
+                // current block matches last access, that means the previous (dominated) block
+                // kills the location, therefore schedule read to previous block.
+                printIterations(iterations, "regular kill: " + previousBlock);
                 return previousBlock;
             }
 
-            if (upperBoundBlock == currentBlock) { // reached upper bound
-                printIterations(iterations, "upper bound");
-                return currentBlock;
+            if (isAtEarliest) {
+                printIterations(iterations, "earliest bound: " + earliestBlock);
+                return earliestBlock;
             }
 
-            if (earliestBlock == currentBlock) { // reached earliest block
-                printIterations(iterations, "earliest block");
+            if (upperBoundBlock == currentBlock) {
+                printIterations(iterations, "upper bound: " + currentBlock + ", previous: " + previousBlock);
                 return currentBlock;
             }
 
@@ -556,7 +615,7 @@ public final class SchedulePhase extends Phase {
 
     private void printIterations(int iterations, String desc) {
         if (dumpSchedule) {
-            TTY.print("\niterations: %d,  %s\n\n", iterations, desc);
+            TTY.print("iterations: %d,  %s\n", iterations, desc);
         }
     }
 
@@ -588,7 +647,7 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        assert cdbc.block == null || earliestBlock(node).dominates(cdbc.block) : "failed to find correct latest schedule for " + node;
+        assert cdbc.block == null || earliestBlock(node).dominates(cdbc.block) : "failed to find correct latest schedule for " + node + ". cdbc: " + cdbc.block + ", earliest: " + earliestBlock(node);
         return cdbc.block;
     }
 

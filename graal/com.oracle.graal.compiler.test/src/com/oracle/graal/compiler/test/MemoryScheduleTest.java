@@ -189,6 +189,28 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     /**
+     * Here the read should float out of the loop.
+     */
+    public static int testLoop3Snippet(int a) {
+        int j = 0;
+        for (int i = 0; i < a; i++) {
+            if (i - container.a == 0) {
+                break;
+            }
+            j++;
+        }
+        return j;
+    }
+
+    @Test
+    public void testLoop3() {
+        SchedulePhase schedule = getFinalSchedule("testLoop3Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertEquals(7, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, true);
+        assertReadWithinReturnBlock(schedule, false);
+    }
+
+    /**
      * Here the read should float to the end (into the same block as the return).
      */
     public static int testArrayCopySnippet(Integer intValue, char[] a, char[] b, int len) {
@@ -375,6 +397,61 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertReadWithinReturnBlock(schedule, false);
     }
 
+    private int hash = 0;
+    private final char[] value = new char[3];
+
+    public int testStringHashCodeSnippet() {
+        int h = hash;
+        if (h == 0 && value.length > 0) {
+            char[] val = value;
+
+            for (int i = 0; i < value.length; i++) {
+                h = 31 * h + val[i];
+            }
+            hash = h;
+        }
+        return h;
+    }
+
+    @Test
+    public void testStringHashCode() {
+        SchedulePhase schedule = getFinalSchedule("testStringHashCodeSnippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertReadWithinStartBlock(schedule, true);
+        assertReadWithinReturnBlock(schedule, false);
+
+        hash = 0x1337;
+        value[0] = 'a';
+        value[1] = 'b';
+        value[2] = 'c';
+        test("testStringHashCodeSnippet");
+    }
+
+    public static int testLoop4Snippet(int count) {
+        int[] a = new int[count];
+
+        for (int i = 0; i < a.length; i++) {
+            a[i] = i;
+        }
+
+        int i = 0;
+        int iwrap = count - 1;
+        int sum = 0;
+
+        while (i < count) {
+            sum += (a[i] + a[iwrap]) / 2;
+            iwrap = i;
+            i++;
+        }
+        return sum;
+    }
+
+    @Test
+    public void testLoop4() {
+        SchedulePhase schedule = getFinalSchedule("testLoop4Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, false);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, false);
+    }
+
     private void assertReadWithinReturnBlock(SchedulePhase schedule, boolean withinReturnBlock) {
         StructuredGraph graph = schedule.getCFG().graph;
         assertEquals(graph.getNodes().filter(ReturnNode.class).count(), 1);
@@ -444,9 +521,15 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
+                MidTierContext midContext = new MidTierContext(runtime(), assumptions, replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
+                new GuardLoweringPhase().apply(graph, midContext);
+                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, midContext);
+                new LoweringPhase(LoweringType.AFTER_FSA).apply(graph, midContext);
+
                 SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched, printSchedule);
                 schedule.apply(graph);
                 assertEquals(1, graph.getNodes().filter(StartNode.class).count());
+                TTY.flush();
                 return schedule;
             }
         });
