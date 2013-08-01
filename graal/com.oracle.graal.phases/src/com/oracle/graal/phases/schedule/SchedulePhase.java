@@ -268,7 +268,6 @@ public final class SchedulePhase extends Phase {
     private final Map<FixedNode, List<FloatingNode>> phantomInputs = new IdentityHashMap<>();
     private final SchedulingStrategy selectedStrategy;
     private final MemoryScheduling memsched;
-    private final boolean dumpSchedule;
 
     public SchedulePhase() {
         this(OptScheduleOutOfLoops.getValue() ? SchedulingStrategy.LATEST_OUT_OF_LOOPS : SchedulingStrategy.LATEST);
@@ -286,13 +285,11 @@ public final class SchedulePhase extends Phase {
             this.memsched = MemoryScheduling.NONE;
         }
         this.selectedStrategy = strategy;
-        this.dumpSchedule = false;
     }
 
-    public SchedulePhase(SchedulingStrategy strategy, MemoryScheduling memsched, boolean dumpSchedule) {
+    public SchedulePhase(SchedulingStrategy strategy, MemoryScheduling memsched) {
         this.selectedStrategy = strategy;
         this.memsched = memsched;
-        this.dumpSchedule = dumpSchedule;
     }
 
     @Override
@@ -357,34 +354,32 @@ public final class SchedulePhase extends Phase {
     }
 
     private void printSchedule(String desc) {
-        if (dumpSchedule) {
-            Debug.printf("=== %s / %s / %s (%s) ===\n", getCFG().getStartBlock().getBeginNode().graph(), selectedStrategy, memsched, desc);
-            for (Block b : getCFG().getBlocks()) {
-                Debug.printf("==== b: %s. ", b);
-                Debug.printf("dom: %s. ", b.getDominator());
-                Debug.printf("post-dom: %s. ", b.getPostdominator());
-                Debug.printf("preds: %s. ", b.getPredecessors());
-                Debug.printf("succs: %s ====\n", b.getSuccessors());
-                BlockMap<Map<LocationIdentity, Node>> killMaps = getBlockToKillMap();
-                if (killMaps != null) {
-                    Debug.printf("X block kills: \n");
-                    for (LocationIdentity locId : killMaps.get(b).keySet()) {
-                        Debug.printf("X %s killed by %s\n", locId, killMaps.get(b).get(locId));
-                    }
-                }
-
-                if (getBlockToNodesMap().get(b) != null) {
-                    for (Node n : nodesFor(b)) {
-                        printNode(n);
-                    }
-                } else {
-                    for (Node n : b.getNodes()) {
-                        printNode(n);
-                    }
+        Debug.printf("=== %s / %s / %s (%s) ===\n", getCFG().getStartBlock().getBeginNode().graph(), selectedStrategy, memsched, desc);
+        for (Block b : getCFG().getBlocks()) {
+            Debug.printf("==== b: %s. ", b);
+            Debug.printf("dom: %s. ", b.getDominator());
+            Debug.printf("post-dom: %s. ", b.getPostdominator());
+            Debug.printf("preds: %s. ", b.getPredecessors());
+            Debug.printf("succs: %s ====\n", b.getSuccessors());
+            BlockMap<Map<LocationIdentity, Node>> killMaps = getBlockToKillMap();
+            if (killMaps != null) {
+                Debug.printf("X block kills: \n");
+                for (LocationIdentity locId : killMaps.get(b).keySet()) {
+                    Debug.printf("X %s killed by %s\n", locId, killMaps.get(b).get(locId));
                 }
             }
-            Debug.printf("\n\n");
+
+            if (getBlockToNodesMap().get(b) != null) {
+                for (Node n : nodesFor(b)) {
+                    printNode(n);
+                }
+            } else {
+                for (Node n : b.getNodes()) {
+                    printNode(n);
+                }
+            }
         }
+        Debug.printf("\n\n");
     }
 
     private static void printNode(Node n) {
@@ -539,9 +534,7 @@ public final class SchedulePhase extends Phase {
         assert currentBlock != null && earliestBlock.dominates(currentBlock) : "earliest (" + earliestBlock + ") should dominate latest block (" + currentBlock + ")";
         Block previousBlock = currentBlock;
 
-        if (dumpSchedule) {
-            Debug.printf("processing %s (accessing %s): latest %s, earliest %s, upper bound %s (%s)\n", n, locid, currentBlock, earliestBlock, upperBoundBlock, upperBound);
-        }
+        Debug.printf("processing %s (accessing %s): latest %s, earliest %s, upper bound %s (%s)\n", n, locid, currentBlock, earliestBlock, upperBoundBlock, upperBound);
 
         int iterations = 0;
         // iterate the dominator tree
@@ -612,10 +605,8 @@ public final class SchedulePhase extends Phase {
         }
     }
 
-    private void printIterations(int iterations, String desc) {
-        if (dumpSchedule) {
-            Debug.printf("iterations: %d,  %s\n", iterations, desc);
-        }
+    private static void printIterations(int iterations, String desc) {
+        Debug.printf("iterations: %d,  %s\n", iterations, desc);
     }
 
     /**
