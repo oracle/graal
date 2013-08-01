@@ -146,7 +146,8 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             return object();
         }
 
-        // remove checkcast if next node is a more specific checkcast
+        // if the previous node is also a checkcast, with a less precise and compatible type,
+        // replace both with one checkcast checking the more specific type.
         if (predecessor() instanceof CheckCastNode) {
             CheckCastNode ccn = (CheckCastNode) predecessor();
             if (ccn != null && ccn.type != null && ccn == object && ccn.forStoreCheck == forStoreCheck && ccn.type.isAssignableFrom(type)) {
