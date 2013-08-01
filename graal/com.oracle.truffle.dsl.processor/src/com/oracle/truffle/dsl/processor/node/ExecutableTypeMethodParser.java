@@ -73,6 +73,9 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
     @Override
     protected List<TypeMirror> nodeTypeMirrors(NodeData nodeData) {
         // executable types not yet available
+        if (nodeData.getTypeSystem() == null) {
+            return Collections.emptyList();
+        }
         List<TypeMirror> types = new ArrayList<>(nodeData.getTypeSystem().getPrimitiveTypeMirrors());
         types.add(nodeData.getTypeSystem().getVoidType().getPrimitiveType());
         return types;
