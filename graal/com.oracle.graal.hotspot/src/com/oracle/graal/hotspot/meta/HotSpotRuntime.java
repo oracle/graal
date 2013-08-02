@@ -634,18 +634,20 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
         } else if (n instanceof UnsafeLoadNode) {
-            UnsafeLoadNode load = (UnsafeLoadNode) n;
-            assert load.kind() != Kind.Illegal;
-            boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
-            if (addReadBarrier(load, tool)) {
-                unsafeLoadSnippets.lower(load, tool);
-            } else {
-                IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
-                ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), BarrierType.NONE, compressible));
-                // An unsafe read must not float outside its block otherwise
-                // it may float above an explicit null check on its object.
-                memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
-                graph.replaceFixedWithFixed(load, memoryRead);
+            if (tool.getLoweringType() != LoweringType.BEFORE_GUARDS) {
+                UnsafeLoadNode load = (UnsafeLoadNode) n;
+                assert load.kind() != Kind.Illegal;
+                boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
+                if (addReadBarrier(load, tool)) {
+                    unsafeLoadSnippets.lower(load, tool);
+                } else {
+                    IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
+                    ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), BarrierType.NONE, compressible));
+                    // An unsafe read must not float outside its block otherwise
+                    // it may float above an explicit null check on its object.
+                    memoryRead.setGuard(AbstractBeginNode.prevBegin(load));
+                    graph.replaceFixedWithFixed(load, memoryRead);
+                }
             }
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
