@@ -499,7 +499,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             @Override
             public SchedulePhase call() throws Exception {
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements);
+                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 new CanonicalizerPhase(true).apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
