@@ -161,8 +161,7 @@ public class PartialEvaluator {
                 new DeadCodeEliminationPhase().apply(graph);
 
                 HighTierContext context = new HighTierContext(metaAccessProvider, assumptions, replacements, cache, plan, OptimisticOptimizations.NONE);
-                InliningPhase inliningPhase = new InliningPhase();
-                inliningPhase.setCustomCanonicalizer(customCanonicalizer);
+                InliningPhase inliningPhase = new InliningPhase(customCanonicalizer);
                 inliningPhase.apply(graph, context);
 
                 // Convert deopt to guards.
