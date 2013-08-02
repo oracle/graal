@@ -338,7 +338,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("expectedObject", readBarrier.getExpectedObject());
             args.add("location", readBarrier.getLocation());
             args.addConst("doLoad", readBarrier.doLoad());
-            args.addConst("nullCheck", readBarrier.getNullCheck());
+            args.addConst("nullCheck", false);
             args.addConst("trace", traceBarrier());
             template(args).instantiate(runtime, readBarrier, DEFAULT_REPLACER, args);
         }
