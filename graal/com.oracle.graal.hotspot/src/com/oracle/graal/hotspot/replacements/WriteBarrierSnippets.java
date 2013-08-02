@@ -418,7 +418,7 @@ public class WriteBarrierSnippets implements Snippets {
      * prematurely crash the VM and debug the stack trace of the faulty method.
      */
     private static void validateObject(Object parent, Object child) {
-        if (child != null && !validateOop(VALIDATEOBJECT, parent, child)) {
+        if (verifyOops() && child != null && !validateOop(VALIDATEOBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
             DirectObjectStoreNode.storeWord(null, 0, 0, Word.zero());
         }
