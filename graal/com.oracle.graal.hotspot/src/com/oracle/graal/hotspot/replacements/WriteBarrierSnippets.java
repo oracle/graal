@@ -221,29 +221,29 @@ public class WriteBarrierSnippets implements Snippets {
     public static void g1ArrayRangePreWriteBarrier(Object object, int startIndex, int length) {
         Word thread = thread();
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
-        // If the concurrent marker is not enabled return.
+        // If the concurrent marker is not enabled or the vector length is zero, return.
         if (markingValue == (byte) 0 || length == 0) {
             return;
         }
         Object dest = FixedValueAnchorNode.getObject(object);
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
-        Word indexValue = indexAddress.readWord(0);
-
-        Word oop;
+        long dstAddr = GetObjectAddressNode.get(dest);
+        long indexValue = indexAddress.readWord(0).rawValue();
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
 
         for (int i = startIndex; i < length; i++) {
-            Word address = (Word) Word.fromObject(dest).add(header).add(Word.unsigned(i * (long) scale));
-            oop = (Word) Word.fromObject(address.readObject(0, BarrierType.NONE, true));
+            long address = dstAddr + header + (i * scale);
+            Pointer oop = Word.fromObject(Word.unsigned(address).readObject(0, BarrierType.NONE, true));
+            verifyOop(oop.toObject());
             if (oop.notEqual(0)) {
-                if (indexValue.notEqual(0)) {
-                    Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
+                if (indexValue != 0) {
+                    indexValue = indexValue - wordSize();
+                    Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be marked as well as update the SATB's buffer next index.
                     logAddress.writeWord(0, oop);
-                    indexAddress.writeWord(0, nextIndex);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue));
                 } else {
                     g1PreBarrierStub(G1WBPRECALL, oop.toObject());
                 }
@@ -260,7 +260,7 @@ public class WriteBarrierSnippets implements Snippets {
         Word thread = thread();
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
         Word indexAddress = thread.add(g1CardQueueIndexOffset());
-        Word indexValue = thread.readWord(g1CardQueueIndexOffset());
+        long indexValue = thread.readWord(g1CardQueueIndexOffset()).rawValue();
 
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
@@ -279,13 +279,13 @@ public class WriteBarrierSnippets implements Snippets {
                 cardAddress.writeByte(0, (byte) 0);
                 // If the thread local card queue is full, issue a native call which will
                 // initialize a new one and add the card entry.
-                if (indexValue.notEqual(0)) {
-                    Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
+                if (indexValue != 0) {
+                    indexValue = indexValue - wordSize();
+                    Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be scanned as well as update
                     // the card queue's next index.
                     logAddress.writeWord(0, cardAddress);
-                    indexAddress.writeWord(0, nextIndex);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue));
                 } else {
                     g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
                 }
