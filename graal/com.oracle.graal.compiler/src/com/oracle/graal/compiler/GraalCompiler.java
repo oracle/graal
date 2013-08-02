@@ -165,7 +165,6 @@ public class GraalCompiler {
         }
         TypeProfileProxyNode.cleanFromGraph(graph);
 
-        plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
         suites.getHighTier().apply(graph, highTierContext);
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);
