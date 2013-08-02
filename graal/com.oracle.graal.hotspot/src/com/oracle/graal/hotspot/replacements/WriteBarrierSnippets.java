@@ -75,6 +75,9 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void serialArrayRangeWriteBarrier(Object object, int startIndex, int length) {
+        if (length == 0) {
+            return;
+        }
         Object dest = FixedValueAnchorNode.getObject(object);
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
