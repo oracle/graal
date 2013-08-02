@@ -163,7 +163,6 @@ public class GraalCompiler {
                 }
             }
         }
-        TypeProfileProxyNode.cleanFromGraph(graph);
 
         suites.getHighTier().apply(graph, highTierContext);
 
