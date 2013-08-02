@@ -219,17 +219,17 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void g1ArrayRangePreWriteBarrier(Object object, int startIndex, int length) {
-        Object dest = FixedValueAnchorNode.getObject(object);
         Word thread = thread();
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
+        // If the concurrent marker is not enabled return.
+        if (markingValue == (byte) 0 || length == 0) {
+            return;
+        }
+        Object dest = FixedValueAnchorNode.getObject(object);
         Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
         Word indexAddress = thread.add(g1SATBQueueIndexOffset());
         Word indexValue = indexAddress.readWord(0);
 
-        // If the concurrent marker is not enabled return.
-        if (markingValue == (byte) 0) {
-            return;
-        }
         Word oop;
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
@@ -253,6 +253,9 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void g1ArrayRangePostWriteBarrier(Object object, int startIndex, int length) {
+        if (length == 0) {
+            return;
+        }
         Object dest = FixedValueAnchorNode.getObject(object);
         Word thread = thread();
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
