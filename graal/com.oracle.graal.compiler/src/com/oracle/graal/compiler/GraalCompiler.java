@@ -40,24 +40,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.verify.*;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.
  */
 public class GraalCompiler {
-
-    // @formatter:off
-    @Option(help = "")
-    public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
-    // @formatter:on
 
     /**
      * Requests compilation of a given graph.
@@ -134,10 +127,6 @@ public class GraalCompiler {
             new DeadCodeEliminationPhase().apply(graph);
         } else {
             Debug.dump(graph, "initial state");
-        }
-        if (VerifyUsageWithEquals.getValue()) {
-            new VerifyUsageWithEquals(runtime, Value.class).apply(graph);
-            new VerifyUsageWithEquals(runtime, Register.class).apply(graph);
         }
 
         HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements, cache, plan, optimisticOpts);
