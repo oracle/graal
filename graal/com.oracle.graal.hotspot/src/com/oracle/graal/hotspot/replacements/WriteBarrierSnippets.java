@@ -160,6 +160,7 @@ public class WriteBarrierSnippets implements Snippets {
         Object fixedValue = FixedValueAnchorNode.getObject(value);
         verifyOop(fixedObject);
         verifyOop(fixedValue);
+        validateObject(fixedObject, fixedValue);
         Word oop;
         if (usePrecise) {
             oop = (Word) Word.fromArray(fixedObject, location);
@@ -409,4 +410,23 @@ public class WriteBarrierSnippets implements Snippets {
     private static boolean traceBarrier() {
         return GraalOptions.GCDebugStartCycle.getValue() > 0 && ((int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0) > GraalOptions.GCDebugStartCycle.getValue());
     }
+
+    /**
+     * Validation helper method which performs sanity checks on write operations. The addresses of
+     * both the object and the value being written are checked in order to determine if they reside
+     * in a valid heap region. If an object is stale, an invalid access is performed in order to
+     * prematurely crash the VM and debug the stack trace of the faulty method.
+     */
+    private static void validateObject(Object parent, Object child) {
+        if (child != null && !validateOop(VALIDATEOBJECT, parent, child)) {
+            log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
+            DirectObjectStoreNode.storeWord(null, 0, 0, Word.zero());
+        }
+    }
+
+    public static final ForeignCallDescriptor VALIDATEOBJECT = new ForeignCallDescriptor("validate_object", boolean.class, Word.class, Word.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native boolean validateOop(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object parent, Object object);
+
 }
