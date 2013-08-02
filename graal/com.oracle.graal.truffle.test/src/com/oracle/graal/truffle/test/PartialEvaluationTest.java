@@ -106,7 +106,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 StructuredGraph resultGraph = partialEvaluator.createGraph(compilable, assumptions);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(canonicalizeReads);
-                HighTierContext context = new HighTierContext(runtime, assumptions, replacements);
+                PhaseContext context = new PhaseContext(runtime, assumptions, replacements);
 
                 if (resultGraph.hasLoops()) {
                     boolean unrolled;
