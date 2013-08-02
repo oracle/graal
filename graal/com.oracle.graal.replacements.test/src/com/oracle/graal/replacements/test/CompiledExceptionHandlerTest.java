@@ -38,6 +38,10 @@ import com.oracle.graal.phases.common.*;
  */
 public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
+    public CompiledExceptionHandlerTest() {
+        suites.getHighTier().findPhase(AbstractInliningPhase.class).remove();
+    }
+
     @Override
     protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
         phasePlan.disablePhase(InliningPhase.class);

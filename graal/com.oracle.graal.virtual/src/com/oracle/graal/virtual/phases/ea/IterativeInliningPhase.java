@@ -29,11 +29,10 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class IterativeInliningPhase extends BasePhase<HighTierContext> {
+public class IterativeInliningPhase extends AbstractInliningPhase {
 
     private final CanonicalizerPhase canonicalizer;
 

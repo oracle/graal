@@ -42,6 +42,10 @@ import com.oracle.graal.test.*;
  */
 public class InstanceOfTest extends TypeCheckTest {
 
+    public InstanceOfTest() {
+        suites.getHighTier().findPhase(AbstractInliningPhase.class).remove();
+    }
+
     @Override
     protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
         phasePlan.disablePhase(InliningPhase.class);

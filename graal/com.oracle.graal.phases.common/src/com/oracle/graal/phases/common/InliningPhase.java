@@ -38,18 +38,17 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
 import com.oracle.graal.phases.common.InliningUtil.Inlineable;
-import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
+import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class InliningPhase extends BasePhase<HighTierContext> {
+public class InliningPhase extends AbstractInliningPhase {
 
     static class Options {
 
