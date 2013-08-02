@@ -66,7 +66,7 @@ public class InliningUtil {
 
         boolean continueInlining(StructuredGraph graph);
 
-        boolean isWorthInlining(InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed);
+        boolean isWorthInlining(Replacements replacements, InlineInfo info, int inliningDepth, double probability, double relevance, boolean fullyProcessed);
     }
 
     public interface Inlineable {

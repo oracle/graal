@@ -154,7 +154,7 @@ public class GraalCompiler {
             if (IterativeInlining.getValue()) {
                 new IterativeInliningPhase(canonicalizer).apply(graph, highTierContext);
             } else {
-                new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
+                new InliningPhase().apply(graph, highTierContext);
                 new DeadCodeEliminationPhase().apply(graph);
 
                 if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {

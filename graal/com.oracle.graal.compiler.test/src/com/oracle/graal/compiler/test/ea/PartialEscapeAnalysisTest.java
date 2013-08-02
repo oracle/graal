@@ -160,7 +160,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
+                new InliningPhase().apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);

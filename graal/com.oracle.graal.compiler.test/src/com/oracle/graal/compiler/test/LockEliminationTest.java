@@ -91,11 +91,12 @@ public class LockEliminationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(method);
         PhasePlan phasePlan = getDefaultPhasePlan();
         Assumptions assumptions = new Assumptions(true);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
-        new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
+        HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
+        new CanonicalizerPhase(true).apply(graph, context);
+        new InliningPhase().apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
-        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, new PhaseContext(runtime, assumptions, replacements));
+        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
         new ValueAnchorCleanupPhase().apply(graph);
         new LockEliminationPhase().apply(graph);
         return graph;

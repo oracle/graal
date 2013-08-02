@@ -54,7 +54,7 @@ public class PhasePlan {
     // @formatter:on
 
     @SuppressWarnings("unchecked") private final ArrayList<Phase>[] phases = new ArrayList[PhasePosition.values().length];
-    private final Set<Class<? extends Phase>> disabledPhases = new HashSet<>();
+    private final Set<Class<? extends BasePhase<?>>> disabledPhases = new HashSet<>();
 
     public void addPhase(PhasePosition pos, Phase phase) {
         if (phases[pos.ordinal()] == null) {
@@ -71,11 +71,11 @@ public class PhasePlan {
         }
     }
 
-    public void disablePhase(Class<? extends Phase> clazz) {
+    public void disablePhase(Class<? extends BasePhase<?>> clazz) {
         disabledPhases.add(clazz);
     }
 
-    public boolean isPhaseDisabled(Class<? extends Phase> clazz) {
+    public boolean isPhaseDisabled(Class<? extends BasePhase<?>> clazz) {
         return disabledPhases.contains(clazz);
     }
 }

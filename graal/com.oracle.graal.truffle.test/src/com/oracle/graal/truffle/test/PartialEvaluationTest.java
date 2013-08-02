@@ -186,15 +186,16 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                InliningPhase inliningPhase = new InliningPhase(runtime, null, replacements, assumptions, null, plan, OptimisticOptimizations.NONE);
-                inliningPhase.apply(graph);
+                HighTierContext context = new HighTierContext(runtime, assumptions, replacements, null, plan, OptimisticOptimizations.NONE);
+                InliningPhase inliningPhase = new InliningPhase();
+                inliningPhase.apply(graph, context);
                 removeFrameStates(graph);
 
                 new ConvertDeoptimizeToGuardPhase().apply(graph);
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, new PhaseContext(runtime, assumptions, replacements));
+                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;

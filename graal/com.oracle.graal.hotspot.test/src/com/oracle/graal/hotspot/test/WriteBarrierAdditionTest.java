@@ -226,7 +226,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
             public void run() {
                 StructuredGraph graph = parse(snippet);
                 HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(runtime(), replacements, context.getAssumptions(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new InliningPhase.InlineEverythingPolicy()).apply(graph);
+                new InliningPhase(new InliningPhase.InlineEverythingPolicy()).apply(graph, context);
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");
