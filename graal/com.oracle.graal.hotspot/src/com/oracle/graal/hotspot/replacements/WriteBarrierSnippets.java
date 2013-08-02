@@ -160,18 +160,17 @@ public class WriteBarrierSnippets implements Snippets {
         Object fixedValue = FixedValueAnchorNode.getObject(value);
         verifyOop(fixedObject);
         verifyOop(fixedValue);
-        Word oop = (Word) Word.fromObject(fixedObject);
-        Word field;
+        Word oop;
         if (usePrecise) {
-            field = (Word) Word.fromArray(fixedObject, location);
+            oop = (Word) Word.fromArray(fixedObject, location);
         } else {
-            field = oop;
+            oop = (Word) Word.fromObject(fixedObject);
         }
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
-            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), field.rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
         Word writtenValue = (Word) Word.fromObject(fixedValue);
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
@@ -179,11 +178,11 @@ public class WriteBarrierSnippets implements Snippets {
         Word indexValue = thread.readWord(g1CardQueueIndexOffset());
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
-        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
+        Word xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
 
         // Calculate the address of the card to be enqueued to the
         // thread local card queue.
-        Word cardBase = field.unsignedShiftRight(cardTableShift());
+        Word cardBase = oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
