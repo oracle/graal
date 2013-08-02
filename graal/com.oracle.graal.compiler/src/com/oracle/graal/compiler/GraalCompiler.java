@@ -152,7 +152,7 @@ public class GraalCompiler {
 
         if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
             if (IterativeInlining.getValue()) {
-                new IterativeInliningPhase(cache, plan, optimisticOpts, canonicalizer).apply(graph, highTierContext);
+                new IterativeInliningPhase(canonicalizer).apply(graph, highTierContext);
             } else {
                 new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
