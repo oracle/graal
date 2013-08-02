@@ -52,14 +52,14 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter serialArrayWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialArrayWriteBarrier", "Number of Serial Array Write Barriers");
 
     @Snippet
-    public static void serialArrayWriteBarrier(Object obj, Object location, @ConstantParameter boolean usePrecise) {
-        Object object = FixedValueAnchorNode.getObject(obj);
+    public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise) {
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
         Pointer oop;
         if (usePrecise) {
-            oop = Word.fromArray(object, location);
+            oop = Word.fromArray(fixedObject, location);
             serialArrayWriteBarrierCounter.inc();
         } else {
-            oop = Word.fromObject(object);
+            oop = Word.fromObject(fixedObject);
             serialFieldWriteBarrierCounter.inc();
         }
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
@@ -295,7 +295,7 @@ public class WriteBarrierSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo serialArrayWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayWriteBarrier");
+        private final SnippetInfo serialWriteBarrier = snippet(WriteBarrierSnippets.class, "serialWriteBarrier");
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
         private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
 
@@ -308,12 +308,12 @@ public class WriteBarrierSnippets implements Snippets {
             super(runtime, replacements, target);
         }
 
-        public void lower(SerialWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(serialArrayWriteBarrier);
-            args.add("obj", arrayWriteBarrier.getObject());
-            args.add("location", arrayWriteBarrier.getLocation());
-            args.addConst("usePrecise", arrayWriteBarrier.usePrecise());
-            template(args).instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, args);
+        public void lower(SerialWriteBarrier writeBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(serialWriteBarrier);
+            args.add("object", writeBarrier.getObject());
+            args.add("location", writeBarrier.getLocation());
+            args.addConst("usePrecise", writeBarrier.usePrecise());
+            template(args).instantiate(runtime, writeBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
