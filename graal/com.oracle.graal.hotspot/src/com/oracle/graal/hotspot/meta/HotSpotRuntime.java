@@ -903,10 +903,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         BarrierType barrierType = BarrierType.NONE;
         if (store.value().kind() == Kind.Object) {
             ResolvedJavaType type = store.object().objectStamp().type();
-            if (type != null && type.isArray()) {
-                barrierType = BarrierType.PRECISE;
-            } else {
+            if (type != null && !type.isArray()) {
                 barrierType = BarrierType.IMPRECISE;
+            } else {
+                barrierType = BarrierType.PRECISE;
             }
         }
         return barrierType;
@@ -916,10 +916,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         BarrierType barrierType = BarrierType.NONE;
         if (cas.expected().kind() == Kind.Object) {
             ResolvedJavaType type = cas.object().objectStamp().type();
-            if (type != null && type.isArray()) {
-                barrierType = BarrierType.PRECISE;
-            } else {
+            if (type != null && !type.isArray()) {
                 barrierType = BarrierType.IMPRECISE;
+            } else {
+                barrierType = BarrierType.PRECISE;
             }
         }
         return barrierType;
