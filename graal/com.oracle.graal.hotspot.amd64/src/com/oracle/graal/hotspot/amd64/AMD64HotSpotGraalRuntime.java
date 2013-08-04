@@ -58,7 +58,8 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     protected TargetDescription createTarget() {
         final int stackFrameAlignment = 16;
         final int implicitNullCheckLimit = 4096;
-        return new TargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, true);
+        final boolean inlineObjects = true;
+        return new TargetDescription(createArchitecture(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
     @Override
