@@ -38,22 +38,22 @@ import com.oracle.graal.lir.*;
  *   caller   | incoming overflow argument n   |    ^
  *   frame    :     ...                        :    | positive
  *            | incoming overflow argument 0   |    | offsets
- *   ---------+--------------------------------+---------------------
- *            | spill slot 0                   |    | negative   ^      |
+ *   ---------+--------------------------------+---------------------------
+ *            | spill slot 0                   |    | negative   ^      ^
  *            :     ...                        :    v offsets    |      |
- *            | spill slot n                   |  -----        total  frame
- *            +--------------------------------+               frame  size
+ *            | spill slot n                   |  -----        total    |
+ *            +--------------------------------+               frame    |
  *   current  | alignment padding              |               size     |
  *   frame    +--------------------------------+  -----          |      |
- *            | outgoing overflow argument n   |    ^            |      |
- *            :     ...                        :    | positive   |      |
- *            | outgoing overflow argument 0   |    | offsets    |      v
- *            +--------------------------------+    |            |
- *            | return address                 |    |            |
- *            +--------------------------------+    |            |    -----
- *            |                                |    |            |      ^
+ *            | outgoing overflow argument n   |    ^            |    frame
+ *            :     ...                        :    | positive   |    size
+ *            | outgoing overflow argument 0   |    | offsets    |      |
+ *            +--------------------------------+    |            |      |
+ *            | return address                 |    |            |      |
+ *            +--------------------------------+    |            |      |
+ *            |                                |    |            |      |
  *            : callee save area               :    |            |      |
- *            |                                |    |            v      |
+ *            |                                |    |            v      v
  *    %sp-->  +--------------------------------+---------------------------
  * 
  * </pre>
@@ -71,6 +71,25 @@ public final class SPARCFrameMap extends FrameMap {
 
     public SPARCFrameMap(CodeCacheProvider runtime, TargetDescription target, RegisterConfig registerConfig) {
         super(runtime, target, registerConfig);
+        // offset relative to sp + total frame size
+        initialSpillSize = 0;
+        spillSize = initialSpillSize;
+    }
+
+    @Override
+    public int totalFrameSize() {
+        return frameSize();
+    }
+
+    @Override
+    public int currentFrameSize() {
+        return alignFrameSize(calleeSaveAreaSize() + returnAddressSize() + outgoingSize + spillSize);
+    }
+
+    @Override
+    protected int alignFrameSize(int size) {
+        int x = size + (target.stackAlignment - 1);
+        return (x / target.stackAlignment) * target.stackAlignment;
     }
 
     @Override
@@ -80,6 +99,6 @@ public final class SPARCFrameMap extends FrameMap {
 
     @Override
     protected StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset) {
-        return StackSlot.get(kind, spillSize + additionalOffset, false);
+        return StackSlot.get(kind, -spillSize + additionalOffset, true);
     }
 }

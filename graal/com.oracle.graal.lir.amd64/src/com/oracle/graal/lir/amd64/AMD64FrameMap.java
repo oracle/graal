@@ -71,6 +71,25 @@ public final class AMD64FrameMap extends FrameMap {
 
     public AMD64FrameMap(CodeCacheProvider runtime, TargetDescription target, RegisterConfig registerConfig) {
         super(runtime, target, registerConfig);
+        // (negative) offset relative to sp + total frame size
+        initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
+        spillSize = initialSpillSize;
+    }
+
+    @Override
+    public int totalFrameSize() {
+        return frameSize() + returnAddressSize();
+    }
+
+    @Override
+    public int currentFrameSize() {
+        return alignFrameSize(outgoingSize + spillSize - returnAddressSize());
+    }
+
+    @Override
+    protected int alignFrameSize(int size) {
+        int x = size + returnAddressSize() + (target.stackAlignment - 1);
+        return (x / target.stackAlignment) * target.stackAlignment - returnAddressSize();
     }
 
     @Override

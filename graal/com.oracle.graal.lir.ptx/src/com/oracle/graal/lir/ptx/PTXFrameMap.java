@@ -24,6 +24,7 @@ package com.oracle.graal.lir.ptx;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -39,6 +40,21 @@ public final class PTXFrameMap extends FrameMap {
 
     public PTXFrameMap(CodeCacheProvider runtime, TargetDescription target, RegisterConfig registerConfig) {
         super(runtime, target, registerConfig);
+    }
+
+    @Override
+    public int totalFrameSize() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
+    public int currentFrameSize() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    @Override
+    protected int alignFrameSize(int size) {
+        throw GraalInternalError.unimplemented();
     }
 
     @Override

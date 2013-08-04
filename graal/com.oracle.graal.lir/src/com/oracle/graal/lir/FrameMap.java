@@ -52,6 +52,11 @@ public abstract class FrameMap {
     private int frameSize;
 
     /**
+     * Initial size of the area occupied by spill slots and other stack-allocated memory blocks.
+     */
+    protected int initialSpillSize;
+
+    /**
      * Size of the area occupied by spill slots and other stack-allocated memory blocks.
      */
     protected int spillSize;
@@ -61,7 +66,7 @@ public abstract class FrameMap {
      * conventions for outgoing calls are retrieved. On some platforms, there is a minimum outgoing
      * size even if no overflow arguments are on the stack.
      */
-    private int outgoingSize;
+    protected int outgoingSize;
 
     /**
      * Determines if this frame has values on the stack for outgoing calls.
@@ -87,12 +92,11 @@ public abstract class FrameMap {
         this.target = target;
         this.registerConfig = registerConfig;
         this.frameSize = -1;
-        this.spillSize = returnAddressSize() + calleeSaveAreaSize();
         this.outgoingSize = runtime.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();
     }
 
-    private int returnAddressSize() {
+    protected int returnAddressSize() {
         return target.arch.getReturnAddressSize();
     }
 
@@ -135,17 +139,21 @@ public abstract class FrameMap {
      * 
      * @return The total size of the frame (in bytes).
      */
-    public int totalFrameSize() {
-        return frameSize() + returnAddressSize();
-    }
+    public abstract int totalFrameSize();
 
     /**
      * Gets the current size of this frame. This is the size that would be returned by
      * {@link #frameSize()} if {@link #finish()} were called now.
      */
-    public int currentFrameSize() {
-        return target.alignFrameSize(outgoingSize + spillSize - returnAddressSize());
-    }
+    public abstract int currentFrameSize();
+
+    /**
+     * Aligns the given frame size to the stack alignment size and return the aligned size.
+     * 
+     * @param size the initial frame size to be aligned
+     * @return the aligned frame size
+     */
+    protected abstract int alignFrameSize(int size);
 
     /**
      * Computes the final size of this frame. After this method has been called, methods that change
@@ -162,7 +170,6 @@ public abstract class FrameMap {
             for (StackSlot s : freedSlots) {
                 total += target.arch.getSizeInBytes(s.getKind());
             }
-            int initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
             if (total == spillSize - initialSpillSize) {
                 // reset spill area size
                 spillSize = initialSpillSize;
