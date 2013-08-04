@@ -43,21 +43,21 @@ public final class PTXFrameMap extends FrameMap {
 
     @Override
     public int totalFrameSize() {
-        // FIXME this is amd64 code
-        return frameSize() + returnAddressSize();
+        // FIXME return some sane values
+        return frameSize();
     }
 
     @Override
     public int currentFrameSize() {
-        // FIXME this is amd64 code
-        return alignFrameSize(outgoingSize + spillSize - returnAddressSize());
+        // FIXME return some sane values
+        return alignFrameSize(outgoingSize + spillSize);
     }
 
     @Override
     protected int alignFrameSize(int size) {
-        // FIXME this is amd64 code
-        int x = size + returnAddressSize() + (target.stackAlignment - 1);
-        return (x / target.stackAlignment) * target.stackAlignment - returnAddressSize();
+        // FIXME return some sane values
+        int x = size + (target.stackAlignment - 1);
+        return (x / target.stackAlignment) * target.stackAlignment;
     }
 
     @Override
