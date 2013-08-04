@@ -45,8 +45,6 @@ import com.oracle.graal.phases.util.*;
  */
 final class LinearScanWalker extends IntervalWalker {
 
-    private final boolean callKillsRegisters;
-
     private Register[] availableRegs;
 
     private final int[] usePos;
@@ -77,7 +75,7 @@ final class LinearScanWalker extends IntervalWalker {
         // The register allocator can save time not trying to find a register at a call site.
         HashSet<Register> registers = new HashSet<>(Arrays.asList(allocator.frameMap.registerConfig.getAllocatableRegisters()));
         registers.removeAll(Arrays.asList(allocator.frameMap.registerConfig.getCallerSaveRegisters()));
-        callKillsRegisters = registers.size() == 0;
+        allocator.callKillsRegisters = registers.size() == 0;
 
         moveResolver = new MoveResolver(allocator);
         spillIntervals = Util.uncheckedCast(new List[allocator.registers.length]);
@@ -784,8 +782,7 @@ final class LinearScanWalker extends IntervalWalker {
     }
 
     boolean noAllocationPossible(Interval interval) {
-
-        if (callKillsRegisters) {
+        if (allocator.callKillsRegisters) {
             // fast calculation of intervals that can never get a register because the
             // the next instruction is a call that blocks all registers
             // Note: this only works if a call kills all registers
