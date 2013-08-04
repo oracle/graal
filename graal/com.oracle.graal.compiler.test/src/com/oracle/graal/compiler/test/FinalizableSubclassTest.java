@@ -39,6 +39,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class FinalizableSubclassTest extends GraalCompilerTest {
 
@@ -67,8 +68,9 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
 
         GraphBuilderConfiguration conf = GraphBuilderConfiguration.getSnippetDefault();
         new GraphBuilderPhase(runtime, conf, OptimisticOptimizations.ALL).apply(graph);
-        new InliningPhase(runtime(), null, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
+        HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        new InliningPhase().apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, context);
         return graph;
     }
 

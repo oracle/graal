@@ -24,10 +24,7 @@ package com.oracle.graal.replacements.test;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 
 /**
@@ -35,9 +32,8 @@ import com.oracle.graal.phases.common.*;
  */
 public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
 
-    @Override
-    protected void editPhasePlan(ResolvedJavaMethod method, StructuredGraph graph, PhasePlan phasePlan) {
-        phasePlan.disablePhase(InliningPhase.class);
+    public DeoptimizeOnExceptionTest() {
+        suites.getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     private static void raiseException(String m1, String m2, String m3, String m4, String m5) {

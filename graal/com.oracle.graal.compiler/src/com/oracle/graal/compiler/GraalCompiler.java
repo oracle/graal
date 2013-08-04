@@ -40,27 +40,17 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.phases.verify.*;
-import com.oracle.graal.virtual.phases.ea.*;
 
 /**
  * Static methods for orchestrating the compilation of a {@linkplain StructuredGraph graph}.
  */
 public class GraalCompiler {
-
-    // @formatter:off
-    @Option(help = "")
-    public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
-    @Option(help = "Enable inlining")
-    public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
-    // @formatter:on
 
     /**
      * Requests compilation of a given graph.
@@ -138,34 +128,8 @@ public class GraalCompiler {
         } else {
             Debug.dump(graph, "initial state");
         }
-        if (VerifyUsageWithEquals.getValue()) {
-            new VerifyUsageWithEquals(runtime, Value.class).apply(graph);
-            new VerifyUsageWithEquals(runtime, Register.class).apply(graph);
-        }
 
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
-        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements);
-
-        if (OptCanonicalizer.getValue()) {
-            canonicalizer.apply(graph, highTierContext);
-        }
-
-        if (Inline.getValue() && !plan.isPhaseDisabled(InliningPhase.class)) {
-            if (IterativeInlining.getValue()) {
-                new IterativeInliningPhase(cache, plan, optimisticOpts, canonicalizer).apply(graph, highTierContext);
-            } else {
-                new InliningPhase(runtime, null, replacements, assumptions, cache, plan, optimisticOpts).apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-
-                if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
-                    canonicalizer.apply(graph, highTierContext);
-                    new IterativeConditionalEliminationPhase().apply(graph, highTierContext);
-                }
-            }
-        }
-        TypeProfileProxyNode.cleanFromGraph(graph);
-
-        plan.runPhases(PhasePosition.HIGH_LEVEL, graph);
+        HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements, cache, plan, optimisticOpts);
         suites.getHighTier().apply(graph, highTierContext);
 
         MidTierContext midTierContext = new MidTierContext(runtime, assumptions, replacements, target, optimisticOpts);

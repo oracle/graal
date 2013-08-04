@@ -34,6 +34,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * Tests if {@link MethodSubstitution}s are inlined correctly. Most test cases only assert that
@@ -50,10 +51,11 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
                 StructuredGraph graph = parse(snippet);
                 PhasePlan phasePlan = getDefaultPhasePlan();
                 Assumptions assumptions = new Assumptions(true);
+                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
                 Debug.dump(graph, "Graph");
-                new InliningPhase(runtime(), null, replacements, assumptions, null, phasePlan, OptimisticOptimizations.ALL).apply(graph);
+                new InliningPhase().apply(graph, context);
                 Debug.dump(graph, "Graph");
-                new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
+                new CanonicalizerPhase(true).apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
 
                 assertNotInGraph(graph, Invoke.class);

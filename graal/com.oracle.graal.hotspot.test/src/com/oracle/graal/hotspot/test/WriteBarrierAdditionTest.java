@@ -207,6 +207,27 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
         test2("testUnsafeLoad", wr, new Long(16), new Integer(16));
     }
 
+    static Object[] src = new Object[1];
+    static Object[] dst = new Object[1];
+
+    static {
+        for (int i = 0; i < src.length; i++) {
+            src[i] = new Object();
+        }
+        for (int i = 0; i < dst.length; i++) {
+            dst[i] = new Object();
+        }
+    }
+
+    public static void testArrayCopy(Object a, Object b, Object c) throws Exception {
+        System.arraycopy(a, 0, b, 0, (int) c);
+    }
+
+    @Test
+    public void test11() throws Exception {
+        test2("testArrayCopy", src, dst, dst.length);
+    }
+
     public static Object testUnsafeLoad(Object a, Object b, Object c) throws Exception {
         final int offset = (c == null ? 0 : ((Integer) c).intValue());
         final long displacement = (b == null ? 0 : ((Long) b).longValue());
@@ -225,8 +246,8 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
-                new InliningPhase(runtime(), replacements, context.getAssumptions(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new InliningPhase.InlineEverythingPolicy()).apply(graph);
+                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                new InliningPhase(new InliningPhase.InlineEverythingPolicy()).apply(graph, context);
                 new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");

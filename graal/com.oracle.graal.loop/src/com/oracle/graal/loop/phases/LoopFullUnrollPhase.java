@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class LoopFullUnrollPhase extends BasePhase<HighTierContext> {
+public class LoopFullUnrollPhase extends BasePhase<PhaseContext> {
 
     private static final DebugMetric FULLY_UNROLLED_LOOPS = Debug.metric("FullUnrolls");
     private final boolean canonicalizeReads;
@@ -38,7 +38,7 @@ public class LoopFullUnrollPhase extends BasePhase<HighTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, HighTierContext context) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         if (graph.hasLoops()) {
             boolean peeled;
             do {

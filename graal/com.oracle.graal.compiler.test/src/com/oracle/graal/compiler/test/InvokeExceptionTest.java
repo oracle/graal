@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class InvokeExceptionTest extends GraalCompilerTest {
 
@@ -65,8 +66,9 @@ public class InvokeExceptionTest extends GraalCompilerTest {
             hints.put(invoke, 1000d);
         }
         Assumptions assumptions = new Assumptions(false);
-        new InliningPhase(runtime(), hints, replacements, assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
+        HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        new InliningPhase(hints).apply(graph, context);
+        new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
     }
 }
