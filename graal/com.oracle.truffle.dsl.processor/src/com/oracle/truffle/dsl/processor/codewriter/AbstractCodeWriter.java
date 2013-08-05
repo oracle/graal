@@ -661,7 +661,13 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 if (i != 0) {
                     write("+ ");
                 }
+
                 int nextSize = MAX_LINE_LENGTH - lineLength - 2;
+                if (nextSize <= 0) {
+                    writeLn();
+                    nextSize = MAX_LINE_LENGTH - lineLength - 2;
+                }
+
                 int end = Math.min(i + nextSize, string.length());
 
                 assert lineLength + (end - i) + 2 < MAX_LINE_LENGTH;
