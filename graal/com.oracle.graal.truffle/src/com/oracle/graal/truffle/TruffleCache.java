@@ -148,17 +148,15 @@ public final class TruffleCache {
     }
 
     private void optimizeGraph(StructuredGraph newGraph, Assumptions assumptions) {
-
-        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(metaAccessProvider);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
-
-        CanonicalizerPhase.Instance canonicalizerPhase = new CanonicalizerPhase.Instance(metaAccessProvider, assumptions, !AOTCompilation.getValue(), null, null);
-
-        EarlyReadEliminationPhase earlyRead = new EarlyReadEliminationPhase(new CanonicalizerPhase(true));
         PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
-        Integer maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
+        ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
+        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
+        CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
+        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase(canonicalizerPhase);
 
-        contractGraph(newGraph, eliminate, convertDeoptimizeToGuardPhase, canonicalizerPhase, earlyRead, context);
+        int maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
+
+        contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, context);
 
         while (newGraph.getNodeCount() <= maxNodes) {
 
@@ -171,7 +169,7 @@ public final class TruffleCache {
                 break;
             }
 
-            contractGraph(newGraph, eliminate, convertDeoptimizeToGuardPhase, canonicalizerPhase, earlyRead, context);
+            contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, context);
         }
 
         if (newGraph.getNodeCount() > maxNodes && (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue() || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue())) {
@@ -179,19 +177,19 @@ public final class TruffleCache {
         }
     }
 
-    private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase eliminate, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
-                    CanonicalizerPhase.Instance canonicalizerPhase, EarlyReadEliminationPhase earlyRead, PhaseContext context) {
+    private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase conditionalEliminationPhase, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
+                    CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, PhaseContext context) {
         // Canonicalize / constant propagate.
-        canonicalizerPhase.apply(newGraph);
+        canonicalizerPhase.apply(newGraph, context);
 
         // Early read eliminiation
-        earlyRead.apply(newGraph, context);
+        readEliminationPhase.apply(newGraph, context);
 
         // Convert deopt to guards.
         convertDeoptimizeToGuardPhase.apply(newGraph);
 
         // Conditional elimination.
-        eliminate.apply(newGraph);
+        conditionalEliminationPhase.apply(newGraph);
     }
 
     private void expandGraph(StructuredGraph newGraph, int maxNodes) {
