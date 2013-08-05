@@ -26,7 +26,14 @@ import com.oracle.graal.nodes.extended.*;
 
 public class SerialWriteBarrier extends WriteBarrier {
 
-    public SerialWriteBarrier(ValueNode object, LocationNode location, boolean precise) {
+    @Input private ValueNode value;
+
+    public ValueNode getValue() {
+        return value;
+    }
+
+    public SerialWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
         super(object, location, precise);
+        this.value = value;
     }
 }

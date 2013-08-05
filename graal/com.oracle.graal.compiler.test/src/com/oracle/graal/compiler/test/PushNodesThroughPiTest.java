@@ -90,7 +90,7 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
 
     private StructuredGraph compileTestSnippet(final String snippet) {
         StructuredGraph graph = parse(snippet);
-        HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements);
+        PhaseContext context = new PhaseContext(runtime(), new Assumptions(false), replacements);
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
         new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
         canonicalizer.apply(graph, context);

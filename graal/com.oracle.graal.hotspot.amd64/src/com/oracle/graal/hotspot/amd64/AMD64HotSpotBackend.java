@@ -63,6 +63,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public FrameMap newFrameMap() {
+        return new AMD64FrameMap(runtime(), target, runtime().lookupRegisterConfig());
+    }
+
+    @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
         return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
     }

@@ -81,16 +81,4 @@ public class TargetDescription {
         this.implicitNullCheckLimit = implicitNullCheckLimit;
         this.inlineObjects = inlineObjects;
     }
-
-    /**
-     * Aligns the given frame size (without return instruction pointer) to the stack alignment size
-     * and return the aligned size (without return instruction pointer).
-     * 
-     * @param frameSize the initial frame size to be aligned
-     * @return the aligned frame size
-     */
-    public int alignFrameSize(int frameSize) {
-        int x = frameSize + arch.getReturnAddressSize() + (stackAlignment - 1);
-        return (x / stackAlignment) * stackAlignment - arch.getReturnAddressSize();
-    }
 }

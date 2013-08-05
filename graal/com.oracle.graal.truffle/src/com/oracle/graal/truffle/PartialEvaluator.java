@@ -160,9 +160,9 @@ public class PartialEvaluator {
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                InliningPhase inliningPhase = new InliningPhase(metaAccessProvider, null, replacements, assumptions, cache, plan, OptimisticOptimizations.NONE);
-                inliningPhase.setCustomCanonicalizer(customCanonicalizer);
-                inliningPhase.apply(graph);
+                HighTierContext context = new HighTierContext(metaAccessProvider, assumptions, replacements, cache, plan, OptimisticOptimizations.NONE);
+                InliningPhase inliningPhase = new InliningPhase(customCanonicalizer);
+                inliningPhase.apply(graph, context);
 
                 // Convert deopt to guards.
                 new ConvertDeoptimizeToGuardPhase().apply(graph);
@@ -177,7 +177,7 @@ public class PartialEvaluator {
 
                 // EA frame and clean up.
                 new VerifyFrameDoesNotEscapePhase().apply(graph, false);
-                new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue())).apply(graph, new HighTierContext(metaAccessProvider, assumptions, replacements));
+                new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue())).apply(graph, new PhaseContext(metaAccessProvider, assumptions, replacements));
                 new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
                 for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
                     materializeNode.replaceAtUsages(materializeNode.getFrame());

@@ -49,13 +49,11 @@ public class PhasePlan {
      * A compiler extension phase can chose to run at the end of periods 1-3.
      */
     public static enum PhasePosition {
-        AFTER_PARSING,
-        HIGH_LEVEL
+        AFTER_PARSING
     }
     // @formatter:on
 
     @SuppressWarnings("unchecked") private final ArrayList<Phase>[] phases = new ArrayList[PhasePosition.values().length];
-    private final Set<Class<? extends Phase>> disabledPhases = new HashSet<>();
 
     public void addPhase(PhasePosition pos, Phase phase) {
         if (phases[pos.ordinal()] == null) {
@@ -70,13 +68,5 @@ public class PhasePlan {
                 p.apply(graph);
             }
         }
-    }
-
-    public void disablePhase(Class<? extends Phase> clazz) {
-        disabledPhases.add(clazz);
-    }
-
-    public boolean isPhaseDisabled(Class<? extends Phase> clazz) {
-        return disabledPhases.contains(clazz);
     }
 }

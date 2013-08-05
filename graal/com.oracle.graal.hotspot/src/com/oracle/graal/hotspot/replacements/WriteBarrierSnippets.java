@@ -50,16 +50,30 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue() ? new SnippetCounter.Group("WriteBarriers") : null;
     private static final SnippetCounter serialFieldWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialFieldWriteBarrier", "Number of Serial Field Write Barriers");
     private static final SnippetCounter serialArrayWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialArrayWriteBarrier", "Number of Serial Array Write Barriers");
+    private static final SnippetCounter g1AttemptedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPostWriteBarrierCounter",
+                    "Number of attempted G1 Post Write Barriers");
+    private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrierCounter", "Number of G1 attempted Pre Write Barriers");
+    private static final SnippetCounter g1AttemptedRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrierCounter",
+                    "Number of G1 attempted Ref Field Read Barriers");
+    private static final SnippetCounter g1EffectivePostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePostWriteBarrierCounter",
+                    "Number of effective G1 Post Write Barriers");
+    private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrierCounter", "Number of G1 effective Pre Write Barriers");
+    private static final SnippetCounter g1EffectiveRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveRefFieldBarrierCounter",
+                    "Number of G1 effective Ref Field Read Barriers");
 
     @Snippet
-    public static void serialArrayWriteBarrier(Object obj, Object location, @ConstantParameter boolean usePrecise) {
-        Object object = FixedValueAnchorNode.getObject(obj);
+    public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull) {
+        // No barriers are added if we are always storing a null.
+        if (alwaysNull) {
+            return;
+        }
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
         Pointer oop;
         if (usePrecise) {
-            oop = Word.fromArray(object, location);
+            oop = Word.fromArray(fixedObject, location);
             serialArrayWriteBarrierCounter.inc();
         } else {
-            oop = Word.fromObject(object);
+            oop = Word.fromObject(fixedObject);
             serialFieldWriteBarrierCounter.inc();
         }
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
@@ -75,6 +89,9 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void serialArrayRangeWriteBarrier(Object object, int startIndex, int length) {
+        if (length == 0) {
+            return;
+        }
         Object dest = FixedValueAnchorNode.getObject(object);
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
@@ -124,9 +141,17 @@ public class WriteBarrierSnippets implements Snippets {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
                 }
+                g1AttemptedPreWriteBarrierCounter.inc();
+            } else {
+                g1AttemptedRefFieldBarrierCounter.inc();
             }
             // If the previous value is null the barrier should not be issued.
             if (probability(FREQUENT_PROBABILITY, previousOop.notEqual(0))) {
+                if (doLoad) {
+                    g1EffectivePreWriteBarrierCounter.inc();
+                } else {
+                    g1EffectiveRefFieldBarrierCounter.inc();
+                }
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
                 if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
@@ -143,24 +168,28 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean trace) {
+    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull, @ConstantParameter boolean trace) {
+        // No barriers are added if we are always storing a null.
+        if (alwaysNull) {
+            return;
+        }
         Word thread = thread();
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         Object fixedValue = FixedValueAnchorNode.getObject(value);
         verifyOop(fixedObject);
         verifyOop(fixedValue);
-        Word oop = (Word) Word.fromObject(fixedObject);
-        Word field;
+        validateObject(fixedObject, fixedValue);
+        Word oop;
         if (usePrecise) {
-            field = (Word) Word.fromArray(fixedObject, location);
+            oop = (Word) Word.fromArray(fixedObject, location);
         } else {
-            field = oop;
+            oop = (Word) Word.fromObject(fixedObject);
         }
         int gcCycle = 0;
         if (trace) {
             gcCycle = (int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0);
             log(trace, "[%d] G1-Post Thread: %p Object: %p\n", gcCycle, thread.rawValue(), Word.fromObject(fixedObject).rawValue());
-            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), field.rawValue());
+            log(trace, "[%d] G1-Post Thread: %p Field: %p\n", gcCycle, thread.rawValue(), oop.rawValue());
         }
         Word writtenValue = (Word) Word.fromObject(fixedValue);
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
@@ -168,11 +197,11 @@ public class WriteBarrierSnippets implements Snippets {
         Word indexValue = thread.readWord(g1CardQueueIndexOffset());
         // The result of the xor reveals whether the installed pointer crosses heap regions.
         // In case it does the write barrier has to be issued.
-        Word xorResult = (field.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
+        Word xorResult = (oop.xor(writtenValue)).unsignedShiftRight(logOfHeapRegionGrainBytes());
 
         // Calculate the address of the card to be enqueued to the
         // thread local card queue.
-        Word cardBase = field.unsignedShiftRight(cardTableShift());
+        Word cardBase = oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
         if (((int) startAddress) == startAddress) {
@@ -182,12 +211,14 @@ public class WriteBarrierSnippets implements Snippets {
         }
         Word cardAddress = cardBase.add(displacement);
 
+        g1AttemptedPostWriteBarrierCounter.inc();
         if (probability(LIKELY_PROBABILITY, xorResult.notEqual(0))) {
             // If the written value is not null continue with the barrier addition.
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 byte cardByte = cardAddress.readByte(0);
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(LIKELY_PROBABILITY, cardByte != (byte) 0)) {
+                    g1EffectivePostWriteBarrierCounter.inc();
                     log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                     cardAddress.writeByte(0, (byte) 0);
                     // If the thread local card queue is full, issue a native call which will
@@ -209,31 +240,31 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void g1ArrayRangePreWriteBarrier(Object object, int startIndex, int length) {
-        Object dest = FixedValueAnchorNode.getObject(object);
         Word thread = thread();
         byte markingValue = thread.readByte(g1SATBQueueMarkingOffset());
-        Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
-        Word indexAddress = thread.add(g1SATBQueueIndexOffset());
-        Word indexValue = indexAddress.readWord(0);
-
-        // If the concurrent marker is not enabled return.
-        if (markingValue == (byte) 0) {
+        // If the concurrent marker is not enabled or the vector length is zero, return.
+        if (markingValue == (byte) 0 || length == 0) {
             return;
         }
-        Word oop;
+        Object dest = FixedValueAnchorNode.getObject(object);
+        Word bufferAddress = thread.readWord(g1SATBQueueBufferOffset());
+        Word indexAddress = thread.add(g1SATBQueueIndexOffset());
+        long dstAddr = GetObjectAddressNode.get(dest);
+        long indexValue = indexAddress.readWord(0).rawValue();
         final int scale = arrayIndexScale(Kind.Object);
         int header = arrayBaseOffset(Kind.Object);
 
         for (int i = startIndex; i < length; i++) {
-            Word address = (Word) Word.fromObject(dest).add(header).add(Word.unsigned(i * (long) scale));
-            oop = (Word) Word.fromObject(address.readObject(0, BarrierType.NONE, true));
+            long address = dstAddr + header + (i * scale);
+            Pointer oop = Word.fromObject(Word.unsigned(address).readObject(0, BarrierType.NONE, true));
+            verifyOop(oop.toObject());
             if (oop.notEqual(0)) {
-                if (indexValue.notEqual(0)) {
-                    Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
+                if (indexValue != 0) {
+                    indexValue = indexValue - wordSize();
+                    Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be marked as well as update the SATB's buffer next index.
                     logAddress.writeWord(0, oop);
-                    indexAddress.writeWord(0, nextIndex);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue));
                 } else {
                     g1PreBarrierStub(G1WBPRECALL, oop.toObject());
                 }
@@ -243,11 +274,14 @@ public class WriteBarrierSnippets implements Snippets {
 
     @Snippet
     public static void g1ArrayRangePostWriteBarrier(Object object, int startIndex, int length) {
+        if (length == 0) {
+            return;
+        }
         Object dest = FixedValueAnchorNode.getObject(object);
         Word thread = thread();
         Word bufferAddress = thread.readWord(g1CardQueueBufferOffset());
         Word indexAddress = thread.add(g1CardQueueIndexOffset());
-        Word indexValue = thread.readWord(g1CardQueueIndexOffset());
+        long indexValue = thread.readWord(g1CardQueueIndexOffset()).rawValue();
 
         int cardShift = cardTableShift();
         long cardStart = cardTableStart();
@@ -266,13 +300,13 @@ public class WriteBarrierSnippets implements Snippets {
                 cardAddress.writeByte(0, (byte) 0);
                 // If the thread local card queue is full, issue a native call which will
                 // initialize a new one and add the card entry.
-                if (indexValue.notEqual(0)) {
-                    Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
+                if (indexValue != 0) {
+                    indexValue = indexValue - wordSize();
+                    Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be scanned as well as update
                     // the card queue's next index.
                     logAddress.writeWord(0, cardAddress);
-                    indexAddress.writeWord(0, nextIndex);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue));
                 } else {
                     g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
                 }
@@ -292,10 +326,9 @@ public class WriteBarrierSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo serialArrayWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayWriteBarrier");
+        private final SnippetInfo serialWriteBarrier = snippet(WriteBarrierSnippets.class, "serialWriteBarrier");
         private final SnippetInfo serialArrayRangeWriteBarrier = snippet(WriteBarrierSnippets.class, "serialArrayRangeWriteBarrier");
         private final SnippetInfo g1PreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
-
         private final SnippetInfo g1ReferentReadBarrier = snippet(WriteBarrierSnippets.class, "g1PreWriteBarrier");
         private final SnippetInfo g1PostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1PostWriteBarrier");
         private final SnippetInfo g1ArrayRangePreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier");
@@ -305,12 +338,13 @@ public class WriteBarrierSnippets implements Snippets {
             super(runtime, replacements, target);
         }
 
-        public void lower(SerialWriteBarrier arrayWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(serialArrayWriteBarrier);
-            args.add("obj", arrayWriteBarrier.getObject());
-            args.add("location", arrayWriteBarrier.getLocation());
-            args.addConst("usePrecise", arrayWriteBarrier.usePrecise());
-            template(args).instantiate(runtime, arrayWriteBarrier, DEFAULT_REPLACER, args);
+        public void lower(SerialWriteBarrier writeBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            Arguments args = new Arguments(serialWriteBarrier);
+            args.add("object", writeBarrier.getObject());
+            args.add("location", writeBarrier.getLocation());
+            args.addConst("usePrecise", writeBarrier.usePrecise());
+            args.addConst("alwaysNull", writeBarrier.getValue().objectStamp().alwaysNull());
+            template(args).instantiate(runtime, writeBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -338,7 +372,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("expectedObject", readBarrier.getExpectedObject());
             args.add("location", readBarrier.getLocation());
             args.addConst("doLoad", readBarrier.doLoad());
-            args.addConst("nullCheck", readBarrier.getNullCheck());
+            args.addConst("nullCheck", false);
             args.addConst("trace", traceBarrier());
             template(args).instantiate(runtime, readBarrier, DEFAULT_REPLACER, args);
         }
@@ -349,6 +383,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("value", writeBarrierPost.getValue());
             args.add("location", writeBarrierPost.getLocation());
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
+            args.addConst("alwaysNull", writeBarrierPost.getValue().objectStamp().alwaysNull());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, args);
         }
@@ -394,4 +429,23 @@ public class WriteBarrierSnippets implements Snippets {
     private static boolean traceBarrier() {
         return GraalOptions.GCDebugStartCycle.getValue() > 0 && ((int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0) > GraalOptions.GCDebugStartCycle.getValue());
     }
+
+    /**
+     * Validation helper method which performs sanity checks on write operations. The addresses of
+     * both the object and the value being written are checked in order to determine if they reside
+     * in a valid heap region. If an object is stale, an invalid access is performed in order to
+     * prematurely crash the VM and debug the stack trace of the faulty method.
+     */
+    private static void validateObject(Object parent, Object child) {
+        if (verifyOops() && child != null && !validateOop(VALIDATEOBJECT, parent, child)) {
+            log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
+            DirectObjectStoreNode.storeWord(null, 0, 0, Word.zero());
+        }
+    }
+
+    public static final ForeignCallDescriptor VALIDATEOBJECT = new ForeignCallDescriptor("validate_object", boolean.class, Word.class, Word.class);
+
+    @NodeIntrinsic(ForeignCallNode.class)
+    private static native boolean validateOop(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object parent, Object object);
+
 }

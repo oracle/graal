@@ -20,36 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 
-public class HighTierContext extends PhaseContext {
+public class CleanTypeProfileProxyPhase extends Phase {
 
-    private final PhasePlan plan;
-
-    private final GraphCache cache;
-    private final OptimisticOptimizations optimisticOpts;
-
-    public HighTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        super(runtime, assumptions, replacements);
-        this.plan = plan;
-        this.cache = cache;
-        this.optimisticOpts = optimisticOpts;
-    }
-
-    public PhasePlan getPhasePlan() {
-        return plan;
-    }
-
-    public GraphCache getGraphCache() {
-        return cache;
-    }
-
-    public OptimisticOptimizations getOptimisticOptimizations() {
-        return optimisticOpts;
+    @Override
+    protected void run(StructuredGraph graph) {
+        for (TypeProfileProxyNode proxy : graph.getNodes(TypeProfileProxyNode.class)) {
+            graph.replaceFloating(proxy, proxy.getObject());
+        }
+        assert graph.getNodes(TypeProfileProxyNode.class).count() == 0;
     }
 }

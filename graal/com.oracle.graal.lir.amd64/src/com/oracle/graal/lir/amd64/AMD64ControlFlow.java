@@ -168,11 +168,11 @@ public class AMD64ControlFlow {
                     masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else if (key.getKind() == Kind.Object) {
-                Register intKey = asObjectReg(key);
+                Register objectKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
                     AMD64Move.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
-                    masm.cmpptr(intKey, temp);
+                    masm.cmpptr(objectKey, temp);
                     masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else {

@@ -60,6 +60,11 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public FrameMap newFrameMap() {
+        return new SPARCFrameMap(runtime(), target, runtime().lookupRegisterConfig());
+    }
+
+    @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
         return new SPARCHotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
     }
@@ -73,7 +78,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
         if (StackShadowPages.getValue() > 0) {
             SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
-            final int frameSize = tasm.frameMap.frameSize();
+            final int frameSize = tasm.frameMap.totalFrameSize();
             if (frameSize > 0) {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
@@ -106,9 +111,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
         @Override
         public void enter(TargetMethodAssembler tasm) {
-            final int alignment = target.wordSize * 2;
-            final int frameSize = (tasm.frameMap.frameSize() + (alignment - 1)) & ~(alignment - 1);
-            assert frameSize % alignment == 0 : "must preserve 2*wordSize alignment";
+            final int frameSize = tasm.frameMap.totalFrameSize();
 
             SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
             if (!isStub) {

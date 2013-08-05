@@ -114,6 +114,16 @@ public final class DebugScope {
         }
     }
 
+    public void printf(String msg, Object... args) {
+        if (isLogEnabled()) {
+            if (lastLogScope.get() == null || !lastLogScope.get().qualifiedName.equals(this.qualifiedName)) {
+                output.println("scope: " + qualifiedName);
+                lastLogScope.set(this);
+            }
+            output.printf(msg, args);
+        }
+    }
+
     public void dump(Object object, String formatString, Object[] args) {
         if (isDumpEnabled()) {
             DebugConfig config = getConfig();

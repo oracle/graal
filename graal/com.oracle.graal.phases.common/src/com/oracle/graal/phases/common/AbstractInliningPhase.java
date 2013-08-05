@@ -20,36 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.tiers.*;
 
-public class HighTierContext extends PhaseContext {
-
-    private final PhasePlan plan;
-
-    private final GraphCache cache;
-    private final OptimisticOptimizations optimisticOpts;
-
-    public HighTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        super(runtime, assumptions, replacements);
-        this.plan = plan;
-        this.cache = cache;
-        this.optimisticOpts = optimisticOpts;
-    }
-
-    public PhasePlan getPhasePlan() {
-        return plan;
-    }
-
-    public GraphCache getGraphCache() {
-        return cache;
-    }
-
-    public OptimisticOptimizations getOptimisticOptimizations() {
-        return optimisticOpts;
-    }
+/**
+ * Common superclass for phases that perform inlining.
+ */
+public abstract class AbstractInliningPhase extends BasePhase<HighTierContext> {
 }
