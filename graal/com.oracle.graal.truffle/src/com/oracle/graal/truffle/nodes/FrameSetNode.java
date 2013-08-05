@@ -22,13 +22,10 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import sun.misc.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -81,15 +78,13 @@ public class FrameSetNode extends FrameAccessNode implements IterableNodeType, V
         LoadFieldNode loadFieldNode = graph().add(new LoadFieldNode(getFrame(), field));
         structuredGraph.addBeforeFixed(this, loadFieldNode);
         FixedWithNextNode storeNode;
+        ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
         if (!getSlotKind().isPrimitive()) {
-            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
             storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Object, value));
         } else if (getSlotKind() == Kind.Byte) {
-            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
             storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Byte, value));
         } else {
-            ValueNode slotOffset = getSlotOffset(Unsafe.ARRAY_LONG_INDEX_SCALE, tool.getRuntime());
-            storeNode = graph().add(new UnsafeStoreNode(loadFieldNode, Unsafe.ARRAY_LONG_BASE_OFFSET, slotOffset, value, getSlotKind()));
+            storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Long, value));
         }
         structuredGraph.replaceFixedWithFixed(this, storeNode);
     }
