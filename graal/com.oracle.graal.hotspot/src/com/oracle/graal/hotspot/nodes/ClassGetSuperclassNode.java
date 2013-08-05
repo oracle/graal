@@ -46,8 +46,10 @@ public class ClassGetSuperclassNode extends MacroNode implements Canonicalizable
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             Class c = (Class) javaClass.asConstant().asObject();
-            Class superclass = c.getSuperclass();
-            return ConstantNode.forObject(superclass, tool.runtime(), graph());
+            if (c != null) {
+                Class superclass = c.getSuperclass();
+                return ConstantNode.forObject(superclass, tool.runtime(), graph());
+            }
         }
         return this;
     }

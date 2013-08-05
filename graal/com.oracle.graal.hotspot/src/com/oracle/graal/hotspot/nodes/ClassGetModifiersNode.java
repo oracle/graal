@@ -46,7 +46,9 @@ public class ClassGetModifiersNode extends MacroNode implements Canonicalizable 
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             Class c = (Class) javaClass.asConstant().asObject();
-            return ConstantNode.forInt(c.getModifiers(), graph());
+            if (c != null) {
+                return ConstantNode.forInt(c.getModifiers(), graph());
+            }
         }
         return this;
     }

@@ -46,8 +46,10 @@ public class ClassGetComponentTypeNode extends MacroNode implements Canonicaliza
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             Class c = (Class) javaClass.asConstant().asObject();
-            Class componentType = c.getComponentType();
-            return ConstantNode.forObject(componentType, tool.runtime(), graph());
+            if (c != null) {
+                Class componentType = c.getComponentType();
+                return ConstantNode.forObject(componentType, tool.runtime(), graph());
+            }
         }
         return this;
     }

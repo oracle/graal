@@ -46,7 +46,9 @@ public class ClassIsPrimitiveNode extends MacroNode implements Canonicalizable {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {
             Class c = (Class) javaClass.asConstant().asObject();
-            return ConstantNode.forBoolean(c.isPrimitive(), graph());
+            if (c != null) {
+                return ConstantNode.forBoolean(c.isPrimitive(), graph());
+            }
         }
         return this;
     }
