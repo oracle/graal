@@ -269,6 +269,9 @@ public final class TruffleCache {
                             return inlineGraph;
                         }
                     });
+                    if (!methodCallTargetNode.isStatic() && methodCallTargetNode.receiver().objectStamp().alwaysNull()) {
+                        return invoke.next();
+                    }
                     FixedNode fixedNode = (FixedNode) invoke.predecessor();
                     InliningUtil.inline(invoke, inlinedGraph, true);
                     return fixedNode;
