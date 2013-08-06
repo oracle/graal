@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -67,7 +70,22 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         }
         LoadExceptionObjectNode loadException = graph().add(new LoadExceptionObjectNode(stamp()));
         loadException.setStateAfter(stateAfter());
+        List<GuardedNode> guardedNodes = new ArrayList<>();
+        for (Node usage : usages().snapshot()) {
+            if (usage instanceof GuardedNode) {
+                // can't replace the guard with LoadExceptionObjectNode as it is not a GuardingNode
+                // so temporarily change it to remove the GuardedNode from usages
+                GuardedNode guardedNode = (GuardedNode) usage;
+                guardedNode.setGuard(graph().add(new BeginNode()));
+                guardedNodes.add(guardedNode);
+            }
+        }
         replaceAtUsages(loadException);
+        for (GuardedNode guardedNode : guardedNodes) {
+            BeginNode dummyGuard = (BeginNode) guardedNode.getGuard();
+            guardedNode.setGuard(this);
+            graph().removeFixed(dummyGuard);
+        }
         graph().addAfterFixed(this, loadException);
         setStateAfter(null);
         setStamp(StampFactory.forVoid());

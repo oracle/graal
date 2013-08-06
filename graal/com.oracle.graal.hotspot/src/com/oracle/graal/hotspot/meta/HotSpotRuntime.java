@@ -623,7 +623,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 } else {
                     LoadHubNode arrayClass = graph.add(new LoadHubNode(array, wordKind));
                     LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind())));
+                    /*
+                     * Anchor the read of the element klass to the cfg, because it is only valid
+                     * when arrayClass is an object class, which might not be the case in other
+                     * parts of the compiled method.
+                     */
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, BeginNode.prevBegin(storeIndexed), StampFactory.forKind(wordKind())));
                     CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     graph.addBeforeFixed(checkcast, arrayClass);
