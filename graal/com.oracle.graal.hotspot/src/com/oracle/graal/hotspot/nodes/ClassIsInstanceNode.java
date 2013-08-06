@@ -54,16 +54,18 @@ public class ClassIsInstanceNode extends MacroNode implements Canonicalizable {
         if (javaClass.isConstant()) {
             ValueNode object = getObject();
             Class c = (Class) javaClass.asConstant().asObject();
-            if (c.isPrimitive()) {
-                return ConstantNode.forBoolean(false, graph());
+            if (c != null) {
+                if (c.isPrimitive()) {
+                    return ConstantNode.forBoolean(false, graph());
+                }
+                if (object.isConstant()) {
+                    Object o = object.asConstant().asObject();
+                    return ConstantNode.forBoolean(o != null && c.isInstance(o), graph());
+                }
+                HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
+                InstanceOfNode instanceOf = graph().unique(new InstanceOfNode(type, object, null));
+                return graph().unique(new ConditionalNode(instanceOf, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph())));
             }
-            if (object.isConstant()) {
-                Object o = object.asConstant().asObject();
-                return ConstantNode.forBoolean(o != null && c.isInstance(o), graph());
-            }
-            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(c);
-            InstanceOfNode instanceOf = graph().unique(new InstanceOfNode(type, object, null));
-            return graph().unique(new ConditionalNode(instanceOf, ConstantNode.forBoolean(true, graph()), ConstantNode.forBoolean(false, graph())));
         }
         return this;
     }

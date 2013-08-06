@@ -124,9 +124,14 @@ public final class HotSpotMethodData extends CompilerObject {
         return unsafe.getShort(metaspaceMethodData + fullOffsetInBytes) & 0xFFFF;
     }
 
+    /**
+     * Since the values are stored in cells (platform words) this method uses
+     * {@link HotSpotGraalRuntime#unsafeReadWord} to read the right value on both little and big
+     * endian machines.
+     */
     private long readUnsignedInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
+        return unsafeReadWord(metaspaceMethodData + fullOffsetInBytes) & 0xFFFFFFFFL;
     }
 
     private int readUnsignedIntAsSignedInt(int position, int offsetInBytes) {
@@ -134,9 +139,14 @@ public final class HotSpotMethodData extends CompilerObject {
         return truncateLongToInt(value);
     }
 
+    /**
+     * Since the values are stored in cells (platform words) this method uses
+     * {@link HotSpotGraalRuntime#unsafeReadWord} to read the right value on both little and big
+     * endian machines.
+     */
     private int readInt(int position, int offsetInBytes) {
         long fullOffsetInBytes = computeFullOffset(position, offsetInBytes);
-        return unsafe.getInt(metaspaceMethodData + fullOffsetInBytes);
+        return (int) unsafeReadWord(metaspaceMethodData + fullOffsetInBytes);
     }
 
     private long readWord(int position, int offsetInBytes) {

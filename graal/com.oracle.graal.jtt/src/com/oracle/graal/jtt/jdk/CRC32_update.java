@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.jtt.jdk;
 
-import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
+import java.util.zip.*;
 
-/**
- * {@link MacroNode Macro node} for {@link Class#isInterface()}.
- * 
- * @see ClassSubstitutions#isInterface(Class)
- */
-public class ClassIsInterfaceNode extends MacroNode implements Canonicalizable {
+import org.junit.*;
 
-    public ClassIsInterfaceNode(Invoke invoke) {
-        super(invoke);
-    }
+import com.oracle.graal.jtt.*;
 
-    private ValueNode getJavaClass() {
-        return arguments.get(0);
-    }
+public class CRC32_update extends JTTTest {
 
-    public ValueNode canonical(CanonicalizerTool tool) {
-        ValueNode javaClass = getJavaClass();
-        if (javaClass.isConstant()) {
-            Class c = (Class) javaClass.asConstant().asObject();
-            if (c != null) {
-                return ConstantNode.forBoolean(c.isInterface(), graph());
-            }
+    public static long test(byte[] input) {
+        CRC32 crc = new CRC32();
+        for (byte b : input) {
+            crc.update(b);
         }
-        return this;
+        return crc.getValue();
     }
+
+    @Test
+    public void run0() throws Throwable {
+        runTest("test", "some string".getBytes());
+    }
+
 }
