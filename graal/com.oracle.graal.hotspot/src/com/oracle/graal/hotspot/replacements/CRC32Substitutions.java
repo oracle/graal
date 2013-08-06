@@ -71,7 +71,7 @@ public class CRC32Substitutions {
         return updateBytes(UPDATE_BYTES_CRC32, crc, bufAddr, len);
     }
 
-    public static final ForeignCallDescriptor UPDATE_BYTES_CRC32 = new ForeignCallDescriptor("updatedBytesCRC32", int.class, int.class, Word.class, int.class);
+    public static final ForeignCallDescriptor UPDATE_BYTES_CRC32 = new ForeignCallDescriptor("updateBytesCRC32", int.class, int.class, Word.class, int.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     public static native int updateBytes(@ConstantNodeParameter ForeignCallDescriptor descriptor, int crc, Word buf, int length);
