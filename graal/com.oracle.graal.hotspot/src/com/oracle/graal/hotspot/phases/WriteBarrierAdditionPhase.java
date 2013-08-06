@@ -71,6 +71,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                     G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                     preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                     node.setNullCheck(false);
+                    node.setDeoptimizationState(null);
                     graph.addBeforeFixed(node, preBarrier);
                 }
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.value(), node.location(), true)));
@@ -82,6 +83,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                 preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                 node.setNullCheck(false);
+                node.setDeoptimizationState(null);
                 graph.addBeforeFixed(node, preBarrier);
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.value(), node.location(), false)));
             } else {
