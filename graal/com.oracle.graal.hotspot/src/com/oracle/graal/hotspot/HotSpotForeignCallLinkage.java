@@ -124,7 +124,11 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
                     boolean reexecutable, LocationIdentity... killedLocations) {
         CallingConvention outgoingCc = createCallingConvention(descriptor, outgoingCcType);
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(descriptor, incomingCcType);
-        return new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
+        HotSpotForeignCallLinkage linkage = new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
+        if (outgoingCcType == Type.NativeCall) {
+            linkage.temporaries = graalRuntime().getRuntimeCallVolatileRegisters();
+        }
+        return linkage;
     }
 
     /**

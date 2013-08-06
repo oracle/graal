@@ -22,8 +22,11 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.amd64.AMD64.*;
+
 import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -70,5 +73,10 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     @Override
     protected HotSpotRuntime createRuntime() {
         return new AMD64HotSpotRuntime(config, this);
+    }
+
+    @Override
+    protected Value[] getRuntimeCallVolatileRegisters() {
+        return new Value[]{r10.asValue(), r11.asValue()};
     }
 }
