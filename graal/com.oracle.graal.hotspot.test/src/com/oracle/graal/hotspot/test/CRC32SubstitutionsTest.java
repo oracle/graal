@@ -20,21 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.jdk;
+package com.oracle.graal.hotspot.test;
 
+import java.io.*;
 import java.util.zip.*;
 
 import org.junit.*;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.compiler.test.*;
 
 /**
  * Tests compiled call to {@link CRC32#update(int, int)}.
  */
 @SuppressWarnings("javadoc")
-public class CRC32_update extends JTTTest {
+public class CRC32SubstitutionsTest extends GraalCompilerTest {
 
-    public static long test(byte[] input) {
+    public static long update(byte[] input) {
         CRC32 crc = new CRC32();
         for (byte b : input) {
             crc.update(b);
@@ -43,8 +44,28 @@ public class CRC32_update extends JTTTest {
     }
 
     @Test
-    public void run0() throws Throwable {
-        runTest("test", "some string".getBytes());
+    public void test1() {
+        test("update", "some string".getBytes());
+    }
+
+    public static long updateBytes(byte[] input) {
+        CRC32 crc = new CRC32();
+        crc.update(input, 0, input.length);
+        return crc.getValue();
+    }
+
+    @Test
+    public void test2() {
+        test("updateBytes", "some string".getBytes());
+    }
+
+    @Test
+    public void test3() throws Throwable {
+        String classfileName = CRC32SubstitutionsTest.class.getSimpleName().replace('.', '/') + ".class";
+        InputStream s = CRC32SubstitutionsTest.class.getResourceAsStream(classfileName);
+        byte[] buf = new byte[s.available()];
+        new DataInputStream(s).readFully(buf);
+        test("updateBytes", buf);
     }
 
 }
