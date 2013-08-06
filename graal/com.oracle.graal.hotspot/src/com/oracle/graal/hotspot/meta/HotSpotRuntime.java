@@ -109,7 +109,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     protected final HotSpotGraalRuntime graalRuntime;
     private final Suites defaultSuites;
 
-    private CheckCastSnippets.Templates checkcastSnippets;
+    private CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
     private InstanceOfSnippets.Templates instanceofSnippets;
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
@@ -336,7 +336,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             r.registerSubstitutions(ReflectionSubstitutions.class);
         }
 
-        checkcastSnippets = new CheckCastSnippets.Templates(this, r, graalRuntime.getTarget());
+        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(this, r, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, r, graalRuntime.getTarget());
         newObjectSnippets = new NewObjectSnippets.Templates(this, r, graalRuntime.getTarget());
         monitorSnippets = new MonitorSnippets.Templates(this, r, graalRuntime.getTarget(), c.useFastLocking);
@@ -759,8 +759,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
                 graph.removeFixed(commit);
             }
-        } else if (n instanceof CheckCastNode) {
-            checkcastSnippets.lower((CheckCastNode) n, tool);
         } else if (n instanceof OSRStartNode) {
             if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
                 OSRStartNode osrStart = (OSRStartNode) n;
@@ -789,7 +787,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 osrStart.safeDelete();
             }
         } else if (n instanceof CheckCastDynamicNode) {
-            checkcastSnippets.lower((CheckCastDynamicNode) n);
+            checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
             instanceofSnippets.lower((InstanceOfNode) n, tool);
         } else if (n instanceof InstanceOfDynamicNode) {

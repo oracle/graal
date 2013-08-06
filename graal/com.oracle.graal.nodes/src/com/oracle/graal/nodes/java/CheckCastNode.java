@@ -69,10 +69,6 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         return forStoreCheck;
     }
 
-    // TODO (ds) remove once performance regression in compiler.sunflow (and other benchmarks)
-    // caused by new lowering is fixed
-    private static final boolean useNewLowering = true; // Boolean.getBoolean("graal.checkcast.useNewLowering");
-
     /**
      * Lowers a {@link CheckCastNode} to a {@link GuardingPiNode}. That is:
      * 
@@ -101,33 +97,29 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      */
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (useNewLowering) {
-            InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
-            Stamp stamp = StampFactory.declared(type).join(object.stamp());
-            ValueNode condition;
-            if (stamp == null) {
-                // This is a check cast that will always fail
-                condition = LogicConstantNode.contradiction(graph());
-                stamp = StampFactory.declared(type);
-            } else if (object.stamp().nonNull()) {
-                condition = typeTest;
-            } else {
-                if (profile != null && profile.getNullSeen() == TriState.FALSE) {
-                    FixedGuardNode nullGuard = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
-                    graph().addBeforeFixed(this, nullGuard);
-                    condition = typeTest;
-                    stamp = stamp.join(StampFactory.objectNonNull());
-                } else {
-                    // TODO (ds) replace with probability of null-seen when available
-                    double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
-                    condition = graph().unique(new ShortCircuitOrNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
-                }
-            }
-            GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
-            graph().replaceFixedWithFixed(this, checkedObject);
+        InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
+        Stamp stamp = StampFactory.declared(type).join(object.stamp());
+        ValueNode condition;
+        if (stamp == null) {
+            // This is a check cast that will always fail
+            condition = LogicConstantNode.contradiction(graph());
+            stamp = StampFactory.declared(type);
+        } else if (object.stamp().nonNull()) {
+            condition = typeTest;
         } else {
-            tool.getRuntime().lower(this, tool);
+            if (profile != null && profile.getNullSeen() == TriState.FALSE) {
+                FixedGuardNode nullGuard = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
+                graph().addBeforeFixed(this, nullGuard);
+                condition = typeTest;
+                stamp = stamp.join(StampFactory.objectNonNull());
+            } else {
+                // TODO (ds) replace with probability of null-seen when available
+                double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
+                condition = graph().unique(new ShortCircuitOrNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
+            }
         }
+        GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
+        graph().replaceFixedWithFixed(this, checkedObject);
     }
 
     @Override
