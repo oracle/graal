@@ -311,7 +311,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(r, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, LEAF, NOT_REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(r, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(r, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, VALIDATEOBJECT, c.validateObject, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(r, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
 
         if (IntrinsifyObjectMethods.getValue()) {
             r.registerSubstitutions(ObjectSubstitutions.class);
@@ -593,6 +593,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             LocationNode location = IndexedLocationNode.create(ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
                             cas.expected().kind() == Kind.Object));
+            atomicNode.setStateAfter(cas.stateAfter());
             graph.replaceFixedWithFixed(cas, atomicNode);
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
@@ -636,11 +637,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
         } else if (n instanceof UnsafeLoadNode) {
-            if (tool.getLoweringType() != LoweringType.BEFORE_GUARDS) {
+            if (tool.getLoweringType().ordinal() > LoweringType.BEFORE_GUARDS.ordinal()) {
                 UnsafeLoadNode load = (UnsafeLoadNode) n;
                 assert load.kind() != Kind.Illegal;
                 boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
-                if (addReadBarrier(load, tool)) {
+                if (addReadBarrier(load)) {
                     unsafeLoadSnippets.lower(load, tool);
                 } else {
                     IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
@@ -847,9 +848,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    private static boolean addReadBarrier(UnsafeLoadNode load, LoweringTool tool) {
+    private static boolean addReadBarrier(UnsafeLoadNode load) {
         return useG1GC() && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object && !load.object().objectStamp().alwaysNull() && load.object().objectStamp().type() != null &&
-                        !(load.object().objectStamp().type().isArray()) && tool.getLoweringType() == LoweringType.BEFORE_GUARDS;
+                        !(load.object().objectStamp().type().isArray());
     }
 
     private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, ResolvedJavaMethod method) {

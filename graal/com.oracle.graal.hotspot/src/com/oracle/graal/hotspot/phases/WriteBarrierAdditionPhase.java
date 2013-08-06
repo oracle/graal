@@ -71,6 +71,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                     G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                     preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                     node.setNullCheck(false);
+                    node.setDeoptimizationState(null);
                     graph.addBeforeFixed(node, preBarrier);
                 }
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.value(), node.location(), true)));
@@ -82,6 +83,7 @@ public class WriteBarrierAdditionPhase extends Phase {
                 G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(node.object(), null, node.location(), true, node.getNullCheck()));
                 preBarrier.setDeoptimizationState(node.getDeoptimizationState());
                 node.setNullCheck(false);
+                node.setDeoptimizationState(null);
                 graph.addBeforeFixed(node, preBarrier);
                 graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.value(), node.location(), false)));
             } else {
@@ -97,17 +99,17 @@ public class WriteBarrierAdditionPhase extends Phase {
         BarrierType barrierType = node.getBarrierType();
         if (barrierType == BarrierType.PRECISE) {
             if (useG1GC()) {
-                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.getLocation(), false, false)));
-                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), true)));
+                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.location(), false, false)));
+                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.location(), true)));
             } else {
-                graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), true)));
+                graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getNewValue(), node.location(), true)));
             }
         } else if (barrierType == BarrierType.IMPRECISE) {
             if (useG1GC()) {
-                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.getLocation(), false, false)));
-                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), false)));
+                graph.addBeforeFixed(node, graph.add(new G1PreWriteBarrier(node.object(), node.getExpectedValue(), node.location(), false, false)));
+                graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(node.object(), node.getNewValue(), node.location(), false)));
             } else {
-                graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getNewValue(), node.getLocation(), false)));
+                graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(node.object(), node.getNewValue(), node.location(), false)));
             }
         } else {
             assert barrierType == BarrierType.NONE;
