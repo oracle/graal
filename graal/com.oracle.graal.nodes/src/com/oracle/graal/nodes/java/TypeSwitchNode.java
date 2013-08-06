@@ -136,6 +136,10 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
                         for (int i = 0; i < current; i++) {
                             newKeyProbabilities[i] /= totalProbability;
                         }
+                    } else {
+                        for (int i = 0; i < current; i++) {
+                            newKeyProbabilities[i] = 1.0 / current;
+                        }
                     }
 
                     for (int i = 0; i < blockSuccessorCount(); i++) {
