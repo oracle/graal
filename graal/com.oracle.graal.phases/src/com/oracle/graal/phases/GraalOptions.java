@@ -308,6 +308,8 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> IntrinsifyAESMethods = new OptionValue<>(true);
     @Option(help = "")
+    public static final OptionValue<Boolean> IntrinsifyCRC32Methods = new OptionValue<>(true);
+    @Option(help = "")
     public static final OptionValue<Boolean> IntrinsifyReflectionMethods = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> IntrinsifyInstalledCodeMethods = new OptionValue<>(true);

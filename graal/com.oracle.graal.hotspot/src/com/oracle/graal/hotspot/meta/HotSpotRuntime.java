@@ -332,6 +332,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             r.registerSubstitutions(AESCryptSubstitutions.class);
             r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
         }
+        if (IntrinsifyCRC32Methods.getValue()) {
+            r.registerSubstitutions(CRC32Substitutions.class);
+        }
         if (IntrinsifyReflectionMethods.getValue()) {
             r.registerSubstitutions(ReflectionSubstitutions.class);
         }

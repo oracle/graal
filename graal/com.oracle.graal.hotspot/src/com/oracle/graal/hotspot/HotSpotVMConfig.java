@@ -108,6 +108,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public final boolean useBiasedLocking = getVMOption("UseBiasedLocking");
     public final boolean usePopCountInstruction = getVMOption("UsePopCountInstruction");
     public final boolean useAESIntrinsics = getVMOption("UseAESIntrinsics");
+    public final boolean useCRC32Intrinsics = getVMOption("UseCRC32Intrinsics");
     public final boolean useG1GC = getVMOption("UseG1GC");
     public long gcTotalCollectionsAddress;
 
@@ -484,6 +485,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long aescryptDecryptBlockStub;
     public long cipherBlockChainingEncryptAESCryptStub;
     public long cipherBlockChainingDecryptAESCryptStub;
+    public long updateBytesCRC32Stub;
 
     public long newInstanceAddress;
     public long newArrayAddress;
@@ -513,6 +515,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public long arithmeticCosAddress;
     public long arithmeticTanAddress;
     public long loadAndClearExceptionAddress;
+    public long crcTableAddress;
 
     public int deoptReasonNone;
     public int deoptReasonNullCheck;

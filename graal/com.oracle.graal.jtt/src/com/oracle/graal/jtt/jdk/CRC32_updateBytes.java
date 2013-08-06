@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.jtt.jdk;
 
+import java.io.*;
 import java.util.zip.*;
 
 import org.junit.*;
@@ -45,4 +46,12 @@ public class CRC32_updateBytes extends JTTTest {
         runTest("test", "some string".getBytes());
     }
 
+    @Test
+    public void run1() throws Throwable {
+        String classfileName = CRC32_updateBytes.class.getSimpleName().replace('.', '/') + ".class";
+        InputStream s = CRC32_updateBytes.class.getResourceAsStream(classfileName);
+        byte[] buf = new byte[s.available()];
+        new DataInputStream(s).readFully(buf);
+        runTest("test", buf);
+    }
 }
