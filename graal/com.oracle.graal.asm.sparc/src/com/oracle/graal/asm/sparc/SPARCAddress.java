@@ -104,13 +104,20 @@ public class SPARCAddress extends AbstractAddress {
     }
 
     /**
+     * @return true if this address has an index register
+     */
+    public boolean hasIndex() {
+        return !getIndex().equals(Register.None);
+    }
+
+    /**
      * This method adds the stack-bias to the displacement if the base register is either
      * {@link SPARC#sp} or {@link SPARC#fp}.
      * 
      * @return Optional additive displacement.
      */
     public int getDisplacement() {
-        if (!getIndex().equals(Register.None)) {
+        if (hasIndex()) {
             throw GraalInternalError.shouldNotReachHere("address has index register");
         }
         // TODO Should we also hide the register save area size here?

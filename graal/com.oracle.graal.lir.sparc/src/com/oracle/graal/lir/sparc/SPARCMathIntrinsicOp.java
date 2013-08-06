@@ -51,7 +51,7 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         switch (opcode) {
             case SQRT:
-                new Fsqrtd(asDoubleReg(result), asDoubleReg(input)).emit(masm);
+                new Fsqrtd(asDoubleReg(input), asDoubleReg(result)).emit(masm);
                 break;
             case LOG:
             case LOG10:

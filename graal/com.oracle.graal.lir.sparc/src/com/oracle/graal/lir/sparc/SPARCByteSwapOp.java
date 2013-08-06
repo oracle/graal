@@ -24,6 +24,7 @@ package com.oracle.graal.lir.sparc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -42,10 +43,12 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         SPARCMove.move(tasm, masm, result, input);
         switch (input.getKind()) {
-        // case Int:
-        // masm.bswapl(ValueUtil.asIntReg(result));
-        // case Long:
-        // masm.bswapq(ValueUtil.asLongReg(result));
+            case Int:
+                // masm.bswapl(ValueUtil.asIntReg(result));
+            case Long:
+                // masm.bswapq(ValueUtil.asLongReg(result));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 }

@@ -53,7 +53,7 @@ public class SPARCMacroAssembler extends SPARCAssembler {
     @Override
     public void jmp(Label l) {
         new Bpa(l).emit(this);
-        new Nop().emit(this);
+        new Nop().emit(this);  // delay slot
     }
 
     @Override
@@ -74,6 +74,10 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         return Placeholder;
     }
 
+    public final void ensureUniquePC() {
+        new Nop().emit(this);
+    }
+
     public static class Bclr extends Andn {
 
         public Bclr(Register src, Register dst) {
@@ -92,6 +96,17 @@ public class SPARCMacroAssembler extends SPARCAssembler {
         }
 
         public Bpgeu(CC cc, Label label) {
+            super(cc, label);
+        }
+    }
+
+    public static class Bplu extends Bpcs {
+
+        public Bplu(CC cc, int simm19) {
+            super(cc, simm19);
+        }
+
+        public Bplu(CC cc, Label label) {
             super(cc, label);
         }
     }
@@ -240,7 +255,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Neg(Register src2, Register dst) {
             super(g0, src2, dst);
-            assert src2.encoding() != dst.encoding();
         }
 
         public Neg(Register dst) {
@@ -421,7 +435,6 @@ public class SPARCMacroAssembler extends SPARCAssembler {
 
         public Signx(Register src1, Register dst) {
             super(src1, g0, dst);
-            assert src1.encoding() != dst.encoding();
         }
 
         public Signx(Register dst) {

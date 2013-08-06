@@ -32,6 +32,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCCall.DirectCallOp;
+import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
 /**
@@ -56,11 +57,7 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-// SPARCMove.move(tasm, masm, g5.asValue(Kind.Long), tasm.asLongConstRef(metaspaceMethod));
-
-        new Rdpc(g5).emit(masm);
-        tasm.asLongConstRef(metaspaceMethod);
-        new Ldx(new SPARCAddress(g5, 0), g5).emit(masm);
+        SPARCMove.move(tasm, masm, g5.asValue(Kind.Long), metaspaceMethod);
         tasm.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
         // SPARCMove.move(tasm, masm, g3.asValue(Kind.Long), Constant.LONG_0);
         new Setx(nonOopBits, g3, true).emit(masm);

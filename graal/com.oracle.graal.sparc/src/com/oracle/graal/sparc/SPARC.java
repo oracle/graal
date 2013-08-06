@@ -143,10 +143,7 @@ public class SPARC extends Architecture {
     // @formatter:on
 
     public SPARC() {
-        // The return address doesn't have an extra slot in the frame so we pass 0 for the return
-        // address size.
-        // XXX think about the return address size again
-        super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 0);
+        super("SPARC", 8, ByteOrder.BIG_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 1, r31.encoding + 1, 8);
     }
 
     @Override

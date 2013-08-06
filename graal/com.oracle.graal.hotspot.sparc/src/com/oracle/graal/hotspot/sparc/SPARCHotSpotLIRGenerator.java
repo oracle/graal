@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import java.lang.reflect.*;
 
@@ -157,14 +158,11 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-// AllocatableValue metaspaceMethod = AMD64.rbx.asValue();
-// emitMove(metaspaceMethod, operand(((HotSpotIndirectCallTargetNode)
-// callTarget).metaspaceMethod()));
-// AllocatableValue targetAddress = AMD64.rax.asValue();
-// emitMove(targetAddress, operand(callTarget.computedAddress()));
-// append(new AMD64IndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod,
-// targetAddress, callState));
-        throw GraalInternalError.unimplemented();
+        AllocatableValue metaspaceMethod = g5.asValue();
+        emitMove(metaspaceMethod, operand(((HotSpotIndirectCallTargetNode) callTarget).metaspaceMethod()));
+        AllocatableValue targetAddress = g3.asValue();
+        emitMove(targetAddress, operand(callTarget.computedAddress()));
+        append(new SPARCIndirectCallOp(callTarget.target(), result, parameters, temps, metaspaceMethod, targetAddress, callState));
     }
 
     @Override

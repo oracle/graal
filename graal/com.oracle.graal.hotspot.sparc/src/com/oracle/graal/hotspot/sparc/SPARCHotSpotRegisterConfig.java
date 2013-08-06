@@ -33,6 +33,7 @@ import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.lir.*;
 
 public class SPARCHotSpotRegisterConfig implements RegisterConfig {
 
@@ -77,9 +78,12 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] fpuParameterRegisters = {f0, f1, f2, f3, f4, f5, f6, f7};
 
     private final Register[] callerSaveRegisters = {g1, g3, g4, g5, o0, o1, o2, o3, o4, o5, o7};
-// private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3,
-// i4, i5, i6, i7};
-    private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7};
+
+    /**
+     * Registers saved by the callee. This lists all L and I registers which are saved in the
+     * register window. {@link FrameMap} uses this array to calculate the spill area size.
+     */
+    private final Register[] calleeSaveRegisters = {l0, l1, l2, l3, l4, l5, l6, l7, i0, i1, i2, i3, i4, i5, i6, i7};
 
     private final CalleeSaveLayout csl;
 
@@ -100,7 +104,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         // TODO this is not complete
                         o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
                         l0, l1, l2, l3, l4, l5, l6, l7,
-                        i0, i1, i2, i3, i4, i5, /*i6,*/ i7,
+                        i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
                         f0, f1, f2, f3, f4, f5, f6, f7
                       };
         } else {
@@ -108,7 +112,7 @@ public class SPARCHotSpotRegisterConfig implements RegisterConfig {
                         // TODO this is not complete
                         o0, o1, o2, o3, o4, o5, /*o6,*/ o7,
                         l0, l1, l2, l3, l4, l5, l6, l7,
-                        i0, i1, i2, i3, i4, i5, /*i6,*/ i7,
+                        i0, i1, i2, i3, i4, i5, /*i6,*/ /*i7,*/
                         f0, f1, f2, f3, f4, f5, f6, f7
                       };
         }

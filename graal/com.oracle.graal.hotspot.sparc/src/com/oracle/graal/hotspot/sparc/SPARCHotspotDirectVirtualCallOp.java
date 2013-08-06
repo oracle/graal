@@ -42,7 +42,6 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
 
-    private static final long nonOopBits = HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits;
     private final InvokeKind invokeKind;
 
     SPARCHotspotDirectVirtualCallOp(ResolvedJavaMethod target, Value result, Value[] parameters, Value[] temps, LIRFrameState state, InvokeKind invokeKind) {
@@ -55,14 +54,8 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-// new Rdpc(g3).emit(masm);
-// tasm.asLongConstRef(nonOopBitsConstant);
-// tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-// new Ldx(new SPARCAddress(g3, 0), g3).emit(masm);
-
         tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-        // SPARCMove.move(tasm, masm, g3.asValue(Kind.Long), nonOopBitsConstant);
-        new Setx(nonOopBits, g3, true).emit(masm);
+        new Setx(HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits, g3, true).emit(masm);
         super.emitCode(tasm, masm);
     }
 }

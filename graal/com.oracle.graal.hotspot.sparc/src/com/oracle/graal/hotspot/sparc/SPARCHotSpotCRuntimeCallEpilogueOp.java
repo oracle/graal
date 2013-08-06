@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
@@ -38,11 +39,14 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         Register thread = graalRuntime().getRuntime().threadRegister();
+        HotSpotVMConfig config = graalRuntime().getConfig();
 
         // Restore the thread register when coming back from the runtime.
         new Mov(l7, thread).emit(masm);
 
-        // Reset last Java frame.
-        new Stx(g0, new SPARCAddress(thread, graalRuntime().getConfig().threadLastJavaSpOffset)).emit(masm);
+        // Reset last Java frame, last Java PC and flags.
+        new Stx(g0, new SPARCAddress(thread, config.threadLastJavaSpOffset)).emit(masm);
+        new Stx(g0, new SPARCAddress(thread, config.threadLastJavaPcOffset)).emit(masm);
+        new Stw(g0, new SPARCAddress(thread, config.threadJavaFrameAnchorFlagsOffset)).emit(masm);
     }
 }
