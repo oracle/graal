@@ -29,16 +29,14 @@ import org.junit.*;
 import com.oracle.graal.jtt.*;
 
 /**
- * Tests compiled call to {@link CRC32#update(int, int)}.
+ * Tests compiled call to {@link CRC32#updateBytes(int, byte[], int, int)}.
  */
 @SuppressWarnings("javadoc")
-public class CRC32_update extends JTTTest {
+public class CRC32_updateBytes extends JTTTest {
 
     public static long test(byte[] input) {
         CRC32 crc = new CRC32();
-        for (byte b : input) {
-            crc.update(b);
-        }
+        crc.update(input, 0, input.length);
         return crc.getValue();
     }
 
