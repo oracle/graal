@@ -148,7 +148,7 @@ public class WriteBarrierVerificationPhase extends Phase {
             writtenLocation = ((WriteNode) write).location();
         } else if (write instanceof LoweredCompareAndSwapNode) {
             writtenObject = ((LoweredCompareAndSwapNode) write).object();
-            writtenLocation = ((LoweredCompareAndSwapNode) write).getLocation();
+            writtenLocation = ((LoweredCompareAndSwapNode) write).location();
         } else {
             assert false : "Node must be of type requiring a write barrier";
         }
