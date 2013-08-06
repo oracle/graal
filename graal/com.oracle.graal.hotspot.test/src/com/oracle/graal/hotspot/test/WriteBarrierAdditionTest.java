@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.test;
 
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+
 import java.lang.ref.*;
 import java.lang.reflect.*;
 
@@ -41,7 +43,6 @@ import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
@@ -146,9 +147,9 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     static Container con = new Container();
 
     /**
-     * Expected 4 barriers for the Serial GC and 9 for G1 (5 pre + 4 post). In this test, we load
-     * the correct offset of the WeakReference object so naturally we assert the presence of the pre
-     * barrier.
+     * Expected 4 barriers for the Serial GC and 9 for G1 (1 ref + 4 pre + 4 post). In this test, we
+     * load the correct offset of the WeakReference object so naturally we assert the presence of
+     * the pre barrier.
      */
     @Test
     public void test5() throws Exception {
@@ -156,7 +157,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UnsafeLoadNode.load(wr, 0, 16, Kind.Object);
+        return UnsafeLoadNode.load(wr, 0, useCompressedOops() ? 12 : 16, Kind.Object);
     }
 
     /**
@@ -246,9 +247,12 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(new InliningPhase.InlineEverythingPolicy()).apply(graph, context);
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+                HighTierContext highContext = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                MidTierContext midContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
+                new InliningPhase(new InliningPhase.InlineEverythingPolicy()).apply(graph, highContext);
+                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highContext);
+                new GuardLoweringPhase().apply(graph, midContext);
+                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, midContext);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");
 
@@ -278,8 +282,6 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                     if (read.getBarrierType() != BarrierType.NONE) {
                         if (read.location() instanceof ConstantLocationNode) {
                             Assert.assertTrue(((ConstantLocationNode) (read.location())).getDisplacement() == referentOffset());
-                        } else {
-                            Assert.assertTrue(((IndexedLocationNode) (read.location())).getDisplacement() == referentOffset());
                         }
                         Assert.assertTrue(useG1GC());
                         Assert.assertTrue(read.getBarrierType() == BarrierType.PRECISE);
