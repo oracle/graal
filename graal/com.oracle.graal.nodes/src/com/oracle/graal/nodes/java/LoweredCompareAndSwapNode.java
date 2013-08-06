@@ -34,10 +34,8 @@ import com.oracle.graal.nodes.type.*;
  */
 public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, Node.IterableNodeType {
 
-    @Input private ValueNode object;
     @Input private ValueNode expectedValue;
     @Input private ValueNode newValue;
-    @Input private LocationNode location;
     @Input(notDataflow = true) private FrameState stateAfter;
 
     public FrameState stateAfter() {
@@ -54,10 +52,6 @@ public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit,
         return true;
     }
 
-    public ValueNode getObject() {
-        return object;
-    }
-
     public ValueNode getExpectedValue() {
         return expectedValue;
     }
@@ -66,26 +60,20 @@ public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit,
         return newValue;
     }
 
-    public LocationNode getLocation() {
-        return location;
-    }
-
     public LoweredCompareAndSwapNode(ValueNode object, LocationNode location, ValueNode expectedValue, ValueNode newValue, BarrierType barrierType, boolean compressible) {
         super(object, location, StampFactory.forKind(Kind.Boolean.getStackKind()), barrierType, compressible);
         assert expectedValue.kind() == newValue.kind();
-        this.object = object;
         this.expectedValue = expectedValue;
         this.newValue = newValue;
-        this.location = location;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return location.getLocationIdentity();
+        return location().getLocationIdentity();
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.visitCompareAndSwap(this, getLocation().generateAddress(gen, gen.operand(getObject())));
+        gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.operand(object())));
     }
 }
