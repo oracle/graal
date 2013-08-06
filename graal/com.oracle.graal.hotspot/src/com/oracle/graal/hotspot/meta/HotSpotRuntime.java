@@ -636,11 +636,11 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
         } else if (n instanceof UnsafeLoadNode) {
-            if (tool.getLoweringType() != LoweringType.BEFORE_GUARDS) {
+            if (tool.getLoweringType().ordinal() > LoweringType.BEFORE_GUARDS.ordinal()) {
                 UnsafeLoadNode load = (UnsafeLoadNode) n;
                 assert load.kind() != Kind.Illegal;
                 boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
-                if (addReadBarrier(load, tool)) {
+                if (addReadBarrier(load)) {
                     unsafeLoadSnippets.lower(load, tool);
                 } else {
                     IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
@@ -849,9 +849,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    private static boolean addReadBarrier(UnsafeLoadNode load, LoweringTool tool) {
+    private static boolean addReadBarrier(UnsafeLoadNode load) {
         return useG1GC() && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object && !load.object().objectStamp().alwaysNull() && load.object().objectStamp().type() != null &&
-                        !(load.object().objectStamp().type().isArray()) && tool.getLoweringType() == LoweringType.BEFORE_GUARDS;
+                        !(load.object().objectStamp().type().isArray());
     }
 
     private static ReadNode createReadVirtualMethod(StructuredGraph graph, Kind wordKind, ValueNode hub, ResolvedJavaMethod method) {
