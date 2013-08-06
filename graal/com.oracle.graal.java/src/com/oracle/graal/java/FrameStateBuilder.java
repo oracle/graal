@@ -234,6 +234,9 @@ public class FrameStateBuilder {
         for (int i = 0; i < stackSize(); i++) {
             storeStack(i, createLoopPhi(loopBegin, stackAt(i)));
         }
+        for (int i = 0; i < locks.length; i++) {
+            locks[i] = createLoopPhi(loopBegin, locks[i]);
+        }
     }
 
     public void insertLoopProxies(LoopExitNode loopExit, FrameStateBuilder loopEntryState) {
