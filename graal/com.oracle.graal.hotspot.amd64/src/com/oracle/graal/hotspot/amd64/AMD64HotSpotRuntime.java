@@ -31,6 +31,7 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.replacements.AESCryptSubstitutions.*;
+import static com.oracle.graal.hotspot.replacements.CRC32Substitutions.*;
 import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitutions.*;
 
 import com.oracle.graal.api.code.*;
@@ -69,6 +70,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
 
         convertSnippets = new AMD64ConvertSnippets.Templates(this, replacements, graalRuntime.getTarget());
         super.registerReplacements(replacements);

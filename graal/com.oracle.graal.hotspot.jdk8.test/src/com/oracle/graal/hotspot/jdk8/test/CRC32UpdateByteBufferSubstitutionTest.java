@@ -20,29 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.jtt.jdk;
+package com.oracle.graal.hotspot.jdk8.test;
 
+import java.io.*;
+import java.nio.*;
 import java.util.zip.*;
 
 import org.junit.*;
 
-import com.oracle.graal.jtt.*;
+import com.oracle.graal.compiler.test.*;
 
 /**
- * Tests compiled call to {@link CRC32#updateBytes(int, byte[], int, int)}.
+ * Tests compiled call to {@link CRC32#updateByteBuffer(int, long, int, int)}.
  */
 @SuppressWarnings("javadoc")
-public class CRC32_updateBytes extends JTTTest {
+public class CRC32UpdateByteBufferSubstitutionTest extends GraalCompilerTest {
 
-    public static long test(byte[] input) {
+    public static long updateByteBuffer(ByteBuffer buffer) {
         CRC32 crc = new CRC32();
-        crc.update(input, 0, input.length);
+        buffer.rewind();
+        crc.update(buffer);
         return crc.getValue();
     }
 
     @Test
-    public void run0() throws Throwable {
-        runTest("test", "some string".getBytes());
-    }
+    public void test1() throws Throwable {
+        String classfileName = CRC32UpdateByteBufferSubstitutionTest.class.getSimpleName().replace('.', '/') + ".class";
+        InputStream s = CRC32UpdateByteBufferSubstitutionTest.class.getResourceAsStream(classfileName);
+        byte[] buf = new byte[s.available()];
+        new DataInputStream(s).readFully(buf);
 
+        ByteBuffer directBuf = ByteBuffer.allocateDirect(buf.length);
+        directBuf.put(buf);
+        ByteBuffer heapBuf = ByteBuffer.wrap(buf);
+
+        test("updateByteBuffer", directBuf);
+        test("updateByteBuffer", heapBuf);
+    }
 }

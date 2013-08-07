@@ -170,8 +170,11 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             }
         }
         if (originalMethod == null) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("Could not find the original method with name '%s' and parameters '%s'.", originalName, Arrays.toString(signatureParameters)),
-                            substitutionMethod, substitutionAnnotation);
+            boolean optional = resolveAnnotationValue(Boolean.class, findAnnotationValue(substitutionAnnotation, "optional"));
+            if (!optional) {
+                env.getMessager().printMessage(Kind.ERROR, String.format("Could not find the original method with name '%s' and parameters '%s'.", originalName, Arrays.toString(signatureParameters)),
+                                substitutionMethod, substitutionAnnotation);
+            }
             return null;
         }
 

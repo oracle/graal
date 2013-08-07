@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.sparc.*;
@@ -65,5 +66,11 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
     @Override
     protected HotSpotRuntime createRuntime() {
         return new SPARCHotSpotRuntime(config, this);
+    }
+
+    @Override
+    protected Value[] getRuntimeCallVolatileRegisters() {
+        // TODO: is this correct?
+        return new Value[0];
     }
 }

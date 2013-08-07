@@ -60,6 +60,10 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+        } else if (substituteMethod.getDeclaringClass() == CRC32Substitutions.class) {
+            if (!config.useCRC32Intrinsics) {
+                return null;
+            }
         }
         return super.registerMethodSubstitution(originalMethod, substituteMethod);
     }
