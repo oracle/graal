@@ -452,7 +452,7 @@ public class HotSpotReplacementsUtil {
      * Loads the hub of an object (without null checking it first).
      */
     public static Word loadHub(Object object) {
-        return loadHubIntrinsic(object, getWordKind());
+        return loadHubIntrinsic(object, getWordKind(), null);
     }
 
     public static Object verifyOop(Object object) {
@@ -495,7 +495,7 @@ public class HotSpotReplacementsUtil {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word) {
+    static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
         if (wordKind() == Kind.Int) {
             return Word.box((int) unsafeReadKlassPointer(object));
         }

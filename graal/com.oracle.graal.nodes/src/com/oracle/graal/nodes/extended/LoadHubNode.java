@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
  * Loads an object's {@linkplain Representation#ObjectHub hub}. The object is not null-checked by
  * this operation.
  */
-public final class LoadHubNode extends FixedWithNextNode implements Lowerable, Canonicalizable, Virtualizable {
+public final class LoadHubNode extends FloatingGuardedNode implements Lowerable, Canonicalizable, Virtualizable {
 
     @Input private ValueNode object;
 
@@ -40,9 +40,21 @@ public final class LoadHubNode extends FixedWithNextNode implements Lowerable, C
         return object;
     }
 
-    public LoadHubNode(ValueNode object, Kind kind) {
-        super(kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind));
+    public LoadHubNode(ValueNode object, Kind kind, ValueNode guard) {
+        super(getKind(kind), asGuard(guard));
+        assert object != guard;
         this.object = object;
+    }
+
+    private static Stamp getKind(Kind kind) {
+        return kind == Kind.Object ? StampFactory.objectNonNull() : StampFactory.forKind(kind);
+    }
+
+    private static GuardingNode asGuard(ValueNode guard) {
+        if (guard instanceof GuardingNode) {
+            return (GuardingNode) guard;
+        }
+        return null;
     }
 
     @Override

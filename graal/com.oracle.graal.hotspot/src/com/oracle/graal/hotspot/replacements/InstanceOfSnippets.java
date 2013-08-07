@@ -89,7 +89,8 @@ public class InstanceOfSnippets implements Snippets {
             }
             return falseValue;
         }
-        Word objectHub = loadHub(object);
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -117,7 +118,8 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        Word objectHub = loadHub(object);
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(LIKELY_PROBABILITY, objectHub.notEqual(exactHub))) {
             exactMiss.inc();
             return falseValue;
@@ -135,7 +137,8 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        Word objectHub = loadHub(object);
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, LocationIdentity.FINAL_LOCATION).notEqual(hub))) {
             displayMiss.inc();
             return falseValue;
@@ -154,7 +157,8 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        Word objectHub = loadHub(object);
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < hints.length; i++) {
@@ -182,7 +186,8 @@ public class InstanceOfSnippets implements Snippets {
         }
 
         Word hub = loadWordFromObject(mirror, klassOffset());
-        Word objectHub = loadHub(object);
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (!checkUnknownSubType(hub, objectHub)) {
             return falseValue;
         }
