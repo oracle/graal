@@ -37,7 +37,8 @@ import com.oracle.graal.word.*;
 @ClassSubstitution(java.lang.Object.class)
 public class ObjectSubstitutions {
 
-    @MethodSubstitution(isStatic = false)
+    @MacroSubstitution(macro = ObjectGetClassNode.class, isStatic = false, forced = true)
+    @MethodSubstitution(isStatic = false, forced = true)
     public static Class<?> getClass(final Object thisObj) {
         Word hub = loadHub(thisObj);
         return unsafeCast(hub.readObject(Word.signed(classMirrorOffset()), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
@@ -48,7 +49,7 @@ public class ObjectSubstitutions {
         return computeHashCode(thisObj);
     }
 
-    @MethodSubstitution(value = "<init>", isStatic = false)
+    @MethodSubstitution(value = "<init>", isStatic = false, forced = true)
     public static void init(Object thisObj) {
         RegisterFinalizerNode.register(thisObj);
     }
