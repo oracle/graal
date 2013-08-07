@@ -30,8 +30,10 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
@@ -205,6 +207,20 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
         TestObject2 obj = new TestObject2(TestObject2.class);
         TestObject2 obj2 = new TestObject2(obj);
         return obj2.o instanceof TestObject2;
+    }
+
+    @SuppressWarnings("unused")
+    public static void testNewNodeSnippet() {
+        new IntegerAddNode(Kind.Int, null, null);
+    }
+
+    /**
+     * This test makes sure that the allocation of a {@link Node} can be removed. It therefore also
+     * tests the intrinsification of {@link Object#getClass()}.
+     */
+    @Test
+    public void testNewNode() {
+        testEscapeAnalysis("testNewNodeSnippet", null, false);
     }
 
     private ReturnNode testEscapeAnalysis(String snippet, final Constant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
