@@ -322,7 +322,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static final ForeignCallDescriptor G1WBPOSTCALL = new ForeignCallDescriptor("write_barrier_post", void.class, Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
-    private static native void g1PostBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word card);
+    public static native void g1PostBarrierStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word card);
 
     public static class Templates extends AbstractTemplates {
 
@@ -408,25 +408,25 @@ public class WriteBarrierSnippets implements Snippets {
     /**
      * Log method of debugging purposes.
      */
-    private static void log(boolean enabled, String format, long value) {
+    public static void log(boolean enabled, String format, long value) {
         if (enabled) {
             Log.printf(format, value);
         }
     }
 
-    private static void log(boolean enabled, String format, long value1, long value2) {
+    public static void log(boolean enabled, String format, long value1, long value2) {
         if (enabled) {
             Log.printf(format, value1, value2);
         }
     }
 
-    private static void log(boolean enabled, String format, long value1, long value2, long value3) {
+    public static void log(boolean enabled, String format, long value1, long value2, long value3) {
         if (enabled) {
             Log.printf(format, value1, value2, value3);
         }
     }
 
-    private static boolean traceBarrier() {
+    public static boolean traceBarrier() {
         return GraalOptions.GCDebugStartCycle.getValue() > 0 && ((int) Word.unsigned(HotSpotReplacementsUtil.gcTotalCollectionsAddress()).readLong(0) > GraalOptions.GCDebugStartCycle.getValue());
     }
 
@@ -436,7 +436,7 @@ public class WriteBarrierSnippets implements Snippets {
      * in a valid heap region. If an object is stale, an invalid access is performed in order to
      * prematurely crash the VM and debug the stack trace of the faulty method.
      */
-    private static void validateObject(Object parent, Object child) {
+    public static void validateObject(Object parent, Object child) {
         if (verifyOops() && child != null && !validateOop(VALIDATE_OBJECT, parent, child)) {
             log(true, "Verification ERROR, Parent: %p Child: %p\n", Word.fromObject(parent).rawValue(), Word.fromObject(child).rawValue());
             DirectObjectStoreNode.storeWord(null, 0, 0, Word.zero());
