@@ -53,7 +53,7 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter g1AttemptedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPostWriteBarrierCounter",
                     "Number of attempted G1 Post Write Barriers");
     private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrierCounter", "Number of G1 attempted Pre Write Barriers");
-    private static final SnippetCounter g1AttemptedRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrierCounter",
+    private static final SnippetCounter g1AttemptedRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedRefFieldBarrierCounter",
                     "Number of G1 attempted Ref Field Read Barriers");
     private static final SnippetCounter g1EffectivePostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePostWriteBarrierCounter",
                     "Number of effective G1 Post Write Barriers");
