@@ -48,15 +48,18 @@ public class CRC32SubstitutionsTest extends GraalCompilerTest {
         test("update", "some string".getBytes());
     }
 
-    public static long updateBytes(byte[] input) {
+    public static long updateBytes(byte[] input, int offset, int length) {
         CRC32 crc = new CRC32();
-        crc.update(input, 0, input.length);
+        crc.update(input, offset, length);
         return crc.getValue();
     }
 
     @Test
     public void test2() {
-        test("updateBytes", "some string".getBytes());
+        byte[] buf = "some string".getBytes();
+        int off = 0;
+        int len = buf.length;
+        test("updateBytes", buf, off, len);
     }
 
     @Test
@@ -65,7 +68,10 @@ public class CRC32SubstitutionsTest extends GraalCompilerTest {
         InputStream s = CRC32SubstitutionsTest.class.getResourceAsStream(classfileName);
         byte[] buf = new byte[s.available()];
         new DataInputStream(s).readFully(buf);
-        test("updateBytes", buf);
+        test("updateBytes", buf, 0, buf.length);
+        for (int offset = 1; offset < buf.length; offset++) {
+            test("updateBytes", buf, offset, buf.length - offset);
+        }
     }
 
 }
