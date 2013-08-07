@@ -449,6 +449,15 @@ public abstract class GraalCompilerTest extends GraalTest {
                         if (Debug.isDumpEnabled()) {
                             Debug.dump(new Object[]{compResult, code}, "After code installation");
                         }
+                        if (Debug.isLogEnabled()) {
+                            DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
+                            if (dis != null) {
+                                String text = dis.disassemble(code);
+                                if (text != null) {
+                                    Debug.log("Code installed for %s%n%s", method, text);
+                                }
+                            }
+                        }
 
                         return code;
                     }
