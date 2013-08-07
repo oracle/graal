@@ -80,16 +80,18 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
 
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
+        boolean nullCheck = false;
         StructuredGraph replacementGraph = getSnippetGraph(tool);
         if (replacementGraph == null) {
             replacementGraph = getSubstitutionGraph(tool);
+            nullCheck = true;
         }
 
         InvokeNode invoke = replaceWithInvoke();
         assert invoke.verify();
 
         if (replacementGraph != null) {
-            InliningUtil.inline(invoke, replacementGraph, false);
+            InliningUtil.inline(invoke, replacementGraph, nullCheck);
         }
     }
 
