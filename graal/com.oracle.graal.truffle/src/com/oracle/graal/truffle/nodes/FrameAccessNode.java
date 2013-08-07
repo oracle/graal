@@ -66,15 +66,15 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
     }
 
     protected int getSlotIndex() {
-        return getFrameSlot().getIndex();
+        return getConstantFrameSlot().getIndex();
     }
 
-    protected boolean isFrameSlotConstant() {
-        return slot.isConstant();
+    protected boolean isConstantFrameSlot() {
+        return slot.isConstant() && !slot.isNullConstant();
     }
 
-    protected FrameSlot getFrameSlot() {
-        assert isFrameSlotConstant() : slot;
+    protected FrameSlot getConstantFrameSlot() {
+        assert isConstantFrameSlot() : slot;
         return (FrameSlot) slot.asConstant().asObject();
     }
 
@@ -87,14 +87,14 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + getSlotKind().name() + (isFrameSlotConstant() ? " " + getFrameSlot() : "");
+            return super.toString(verbosity) + getSlotKind().name() + (isConstantFrameSlot() ? " " + getConstantFrameSlot() : "");
         } else {
             return super.toString(verbosity);
         }
     }
 
     protected final ValueNode getSlotOffset(int scale, MetaAccessProvider metaAccessProvider) {
-        if (isFrameSlotConstant()) {
+        if (isConstantFrameSlot()) {
             return ConstantNode.forInt(getSlotIndex() * scale, graph());
         } else {
             LoadFieldNode loadFrameSlotIndex = graph().add(new LoadFieldNode(getSlot(), metaAccessProvider.lookupJavaField(getFrameSlotIndexField())));
@@ -117,7 +117,7 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
             return true;
         }
 
-        return getSlotKind() == getGraalKind(getFrameSlot().getKind());
+        return getSlotKind() == getGraalKind(getConstantFrameSlot().getKind());
     }
 
     private static Kind getGraalKind(FrameSlotKind kind) {
@@ -142,12 +142,12 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
 
     @Override
     public final void simplify(SimplifierTool tool) {
-        if (isFrameSlotConstant()) {
+        if (isConstantFrameSlot()) {
             if (!isValidAccessKind()) {
                 tool.deleteBranch(this.next());
                 this.replaceAndDelete(graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode)));
             } else {
-                tool.assumptions().record(new AssumptionValidAssumption((OptimizedAssumption) getFrameSlot().getFrameDescriptor().getVersion()));
+                tool.assumptions().record(new AssumptionValidAssumption((OptimizedAssumption) getConstantFrameSlot().getFrameDescriptor().getVersion()));
             }
         }
     }
@@ -155,8 +155,8 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
-        if (isFrameSlotConstant()) {
-            properties.put("frameSlot", getFrameSlot().toString());
+        if (isConstantFrameSlot()) {
+            properties.put("frameSlot", getConstantFrameSlot().toString());
         }
         return properties;
     }

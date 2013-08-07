@@ -48,7 +48,7 @@ public class FrameGetNode extends FrameAccessNode implements IterableNodeType, V
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (!isFrameSlotConstant()) {
+        if (!isConstantFrameSlot()) {
             return;
         }
         assert isValidAccessKind();
