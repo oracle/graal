@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
+import static com.oracle.graal.phases.GraalOptions.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.nodes.*;
@@ -45,6 +47,9 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (AOTCompilation.getValue()) {
+            return;
+        }
         State state = tool.getObjectState(getObject());
         if (state != null) {
             Constant clazz = state.getVirtualObject().type().getEncoding(Representation.JavaClass);
@@ -53,6 +58,9 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
     }
 
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (AOTCompilation.getValue()) {
+            return this;
+        }
         if (usages().isEmpty()) {
             return null;
         } else {
