@@ -140,26 +140,27 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             graph.trackUsagesDroppedZero(nodeChangedListener);
 
             for (Node n : workList) {
-                processNode(n, graph);
+                processNode(n);
             }
 
             graph.stopTrackingInputChange();
             graph.stopTrackingUsagesDroppedZero();
         }
 
-        private void processNode(Node node, StructuredGraph graph) {
+        private void processNode(Node node) {
             if (node.isAlive()) {
                 METRIC_PROCESSED_NODES.increment();
 
-                if (tryGlobalValueNumbering(node, graph)) {
+                if (tryGlobalValueNumbering(node)) {
                     return;
                 }
+                StructuredGraph graph = (StructuredGraph) node.graph();
                 int mark = graph.getMark();
                 if (!tryKillUnused(node)) {
-                    if (!tryCanonicalize(node, graph)) {
-                        if (tryInferStamp(node, graph)) {
+                    if (!tryCanonicalize(node)) {
+                        if (tryInferStamp(node)) {
                             // the improved stamp may enable additional canonicalization
-                            tryCanonicalize(node, graph);
+                            tryCanonicalize(node);
                         }
                     }
                 }
@@ -178,9 +179,9 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public static boolean tryGlobalValueNumbering(Node node, StructuredGraph graph) {
+        public static boolean tryGlobalValueNumbering(Node node) {
             if (node.getNodeClass().valueNumberable()) {
-                Node newNode = graph.findDuplicate(node);
+                Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
                     assert !(node instanceof FixedNode || newNode instanceof FixedNode);
                     node.replaceAtUsages(newNode);
@@ -193,17 +194,17 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public boolean tryCanonicalize(final Node node, final StructuredGraph graph) {
-            boolean result = baseTryCanonicalize(node, graph);
+        public boolean tryCanonicalize(final Node node) {
+            boolean result = baseTryCanonicalize(node);
             if (!result && customCanonicalizer != null && node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
                 ValueNode canonical = customCanonicalizer.canonicalize(valueNode);
-                result = performReplacement(node, graph, canonical);
+                result = performReplacement(node, canonical);
             }
             return result;
         }
 
-        public boolean baseTryCanonicalize(final Node node, final StructuredGraph graph) {
+        public boolean baseTryCanonicalize(final Node node) {
             if (node instanceof Canonicalizable) {
                 assert !(node instanceof Simplifiable);
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
@@ -211,7 +212,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
                     public Boolean call() {
                         ValueNode canonical = ((Canonicalizable) node).canonical(tool);
-                        return performReplacement(node, graph, canonical);
+                        return performReplacement(node, canonical);
                     }
                 });
             } else if (node instanceof Simplifiable) {
@@ -241,13 +242,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
 // @formatter:on
-        private boolean performReplacement(final Node node, final StructuredGraph graph, ValueNode canonical) {
+        private boolean performReplacement(final Node node, ValueNode canonical) {
             if (canonical == node) {
                 Debug.log("Canonicalizer: work on %s", node);
                 return false;
             } else {
                 Debug.log("Canonicalizer: replacing %s with %s", node, canonical);
                 METRIC_CANONICALIZED_NODES.increment();
+                StructuredGraph graph = (StructuredGraph) node.graph();
                 if (node instanceof FloatingNode) {
                     if (canonical == null) {
                         // case 1
@@ -296,7 +298,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
          * Calls {@link ValueNode#inferStamp()} on the node and, if it returns true (which means
          * that the stamp has changed), re-queues the node's usages.
          */
-        private boolean tryInferStamp(Node node, StructuredGraph graph) {
+        private boolean tryInferStamp(Node node) {
             if (node.isAlive() && node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
                 METRIC_INFER_STAMP_CALLED.increment();
