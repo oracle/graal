@@ -102,6 +102,11 @@ public class DerivedScaledInductionVariable extends InductionVariable {
     }
 
     @Override
+    public ValueNode exitValueNode() {
+        return IntegerArithmeticNode.mul(base.exitValueNode(), scale);
+    }
+
+    @Override
     public boolean isConstantExtremum() {
         return scale.isConstant() && base.isConstantExtremum();
     }

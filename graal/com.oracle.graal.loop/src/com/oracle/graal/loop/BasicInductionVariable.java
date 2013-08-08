@@ -131,6 +131,12 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
+    public ValueNode exitValueNode() {
+        ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
+        return IntegerArithmeticNode.add(IntegerArithmeticNode.mul(strideNode(), maxTripCount), initNode());
+    }
+
+    @Override
     public boolean isConstantExtremum() {
         return isConstantInit() && isConstantStride() && loop.counted().isConstantMaxTripCount();
     }

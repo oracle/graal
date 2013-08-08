@@ -92,6 +92,11 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
     }
 
     @Override
+    public ValueNode exitValueNode() {
+        return op(base.exitValueNode(), offset);
+    }
+
+    @Override
     public boolean isConstantExtremum() {
         return offset.isConstant() && base.isConstantExtremum();
     }
