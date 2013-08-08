@@ -158,9 +158,17 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 int mark = graph.getMark();
                 if (!tryKillUnused(node)) {
                     if (!tryCanonicalize(node)) {
-                        if (tryInferStamp(node)) {
-                            // the improved stamp may enable additional canonicalization
-                            tryCanonicalize(node);
+                        if (node instanceof ValueNode) {
+                            ValueNode valueNode = (ValueNode) node;
+                            if (tryInferStamp(valueNode)) {
+                                Constant constant = valueNode.stamp().asConstant();
+                                if (constant != null) {
+                                    performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
+                                } else {
+                                    // the improved stamp may enable additional canonicalization
+                                    tryCanonicalize(valueNode);
+                                }
+                            }
                         }
                     }
                 }
@@ -296,15 +304,16 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         /**
          * Calls {@link ValueNode#inferStamp()} on the node and, if it returns true (which means
-         * that the stamp has changed), re-queues the node's usages.
+         * that the stamp has changed), re-queues the node's usages. If the stamp has changed then
+         * this method also checks if the stamp now describes a constant integer value, in which
+         * case the node is replaced with a constant.
          */
-        private boolean tryInferStamp(Node node) {
-            if (node.isAlive() && node instanceof ValueNode) {
-                ValueNode valueNode = (ValueNode) node;
+        private boolean tryInferStamp(ValueNode node) {
+            if (node.isAlive()) {
                 METRIC_INFER_STAMP_CALLED.increment();
-                if (valueNode.inferStamp()) {
+                if (node.inferStamp()) {
                     METRIC_STAMP_CHANGED.increment();
-                    for (Node usage : valueNode.usages()) {
+                    for (Node usage : node.usages()) {
                         workList.addAgain(usage);
                     }
                     return true;
