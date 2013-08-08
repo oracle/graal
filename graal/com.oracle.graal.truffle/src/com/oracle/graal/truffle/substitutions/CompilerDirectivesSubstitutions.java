@@ -42,6 +42,11 @@ public class CompilerDirectivesSubstitutions {
     }
 
     @MethodSubstitution
+    public static boolean inInterpreter() {
+        return false;
+    }
+
+    @MethodSubstitution
     public static void interpreterOnly(@SuppressWarnings("unused") Runnable runnable) {
     }
 
