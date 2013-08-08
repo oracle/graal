@@ -45,6 +45,15 @@ public class CompilerDirectives {
     }
 
     /**
+     * Returns a boolean value indicating whether the method is executed in the interpreter.
+     * 
+     * @return {@code true} when executed in the interpreter, {@code false} in compiled code.
+     */
+    public static boolean inInterpreter() {
+        return true;
+    }
+
+    /**
      * Directive for the compiler that the given runnable should only be executed in the interpreter
      * and ignored in the compiled code.
      * 
