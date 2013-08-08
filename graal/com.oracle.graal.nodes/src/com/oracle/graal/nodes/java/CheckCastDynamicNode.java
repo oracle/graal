@@ -65,18 +65,14 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
 
     @Override
     public boolean inferStamp() {
-        if (object().stamp().nonNull() && !stamp().nonNull()) {
-            setStamp(StampFactory.objectNonNull());
-            return true;
-        }
-        return super.inferStamp();
+        return updateStamp(object().stamp());
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        if (object().objectStamp().alwaysNull()) {
+        if (ObjectStamp.isObjectAlwaysNull(object())) {
             return object();
         }
         if (hub.isConstant() && hub.kind() == Kind.Object && hub.asConstant().asObject() instanceof Class) {

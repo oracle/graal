@@ -27,6 +27,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code InstanceOfDynamicNode} represents a type check where the type being checked is not
@@ -46,8 +47,8 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
         this.mirror = mirror;
         this.object = object;
         assert mirror.kind() == Kind.Object : mirror.kind();
-        assert mirror.objectStamp().isExactType();
-        assert mirror.objectStamp().type().getName().equals("Ljava/lang/Class;");
+        assert mirror.stamp() instanceof ObjectStamp;
+        assert ((ObjectStamp) mirror.stamp()).type().getName().equals("Ljava/lang/Class;");
     }
 
     @Override

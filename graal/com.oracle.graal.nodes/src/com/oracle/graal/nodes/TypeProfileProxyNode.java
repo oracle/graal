@@ -27,6 +27,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * A node that attaches a type profile to a proxied input node.
@@ -71,7 +72,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (object.objectStamp().isExactType()) {
+        if (ObjectStamp.isExactType(object)) {
             // The profile is useless - we know the type!
             return object;
         } else if (object instanceof TypeProfileProxyNode) {
@@ -92,8 +93,8 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
                 Debug.log("Improved profile via other profile.");
                 return TypeProfileProxyNode.create(object, newProfile);
             }
-        } else if (object.objectStamp().type() != null) {
-            ResolvedJavaType type = object.objectStamp().type();
+        } else if (ObjectStamp.typeOrNull(object) != null) {
+            ResolvedJavaType type = ObjectStamp.typeOrNull(object);
             ResolvedJavaType uniqueConcrete = type.findUniqueConcreteSubtype();
             if (uniqueConcrete != null) {
                 // Profile is useless => remove.
@@ -105,7 +106,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
                 return this;
             }
             lastCheckedType = type;
-            JavaTypeProfile newProfile = this.profile.restrict(type, object.objectStamp().nonNull());
+            JavaTypeProfile newProfile = this.profile.restrict(type, ObjectStamp.isObjectNonNull(object));
             if (newProfile != this.profile) {
                 Debug.log("Improved profile via static type information.");
                 if (newProfile.getTypes().length == 0) {

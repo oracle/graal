@@ -38,7 +38,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.div(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.div(x().stamp(), y().stamp()));
     }
 
     @Override
@@ -63,9 +63,9 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
                 return graph().unique(new NegateNode(x()));
             }
             long abs = Math.abs(c);
-            if (CodeUtil.isPowerOf2(abs)) {
+            if (CodeUtil.isPowerOf2(abs) && x().stamp() instanceof IntegerStamp) {
                 ValueNode dividend = x();
-                IntegerStamp stampX = x().integerStamp();
+                IntegerStamp stampX = (IntegerStamp) x().stamp();
                 int log2 = CodeUtil.log2(abs);
                 // no rounding if dividend is positive or if its low bits are always 0
                 if (stampX.canBeNegative() || (stampX.mask() & (abs - 1)) != 0) {
@@ -121,6 +121,6 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public boolean canDeoptimize() {
-        return y().integerStamp().contains(0);
+        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
     }
 }

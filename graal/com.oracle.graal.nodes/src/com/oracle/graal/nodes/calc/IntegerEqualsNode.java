@@ -71,7 +71,7 @@ public final class IntegerEqualsNode extends CompareNode {
     public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return LogicConstantNode.tautology(graph());
-        } else if (x().integerStamp().alwaysDistinct(y().integerStamp())) {
+        } else if (x().stamp().alwaysDistinct(y().stamp())) {
             return LogicConstantNode.contradiction(graph());
         }
 

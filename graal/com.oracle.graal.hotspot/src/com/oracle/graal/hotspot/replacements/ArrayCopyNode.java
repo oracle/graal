@@ -30,6 +30,7 @@ import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -62,13 +63,13 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
     }
 
     private StructuredGraph selectSnippet(LoweringTool tool, Replacements replacements) {
-        ResolvedJavaType srcType = getSource().objectStamp().type();
-        ResolvedJavaType destType = getDestination().objectStamp().type();
+        ResolvedJavaType srcType = ObjectStamp.typeOrNull(getSource().stamp());
+        ResolvedJavaType destType = ObjectStamp.typeOrNull(getDestination().stamp());
 
         if (srcType == null || !srcType.isArray() || destType == null || !destType.isArray()) {
             return null;
         }
-        if (!destType.getComponentType().isAssignableFrom(srcType.getComponentType()) || !getDestination().objectStamp().isExactType()) {
+        if (!destType.getComponentType().isAssignableFrom(srcType.getComponentType()) || !ObjectStamp.isExactType(getDestination().stamp())) {
             return null;
         }
         Kind componentKind = srcType.getComponentType().getKind();
@@ -126,10 +127,10 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
                     if (state.getState() == EscapeState.Virtual) {
                         type = state.getVirtualObject().type();
                     } else {
-                        type = state.getMaterializedValue().objectStamp().type();
+                        type = ObjectStamp.typeOrNull(state.getMaterializedValue());
                     }
                 } else {
-                    type = entry.objectStamp().type();
+                    type = ObjectStamp.typeOrNull(entry);
                 }
                 if (type == null || !destComponentType.isAssignableFrom(type)) {
                     return false;

@@ -37,7 +37,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.sub(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.sub(x().stamp(), y().stamp()));
     }
 
     @Override

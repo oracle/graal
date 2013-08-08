@@ -134,21 +134,6 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         return true;
     }
 
-    public final ObjectStamp objectStamp() {
-        assert verifyStamp(ObjectStamp.class);
-        return (ObjectStamp) stamp();
-    }
-
-    public final IntegerStamp integerStamp() {
-        assert verifyStamp(IntegerStamp.class);
-        return (IntegerStamp) stamp();
-    }
-
-    public final FloatStamp floatStamp() {
-        assert verifyStamp(FloatStamp.class);
-        return (FloatStamp) stamp();
-    }
-
     @Override
     public boolean verify() {
         assertTrue(kind() != null, "Should have a valid kind");

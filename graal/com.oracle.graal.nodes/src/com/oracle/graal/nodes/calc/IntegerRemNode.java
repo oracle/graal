@@ -27,6 +27,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "%")
 public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, Lowerable, LIRLowerable {
@@ -52,7 +53,7 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
             long c = y().asConstant().asLong();
             if (c == 1 || c == -1) {
                 return ConstantNode.forIntegerKind(kind(), 0, graph());
-            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().integerStamp().isPositive()) {
+            } else if (c > 0 && CodeUtil.isPowerOf2(c) && x().stamp() instanceof IntegerStamp && ((IntegerStamp) x().stamp()).isPositive()) {
                 return graph().unique(new AndNode(kind(), x(), ConstantNode.forIntegerKind(kind(), c - 1, graph())));
             }
         }
@@ -71,6 +72,6 @@ public class IntegerRemNode extends FixedBinaryNode implements Canonicalizable, 
 
     @Override
     public boolean canDeoptimize() {
-        return y().integerStamp().contains(0);
+        return !(y().stamp() instanceof IntegerStamp) || ((IntegerStamp) y().stamp()).contains(0);
     }
 }

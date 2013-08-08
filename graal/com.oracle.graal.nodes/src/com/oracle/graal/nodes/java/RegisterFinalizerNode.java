@@ -56,7 +56,11 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements S
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        ObjectStamp stamp = object.objectStamp();
+        if (!(object.stamp() instanceof ObjectStamp)) {
+            return this;
+        }
+
+        ObjectStamp stamp = (ObjectStamp) object.stamp();
 
         boolean needsCheck = true;
         if (stamp.isExactType()) {

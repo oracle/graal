@@ -98,13 +98,16 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     @Override
     public void lower(LoweringTool tool, LoweringType loweringType) {
         InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
-        Stamp stamp = StampFactory.declared(type).join(object.stamp());
+        Stamp stamp = StampFactory.declared(type);
+        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            stamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp);
+        }
         ValueNode condition;
-        if (stamp == null) {
+        if (stamp == StampFactory.illegal()) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             stamp = StampFactory.declared(type);
-        } else if (object.stamp().nonNull()) {
+        } else if (ObjectStamp.isObjectNonNull(object)) {
             condition = typeTest;
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
@@ -124,14 +127,17 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(stamp().join(object().stamp()));
+        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        }
+        return false;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
-        ResolvedJavaType objectType = object().objectStamp().type();
+        ResolvedJavaType objectType = ObjectStamp.typeOrNull(object());
         if (objectType != null && type.isAssignableFrom(objectType)) {
             // we don't have to check for null types here because they will also pass the
             // checkcast.
@@ -150,7 +156,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             }
         }
 
-        if (object().objectStamp().alwaysNull()) {
+        if (ObjectStamp.isObjectAlwaysNull(object())) {
             return object();
         }
         if (tool.assumptions().useOptimisticAssumptions()) {

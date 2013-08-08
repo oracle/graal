@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,24 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
+package com.oracle.graal.nodes.type;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.api.meta.*;
 
-public class PTXPhase extends Phase {
+public final class IllegalStamp extends Stamp {
+
+    public static final IllegalStamp ILLEGAL = new IllegalStamp();
+
+    private IllegalStamp() {
+        super(Kind.Illegal);
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
-        /*
-         * Assume that null checks would be done on the CPU caller side prior to copying data onto
-         * the GPU.
-         */
-        for (LocalNode local : graph.getNodes(LocalNode.class)) {
-            if (local.stamp() instanceof ObjectStamp) {
-                local.setStamp(StampFactory.declaredNonNull(((ObjectStamp) local.stamp()).type()));
-            }
-        }
+    public ResolvedJavaType javaType(MetaAccessProvider metaAccess) {
+        return null;
+    }
+
+    @Override
+    public boolean alwaysDistinct(Stamp other) {
+        return true;
+    }
+
+    @Override
+    public Stamp meet(Stamp other) {
+        return other;
+    }
+
+    @Override
+    public Stamp join(Stamp other) {
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        return "ILLEGAL";
     }
 }

@@ -66,10 +66,8 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
         if (x().isConstant() && y().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
             if (equals.y().isConstant() && equals.y().asConstant().equals(Constant.INT_0)) {
-                if (equals.x().integerStamp().mask() == 1) {
-                    if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
-                        return equals.x();
-                    }
+                if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
+                    return equals.x();
                 }
             }
         }

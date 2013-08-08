@@ -123,13 +123,14 @@ public class WordTypeRewriterPhase extends Phase {
 
         for (AccessIndexedNode node : graph.getNodes().filter(AccessIndexedNode.class).snapshot()) {
             ValueNode array = node.array();
-            if (array.objectStamp().type() == null) {
+            ResolvedJavaType arrayType = ObjectStamp.typeOrNull(array);
+            if (arrayType == null) {
                 // There are cases where the array does not have a known type yet. Assume it is not
                 // a word type.
                 continue;
             }
-            assert array.objectStamp().type().isArray();
-            if (isWord(array.objectStamp().type().getComponentType())) {
+            assert arrayType.isArray();
+            if (isWord(arrayType.getComponentType())) {
                 /*
                  * The elementKind of the node is a final field, and other information such as the
                  * stamp depends on elementKind. Therefore, just create a new node and replace the
@@ -374,8 +375,8 @@ public class WordTypeRewriterPhase extends Phase {
         if (node.stamp() == StampFactory.forWord()) {
             return true;
         }
-        if (node.kind() == Kind.Object) {
-            return isWord(node.objectStamp().type());
+        if (node.stamp() instanceof ObjectStamp) {
+            return isWord(((ObjectStamp) node.stamp()).type());
         }
         return false;
     }

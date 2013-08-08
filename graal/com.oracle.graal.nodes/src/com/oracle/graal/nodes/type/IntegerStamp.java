@@ -143,6 +143,15 @@ public class IntegerStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (otherStamp == this) {
+            return this;
+        }
+        if (otherStamp instanceof IllegalStamp) {
+            return otherStamp.meet(this);
+        }
+        if (!(otherStamp instanceof IntegerStamp)) {
+            return StampFactory.illegal();
+        }
         IntegerStamp other = (IntegerStamp) otherStamp;
         assert kind() == other.kind();
         long meetUpperBound = Math.max(upperBound, other.upperBound);
@@ -159,6 +168,15 @@ public class IntegerStamp extends Stamp {
 
     @Override
     public Stamp join(Stamp otherStamp) {
+        if (otherStamp == this) {
+            return this;
+        }
+        if (otherStamp instanceof IllegalStamp) {
+            return otherStamp.join(this);
+        }
+        if (!(otherStamp instanceof IntegerStamp)) {
+            return StampFactory.illegal();
+        }
         IntegerStamp other = (IntegerStamp) otherStamp;
         assert kind() == other.kind();
         long joinUpperBound = Math.min(upperBound, other.upperBound);
@@ -168,6 +186,8 @@ public class IntegerStamp extends Stamp {
             return this;
         } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinMask == other.mask) {
             return other;
+        } else if (joinLowerBound > joinUpperBound) {
+            return StampFactory.illegal();
         } else {
             return new IntegerStamp(kind(), joinLowerBound, joinUpperBound, joinMask);
         }
@@ -237,4 +257,11 @@ public class IntegerStamp extends Stamp {
         return s1.isPositive() && s2.isPositive() || s1.isStrictlyNegative() && s2.isStrictlyNegative();
     }
 
+    @Override
+    public Constant asConstant() {
+        if (lowerBound == upperBound) {
+            return Constant.forIntegerKind(kind(), lowerBound, null);
+        }
+        return null;
+    }
 }

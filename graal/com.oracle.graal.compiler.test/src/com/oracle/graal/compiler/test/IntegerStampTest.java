@@ -42,51 +42,51 @@ public class IntegerStampTest extends GraalCompilerTest {
 
     @Test
     public void testBooleanConstant() {
-        assertEquals(new IntegerStamp(Kind.Int, 1, 1, 0x1), ConstantNode.forBoolean(true, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forBoolean(false, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Int, 1, 1, 0x1), ConstantNode.forBoolean(true, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forBoolean(false, graph).stamp());
     }
 
     @Test
     public void testByteConstant() {
-        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forByte((byte) 0, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 16, 16, 0x10), ConstantNode.forByte((byte) 16, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, -16, -16, 0xf0), ConstantNode.forByte((byte) -16, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 127, 127, 0x7f), ConstantNode.forByte((byte) 127, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0x80), ConstantNode.forByte((byte) -128, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forByte((byte) 0, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 16, 16, 0x10), ConstantNode.forByte((byte) 16, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -16, -16, 0xf0), ConstantNode.forByte((byte) -16, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 127, 127, 0x7f), ConstantNode.forByte((byte) 127, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0x80), ConstantNode.forByte((byte) -128, graph).stamp());
     }
 
     @Test
     public void testShortConstant() {
-        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forShort((short) 0, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forShort((short) 128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xff80), ConstantNode.forShort((short) -128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 32767, 32767, 0x7fff), ConstantNode.forShort((short) 32767, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, -32768, -32768, 0x8000), ConstantNode.forShort((short) -32768, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forShort((short) 0, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forShort((short) 128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xff80), ConstantNode.forShort((short) -128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 32767, 32767, 0x7fff), ConstantNode.forShort((short) 32767, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -32768, -32768, 0x8000), ConstantNode.forShort((short) -32768, graph).stamp());
     }
 
     @Test
     public void testCharConstant() {
-        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forChar((char) 0, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 'A', 'A', 'A'), ConstantNode.forChar('A', graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forChar((char) 128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 65535, 65535, 0xffff), ConstantNode.forChar((char) 65535, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forChar((char) 0, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 'A', 'A', 'A'), ConstantNode.forChar('A', graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forChar((char) 128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 65535, 65535, 0xffff), ConstantNode.forChar((char) 65535, graph).stamp());
     }
 
     @Test
     public void testIntConstant() {
-        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forInt(0, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forInt(128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xffffff80L), ConstantNode.forInt(-128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, Integer.MAX_VALUE, Integer.MAX_VALUE, 0x7fffffff), ConstantNode.forInt(Integer.MAX_VALUE, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Int, Integer.MIN_VALUE, Integer.MIN_VALUE, 0x80000000L), ConstantNode.forInt(Integer.MIN_VALUE, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0), ConstantNode.forInt(0, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80), ConstantNode.forInt(128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xffffff80L), ConstantNode.forInt(-128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, Integer.MAX_VALUE, Integer.MAX_VALUE, 0x7fffffff), ConstantNode.forInt(Integer.MAX_VALUE, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, Integer.MIN_VALUE, Integer.MIN_VALUE, 0x80000000L), ConstantNode.forInt(Integer.MIN_VALUE, graph).stamp());
     }
 
     @Test
     public void testLongConstant() {
-        assertEquals(new IntegerStamp(Kind.Long, 0, 0, 0x0), ConstantNode.forLong(0, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Long, 128, 128, 0x80), ConstantNode.forLong(128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Long, -128, -128, 0xffffffffffffff80L), ConstantNode.forLong(-128, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Long, Long.MAX_VALUE, Long.MAX_VALUE, 0x7fffffffffffffffL), ConstantNode.forLong(Long.MAX_VALUE, graph).integerStamp());
-        assertEquals(new IntegerStamp(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE, 0x8000000000000000L), ConstantNode.forLong(Long.MIN_VALUE, graph).integerStamp());
+        assertEquals(new IntegerStamp(Kind.Long, 0, 0, 0x0), ConstantNode.forLong(0, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Long, 128, 128, 0x80), ConstantNode.forLong(128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Long, -128, -128, 0xffffffffffffff80L), ConstantNode.forLong(-128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Long, Long.MAX_VALUE, Long.MAX_VALUE, 0x7fffffffffffffffL), ConstantNode.forLong(Long.MAX_VALUE, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE, 0x8000000000000000L), ConstantNode.forLong(Long.MIN_VALUE, graph).stamp());
     }
 }

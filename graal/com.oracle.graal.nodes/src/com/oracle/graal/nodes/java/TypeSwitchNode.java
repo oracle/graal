@@ -97,8 +97,8 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             tool.addToWorkList(blockSuccessor(survivingEdge));
             graph().removeSplit(this, blockSuccessor(survivingEdge));
         }
-        if (value() instanceof LoadHubNode) {
-            ObjectStamp stamp = ((LoadHubNode) value()).object().objectStamp();
+        if (value() instanceof LoadHubNode && ((LoadHubNode) value()).object().stamp() instanceof ObjectStamp) {
+            ObjectStamp stamp = (ObjectStamp) ((LoadHubNode) value()).object().stamp();
             if (stamp.type() != null) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {

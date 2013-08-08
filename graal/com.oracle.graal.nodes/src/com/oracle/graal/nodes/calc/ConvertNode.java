@@ -202,22 +202,30 @@ public final class ConvertNode extends FloatingNode implements Canonicalizable, 
 
     @Override
     public boolean inferStamp() {
+        Stamp stamp = value.stamp();
+        if (!(stamp instanceof IntegerStamp)) {
+            if (stamp instanceof FloatStamp) {
+                return false;
+            }
+            return updateStamp(StampFactory.illegal());
+        }
         Stamp newStamp;
+        IntegerStamp integerStamp = (IntegerStamp) stamp;
         switch (opcode) {
             case I2L:
-                newStamp = StampTool.intToLong(value().integerStamp());
+                newStamp = StampTool.intToLong(integerStamp);
                 break;
             case L2I:
-                newStamp = StampTool.longToInt(value().integerStamp());
+                newStamp = StampTool.longToInt(integerStamp);
                 break;
             case I2B:
-                newStamp = StampTool.intToByte(value().integerStamp());
+                newStamp = StampTool.intToByte(integerStamp);
                 break;
             case I2C:
-                newStamp = StampTool.intToChar(value().integerStamp());
+                newStamp = StampTool.intToChar(integerStamp);
                 break;
             case I2S:
-                newStamp = StampTool.intToShort(value().integerStamp());
+                newStamp = StampTool.intToShort(integerStamp);
                 break;
             default:
                 return false;

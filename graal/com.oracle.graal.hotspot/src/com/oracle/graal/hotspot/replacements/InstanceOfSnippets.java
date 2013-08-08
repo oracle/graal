@@ -242,7 +242,7 @@ public class InstanceOfSnippets implements Snippets {
                 }
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("checkNull", !object.stamp().nonNull());
+                args.addConst("checkNull", !ObjectStamp.isObjectNonNull(object.stamp()));
                 if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet()) {
                     args.addConst("nullSeen", hintInfo.profile.getNullSeen() != TriState.FALSE);
                 }
@@ -258,7 +258,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("object", object);
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("checkNull", !object.stamp().nonNull());
+                args.addConst("checkNull", !ObjectStamp.isObjectNonNull(object.stamp()));
                 return args;
             }
         }

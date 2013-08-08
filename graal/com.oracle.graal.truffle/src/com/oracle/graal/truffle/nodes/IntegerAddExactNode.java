@@ -43,7 +43,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
     @Override
     public boolean inferStamp() {
         // TODO Should probably use a specialised version which understands that it can't overflow
-        return updateStamp(StampTool.add(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.add(x().stamp(), y().stamp()));
     }
 
     @Override

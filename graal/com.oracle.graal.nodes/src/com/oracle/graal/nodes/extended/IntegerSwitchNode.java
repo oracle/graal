@@ -111,8 +111,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             }
             tool.addToWorkList(blockSuccessor(survivingEdge));
             graph().removeSplit(this, blockSuccessor(survivingEdge));
-        } else if (value() != null) {
-            IntegerStamp stamp = value().integerStamp();
+        } else if (value().stamp() instanceof IntegerStamp) {
+            IntegerStamp stamp = (IntegerStamp) value().stamp();
             if (!stamp.isUnrestricted()) {
                 int validKeys = 0;
                 for (int i = 0; i < keyCount(); i++) {

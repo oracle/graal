@@ -114,7 +114,7 @@ public class ConditionalEliminationPhase extends Phase {
                         break;
                     }
                 }
-                if (type != null && type != node.objectStamp().type()) {
+                if (type != null && type != ObjectStamp.typeOrNull(node)) {
                     newKnownTypes.put(node, type);
                 }
             }
@@ -196,15 +196,15 @@ public class ConditionalEliminationPhase extends Phase {
 
         public ResolvedJavaType getNodeType(ValueNode node) {
             ResolvedJavaType result = knownTypes.get(GraphUtil.unproxify(node));
-            return result == null ? node.objectStamp().type() : result;
+            return result == null ? ObjectStamp.typeOrNull(node) : result;
         }
 
         public boolean isNull(ValueNode value) {
-            return value.objectStamp().alwaysNull() || knownNull.contains(GraphUtil.unproxify(value));
+            return ObjectStamp.isObjectAlwaysNull(value) || knownNull.contains(GraphUtil.unproxify(value));
         }
 
         public boolean isNonNull(ValueNode value) {
-            return value.objectStamp().nonNull() || knownNonNull.contains(GraphUtil.unproxify(value));
+            return ObjectStamp.isObjectNonNull(value) || knownNonNull.contains(GraphUtil.unproxify(value));
         }
 
         @Override
@@ -576,7 +576,7 @@ public class ConditionalEliminationPhase extends Phase {
                     ValueNode receiver = callTarget.receiver();
                     if (receiver != null && (callTarget.invokeKind() == InvokeKind.Interface || callTarget.invokeKind() == InvokeKind.Virtual)) {
                         ResolvedJavaType type = state.getNodeType(receiver);
-                        if (type != receiver.objectStamp().type()) {
+                        if (type != ObjectStamp.typeOrNull(receiver)) {
                             ResolvedJavaMethod method = type.resolveMethod(callTarget.targetMethod());
                             if (method != null) {
                                 if ((method.getModifiers() & Modifier.FINAL) != 0 || (type.getModifiers() & Modifier.FINAL) != 0) {

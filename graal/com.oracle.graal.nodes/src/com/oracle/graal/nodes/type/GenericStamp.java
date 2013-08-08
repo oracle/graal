@@ -58,13 +58,23 @@ public final class GenericStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp other) {
-        assert ((GenericStamp) other).type == type;
+        if (other instanceof IllegalStamp) {
+            return other.join(this);
+        }
+        if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
+            return StampFactory.illegal();
+        }
         return this;
     }
 
     @Override
     public Stamp join(Stamp other) {
-        assert ((GenericStamp) other).type == type;
+        if (other instanceof IllegalStamp) {
+            return other.join(this);
+        }
+        if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
+            return StampFactory.illegal();
+        }
         return this;
     }
 

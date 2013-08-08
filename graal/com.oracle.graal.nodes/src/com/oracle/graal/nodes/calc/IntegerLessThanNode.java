@@ -73,13 +73,18 @@ public final class IntegerLessThanNode extends CompareNode {
     public LogicNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return LogicConstantNode.contradiction(graph());
-        } else if (x().integerStamp().upperBound() < y().integerStamp().lowerBound()) {
-            return LogicConstantNode.tautology(graph());
-        } else if (x().integerStamp().lowerBound() >= y().integerStamp().upperBound()) {
-            return LogicConstantNode.contradiction(graph());
         }
-        if (IntegerStamp.sameSign(x().integerStamp(), y().integerStamp())) {
-            return graph().unique(new IntegerBelowThanNode(x(), y()));
+        if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) x().stamp();
+            IntegerStamp yStamp = (IntegerStamp) y().stamp();
+            if (xStamp.upperBound() < yStamp.lowerBound()) {
+                return LogicConstantNode.tautology(graph());
+            } else if (xStamp.lowerBound() >= yStamp.upperBound()) {
+                return LogicConstantNode.contradiction(graph());
+            }
+            if (IntegerStamp.sameSign(xStamp, yStamp)) {
+                return graph().unique(new IntegerBelowThanNode(x(), y()));
+            }
         }
         return super.canonical(tool);
     }

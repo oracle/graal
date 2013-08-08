@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * This node will perform a "test" operation on its arguments. Its result is equivalent to the
@@ -64,8 +65,12 @@ public class IntegerTestNode extends LogicNode implements Canonicalizable, LIRLo
         if (x().isConstant() && y().isConstant()) {
             return LogicConstantNode.forBoolean((x().asConstant().asLong() & y().asConstant().asLong()) == 0, graph());
         }
-        if ((x().integerStamp().mask() & y().integerStamp().mask()) == 0) {
-            return LogicConstantNode.tautology(graph());
+        if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
+            IntegerStamp xStamp = (IntegerStamp) x().stamp();
+            IntegerStamp yStamp = (IntegerStamp) y().stamp();
+            if ((xStamp.mask() & yStamp.mask()) == 0) {
+                return LogicConstantNode.tautology(graph());
+            }
         }
         return this;
     }

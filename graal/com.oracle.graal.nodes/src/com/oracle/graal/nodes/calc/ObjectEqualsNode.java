@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "==")
 public final class ObjectEqualsNode extends CompareNode implements Virtualizable {
@@ -58,9 +59,9 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
             return LogicConstantNode.tautology(graph());
         }
 
-        if (x().objectStamp().alwaysNull()) {
+        if (ObjectStamp.isObjectAlwaysNull(x())) {
             return graph().unique(new IsNullNode(y()));
-        } else if (y().objectStamp().alwaysNull()) {
+        } else if (ObjectStamp.isObjectAlwaysNull(y())) {
             return graph().unique(new IsNullNode(x()));
         }
         if (x().stamp().alwaysDistinct(y().stamp())) {

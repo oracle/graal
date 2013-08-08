@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.util.*;
 
@@ -365,6 +366,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     protected void emitNode(ValueNode node) {
+        if (Debug.isLogEnabled() && node.stamp() == StampFactory.illegal()) {
+            Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
+        }
         ((LIRLowerable) node).generate(this);
     }
 

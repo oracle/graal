@@ -37,7 +37,7 @@ public final class XorNode extends BitLogicNode implements Canonicalizable, LIRL
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.xor(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.xor(x().stamp(), y().stamp()));
     }
 
     @Override

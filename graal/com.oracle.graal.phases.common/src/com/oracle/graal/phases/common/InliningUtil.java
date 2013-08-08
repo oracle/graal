@@ -1036,7 +1036,10 @@ public class InliningUtil {
         assert callTarget.invokeKind() == InvokeKind.Virtual || callTarget.invokeKind() == InvokeKind.Interface;
 
         ResolvedJavaType holder = targetMethod.getDeclaringClass();
-        ObjectStamp receiverStamp = callTarget.receiver().objectStamp();
+        if (!(callTarget.receiver().stamp() instanceof ObjectStamp)) {
+            return null;
+        }
+        ObjectStamp receiverStamp = (ObjectStamp) callTarget.receiver().stamp();
         if (receiverStamp.alwaysNull()) {
             // Don't inline if receiver is known to be null
             return null;
@@ -1442,8 +1445,8 @@ public class InliningUtil {
         assert !callTarget.isStatic() : callTarget.targetMethod();
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
-        if (firstParam.kind() == Kind.Object && !firstParam.objectStamp().nonNull()) {
-            assert !firstParam.objectStamp().alwaysNull();
+        if (firstParam.kind() == Kind.Object && !ObjectStamp.isObjectNonNull(firstParam)) {
+            assert !ObjectStamp.isObjectAlwaysNull(firstParam);
             IsNullNode condition = graph.unique(new IsNullNode(firstParam));
             Stamp stamp = firstParam.stamp().join(objectNonNull());
             GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));

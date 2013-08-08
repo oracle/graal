@@ -37,7 +37,7 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.unsignedRightShift(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.unsignedRightShift(x().stamp(), y().stamp()));
     }
 
     @Override

@@ -37,7 +37,7 @@ public final class AndNode extends BitLogicNode implements Canonicalizable, LIRL
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.and(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.and(x().stamp(), y().stamp()));
     }
 
     @Override

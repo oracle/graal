@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -409,7 +410,7 @@ public class MonitorSnippets implements Snippets {
             }
             args.add("object", monitorenterNode.object());
             args.addConst("lockDepth", monitorenterNode.getLockDepth());
-            args.addConst("checkNull", !monitorenterNode.object().stamp().nonNull());
+            args.addConst("checkNull", !ObjectStamp.isObjectNonNull(monitorenterNode.object().stamp()));
             boolean tracingEnabledForMethod = stateAfter != null && (isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || tracingEnabledForMethod);
 
@@ -448,7 +449,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         static boolean isTracingEnabledForType(ValueNode object) {
-            ResolvedJavaType type = object.objectStamp().type();
+            ResolvedJavaType type = ObjectStamp.typeOrNull(object.stamp());
             if (TRACE_TYPE_FILTER == null) {
                 return false;
             } else {

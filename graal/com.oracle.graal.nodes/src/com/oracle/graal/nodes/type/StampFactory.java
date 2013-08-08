@@ -113,6 +113,10 @@ public class StampFactory {
         return positiveInt;
     }
 
+    public static Stamp illegal() {
+        return IllegalStamp.ILLEGAL;
+    }
+
     public static Stamp forInteger(Kind kind, long lowerBound, long upperBound, long mask) {
         return new IntegerStamp(kind, lowerBound, upperBound, mask);
     }
@@ -198,5 +202,9 @@ public class StampFactory {
 
     public static Stamp exactNonNull(ResolvedJavaType type) {
         return new ObjectStamp(type, true, true, false);
+    }
+
+    public static Stamp exact(ResolvedJavaType type) {
+        return new ObjectStamp(type, true, false, false);
     }
 }

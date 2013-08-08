@@ -37,7 +37,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.add(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.add(x().stamp(), y().stamp()));
     }
 
     @Override

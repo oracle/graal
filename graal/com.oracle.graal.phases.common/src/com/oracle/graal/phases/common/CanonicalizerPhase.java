@@ -34,7 +34,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -295,9 +294,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         /**
          * Calls {@link ValueNode#inferStamp()} on the node and, if it returns true (which means
-         * that the stamp has changed), re-queues the node's usages . If the stamp has changed then
-         * this method also checks if the stamp now describes a constant integer value, in which
-         * case the node is replaced with a constant.
+         * that the stamp has changed), re-queues the node's usages.
          */
         private boolean tryInferStamp(Node node, StructuredGraph graph) {
             if (node.isAlive() && node instanceof ValueNode) {
@@ -305,16 +302,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 METRIC_INFER_STAMP_CALLED.increment();
                 if (valueNode.inferStamp()) {
                     METRIC_STAMP_CHANGED.increment();
-                    if (valueNode.stamp() instanceof IntegerStamp && valueNode.integerStamp().lowerBound() == valueNode.integerStamp().upperBound()) {
-                        ValueNode replacement = ConstantNode.forIntegerKind(valueNode.kind(), valueNode.integerStamp().lowerBound(), graph);
-                        Debug.log("Canonicalizer: replacing %s with %s (inferStamp)", valueNode, replacement);
-                        valueNode.replaceAtUsages(replacement);
-                    } else {
-                        for (Node usage : valueNode.usages()) {
-                            workList.addAgain(usage);
-                        }
-                        return true;
+                    for (Node usage : valueNode.usages()) {
+                        workList.addAgain(usage);
                     }
+                    return true;
                 }
             }
             return false;

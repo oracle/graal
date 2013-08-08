@@ -126,8 +126,8 @@ public class HSAILCompilationResult {
         @Override
         protected void run(StructuredGraph graph) {
             for (LocalNode local : graph.getNodes(LocalNode.class)) {
-                if (local.kind() == Kind.Object) {
-                    local.setStamp(StampFactory.declaredNonNull(local.objectStamp().type()));
+                if (local.stamp() instanceof ObjectStamp) {
+                    local.setStamp(StampFactory.declaredNonNull(((ObjectStamp) local.stamp()).type()));
                 }
             }
         }

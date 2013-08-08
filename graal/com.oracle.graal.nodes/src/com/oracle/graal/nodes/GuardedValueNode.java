@@ -60,7 +60,10 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(stamp().join(object().stamp()));
+        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        }
+        return updateStamp(object().stamp().join(stamp()));
     }
 
     @Override

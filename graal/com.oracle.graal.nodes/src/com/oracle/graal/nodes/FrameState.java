@@ -381,7 +381,7 @@ public final class FrameState extends VirtualState implements Node.IterableNodeT
     public boolean verify() {
         for (ValueNode value : values) {
             assert assertTrue(value == null || !value.isDeleted(), "frame state must not contain deleted nodes");
-            assert assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != Kind.Void && value.kind() != Kind.Illegal), "unexpected value: %s", value);
+            assert assertTrue(value == null || value instanceof VirtualObjectNode || (value.kind() != Kind.Void), "unexpected value: %s", value);
         }
         return super.verify();
     }

@@ -44,7 +44,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.SelfReplacingMethodCallTargetNode;
 import com.oracle.graal.nodes.spi.Canonicalizable;
-import com.oracle.graal.nodes.type.StampFactory;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.MacroNode;
 
 /**
@@ -200,7 +200,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
 
         // Try to get the most accurate receiver type
         if (this instanceof MethodHandleLinkToVirtualNode || this instanceof MethodHandleLinkToInterfaceNode) {
-            ResolvedJavaType receiverType = getReceiver().objectStamp().type();
+            ResolvedJavaType receiverType = ObjectStamp.typeOrNull(getReceiver().stamp());
             if (receiverType != null) {
                 ResolvedJavaMethod concreteMethod = receiverType.findUniqueConcreteMethod(targetMethod);
                 if (concreteMethod != null) {
@@ -233,7 +233,7 @@ public abstract class AbstractMethodHandleNode extends MacroNode implements Cano
             ResolvedJavaType targetType = (ResolvedJavaType) type;
             if (!targetType.isPrimitive()) {
                 ValueNode argument = arguments.get(index);
-                ResolvedJavaType argumentType = argument.objectStamp().type();
+                ResolvedJavaType argumentType = ObjectStamp.typeOrNull(argument.stamp());
                 if (argumentType == null || (argumentType.isAssignableFrom(targetType) && !argumentType.equals(targetType))) {
                     PiNode piNode = graph().unique(new PiNode(argument, StampFactory.declared(targetType)));
                     arguments.set(index, piNode);

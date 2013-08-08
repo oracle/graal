@@ -37,7 +37,7 @@ public final class OrNode extends BitLogicNode implements Canonicalizable, LIRLo
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.or(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.or(x().stamp(), y().stamp()));
     }
 
     @Override

@@ -57,6 +57,13 @@ public class StampTool {
         }
     }
 
+    public static Stamp add(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return add((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
+    }
+
     public static Stamp add(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
         assert kind == stamp2.kind();
@@ -73,8 +80,15 @@ public class StampTool {
         return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
     }
 
-    public static Stamp sub(IntegerStamp stamp1, IntegerStamp stamp2) {
-        return add(stamp1, (IntegerStamp) StampTool.negate(stamp2));
+    public static Stamp sub(Stamp stamp1, Stamp stamp2) {
+        return add(stamp1, StampTool.negate(stamp2));
+    }
+
+    public static Stamp div(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return div((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
     }
 
     public static Stamp div(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -122,10 +136,24 @@ public class StampTool {
         return StampFactory.forInteger(kind, lowerBound, upperBound, mask);
     }
 
+    public static Stamp and(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return and((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
+    }
+
     public static Stamp and(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
         long mask = stamp1.mask() & stamp2.mask();
         return stampForMask(kind, mask);
+    }
+
+    public static Stamp or(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return or((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
     }
 
     public static Stamp or(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -138,10 +166,24 @@ public class StampTool {
         }
     }
 
+    public static Stamp xor(Stamp stamp1, Stamp stamp2) {
+        if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
+            return xor((IntegerStamp) stamp1, (IntegerStamp) stamp2);
+        }
+        return StampFactory.illegal();
+    }
+
     public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
         Kind kind = stamp1.kind();
         long mask = stamp1.mask() | stamp2.mask();
         return stampForMask(kind, mask);
+    }
+
+    public static Stamp unsignedRightShift(Stamp value, Stamp shift) {
+        if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
+            return unsignedRightShift((IntegerStamp) value, (IntegerStamp) shift);
+        }
+        return StampFactory.illegal();
     }
 
     public static Stamp unsignedRightShift(IntegerStamp value, IntegerStamp shift) {
@@ -165,6 +207,13 @@ public class StampTool {
         }
         long mask = IntegerStamp.maskFor(kind, value.lowerBound(), value.upperBound());
         return stampForMask(kind, mask);
+    }
+
+    public static Stamp leftShift(Stamp value, Stamp shift) {
+        if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
+            return leftShift((IntegerStamp) value, (IntegerStamp) shift);
+        }
+        return StampFactory.illegal();
     }
 
     public static Stamp leftShift(IntegerStamp value, IntegerStamp shift) {

@@ -45,8 +45,9 @@ public final class LoadIndexedNode extends AccessIndexedNode implements Node.Ite
     }
 
     private static Stamp createStamp(ValueNode array, Kind kind) {
-        if (kind == Kind.Object && array.objectStamp().type() != null) {
-            return StampFactory.declared(array.objectStamp().type().getComponentType());
+        ResolvedJavaType type = ObjectStamp.typeOrNull(array);
+        if (kind == Kind.Object && type != null) {
+            return StampFactory.declared(type.getComponentType());
         } else {
             return StampFactory.forKind(kind);
         }

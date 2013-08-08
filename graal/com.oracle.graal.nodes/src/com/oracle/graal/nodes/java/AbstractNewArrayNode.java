@@ -78,11 +78,13 @@ public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implemen
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty() && length.integerStamp().isPositive()) {
-            return null;
-        } else {
-            return this;
+        if (usages().isEmpty()) {
+            Stamp stamp = length.stamp();
+            if (stamp instanceof IntegerStamp && ((IntegerStamp) stamp).isPositive()) {
+                return null;
+            }
         }
+        return this;
     }
 
     @Override

@@ -46,14 +46,9 @@ public abstract class Stamp {
      */
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
-    /**
-     * Determines if the stamped value is guaranteed to be non-null.
-     */
-    public boolean nonNull() {
-        return false;
+    public boolean alwaysDistinct(Stamp other) {
+        return join(other) == StampFactory.illegal();
     }
-
-    public abstract boolean alwaysDistinct(Stamp other);
 
     /**
      * Returns the union of this stamp and the given stamp. Typically used to create stamps for
@@ -71,4 +66,15 @@ public abstract class Stamp {
      * @return The intersection of this stamp and the given stamp.
      */
     public abstract Stamp join(Stamp other);
+
+    /**
+     * If this stamp represents a single value, the methods returns this single value. It returns
+     * null otherwise.
+     * 
+     * @return the constant corresponding to the single value of this stamp and null if this tamp
+     *         can represent less or more than one value.
+     */
+    public Constant asConstant() {
+        return null;
+    }
 }

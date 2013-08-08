@@ -45,18 +45,18 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
     }
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
-        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || object.stamp().nonNull()) : StampFactory.forKind(toType.getKind()));
+        this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
     }
 
     @Override
     public boolean inferStamp() {
-        if (kind() != Kind.Object || object().kind() != Kind.Object) {
-            return false;
-        }
         if (stamp() == StampFactory.forNodeIntrinsic()) {
             return false;
         }
-        return updateStamp(stamp().join(object().stamp()));
+        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            return updateStamp(((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp()));
+        }
+        return false;
     }
 
     @Override
@@ -65,9 +65,9 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
             return this;
         }
 
-        if (kind() == Kind.Object) {
-            ObjectStamp my = objectStamp();
-            ObjectStamp other = object().objectStamp();
+        if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
+            ObjectStamp my = (ObjectStamp) stamp();
+            ObjectStamp other = (ObjectStamp) object().stamp();
 
             if (my.type() == null || other.type() == null) {
                 return this;

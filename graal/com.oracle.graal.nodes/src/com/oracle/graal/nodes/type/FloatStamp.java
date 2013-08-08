@@ -95,6 +95,15 @@ public class FloatStamp extends Stamp {
 
     @Override
     public Stamp meet(Stamp otherStamp) {
+        if (otherStamp == this) {
+            return this;
+        }
+        if (otherStamp instanceof IllegalStamp) {
+            return otherStamp.meet(this);
+        }
+        if (!(otherStamp instanceof FloatStamp)) {
+            return StampFactory.illegal();
+        }
         FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
         double meetUpperBound = Math.max(upperBound, other.upperBound);
@@ -111,6 +120,15 @@ public class FloatStamp extends Stamp {
 
     @Override
     public Stamp join(Stamp otherStamp) {
+        if (otherStamp == this) {
+            return this;
+        }
+        if (otherStamp instanceof IllegalStamp) {
+            return otherStamp.join(this);
+        }
+        if (!(otherStamp instanceof FloatStamp)) {
+            return StampFactory.illegal();
+        }
         FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
         double joinUpperBound = Math.min(upperBound, other.upperBound);
@@ -120,6 +138,8 @@ public class FloatStamp extends Stamp {
             return this;
         } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
             return other;
+        } else if (joinLowerBound > joinUpperBound) {
+            return StampFactory.illegal();
         } else {
             return new FloatStamp(kind(), joinLowerBound, joinUpperBound, joinNonNaN);
         }

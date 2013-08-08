@@ -37,7 +37,7 @@ public final class LeftShiftNode extends ShiftNode implements Canonicalizable, L
 
     @Override
     public boolean inferStamp() {
-        return updateStamp(StampTool.leftShift(x().integerStamp(), y().integerStamp()));
+        return updateStamp(StampTool.leftShift(x().stamp(), y().stamp()));
     }
 
     @Override
