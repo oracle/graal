@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.JumpToExceptionHandlerInCallerNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.ExceptionHandlerStub.*;
@@ -89,12 +88,19 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
         return Boolean.getBoolean("graal.logUnwindExceptionToCallerStub");
     }
 
+    /**
+     * Determines if either Java assertions are enabled for {@link UnwindExceptionToCallerStub} or
+     * if this is a HotSpot build where the ASSERT mechanism is enabled.
+     * <p>
+     * This first check relies on the per-class assertion status which is why this method must be in
+     * this class.
+     */
     @Fold
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
-        return enabled || graalRuntime().getConfig().cAssertions;
+        return enabled || cAssertionsEnabled();
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = descriptorFor(UnwindExceptionToCallerStub.class, "exceptionHandlerForReturnAddress");

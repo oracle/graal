@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.stubs;
 
 import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.CStringNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.word.Word.*;
@@ -78,6 +79,14 @@ public class StubUtil {
             }
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }
+    }
+
+    /**
+     * Determines if this is a HotSpot build where the ASSERT mechanism is enabled.
+     */
+    @Fold
+    public static boolean cAssertionsEnabled() {
+        return graalRuntime().getConfig().cAssertions;
     }
 
     @NodeIntrinsic(StubForeignCallNode.class)

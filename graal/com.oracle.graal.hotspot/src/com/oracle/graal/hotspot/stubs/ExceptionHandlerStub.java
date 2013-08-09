@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.PatchReturnAddressNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
@@ -99,9 +98,13 @@ public class ExceptionHandlerStub extends SnippetStub {
             if (currentException != null) {
                 fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
             }
-            Word currentExceptionPc = readExceptionPc(thread());
-            if (currentExceptionPc.notEqual(Word.zero())) {
-                fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
+            if (cAssertionsEnabled()) {
+                // This thread-local is only cleared in DEBUG builds of the VM
+                // (see OptoRuntime::generate_exception_blob)
+                Word currentExceptionPc = readExceptionPc(thread());
+                if (currentExceptionPc.notEqual(Word.zero())) {
+                    fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
+                }
             }
         }
     }
@@ -117,12 +120,19 @@ public class ExceptionHandlerStub extends SnippetStub {
         return Boolean.getBoolean("graal.logExceptionHandlerStub");
     }
 
+    /**
+     * Determines if either Java assertions are enabled for {@link ExceptionHandlerStub} or if this
+     * is a HotSpot build where the ASSERT mechanism is enabled.
+     * <p>
+     * This first check relies on the per-class assertion status which is why this method must be in
+     * this class.
+     */
     @Fold
     @SuppressWarnings("all")
     private static boolean assertionsEnabled() {
         boolean enabled = false;
         assert enabled = true;
-        return enabled || graalRuntime().getConfig().cAssertions;
+        return enabled || cAssertionsEnabled();
     }
 
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = descriptorFor(ExceptionHandlerStub.class, "exceptionHandlerForPc");
