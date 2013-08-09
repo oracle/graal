@@ -43,6 +43,7 @@ public enum AMD64Arithmetic {
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
     INEG, LNEG,
+    SQRT,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
     I2F, I2D,
@@ -484,6 +485,10 @@ public enum AMD64Arithmetic {
                     masm.xorpd(asDoubleReg(dst), asDoubleReg(src));
                     break;
 
+                case SQRT:
+                    masm.sqrtsd(asDoubleReg(dst), asDoubleReg(src));
+                    break;
+
                 case I2B:
                     masm.movsxb(asIntReg(dst), asIntReg(src));
                     break;
@@ -738,6 +743,10 @@ public enum AMD64Arithmetic {
                     break;
                 case DDIV:
                     masm.divsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src));
+                    break;
+
+                case SQRT:
+                    masm.sqrtsd(asDoubleReg(dst), (AMD64Address) tasm.asDoubleAddr(src));
                     break;
 
                 case I2B:

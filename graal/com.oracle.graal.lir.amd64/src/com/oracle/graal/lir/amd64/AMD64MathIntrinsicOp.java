@@ -33,7 +33,6 @@ import com.oracle.graal.lir.asm.*;
 // @formatter:off
 public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     public enum IntrinsicOpcode  {
-        SQRT,
         SIN, COS, TAN,
         LOG, LOG10
     }
@@ -51,7 +50,6 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         switch (opcode) {
-            case SQRT:  masm.sqrtsd(asDoubleReg(result), asDoubleReg(input)); break;
             case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
             case LOG10: masm.flog(asDoubleReg(result), asDoubleReg(input), true); break;
             case SIN:   masm.fsin(asDoubleReg(result), asDoubleReg(input)); break;

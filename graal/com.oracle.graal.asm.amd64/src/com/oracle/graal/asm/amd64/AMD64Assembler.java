@@ -1518,6 +1518,15 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xE8 | encode);
     }
 
+    public final void sqrtsd(Register dst, AMD64Address src) {
+        assert dst.getRegisterCategory() == AMD64.XMM;
+        emitByte(0xF2);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x51);
+        emitOperandHelper(dst, src);
+    }
+
     public final void sqrtsd(Register dst, Register src) {
         assert dst.getRegisterCategory() == AMD64.XMM;
         assert src.getRegisterCategory() == AMD64.XMM;

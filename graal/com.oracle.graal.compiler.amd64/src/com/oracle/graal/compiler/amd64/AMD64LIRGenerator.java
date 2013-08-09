@@ -800,7 +800,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMathSqrt(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(SQRT, result, input));
+        append(new Unary2Op(SQRT, result, input));
     }
 
     @Override
