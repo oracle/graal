@@ -73,7 +73,11 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
      // @formatter:on
 
-    public static Word box(long val) {
+    /*
+     * Outside users should use the different signed() and unsigned() methods to ensure proper
+     * expansion of 32-bit values on 64-bit systems.
+     */
+    private static Word box(long val) {
         return HostedWord.boxLong(val);
     }
 

@@ -56,6 +56,6 @@ public class CurrentJavaThreadNode extends FloatingNode implements LIRLowerable 
 
     @NodeIntrinsic
     public static Word get() {
-        return Word.box(unsafeReadWord(Thread.currentThread(), eetopOffset()));
+        return Word.unsigned(unsafeReadWord(Thread.currentThread(), eetopOffset()));
     }
 }
