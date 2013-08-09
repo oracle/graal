@@ -1446,7 +1446,6 @@ public class InliningUtil {
         StructuredGraph graph = callTarget.graph();
         ValueNode firstParam = callTarget.arguments().get(0);
         if (firstParam.kind() == Kind.Object && !ObjectStamp.isObjectNonNull(firstParam)) {
-            assert !ObjectStamp.isObjectAlwaysNull(firstParam);
             IsNullNode condition = graph.unique(new IsNullNode(firstParam));
             Stamp stamp = firstParam.stamp().join(objectNonNull());
             GuardingPiNode nonNullReceiver = graph.add(new GuardingPiNode(firstParam, condition, true, NullCheckException, InvalidateReprofile, stamp));
