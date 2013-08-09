@@ -126,7 +126,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(descriptor, incomingCcType);
         HotSpotForeignCallLinkage linkage = new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == Type.NativeCall) {
-            linkage.temporaries = graalRuntime().getRuntimeCallVolatileRegisters();
+            linkage.temporaries = graalRuntime().getNativeABICallerSaveRegisters();
         }
         return linkage;
     }

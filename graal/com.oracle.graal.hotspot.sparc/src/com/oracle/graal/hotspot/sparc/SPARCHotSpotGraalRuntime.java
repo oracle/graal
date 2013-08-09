@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.sparc.*;
@@ -69,8 +70,7 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
     }
 
     @Override
-    protected Value[] getRuntimeCallVolatileRegisters() {
-        // TODO: is this correct?
-        return new Value[0];
+    protected Value[] getNativeABICallerSaveRegisters() {
+        throw GraalInternalError.unimplemented();
     }
 }

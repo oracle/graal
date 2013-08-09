@@ -32,7 +32,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -255,11 +254,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     protected abstract HotSpotRuntime createRuntime();
 
     /**
-     * Gets the registers that are treated volatile by foreign calls into the runtime. These
-     * registers must be spilled across all native foreign runtime calls, even for calls that are
-     * declared as {@link RegisterEffect#PRESERVES_REGISTERS register preserving}.
+     * Gets the registers that must be saved across a foreign call into the runtime.
      */
-    protected abstract Value[] getRuntimeCallVolatileRegisters();
+    protected abstract Value[] getNativeABICallerSaveRegisters();
 
     public HotSpotVMConfig getConfig() {
         return config;
