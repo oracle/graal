@@ -546,7 +546,7 @@ public class GraphBuilderPhase extends Phase {
         ValueNode y = frameState.pop(result);
         ValueNode x = frameState.pop(result);
         boolean isStrictFP = isStrict(method.getModifiers());
-        ArithmeticNode v;
+        BinaryNode v;
         switch (opcode) {
             case IADD:
             case LADD:

@@ -25,10 +25,21 @@ package com.oracle.graal.nodes.calc;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
-public abstract class FloatArithmeticNode extends ArithmeticNode {
+public abstract class FloatArithmeticNode extends BinaryNode {
+
+    private final boolean isStrictFP;
 
     public FloatArithmeticNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(kind, x, y, isStrictFP);
+        super(kind, x, y);
+        this.isStrictFP = isStrictFP;
     }
 
+    /**
+     * Checks whether this instruction has strict fp semantics.
+     * 
+     * @return {@code true} if this instruction has strict fp semantics
+     */
+    public boolean isStrictFP() {
+        return isStrictFP;
+    }
 }

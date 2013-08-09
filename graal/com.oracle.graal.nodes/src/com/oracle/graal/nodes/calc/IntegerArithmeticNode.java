@@ -26,10 +26,10 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 
-public abstract class IntegerArithmeticNode extends ArithmeticNode {
+public abstract class IntegerArithmeticNode extends BinaryNode {
 
     public IntegerArithmeticNode(Kind kind, ValueNode x, ValueNode y) {
-        super(kind, x, y, false);
+        super(kind, x, y);
         assert kind == Kind.Int || kind == Kind.Long;
     }
 
