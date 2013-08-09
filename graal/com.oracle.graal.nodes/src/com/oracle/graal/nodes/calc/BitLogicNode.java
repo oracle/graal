@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -29,7 +30,7 @@ import com.oracle.graal.nodes.*;
 /**
  * The {@code LogicNode} class definition.
  */
-public abstract class BitLogicNode extends BinaryNode {
+public abstract class BitLogicNode extends BinaryNode implements ArithmeticOperation {
 
     /**
      * Constructs a new logic operation node.

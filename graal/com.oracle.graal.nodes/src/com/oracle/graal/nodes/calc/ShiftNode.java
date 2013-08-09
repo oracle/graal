@@ -22,13 +22,14 @@
  */
 package com.oracle.graal.nodes.calc;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 
 /**
  * The {@code ShiftOp} class represents shift operations.
  */
-public abstract class ShiftNode extends BinaryNode {
+public abstract class ShiftNode extends BinaryNode implements ArithmeticOperation {
 
     /**
      * Creates a new shift operation.
