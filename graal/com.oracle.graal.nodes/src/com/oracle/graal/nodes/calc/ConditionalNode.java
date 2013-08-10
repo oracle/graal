@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
@@ -65,9 +66,12 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
         if (x().isConstant() && y().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
-            if (equals.y().isConstant() && equals.y().asConstant().equals(Constant.INT_0)) {
-                if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
-                    return equals.x();
+            if (equals.y().isConstant() && equals.y().asConstant().equals(Constant.INT_0) && equals.x().stamp() instanceof IntegerStamp) {
+                IntegerStamp equalsXStamp = (IntegerStamp) equals.x().stamp();
+                if (equalsXStamp.mask() == 1) {
+                    if (x().asConstant().equals(Constant.INT_0) && y().asConstant().equals(Constant.INT_1)) {
+                        return equals.x();
+                    }
                 }
             }
         }
