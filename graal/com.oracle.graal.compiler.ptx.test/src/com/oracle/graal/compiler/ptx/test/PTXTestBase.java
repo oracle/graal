@@ -33,6 +33,7 @@ import com.oracle.graal.compiler.ptx.PTXBackend;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.meta.HotSpotRuntime;
+import com.oracle.graal.hotspot.meta.HotSpotResolvedJavaMethod;
 import com.oracle.graal.java.GraphBuilderConfiguration;
 import com.oracle.graal.java.GraphBuilderPhase;
 import com.oracle.graal.nodes.StructuredGraph;
@@ -42,6 +43,7 @@ import com.oracle.graal.phases.PhasePlan;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.ptx.PTX;
+import java.lang.reflect.Modifier;
 
 public abstract class PTXTestBase extends GraalCompilerTest {
 
@@ -69,7 +71,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
          * of ECC failure on kernel invocation.  
          */
         CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime,
-                                                              graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan,
+                                                              graalRuntime().getReplacements(), ptxBackend, target,
+                                                              null, phasePlan,
                                                               OptimisticOptimizations.NONE, new SpeculationLog(),
                                                               Suites.createDefaultSuites(), new ExternalCompilationResult());
         return result;
@@ -81,7 +84,15 @@ public abstract class PTXTestBase extends GraalCompilerTest {
 
     protected void invoke(CompilationResult result, Object... args) {
         try {
-            Object[] executeArgs = argsWithReceiver(this, args);
+            if (((ExternalCompilationResult) result).getEntryPoint() == 0) {
+                Debug.dump(result, "[CUDA] *** Null entry point - Not launching kernel");
+                return;
+            }
+
+            /* Check if the method compiled is static */
+            HotSpotResolvedJavaMethod compiledMethod = (HotSpotResolvedJavaMethod) sg.method();
+            boolean isStatic = Modifier.isStatic(compiledMethod.getModifiers());
+            Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
             HotSpotRuntime hsr = (HotSpotRuntime) runtime;
             InstalledCode installedCode = hsr.addExternalMethod(sg.method(), result, sg);
             installedCode.executeVarargs(executeArgs);

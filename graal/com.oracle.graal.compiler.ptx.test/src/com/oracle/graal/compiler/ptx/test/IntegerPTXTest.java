@@ -31,11 +31,11 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testAdd() {
-        compile("testAdd2I");
-        compile("testAdd2L");
-        compile("testAdd2B");
-        compile("testAddIConst");
-        compile("testAddConstI");
+        invoke(compile("testAdd2I"), 8, 4);
+        invoke(compile("testAdd2L"), 12, 6);
+        invoke(compile("testAdd2B"), 6, 4);
+        invoke(compile("testAddIConst"), 5);
+        invoke(compile("testAddConstI"), 7);
     }
 
     public static int testAdd2I(int a, int b) {
@@ -60,10 +60,10 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testSub() {
-        compile("testSub2I");
-        compile("testSub2L");
-        compile("testSubIConst");
-        compile("testSubConstI");
+        invoke(compile("testSub2I"), 8, 4);
+        invoke(compile("testSub2L"), 12, 6);
+        invoke(compile("testSubIConst"), 35);
+        invoke(compile("testSubConstI"), 12);
     }
 
     public static int testSub2I(int a, int b) {
@@ -84,10 +84,10 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testMul() {
-        compile("testMul2I");
-        compile("testMul2L");
-        compile("testMulIConst");
-        compile("testMulConstI");
+        invoke(compile("testMul2I"), 8, 4);
+        invoke(compile("testMul2L"), 12, 6);
+        invoke(compile("testMulIConst"), 4);
+        invoke(compile("testMulConstI"), 5);
     }
 
     public static int testMul2I(int a, int b) {
@@ -108,10 +108,10 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testDiv() {
-        compile("testDiv2I");
-        compile("testDiv2L");
-        compile("testDivIConst");
-        compile("testDivConstI");
+        invoke(compile("testDiv2I"), 8, 4);
+        invoke(compile("testDiv2L"), 12, 6);
+        invoke(compile("testDivIConst"), 64);
+        invoke(compile("testDivConstI"), 8);
     }
 
     public static int testDiv2I(int a, int b) {
@@ -132,8 +132,8 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testRem() {
-        compile("testRem2I");
-        compile("testRem2L");
+        invoke(compile("testRem2I"), 8, 4);
+        invoke(compile("testRem2L"), 12, 6);
     }
 
     public static int testRem2I(int a, int b) {
@@ -146,12 +146,12 @@ public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testIntConversion() {
-        compile("testI2L");
-        compile("testL2I");
-        compile("testI2C");
-        compile("testI2B");
-        compile("testI2F");
-        compile("testI2D");
+        invoke(compile("testI2L"), 8);
+        invoke(compile("testL2I"), 12);
+        invoke(compile("testI2C"), 65);
+        invoke(compile("testI2B"), 9);
+        invoke(compile("testI2F"), 17);
+        invoke(compile("testI2D"), 22);
     }
 
     public static long testI2L(int a) {
