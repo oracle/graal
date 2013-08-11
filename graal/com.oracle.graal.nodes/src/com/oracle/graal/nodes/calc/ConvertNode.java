@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code ConvertNode} class represents a conversion between primitive types.
  */
-public final class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable, Lowerable, ArithmeticOperation {
+public class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable, Lowerable, ArithmeticOperation {
 
     public static enum Op {
         I2L(Int, Long, true),

@@ -176,7 +176,7 @@ public class AMD64ConvertSnippets implements Snippets {
             convert.replaceAtUsages(replacee);
             Arguments args = new Arguments(key);
             args.add("input", convert.value());
-            args.add("result", convert);
+            args.add("result", convert.graph().unique(new AMD64ConvertNode(convert.opcode, convert.value())));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
