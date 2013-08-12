@@ -147,7 +147,7 @@ public class IntegerPTXTest extends PTXTestBase {
     @Test
     public void testIntConversion() {
         invoke(compile("testI2L"), 8);
-        invoke(compile("testL2I"), 12);
+        invoke(compile("testL2I"), 12L);
         invoke(compile("testI2C"), 65);
         invoke(compile("testI2B"), 9);
         invoke(compile("testI2F"), 17);
