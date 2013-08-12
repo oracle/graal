@@ -403,33 +403,45 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitMathAbs(Variable result, Variable input) {
-        append(new BinaryRegConst(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+    public Value emitMathAbs(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new BinaryRegConst(DAND, result, asAllocatable(input), Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+        return result;
     }
 
     @Override
-    public void emitMathSqrt(Variable result, Variable input) {
-        append(new SPARCMathIntrinsicOp(SQRT, result, input));
+    public Value emitMathSqrt(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new SPARCMathIntrinsicOp(SQRT, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathLog(Variable result, Variable input, boolean base10) {
-        append(new SPARCMathIntrinsicOp(LOG, result, input));
+    public Value emitMathLog(Value input, boolean base10) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new SPARCMathIntrinsicOp(LOG, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathCos(Variable result, Variable input) {
-        append(new SPARCMathIntrinsicOp(COS, result, input));
+    public Value emitMathCos(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new SPARCMathIntrinsicOp(COS, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathSin(Variable result, Variable input) {
-        append(new SPARCMathIntrinsicOp(SIN, result, input));
+    public Value emitMathSin(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new SPARCMathIntrinsicOp(SIN, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathTan(Variable result, Variable input) {
-        append(new SPARCMathIntrinsicOp(TAN, result, input));
+    public Value emitMathTan(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new SPARCMathIntrinsicOp(TAN, result, asAllocatable(input)));
+        return result;
     }
 
     @Override

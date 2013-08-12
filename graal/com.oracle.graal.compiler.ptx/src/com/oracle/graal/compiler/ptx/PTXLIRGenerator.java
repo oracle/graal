@@ -650,32 +650,32 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitMathAbs(Variable result, Variable input) {
+    public Value emitMathAbs(Value input) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitMathSqrt(Variable result, Variable input) {
+    public Value emitMathSqrt(Value input) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitMathLog(Variable result, Variable input, boolean base10) {
+    public Value emitMathLog(Value input, boolean base10) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitMathCos(Variable result, Variable input) {
+    public Value emitMathCos(Value input) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitMathSin(Variable result, Variable input) {
+    public Value emitMathSin(Value input) {
         throw new InternalError("NYI");
     }
 
     @Override
-    public void emitMathTan(Variable result, Variable input) {
+    public Value emitMathTan(Value input) {
         throw new InternalError("NYI");
     }
 

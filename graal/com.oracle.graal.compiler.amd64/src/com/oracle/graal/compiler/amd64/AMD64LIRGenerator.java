@@ -784,33 +784,45 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitMathAbs(Variable result, Variable input) {
-        append(new BinaryRegConst(DAND, result, input, Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+    public Value emitMathAbs(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new BinaryRegConst(DAND, result, asAllocatable(input), Constant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL))));
+        return result;
     }
 
     @Override
-    public void emitMathSqrt(Variable result, Variable input) {
-        append(new Unary2Op(SQRT, result, input));
+    public Value emitMathSqrt(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new Unary2Op(SQRT, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathLog(Variable result, Variable input, boolean base10) {
-        append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, input));
+    public Value emitMathLog(Value input, boolean base10) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new AMD64MathIntrinsicOp(base10 ? LOG10 : LOG, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathCos(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(COS, result, input));
+    public Value emitMathCos(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new AMD64MathIntrinsicOp(COS, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathSin(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(SIN, result, input));
+    public Value emitMathSin(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new AMD64MathIntrinsicOp(SIN, result, asAllocatable(input)));
+        return result;
     }
 
     @Override
-    public void emitMathTan(Variable result, Variable input) {
-        append(new AMD64MathIntrinsicOp(TAN, result, input));
+    public Value emitMathTan(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new AMD64MathIntrinsicOp(TAN, result, asAllocatable(input)));
+        return result;
     }
 
     @Override

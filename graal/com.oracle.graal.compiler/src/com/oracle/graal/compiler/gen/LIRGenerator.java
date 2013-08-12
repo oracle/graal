@@ -799,17 +799,5 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitBitScanReverse(Variable result, Value operand);
 
-    public abstract void emitMathAbs(Variable result, Variable input);
-
-    public abstract void emitMathSqrt(Variable result, Variable input);
-
-    public abstract void emitMathLog(Variable result, Variable input, boolean base10);
-
-    public abstract void emitMathCos(Variable result, Variable input);
-
-    public abstract void emitMathSin(Variable result, Variable input);
-
-    public abstract void emitMathTan(Variable result, Variable input);
-
     public abstract void emitByteSwap(Variable result, Value operand);
 }

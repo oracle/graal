@@ -64,4 +64,16 @@ public interface ArithmeticLIRGenerator {
     Value emitUShr(Value a, Value b);
 
     Value emitConvert(ConvertNode.Op opcode, Value inputVal);
+
+    Value emitMathAbs(Value input);
+
+    Value emitMathSqrt(Value input);
+
+    Value emitMathLog(Value input, boolean base10);
+
+    Value emitMathCos(Value input);
+
+    Value emitMathSin(Value input);
+
+    Value emitMathTan(Value input);
 }

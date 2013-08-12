@@ -22,18 +22,14 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, LIRGenLowerable, ArithmeticOperation {
+public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, ArithmeticLIRLowerable {
 
     @Input private ValueNode x;
     private final Operation operation;
@@ -58,30 +54,30 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(LIRGenerator gen) {
-        Variable input = gen.load(gen.operand(x()));
-        Variable result = gen.newVariable(kind());
+    public void generate(ArithmeticLIRGenerator gen) {
+        Value input = gen.operand(x());
+        Value result;
         switch (operation()) {
             case ABS:
-                gen.emitMathAbs(result, input);
+                result = gen.emitMathAbs(input);
                 break;
             case SQRT:
-                gen.emitMathSqrt(result, input);
+                result = gen.emitMathSqrt(input);
                 break;
             case LOG:
-                gen.emitMathLog(result, input, false);
+                result = gen.emitMathLog(input, false);
                 break;
             case LOG10:
-                gen.emitMathLog(result, input, true);
+                result = gen.emitMathLog(input, true);
                 break;
             case SIN:
-                gen.emitMathSin(result, input);
+                result = gen.emitMathSin(input);
                 break;
             case COS:
-                gen.emitMathCos(result, input);
+                result = gen.emitMathCos(input);
                 break;
             case TAN:
-                gen.emitMathTan(result, input);
+                result = gen.emitMathTan(input);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
