@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
 @NodeInfo(shortName = "*")
-public final class FloatMulNode extends FloatArithmeticNode implements Canonicalizable, LIRLowerable {
+public final class FloatMulNode extends FloatArithmeticNode implements Canonicalizable {
 
     public FloatMulNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y, isStrictFP);
@@ -51,7 +51,7 @@ public final class FloatMulNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         Value op1 = gen.operand(x());
         Value op2 = gen.operand(y());
         if (!y().isConstant() && !FloatAddNode.livesLonger(this, y(), gen)) {

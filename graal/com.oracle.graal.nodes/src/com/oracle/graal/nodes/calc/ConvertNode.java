@@ -24,7 +24,6 @@ package com.oracle.graal.nodes.calc;
 
 import static com.oracle.graal.api.meta.Kind.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -34,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code ConvertNode} class represents a conversion between primitive types.
  */
-public class ConvertNode extends FloatingNode implements Canonicalizable, LIRLowerable, Lowerable, ArithmeticOperation {
+public class ConvertNode extends FloatingNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable {
 
     public static enum Op {
         I2L(Int, Long, true),
@@ -240,7 +239,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, LIRLow
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitConvert(opcode, gen.operand(value())));
     }
 

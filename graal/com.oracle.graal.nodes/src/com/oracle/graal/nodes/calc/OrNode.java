@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "|")
-public final class OrNode extends BitLogicNode implements Canonicalizable, LIRLowerable {
+public final class OrNode extends BitLogicNode implements Canonicalizable {
 
     public OrNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -80,7 +80,7 @@ public final class OrNode extends BitLogicNode implements Canonicalizable, LIRLo
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitOr(gen.operand(x()), gen.operand(y())));
     }
 }

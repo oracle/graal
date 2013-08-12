@@ -34,13 +34,31 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCControlFlow.*;
-import com.oracle.graal.lir.sparc.SPARCMove.*;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryCommutative;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegConst;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.BinaryRegReg;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Op1Stack;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Op2Stack;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.RemOp;
+import com.oracle.graal.lir.sparc.SPARCArithmetic.Unary2Op;
+import com.oracle.graal.lir.sparc.SPARCCompare.CompareOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.BranchOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.FloatCondMoveOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.SwitchRangesOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveFromRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.MoveToRegOp;
+import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
@@ -62,15 +80,6 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     public SPARCLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, runtime, target, frameMap, cc, lir);
         lir.spillMoveFactory = new SPARCSpillMoveFactory();
-    }
-
-    @Override
-    protected void emitNode(ValueNode node) {
-        if (node instanceof LIRGenLowerable) {
-            ((LIRGenLowerable) node).generate(this);
-        } else {
-            super.emitNode(node);
-        }
     }
 
     @Override

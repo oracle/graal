@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
@@ -369,7 +370,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (Debug.isLogEnabled() && node.stamp() == StampFactory.illegal()) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
-        ((LIRLowerable) node).generate(this);
+        if (node instanceof LIRGenLowerable) {
+            ((LIRGenLowerable) node).generate(this);
+        } else if (node instanceof LIRLowerable) {
+            ((LIRLowerable) node).generate(this);
+        } else if (node instanceof ArithmeticLIRLowerable) {
+            ((ArithmeticLIRLowerable) node).generate(this);
+        }
     }
 
     protected void emitPrologue() {

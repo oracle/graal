@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticOperation {
+public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
 
     private final boolean isStrictFP;
 

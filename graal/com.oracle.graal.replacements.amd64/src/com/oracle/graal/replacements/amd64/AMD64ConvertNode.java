@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.replacements.amd64;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.calc.*;
@@ -35,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * cases that differ between AMD64 and Java.
  * 
  */
-public class AMD64ConvertNode extends FloatingNode implements LIRLowerable, ArithmeticOperation {
+public class AMD64ConvertNode extends FloatingNode implements ArithmeticLIRLowerable {
 
     @Input private ValueNode value;
     public final Op opcode;
@@ -46,7 +45,7 @@ public class AMD64ConvertNode extends FloatingNode implements LIRLowerable, Arit
         this.value = value;
     }
 
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitConvert(opcode, gen.operand(value)));
     }
 }

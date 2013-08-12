@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = "-")
-public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable, LIRLowerable {
+public class IntegerSubNode extends IntegerArithmeticNode implements Canonicalizable {
 
     public IntegerSubNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -117,7 +117,7 @@ public class IntegerSubNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitSub(gen.operand(x()), gen.operand(y())));
     }
 }

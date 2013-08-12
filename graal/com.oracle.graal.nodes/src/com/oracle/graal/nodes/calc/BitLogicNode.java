@@ -22,15 +22,15 @@
  */
 package com.oracle.graal.nodes.calc;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
  * The {@code LogicNode} class definition.
  */
-public abstract class BitLogicNode extends BinaryNode implements ArithmeticOperation {
+public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLowerable {
 
     /**
      * Constructs a new logic operation node.

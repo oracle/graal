@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(shortName = ">>")
-public final class RightShiftNode extends ShiftNode implements Canonicalizable, LIRLowerable {
+public final class RightShiftNode extends ShiftNode implements Canonicalizable {
 
     public RightShiftNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
@@ -98,7 +98,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable, 
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
+    public void generate(ArithmeticLIRGenerator gen) {
         gen.setResult(this, gen.emitShr(gen.operand(x()), gen.operand(y())));
     }
 }
