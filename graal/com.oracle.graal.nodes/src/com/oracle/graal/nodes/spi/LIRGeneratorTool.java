@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 
-public interface LIRGeneratorTool {
+public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     TargetDescription target();
 
@@ -47,11 +47,7 @@ public interface LIRGeneratorTool {
 
     RegisterAttributes attributes(Register register);
 
-    Value operand(ValueNode object);
-
     AllocatableValue newVariable(PlatformKind kind);
-
-    Value setResult(ValueNode x, Value operand);
 
     AllocatableValue emitMove(Value input);
 
@@ -64,36 +60,6 @@ public interface LIRGeneratorTool {
     Value emitLoad(Kind kind, Value address, DeoptimizingNode deopting);
 
     void emitStore(Kind kind, Value address, Value input, DeoptimizingNode deopting);
-
-    Value emitNegate(Value input);
-
-    Value emitAdd(Value a, Value b);
-
-    Value emitSub(Value a, Value b);
-
-    Value emitMul(Value a, Value b);
-
-    Value emitDiv(Value a, Value b, DeoptimizingNode deopting);
-
-    Value emitRem(Value a, Value b, DeoptimizingNode deopting);
-
-    Value emitUDiv(Value a, Value b, DeoptimizingNode deopting);
-
-    Value emitURem(Value a, Value b, DeoptimizingNode deopting);
-
-    Value emitAnd(Value a, Value b);
-
-    Value emitOr(Value a, Value b);
-
-    Value emitXor(Value a, Value b);
-
-    Value emitShl(Value a, Value b);
-
-    Value emitShr(Value a, Value b);
-
-    Value emitUShr(Value a, Value b);
-
-    Value emitConvert(ConvertNode.Op opcode, Value inputVal);
 
     void emitMembar(int barriers);
 
