@@ -534,16 +534,9 @@ public class ConditionalEliminationPhase extends Phase {
                         // for any nodes currently anchored to the surviving branch
                     } else {
                         if (!anchored.isEmpty()) {
-                            // Ideally we'd simply want to re-anchor to replacementAnchor. However,
-                            // this can cause guards currently anchored to the surviving branch
-                            // to float too high in the graph. So, we insert a new anchor between
-                            // the guards and replacementAnchor.
-                            ValueAnchorNode valueAnchor = graph.add(new ValueAnchorNode());
                             for (Node a : anchored.snapshot()) {
-                                a.replaceFirstInput(survivingSuccessor, valueAnchor);
+                                a.replaceFirstInput(survivingSuccessor, replacementAnchor);
                             }
-                            valueAnchor.addAnchoredNode(replacementAnchor);
-                            graph.addBeforeFixed(ifNode, valueAnchor);
                         }
                         ifNode.setCondition(replacement);
                         if (compare.usages().isEmpty()) {
