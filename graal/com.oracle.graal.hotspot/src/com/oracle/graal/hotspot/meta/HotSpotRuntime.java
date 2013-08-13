@@ -795,9 +795,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
-            instanceofSnippets.lower((InstanceOfNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                instanceofSnippets.lower((InstanceOfNode) n, tool);
+            }
         } else if (n instanceof InstanceOfDynamicNode) {
-            instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
+            if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+                instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
+            }
         } else if (n instanceof NewInstanceNode) {
             if (tool.getLoweringType() == LoweringType.AFTER_FSA) {
                 newObjectSnippets.lower((NewInstanceNode) n);

@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -116,15 +115,6 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
 
     public void setProfile(JavaTypeProfile profile) {
         this.profile = profile;
-    }
-
-    @Override
-    public boolean verify() {
-        for (Node usage : usages()) {
-            assertTrue(usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof GuardingPiNode || usage instanceof ConditionalNode || usage instanceof ShortCircuitBooleanNode,
-                            "unsupported usage: %s", usage);
-        }
-        return super.verify();
     }
 
     @Override
