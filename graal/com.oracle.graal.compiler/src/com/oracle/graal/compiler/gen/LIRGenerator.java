@@ -376,6 +376,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             ((LIRLowerable) node).generate(this);
         } else if (node instanceof ArithmeticLIRLowerable) {
             ((ArithmeticLIRLowerable) node).generate(this);
+        } else {
+            throw GraalInternalError.shouldNotReachHere("node is not LIRLowerable: " + node);
         }
     }
 
