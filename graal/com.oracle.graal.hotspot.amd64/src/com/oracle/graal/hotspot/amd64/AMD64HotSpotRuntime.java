@@ -65,7 +65,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, null, exceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, exceptionCc, null, NOT_REEXECUTABLE, ANY_LOCATION));
 
-        // The x86 crypto stubs do callee saving
+        // These stubs do callee saving
         registerForeignCall(ENCRYPT_BLOCK, config.aescryptEncryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(DECRYPT_BLOCK, config.aescryptDecryptBlockStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(ENCRYPT, config.cipherBlockChainingEncryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
