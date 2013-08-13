@@ -27,7 +27,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 
 /**
- * This interface can be used to generate LIR for arithmetic operations.
+ * This interface can be used to generate LIR for arithmetic operations (@see
+ * ArithmeticLIRLowerable).
  */
 public interface ArithmeticLIRGenerator {
 
