@@ -79,10 +79,20 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
             LogicNode conditionNode = ifNode.condition();
             FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.reason(), deopt.action(), deoptBegin == ifNode.trueSuccessor()));
             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
+            AbstractBeginNode survivingSuccessor;
             if (deoptBegin == ifNode.trueSuccessor()) {
-                graph.removeSplitPropagate(ifNode, ifNode.falseSuccessor());
+                survivingSuccessor = ifNode.falseSuccessor();
             } else {
-                graph.removeSplitPropagate(ifNode, ifNode.trueSuccessor());
+                survivingSuccessor = ifNode.trueSuccessor();
+            }
+            graph.removeSplitPropagate(ifNode, survivingSuccessor);
+            for (Node n : survivingSuccessor.usages().snapshot()) {
+                if (n instanceof GuardNode || n instanceof ProxyNode) {
+                    // Keep wired to the begin node.
+                } else {
+                    // Rewire to the fixed guard.
+                    n.replaceFirstInput(survivingSuccessor, guard);
+                }
             }
             Debug.log("Converting %s on %-5s branch of %s to guard for remaining branch %s.", deopt, deoptBegin == ifNode.trueSuccessor() ? "true" : "false", ifNode, otherBegin);
             FixedNode next = pred.next();

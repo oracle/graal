@@ -115,6 +115,7 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
                 ifNode = graph().add(new IfNode(condition, next, deopt, 1));
             }
             ((FixedWithNextNode) predecessor()).setNext(ifNode);
+            this.replaceAtUsages(next.predecessor());
             GraphUtil.killWithUnusedFloatingInputs(this);
         }
     }
