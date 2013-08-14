@@ -172,10 +172,9 @@ public class CompilerDirectives {
      * @param customType the custom type that if present on a value makes this unsafe cast safe
      * @return the value
      */
-    @SuppressWarnings("unchecked")
     @Unsafe
     public static <T> T unsafeCast(Object value, Class<T> clazz, Object customType) {
-        return (T) value;
+        return unsafeCast(value, clazz);
     }
 
     /**
