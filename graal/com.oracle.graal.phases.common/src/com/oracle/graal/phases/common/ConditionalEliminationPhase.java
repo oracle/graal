@@ -488,16 +488,36 @@ public class ConditionalEliminationPhase extends Phase {
                 ResolvedJavaType type = state.getNodeType(object);
                 if (isNull || (type != null && checkCast.type().isAssignableFrom(type))) {
                     boolean nonNull = state.isNonNull(object);
-                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
+                    GuardingNode replacementAnchor = null;
+                    if (nonNull) {
+                        // Search for valid instanceof anchor.
+                        for (InstanceOfNode instanceOfNode : object.usages().filter(InstanceOfNode.class)) {
+                            if (instanceOfNode.type() == checkCast.type() && state.trueConditions.containsKey(instanceOfNode)) {
+                                ValueNode v = state.trueConditions.get(instanceOfNode);
+                                if (v instanceof GuardingNode) {
+                                    replacementAnchor = (GuardingNode) v;
+                                }
+                            }
+                        }
+                    }
+                    ValueAnchorNode anchor = null;
+                    if (replacementAnchor == null) {
+                        anchor = graph.add(new ValueAnchorNode());
+                        replacementAnchor = anchor;
+                    }
                     PiNode piNode;
                     if (isNull) {
                         ConstantNode nullObject = ConstantNode.forObject(null, metaAccessProvider, graph);
-                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccessProvider), anchor));
+                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccessProvider), replacementAnchor));
                     } else {
-                        piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), anchor));
+                        piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor));
                     }
                     checkCast.replaceAtUsages(piNode);
-                    graph.replaceFixedWithFixed(checkCast, anchor);
+                    if (anchor != null) {
+                        graph.replaceFixedWithFixed(checkCast, anchor);
+                    } else {
+                        graph.removeFixed(checkCast);
+                    }
                     metricCheckCastRemoved.increment();
                 }
             } else if (node instanceof IfNode) {
