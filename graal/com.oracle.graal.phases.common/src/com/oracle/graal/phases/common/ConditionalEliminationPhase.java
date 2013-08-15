@@ -548,20 +548,23 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
-                    NodeIterable<Node> anchored = survivingSuccessor.anchored();
-                    if (!anchored.isEmpty() && replacementAnchor == null) {
-                        // Cannot simplify an IfNode unless we have a new anchor point
-                        // for any nodes currently anchored to the surviving branch
-                    } else {
-                        if (!anchored.isEmpty()) {
-                            for (Node a : anchored.snapshot()) {
-                                a.replaceFirstInput(survivingSuccessor, replacementAnchor);
+                    for (Node n : survivingSuccessor.usages().snapshot()) {
+                        if (n instanceof GuardNode || n instanceof ProxyNode) {
+                            // Keep wired to the begin node.
+                        } else {
+                            if (replacementAnchor == null) {
+                                // Cannot simplify this IfNode as there is no anchor.
+                                return;
                             }
+
+                            // Rewire to the replacement anchor.
+                            n.replaceFirstInput(survivingSuccessor, replacementAnchor);
                         }
-                        ifNode.setCondition(replacement);
-                        if (compare.usages().isEmpty()) {
-                            GraphUtil.killWithUnusedFloatingInputs(compare);
-                        }
+                    }
+
+                    ifNode.setCondition(replacement);
+                    if (compare.usages().isEmpty()) {
+                        GraphUtil.killWithUnusedFloatingInputs(compare);
                     }
                 }
             } else if (node instanceof AbstractEndNode) {
