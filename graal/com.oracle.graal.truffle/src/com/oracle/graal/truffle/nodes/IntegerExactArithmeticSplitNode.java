@@ -81,15 +81,17 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     protected abstract Value generateArithmetic(LIRGeneratorTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
-        FloatingNode floatingNode = (FloatingNode) node;
-        FixedWithNextNode previous = tool.lastFixedNode();
-        FixedNode next = previous.next();
-        previous.setNext(null);
-        DeoptimizeNode deopt = floatingNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
-        BeginNode normalBegin = floatingNode.graph().add(new BeginNode());
-        normalBegin.setNext(next);
-        IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, BeginNode.begin(deopt));
-        previous.setNext(split);
-        floatingNode.replaceAndDelete(split);
+        if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+            FloatingNode floatingNode = (FloatingNode) node;
+            FixedWithNextNode previous = tool.lastFixedNode();
+            FixedNode next = previous.next();
+            previous.setNext(null);
+            DeoptimizeNode deopt = floatingNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException));
+            BeginNode normalBegin = floatingNode.graph().add(new BeginNode());
+            normalBegin.setNext(next);
+            IntegerExactArithmeticSplitNode split = node.createSplit(normalBegin, BeginNode.begin(deopt));
+            previous.setNext(split);
+            floatingNode.replaceAndDelete(split);
+        }
     }
 }
