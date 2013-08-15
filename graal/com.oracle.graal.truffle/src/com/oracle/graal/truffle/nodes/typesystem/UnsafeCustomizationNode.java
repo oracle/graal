@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,21 +20,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.typesystem;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitNode {
+public final class UnsafeCustomizationNode extends FloatingNode implements LIRLowerable {
 
-    public IntegerAddExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
-        super(stamp, x, y, next, overflowSuccessor);
+    @Input private ValueNode receiver;
+    private final Object customType;
+    private final Object locationIdentity;
+
+    public UnsafeCustomizationNode(ValueNode receiver, Object customType, Object locationIdentity) {
+        super(StampFactory.object());
+        this.receiver = receiver;
+        this.customType = customType;
+        this.locationIdentity = locationIdentity;
     }
 
-    @Override
-    protected Value generateArithmetic(LIRGeneratorTool gen) {
-        return gen.emitAdd(gen.operand(getX()), gen.operand(getY()));
+    public ValueNode getReceiver() {
+        return receiver;
+    }
+
+    public Object getCustomType() {
+        return customType;
+    }
+
+    public Object getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    public void generate(LIRGeneratorTool generator) {
+        generator.setResult(this, generator.operand(receiver));
     }
 }

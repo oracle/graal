@@ -20,29 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.phases;
+package com.oracle.graal.truffle.nodes.arithmetic;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-/**
- * Verification phase for checking that no frame intrinsic nodes introduced by the
- * {@link PartialEvaluator} are still in the graph.
- */
-public class VerifyNoIntrinsicsLeftPhase extends Phase {
+public class IntegerAddExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        verifyNoInstanceLeft(graph, NewFrameNode.class);
+    public IntegerAddExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+        super(stamp, x, y, next, overflowSuccessor);
     }
 
-    public static <T extends Node & IterableNodeType> void verifyNoInstanceLeft(StructuredGraph graph, Class<T> clazz) {
-        if (graph.getNodes(clazz).count() != 0) {
-            throw new VerificationError("Found unexpected node(s): %s", graph.getNodes(clazz));
-        }
+    @Override
+    protected Value generateArithmetic(LIRGeneratorTool gen) {
+        return gen.emitAdd(gen.operand(getX()), gen.operand(getY()));
     }
 }

@@ -20,30 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.arithmetic;
 
-import com.oracle.graal.graph.Node.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-/**
- * Intrinsic node for materializing a Truffle frame.
- */
-@NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
-public class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
+public class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    @Input private ValueNode frame;
-
-    public MaterializeFrameNode(ValueNode frame) {
-        super(frame.stamp());
-        this.frame = frame;
+    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+        super(stamp, x, y, next, overflowSuccessor);
     }
 
-    public ValueNode getFrame() {
-        return frame;
+    @Override
+    protected Value generateArithmetic(LIRGeneratorTool gen) {
+        return gen.emitSub(gen.operand(getX()), gen.operand(getY()));
     }
-
-    @NodeIntrinsic
-    public static native <T> T materialize(FrameWithoutBoxing frame);
 }

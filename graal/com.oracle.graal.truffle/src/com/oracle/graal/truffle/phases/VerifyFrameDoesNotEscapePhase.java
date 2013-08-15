@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.frame.*;
 
 /**
  * Compiler phase for verifying that the Truffle virtual frame does not escape and can therefore be

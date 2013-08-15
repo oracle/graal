@@ -20,12 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.frame;
+
+import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -34,20 +37,13 @@ import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
- * Intrinsic node for write access to a Truffle frame.
+ * Intrinsic node for read access to a Truffle frame.
  */
-@NodeInfo(nameTemplate = "FrameSet{p#slotKind/s}{p#frameSlot/s}")
-public class FrameSetNode extends FrameAccessNode implements IterableNodeType, Virtualizable, Lowerable {
+@NodeInfo(nameTemplate = "FrameGet{p#slotKind/s}{p#frameSlot/s}")
+public class FrameGetNode extends FrameAccessNode implements IterableNodeType, Virtualizable, Lowerable {
 
-    @Input private ValueNode value;
-
-    public FrameSetNode(Kind kind, ValueNode frame, ValueNode frameSlot, ValueNode value, ResolvedJavaField field) {
-        super(StampFactory.forVoid(), kind, frame, frameSlot, field);
-        this.value = value;
-    }
-
-    public ValueNode getValue() {
-        return value;
+    public FrameGetNode(Kind kind, ValueNode frame, ValueNode slot, ResolvedJavaField field) {
+        super(StampFactory.forKind(kind), kind, frame, slot, field);
     }
 
     @Override
@@ -65,9 +61,13 @@ public class FrameSetNode extends FrameAccessNode implements IterableNodeType, V
         int arrayFieldIndex = virtualFrameObject.fieldIndex(field);
         State virtualArray = tool.getObjectState(virtualFrame.getEntry(arrayFieldIndex));
         assert virtualArray != null;
-        ValueNode storedValue = value;
-        tool.setVirtualEntry(virtualArray, getSlotIndex(), storedValue);
-        tool.delete();
+        ValueNode result = virtualArray.getEntry(getSlotIndex());
+        State virtualResult = tool.getObjectState(result);
+        if (virtualResult != null) {
+            tool.replaceWithVirtual(virtualResult.getVirtualObject());
+        } else {
+            tool.replaceWithValue(result);
+        }
     }
 
     @Override
@@ -77,36 +77,20 @@ public class FrameSetNode extends FrameAccessNode implements IterableNodeType, V
 
         LoadFieldNode loadFieldNode = graph().add(new LoadFieldNode(getFrame(), field));
         structuredGraph.addBeforeFixed(this, loadFieldNode);
-        FixedWithNextNode storeNode;
-        ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+        FixedWithNextNode loadNode;
         if (!getSlotKind().isPrimitive()) {
-            storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Object, value));
+            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+            loadNode = graph().add(new LoadIndexedNode(loadFieldNode, slotIndex, Kind.Object));
         } else if (getSlotKind() == Kind.Byte) {
-            storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Byte, value));
+            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+            loadNode = graph().add(new LoadIndexedNode(loadFieldNode, slotIndex, Kind.Byte));
         } else {
-            storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Long, value));
+            ValueNode slotOffset = getSlotOffset(Unsafe.ARRAY_LONG_INDEX_SCALE, tool.getRuntime());
+            loadNode = graph().add(new UnsafeLoadNode(loadFieldNode, Unsafe.ARRAY_LONG_BASE_OFFSET, slotOffset, getSlotKind()));
         }
-        structuredGraph.replaceFixedWithFixed(this, storeNode);
+        structuredGraph.replaceFixedWithFixed(this, loadNode);
     }
 
     @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, Object value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, byte value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, boolean value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, int value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, long value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, double value, @ConstantNodeParameter ResolvedJavaField field);
-
-    @NodeIntrinsic
-    public static native void set(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, float value, @ConstantNodeParameter ResolvedJavaField field);
+    public static native <T> T get(@ConstantNodeParameter Kind kind, FrameWithoutBoxing frame, FrameSlot slot, @ConstantNodeParameter ResolvedJavaField field);
 }

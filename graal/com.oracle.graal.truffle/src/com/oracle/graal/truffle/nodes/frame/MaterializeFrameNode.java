@@ -20,22 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.frame;
 
+import com.oracle.graal.graph.Node.IterableNodeType;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.truffle.*;
 
-public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
+/**
+ * Intrinsic node for materializing a Truffle frame.
+ */
+@NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
+public class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
 
-    public NeverInlineMacroNode(Invoke invoke) {
-        super(invoke);
+    @Input private ValueNode frame;
+
+    public MaterializeFrameNode(ValueNode frame) {
+        super(frame.stamp());
+        this.frame = frame;
     }
 
-    @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        InvokeNode invoke = createInvoke();
-        graph().replaceFixedWithFixed(this, invoke);
-        invoke.setUseForInlining(false);
+    public ValueNode getFrame() {
+        return frame;
     }
+
+    @NodeIntrinsic
+    public static native <T> T materialize(FrameWithoutBoxing frame);
 }

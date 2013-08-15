@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;

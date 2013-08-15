@@ -31,6 +31,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.typesystem.*;
 import com.oracle.truffle.api.*;
 
 @ClassSubstitution(CompilerDirectives.class)
@@ -63,6 +64,12 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = UnsafeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz);
+    @MacroSubstitution(macro = TypeCastMacroNode.class, isStatic = true)
+    public static native Object unsafeCast(Object value, Class clazz, Object customType);
+
+    @MacroSubstitution(macro = CustomTypeCheckMacroNode.class, isStatic = true)
+    public static native boolean customTypeCheck(boolean condition, Object value, Object customType);
+
+    @MacroSubstitution(macro = UnsafeCustomizationMacroNode.class, isStatic = true)
+    public static native Object unsafeCustomization(Object receiver, Object customType, Object locationIdentity);
 }

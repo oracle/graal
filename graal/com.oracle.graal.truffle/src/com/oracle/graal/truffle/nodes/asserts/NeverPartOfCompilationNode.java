@@ -20,29 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.phases;
+package com.oracle.graal.truffle.nodes.asserts;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.frame.*;
+import com.oracle.graal.replacements.nodes.*;
 
-/**
- * Verification phase for checking that no frame intrinsic nodes introduced by the
- * {@link PartialEvaluator} are still in the graph.
- */
-public class VerifyNoIntrinsicsLeftPhase extends Phase {
+public class NeverPartOfCompilationNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
 
-    @Override
-    protected void run(StructuredGraph graph) {
-        verifyNoInstanceLeft(graph, NewFrameNode.class);
+    private final String message;
+
+    public NeverPartOfCompilationNode(Invoke invoke) {
+        this(invoke, "This code path should never be part of a compilation.");
     }
 
-    public static <T extends Node & IterableNodeType> void verifyNoInstanceLeft(StructuredGraph graph, Class<T> clazz) {
-        if (graph.getNodes(clazz).count() != 0) {
-            throw new VerificationError("Found unexpected node(s): %s", graph.getNodes(clazz));
-        }
+    public NeverPartOfCompilationNode(Invoke invoke, String message) {
+        super(invoke);
+        this.message = message;
+    }
+
+    public final String getMessage() {
+        return message;
     }
 }

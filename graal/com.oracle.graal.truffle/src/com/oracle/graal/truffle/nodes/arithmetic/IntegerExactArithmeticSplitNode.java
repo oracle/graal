@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -29,6 +29,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRGenLowerable {

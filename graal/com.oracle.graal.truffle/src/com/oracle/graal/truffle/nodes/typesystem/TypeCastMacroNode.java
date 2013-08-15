@@ -20,29 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.truffle.nodes.asserts.*;
+import com.oracle.truffle.api.*;
 
-public class UnsafeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+/**
+ * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class)} and
+ * {@link CompilerDirectives#unsafeCast(Object, Class, Object)}.
+ */
+public class TypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
-    public UnsafeCastMacroNode(Invoke invoke) {
+    private static final int ARGUMENT_COUNT = 3;
+    private static final int OBJECT_ARGUMENT_INDEX = 0;
+    private static final int CLASS_ARGUMENT_INDEX = 1;
+    private static final int CUSTOM_TYPE_ARGUMENT_INDEX = 2;
+
+    public TypeCastMacroNode(Invoke invoke) {
         super(invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
-        assert arguments.size() == 2;
+        assert arguments.size() == ARGUMENT_COUNT;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (arguments.get(1).isConstant()) {
-            Class c = (Class) arguments.get(1).asConstant().asObject();
+        ValueNode classArgument = arguments.get(CLASS_ARGUMENT_INDEX);
+        ValueNode customTypeArgument = arguments.get(CUSTOM_TYPE_ARGUMENT_INDEX);
+        if (classArgument.isConstant() && customTypeArgument.isConstant()) {
+            Class c = (Class) classArgument.asConstant().asObject();
             ResolvedJavaType lookupJavaType = tool.runtime().lookupJavaType(c);
             Stamp s = StampFactory.declaredNonNull(lookupJavaType);
             ValueAnchorNode valueAnchorNode = graph().add(new ValueAnchorNode());
-            UnsafeCastNode unsafeCast = graph().unique(new UnsafeCastNode(arguments.get(0), s, (GuardingNode) valueAnchorNode));
+            ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
+            Object customType = customTypeArgument.asConstant().asObject();
+            UnsafeCastNode unsafeCast = graph().unique(new UnsafeCastNode(objectArgument, s, valueAnchorNode, customType));
             this.replaceAtUsages(unsafeCast);
             return valueAnchorNode;
         }

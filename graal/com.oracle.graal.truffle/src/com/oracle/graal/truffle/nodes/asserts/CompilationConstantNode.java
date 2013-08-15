@@ -20,12 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.asserts;
 
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-interface IntegerExactArithmeticNode extends Lowerable {
+public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
-    IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt);
+    public CompilationConstantNode(Invoke invoke) {
+        super(invoke, "The value could not be reduced to a compile time constant.");
+        assert arguments.size() == 1;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (arguments.get(0).isConstant()) {
+            return arguments.get(0);
+        }
+        return this;
+    }
 }

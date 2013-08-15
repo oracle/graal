@@ -24,7 +24,7 @@ package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;

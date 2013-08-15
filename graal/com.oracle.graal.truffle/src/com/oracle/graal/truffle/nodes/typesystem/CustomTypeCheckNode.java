@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,21 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.typesystem;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {
+public final class CustomTypeCheckNode extends FloatingNode implements Lowerable {
 
-    public IntegerMulExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
-        super(stamp, x, y, next, overflowSuccessor);
+    @Input private ValueNode condition;
+    @Input private ValueNode object;
+    private final Object customType;
+
+    public CustomTypeCheckNode(ValueNode condition, ValueNode object, Object customType) {
+        super(condition.stamp());
+        this.condition = condition;
+        this.object = object;
+        this.customType = customType;
     }
 
-    @Override
-    protected Value generateArithmetic(LIRGeneratorTool gen) {
-        return gen.emitMul(gen.operand(getX()), gen.operand(getY()));
+    public ValueNode getObject() {
+        return object;
+    }
+
+    public ValueNode getCondition() {
+        return condition;
+    }
+
+    public Object getCustomType() {
+        return customType;
+    }
+
+    public void lower(LoweringTool tool, LoweringType loweringType) {
+        if (loweringType == LoweringType.BEFORE_GUARDS) {
+            this.replaceAtUsages(condition);
+            this.safeDelete();
+        }
     }
 }

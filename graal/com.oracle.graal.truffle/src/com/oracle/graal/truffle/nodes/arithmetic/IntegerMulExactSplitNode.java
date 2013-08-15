@@ -20,25 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.arithmetic;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.replacements.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class NeverPartOfCompilationNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
+public class IntegerMulExactSplitNode extends IntegerExactArithmeticSplitNode {
 
-    private final String message;
-
-    public NeverPartOfCompilationNode(Invoke invoke) {
-        this(invoke, "This code path should never be part of a compilation.");
+    public IntegerMulExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
+        super(stamp, x, y, next, overflowSuccessor);
     }
 
-    public NeverPartOfCompilationNode(Invoke invoke, String message) {
-        super(invoke);
-        this.message = message;
-    }
-
-    public final String getMessage() {
-        return message;
+    @Override
+    protected Value generateArithmetic(LIRGeneratorTool gen) {
+        return gen.emitMul(gen.operand(getX()), gen.operand(getY()));
     }
 }

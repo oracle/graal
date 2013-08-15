@@ -20,21 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.asserts;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.replacements.nodes.*;
 
-public class IntegerSubExactSplitNode extends IntegerExactArithmeticSplitNode {
+public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
 
-    public IntegerSubExactSplitNode(Stamp stamp, ValueNode x, ValueNode y, AbstractBeginNode next, AbstractBeginNode overflowSuccessor) {
-        super(stamp, x, y, next, overflowSuccessor);
+    public NeverInlineMacroNode(Invoke invoke) {
+        super(invoke);
     }
 
     @Override
-    protected Value generateArithmetic(LIRGeneratorTool gen) {
-        return gen.emitSub(gen.operand(getX()), gen.operand(getY()));
+    public void lower(LoweringTool tool, LoweringType loweringType) {
+        InvokeNode invoke = createInvoke();
+        graph().replaceFixedWithFixed(this, invoke);
+        invoke.setUseForInlining(false);
     }
 }

@@ -28,7 +28,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.truffle.*;
-import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.frame.*;
 import com.oracle.truffle.api.frame.*;
 
 @ClassSubstitution(FrameWithoutBoxing.class)

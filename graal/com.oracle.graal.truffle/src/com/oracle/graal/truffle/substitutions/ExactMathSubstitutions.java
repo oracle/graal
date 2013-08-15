@@ -23,7 +23,7 @@
 package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.truffle.nodes.*;
+import com.oracle.graal.truffle.nodes.arithmetic.*;
 import com.oracle.truffle.api.*;
 
 /**

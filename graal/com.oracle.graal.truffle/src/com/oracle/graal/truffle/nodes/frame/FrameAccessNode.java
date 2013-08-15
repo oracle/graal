@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle.nodes.frame;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -33,6 +33,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.frame.*;
 
 /**
