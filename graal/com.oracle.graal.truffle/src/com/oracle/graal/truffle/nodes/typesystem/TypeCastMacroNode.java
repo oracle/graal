@@ -24,22 +24,21 @@ package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
  * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class)} and
- * {@link CompilerDirectives#unsafeCast(Object, Class, Object)}.
+ * {@link CompilerDirectives#unsafeCast(Object, Class, Object, Object)}.
  */
 public class TypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
-    private static final int ARGUMENT_COUNT = 3;
+    private static final int ARGUMENT_COUNT = 4;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
-    private static final int CUSTOM_TYPE_ARGUMENT_INDEX = 2;
+    private static final int RECEIVER_ARGUMENT_INDEX = 2;
+    private static final int CUSTOM_TYPE_ARGUMENT_INDEX = 3;
 
     public TypeCastMacroNode(Invoke invoke) {
         super(invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
@@ -53,13 +52,10 @@ public class TypeCastMacroNode extends NeverPartOfCompilationNode implements Can
         if (classArgument.isConstant() && customTypeArgument.isConstant()) {
             Class c = (Class) classArgument.asConstant().asObject();
             ResolvedJavaType lookupJavaType = tool.runtime().lookupJavaType(c);
-            Stamp s = StampFactory.declaredNonNull(lookupJavaType);
-            ValueAnchorNode valueAnchorNode = graph().add(new ValueAnchorNode());
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
+            ValueNode receiverArgument = arguments.get(RECEIVER_ARGUMENT_INDEX);
             Object customType = customTypeArgument.asConstant().asObject();
-            UnsafeCastNode unsafeCast = graph().unique(new UnsafeCastNode(objectArgument, s, valueAnchorNode, customType));
-            this.replaceAtUsages(unsafeCast);
-            return valueAnchorNode;
+            return graph().add(new TypeCastNode(objectArgument, lookupJavaType, receiverArgument, customType));
         }
         return this;
     }

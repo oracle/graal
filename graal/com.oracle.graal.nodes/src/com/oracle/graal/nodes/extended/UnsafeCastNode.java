@@ -32,21 +32,12 @@ import com.oracle.graal.nodes.type.*;
  */
 public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowerable {
 
-    private final Object customType;
-
     public UnsafeCastNode(ValueNode object, Stamp stamp) {
         super(object, stamp);
-        customType = null;
     }
 
     public UnsafeCastNode(ValueNode object, Stamp stamp, GuardingNode anchor) {
         super(object, stamp, anchor);
-        customType = null;
-    }
-
-    public UnsafeCastNode(ValueNode object, Stamp stamp, GuardingNode anchor, Object customType) {
-        super(object, stamp, anchor);
-        this.customType = customType;
     }
 
     public UnsafeCastNode(ValueNode object, Stamp stamp, ValueNode anchor) {
@@ -55,10 +46,6 @@ public class UnsafeCastNode extends PiNode implements Canonicalizable, LIRLowera
 
     public UnsafeCastNode(ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         this(object, toType.getKind() == Kind.Object ? StampFactory.object(toType, exactType, nonNull || ObjectStamp.isObjectNonNull(object.stamp())) : StampFactory.forKind(toType.getKind()));
-    }
-
-    public Object getCustomType() {
-        return customType;
     }
 
     @Override
