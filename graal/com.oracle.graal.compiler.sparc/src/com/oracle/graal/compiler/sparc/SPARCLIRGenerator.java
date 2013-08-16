@@ -468,6 +468,22 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @Override
+    public Value emitNot(Value input) {
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind().getStackKind()) {
+            case Int:
+                append(new Op1Stack(INOT, result, input));
+                break;
+            case Long:
+                append(new Op1Stack(LNOT, result, input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
+    }
+
     private Variable emitBinary(SPARCArithmetic op, boolean commutative, Value a, Value b) {
         if (isConstant(b)) {
             return emitBinaryConst(op, commutative, asAllocatable(a), asConstant(b));

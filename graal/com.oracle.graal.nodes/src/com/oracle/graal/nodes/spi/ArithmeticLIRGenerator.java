@@ -52,6 +52,8 @@ public interface ArithmeticLIRGenerator {
 
     Value emitURem(Value a, Value b, DeoptimizingNode deopting);
 
+    Value emitNot(Value input);
+
     Value emitAnd(Value a, Value b);
 
     Value emitOr(Value a, Value b);

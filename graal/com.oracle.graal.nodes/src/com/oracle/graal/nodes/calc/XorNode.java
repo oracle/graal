@@ -60,12 +60,16 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
                 int c = y().asConstant().asInt();
                 if (c == 0) {
                     return x();
+                } else if (c == -1) {
+                    return graph().unique(new NotNode(x()));
                 }
             } else {
                 assert kind() == Kind.Long;
                 long c = y().asConstant().asLong();
                 if (c == 0) {
                     return x();
+                } else if (c == -1) {
+                    return graph().unique(new NotNode(x()));
                 }
             }
             return BinaryNode.reassociate(this, ValueNode.isConstantPredicate());

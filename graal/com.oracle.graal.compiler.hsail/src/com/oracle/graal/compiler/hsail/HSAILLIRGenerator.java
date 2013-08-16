@@ -300,6 +300,20 @@ public class HSAILLIRGenerator extends LIRGenerator {
 
     }
 
+    @Override
+    public Variable emitNot(Value input) {
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind()) {
+            case Int:
+                append(new Op1Stack(INOT, result, input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
+
+    }
+
     public Variable emitTestAddressAdd(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {

@@ -44,7 +44,7 @@ public enum HSAILArithmetic {
     IMIN, LMIN, IUMIN, LUMIN, IREM,
     LREM, FREM, DREM, IUREM, LUREM,
     ICARRY, LCARRY, IUCARRY, LUCARRY,
-    IAND, LAND, INEG, I2B, I2S, I2L,
+    IAND, LAND, INEG, INOT, I2B, I2S, I2L,
     F2D, F2I, F2L, D2F, I2F, I2D, D2I,
     L2F, D2L, MOV_F2I, MOV_D2L, L2D, MOV_I2F,
     MOV_L2D, ISHL, LSHL, ISHR, LSHR, IUSHR, LUSHR,
@@ -233,6 +233,7 @@ public enum HSAILArithmetic {
                 case SQRT: masm.emitArg1("sqrt", dst, src); break;
                 case UNDEF: masm.undefined("undefined node"); break;
                 case CALL: masm.undefined("undefined node CALL"); break;
+                case INOT: masm.emitArg1("not", dst, src); break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }

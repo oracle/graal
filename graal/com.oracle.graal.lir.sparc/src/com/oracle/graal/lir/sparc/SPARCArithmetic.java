@@ -39,7 +39,7 @@ public enum SPARCArithmetic {
     LADD, LSUB, LMUL, LDIV, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
-    INEG, LNEG, FNEG, DNEG,
+    INEG, LNEG, FNEG, DNEG, INOT, LNOT,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
     I2F, I2D, F2I, D2I,
@@ -524,6 +524,12 @@ public enum SPARCArithmetic {
             switch (opcode) {
                 case INEG:
                     new Neg(asIntReg(src), asIntReg(dst)).emit(masm);
+                    break;
+                case INOT:
+                    new Not(asIntReg(src), asIntReg(dst)).emit(masm);
+                    break;
+                case LNOT:
+                    new Not(asLongReg(src), asLongReg(dst)).emit(masm);
                     break;
                 case I2L:
                     new Signx(asIntReg(src), asLongReg(dst)).emit(masm);

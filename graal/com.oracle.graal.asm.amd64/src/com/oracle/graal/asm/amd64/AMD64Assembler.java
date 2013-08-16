@@ -1189,6 +1189,12 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0xD8 | encode);
     }
 
+    public final void notl(Register dst) {
+        int encode = prefixAndEncode(dst.encoding);
+        emitByte(0xF7);
+        emitByte(0xD0 | encode);
+    }
+
     public final void ensureUniquePC() {
         nop();
     }
@@ -2210,6 +2216,12 @@ public class AMD64Assembler extends AbstractAssembler {
         int encode = prefixqAndEncode(dst.encoding);
         emitByte(0xF7);
         emitByte(0xD8 | encode);
+    }
+
+    public final void notq(Register dst) {
+        int encode = prefixqAndEncode(dst.encoding);
+        emitByte(0xF7);
+        emitByte(0xD0 | encode);
     }
 
     public final void orq(Register dst, int imm32) {

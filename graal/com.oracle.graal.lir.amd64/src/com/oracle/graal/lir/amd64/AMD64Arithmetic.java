@@ -42,7 +42,7 @@ public enum AMD64Arithmetic {
     LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
-    INEG, LNEG,
+    INEG, LNEG, INOT, LNOT,
     SQRT,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
@@ -363,6 +363,12 @@ public enum AMD64Arithmetic {
                 break;
             case LNEG:
                 masm.negq(asLongReg(result));
+                break;
+            case INOT:
+                masm.notl(asIntReg(result));
+                break;
+            case LNOT:
+                masm.notq(asLongReg(result));
                 break;
             case L2I:
                 masm.andl(asIntReg(result), 0xFFFFFFFF);

@@ -37,7 +37,7 @@ public enum PTXArithmetic {
     LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
-    INEG, LNEG, FNEG, DNEG,
+    INEG, LNEG, FNEG, DNEG, INOT, LNOT,
     I2L, L2I, I2B, I2C, I2S,
     F2D, D2F,
     I2F, I2D, F2I, D2I,
@@ -269,6 +269,12 @@ public enum PTXArithmetic {
             switch (opcode) {
                 case INEG:
                     masm.neg_s32(asIntReg(dst), asIntReg(src));
+                    break;
+                case INOT:
+                    masm.not_s32(asIntReg(dst), asIntReg(src));
+                    break;
+                case LNOT:
+                    masm.not_s64(asLongReg(dst), asLongReg(src));
                     break;
                 case I2L:
                     masm.cvt_s64_s32(asLongReg(dst), asIntReg(src));

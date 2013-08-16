@@ -359,6 +359,23 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    @Override
+    public Variable emitNot(Value inputVal) {
+        AllocatableValue input = asAllocatable(inputVal);
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind()) {
+            case Int:
+                append(new Unary1Op(INOT, result, input));
+                break;
+            case Long:
+                append(new Unary1Op(LNOT, result, input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
+    }
+
     private Variable emitBinary(AMD64Arithmetic op, boolean commutative, Value a, Value b) {
         if (isConstant(b)) {
             return emitBinaryConst(op, commutative, asAllocatable(a), asConstant(b));

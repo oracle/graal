@@ -315,6 +315,22 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitNot(Value input) {
+        Variable result = newVariable(input.getKind());
+        switch (input.getKind()) {
+            case Int:
+                append(new Op1Stack(INOT, result, input));
+                break;
+            case Long:
+                append(new Op1Stack(LNOT, result, input));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
+    }
+
+    @Override
     public Variable emitAdd(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
