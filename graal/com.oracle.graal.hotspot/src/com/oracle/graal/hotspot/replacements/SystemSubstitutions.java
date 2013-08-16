@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
@@ -64,7 +65,7 @@ public class SystemSubstitutions {
 
         @Override
         protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            return param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
+            return AOTCompilation.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
         }
     }
 
