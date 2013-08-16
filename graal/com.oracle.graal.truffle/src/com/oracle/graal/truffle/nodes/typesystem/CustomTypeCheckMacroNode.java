@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
@@ -49,7 +50,7 @@ public class CustomTypeCheckMacroNode extends NeverPartOfCompilationNode impleme
             Object typeToken = customTypeArgument.asConstant().asObject();
             ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
-            return graph().unique(new CustomTypeCheckNode(conditionArgument, objectArgument, typeToken));
+            return graph().unique(new ConditionalNode(graph().unique(new CustomTypeCheckNode(conditionArgument, objectArgument, typeToken))));
         }
         return this;
     }

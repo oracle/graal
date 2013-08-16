@@ -26,14 +26,13 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class CustomTypeCheckNode extends FloatingNode implements Lowerable {
+public final class CustomTypeCheckNode extends LogicNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType {
 
     @Input private ValueNode condition;
     @Input private ValueNode object;
     private final Object customType;
 
     public CustomTypeCheckNode(ValueNode condition, ValueNode object, Object customType) {
-        super(condition.stamp());
         this.condition = condition;
         this.object = object;
         this.customType = customType;
@@ -53,8 +52,13 @@ public final class CustomTypeCheckNode extends FloatingNode implements Lowerable
 
     public void lower(LoweringTool tool, LoweringType loweringType) {
         if (loweringType == LoweringType.BEFORE_GUARDS) {
-            this.replaceAtUsages(condition);
+            this.replaceAtUsages(graph().unique(new IntegerEqualsNode(condition, ConstantNode.forInt(1, graph()))));
             this.safeDelete();
         }
+    }
+
+    @Override
+    public LogicNode canonical(CanonicalizerTool tool) {
+        return this;
     }
 }

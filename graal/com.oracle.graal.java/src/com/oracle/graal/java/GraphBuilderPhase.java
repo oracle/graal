@@ -812,7 +812,7 @@ public class GraphBuilderPhase extends Phase {
         if (type instanceof ResolvedJavaType) {
             ResolvedJavaType resolvedType = (ResolvedJavaType) type;
             InstanceOfNode instanceOfNode = new InstanceOfNode((ResolvedJavaType) type, object, getProfileForTypeCheck(resolvedType));
-            frameState.ipush(append(new ConditionalNode(currentGraph.unique(instanceOfNode), ConstantNode.forInt(1, currentGraph), ConstantNode.forInt(0, currentGraph))));
+            frameState.ipush(append(new ConditionalNode(currentGraph.unique(instanceOfNode))));
         } else {
             handleUnresolvedInstanceOf(type, object);
         }

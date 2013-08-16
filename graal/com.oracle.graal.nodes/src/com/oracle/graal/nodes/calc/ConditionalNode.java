@@ -42,6 +42,10 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
         return condition;
     }
 
+    public ConditionalNode(LogicNode condition) {
+        this(condition, ConstantNode.forInt(1, condition.graph()), ConstantNode.forInt(0, condition.graph()));
+    }
+
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
         super(trueValue.kind(), trueValue, falseValue);
         assert trueValue.kind() == falseValue.kind();
@@ -104,11 +108,11 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     }
 
     private ConditionalNode(Condition condition, ValueNode x, ValueNode y) {
-        this(createCompareNode(condition, x, y), ConstantNode.forInt(1, x.graph()), ConstantNode.forInt(0, x.graph()));
+        this(createCompareNode(condition, x, y));
     }
 
     private ConditionalNode(ValueNode type, ValueNode object) {
-        this(type.graph().add(new InstanceOfDynamicNode(type, object)), ConstantNode.forInt(1, type.graph()), ConstantNode.forInt(0, type.graph()));
+        this(type.graph().add(new InstanceOfDynamicNode(type, object)));
     }
 
     @NodeIntrinsic

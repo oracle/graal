@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class UnsafeCustomizationNode extends FloatingNode implements LIRLowerable {
+public final class UnsafeCustomizationNode extends FloatingNode implements LIRLowerable, com.oracle.graal.graph.Node.IterableNodeType {
 
     @Input private ValueNode receiver;
     private final Object customType;
