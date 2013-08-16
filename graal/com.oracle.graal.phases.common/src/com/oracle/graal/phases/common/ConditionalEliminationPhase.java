@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -547,6 +547,10 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
+                    if (replacementAnchor instanceof GuardNode) {
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor));
+                        graph.addBeforeFixed(ifNode, anchor);
+                    }
                     for (Node n : survivingSuccessor.usages().snapshot()) {
                         if (n instanceof GuardNode || n instanceof ProxyNode) {
                             // Keep wired to the begin node.
@@ -555,7 +559,6 @@ public class ConditionalEliminationPhase extends Phase {
                                 // Cannot simplify this IfNode as there is no anchor.
                                 return;
                             }
-
                             // Rewire to the replacement anchor.
                             n.replaceFirstInput(survivingSuccessor, replacementAnchor);
                         }
