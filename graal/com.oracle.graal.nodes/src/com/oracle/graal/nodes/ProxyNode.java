@@ -26,6 +26,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 /**
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
  * loop.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Proxy")
-public class ProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable, ValueProxy {
+public class ProxyNode extends FloatingNode implements Node.IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable, ValueProxy, GuardingNode {
 
     @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
     @Input private ValueNode value;
@@ -113,5 +114,9 @@ public class ProxyNode extends FloatingNode implements Node.IterableNodeType, Va
     @Override
     public ValueNode getOriginalValue() {
         return value;
+    }
+
+    public ValueNode asNode() {
+        return this;
     }
 }
