@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public final class CustomTypeCheckNode extends LogicNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType {
+public final class CustomTypeCheckNode extends LogicNode implements Lowerable, Virtualizable, com.oracle.graal.graph.Node.IterableNodeType {
 
     @Input private ValueNode condition;
     @Input private ValueNode object;
@@ -60,5 +60,16 @@ public final class CustomTypeCheckNode extends LogicNode implements Lowerable, c
     @Override
     public LogicNode canonical(CanonicalizerTool tool) {
         return this;
+    }
+
+    public void virtualize(VirtualizerTool tool) {
+        if (getObject() != null) {
+            State objectState = tool.getObjectState(getObject());
+            if (objectState != null && objectState.getState() == EscapeState.Virtual) {
+                // The object is escape analyzed => cut the connection.
+                this.updateUsages(this.object, null);
+                this.object = null;
+            }
+        }
     }
 }
