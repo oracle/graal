@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -489,15 +490,7 @@ public class ConditionalEliminationPhase extends Phase {
                     boolean nonNull = state.isNonNull(object);
                     GuardingNode replacementAnchor = null;
                     if (nonNull) {
-                        // Search for valid instanceof anchor.
-                        for (InstanceOfNode instanceOfNode : object.usages().filter(InstanceOfNode.class)) {
-                            if (instanceOfNode.type() == checkCast.type() && state.trueConditions.containsKey(instanceOfNode)) {
-                                ValueNode v = state.trueConditions.get(instanceOfNode);
-                                if (v instanceof GuardingNode) {
-                                    replacementAnchor = (GuardingNode) v;
-                                }
-                            }
-                        }
+                        replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
                     }
                     ValueAnchorNode anchor = null;
                     if (replacementAnchor == null) {
@@ -607,6 +600,35 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
             }
+        }
+
+        private GuardingNode searchAnchor(ValueNode value, ResolvedJavaType type) {
+            for (Node n : value.usages()) {
+                if (n instanceof InstanceOfNode) {
+                    InstanceOfNode instanceOfNode = (InstanceOfNode) n;
+                    if (instanceOfNode.type() == type && state.trueConditions.containsKey(instanceOfNode)) {
+                        ValueNode v = state.trueConditions.get(instanceOfNode);
+                        if (v instanceof GuardingNode) {
+                            return (GuardingNode) v;
+                        }
+                    }
+                }
+            }
+
+            for (Node n : value.usages()) {
+                if (n instanceof ValueProxy) {
+                    ValueProxy proxyNode = (ValueProxy) n;
+                    if (proxyNode.getOriginalValue() == value) {
+                        GuardingNode result = searchAnchor((ValueNode) n, type);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+
+                }
+            }
+
+            return null;
         }
     }
 }
