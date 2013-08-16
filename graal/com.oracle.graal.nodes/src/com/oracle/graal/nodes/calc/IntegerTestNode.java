@@ -68,7 +68,7 @@ public class IntegerTestNode extends LogicNode implements Canonicalizable, LIRLo
         if (x().stamp() instanceof IntegerStamp && y().stamp() instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) x().stamp();
             IntegerStamp yStamp = (IntegerStamp) y().stamp();
-            if ((xStamp.mask() & yStamp.mask()) == 0) {
+            if ((xStamp.upMask() & yStamp.upMask()) == 0) {
                 return LogicConstantNode.tautology(graph());
             }
         }

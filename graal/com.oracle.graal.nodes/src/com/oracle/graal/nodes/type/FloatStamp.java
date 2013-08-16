@@ -62,6 +62,10 @@ public class FloatStamp extends Stamp {
         return upperBound;
     }
 
+    public boolean isNonNaN() {
+        return nonNaN;
+    }
+
     public boolean isUnrestricted() {
         return lowerBound == Double.NEGATIVE_INFINITY && upperBound == Double.POSITIVE_INFINITY && !nonNaN;
     }

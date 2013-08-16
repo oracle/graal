@@ -68,7 +68,7 @@ public class IntegerDivNode extends FixedBinaryNode implements Canonicalizable, 
                 IntegerStamp stampX = (IntegerStamp) x().stamp();
                 int log2 = CodeUtil.log2(abs);
                 // no rounding if dividend is positive or if its low bits are always 0
-                if (stampX.canBeNegative() || (stampX.mask() & (abs - 1)) != 0) {
+                if (stampX.canBeNegative() || (stampX.upMask() & (abs - 1)) != 0) {
                     int bits;
                     if (kind().getStackKind() == Kind.Int) {
                         bits = 32;
