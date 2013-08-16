@@ -94,7 +94,7 @@ public class ConvertDeoptimizeToGuardPhase extends Phase {
                     // Rewire to the fixed guard.
                     if (survivingSuccessor instanceof LoopExitNode) {
                         if (proxyGuard == null) {
-                            proxyGuard = ProxyNode.forValue(guard, survivingSuccessor, graph);
+                            proxyGuard = ProxyNode.forGuard(guard, survivingSuccessor, graph);
                         }
                         n.replaceFirstInput(survivingSuccessor, proxyGuard);
                     } else {
