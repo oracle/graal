@@ -1137,9 +1137,12 @@ public class GraphBuilderPhase extends Phase {
         if (graphBuilderConfig.eagerResolving()) {
             returnType = returnType.resolve(targetMethod.getDeclaringClass());
         }
-        if (invokeKind != InvokeKind.Static && invokeKind != InvokeKind.Special) {
-            JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
-            args[0] = TypeProfileProxyNode.create(args[0], profile);
+        if (invokeKind != InvokeKind.Static) {
+            emitExplicitExceptions(args[0], null);
+            if (invokeKind != InvokeKind.Special) {
+                JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
+                args[0] = TypeProfileProxyNode.create(args[0], profile);
+            }
         }
         MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
         createInvokeNode(callTarget, resultType);
