@@ -77,12 +77,13 @@ public class MonitorSnippets implements Snippets {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean checkNull, @ConstantParameter boolean trace) {
+    public static void monitorenter(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
         verifyOop(object);
 
-        if (checkNull && object == null) {
+        if (object == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
+        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
 
         // Load the mark word - this includes a null-check on object
         final Word mark = loadWordFromObject(object, markOffset());
@@ -108,7 +109,7 @@ public class MonitorSnippets implements Snippets {
             } else {
                 // The bias pattern is present in the object's mark word. Need to check
                 // whether the bias owner and the epoch are both still current.
-                Word hub = loadHub(object);
+                Word hub = loadHubIntrinsic(object, getWordKind(), anchorNode);
                 final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                 final Word thread = thread();
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
@@ -253,10 +254,10 @@ public class MonitorSnippets implements Snippets {
      * Calls straight out to the monitorenter stub.
      */
     @Snippet
-    public static void monitorenterStub(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean checkNull, @ConstantParameter boolean trace) {
+    public static void monitorenterStub(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
         verifyOop(object);
         incCounter();
-        if (checkNull && object == null) {
+        if (object == null) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
         // BeginLockScope nodes do not read from object so a use of object
@@ -410,7 +411,6 @@ public class MonitorSnippets implements Snippets {
             }
             args.add("object", monitorenterNode.object());
             args.addConst("lockDepth", monitorenterNode.getLockDepth());
-            args.addConst("checkNull", !ObjectStamp.isObjectNonNull(monitorenterNode.object().stamp()));
             boolean tracingEnabledForMethod = stateAfter != null && (isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || tracingEnabledForMethod);
 
