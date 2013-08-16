@@ -696,6 +696,14 @@ public class GraphBuilderPhase extends Phase {
             probability = 0.5;
         }
 
+        if (!optimisticOpts.removeNeverExecutedCode()) {
+            if (probability == 0) {
+                probability = 0.0000001;
+            } else if (probability == 1) {
+                probability = 0.999999;
+            }
+        }
+
         // the mirroring and negation operations get the condition into canonical form
         boolean mirror = cond.canonicalMirror();
         boolean negate = cond.canonicalNegate();
