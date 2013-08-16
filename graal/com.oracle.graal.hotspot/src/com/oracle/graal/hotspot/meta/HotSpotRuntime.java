@@ -667,11 +667,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             assert loadHub.kind() == wordKind;
             ValueNode object = loadHub.object();
             GuardingNode guard = loadHub.getGuard();
-            // A hub read must not float outside its block otherwise
-            // it may float above an explicit null check on its object.
-            if (guard == null) {
-                guard = AbstractBeginNode.prevBegin(tool.lastFixedNode());
-            }
             FloatingReadNode hub = createReadHub(graph, wordKind, object, guard);
             graph.replaceFloating(loadHub, hub);
         } else if (n instanceof LoadMethodNode) {
