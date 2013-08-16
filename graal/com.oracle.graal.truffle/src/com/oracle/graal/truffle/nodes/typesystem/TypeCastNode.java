@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType, ValueProxy {
+public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType, ValueProxy, Virtualizable {
 
     @Input private ValueNode receiver;
     @Input private ValueNode object;
@@ -70,5 +70,13 @@ public final class TypeCastNode extends FixedWithNextNode implements Lowerable, 
 
     public ValueNode getOriginalValue() {
         return object;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithVirtual(state.getVirtualObject());
+        }
     }
 }
