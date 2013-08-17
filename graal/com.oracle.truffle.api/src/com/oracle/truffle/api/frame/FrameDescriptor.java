@@ -101,10 +101,6 @@ public final class FrameDescriptor implements Cloneable {
         return Collections.unmodifiableSet(identifierToSlotMap.keySet());
     }
 
-    /**
-     * (db): this method is used for creating a clone of the {@link FrameDescriptor} object ready
-     * for parallel execution.
-     */
     public FrameDescriptor copy() {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.typeConversion);
         for (int i = 0; i < this.getSlots().size(); i++) {

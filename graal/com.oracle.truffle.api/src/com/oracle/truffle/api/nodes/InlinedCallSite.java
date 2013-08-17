@@ -26,7 +26,17 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.*;
 
+/**
+ * Denotes a call node with an inlined call target. Allows for recursive call detection.
+ * 
+ * @see InlinableCallSite
+ */
 public interface InlinedCallSite {
 
+    /**
+     * Returns the call target that has been inlined at this call site.
+     * 
+     * @return the inlined call target.
+     */
     CallTarget getCallTarget();
 }
