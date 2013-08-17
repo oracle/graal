@@ -49,8 +49,8 @@ import com.oracle.graal.word.*;
 public class CheckCastDynamicSnippets implements Snippets {
 
     @Snippet
-    public static Object checkcastDynamic(Word hub, Object object, @ConstantParameter boolean checkNull) {
-        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
+    public static Object checkcastDynamic(Word hub, Object object) {
+        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
             BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
@@ -78,7 +78,6 @@ public class CheckCastDynamicSnippets implements Snippets {
             Arguments args = new Arguments(dynamic);
             args.add("hub", checkcast.hub());
             args.add("object", object);
-            args.addConst("checkNull", !ObjectStamp.isObjectNonNull(object.stamp()));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, args);
