@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.truffle.nodes.arithmetic;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
-interface IntegerExactArithmeticNode extends Lowerable {
+interface IntegerExactArithmeticNode extends Lowerable, Node.IterableNodeType {
 
     IntegerExactArithmeticSplitNode createSplit(AbstractBeginNode next, AbstractBeginNode deopt);
 }
