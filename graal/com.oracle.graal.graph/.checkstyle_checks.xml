@@ -5,7 +5,7 @@
     This configuration file was written by the eclipse-cs plugin configuration editor
 -->
 <!--
-    Checkstyle-Configuration: Maxine Checks
+    Checkstyle-Configuration: Checks
     Description: none
 -->
 <module name="Checker">
@@ -202,5 +202,10 @@
   <module name="RegexpSingleline">
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
+  </module>
+  <module name="SuppressionCommentFilter">
+    <property name="offCommentFormat" value="CheckStyle: stop line length check"/>
+    <property name="onCommentFormat" value="CheckStyle: resume line length check"/>
+    <property name="checkFormat" value="LineLength"/>
   </module>
 </module>

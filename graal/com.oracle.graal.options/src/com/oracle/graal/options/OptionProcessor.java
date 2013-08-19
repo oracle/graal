@@ -143,6 +143,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("    @Override");
             String desc = OptionDescriptor.class.getSimpleName();
             out.println("    public Iterator<" + desc + "> iterator() {");
+            out.println("        // CheckStyle: stop line length check");
             out.println("        List<" + desc + "> options = Arrays.asList(");
 
             boolean needPrivateFieldAccessor = false;
@@ -165,6 +166,7 @@ public class OptionProcessor extends AbstractProcessor {
                 i++;
             }
             out.println("        );");
+            out.println("        // CheckStyle: resume line length check");
             out.println("        return options.iterator();");
             out.println("    }");
             if (needPrivateFieldAccessor) {
