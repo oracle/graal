@@ -30,10 +30,6 @@ public final class BeginNode extends AbstractBeginNode {
         super(StampFactory.dependency());
     }
 
-    protected BeginNode(Stamp stamp) {
-        super(stamp);
-    }
-
     @NodeIntrinsic
-    public static native BeginNode anchor(@ConstantNodeParameter Stamp stamp);
+    public static native BeginNode anchor();
 }

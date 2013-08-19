@@ -363,11 +363,13 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Result executeActualCheckDeopt(Method method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
-        ProfilingInfo profile = runtime.lookupJavaMethod(method).getProfilingInfo();
+        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        ProfilingInfo profile = javaMethod.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
             deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
         }
         Result actual = executeActual(method, receiver, args);
+        profile = javaMethod.getProfilingInfo(); // profile can change after execution
         for (DeoptimizationReason reason : shouldNotDeopt) {
             Assert.assertEquals((int) deoptCounts.get(reason), profile.getDeoptimizationCount(reason));
         }

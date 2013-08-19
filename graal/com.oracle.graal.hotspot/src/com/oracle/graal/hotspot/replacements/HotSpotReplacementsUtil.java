@@ -495,7 +495,7 @@ public class HotSpotReplacementsUtil {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = LoadHubNode.class, setStampFromReturnType = true)
-    static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
+    public static Word loadHubIntrinsic(Object object, @ConstantNodeParameter Kind word, GuardingNode anchor) {
         return Word.unsigned(unsafeReadKlassPointer(object));
     }
 

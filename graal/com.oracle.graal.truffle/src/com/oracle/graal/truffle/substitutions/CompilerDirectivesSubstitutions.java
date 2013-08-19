@@ -65,7 +65,7 @@ public class CompilerDirectivesSubstitutions {
     public static native void bailout(String reason);
 
     @MacroSubstitution(macro = TypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz, Object customType);
+    public static native Object unsafeCast(Object value, Class clazz, Object receiver, Object customType);
 
     @MacroSubstitution(macro = CustomTypeCheckMacroNode.class, isStatic = true)
     public static native boolean customTypeCheck(boolean condition, Object value, Object customType);

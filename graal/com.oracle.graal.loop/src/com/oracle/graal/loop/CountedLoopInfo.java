@@ -126,6 +126,10 @@ public class CountedLoopInfo {
         return iv.direction();
     }
 
+    public InductionVariable getCounter() {
+        return iv;
+    }
+
     public GuardingNode getOverFlowGuard() {
         return loop.loopBegin().getOverflowGuard();
     }

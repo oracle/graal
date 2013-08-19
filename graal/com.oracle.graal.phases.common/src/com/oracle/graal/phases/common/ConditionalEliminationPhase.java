@@ -33,7 +33,8 @@ import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.java.MethodCallTargetNode.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -489,15 +490,7 @@ public class ConditionalEliminationPhase extends Phase {
                     boolean nonNull = state.isNonNull(object);
                     GuardingNode replacementAnchor = null;
                     if (nonNull) {
-                        // Search for valid instanceof anchor.
-                        for (InstanceOfNode instanceOfNode : object.usages().filter(InstanceOfNode.class)) {
-                            if (instanceOfNode.type() == checkCast.type() && state.trueConditions.containsKey(instanceOfNode)) {
-                                ValueNode v = state.trueConditions.get(instanceOfNode);
-                                if (v instanceof GuardingNode) {
-                                    replacementAnchor = (GuardingNode) v;
-                                }
-                            }
-                        }
+                        replacementAnchor = searchAnchor(GraphUtil.unproxify(object), type);
                     }
                     ValueAnchorNode anchor = null;
                     if (replacementAnchor == null) {
@@ -547,6 +540,10 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
                 if (replacement != null) {
+                    if (replacementAnchor instanceof GuardNode) {
+                        ValueAnchorNode anchor = graph.add(new ValueAnchorNode(replacementAnchor));
+                        graph.addBeforeFixed(ifNode, anchor);
+                    }
                     for (Node n : survivingSuccessor.usages().snapshot()) {
                         if (n instanceof GuardNode || n instanceof ProxyNode) {
                             // Keep wired to the begin node.
@@ -555,7 +552,6 @@ public class ConditionalEliminationPhase extends Phase {
                                 // Cannot simplify this IfNode as there is no anchor.
                                 return;
                             }
-
                             // Rewire to the replacement anchor.
                             n.replaceFirstInput(survivingSuccessor, replacementAnchor);
                         }
@@ -604,6 +600,35 @@ public class ConditionalEliminationPhase extends Phase {
                 }
 
             }
+        }
+
+        private GuardingNode searchAnchor(ValueNode value, ResolvedJavaType type) {
+            for (Node n : value.usages()) {
+                if (n instanceof InstanceOfNode) {
+                    InstanceOfNode instanceOfNode = (InstanceOfNode) n;
+                    if (instanceOfNode.type() == type && state.trueConditions.containsKey(instanceOfNode)) {
+                        ValueNode v = state.trueConditions.get(instanceOfNode);
+                        if (v instanceof GuardingNode) {
+                            return (GuardingNode) v;
+                        }
+                    }
+                }
+            }
+
+            for (Node n : value.usages()) {
+                if (n instanceof ValueProxy) {
+                    ValueProxy proxyNode = (ValueProxy) n;
+                    if (proxyNode.getOriginalValue() == value) {
+                        GuardingNode result = searchAnchor((ValueNode) n, type);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -78,6 +78,18 @@ public class LoopsData {
         return loops;
     }
 
+    public List<LoopEx> innerFirst() {
+        ArrayList<LoopEx> loops = new ArrayList<>(loops());
+        Collections.sort(loops, new Comparator<LoopEx>() {
+
+            @Override
+            public int compare(LoopEx o1, LoopEx o2) {
+                return o2.lirLoop().depth - o1.lirLoop().depth;
+            }
+        });
+        return loops;
+    }
+
     public Collection<LoopEx> countedLoops() {
         List<LoopEx> counted = new LinkedList<>();
         for (LoopEx loop : loops()) {

@@ -87,7 +87,8 @@ public interface ProfilingInfo {
     TriState getExceptionSeen(int bci);
 
     /**
-     * Returns information if null was ever seen for the given BCI.
+     * Returns information if null was ever seen for the given BCI. This information is collected
+     * for the aastore, checkcast and instanceof bytecodes.
      * 
      * @return {@link TriState#TRUE} if null was seen for the instruction, {@link TriState#FALSE} if
      *         null was NOT seen, and {@link TriState#UNKNOWN} if this information was not recorded.

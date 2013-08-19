@@ -22,28 +22,37 @@
  */
 package com.oracle.graal.truffle.nodes.typesystem;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public final class CustomTypeCheckNode extends LogicNode implements Lowerable, Virtualizable, com.oracle.graal.graph.Node.IterableNodeType {
+public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType, ValueProxy, Virtualizable {
 
-    @Input private ValueNode condition;
+    @Input private ValueNode receiver;
     @Input private ValueNode object;
     private final Object customType;
+    private final ResolvedJavaType castTarget;
 
-    public CustomTypeCheckNode(ValueNode condition, ValueNode object, Object customType) {
-        this.condition = condition;
+    public TypeCastNode(ValueNode object, ResolvedJavaType castTarget, ValueNode receiver, Object customType) {
+        super(StampFactory.declaredNonNull(castTarget));
+        this.receiver = receiver;
         this.object = object;
         this.customType = customType;
+        this.castTarget = castTarget;
     }
 
     public ValueNode getObject() {
         return object;
     }
 
-    public ValueNode getCondition() {
-        return condition;
+    public ValueNode getReceiver() {
+        return receiver;
+    }
+
+    public ResolvedJavaType getCastTarget() {
+        return castTarget;
     }
 
     public Object getCustomType() {
@@ -52,24 +61,22 @@ public final class CustomTypeCheckNode extends LogicNode implements Lowerable, V
 
     public void lower(LoweringTool tool, LoweringType loweringType) {
         if (loweringType == LoweringType.BEFORE_GUARDS) {
-            this.replaceAtUsages(graph().unique(new IntegerEqualsNode(condition, ConstantNode.forInt(1, graph()))));
-            this.safeDelete();
+            ValueAnchorNode valueAnchorNode = graph().add(new ValueAnchorNode());
+            UnsafeCastNode unsafeCast = graph().unique(new UnsafeCastNode(object, this.stamp(), (GuardingNode) valueAnchorNode));
+            this.replaceAtUsages(unsafeCast);
+            graph().replaceFixedWithFixed(this, valueAnchorNode);
         }
     }
 
-    @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
-        return this;
+    public ValueNode getOriginalValue() {
+        return object;
     }
 
+    @Override
     public void virtualize(VirtualizerTool tool) {
-        if (getObject() != null) {
-            State objectState = tool.getObjectState(getObject());
-            if (objectState != null && objectState.getState() == EscapeState.Virtual) {
-                // The object is escape analyzed => cut the connection.
-                this.updateUsages(this.object, null);
-                this.object = null;
-            }
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual) {
+            tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
 }

@@ -37,7 +37,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
@@ -49,17 +48,17 @@ import com.oracle.graal.word.*;
 public class CheckCastDynamicSnippets implements Snippets {
 
     @Snippet
-    public static Object checkcastDynamic(Word hub, Object object, @ConstantParameter boolean checkNull) {
-        if (checkNull && probability(NOT_FREQUENT_PROBABILITY, object == null)) {
+    public static Object checkcastDynamic(Word hub, Object object) {
+        if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
-            BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+            BeginNode anchorNode = BeginNode.anchor();
             Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
             if (!checkUnknownSubType(hub, objectHub)) {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
@@ -78,7 +77,6 @@ public class CheckCastDynamicSnippets implements Snippets {
             Arguments args = new Arguments(dynamic);
             args.add("hub", checkcast.hub());
             args.add("object", object);
-            args.addConst("checkNull", !ObjectStamp.isObjectNonNull(object.stamp()));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, args);
