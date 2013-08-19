@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.debug.internal;
 
+/**
+ * A name and index for a value managed in a thread local value map. All access to the value is made
+ * via a {@link DebugValue} instance.
+ */
 public abstract class DebugValue implements Comparable<DebugValue> {
 
     private final String name;
@@ -44,7 +48,7 @@ public abstract class DebugValue implements Comparable<DebugValue> {
 
     private void ensureInitialized() {
         if (index == -1) {
-            index = KeyRegistry.register(name, this);
+            index = KeyRegistry.register(this);
         }
     }
 
@@ -52,11 +56,17 @@ public abstract class DebugValue implements Comparable<DebugValue> {
         setCurrentValue(getCurrentValue() + value);
     }
 
+    /**
+     * Gets the globally unique index for the value represented by this object.
+     */
     public int getIndex() {
         ensureInitialized();
         return index;
     }
 
+    /**
+     * Gets the globally unique name for the value represented by this object.
+     */
     public String getName() {
         return name;
     }

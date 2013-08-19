@@ -24,20 +24,33 @@ package com.oracle.graal.debug.internal;
 
 import java.util.*;
 
+/**
+ * Registry for allocating a globally unique integer id to each {@link DebugValue}.
+ */
 public class KeyRegistry {
 
-    private static int keyCount;
     private static Map<String, Integer> keyMap = new HashMap<>();
     private static List<DebugValue> debugValues = new ArrayList<>();
 
-    public static synchronized int register(String name, DebugValue value) {
+    /**
+     * Ensures a given debug value is registered.
+     * 
+     * @return the globally unique id for {@code value}
+     */
+    public static synchronized int register(DebugValue value) {
+        String name = value.getName();
         if (!keyMap.containsKey(name)) {
-            keyMap.put(name, keyCount++);
+            keyMap.put(name, debugValues.size());
             debugValues.add(value);
         }
         return keyMap.get(name);
     }
 
+    /**
+     * Gets a immutable view of the registered debug values.
+     * 
+     * @return a list where {@code get(i).getIndex() == i}
+     */
     public static synchronized List<DebugValue> getDebugValues() {
         return Collections.unmodifiableList(debugValues);
     }
