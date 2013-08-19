@@ -31,7 +31,7 @@ import com.oracle.graal.test.*;
 import com.oracle.graal.jtt.*;
 
 @SuppressWarnings("unused")
-public class ConditionalEliminiation01 extends JTTTest {
+public class ConditionalElimination01 extends JTTTest {
 
     private static int x;
     private static Object o = new Object();

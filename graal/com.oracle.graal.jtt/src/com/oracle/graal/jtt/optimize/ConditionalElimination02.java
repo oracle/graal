@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.jtt.*;
 
 @SuppressWarnings("unused")
-public class ConditionalEliminiation02 extends JTTTest {
+public class ConditionalElimination02 extends JTTTest {
 
     private static Object o = null;
 
