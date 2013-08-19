@@ -52,13 +52,13 @@ public class CheckCastDynamicSnippets implements Snippets {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             isNull.inc();
         } else {
-            BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+            BeginNode anchorNode = BeginNode.anchor();
             Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
             if (!checkUnknownSubType(hub, objectHub)) {
                 DeoptimizeNode.deopt(InvalidateReprofile, ClassCastException);
             }
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         return unsafeCast(verifyOop(object), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 

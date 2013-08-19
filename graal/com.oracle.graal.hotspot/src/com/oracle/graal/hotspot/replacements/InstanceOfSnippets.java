@@ -89,7 +89,7 @@ public class InstanceOfSnippets implements Snippets {
             }
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
@@ -118,7 +118,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(LIKELY_PROBABILITY, objectHub.notEqual(exactHub))) {
             exactMiss.inc();
@@ -137,7 +137,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (probability(NOT_LIKELY_PROBABILITY, objectHub.readWord(superCheckOffset, LocationIdentity.FINAL_LOCATION).notEqual(hub))) {
             displayMiss.inc();
@@ -156,7 +156,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         // if we get an exact match: succeed immediately
         ExplodeLoopNode.explodeLoop();
@@ -183,7 +183,7 @@ public class InstanceOfSnippets implements Snippets {
             isNull.inc();
             return falseValue;
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         Word hub = loadWordFromObject(mirror, klassOffset());
         Word objectHub = loadHubIntrinsic(object, getWordKind(), anchorNode);
         if (!checkUnknownSubType(hub, objectHub)) {

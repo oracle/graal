@@ -87,7 +87,7 @@ public class NewObjectSnippets implements Snippets {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
@@ -121,7 +121,7 @@ public class NewObjectSnippets implements Snippets {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         }
-        BeginNode anchorNode = BeginNode.anchor(StampFactory.forNodeIntrinsic());
+        BeginNode anchorNode = BeginNode.anchor();
         return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
     }
 
