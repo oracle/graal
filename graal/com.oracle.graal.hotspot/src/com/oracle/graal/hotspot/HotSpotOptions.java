@@ -173,6 +173,48 @@ public class HotSpotOptions {
         return true;
     }
 
+    /**
+     * Wraps some given text to one or more lines of a given maximum width.
+     * 
+     * @param text text to wrap
+     * @param width maximum width of an output line, exception for words in {@code text} longer than
+     *            this value
+     * @return {@code text} broken into lines
+     */
+    private static List<String> wrap(String text, int width) {
+        List<String> lines = Collections.singletonList(text);
+        if (text.length() > width) {
+            String[] chunks = text.split("\\s+");
+            lines = new ArrayList<>();
+            StringBuilder line = new StringBuilder();
+            for (String chunk : chunks) {
+                if (line.length() + chunk.length() > width) {
+                    lines.add(line.toString());
+                    line.setLength(0);
+                }
+                if (line.length() != 0) {
+                    line.append(' ');
+                }
+                String[] embeddedLines = chunk.split("%n");
+                if (embeddedLines.length == 1) {
+                    line.append(chunk);
+                } else {
+                    for (int i = 0; i < embeddedLines.length; i++) {
+                        line.append(embeddedLines[i]);
+                        if (i < embeddedLines.length - 1) {
+                            lines.add(line.toString());
+                            line.setLength(0);
+                        }
+                    }
+                }
+            }
+            if (line.length() != 0) {
+                lines.add(line.toString());
+            }
+        }
+        return lines;
+    }
+
     private static void printFlags() {
         Logger.info("[Graal flags]");
         SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>(options);
@@ -180,7 +222,11 @@ public class HotSpotOptions {
             e.getKey();
             OptionDescriptor desc = e.getValue();
             Object value = desc.getOptionValue().getValue();
-            Logger.info(String.format("%9s %-40s = %-14s %s", desc.getType().getSimpleName(), e.getKey(), value, desc.getHelp()));
+            List<String> helpLines = wrap(desc.getHelp(), 70);
+            Logger.info(String.format("%9s %-40s = %-14s %s", desc.getType().getSimpleName(), e.getKey(), value, helpLines.get(0)));
+            for (int i = 1; i < helpLines.size(); i++) {
+                Logger.info(String.format("%67s %s", " ", helpLines.get(i)));
+            }
         }
 
         System.exit(0);
