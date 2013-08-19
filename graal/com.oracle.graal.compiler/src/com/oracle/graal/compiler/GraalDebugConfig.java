@@ -48,12 +48,12 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<String> Log = new OptionValue<>(null);
     @Option(help = "Filters debug scope output by method name/pattern")
     public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
-    @Option(help = "")
-    public static final OptionValue<Boolean> PerThreadDebugValues = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> SummarizeDebugValues = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> SummarizePerPhase = new OptionValue<>(false);
+    @Option(help = "How to print metric and timing values:%n" +
+                   "Name - aggregate by unqualified name%n" +
+                   "Thread - aggregate by qualified name and thread%n" +
+                   "Complete - aggregate by qualified name%n" +
+                   "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)")
+    public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Complete");
     @Option(help = "Send Graal IR to dump handlers on error")
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
     @Option(help = "Enable expensive assertions")
