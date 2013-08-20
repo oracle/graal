@@ -87,6 +87,15 @@ public class OptionProcessor extends AbstractProcessor {
             return;
         }
 
+        String help = annotation.help();
+        if (help.length() != 0) {
+            char firstChar = help.charAt(0);
+            if (!Character.isUpperCase(firstChar)) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "Option help text must start with upper case letter", element);
+                return;
+            }
+        }
+
         String optionName = annotation.name();
         if (optionName.equals("")) {
             optionName = fieldName;
@@ -118,7 +127,7 @@ public class OptionProcessor extends AbstractProcessor {
             enclosing = enclosing.getEnclosingElement();
         }
 
-        info.options.add(new OptionInfo(optionName, annotation.help(), optionType, declaringClass, field));
+        info.options.add(new OptionInfo(optionName, help, optionType, declaringClass, field));
     }
 
     private void createFiles(OptionsInfo info) {
