@@ -47,6 +47,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private File cfgFile;
     private JavaMethod curMethod;
     private List<String> curDecorators = Collections.emptyList();
+    private final boolean dumpFrontend;
+    private Object previousObject;
+
+    public CFGPrinterObserver(boolean dumpFrontend) {
+        this.dumpFrontend = dumpFrontend;
+    }
 
     @Override
     public void dump(Object object, String message) {
@@ -100,7 +106,15 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private static final long timestamp = System.currentTimeMillis();
     private static final AtomicInteger uniqueId = new AtomicInteger();
 
+    private static boolean isFrontendObject(Object object) {
+        return object instanceof Graph || object instanceof BciBlockMapping;
+    }
+
     public void dumpSandboxed(Object object, String message) {
+
+        if (!dumpFrontend && isFrontendObject(object)) {
+            return;
+        }
 
         if (cfgPrinter == null) {
             cfgFile = new File("compilations-" + timestamp + "_" + uniqueId.incrementAndGet() + ".cfg");
@@ -143,14 +157,17 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
 
         } else if (object instanceof LIR) {
-            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
+            // No need to print the HIR nodes again if this is not the first
+            // time dumping the same LIR since the HIR will not have changed.
+            boolean printNodes = previousObject != object;
+            cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), printNodes);
 
         } else if (object instanceof StructuredGraph) {
             if (cfgPrinter.cfg == null) {
                 StructuredGraph graph = (StructuredGraph) object;
                 cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
             }
-            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()));
+            cfgPrinter.printCFG(message, Arrays.asList(cfgPrinter.cfg.getBlocks()), true);
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
@@ -168,6 +185,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         cfgPrinter.lirGenerator = null;
         cfgPrinter.cfg = null;
         cfgPrinter.flush();
+
+        previousObject = object;
     }
 
     private static boolean isCompilationResultAndInstalledCode(Object object) {
