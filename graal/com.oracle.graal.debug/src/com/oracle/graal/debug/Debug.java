@@ -36,6 +36,10 @@ public class Debug {
         ENABLED = true;
     }
 
+    public static void disable() {
+        ENABLED = false;
+    }
+
     public static boolean isEnabled() {
         return ENABLED;
     }
@@ -158,12 +162,22 @@ public class Debug {
         }
     }
 
+    /**
+     * Prints an indented message to the current DebugLevel's logging stream if logging is enabled.
+     * 
+     * @param msg The format string of the log message
+     * @param args The arguments referenced by the log message string
+     * @see Indent#log
+     */
     public static void log(String msg, Object... args) {
-        if (ENABLED && DebugScope.getInstance().isLogEnabled()) {
+        if (ENABLED) {
             DebugScope.getInstance().log(msg, args);
         }
     }
 
+    /**
+     * The same as {@link #log}, but without line termination and without indentation.
+     */
     public static void printf(String msg, Object... args) {
         if (ENABLED && DebugScope.getInstance().isLogEnabled()) {
             DebugScope.getInstance().printf(msg, args);
@@ -174,6 +188,105 @@ public class Debug {
         if (ENABLED && DebugScope.getInstance().isDumpEnabled()) {
             DebugScope.getInstance().dump(object, msg, args);
         }
+    }
+
+    private static final class NoLogger implements Indent {
+
+        @Override
+        public void log(String msg, Object... args) {
+        }
+
+        @Override
+        public void setEnabled(boolean enabled) {
+        }
+
+        @Override
+        public Indent indent() {
+            return this;
+        }
+
+        @Override
+        public Indent logIndent(String msg, Object... args) {
+            return this;
+        }
+
+        @Override
+        public Indent outdent() {
+            return this;
+        }
+
+    }
+
+    private static final NoLogger noLoggerInstance = new NoLogger();
+
+    /**
+     * Creates a new indentation level (by adding some spaces) based on the last used Indent of the
+     * current DebugScope.
+     * 
+     * @return The new indentation level
+     * @see Indent#indent
+     */
+    public static Indent indent() {
+        if (ENABLED) {
+            DebugScope scope = DebugScope.getInstance();
+            return scope.pushIndentLogger();
+        }
+        return noLoggerInstance;
+    }
+
+    /**
+     * Creates a new indentation level based on the last used Indent of the current DebugScope and
+     * turns on/off logging.
+     * 
+     * @param enabled If true, logging is enabled, otherwise disabled
+     * @return The new indentation level
+     */
+    public static Indent indent(boolean enabled) {
+        if (ENABLED) {
+            Indent logger = DebugScope.getInstance().pushIndentLogger();
+            logger.setEnabled(enabled);
+            return logger;
+        }
+        return noLoggerInstance;
+    }
+
+    /**
+     * A convenience function which combines {@link #log} and {@link #indent()}.
+     * 
+     * @param msg The format string of the log message
+     * @param args The arguments referenced by the log message string
+     * @return The new indentation level
+     * @see Indent#logIndent
+     */
+    public static Indent logIndent(String msg, Object... args) {
+        if (ENABLED) {
+            DebugScope scope = DebugScope.getInstance();
+            scope.log(msg, args);
+            return scope.pushIndentLogger();
+        }
+        return noLoggerInstance;
+    }
+
+    /**
+     * A convenience function which combines {@link #log} and {@link #indent(boolean)}.
+     * 
+     * @param enabled If true, logging is enabled, otherwise disabled
+     * @param msg The format string of the log message
+     * @param args The arguments referenced by the log message string
+     * @return The new indentation level
+     */
+    public static Indent logIndent(boolean enabled, String msg, Object... args) {
+        if (ENABLED) {
+            DebugScope scope = DebugScope.getInstance();
+            boolean saveLogEnabled = scope.isLogEnabled();
+            scope.setLogEnabled(enabled);
+            scope.log(msg, args);
+            scope.setLogEnabled(saveLogEnabled);
+            Indent indent = scope.pushIndentLogger();
+            indent.setEnabled(enabled);
+            return indent;
+        }
+        return noLoggerInstance;
     }
 
     public static Iterable<Object> context() {
