@@ -103,7 +103,12 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
     }
 
     @NodeIntrinsic
-    public static native <T> T guardingNonNull(T object);
+    public static <T> T guardingNonNull(T object) {
+        if (object == null) {
+            throw new NullPointerException();
+        }
+        return object;
+    }
 
     @NodeIntrinsic
     public static native Object guardingPi(Object object, LogicNode condition, @ConstantNodeParameter boolean negateCondition, @ConstantNodeParameter DeoptimizationReason reason,
