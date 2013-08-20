@@ -53,7 +53,7 @@ public class HotSpotRuntimeStub extends HotSpotInstalledCode {
 
     @Override
     public String toString() {
-        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, codeBlob);
+        return String.format("InstalledRuntimeStub[stub=%s, codeBlob=0x%x]", stub, getCodeBlob());
     }
 
     public Object execute(Object arg1, Object arg2, Object arg3) throws InvalidInstalledCodeException {

@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.hotspot.meta;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
+
+import sun.misc.*;
 
 /**
  * Implementation of {@link InstalledCode} for HotSpot.
@@ -34,21 +36,69 @@ public abstract class HotSpotInstalledCode extends CompilerObject implements Ins
 
     private static final long serialVersionUID = 156632908220561612L;
 
-    long codeBlob;
-    long start;
+    /**
+     * Raw address of this code blob.
+     */
+    private long codeBlob;
 
+    /**
+     * Total size of the code blob.
+     */
+    private int size;
+
+    /**
+     * Start address of the code.
+     */
+    private long codeStart;
+
+    /**
+     * Size of the code.
+     */
+    private int codeSize;
+
+    /**
+     * @return the address of this code blob
+     */
     public long getCodeBlob() {
         return codeBlob;
+    }
+
+    /**
+     * @return the total size of this code blob
+     */
+    public int getSize() {
+        return size;
+    }
+
+    /**
+     * @returns a copy of this code blob if it is {@linkplain #isValid() valid}, null otherwise.
+     */
+    public byte[] getBlob() {
+        if (!isValid()) {
+            return null;
+        }
+        byte[] blob = new byte[size];
+        unsafe.copyMemory(null, codeBlob, blob, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
+        return blob;
     }
 
     @Override
     public abstract String toString();
 
     public long getStart() {
-        return start;
+        return codeStart;
+    }
+
+    public long getCodeSize() {
+        return codeSize;
     }
 
     public byte[] getCode() {
-        return graalRuntime().getCompilerToVM().getCode(codeBlob);
+        if (!isValid()) {
+            return null;
+        }
+        byte[] code = new byte[codeSize];
+        unsafe.copyMemory(null, codeStart, code, Unsafe.ARRAY_BYTE_BASE_OFFSET, codeSize);
+        return code;
     }
 }

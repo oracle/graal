@@ -82,7 +82,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public boolean isValid() {
-        return codeBlob != 0;
+        return getCodeBlob() != 0;
     }
 
     @Override
@@ -92,7 +92,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public String toString() {
-        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b]", method, codeBlob, isDefault);
+        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b]", method, getCodeBlob(), isDefault);
     }
 
     @Override
@@ -135,6 +135,6 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public long getStart() {
-        return isValid() ? start : 0;
+        return isValid() ? super.getStart() : 0;
     }
 }
