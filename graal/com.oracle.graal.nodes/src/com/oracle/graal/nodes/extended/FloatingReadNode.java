@@ -40,6 +40,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements Node.I
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE, false);
     }
 
+    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard) {
+        this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE, false);
+    }
+
     public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, guard, barrierType, compressible);
         this.lastLocationAccess = lastLocationAccess;

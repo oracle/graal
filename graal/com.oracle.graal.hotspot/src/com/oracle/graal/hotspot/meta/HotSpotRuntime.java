@@ -626,7 +626,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                      * when arrayClass is an object class, which might not be the case in other
                      * parts of the compiled method.
                      */
-                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, BeginNode.prevBegin(storeIndexed), StampFactory.forKind(wordKind())));
+                    FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind()), BeginNode.prevBegin(storeIndexed)));
                     CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
                     graph.addBeforeFixed(storeIndexed, checkcast);
                     value = checkcast;
