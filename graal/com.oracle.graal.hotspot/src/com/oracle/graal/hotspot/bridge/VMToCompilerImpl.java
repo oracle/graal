@@ -67,9 +67,6 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Option(help = "Print compilation queue activity periodically")
     private static final OptionValue<Boolean> PrintQueue = new OptionValue<>(false);
 
-    @Option(help = "")
-    public static final OptionValue<Integer> SlowQueueCutoff = new OptionValue<>(100000);
-
     @Option(help = "Time limit in milliseconds for bootstrap (-1 for no limit)")
     private static final OptionValue<Integer> TimedBootstrap = new OptionValue<>(-1);
 
