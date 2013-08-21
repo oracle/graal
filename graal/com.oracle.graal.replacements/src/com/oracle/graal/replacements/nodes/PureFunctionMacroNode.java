@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.spi.*;
 
 /**
  * This node class can be used to create {@link MacroNode}s for simple pure functions like
- * {@link Object#getClass()} or {@link System#identityHashCode(Object)}.
+ * {@link System#identityHashCode(Object)}.
  */
 public abstract class PureFunctionMacroNode extends MacroNode implements Canonicalizable {
 
