@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
@@ -303,6 +304,8 @@ public class SnippetTemplate {
         }
     }
 
+    private static final DebugTimer SnippetCreationAndSpecialization = Debug.timer("SnippetCreationAndSpecialization");
+
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
      */
@@ -343,14 +346,16 @@ public class SnippetTemplate {
         protected SnippetTemplate template(final Arguments args) {
             SnippetTemplate template = templates.get(args.cacheKey);
             if (template == null) {
-                template = Debug.scope("SnippetSpecialization", args.info.method, new Callable<SnippetTemplate>() {
+                try (TimerCloseable a = SnippetCreationAndSpecialization.start()) {
+                    template = Debug.scope("SnippetSpecialization", args.info.method, new Callable<SnippetTemplate>() {
 
-                    @Override
-                    public SnippetTemplate call() throws Exception {
-                        return new SnippetTemplate(runtime, replacements, target, args);
-                    }
-                });
-                templates.put(args.cacheKey, template);
+                        @Override
+                        public SnippetTemplate call() throws Exception {
+                            return new SnippetTemplate(runtime, replacements, target, args);
+                        }
+                    });
+                    templates.put(args.cacheKey, template);
+                }
             }
             return template;
         }
@@ -370,6 +375,9 @@ public class SnippetTemplate {
         }
         return false;
     }
+
+    private final DebugMetric instantiationCounter;
+    private final DebugTimer instantiationTimer;
 
     /**
      * Creates a snippet template.
@@ -538,6 +546,9 @@ public class SnippetTemplate {
         this.deoptNodes = curDeoptNodes;
         this.stampNodes = curStampNodes;
         this.returnNode = retNode;
+
+        this.instantiationCounter = Debug.metric("SnippetInstantiationCount[" + method.getName() + "]");
+        this.instantiationTimer = Debug.timer("SnippetInstantiationTime[" + method.getName() + "]");
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
@@ -729,79 +740,81 @@ public class SnippetTemplate {
      * @return the map of duplicated nodes (original -> duplicate)
      */
     public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedNode replacee, UsageReplacer replacer, Arguments args) {
+        try (TimerCloseable a = instantiationTimer.start()) {
+            instantiationCounter.increment();
+            // Inline the snippet nodes, replacing parameters with the given args in the process
+            String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
+            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+            StartNode entryPointNode = snippet.start();
+            FixedNode firstCFGNode = entryPointNode.next();
+            StructuredGraph replaceeGraph = replacee.graph();
+            IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
+            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+            Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
-        // Inline the snippet nodes, replacing parameters with the given args in the process
-        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
-        StartNode entryPointNode = snippet.start();
-        FixedNode firstCFGNode = entryPointNode.next();
-        StructuredGraph replaceeGraph = replacee.graph();
-        IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
-        Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
-        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
-
-        // Re-wire the control flow graph around the replacee
-        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
-        FixedNode next = null;
-        if (replacee instanceof FixedWithNextNode) {
-            FixedWithNextNode fwn = (FixedWithNextNode) replacee;
-            next = fwn.next();
-            fwn.setNext(null);
-        }
-
-        if (replacee instanceof StateSplit) {
-            for (StateSplit sideEffectNode : sideEffectNodes) {
-                assert ((StateSplit) replacee).hasSideEffect();
-                Node sideEffectDup = duplicates.get(sideEffectNode);
-                ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+            // Re-wire the control flow graph around the replacee
+            FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+            replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
+            FixedNode next = null;
+            if (replacee instanceof FixedWithNextNode) {
+                FixedWithNextNode fwn = (FixedWithNextNode) replacee;
+                next = fwn.next();
+                fwn.setNext(null);
             }
-        }
 
-        if (replacee instanceof DeoptimizingNode) {
-            DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
-            FrameState state = replaceeDeopt.getDeoptimizationState();
-            for (DeoptimizingNode deoptNode : deoptNodes) {
-                DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode);
-                assert replaceeDeopt.canDeoptimize() || !deoptDup.canDeoptimize();
-                deoptDup.setDeoptimizationState(state);
+            if (replacee instanceof StateSplit) {
+                for (StateSplit sideEffectNode : sideEffectNodes) {
+                    assert ((StateSplit) replacee).hasSideEffect();
+                    Node sideEffectDup = duplicates.get(sideEffectNode);
+                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+                }
             }
-        }
 
-        for (ValueNode stampNode : stampNodes) {
-            Node stampDup = duplicates.get(stampNode);
-            ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
-        }
-
-        // Replace all usages of the replacee with the value returned by the snippet
-        ValueNode returnValue = null;
-        if (returnNode != null) {
-            if (returnNode.result() instanceof LocalNode) {
-                returnValue = (ValueNode) replacements.get(returnNode.result());
-            } else {
-                returnValue = (ValueNode) duplicates.get(returnNode.result());
+            if (replacee instanceof DeoptimizingNode) {
+                DeoptimizingNode replaceeDeopt = (DeoptimizingNode) replacee;
+                FrameState state = replaceeDeopt.getDeoptimizationState();
+                for (DeoptimizingNode deoptNode : deoptNodes) {
+                    DeoptimizingNode deoptDup = (DeoptimizingNode) duplicates.get(deoptNode);
+                    assert replaceeDeopt.canDeoptimize() || !deoptDup.canDeoptimize();
+                    deoptDup.setDeoptimizationState(state);
+                }
             }
-            Node returnDuplicate = duplicates.get(returnNode);
-            if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
-                replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor());
-            } else {
-                assert returnValue != null || replacee.usages().isEmpty() : this + " " + returnValue + " " + returnNode + " " + replacee.usages();
-                replacer.replace(replacee, returnValue);
 
+            for (ValueNode stampNode : stampNodes) {
+                Node stampDup = duplicates.get(stampNode);
+                ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
             }
-            if (returnDuplicate.isAlive()) {
-                returnDuplicate.clearInputs();
-                returnDuplicate.replaceAndDelete(next);
+
+            // Replace all usages of the replacee with the value returned by the snippet
+            ValueNode returnValue = null;
+            if (returnNode != null) {
+                if (returnNode.result() instanceof LocalNode) {
+                    returnValue = (ValueNode) replacements.get(returnNode.result());
+                } else {
+                    returnValue = (ValueNode) duplicates.get(returnNode.result());
+                }
+                Node returnDuplicate = duplicates.get(returnNode);
+                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
+                    replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor());
+                } else {
+                    assert returnValue != null || replacee.usages().isEmpty() : this + " " + returnValue + " " + returnNode + " " + replacee.usages();
+                    replacer.replace(replacee, returnValue);
+
+                }
+                if (returnDuplicate.isAlive()) {
+                    returnDuplicate.clearInputs();
+                    returnDuplicate.replaceAndDelete(next);
+                }
             }
+
+            // Remove the replacee from its graph
+            replacee.clearInputs();
+            replacee.replaceAtUsages(null);
+            GraphUtil.killCFG(replacee);
+
+            Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+            return duplicates;
         }
-
-        // Remove the replacee from its graph
-        replacee.clearInputs();
-        replacee.replaceAtUsages(null);
-        GraphUtil.killCFG(replacee);
-
-        Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
-        return duplicates;
     }
 
     /**
@@ -820,54 +833,57 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     public void instantiate(MetaAccessProvider runtime, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
+        try (TimerCloseable a = instantiationTimer.start()) {
+            instantiationCounter.increment();
 
-        // Inline the snippet nodes, replacing parameters with the given args in the process
-        String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-        StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
-        StartNode entryPointNode = snippet.start();
-        FixedNode firstCFGNode = entryPointNode.next();
-        StructuredGraph replaceeGraph = replacee.graph();
-        IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
-        Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
-        Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
+            // Inline the snippet nodes, replacing parameters with the given args in the process
+            String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
+            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
+            StartNode entryPointNode = snippet.start();
+            FixedNode firstCFGNode = entryPointNode.next();
+            StructuredGraph replaceeGraph = replacee.graph();
+            IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
+            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+            Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
-        FixedWithNextNode lastFixedNode = tool.lastFixedNode();
-        assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph + " lastFixed=" + lastFixedNode;
-        FixedNode next = lastFixedNode.next();
-        lastFixedNode.setNext(null);
-        FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
-        replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
+            FixedWithNextNode lastFixedNode = tool.lastFixedNode();
+            assert lastFixedNode != null && lastFixedNode.isAlive() : replaceeGraph + " lastFixed=" + lastFixedNode;
+            FixedNode next = lastFixedNode.next();
+            lastFixedNode.setNext(null);
+            FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
+            replaceeGraph.addAfterFixed(lastFixedNode, firstCFGNodeDuplicate);
 
-        if (replacee instanceof StateSplit) {
-            for (StateSplit sideEffectNode : sideEffectNodes) {
-                assert ((StateSplit) replacee).hasSideEffect();
-                Node sideEffectDup = duplicates.get(sideEffectNode);
-                ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+            if (replacee instanceof StateSplit) {
+                for (StateSplit sideEffectNode : sideEffectNodes) {
+                    assert ((StateSplit) replacee).hasSideEffect();
+                    Node sideEffectDup = duplicates.get(sideEffectNode);
+                    ((StateSplit) sideEffectDup).setStateAfter(((StateSplit) replacee).stateAfter());
+                }
             }
-        }
-        for (ValueNode stampNode : stampNodes) {
-            Node stampDup = duplicates.get(stampNode);
-            ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
-        }
+            for (ValueNode stampNode : stampNodes) {
+                Node stampDup = duplicates.get(stampNode);
+                ((ValueNode) stampDup).setStamp(((ValueNode) replacee).stamp());
+            }
 
-        // Replace all usages of the replacee with the value returned by the snippet
-        assert returnNode != null : replaceeGraph;
-        ValueNode returnValue = null;
-        if (returnNode.result() instanceof LocalNode) {
-            returnValue = (ValueNode) replacements.get(returnNode.result());
-        } else {
-            returnValue = (ValueNode) duplicates.get(returnNode.result());
-        }
-        assert returnValue != null || replacee.usages().isEmpty();
-        replacer.replace(replacee, returnValue);
+            // Replace all usages of the replacee with the value returned by the snippet
+            assert returnNode != null : replaceeGraph;
+            ValueNode returnValue = null;
+            if (returnNode.result() instanceof LocalNode) {
+                returnValue = (ValueNode) replacements.get(returnNode.result());
+            } else {
+                returnValue = (ValueNode) duplicates.get(returnNode.result());
+            }
+            assert returnValue != null || replacee.usages().isEmpty();
+            replacer.replace(replacee, returnValue);
 
-        Node returnDuplicate = duplicates.get(returnNode);
-        if (returnDuplicate.isAlive()) {
-            returnDuplicate.clearInputs();
-            returnDuplicate.replaceAndDelete(next);
-        }
+            Node returnDuplicate = duplicates.get(returnNode);
+            if (returnDuplicate.isAlive()) {
+                returnDuplicate.clearInputs();
+                returnDuplicate.replaceAndDelete(next);
+            }
 
-        Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+            Debug.dump(replaceeGraph, "After lowering %s with %s", replacee, this);
+        }
     }
 
     @Override
