@@ -81,6 +81,14 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     }
 
     /**
+     * Compares two {@link StackTraceElement}s for equality, ignoring differences in
+     * {@linkplain StackTraceElement#getLineNumber() line number}.
+     */
+    private static boolean equalsIgnoringLine(StackTraceElement left, StackTraceElement right) {
+        return left.getClassName().equals(right.getClassName()) && left.getMethodName().equals(right.getMethodName()) && left.getFileName().equals(right.getFileName());
+    }
+
+    /**
      * If the compiler is configured for AOT mode, {@link #readConstantValue(Constant)} should be
      * only called for snippets or replacements.
      */
@@ -96,11 +104,14 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         } catch (NoSuchMethodException | SecurityException e) {
             throw new GraalInternalError(e);
         }
-        StackTraceElement makeGraphSTE = makeGraphMethod.asStackTraceElement(1);
-        StackTraceElement initSTE = initMethod.asStackTraceElement(30);
+        StackTraceElement makeGraphSTE = makeGraphMethod.asStackTraceElement(0);
+        StackTraceElement initSTE = initMethod.asStackTraceElement(0);
 
-        for (StackTraceElement element : new Exception().getStackTrace()) {
-            if (makeGraphSTE.equals(element) || initSTE.equals(element)) {
+        StackTraceElement[] stackTrace = new Exception().getStackTrace();
+        for (StackTraceElement element : stackTrace) {
+            // Ignoring line numbers should not weaken this check too much while at
+            // the same time making it more robust against source code changes
+            if (equalsIgnoringLine(makeGraphSTE, element) || equalsIgnoringLine(initSTE, element)) {
                 return true;
             }
         }
@@ -160,7 +171,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     @Override
     public Constant readConstantValue(Constant receiver) {
-        assert !AOTCompilation.getValue() || isCalledForSnippets();
+        assert !AOTCompilation.getValue() || isCalledForSnippets() : receiver;
 
         if (receiver == null) {
             assert Modifier.isStatic(flags);
