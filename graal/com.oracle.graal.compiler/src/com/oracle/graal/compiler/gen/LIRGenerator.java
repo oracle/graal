@@ -367,7 +367,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     protected void emitNode(ValueNode node) {
-        if (Debug.isLogEnabled() && node.stamp() == StampFactory.illegal()) {
+        if (Debug.isLogEnabled() && node.stamp() instanceof IllegalStamp) {
             Debug.log("This node has invalid type, we are emitting dead code(?): %s", node);
         }
         if (node instanceof LIRGenLowerable) {

@@ -103,7 +103,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             stamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp);
         }
         ValueNode condition;
-        if (stamp == StampFactory.illegal()) {
+        if (stamp instanceof IllegalStamp) {
             // This is a check cast that will always fail
             condition = LogicConstantNode.contradiction(graph());
             stamp = StampFactory.declared(type);

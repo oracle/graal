@@ -47,7 +47,7 @@ public abstract class Stamp {
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
     public boolean alwaysDistinct(Stamp other) {
-        return join(other) == StampFactory.illegal();
+        return join(other) instanceof IllegalStamp;
     }
 
     /**
@@ -71,7 +71,7 @@ public abstract class Stamp {
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
      * 
-     * @return the constant corresponding to the single value of this stamp and null if this tamp
+     * @return the constant corresponding to the single value of this stamp and null if this stamp
      *         can represent less or more than one value.
      */
     public Constant asConstant() {

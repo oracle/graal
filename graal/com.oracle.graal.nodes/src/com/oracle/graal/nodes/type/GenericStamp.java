@@ -62,7 +62,7 @@ public final class GenericStamp extends Stamp {
             return other.join(this);
         }
         if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         return this;
     }
@@ -73,7 +73,7 @@ public final class GenericStamp extends Stamp {
             return other.join(this);
         }
         if (!(other instanceof GenericStamp) || ((GenericStamp) other).type != type) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         return this;
     }

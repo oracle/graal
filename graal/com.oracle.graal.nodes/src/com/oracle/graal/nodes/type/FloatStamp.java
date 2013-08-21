@@ -106,7 +106,7 @@ public class FloatStamp extends Stamp {
             return otherStamp.meet(this);
         }
         if (!(otherStamp instanceof FloatStamp)) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
@@ -131,7 +131,7 @@ public class FloatStamp extends Stamp {
             return otherStamp.join(this);
         }
         if (!(otherStamp instanceof FloatStamp)) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert kind() == other.kind();
@@ -143,7 +143,7 @@ public class FloatStamp extends Stamp {
         } else if (joinLowerBound == other.lowerBound && joinUpperBound == other.upperBound && joinNonNaN == other.nonNaN) {
             return other;
         } else if (joinLowerBound > joinUpperBound) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(kind());
         } else {
             return new FloatStamp(kind(), joinLowerBound, joinUpperBound, joinNonNaN);
         }
