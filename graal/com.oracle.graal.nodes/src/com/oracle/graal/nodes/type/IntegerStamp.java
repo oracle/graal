@@ -159,7 +159,7 @@ public class IntegerStamp extends Stamp {
     private Stamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask) {
         assert kind() == other.kind();
         if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(kind());
         } else if (newLowerBound == lowerBound && newUpperBound == upperBound && newDownMask == downMask && newUpMask == upMask) {
             return this;
         } else if (newLowerBound == other.lowerBound && newUpperBound == other.upperBound && newDownMask == other.downMask && newUpMask == other.upMask) {
@@ -178,7 +178,7 @@ public class IntegerStamp extends Stamp {
             return otherStamp.meet(this);
         }
         if (!(otherStamp instanceof IntegerStamp)) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
         return createStamp(other, Math.max(upperBound, other.upperBound), Math.min(lowerBound, other.lowerBound), downMask & other.downMask, upMask | other.upMask);
@@ -193,7 +193,7 @@ public class IntegerStamp extends Stamp {
             return otherStamp.join(this);
         }
         if (!(otherStamp instanceof IntegerStamp)) {
-            return StampFactory.illegal();
+            return StampFactory.illegal(Kind.Illegal);
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
         return createStamp(other, Math.min(upperBound, other.upperBound), Math.max(lowerBound, other.lowerBound), downMask | other.downMask, upMask & other.upMask);

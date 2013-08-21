@@ -31,6 +31,17 @@ import com.oracle.graal.api.meta.*;
  */
 public class StampTool {
 
+    public static Kind joinKind(Kind a, Kind b) {
+        if (a == b) {
+            return a;
+        }
+        return Kind.Illegal;
+    }
+
+    public static Kind joinKind(Stamp a, Stamp b) {
+        return joinKind(a.kind(), b.kind());
+    }
+
     public static Stamp negate(Stamp stamp) {
         Kind kind = stamp.kind();
         if (stamp instanceof IntegerStamp) {
@@ -74,7 +85,7 @@ public class StampTool {
         if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
             return add((IntegerStamp) stamp1, (IntegerStamp) stamp2);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(joinKind(stamp1, stamp2));
     }
 
     private static long carryBits(long x, long y) {
@@ -89,7 +100,7 @@ public class StampTool {
         if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
             return div((IntegerStamp) stamp1, (IntegerStamp) stamp2);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(joinKind(stamp1, stamp2));
     }
 
     public static Stamp div(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -177,7 +188,7 @@ public class StampTool {
         if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
             return and((IntegerStamp) stamp1, (IntegerStamp) stamp2);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(joinKind(stamp1, stamp2));
     }
 
     public static Stamp and(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -189,7 +200,7 @@ public class StampTool {
         if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
             return or((IntegerStamp) stamp1, (IntegerStamp) stamp2);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(joinKind(stamp1, stamp2));
     }
 
     public static Stamp or(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -201,7 +212,7 @@ public class StampTool {
         if (stamp1 instanceof IntegerStamp && stamp2 instanceof IntegerStamp) {
             return xor((IntegerStamp) stamp1, (IntegerStamp) stamp2);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(joinKind(stamp1, stamp2));
     }
 
     public static Stamp xor(IntegerStamp stamp1, IntegerStamp stamp2) {
@@ -216,7 +227,7 @@ public class StampTool {
         if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
             return unsignedRightShift((IntegerStamp) value, (IntegerStamp) shift);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(value.kind());
     }
 
     public static Stamp unsignedRightShift(IntegerStamp value, IntegerStamp shift) {
@@ -245,7 +256,7 @@ public class StampTool {
         if (value instanceof IntegerStamp && shift instanceof IntegerStamp) {
             return leftShift((IntegerStamp) value, (IntegerStamp) shift);
         }
-        return StampFactory.illegal();
+        return StampFactory.illegal(value.kind());
     }
 
     public static Stamp leftShift(IntegerStamp value, IntegerStamp shift) {

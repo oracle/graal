@@ -33,6 +33,7 @@ public class StampFactory {
     // JaCoCo Exclude
 
     private static final Stamp[] stampCache = new Stamp[Kind.values().length];
+    private static final Stamp[] illegalStampCache = new Stamp[Kind.values().length];
     private static final Stamp objectStamp = new ObjectStamp(null, false, false, false);
     private static final Stamp objectNonNullStamp = new ObjectStamp(null, false, true, false);
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
@@ -62,6 +63,9 @@ public class StampFactory {
 
         setCache(Kind.Object, objectStamp);
         setCache(Kind.Void, voidStamp);
+        for (Kind k : Kind.values()) {
+            illegalStampCache[k.ordinal()] = new IllegalStamp(k);
+        }
     }
 
     public static Stamp forKind(Kind kind) {
@@ -113,8 +117,8 @@ public class StampFactory {
         return positiveInt;
     }
 
-    public static Stamp illegal() {
-        return IllegalStamp.ILLEGAL;
+    public static Stamp illegal(Kind kind) {
+        return illegalStampCache[kind.ordinal()];
     }
 
     public static IntegerStamp forInteger(Kind kind, long lowerBound, long upperBound, long downMask, long upMask) {

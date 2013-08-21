@@ -24,12 +24,14 @@ package com.oracle.graal.nodes.type;
 
 import com.oracle.graal.api.meta.*;
 
+/**
+ * This stamp represents the illegal type. Values with this type can not exist at run time.
+ * 
+ */
 public final class IllegalStamp extends Stamp {
 
-    public static final IllegalStamp ILLEGAL = new IllegalStamp();
-
-    private IllegalStamp() {
-        super(Kind.Illegal);
+    public IllegalStamp(Kind kind) {
+        super(kind);
     }
 
     @Override

@@ -55,7 +55,7 @@ public final class IsNullNode extends LogicNode implements Canonicalizable, LIRL
     @Override
     public boolean verify() {
         assertTrue(object() != null, "is null input must not be null");
-        assertTrue(object().stamp() instanceof ObjectStamp || object().stamp() == StampFactory.illegal(), "is null input must be an object");
+        assertTrue(object().stamp() instanceof ObjectStamp || object().stamp() instanceof IllegalStamp, "is null input must be an object");
         return super.verify();
     }
 

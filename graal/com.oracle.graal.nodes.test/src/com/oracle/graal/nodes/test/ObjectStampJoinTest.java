@@ -69,7 +69,7 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
     public void testJoin2() {
         Stamp aExact = StampFactory.exactNonNull(getType(A.class));
         Stamp b = StampFactory.declared(getType(B.class));
-        Assert.assertEquals(StampFactory.illegal(), join(aExact, b));
+        Assert.assertEquals(StampFactory.illegal(Kind.Object), join(aExact, b));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
     public void testJoin4() {
         Stamp dExactNonNull = StampFactory.exactNonNull(getType(D.class));
         Stamp c = StampFactory.declared(getType(C.class));
-        Assert.assertEquals(StampFactory.illegal(), join(c, dExactNonNull));
+        Assert.assertEquals(StampFactory.illegal(Kind.Object), join(c, dExactNonNull));
     }
 
     @Test
@@ -106,7 +106,7 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
     public void testJoinInterface0() {
         Stamp a = StampFactory.declared(getType(A.class));
         Stamp b = StampFactory.declared(getType(I.class));
-        Assert.assertNotSame(StampFactory.illegal(), join(a, b));
+        Assert.assertNotSame(StampFactory.illegal(Kind.Object), join(a, b));
     }
 
     @Test
@@ -123,7 +123,7 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
         Stamp bExact = StampFactory.exactNonNull(getType(B.class));
         Stamp i = StampFactory.declared(getType(I.class));
         Stamp join = join(i, bExact);
-        Assert.assertEquals(StampFactory.illegal(), join);
+        Assert.assertEquals(StampFactory.illegal(Kind.Object), join);
     }
 
     private static Stamp join(Stamp a, Stamp b) {

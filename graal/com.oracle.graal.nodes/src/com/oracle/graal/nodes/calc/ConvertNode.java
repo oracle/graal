@@ -207,8 +207,8 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
             if (stamp instanceof FloatStamp) {
                 return false;
             }
-            assert stamp == StampFactory.illegal();
-            return updateStamp(StampFactory.illegal());
+            assert stamp instanceof IllegalStamp;
+            return updateStamp(stamp);
         }
         Stamp newStamp;
         IntegerStamp integerStamp = (IntegerStamp) stamp;

@@ -47,7 +47,7 @@ public abstract class Stamp {
     public abstract ResolvedJavaType javaType(MetaAccessProvider metaAccess);
 
     public boolean alwaysDistinct(Stamp other) {
-        return join(other) == StampFactory.illegal();
+        return join(other) instanceof IllegalStamp;
     }
 
     /**
