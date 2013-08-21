@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.type.*;
 
-public class StampTest extends GraalCompilerTest {
+public class ObjectStampJoinTest extends GraalCompilerTest {
 
     private static class A {
 
