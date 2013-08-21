@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
@@ -172,6 +173,9 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         int fixedCount = 0;
         while (fixed instanceof FixedWithNextNode) {
             fixed = ((FixedWithNextNode) fixed).next();
+            if (fixed instanceof CommitAllocationNode) {
+                return false;
+            }
             fixedCount++;
         }
         if (fixedCount > 1) {
