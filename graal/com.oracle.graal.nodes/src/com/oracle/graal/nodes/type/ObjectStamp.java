@@ -188,9 +188,9 @@ public class ObjectStamp extends Stamp {
                     joinExactType = other.exactType;
                 } else {
                     joinType = null;
-                    if (joinExactType || (!type.isInterface() && !other.type.isInterface())) {
-                        joinAlwaysNull = true;
-                    }
+                }
+                if (joinExactType || (!type.isInterface() && !other.type.isInterface())) {
+                    joinAlwaysNull = true;
                 }
             }
         }
@@ -198,8 +198,6 @@ public class ObjectStamp extends Stamp {
             if (joinNonNull) {
                 return StampFactory.illegal();
             }
-            joinExactType = false;
-            joinType = null;
         } else if (joinExactType && Modifier.isAbstract(joinType.getModifiers()) && !joinType.isArray()) {
             return StampFactory.illegal();
         }
