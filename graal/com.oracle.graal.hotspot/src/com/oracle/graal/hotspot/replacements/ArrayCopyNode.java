@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -105,7 +106,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableN
         } else {
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
 
-            if (getLength().isConstant()) {
+            if (getLength().isConstant() && getLength().asConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue()) {
                 snippetGraph = snippetGraph.copy();
                 unrollFixedLengthLoop(snippetGraph, getLength().asConstant().asInt(), tool);
             }
