@@ -37,6 +37,7 @@ public class ObjectStamp extends Stamp {
 
     public ObjectStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
         super(Kind.Object);
+        assert !exactType || (type != null && (!Modifier.isAbstract(type.getModifiers()) || type.isArray()));
         this.type = type;
         this.exactType = exactType;
         this.nonNull = nonNull;
@@ -127,12 +128,12 @@ public class ObjectStamp extends Stamp {
      * the {@code to} stamp. While this is very similar to a {@link #join} operation, in the case
      * where both types are not obviously related, the cast operation will prefer the type of the
      * {@code to} stamp. This is necessary as long as ObjectStamps are not able to accurately
-     * represent union types.
+     * represent intersection types.
      * 
      * For example when joining the {@link RandomAccess} type with the {@link AbstractList} type,
-     * without union types, this would result in the most generic type ({@link Object}). For this
-     * reason, in some cases a {@code castTo} operation is preferable in order to keep at least the
-     * {@link AbstractList} type.
+     * without intersection types, this would result in the most generic type ({@link Object} ). For
+     * this reason, in some cases a {@code castTo} operation is preferable in order to keep at least
+     * the {@link AbstractList} type.
      * 
      * @param to the stamp this stamp should be casted to
      * @return This stamp casted to the {@code to} stamp
@@ -155,17 +156,11 @@ public class ObjectStamp extends Stamp {
         ResolvedJavaType joinType;
         boolean joinAlwaysNull = alwaysNull || other.alwaysNull;
         boolean joinNonNull = nonNull || other.nonNull;
-        if (joinAlwaysNull && joinNonNull) {
-            return StampFactory.illegal(Kind.Object);
-        }
         boolean joinExactType = exactType || other.exactType;
         if (type == other.type) {
             joinType = type;
         } else if (type == null && other.type == null) {
             joinType = null;
-            if (joinExactType) {
-                return StampFactory.illegal(Kind.Object);
-            }
         } else if (type == null) {
             joinType = other.type;
         } else if (other.type == null) {
@@ -195,9 +190,14 @@ public class ObjectStamp extends Stamp {
             }
         }
         if (joinAlwaysNull) {
-            if (joinNonNull) {
-                return StampFactory.illegal(Kind.Object);
-            }
+            joinType = null;
+            joinExactType = false;
+        }
+        if (joinExactType && joinType == null) {
+            return StampFactory.illegal(Kind.Object);
+        }
+        if (joinAlwaysNull && joinNonNull) {
+            return StampFactory.illegal(Kind.Object);
         } else if (joinExactType && Modifier.isAbstract(joinType.getModifiers()) && !joinType.isArray()) {
             return StampFactory.illegal(Kind.Object);
         }
