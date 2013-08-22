@@ -38,6 +38,18 @@ import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
+/**
+ * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
+ * {@link DeoptimizeNode DeoptimizeNodes}.
+ * 
+ * This allow to enter a phase of the compiler where all node that may cause deoptimization are
+ * fixed.
+ * 
+ * It first makes a schedule in order to know where the control flow should be placed. Then, for
+ * each block, it applies two passes. The first one tries to replace null-check guards with implicit
+ * null checks performed by access to the objects that need to be null checked. The second phase
+ * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
+ */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {

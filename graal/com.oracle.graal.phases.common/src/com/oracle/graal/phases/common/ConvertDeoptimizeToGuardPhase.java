@@ -30,6 +30,15 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 
+/**
+ * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
+ * {@link ControlSplitNode ControlSplitNodes} with {@link FixedGuardNode FixedGuardNodes}.
+ * 
+ * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
+ * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
+ * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
+ * 
+ */
 public class ConvertDeoptimizeToGuardPhase extends Phase {
 
     private static AbstractBeginNode findBeginNode(Node startNode) {

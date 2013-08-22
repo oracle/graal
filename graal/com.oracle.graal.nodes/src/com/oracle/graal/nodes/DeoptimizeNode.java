@@ -28,6 +28,14 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
+/**
+ * This node represents an unconditional explicit request for immediate deoptimization.
+ * 
+ * After this node, execution will continue using a fallback execution engine (such as an
+ * interpreter) at the position described by the {@link #getDeoptimizationState() deoptimization
+ * state}.
+ * 
+ */
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
 public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNodeType, Lowerable, LIRLowerable, DeoptimizingNode {
 
