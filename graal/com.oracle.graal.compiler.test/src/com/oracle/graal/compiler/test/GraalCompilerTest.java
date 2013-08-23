@@ -354,11 +354,11 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (runtime == null) {
             return;
         }
-        test(method, expect, receiver, args);
+        testAgainstExpected(method, expect, receiver, args);
     }
 
-    protected void test(Method method, Result expect, Object receiver, Object... args) {
-        test(method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
+    protected void testAgainstExpected(Method method, Result expect, Object receiver, Object... args) {
+        testAgainstExpected(method, expect, Collections.<DeoptimizationReason> emptySet(), receiver, args);
     }
 
     protected Result executeActualCheckDeopt(Method method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
@@ -390,7 +390,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    protected void test(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
+    protected void testAgainstExpected(Method method, Result expect, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Result actual = executeActualCheckDeopt(method, shouldNotDeopt, receiver, args);
         assertEquals(expect, actual);
     }

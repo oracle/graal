@@ -103,10 +103,10 @@ public class JTTTest extends GraalCompilerTest {
 
         Result expect = executeExpected(method, receiver, args);
 
-        test(method, expect, shouldNotDeopt, receiver, args);
+        testAgainstExpected(method, expect, shouldNotDeopt, receiver, args);
         if (args.length > 0) {
             this.argsToBind = args;
-            test(method, expect, shouldNotDeopt, receiver, args);
+            testAgainstExpected(method, expect, shouldNotDeopt, receiver, args);
             this.argsToBind = null;
         }
     }
