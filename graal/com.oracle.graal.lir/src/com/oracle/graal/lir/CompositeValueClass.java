@@ -26,10 +26,18 @@ import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.lir.CompositeValue.Component;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 
+/**
+ * Lazily associated metadata for every {@link CompositeValue} type. The metadata includes:
+ * <ul>
+ * <li>The offsets of fields annotated with {@link Component} as well as methods for iterating over
+ * such fields.</li>
+ * </ul>
+ */
 public class CompositeValueClass extends LIRIntrospection {
 
     public static final CompositeValueClass get(Class<? extends CompositeValue> c) {

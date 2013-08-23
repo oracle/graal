@@ -32,7 +32,7 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 
-public class AMD64AddressValue extends CompositeValue {
+public final class AMD64AddressValue extends CompositeValue {
 
     private static final long serialVersionUID = -4444600052487578694L;
 
