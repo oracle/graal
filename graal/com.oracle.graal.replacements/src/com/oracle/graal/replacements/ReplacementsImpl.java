@@ -61,7 +61,7 @@ public class ReplacementsImpl implements Replacements {
     // These data structures are all fully initialized during single-threaded
     // compiler startup and so do not need to be concurrent.
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
-    private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registerMacroSubstitutions;
+    private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registeredMacroSubstitutions;
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
@@ -71,7 +71,7 @@ public class ReplacementsImpl implements Replacements {
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
         this.registeredMethodSubstitutions = new HashMap<>();
-        this.registerMacroSubstitutions = new HashMap<>();
+        this.registeredMacroSubstitutions = new HashMap<>();
         this.forcedSubstitutions = new HashSet<>();
         this.snippetTemplateCache = new HashMap<>();
     }
@@ -103,7 +103,7 @@ public class ReplacementsImpl implements Replacements {
     }
 
     public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
-        return registerMacroSubstitutions.get(method);
+        return registeredMacroSubstitutions.get(method);
     }
 
     public Assumptions getAssumptions() {
@@ -192,7 +192,7 @@ public class ReplacementsImpl implements Replacements {
         } else {
             originalJavaMethod = runtime.lookupJavaConstructor((Constructor) originalMethod);
         }
-        registerMacroSubstitutions.put(originalJavaMethod, macro);
+        registeredMacroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
     }
 
@@ -502,7 +502,7 @@ public class ReplacementsImpl implements Replacements {
     public Collection<ResolvedJavaMethod> getAllReplacements() {
         HashSet<ResolvedJavaMethod> result = new HashSet<>();
         result.addAll(registeredMethodSubstitutions.keySet());
-        result.addAll(registerMacroSubstitutions.keySet());
+        result.addAll(registeredMacroSubstitutions.keySet());
         return result;
     }
 
