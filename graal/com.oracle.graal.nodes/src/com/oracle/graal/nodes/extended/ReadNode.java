@@ -116,7 +116,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
                         ResolvedJavaType declaringClass = field.getDeclaringClass();
                         ObjectStamp piValueStamp = (ObjectStamp) parent.object().stamp();
                         ResolvedJavaType piValueType = ObjectStamp.typeOrNull(piValueStamp);
-                        if (piValueType != null && declaringClass.isAssignableFrom(piValueType) && declaringClass != receiverType) {
+                        if (piValueType != null && declaringClass.isAssignableFrom(piValueType)) {
                             if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
                                 replaceFirstInput(parent, parent.object());
                                 return true;
