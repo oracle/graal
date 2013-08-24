@@ -43,7 +43,4 @@ public abstract class LogicNode extends FloatingNode {
             ((Negatable) n).negate(this);
         }
     }
-
-    // forces all subclasses to canonicalize to BooleanNode instances
-    public abstract LogicNode canonical(CanonicalizerTool tool);
 }

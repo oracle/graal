@@ -57,11 +57,6 @@ public final class CustomTypeCheckNode extends LogicNode implements Lowerable, V
         }
     }
 
-    @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
-        return this;
-    }
-
     public void virtualize(VirtualizerTool tool) {
         if (getObject() != null) {
             State objectState = tool.getObjectState(getObject());

@@ -68,11 +68,6 @@ public class LogicConstantNode extends LogicNode implements LIRLowerable {
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
-        throw new GraalInternalError("shouldn't call canonical on LogicConstantNode");
-    }
-
-    @Override
     public void generate(LIRGeneratorTool generator) {
         // nothing to do
     }
