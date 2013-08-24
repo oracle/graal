@@ -92,6 +92,13 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
                 return falseValue();
             }
         }
+        if (condition instanceof CompareNode && ((CompareNode) condition).condition() == Condition.EQ) {
+            // optimize the pattern (x == y) ? x : y
+            CompareNode compare = (CompareNode) condition;
+            if ((compare.x() == trueValue() && compare.y() == falseValue()) || (compare.x() == falseValue() && compare.y() == trueValue())) {
+                return falseValue();
+            }
+        }
         if (trueValue() == falseValue()) {
             return trueValue();
         }
