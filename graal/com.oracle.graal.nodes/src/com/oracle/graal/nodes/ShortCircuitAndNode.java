@@ -35,6 +35,11 @@ public class ShortCircuitAndNode extends ShortCircuitBooleanNode implements Cano
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool) {
+        ShortCircuitBooleanNode ret = canonicalizeNegation();
+        if (ret != null) {
+            return ret;
+        }
+
         LogicNode x = getX();
         LogicNode y = getY();
         if (x == y) {
@@ -47,8 +52,7 @@ public class ShortCircuitAndNode extends ShortCircuitBooleanNode implements Cano
             if (isXNegated()) {
                 if (isYNegated()) {
                     // !a && !a = !a
-                    negateUsages();
-                    return x;
+                    return graph().unique(new LogicNegationNode(x));
                 } else {
                     // !a && a = false
                     return LogicConstantNode.contradiction(graph());
@@ -66,9 +70,10 @@ public class ShortCircuitAndNode extends ShortCircuitBooleanNode implements Cano
         if (x instanceof LogicConstantNode) {
             if (((LogicConstantNode) x).getValue() ^ isXNegated()) {
                 if (isYNegated()) {
-                    negateUsages();
+                    return graph().unique(new LogicNegationNode(y));
+                } else {
+                    return y;
                 }
-                return y;
             } else {
                 return LogicConstantNode.contradiction(graph());
             }
@@ -76,13 +81,19 @@ public class ShortCircuitAndNode extends ShortCircuitBooleanNode implements Cano
         if (y instanceof LogicConstantNode) {
             if (((LogicConstantNode) y).getValue() ^ isYNegated()) {
                 if (isXNegated()) {
-                    negateUsages();
+                    return graph().unique(new LogicNegationNode(x));
+                } else {
+                    return x;
                 }
-                return x;
             } else {
                 return LogicConstantNode.contradiction(graph());
             }
         }
         return this;
+    }
+
+    @Override
+    protected ShortCircuitBooleanNode createCopy(LogicNode xCond, boolean xNeg, LogicNode yCond, boolean yNeg, double probability) {
+        return new ShortCircuitAndNode(xCond, xNeg, yCond, yNeg, probability);
     }
 }

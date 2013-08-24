@@ -23,12 +23,11 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * Base class for the short-circuit boolean operators.
  */
-public abstract class ShortCircuitBooleanNode extends LogicNode implements Negatable, Node.IterableNodeType {
+public abstract class ShortCircuitBooleanNode extends LogicNode implements Node.IterableNodeType {
 
     @Input private LogicNode x;
     @Input private LogicNode y;
@@ -68,14 +67,27 @@ public abstract class ShortCircuitBooleanNode extends LogicNode implements Negat
         return shortCircuitProbability;
     }
 
-    @Override
-    public Negatable negate(LogicNode condition) {
-        if (condition == x) {
-            xNegated = !xNegated;
+    protected abstract ShortCircuitBooleanNode createCopy(LogicNode xCond, boolean xNeg, LogicNode yCond, boolean yNeg, double probability);
+
+    protected ShortCircuitBooleanNode canonicalizeNegation() {
+        LogicNode xCond = x;
+        boolean xNeg = xNegated;
+        while (xCond instanceof LogicNegationNode) {
+            xCond = ((LogicNegationNode) xCond).getInput();
+            xNeg = !xNeg;
         }
-        if (condition == y) {
-            yNegated = !yNegated;
+
+        LogicNode yCond = y;
+        boolean yNeg = yNegated;
+        while (yCond instanceof LogicNegationNode) {
+            yCond = ((LogicNegationNode) yCond).getInput();
+            yNeg = !yNeg;
         }
-        return this;
+
+        if (xCond != x || yCond != y) {
+            return graph().unique(createCopy(xCond, xNeg, yCond, yNeg, shortCircuitProbability));
+        } else {
+            return null;
+        }
     }
 }

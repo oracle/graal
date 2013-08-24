@@ -35,6 +35,11 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool) {
+        ShortCircuitBooleanNode ret = canonicalizeNegation();
+        if (ret != null) {
+            return ret;
+        }
+
         LogicNode x = getX();
         LogicNode y = getY();
         if (x == y) {
@@ -47,8 +52,7 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
             if (isXNegated()) {
                 if (isYNegated()) {
                     // !a || !a = !a
-                    negateUsages();
-                    return x;
+                    return graph().unique(new LogicNegationNode(x));
                 } else {
                     // !a || a = true
                     return LogicConstantNode.tautology(graph());
@@ -68,9 +72,10 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
                 return LogicConstantNode.tautology(graph());
             } else {
                 if (isYNegated()) {
-                    negateUsages();
+                    return graph().unique(new LogicNegationNode(y));
+                } else {
+                    return y;
                 }
-                return y;
             }
         }
         if (y instanceof LogicConstantNode) {
@@ -78,12 +83,17 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
                 return LogicConstantNode.tautology(graph());
             } else {
                 if (isXNegated()) {
-                    negateUsages();
+                    return graph().unique(new LogicNegationNode(x));
+                } else {
+                    return x;
                 }
-                return x;
             }
         }
         return this;
     }
 
+    @Override
+    protected ShortCircuitBooleanNode createCopy(LogicNode xCond, boolean xNeg, LogicNode yCond, boolean yNeg, double probability) {
+        return new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, probability);
+    }
 }

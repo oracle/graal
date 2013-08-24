@@ -22,25 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class LogicNode extends FloatingNode {
 
     public LogicNode() {
         super(StampFactory.condition());
-    }
-
-    /**
-     * Tells all usages of this node to negate their effect. For example, IfNodes should switch
-     * their true and false successors.
-     */
-    public void negateUsages() {
-        for (Node n : usages().snapshot()) {
-            assert n instanceof Negatable;
-            ((Negatable) n).negate(this);
-        }
     }
 }

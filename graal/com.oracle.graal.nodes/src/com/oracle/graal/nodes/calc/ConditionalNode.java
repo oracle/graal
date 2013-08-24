@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code ConditionalNode} class represents a comparison that yields one of two values. Note
  * that these nodes are not built directly from the bytecode but are introduced by canonicalization.
  */
-public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable, Negatable {
+public final class ConditionalNode extends BinaryNode implements Canonicalizable, LIRLowerable {
 
     @Input private LogicNode condition;
 
@@ -67,6 +67,11 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
+        if (condition instanceof LogicNegationNode) {
+            LogicNegationNode negated = (LogicNegationNode) condition;
+            return graph().unique(new ConditionalNode(negated.getInput(), falseValue(), trueValue()));
+        }
+
         // this optimizes the case where a value that can only be 0 or 1 is materialized to 0 or 1
         if (x().isConstant() && y().isConstant() && condition instanceof IntegerEqualsNode) {
             IntegerEqualsNode equals = (IntegerEqualsNode) condition;
@@ -97,14 +102,6 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     @Override
     public void generate(LIRGeneratorTool generator) {
         generator.emitConditional(this);
-    }
-
-    @Override
-    public Negatable negate(LogicNode cond) {
-        assert condition() == cond;
-        ConditionalNode replacement = graph().unique(new ConditionalNode(condition, falseValue(), trueValue()));
-        graph().replaceFloating(this, replacement);
-        return replacement;
     }
 
     private ConditionalNode(Condition condition, ValueNode x, ValueNode y) {

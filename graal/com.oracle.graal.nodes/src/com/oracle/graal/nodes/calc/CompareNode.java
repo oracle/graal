@@ -92,8 +92,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
                     return conditionalNode.condition();
                 } else {
                     assert falseResult == true;
-                    negateUsages();
-                    return conditionalNode.condition();
+                    return graph().unique(new LogicNegationNode(conditionalNode.condition()));
 
                 }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
- * This interface marks a node as being able to negate its effect, this is intended for nodes that
- * depend on a BooleanNode condition. The canonical representation of has, for example, no way to
- * represent a != b. If such an expression appears during canonicalization the negated expression
- * will be created (a == b) and the usages will be negated, using this interface's
- * {@link #negate(LogicNode)} method.
+ * Logic node that negates its argument.
  */
-public interface Negatable {
+public class LogicNegationNode extends LogicNode implements Canonicalizable, Node.IterableNodeType {
 
-    /**
-     * Tells this node that a condition it depends has been negated, and that it thus needs to
-     * invert the effects of this condition. For example, an {@link IfNode} would switch its true
-     * and false successors.
-     */
-    Negatable negate(LogicNode condition);
+    @Input private LogicNode input;
+
+    public LogicNegationNode(LogicNode input) {
+        this.input = input;
+    }
+
+    public LogicNode getInput() {
+        return input;
+    }
+
+    public ValueNode canonical(CanonicalizerTool tool) {
+        if (input instanceof LogicNegationNode) {
+            return ((LogicNegationNode) input).getInput();
+        } else {
+            return this;
+        }
+    }
+
 }

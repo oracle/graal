@@ -41,7 +41,7 @@ import com.oracle.graal.nodes.util.*;
  * The {@code IfNode} represents a branch that can go one of two directions depending on the outcome
  * of a comparison.
  */
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, Negatable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
 
     @Successor private AbstractBeginNode trueSuccessor;
     @Successor private AbstractBeginNode falseSuccessor;
@@ -108,19 +108,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return istrue ? trueSuccessor : falseSuccessor;
     }
 
-    @Override
-    public Negatable negate(LogicNode cond) {
-        assert cond == condition();
-        AbstractBeginNode trueSucc = trueSuccessor();
-        AbstractBeginNode falseSucc = falseSuccessor();
-        setTrueSuccessor(null);
-        setFalseSuccessor(null);
-        setTrueSuccessor(falseSucc);
-        setFalseSuccessor(trueSucc);
-        setTrueSuccessorProbability(1 - trueSuccessorProbability);
-        return this;
-    }
-
     public void setTrueSuccessorProbability(double prob) {
         assert prob >= -0.000000001 && prob <= 1.000000001 : "Probability out of bounds: " + prob;
         trueSuccessorProbability = Math.min(1.0, Math.max(0.0, prob));
@@ -152,6 +139,19 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     @Override
     public void simplify(SimplifierTool tool) {
+        if (condition() instanceof LogicNegationNode) {
+            LogicNegationNode negation = (LogicNegationNode) condition();
+            setCondition(negation.getInput());
+
+            AbstractBeginNode trueSucc = trueSuccessor();
+            AbstractBeginNode falseSucc = falseSuccessor();
+            setTrueSuccessor(null);
+            setFalseSuccessor(null);
+            setTrueSuccessor(falseSucc);
+            setFalseSuccessor(trueSucc);
+            setTrueSuccessorProbability(1 - trueSuccessorProbability);
+        }
+
         if (condition() instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) condition();
             if (c.getValue()) {
