@@ -252,7 +252,16 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     ((Lowerable) node).lower(loweringTool, loweringType);
                 }
 
-                loweringTool.setLastFixedNode((FixedWithNextNode) nextNode.predecessor());
+                if (!nextNode.isAlive()) {
+                    break;
+                } else {
+                    Node nextLastFixed = nextNode.predecessor();
+                    if (nextLastFixed instanceof FixedWithNextNode) {
+                        loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
+                    } else {
+                        loweringTool.setLastFixedNode((FixedWithNextNode) nextNode);
+                    }
+                }
             }
         }
 
