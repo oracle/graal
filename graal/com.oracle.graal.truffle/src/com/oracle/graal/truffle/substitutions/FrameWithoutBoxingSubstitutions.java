@@ -36,7 +36,7 @@ public class FrameWithoutBoxingSubstitutions {
 
     private static final ResolvedJavaField LOCALS_FIELD;
     private static final ResolvedJavaField PRIMITIVELOCALS_FIELD;
-    private static final ResolvedJavaField TAGS_FIELD;
+    public static final ResolvedJavaField TAGS_FIELD;
 
     static {
         try {
