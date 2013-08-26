@@ -70,7 +70,7 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
         return getConstantFrameSlot().getIndex();
     }
 
-    protected boolean isConstantFrameSlot() {
+    public boolean isConstantFrameSlot() {
         return slot.isConstant() && !slot.isNullConstant();
     }
 
