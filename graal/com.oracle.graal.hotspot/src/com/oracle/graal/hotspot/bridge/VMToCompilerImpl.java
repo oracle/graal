@@ -131,6 +131,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public void startCompiler(boolean bootstrapEnabled) throws Throwable {
 
+        FastNodeClassRegistry.initialize();
+
         bootstrapRunning = bootstrapEnabled;
 
         HotSpotVMConfig config = graalRuntime.getConfig();
@@ -258,8 +260,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             DynamicCounterNode.enabled = true;
         }
         compilerStartTime = System.nanoTime();
-
-        FastNodeClassRegistry.initialize();
     }
 
     /**
