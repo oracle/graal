@@ -57,6 +57,16 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
     }
 
     @Override
+    public byte getByte(FrameSlot slot) {
+        throw new UnsupportedOperationException("native frame");
+    }
+
+    @Override
+    public void setByte(FrameSlot slot, byte value) {
+        throw new UnsupportedOperationException("native frame");
+    }
+
+    @Override
     public boolean getBoolean(FrameSlot slot) {
         throw new UnsupportedOperationException("native frame");
     }
