@@ -33,6 +33,7 @@ import java.net.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 
 /**
@@ -63,6 +64,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     private final Class<?> javaMirror; // this could be read directly from 'metaspaceKlass'...
     private final String simpleName;
+
+    /**
+     * Used for implemented a lazy binding from a {@link Node} type to a {@link NodeClass} value.
+     */
+    private NodeClass nodeClass;
 
     /**
      * The instance size (in bytes) for an instance type,
@@ -553,5 +559,19 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public Constant newArray(int length) {
         return Constant.forObject(Array.newInstance(javaMirror, length));
+    }
+
+    /**
+     * @return the {@link NodeClass} value (which may be {@code null}) associated with this type
+     */
+    public NodeClass getNodeClass() {
+        return nodeClass;
+    }
+
+    /**
+     * Sets the {@link NodeClass} value associated with this type.
+     */
+    public void setNodeClass(NodeClass nodeClass) {
+        this.nodeClass = nodeClass;
     }
 }

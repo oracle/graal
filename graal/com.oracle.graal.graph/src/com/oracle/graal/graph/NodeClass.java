@@ -25,36 +25,102 @@ package com.oracle.graal.graph;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.*;
 
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
+import com.oracle.graal.graph.Node.Input;
+import com.oracle.graal.graph.Node.IterableNodeType;
+import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
 
-public class NodeClass extends FieldIntrospection {
+/**
+ * Lazily associated metadata for every {@link Node} type. The metadata includes:
+ * <ul>
+ * <li>The offsets of fields annotated with {@link Input} and {@link Successor} as well as methods
+ * for iterating over such fields.</li>
+ * <li>The identifier for an {@link IterableNodeType} class.</li>
+ * </ul>
+ */
+public final class NodeClass extends FieldIntrospection {
 
-    public static final NodeClass get(Class<?> c) {
-        NodeClass clazz = (NodeClass) allClasses.get(c);
-        if (clazz != null) {
-            return clazz;
-        }
+    /**
+     * Maps {@link Class} values (for {@link Node} types) to {@link NodeClass} values.
+     * 
+     * Only a single Registry instance can be created. If a runtime creates a specialized registry,
+     * it must do so before the class initializer of {@link NodeClass} is executed.
+     */
+    public static class Registry {
 
-        /*
-         * Using putIfAbsent doesn't work here, because the creation of NodeClass needs to be
-         * serialized. (the NodeClass constructor looks at allClasses, and it also uses the static
-         * field nextIterableId)
-         * 
-         * The fact that ConcurrentHashMap.put and .get are used should make the double-checked
-         * locking idiom work, since it internally uses volatile.
+        private static Registry instance;
+
+        /**
+         * Gets the singleton {@link Registry} instance, creating it first if necessary.
          */
-
-        synchronized (allClasses) {
-            clazz = (NodeClass) allClasses.get(c);
-            if (clazz == null) {
-                clazz = new NodeClass(c);
-                NodeClass oldClass = (NodeClass) allClasses.putIfAbsent(c, clazz);
-                assert oldClass == null;
+        static synchronized Registry instance() {
+            if (instance == null) {
+                return new Registry();
             }
-            return clazz;
+            return instance;
         }
+
+        protected Registry() {
+            assert instance == null : "exactly one registry can be created";
+            instance = this;
+        }
+
+        /**
+         * @return the {@link NodeClass} value for {@code key} or {@code null} if no such mapping
+         *         exists
+         */
+        protected NodeClass get(Class<? extends Node> key) {
+            return (NodeClass) allClasses.get(key);
+        }
+
+        /**
+         * Same as {@link #get(Class)} except that a {@link NodeClass} is created if no such mapping
+         * exists. The creation of a {@link NodeClass} must be serialized as
+         * {@link NodeClass#NodeClass(Class)} accesses both {@link FieldIntrospection#allClasses}
+         * and {@link NodeClass#nextIterableId}.
+         * <p>
+         * The fact that {@link ConcurrentHashMap#put} {@link ConcurrentHashMap#get} are used should
+         * make the double-checked locking idiom work in the way {@link NodeClass#get(Class)} uses
+         * this method and {@link #get(Class)}.
+         */
+        final synchronized NodeClass make(Class<? extends Node> key) {
+            NodeClass value = (NodeClass) allClasses.get(key);
+            if (value == null) {
+                value = new NodeClass(key);
+                Object old = allClasses.putIfAbsent(key, value);
+                assert old == null;
+                registered(key, value);
+            }
+            return value;
+        }
+
+        /**
+         * Hook for a subclass to be notified of a new mapping added to the registry.
+         * 
+         * @param key
+         * @param value
+         */
+        protected void registered(Class<? extends Node> key, NodeClass value) {
+
+        }
+    }
+
+    private static final Registry registry = Registry.instance();
+
+    /**
+     * Gets the {@link NodeClass} associated with a given {@link Class}.
+     */
+    public static NodeClass get(Class<?> c) {
+        @SuppressWarnings("unchecked")
+        Class<? extends Node> key = (Class<? extends Node>) c;
+        NodeClass value = registry.get(key);
+        if (value != null) {
+            return value;
+        }
+        return registry.make(key);
     }
 
     static final int NOT_ITERABLE = -1;
@@ -77,7 +143,7 @@ public class NodeClass extends FieldIntrospection {
     private final int iterableId;
     private int[] iterableIds;
 
-    public NodeClass(Class<?> clazz) {
+    private NodeClass(Class<?> clazz) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
 

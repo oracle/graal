@@ -258,6 +258,33 @@ public class VMToCompilerImpl implements VMToCompiler {
             DynamicCounterNode.enabled = true;
         }
         compilerStartTime = System.nanoTime();
+
+        FastNodeClassRegistry.initialize();
+    }
+
+    /**
+     * A fast-path for {@link NodeClass} retrieval using {@link HotSpotResolvedObjectType}.
+     */
+    static class FastNodeClassRegistry extends NodeClass.Registry {
+
+        @SuppressWarnings("unused")
+        static void initialize() {
+            new FastNodeClassRegistry();
+        }
+
+        private static HotSpotResolvedObjectType type(Class<? extends Node> key) {
+            return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromClass(key);
+        }
+
+        @Override
+        public NodeClass get(Class<? extends Node> key) {
+            return type(key).getNodeClass();
+        }
+
+        @Override
+        protected void registered(Class<? extends Node> key, NodeClass value) {
+            type(key).setNodeClass(value);
+        }
     }
 
     private final class BenchmarkCountersOutputStream extends CallbackOutputStream {
