@@ -77,6 +77,7 @@ public class ProxyNode extends FloatingNode implements Node.IterableNodeType, Va
     public boolean verify() {
         assert value != null;
         assert proxyPoint != null;
+        assert !(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint != proxyPoint;
         return super.verify();
     }
 
