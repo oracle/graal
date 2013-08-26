@@ -113,8 +113,8 @@ public final class NodeClass extends FieldIntrospection {
     /**
      * Gets the {@link NodeClass} associated with a given {@link Class}.
      */
+    @SuppressWarnings("unchecked")
     public static NodeClass get(Class<?> c) {
-        @SuppressWarnings("unchecked")
         Class<? extends Node> key = (Class<? extends Node>) c;
         NodeClass value = registry.get(key);
         if (value != null) {
