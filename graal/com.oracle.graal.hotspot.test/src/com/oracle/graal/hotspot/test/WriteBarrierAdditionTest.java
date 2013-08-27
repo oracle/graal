@@ -153,7 +153,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test5() throws Exception {
-        test("test5Snippet", useG1GC() ? 9 : 4);
+        test("test5Snippet", useG1GC() ? 1 : 0);
     }
 
     public static Object test5Snippet() throws Exception {
@@ -262,17 +262,17 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                 } else {
                     barriers = graph.getNodes(SerialWriteBarrier.class).count();
                 }
-                Assert.assertTrue(barriers == expectedBarriers);
+                Assert.assertEquals(expectedBarriers, barriers);
                 for (WriteNode write : graph.getNodes(WriteNode.class)) {
                     if (useG1GC()) {
                         if (write.getBarrierType() != BarrierType.NONE) {
-                            Assert.assertTrue(write.successors().count() == 1);
+                            Assert.assertEquals(1, write.successors().count());
                             Assert.assertTrue(write.next() instanceof G1PostWriteBarrier);
                             Assert.assertTrue(write.predecessor() instanceof G1PreWriteBarrier);
                         }
                     } else {
                         if (write.getBarrierType() != BarrierType.NONE) {
-                            Assert.assertTrue(write.successors().count() == 1);
+                            Assert.assertEquals(1, write.successors().count());
                             Assert.assertTrue(write.next() instanceof SerialWriteBarrier);
                         }
                     }
@@ -281,10 +281,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                 for (ReadNode read : graph.getNodes(ReadNode.class)) {
                     if (read.getBarrierType() != BarrierType.NONE) {
                         if (read.location() instanceof ConstantLocationNode) {
-                            Assert.assertTrue(((ConstantLocationNode) (read.location())).getDisplacement() == referentOffset());
+                            Assert.assertEquals(referentOffset(), ((ConstantLocationNode) (read.location())).getDisplacement());
                         }
                         Assert.assertTrue(useG1GC());
-                        Assert.assertTrue(read.getBarrierType() == BarrierType.PRECISE);
+                        Assert.assertEquals(BarrierType.PRECISE, read.getBarrierType());
                         Assert.assertTrue(read.next() instanceof G1ReferentFieldReadBarrier);
                     }
                 }
