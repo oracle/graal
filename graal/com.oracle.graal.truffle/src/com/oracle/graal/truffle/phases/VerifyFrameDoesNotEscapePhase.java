@@ -37,14 +37,19 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        NewFrameNode frame = graph.getNodes(NewFrameNode.class).first();
-        if (frame != null) {
-            for (MethodCallTargetNode callTarget : frame.usages().filter(MethodCallTargetNode.class)) {
+        for (NewFrameNode virtualFrame : graph.getNodes(NewFrameNode.class)) {
+            for (MethodCallTargetNode callTarget : virtualFrame.usages().filter(MethodCallTargetNode.class)) {
                 if (callTarget.invoke() != null) {
                     String properties = callTarget.getDebugProperties().toString();
                     String arguments = callTarget.arguments().toString();
                     Throwable exception = new VerificationError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
                     throw GraphUtil.approxSourceException(callTarget, exception);
+                }
+            }
+            for (FrameAccessNode frameAccess : virtualFrame.usages().filter(FrameAccessNode.class)) {
+                if (!frameAccess.isConstantFrameSlot()) {
+                    Throwable exception = new VerificationError("Frame slot must be compile-time constant in virtual frame access at: %s frameSlot=%s", frameAccess, frameAccess.getSlot());
+                    throw GraphUtil.approxSourceException(frameAccess, exception);
                 }
             }
         }

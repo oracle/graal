@@ -239,7 +239,6 @@ public final class DebugScope {
         }
         instanceTL.set(newChild);
         newChild.updateFlags();
-        newChild.setLogEnabled(oldContext.isLogEnabled());
         try (TimerCloseable a = scopeTime.start()) {
             return executeScope(runnable, callable);
         } finally {
@@ -282,6 +281,7 @@ public final class DebugScope {
             meterEnabled = false;
             timeEnabled = false;
             dumpEnabled = false;
+            setLogEnabled(false);
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
@@ -291,6 +291,7 @@ public final class DebugScope {
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
             output = config.output();
+            setLogEnabled(config.isLogEnabled());
         }
     }
 
@@ -390,7 +391,6 @@ public final class DebugScope {
     public void setConfig(DebugConfig newConfig) {
         configTL.set(newConfig);
         updateFlags();
-        setLogEnabled(newConfig != null && newConfig.isLogEnabled());
     }
 
     public String getQualifiedName() {
