@@ -80,6 +80,18 @@ public class FrameWithoutBoxingSubstitutions {
     }
 
     @MethodSubstitution(isStatic = false, forced = true)
+    public static byte getByte(FrameWithoutBoxing frame, FrameSlot slot) {
+        verifyGet(frame, slot, FrameSlotKind.Byte);
+        return getByteUnsafe(frame, slot);
+    }
+
+    @MethodSubstitution(isStatic = false, forced = true)
+    public static void setByte(FrameWithoutBoxing frame, FrameSlot slot, byte value) {
+        verifySet(frame, slot, FrameSlotKind.Byte);
+        setByteUnsafe(frame, slot, value);
+    }
+
+    @MethodSubstitution(isStatic = false, forced = true)
     public static float getFloat(FrameWithoutBoxing frame, FrameSlot slot) {
         verifyGet(frame, slot, FrameSlotKind.Float);
         return getFloatUnsafe(frame, slot);
@@ -145,6 +157,16 @@ public class FrameWithoutBoxingSubstitutions {
     @MethodSubstitution(isStatic = false)
     public static void setBooleanUnsafe(FrameWithoutBoxing frame, FrameSlot slot, boolean value) {
         FrameSetNode.set(Kind.Boolean, frame, slot, value, PRIMITIVELOCALS_FIELD);
+    }
+
+    @MethodSubstitution(isStatic = false)
+    public static byte getByteUnsafe(FrameWithoutBoxing frame, FrameSlot slot) {
+        return FrameGetNode.get(Kind.Byte, frame, slot, PRIMITIVELOCALS_FIELD);
+    }
+
+    @MethodSubstitution(isStatic = false)
+    public static void setByteUnsafe(FrameWithoutBoxing frame, FrameSlot slot, byte value) {
+        FrameSetNode.set(Kind.Byte, frame, slot, value, PRIMITIVELOCALS_FIELD);
     }
 
     @MethodSubstitution(isStatic = false)

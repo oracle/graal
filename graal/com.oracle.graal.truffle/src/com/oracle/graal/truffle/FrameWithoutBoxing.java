@@ -100,6 +100,26 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @Override
+    public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, FrameSlotKind.Byte);
+        return getByteUnsafe(slot);
+    }
+
+    private byte getByteUnsafe(FrameSlot slot) {
+        return unsafe.getByte(primitiveLocals, (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET);
+    }
+
+    @Override
+    public void setByte(FrameSlot slot, byte value) throws FrameSlotTypeException {
+        verifySet(slot, FrameSlotKind.Byte);
+        setByteUnsafe(slot, value);
+    }
+
+    private void setByteUnsafe(FrameSlot slot, byte value) {
+        unsafe.putByte(primitiveLocals, (long) slot.getIndex() * Unsafe.ARRAY_LONG_INDEX_SCALE + Unsafe.ARRAY_LONG_BASE_OFFSET, value);
+    }
+
+    @Override
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Boolean);
         return getBooleanUnsafe(slot);
