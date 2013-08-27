@@ -164,7 +164,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
                 new DeadCodeEliminationPhase().apply(graph);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
-                new PartialEscapePhase(false, canonicalizer).apply(graph, context);
+                new PartialEscapePhase(false).apply(graph, context);
 
                 for (MergeNode merge : graph.getNodes(MergeNode.class)) {
                     merge.setStateAfter(null);

@@ -27,9 +27,12 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
@@ -44,11 +47,9 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     }
 
     private final int maxIterations;
-    private CanonicalizerPhase canonicalizer;
 
-    public EffectsPhase(int maxIterations, CanonicalizerPhase canonicalizer) {
+    public EffectsPhase(int maxIterations) {
         this.maxIterations = maxIterations;
-        this.canonicalizer = canonicalizer;
     }
 
     @Override
@@ -73,15 +74,23 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                     }
 
                     // apply the effects collected during this iteration
+                    HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
+                    graph.trackInputChange(listener);
+                    graph.trackUsagesDroppedZero(listener);
                     closure.applyEffects();
+                    graph.stopTrackingInputChange();
+                    graph.stopTrackingUsagesDroppedZero();
 
                     Debug.dump(graph, "after " + getName() + " iteration");
 
                     new DeadCodeEliminationPhase().apply(graph);
 
-                    if (OptCanonicalizer.getValue()) {
-                        canonicalizer.apply(graph, context);
+                    for (Node node : graph.getNodes()) {
+                        if (node instanceof Simplifiable) {
+                            listener.getChangedNodes().add(node);
+                        }
                     }
+                    new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), listener.getChangedNodes(), null).apply(graph);
 
                     return true;
                 }

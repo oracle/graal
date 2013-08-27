@@ -60,7 +60,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
                 @Override
                 public Boolean call() {
                     boolean progress = false;
-                    PartialEscapePhase ea = new PartialEscapePhase(false, canonicalizer);
+                    PartialEscapePhase ea = new PartialEscapePhase(false);
                     boolean eaResult = ea.runAnalysis(graph, context);
                     progress |= eaResult;
 

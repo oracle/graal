@@ -159,18 +159,22 @@ public class Graph {
     }
 
     public void trackInputChange(NodeChangedListener inputChangedListener) {
+        assert this.inputChanged == null;
         this.inputChanged = inputChangedListener;
     }
 
     public void stopTrackingInputChange() {
+        assert inputChanged != null;
         inputChanged = null;
     }
 
     public void trackUsagesDroppedZero(NodeChangedListener usagesDroppedZeroListener) {
+        assert this.usagesDroppedZero == null;
         this.usagesDroppedZero = usagesDroppedZeroListener;
     }
 
     public void stopTrackingUsagesDroppedZero() {
+        assert usagesDroppedZero != null;
         usagesDroppedZero = null;
     }
 

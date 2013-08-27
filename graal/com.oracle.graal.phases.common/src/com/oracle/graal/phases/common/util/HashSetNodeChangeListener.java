@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.virtual.phases.ea;
+package com.oracle.graal.phases.common.util;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import java.util.*;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.schedule.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.*;
 
-public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
+/**
+ * A simple {@link NodeChangedListener} implementation that accumulates the changed nodes in a
+ * {@link HashSet}.
+ */
+public class HashSetNodeChangeListener implements NodeChangedListener {
 
-    public EarlyReadEliminationPhase() {
-        super(1);
+    private final Set<Node> changedNodes;
+
+    public HashSetNodeChangeListener() {
+        this.changedNodes = new HashSet<>();
     }
 
     @Override
-    protected void run(StructuredGraph graph, PhaseContext context) {
-        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue())) {
-            runAnalysis(graph, context);
-        }
+    public void nodeChanged(Node node) {
+        changedNodes.add(node);
     }
 
-    @Override
-    protected Closure<?> createEffectsClosure(PhaseContext context, SchedulePhase schedule) {
-        return new ReadEliminationClosure(schedule);
+    public Set<Node> getChangedNodes() {
+        return changedNodes;
     }
 }

@@ -131,7 +131,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 }
 
                 new DeadCodeEliminationPhase().apply(resultGraph);
-                new PartialEscapePhase(true, canonicalizer).apply(resultGraph, context);
+                new PartialEscapePhase(true).apply(resultGraph, context);
 
                 if (TruffleInlinePrinter.getValue()) {
                     InlinePrinterProcessor.printTree();

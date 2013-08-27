@@ -24,13 +24,12 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.phases.GraalOptions.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext> {
@@ -39,36 +38,28 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        Set<Node> canonicalizationRoots = new HashSet<>();
         ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(context.getRuntime());
-        Listener listener = new Listener(canonicalizationRoots);
+        HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
         int count = 0;
         while (true) {
             graph.trackInputChange(listener);
+            graph.trackUsagesDroppedZero(listener);
             eliminate.apply(graph);
             graph.stopTrackingInputChange();
-            if (canonicalizationRoots.isEmpty()) {
+            graph.stopTrackingUsagesDroppedZero();
+            if (listener.getChangedNodes().isEmpty()) {
                 break;
             }
-            new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), canonicalizationRoots, null).apply(graph);
-            canonicalizationRoots.clear();
+            for (Node node : graph.getNodes()) {
+                if (node instanceof Simplifiable) {
+                    listener.getChangedNodes().add(node);
+                }
+            }
+            new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), listener.getChangedNodes(), null).apply(graph);
+            listener.getChangedNodes().clear();
             if (++count > MAX_ITERATIONS) {
                 throw new BailoutException("Number of iterations in conditional elimination phase exceeds " + MAX_ITERATIONS);
             }
-        }
-    }
-
-    private static class Listener implements NodeChangedListener {
-
-        private final Set<Node> canonicalizationRoots;
-
-        public Listener(Set<Node> canonicalizationRoots) {
-            this.canonicalizationRoots = canonicalizationRoots;
-        }
-
-        @Override
-        public void nodeChanged(Node node) {
-            canonicalizationRoots.add(node);
         }
     }
 }

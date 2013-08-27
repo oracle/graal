@@ -47,7 +47,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         appendPhase(new LockEliminationPhase());
 
         if (OptReadElimination.getValue()) {
-            appendPhase(new EarlyReadEliminationPhase(canonicalizer));
+            appendPhase(new EarlyReadEliminationPhase());
         }
 
         if (OptFloatingReads.getValue()) {
