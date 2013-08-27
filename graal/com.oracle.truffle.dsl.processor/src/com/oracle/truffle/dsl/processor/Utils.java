@@ -939,7 +939,7 @@ public class Utils {
     }
 
     public static boolean isObject(TypeMirror actualType) {
-        return getQualifiedName(actualType).equals("java.lang.Object");
+        return actualType.getKind() == TypeKind.DECLARED && getQualifiedName(actualType).equals("java.lang.Object");
     }
 
     public static boolean isFieldAccessible(Element element, VariableElement variable) {
