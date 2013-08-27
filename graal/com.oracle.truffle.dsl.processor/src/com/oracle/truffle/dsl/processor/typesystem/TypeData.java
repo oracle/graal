@@ -120,16 +120,7 @@ public class TypeData extends MessageContainer implements Comparable<TypeData> {
     }
 
     public boolean needsCastTo(ProcessorContext context, TypeData targetType) {
-        if (this.equals(targetType)) {
-            return false;
-        } else if (targetType.isGeneric()) {
-            return false;
-        } else if (targetType.isVoid()) {
-            return false;
-        } else if (Utils.isAssignable(context, getPrimitiveType(), targetType.getPrimitiveType())) {
-            return false;
-        }
-        return true;
+        return Utils.needsCastTo(context, getPrimitiveType(), targetType.getPrimitiveType());
     }
 
     public boolean isPrimitive() {

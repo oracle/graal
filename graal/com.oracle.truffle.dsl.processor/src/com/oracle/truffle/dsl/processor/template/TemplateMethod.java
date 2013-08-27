@@ -278,20 +278,23 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
     }
 
     public int compareBySignature(TemplateMethod compareMethod) {
-        TypeSystemData typeSystem = getTemplate().getTypeSystem();
+        final TypeSystemData typeSystem = getTemplate().getTypeSystem();
         if (typeSystem != compareMethod.getTemplate().getTypeSystem()) {
             throw new IllegalStateException("Cannot compare two methods with different type systems.");
         }
 
-        Signature signature1 = getSignature();
-        Signature signature2 = compareMethod.getSignature();
+        List<TypeMirror> signature1 = getSignatureTypes();
+        List<TypeMirror> signature2 = compareMethod.getSignatureTypes();
         if (signature1.size() != signature2.size()) {
             return signature2.size() - signature1.size();
         }
 
         int result = 0;
         for (int i = 1; i < signature1.size(); i++) {
-            int typeResult = compareActualParameter(typeSystem, signature1.get(i), signature2.get(i));
+            TypeMirror t1 = signature1.get(i);
+            TypeMirror t2 = signature2.get(i);
+
+            int typeResult = compareParameter(typeSystem, t1, t2);
             if (result == 0) {
                 result = typeResult;
             } else if (typeResult != 0 && Math.signum(result) != Math.signum(typeResult)) {
@@ -300,16 +303,44 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             }
         }
         if (result == 0 && signature1.size() > 0) {
-            result = compareActualParameter(typeSystem, signature1.get(0), signature2.get(0));
+            result = compareParameter(typeSystem, signature1.get(0), signature2.get(0));
         }
 
         return result;
     }
 
-    private static int compareActualParameter(TypeSystemData typeSystem, TypeData t1, TypeData t2) {
-        int index1 = typeSystem.findType(t1);
-        int index2 = typeSystem.findType(t2);
-        return index1 - index2;
+    private static int compareParameter(TypeSystemData data, TypeMirror signature1, TypeMirror signature2) {
+        if (Utils.typeEquals(signature1, signature2)) {
+            return 0;
+        }
+
+        int index1 = data.findType(signature1);
+        int index2 = data.findType(signature2);
+        if (index1 != -1 && index2 != -1) {
+            return index1 - index2;
+        }
+
+        if (signature1.getKind() == TypeKind.DECLARED && signature2.getKind() == TypeKind.DECLARED) {
+            TypeElement element1 = Utils.fromTypeMirror(signature1);
+            TypeElement element2 = Utils.fromTypeMirror(signature2);
+
+            if (Utils.getDirectSuperTypes(element1).contains(element2)) {
+                return -1;
+            } else if (Utils.getDirectSuperTypes(element2).contains(element1)) {
+                return 1;
+            }
+        }
+        return Utils.getSimpleName(signature1).compareTo(Utils.getSimpleName(signature2));
+    }
+
+    public List<TypeMirror> getSignatureTypes() {
+        List<TypeMirror> types = new ArrayList<>();
+        for (ActualParameter param : getReturnTypeAndParameters()) {
+            if (param.getSpecification().isSignature()) {
+                types.add(param.getType());
+            }
+        }
+        return types;
     }
 
     public static class Signature implements Iterable<TypeData>, Comparable<Signature> {

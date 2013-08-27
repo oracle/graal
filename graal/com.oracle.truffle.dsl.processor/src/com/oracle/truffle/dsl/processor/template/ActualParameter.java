@@ -24,6 +24,7 @@ package com.oracle.truffle.dsl.processor.template;
 
 import javax.lang.model.type.*;
 
+import com.oracle.truffle.dsl.processor.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public class ActualParameter {
@@ -103,5 +104,10 @@ public class ActualParameter {
 
     public ActualParameter getPreviousParameter() {
         return method.getPreviousParam(this);
+    }
+
+    @Override
+    public String toString() {
+        return Utils.getSimpleName(type);
     }
 }

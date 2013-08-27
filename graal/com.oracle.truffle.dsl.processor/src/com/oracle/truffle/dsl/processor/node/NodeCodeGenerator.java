@@ -258,15 +258,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (valueParameter == null) {
                 valueParameter = targetParameter;
             }
-            TypeData targetType = targetParameter.getTypeSystemType();
+            TypeMirror targetType = targetParameter.getType();
 
             if (targetParameter.isImplicit() || valueParameter.isImplicit()) {
                 continue;
             }
 
-            TypeData valueType = null;
+            TypeMirror valueType = null;
             if (valueParameter != null) {
-                valueType = valueParameter.getTypeSystemType();
+                valueType = valueParameter.getType();
             }
 
             if (signatureIndex < customSignatureValueNames.length && targetParameter.getSpecification().isSignature()) {
@@ -283,14 +283,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 builder.end();
             } else if (unexpectedValueName != null && targetParameter.getLocalName().equals(unexpectedValueName)) {
                 builder.string("ex.getResult()");
-            } else if (targetType == null || targetType.isGeneric() || (valueType != null && valueType.equalsType(targetType))) {
+            } else if (!Utils.needsCastTo(getContext(), valueType, targetType)) {
                 builder.startGroup();
-
-                if (valueType != null && sourceMethod.getMethodName().equals(targetMethod.getMethodName()) && !valueType.isGeneric() && targetType.isGeneric()) {
-                    builder.string("(");
-                    builder.type(targetType.getPrimitiveType());
-                    builder.string(") ");
-                }
                 builder.string(valueName(targetParameter));
                 builder.end();
             } else {

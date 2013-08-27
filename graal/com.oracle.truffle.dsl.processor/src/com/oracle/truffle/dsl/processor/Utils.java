@@ -32,7 +32,7 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 
 import com.oracle.truffle.dsl.processor.ast.*;
-import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.*;
+import com.oracle.truffle.dsl.processor.ast.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.compiler.*;
 
 /**
@@ -48,6 +48,19 @@ public class Utils {
             }
         }
         return null;
+    }
+
+    public static boolean needsCastTo(ProcessorContext context, TypeMirror sourceType, TypeMirror targetType) {
+        if (typeEquals(sourceType, targetType)) {
+            return false;
+        } else if (isObject(targetType)) {
+            return false;
+        } else if (isVoid(targetType)) {
+            return false;
+        } else if (isAssignable(context, sourceType, targetType)) {
+            return false;
+        }
+        return true;
     }
 
     public static VariableElement findVariableElement(DeclaredType type, String name) {
@@ -500,6 +513,24 @@ public class Utils {
         }
 
         return types;
+    }
+
+    public static List<TypeMirror> getAssignableTypes(ProcessorContext context, TypeMirror type) {
+        if (isPrimitive(type)) {
+            return Arrays.asList(type, boxType(context, type), context.getType(Object.class));
+        } else if (type.getKind() == TypeKind.ARRAY) {
+            return Arrays.asList(type, context.getType(Object.class));
+        } else if (type.getKind() == TypeKind.DECLARED) {
+            List<TypeElement> types = getSuperTypes(fromTypeMirror(type));
+            List<TypeMirror> mirrors = new ArrayList<>(types.size());
+            mirrors.add(type);
+            for (TypeElement typeElement : types) {
+                mirrors.add(typeElement.asType());
+            }
+            return mirrors;
+        } else {
+            return Collections.emptyList();
+        }
     }
 
     public static List<TypeElement> getSuperTypes(TypeElement element) {
