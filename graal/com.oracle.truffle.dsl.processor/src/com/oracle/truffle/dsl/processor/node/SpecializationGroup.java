@@ -24,6 +24,10 @@ package com.oracle.truffle.dsl.processor.node;
 
 import java.util.*;
 
+import javax.lang.model.type.*;
+
+import com.oracle.truffle.dsl.processor.*;
+import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
@@ -64,6 +68,15 @@ public final class SpecializationGroup {
         updateChildren(children);
     }
 
+    public List<TypeGuard> getAllGuards() {
+        List<TypeGuard> collectedGuards = new ArrayList<>();
+        collectedGuards.addAll(typeGuards);
+        if (parent != null) {
+            collectedGuards.addAll(parent.getAllGuards());
+        }
+        return collectedGuards;
+    }
+
     public TypeGuard findTypeGuard(int signatureIndex) {
         for (TypeGuard guard : typeGuards) {
             if (guard.getSignatureIndex() == signatureIndex) {
@@ -73,15 +86,34 @@ public final class SpecializationGroup {
         return null;
     }
 
-    public GuardData getElseConnectableGuard() {
+    public List<GuardData> getElseConnectableGuards() {
         if (!getTypeGuards().isEmpty() || !getAssumptions().isEmpty()) {
-            return null;
+            return Collections.emptyList();
         }
-        SpecializationGroup previousGroup = getPreviousGroup();
-        if (previousGroup != null && getGuards().size() >= 1 && previousGroup.getGuards().size() == 1) {
-            GuardData guard = getGuards().get(0);
-            GuardData previousGuard = previousGroup.getGuards().get(0);
 
+        if (getGuards().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<GuardData> elseConnectableGuards = new ArrayList<>();
+        int guardIndex = 0;
+        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex)) != null) {
+            elseConnectableGuards.add(getGuards().get(guardIndex));
+            guardIndex++;
+        }
+
+        return elseConnectableGuards;
+    }
+
+    private GuardData findNegatedGuardInPrevious(GuardData guard) {
+        SpecializationGroup previous = this;
+        while ((previous = previous.getPreviousGroup()) != null) {
+            List<GuardData> elseConnectedGuards = previous.getElseConnectableGuards();
+
+            if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
+                return null;
+            }
+            GuardData previousGuard = previous.getGuards().get(elseConnectedGuards.size());
             if (guard.getMethod().equals(previousGuard.getMethod())) {
                 assert guard.isNegated() != previousGuard.isNegated();
                 return guard;
@@ -169,6 +201,30 @@ public final class SpecializationGroup {
             guardMatches.add(guard);
         }
 
+        // check for guards for required type casts
+        for (Iterator<GuardData> iterator = guardMatches.iterator(); iterator.hasNext();) {
+            GuardData guardMatch = iterator.next();
+
+            List<TypeMirror> guardTypes = TemplateMethod.getSignatureTypes(guardMatch.getParameters());
+            for (int i = 0; i < guardTypes.size(); i++) {
+                TypeMirror guardType = guardTypes.get(i);
+                int signatureIndex = i + 1;
+
+                // object guards can be safely moved up
+                if (Utils.isObject(guardType)) {
+                    continue;
+                }
+
+                // signature index required for moving up guards
+                if (containsIndex(typeGuardsMatches, signatureIndex) || (first.getParent() != null && first.getParent().containsTypeGuardIndex(signatureIndex))) {
+                    continue;
+                }
+
+                iterator.remove();
+                break;
+            }
+        }
+
         if (assumptionMatches.isEmpty() && typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {
             return null;
         }
@@ -181,6 +237,25 @@ public final class SpecializationGroup {
 
         List<SpecializationGroup> newChildren = new ArrayList<>(groups);
         return new SpecializationGroup(newChildren, assumptionMatches, typeGuardsMatches, guardMatches);
+    }
+
+    private boolean containsTypeGuardIndex(int index) {
+        if (containsIndex(typeGuards, index)) {
+            return true;
+        }
+        if (parent != null) {
+            return parent.containsTypeGuardIndex(index);
+        }
+        return false;
+    }
+
+    private static boolean containsIndex(List<TypeGuard> typeGuards, int signatureIndex) {
+        for (TypeGuard guard : typeGuards) {
+            if (guard.signatureIndex == signatureIndex) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static SpecializationGroup create(List<SpecializationData> specializations) {
