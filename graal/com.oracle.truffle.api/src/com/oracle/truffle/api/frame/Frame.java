@@ -67,6 +67,23 @@ public interface Frame {
     void setObject(FrameSlot slot, Object value) throws FrameSlotTypeException;
 
     /**
+     * Read access to a local variable of type byte.
+     * 
+     * @param slot the slot of the local variable
+     * @return the current value of the local variable
+     */
+    byte getByte(FrameSlot slot) throws FrameSlotTypeException;
+
+    /**
+     * Write access to a local variable of type byte.
+     * 
+     * @param slot the slot of the local variable
+     * @param value the new value of the local variable
+     */
+
+    void setByte(FrameSlot slot, byte value) throws FrameSlotTypeException;
+
+    /**
      * Read access to a local variable of type boolean.
      * 
      * @param slot the slot of the local variable

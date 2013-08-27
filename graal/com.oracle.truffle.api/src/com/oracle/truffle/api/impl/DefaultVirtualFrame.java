@@ -79,6 +79,18 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
+    public byte getByte(FrameSlot slot) throws FrameSlotTypeException {
+        verifyGet(slot, FrameSlotKind.Byte);
+        return (byte) locals[slot.getIndex()];
+    }
+
+    @Override
+    public void setByte(FrameSlot slot, byte value) throws FrameSlotTypeException {
+        verifySet(slot, FrameSlotKind.Byte);
+        locals[slot.getIndex()] = value;
+    }
+
+    @Override
     public boolean getBoolean(FrameSlot slot) throws FrameSlotTypeException {
         verifyGet(slot, FrameSlotKind.Boolean);
         return (boolean) locals[slot.getIndex()];
