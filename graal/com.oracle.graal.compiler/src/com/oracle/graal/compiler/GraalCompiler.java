@@ -34,6 +34,7 @@ import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -52,6 +53,9 @@ import com.oracle.graal.phases.tiers.*;
  */
 public class GraalCompiler {
 
+    private static final DebugTimer FrontEnd = Debug.timer("FrontEnd");
+    private static final DebugTimer BackEnd = Debug.timer("BackEnd");
+
     /**
      * Requests compilation of a given graph.
      * 
@@ -62,13 +66,9 @@ public class GraalCompiler {
      *            argument can be null.
      * @return the result of the compilation
      */
-    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc,
-                                                 final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
-                                                 final Replacements replacements, final Backend backend,
-                                                 final TargetDescription target, final GraphCache cache,
-                                                 final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                                                 final SpeculationLog speculationLog, final Suites suites,
-                                                 final CompilationResult compilationResult) {
+    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final GraalCodeCacheProvider runtime,
+                    final Replacements replacements, final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog, final Suites suites, final CompilationResult compilationResult) {
         Debug.scope("GraalCompiler", new Object[]{graph, runtime}, new Runnable() {
 
             public void run() {
@@ -76,22 +76,26 @@ public class GraalCompiler {
                 final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
                     public LIR call() {
-                        return emitHIR(runtime, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+                        try (TimerCloseable a = FrontEnd.start()) {
+                            return emitHIR(runtime, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+                        }
                     }
                 });
-                final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
+                try (TimerCloseable a = BackEnd.start()) {
+                    final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
 
-                    public LIRGenerator call() {
-                        return emitLIR(backend, target, lir, graph, cc);
-                    }
-                });
-                Debug.scope("CodeGen", lirGen, new Runnable() {
+                        public LIRGenerator call() {
+                            return emitLIR(backend, target, lir, graph, cc);
+                        }
+                    });
+                    Debug.scope("CodeGen", lirGen, new Runnable() {
 
-                    public void run() {
-                        emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
-                    }
+                        public void run() {
+                            emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+                        }
 
-                });
+                    });
+                }
             }
         });
 
