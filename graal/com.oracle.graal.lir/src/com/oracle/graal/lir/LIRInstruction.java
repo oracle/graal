@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -211,10 +212,13 @@ public abstract class LIRInstruction {
      */
     private int id;
 
+    private static final DebugMetric LIR_NODE_COUNT = Debug.metric("LIRNodes");
+
     /**
      * Constructs a new LIR instruction.
      */
     public LIRInstruction() {
+        LIR_NODE_COUNT.increment();
         instructionClass = LIRInstructionClass.get(getClass());
         id = -1;
     }
