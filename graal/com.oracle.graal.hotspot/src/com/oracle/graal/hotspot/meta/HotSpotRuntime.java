@@ -643,7 +643,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 UnsafeLoadNode load = (UnsafeLoadNode) n;
                 assert load.kind() != Kind.Illegal;
                 boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
-                if (addReadBarrier(load)) {
+                if (addReadBarrier(load, tool)) {
                     unsafeLoadSnippets.lower(load, tool);
                 } else {
                     IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
@@ -852,13 +852,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    private static boolean addReadBarrier(UnsafeLoadNode load) {
-        if (useG1GC()) {
-            if (load.object().kind() == Kind.Object && load.accessKind() == Kind.Object && !ObjectStamp.isObjectAlwaysNull(load.object())) {
-                ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
-                if (type != null && !type.isArray()) {
-                    return true;
-                }
+    private static boolean addReadBarrier(UnsafeLoadNode load, LoweringTool tool) {
+        if (useG1GC() && tool.getLoweringType() == LoweringType.AFTER_GUARDS && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object &&
+                        !ObjectStamp.isObjectAlwaysNull(load.object())) {
+            ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
+            if (type != null && !type.isArray()) {
+                return true;
             }
         }
         return false;
