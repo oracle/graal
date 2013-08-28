@@ -26,13 +26,8 @@ import org.junit.*;
 
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.DoubleEvaluatedNodeFactory;
-import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.EvaluatedNodeFactory;
-import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluatedNodeFactory;
-import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestArguments;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -101,6 +96,33 @@ public class ExecuteEvaluatedTest {
         int call(int exp0, int exp1, int exp2) {
             Assert.assertEquals(exp0 + exp1, exp2);
             return exp2;
+        }
+    }
+
+    @Test
+    public void testEvaluatedGeneration() throws UnexpectedResultException {
+        TestRootNode<TestEvaluatedGeneration> root = TestHelper.createRoot(TestEvaluatedGenerationFactory.getInstance());
+
+        Assert.assertEquals(42, root.getNode().executeEvaluated1(null, 42));
+        Assert.assertEquals(42, root.getNode().executeEvaluated2(null, 42));
+        Assert.assertEquals(42, root.getNode().executeEvaluated3(null, 42));
+        Assert.assertEquals(42, root.getNode().executeEvaluated4(null, 42));
+    }
+
+    @NodeChildren({@NodeChild("exp0")})
+    abstract static class TestEvaluatedGeneration extends ValueNode {
+
+        public abstract Object executeEvaluated1(VirtualFrame frame, Object value);
+
+        public abstract Object executeEvaluated2(VirtualFrame frame, int value);
+
+        public abstract int executeEvaluated3(VirtualFrame frame, Object value) throws UnexpectedResultException;
+
+        public abstract int executeEvaluated4(VirtualFrame frame, int value) throws UnexpectedResultException;
+
+        @Specialization
+        int call(int exp0) {
+            return exp0;
         }
     }
 

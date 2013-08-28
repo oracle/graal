@@ -47,12 +47,13 @@ public class ExecutableTypeMethodParser extends NodeMethodParser<ExecutableTypeD
         List<ParameterSpec> requiredSpecs = new ArrayList<>(spec.getRequired());
         spec.getRequired().clear();
 
+        List<TypeMirror> allowedTypes = getNode().getTypeSystem().getPrimitiveTypeMirrors();
         for (ParameterSpec originalSpec : requiredSpecs) {
-            spec.addRequired(new ParameterSpec(originalSpec, Arrays.asList(getNode().getTypeSystem().getGenericType())));
+            spec.addRequired(new ParameterSpec(originalSpec, allowedTypes));
         }
 
         spec.setVariableRequiredArguments(true);
-        ParameterSpec other = new ParameterSpec("other", Arrays.asList(getNode().getTypeSystem().getGenericType()));
+        ParameterSpec other = new ParameterSpec("other", allowedTypes);
         other.setCardinality(Cardinality.MANY);
         other.setSignature(true);
         other.setIndexed(true);

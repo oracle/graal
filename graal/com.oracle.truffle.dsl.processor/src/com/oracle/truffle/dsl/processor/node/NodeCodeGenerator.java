@@ -1765,9 +1765,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
             }
 
+            // execute names are enforced no cast
+            String[] executeParameterNames = new String[executeParameters.size()];
+            for (int i = 0; i < executeParameterNames.length; i++) {
+                executeParameterNames[i] = valueName(executeParameters.get(i));
+            }
+
             builder.tree(createExecuteChildren(builder, executable, specialization, executeParameters, null, true));
 
-            CodeTree primaryExecuteCall = createTemplateMethodCall(builder, null, executable, castExecutable, null);
+            CodeTree primaryExecuteCall = createTemplateMethodCall(builder, null, executable, castExecutable, null, executeParameterNames);
             if (needsTry) {
                 if (!returnVoid) {
                     builder.declaration(primaryType.getPrimitiveType(), "value");
@@ -1858,6 +1864,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 ActualParameter sourceParameter = sourceExecutable.findParameter(targetParameter.getLocalName());
 
                 String targetVariableName = valueName(targetParameter);
+
                 CodeTree executionExpression = null;
                 if ((sourceParameter != null && cast) || sourceParameter != null) {
                     TypeData sourceType = sourceParameter.getTypeSystemType();
@@ -1867,7 +1874,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         }
                         builder.startStatement();
                         builder.type(targetParameter.getType()).string(" ");
-                        builder.string(valueName(targetParameter)).string(" = ");
+                        builder.string(targetVariableName).string(" = ");
                         builder.tree(CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter)));
                         builder.end();
                         continue;
@@ -1900,10 +1907,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (targetExecutable.getType().needsCastTo(getContext(), param.getTypeSystemType())) {
                 unexpected = true;
                 cast = true;
-            }
-
-            if (specialization.isGeneric() && unexpected) {
-                throw new AssertionError("Generic has unexpected parameters. " + specialization.toString());
             }
 
             builder.startStatement();
