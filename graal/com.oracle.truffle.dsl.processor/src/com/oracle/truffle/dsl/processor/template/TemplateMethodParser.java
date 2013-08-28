@@ -193,10 +193,50 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         return b.toString();
     }
 
+    /*
+     * Parameter parsing tries to parse required arguments starting from offset 0 with increasing
+     * offset until it finds a signature end that matches the required specification. If there is no
+     * end matching the required arguments, parsing fails. Parameters prior to the parsed required
+     * ones are cut and used to parse the optional parameters. All those remaining parameters must
+     * be consumed otherwise its an error.
+     */
     private List<ActualParameter> parseParameters(MethodSpec spec, List<TypeMirror> parameterTypes) {
-        List<ActualParameter> parsedParams = new ArrayList<>();
-        ConsumableListIterator<TypeMirror> types = new ConsumableListIterator<>(parameterTypes);
+        List<TypeMirror> implicitTypes = spec.getImplicitRequiredTypes();
 
+        int offset = -1;
+        List<ActualParameter> parsedRequired = null;
+        ConsumableListIterator<TypeMirror> types = null;
+        while (parsedRequired == null && offset < parameterTypes.size()) {
+            offset++;
+            types = new ConsumableListIterator<>(new ArrayList<>(implicitTypes));
+            types.data.addAll(parameterTypes.subList(offset, parameterTypes.size()));
+            parsedRequired = parseParametersRequired(spec, types);
+        }
+
+        if (parsedRequired == null && offset >= 0) {
+            return null;
+        }
+
+        List<TypeMirror> potentialOptionals;
+        if (offset == -1) {
+            potentialOptionals = parameterTypes;
+        } else {
+            potentialOptionals = parameterTypes.subList(0, offset);
+        }
+        types = new ConsumableListIterator<>(potentialOptionals);
+        List<ActualParameter> parsedOptionals = parseParametersOptional(spec, types);
+        if (parsedOptionals == null) {
+            return null;
+        }
+
+        List<ActualParameter> finalParameters = new ArrayList<>();
+        finalParameters.addAll(parsedOptionals);
+        finalParameters.addAll(parsedRequired);
+        return finalParameters;
+    }
+
+    private List<ActualParameter> parseParametersOptional(MethodSpec spec, ConsumableListIterator<TypeMirror> types) {
+        List<ActualParameter> parsedParams = new ArrayList<>();
         // parse optional parameters
         ConsumableListIterator<ParameterSpec> optionals = new ConsumableListIterator<>(spec.getOptional());
         for (TypeMirror type : types) {
@@ -217,10 +257,14 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
                 break;
             }
         }
+        if (types.getIndex() <= types.data.size() - 1) {
+            return null;
+        }
+        return parsedParams;
+    }
 
-        List<TypeMirror> typesWithImplicit = new ArrayList<>(spec.getImplicitRequiredTypes());
-        typesWithImplicit.addAll(types.toList());
-        types = new ConsumableListIterator<>(typesWithImplicit);
+    private List<ActualParameter> parseParametersRequired(MethodSpec spec, ConsumableListIterator<TypeMirror> types) {
+        List<ActualParameter> parsedParams = new ArrayList<>();
 
         int specificationParameterIndex = 0;
         ConsumableListIterator<ParameterSpec> required = new ConsumableListIterator<>(spec.getRequired());
@@ -263,8 +307,6 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             // additional specifications -> error
             return null;
         }
-
-        // success!
         return parsedParams;
     }
 
