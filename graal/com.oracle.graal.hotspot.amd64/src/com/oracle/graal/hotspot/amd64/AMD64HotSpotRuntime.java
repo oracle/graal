@@ -96,6 +96,11 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
     }
 
     @Override
+    public Register heapBaseRegister() {
+        return r12;
+    }
+
+    @Override
     protected RegisterConfig createRegisterConfig() {
         return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config);
     }

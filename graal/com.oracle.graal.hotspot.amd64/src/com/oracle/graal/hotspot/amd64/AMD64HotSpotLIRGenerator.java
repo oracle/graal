@@ -415,11 +415,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         assert access == null || access instanceof HeapAccess;
         if (isCompressCandidate(access)) {
             if (runtime().config.useCompressedOops && kind == Kind.Object) {
-                append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase, runtime().config.narrowOopShift,
-                                runtime().config.logMinObjAlignment));
+                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase,
+                                runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
             } else if (runtime().config.useCompressedKlassPointers && kind == Kind.Long) {
-                append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) : null, runtime().config.narrowKlassBase, runtime().config.narrowKlassShift,
-                                runtime().config.logKlassAlignment));
+                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, runtime().config.narrowKlassBase,
+                                runtime().config.narrowKlassShift, runtime().config.logKlassAlignment));
             } else {
                 append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
             }
