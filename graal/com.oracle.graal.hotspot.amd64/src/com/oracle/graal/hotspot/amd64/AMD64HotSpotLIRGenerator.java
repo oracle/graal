@@ -404,6 +404,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
+    /**
+     * Returns whether or not the input access is a (de)compression candidate.
+     */
     private static boolean isCompressCandidate(DeoptimizingNode access) {
         return access != null && ((HeapAccess) access).isCompressible();
     }
@@ -413,6 +416,16 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
         assert access == null || access instanceof HeapAccess;
+        /**
+         * Currently, the (de)compression of pointers applies conditionally to some objects (oops,
+         * kind==Object) and some addresses (klass pointers, kind==Long). Initially, the input
+         * operation is checked to discover if it has been tagged as a potential "compression"
+         * candidate. Consequently, depending on the appropriate kind, the specific (de)compression
+         * functions are being called. Although, currently, the compression and decompression
+         * algorithms of oops and klass pointers are identical, in hotspot, they are implemented as
+         * separate methods. That means that in the future there might be the case where the
+         * algorithms may differ.
+         */
         if (isCompressCandidate(access)) {
             if (runtime().config.useCompressedOops && kind == Kind.Object) {
                 append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, runtime().config.narrowOopBase,
