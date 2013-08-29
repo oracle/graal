@@ -89,12 +89,12 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Integer> DeoptsToDisableOptimisticOptimization = new OptionValue<>(40);
 
-    // comilation queue
-    @Option(help = "")
+    // compilation queue
+    @Option(help = "Compile all methods in all classes on given class path")
     public static final OptionValue<String> CompileTheWorld = new OptionValue<>(null);
-    @Option(help = "")
+    @Option(help = "First class to consider when using CompileTheWorld")
     public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
-    @Option(help = "")
+    @Option(help = "Last class to consider when using CompileTheWorld")
     public static final OptionValue<Integer> CompileTheWorldStopAt = new OptionValue<>(Integer.MAX_VALUE);
 
     // graph caching
