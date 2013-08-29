@@ -248,11 +248,14 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     break;
                 } else {
                     Node nextLastFixed = nextNode.predecessor();
-                    if (nextLastFixed instanceof FixedWithNextNode) {
-                        loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
-                    } else {
-                        loweringTool.setLastFixedNode((FixedWithNextNode) nextNode);
+                    if (!(nextLastFixed instanceof FixedWithNextNode)) {
+                        // insert begin node, to have a valid last fixed for next lowerable node.
+                        BeginNode begin = node.graph().add(new BeginNode());
+                        nextLastFixed.replaceFirstSuccessor(nextNode, begin);
+                        begin.setNext(nextNode);
+                        nextLastFixed = begin;
                     }
+                    loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
                 }
             }
         }
