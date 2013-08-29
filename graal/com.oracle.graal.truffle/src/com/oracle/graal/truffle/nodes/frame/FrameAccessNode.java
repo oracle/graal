@@ -133,6 +133,8 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
                 return Kind.Long;
             case Int:
                 return Kind.Int;
+            case Byte:
+                return Kind.Byte;
             case Double:
                 return Kind.Double;
             case Float:

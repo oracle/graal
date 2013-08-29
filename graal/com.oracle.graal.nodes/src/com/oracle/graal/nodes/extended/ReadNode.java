@@ -104,29 +104,31 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     @Override
     public boolean push(PiNode parent) {
-        if (location() instanceof ConstantLocationNode) {
-            long displacement = ((ConstantLocationNode) location()).getDisplacement();
-            if (parent.stamp() instanceof ObjectStamp) {
-                ObjectStamp piStamp = (ObjectStamp) parent.stamp();
-                ResolvedJavaType receiverType = piStamp.type();
-                if (receiverType != null) {
-                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement);
-
-                    if (field != null && parent.object().stamp() instanceof ObjectStamp) {
-                        ResolvedJavaType declaringClass = field.getDeclaringClass();
-                        ObjectStamp piValueStamp = (ObjectStamp) parent.object().stamp();
-                        ResolvedJavaType piValueType = ObjectStamp.typeOrNull(piValueStamp);
-                        if (piValueType != null && declaringClass.isAssignableFrom(piValueType)) {
-                            if (piStamp.nonNull() == piValueStamp.nonNull() && piStamp.alwaysNull() == piValueStamp.alwaysNull()) {
-                                replaceFirstInput(parent, parent.object());
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
+        if (!(location() instanceof ConstantLocationNode && parent.stamp() instanceof ObjectStamp && parent.object().stamp() instanceof ObjectStamp)) {
+            return false;
         }
+
+        ObjectStamp piStamp = (ObjectStamp) parent.stamp();
+        ResolvedJavaType receiverType = piStamp.type();
+        if (receiverType == null) {
+            return false;
+        }
+
+        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(((ConstantLocationNode) location()).getDisplacement());
+        if (field == null) {
+            // field was not declared by receiverType
+            return false;
+        }
+
+        ObjectStamp valueStamp = (ObjectStamp) parent.object().stamp();
+        ResolvedJavaType valueType = ObjectStamp.typeOrNull(valueStamp);
+        if (valueType != null && field.getDeclaringClass().isAssignableFrom(valueType)) {
+            if (piStamp.nonNull() == valueStamp.nonNull() && piStamp.alwaysNull() == valueStamp.alwaysNull()) {
+                replaceFirstInput(parent, parent.object());
+                return true;
+            }
+        }
+
         return false;
     }
 
