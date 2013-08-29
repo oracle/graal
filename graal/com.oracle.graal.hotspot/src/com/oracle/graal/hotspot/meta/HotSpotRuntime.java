@@ -113,7 +113,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private InstanceOfSnippets.Templates instanceofSnippets;
     private NewObjectSnippets.Templates newObjectSnippets;
     private MonitorSnippets.Templates monitorSnippets;
-    private WriteBarrierSnippets.Templates writeBarrierSnippets;
+    protected WriteBarrierSnippets.Templates writeBarrierSnippets;
     private BoxingSnippets.Templates boxingSnippets;
     private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     private UnsafeLoadSnippets.Templates unsafeLoadSnippets;
