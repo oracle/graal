@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +23,39 @@
 package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
-public class CompilerErrorTest {
+public class TypeSystemErrorsTest {
 
-    abstract static class Visiblity01 extends ValueNode {
+    @TypeSystem({int.class, boolean.class})
+    static class Types0 {
 
-        @Specialization
-        @SuppressWarnings("static-method")
-        @ExpectError("Method annotated with @Specialization must not be private.")
-        private Object s() {
-            return null;
+    }
+
+    @ExpectError("Invalid type order. The type(s) [java.lang.String] are inherited from a earlier defined type java.lang.CharSequence.")
+    @TypeSystem({CharSequence.class, String.class})
+    static class Types1 {
+
+    }
+
+    @TypeSystem({int.class, boolean.class})
+    static class Types2 {
+
+        @TypeCast
+        @ExpectError("The provided return type \"String\" does not match expected return type \"int\".%")
+        String asInteger(Object value) {
+            return (String) value;
         }
 
     }
 
-    @ExpectError("Classes containing a @Specialization annotation must not be private.")
-    private abstract static class Visiblity02 extends ValueNode {
+    @TypeSystem({int.class, boolean.class})
+    static class Types3 {
 
-        @Specialization
-        public Object s() {
-            return null;
+        @TypeCast
+        @ExpectError("The provided return type \"boolean\" does not match expected return type \"int\".%")
+        boolean asInteger(Object value) {
+            return (boolean) value;
         }
-
-    }
-
-    // assert no error
-    @ExpectError({})
-    private abstract static class Visiblity03 extends ValueNode {
 
     }
 

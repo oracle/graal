@@ -36,6 +36,9 @@ public class TypeSystemData extends Template {
     private List<TypeMirror> primitiveTypeMirrors = new ArrayList<>();
     private List<TypeMirror> boxedTypeMirrors = new ArrayList<>();
 
+    private List<TypeCastData> casts;
+    private List<TypeCheckData> checks;
+
     private TypeMirror genericType;
     private TypeData voidType;
 
@@ -58,6 +61,14 @@ public class TypeSystemData extends Template {
         }
     }
 
+    public void setCasts(List<TypeCastData> casts) {
+        this.casts = casts;
+    }
+
+    public void setChecks(List<TypeCheckData> checks) {
+        this.checks = checks;
+    }
+
     void setGenericType(TypeMirror genericType) {
         this.genericType = genericType;
     }
@@ -71,6 +82,12 @@ public class TypeSystemData extends Template {
         List<MessageContainer> sinks = new ArrayList<>();
         if (types != null) {
             sinks.addAll(types);
+        }
+        if (checks != null) {
+            sinks.addAll(checks);
+        }
+        if (casts != null) {
+            sinks.addAll(casts);
         }
         return sinks;
     }

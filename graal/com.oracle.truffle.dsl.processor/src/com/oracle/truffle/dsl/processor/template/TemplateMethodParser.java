@@ -76,7 +76,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
     public abstract MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror);
 
-    public abstract E create(TemplateMethod method);
+    public abstract E create(TemplateMethod method, boolean invalid);
 
     public abstract boolean isParsable(ExecutableElement method);
 
@@ -143,7 +143,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         ActualParameter returnTypeMirror = matchParameter(returnTypeSpec, method.getReturnType(), template, 0, false);
         if (returnTypeMirror == null) {
             if (emitErrors) {
-                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()));
+                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
                 String expectedReturnType = returnTypeSpec.toSignatureString(true);
                 String actualReturnType = Utils.getSimpleName(method.getReturnType());
 
@@ -164,7 +164,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
         List<ActualParameter> parameters = parseParameters(methodSpecification, parameterTypes);
         if (parameters == null) {
             if (isEmitErrors()) {
-                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()));
+                E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
                 String message = String.format("Method signature %s does not match to the expected signature: \n%s", createActualSignature(methodSpecification, method),
                                 methodSpecification.toSignatureString(method.getSimpleName().toString()));
                 invalidMethod.addError(message);
@@ -174,7 +174,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             }
         }
 
-        return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters));
+        return create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, parameters), false);
     }
 
     private static String createActualSignature(MethodSpec spec, ExecutableElement method) {

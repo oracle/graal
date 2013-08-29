@@ -52,25 +52,17 @@ public abstract class MessageContainer {
     public abstract Element getMessageElement();
 
     public final void emitMessages(ProcessorContext context, TypeElement baseElement, Log log) {
-        emitMessagesImpl(context, baseElement, log, new HashSet<MessageContainer>());
+        emitMessagesImpl(context, baseElement, log, new HashSet<MessageContainer>(), null);
     }
 
-    private void emitMessagesImpl(ProcessorContext context, TypeElement baseElement, Log log, Set<MessageContainer> visitedSinks) {
-        TypeElement expectError = context.getTruffleTypes().getExpectError();
-        if (expectError != null) {
-            Element element = getMessageElement();
-            AnnotationMirror mirror = Utils.findAnnotationMirror(element.getAnnotationMirrors(), expectError);
-            if (mirror != null) {
-                List<String> values = Utils.getAnnotationValueList(String.class, mirror, "value");
-                if (values == null) {
-                    values = Collections.emptyList();
-                }
-                List<Message> msgs = getMessages();
-                if (values.size() != msgs.size()) {
-                    log.message(Kind.ERROR, element, mirror, Utils.getAnnotationValue(mirror, "value"), String.format("Error count expected %s but was %s.", values.size(), msgs.size()));
-                }
-            }
+    private void emitMessagesImpl(ProcessorContext context, TypeElement baseElement, Log log, Set<MessageContainer> visitedSinks, List<Message> verifiedMessages) {
+        List<Message> childMessages;
+        if (verifiedMessages == null) {
+            childMessages = collectMessagesWithElementChildren(new HashSet<MessageContainer>(), getMessageElement());
+        } else {
+            childMessages = verifiedMessages;
         }
+        verifyExpectedMessages(context, log, childMessages);
 
         for (Message message : getMessages()) {
             emitDefault(context, baseElement, log, message);
@@ -82,7 +74,44 @@ public abstract class MessageContainer {
             }
 
             visitedSinks.add(sink);
-            sink.emitMessagesImpl(context, baseElement, log, visitedSinks);
+            if (sink.getMessageElement() == this.getMessageElement()) {
+                sink.emitMessagesImpl(context, baseElement, log, visitedSinks, childMessages);
+            } else {
+                sink.emitMessagesImpl(context, baseElement, log, visitedSinks, null);
+            }
+        }
+    }
+
+    private List<Message> collectMessagesWithElementChildren(Set<MessageContainer> visitedSinks, Element e) {
+        if (visitedSinks.contains(this)) {
+            return Collections.emptyList();
+        }
+        visitedSinks.add(this);
+
+        List<Message> foundMessages = new ArrayList<>();
+        if (Utils.typeEquals(getMessageElement().asType(), e.asType())) {
+            foundMessages.addAll(getMessages());
+        }
+        for (MessageContainer sink : findChildContainers()) {
+            foundMessages.addAll(sink.collectMessagesWithElementChildren(visitedSinks, e));
+        }
+        return foundMessages;
+    }
+
+    private void verifyExpectedMessages(ProcessorContext context, Log log, List<Message> msgs) {
+        TypeElement expectError = context.getTruffleTypes().getExpectError();
+        if (expectError != null) {
+            Element element = getMessageElement();
+            AnnotationMirror mirror = Utils.findAnnotationMirror(element.getAnnotationMirrors(), expectError);
+            if (mirror != null) {
+                List<String> values = Utils.getAnnotationValueList(String.class, mirror, "value");
+                if (values == null) {
+                    values = Collections.emptyList();
+                }
+                if (values.size() != msgs.size()) {
+                    log.message(Kind.ERROR, element, mirror, Utils.getAnnotationValue(mirror, "value"), String.format("Error count expected %s but was %s.", values.size(), msgs.size()));
+                }
+            }
         }
     }
 
@@ -99,7 +128,8 @@ public abstract class MessageContainer {
         String text = message.getText();
 
         TypeElement rootEnclosing = Utils.findRootEnclosingType(getMessageElement());
-        if (rootEnclosing == null || !Utils.typeEquals(baseType.asType(), rootEnclosing.asType()) || this != message.getOriginalContainer()) {
+        TypeElement baseEnclosing = Utils.findRootEnclosingType(baseType);
+        if (rootEnclosing == null || !Utils.typeEquals(baseEnclosing.asType(), rootEnclosing.asType()) || this != message.getOriginalContainer()) {
             // redirect message
             MessageContainer original = message.getOriginalContainer();
             messageElement = baseType;
@@ -113,11 +143,22 @@ public abstract class MessageContainer {
             AnnotationMirror mirror = Utils.findAnnotationMirror(messageElement.getAnnotationMirrors(), expectError);
             if (mirror != null) {
                 List<String> expectedTexts = Utils.getAnnotationValueList(String.class, mirror, "value");
-                if (!expectedTexts.contains(text)) {
-                    log.message(kind, messageElement, mirror, Utils.getAnnotationValue(mirror, "value"), String.format("Message expected one of '%s' but was '%s'.", expectedTexts, text));
+                boolean found = false;
+                for (String expectedText : expectedTexts) {
+                    if (expectedText.endsWith("%") && text.startsWith(expectedText.substring(0, expectedText.length() - 1))) {
+                        found = true;
+                        break;
+                    } else if (text.equals(expectedText)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    log.message(kind, messageElement, mirror, Utils.getAnnotationValue(mirror, "value"), "Message expected one of '%s' but was '%s'.", expectedTexts, text);
                 } else {
                     return;
                 }
+
             }
         }
 

@@ -48,7 +48,7 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
     }
 
     @Override
-    public TypeCheckData create(TemplateMethod method) {
+    public TypeCheckData create(TemplateMethod method, boolean invalid) {
         TypeData checkedType = findTypeByMethodName(method, "is");
         assert checkedType != null;
         ActualParameter parameter = method.findParameter("valueValue");

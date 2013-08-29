@@ -58,7 +58,7 @@ public class ShortCircuitParser extends NodeMethodParser<ShortCircuitData> {
     }
 
     @Override
-    public ShortCircuitData create(TemplateMethod method) {
+    public ShortCircuitData create(TemplateMethod method, boolean invalid) {
         String shortCircuitValue = Utils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "value");
 
         if (!shortCircuitValues.contains(shortCircuitValue)) {

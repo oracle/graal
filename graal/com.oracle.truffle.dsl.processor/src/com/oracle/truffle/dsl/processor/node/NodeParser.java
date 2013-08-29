@@ -30,8 +30,6 @@ import javax.lang.model.type.*;
 import javax.lang.model.util.*;
 import javax.tools.Diagnostic.Kind;
 
-import org.omg.CORBA.*;
-
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.dsl.processor.*;
@@ -202,7 +200,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         for (NodeData splittedNode : nodes) {
             if (templateType.getModifiers().contains(Modifier.PRIVATE) && splittedNode.getSpecializations().size() > 0) {
-                splittedNode.addError("Nodes containing the @%s annotation cannot be private.", Specialization.class.getSimpleName());
+                splittedNode.addError("Classes containing a @%s annotation must not be private.", Specialization.class.getSimpleName());
             }
 
             finalizeSpecializations(elements, splittedNode);

@@ -48,10 +48,25 @@ class TypeCastParser extends TypeSystemMethodParser<TypeCastData> {
     }
 
     @Override
-    public TypeCastData create(TemplateMethod method) {
+    public TypeCastData create(TemplateMethod method, boolean invalid) {
+        if (invalid) {
+            return new TypeCastData(method, null, null);
+        }
+
         TypeData targetType = findTypeByMethodName(method, "as");
         ActualParameter parameter = method.findParameter("valueValue");
-        return new TypeCastData(method, parameter.getTypeSystemType(), targetType);
+
+        TypeData sourceType = null;
+        if (parameter != null) {
+            sourceType = getTypeSystem().findTypeData(parameter.getType());
+        }
+        TypeCastData cast = new TypeCastData(method, sourceType, targetType);
+
+        if (targetType != method.getReturnType().getTypeSystemType()) {
+            cast.addError("Cast type %s does not match to the returned type %s.", Utils.getSimpleName(targetType.getPrimitiveType()),
+                            method.getReturnType() != null ? Utils.getSimpleName(method.getReturnType().getTypeSystemType().getPrimitiveType()) : null);
+        }
+        return cast;
     }
 
     @Override

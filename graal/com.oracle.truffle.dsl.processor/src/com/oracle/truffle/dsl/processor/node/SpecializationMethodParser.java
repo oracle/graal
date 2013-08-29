@@ -44,7 +44,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     }
 
     @Override
-    public SpecializationData create(TemplateMethod method) {
+    public SpecializationData create(TemplateMethod method, boolean invalid) {
         return parseSpecialization(method);
     }
 

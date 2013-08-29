@@ -47,7 +47,7 @@ public class SpecializationListenerParser extends NodeMethodParser<Specializatio
     }
 
     @Override
-    public SpecializationListenerData create(TemplateMethod method) {
+    public SpecializationListenerData create(TemplateMethod method, boolean invalid) {
         return new SpecializationListenerData(method);
     }
 

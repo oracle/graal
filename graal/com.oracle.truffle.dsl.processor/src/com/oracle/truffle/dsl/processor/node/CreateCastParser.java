@@ -61,7 +61,7 @@ public class CreateCastParser extends NodeMethodParser<CreateCastData> {
     }
 
     @Override
-    public CreateCastData create(TemplateMethod method) {
+    public CreateCastData create(TemplateMethod method, boolean invalid) {
         AnnotationMirror mirror = method.getMarkerAnnotation();
         List<String> childNames = Utils.getAnnotationValueList(String.class, mirror, "value");
         CreateCastData cast = new CreateCastData(method, childNames);
