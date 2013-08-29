@@ -152,39 +152,40 @@ public final class ComputeBlockOrder {
     /**
      * Add a linear path to the code emission order greedily following the most likely successor.
      */
-    private static void addPathToCodeEmittingOrder(Block block, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodesToDoubles nodeProbabilities) {
+    private static void addPathToCodeEmittingOrder(Block initialBlock, List<Block> order, PriorityQueue<Block> worklist, BitSet visitedBlocks, NodesToDoubles nodeProbabilities) {
+        Block block = initialBlock;
+        while (block != null) {
+            // Skip loop headers if there is only a single loop end block to
+            // make the backward jump be a conditional jump.
+            if (!skipLoopHeader(block)) {
 
-        // Skip loop headers if there is only a single loop end block to make the backward jump be a
-        // conditional jump.
-        if (!skipLoopHeader(block)) {
-
-            // Align unskipped loop headers as they are the target of the backward jump.
-            if (block.isLoopHeader()) {
-                block.setAlign(true);
+                // Align unskipped loop headers as they are the target of the backward jump.
+                if (block.isLoopHeader()) {
+                    block.setAlign(true);
+                }
+                addBlock(block, order);
             }
-            addBlock(block, order);
-        }
 
-        Loop loop = block.getLoop();
-        if (block.isLoopEnd() && skipLoopHeader(loop.header)) {
+            Loop loop = block.getLoop();
+            if (block.isLoopEnd() && skipLoopHeader(loop.header)) {
 
-            // This is the only loop end of a skipped loop header. Add the header immediately
-            // afterwards.
-            addBlock(loop.header, order);
+                // This is the only loop end of a skipped loop header.
+                // Add the header immediately afterwards.
+                addBlock(loop.header, order);
 
-            // Make sure the loop successors of the loop header are aligned as they are the target
-            // of the backward jump.
-            for (Block successor : loop.header.getSuccessors()) {
-                if (successor.getLoopDepth() == block.getLoopDepth()) {
-                    successor.setAlign(true);
+                // Make sure the loop successors of the loop header are aligned
+                // as they are the target
+                // of the backward jump.
+                for (Block successor : loop.header.getSuccessors()) {
+                    if (successor.getLoopDepth() == block.getLoopDepth()) {
+                        successor.setAlign(true);
+                    }
                 }
             }
-        }
 
-        Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks, nodeProbabilities);
-        enqueueSuccessors(block, worklist, visitedBlocks);
-        if (mostLikelySuccessor != null) {
-            addPathToCodeEmittingOrder(mostLikelySuccessor, order, worklist, visitedBlocks, nodeProbabilities);
+            Block mostLikelySuccessor = findAndMarkMostLikelySuccessor(block, visitedBlocks, nodeProbabilities);
+            enqueueSuccessors(block, worklist, visitedBlocks);
+            block = mostLikelySuccessor;
         }
     }
 
