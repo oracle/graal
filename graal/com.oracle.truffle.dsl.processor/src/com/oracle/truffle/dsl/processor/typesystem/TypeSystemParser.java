@@ -37,7 +37,7 @@ import com.oracle.truffle.dsl.processor.template.*;
 
 public class TypeSystemParser extends TemplateParser<TypeSystemData> {
 
-    public static final List<Class<TypeSystem>> ANNOTATIONS = Arrays.asList(TypeSystem.class);
+    public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(TypeSystem.class, ExpectError.class);
 
     public TypeSystemParser(ProcessorContext c) {
         super(c);

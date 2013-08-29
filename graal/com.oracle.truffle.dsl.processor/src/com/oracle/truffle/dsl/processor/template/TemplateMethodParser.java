@@ -43,7 +43,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
     protected final T template;
 
     private boolean emitErrors = true;
-    private boolean parseNullOnError = true;
+    private boolean parseNullOnError = false;
 
     public TemplateMethodParser(ProcessorContext context, T template) {
         this.template = template;
@@ -104,7 +104,8 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             E parsedMethod = parse(method, mirror);
 
             if (method.getModifiers().contains(Modifier.PRIVATE) && emitErrors) {
-                parsedMethod.addError("Method must not be private.");
+                parsedMethod.addError("Method annotated with @%s must not be private.", getAnnotationType().getSimpleName());
+                parsedMethods.add(parsedMethod);
                 valid = false;
                 continue;
             }

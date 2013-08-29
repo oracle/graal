@@ -65,7 +65,7 @@ public abstract class AbstractParser<M extends Template> {
                 return null;
             }
 
-            model.emitMessages((TypeElement) element, log);
+            model.emitMessages(context, (TypeElement) element, log);
             return filterErrorElements(model);
         } catch (CompileErrorException e) {
             log.message(Kind.WARNING, element, null, null, "The truffle processor could not parse class due to error: %s", e.getMessage());
