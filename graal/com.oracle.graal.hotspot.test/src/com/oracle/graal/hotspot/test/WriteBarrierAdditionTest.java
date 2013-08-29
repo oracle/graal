@@ -195,7 +195,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test10() throws Exception {
-        test2("testUnsafeLoad", wr, new Long(8), new Integer(8));
+        test2("testUnsafeLoad", wr, new Long(useCompressedOops() ? 6 : 8), new Integer(useCompressedOops() ? 6 : 8));
     }
 
     /**
