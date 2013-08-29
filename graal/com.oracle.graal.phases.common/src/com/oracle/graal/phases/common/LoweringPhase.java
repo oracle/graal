@@ -233,6 +233,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     if (node == beginNode) {
                         loweringTool.setLastFixedNode(beginNode);
                     } else {
+                        assert !(node instanceof Lowerable) : "SchedulingError: Lowerable " + node + " should not float before begin node " + beginNode;
+                        assert node instanceof FloatingNode : "skipped node must be a FloatingNode: " + node;
                         continue;
                     }
                 }
