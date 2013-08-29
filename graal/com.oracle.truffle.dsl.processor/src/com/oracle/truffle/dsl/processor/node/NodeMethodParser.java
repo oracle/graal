@@ -85,10 +85,14 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
         return methodSpec;
     }
 
-    private void addDefaultChildren(boolean shortCircuitsEnabled, String shortCircuitName, MethodSpec methodSpec) {
+    public void addDefaultChildren(boolean shortCircuitsEnabled, String breakName, MethodSpec methodSpec) {
         // children are null when parsing executable types
         if (getNode().getChildren() != null) {
             for (NodeChildData child : getNode().getChildren()) {
+                String valueName = child.getName();
+                if (breakName != null && valueName.equals(breakName)) {
+                    break;
+                }
                 if (child.getExecutionKind() == ExecutionKind.DEFAULT) {
                     ParameterSpec spec = createValueParameterSpec(child.getName(), child.getNodeData(), child.getExecuteWith().size());
                     if (child.getCardinality().isMany()) {
@@ -97,10 +101,6 @@ public abstract class NodeMethodParser<E extends TemplateMethod> extends Templat
                     }
                     methodSpec.addRequired(spec);
                 } else if (child.getExecutionKind() == ExecutionKind.SHORT_CIRCUIT) {
-                    String valueName = child.getName();
-                    if (shortCircuitName != null && valueName.equals(shortCircuitName)) {
-                        break;
-                    }
 
                     if (shortCircuitsEnabled) {
                         methodSpec.addRequired(new ParameterSpec(shortCircuitValueName(valueName), getContext().getType(boolean.class)));
