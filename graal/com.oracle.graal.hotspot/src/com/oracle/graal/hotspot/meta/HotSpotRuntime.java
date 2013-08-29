@@ -313,31 +313,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         linkForeignCall(r, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
         linkForeignCall(r, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        if (IntrinsifyObjectMethods.getValue()) {
-            r.registerSubstitutions(ObjectSubstitutions.class);
-        }
-        if (IntrinsifySystemMethods.getValue()) {
-            r.registerSubstitutions(SystemSubstitutions.class);
-        }
-        if (IntrinsifyThreadMethods.getValue()) {
-            r.registerSubstitutions(ThreadSubstitutions.class);
-        }
-        if (IntrinsifyUnsafeMethods.getValue()) {
-            r.registerSubstitutions(UnsafeSubstitutions.class);
-        }
-        if (IntrinsifyClassMethods.getValue()) {
-            r.registerSubstitutions(ClassSubstitutions.class);
-        }
-        if (IntrinsifyAESMethods.getValue()) {
-            r.registerSubstitutions(AESCryptSubstitutions.class);
-            r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
-        }
-        if (IntrinsifyCRC32Methods.getValue()) {
-            r.registerSubstitutions(CRC32Substitutions.class);
-        }
-        if (IntrinsifyReflectionMethods.getValue()) {
-            r.registerSubstitutions(ReflectionSubstitutions.class);
-        }
+        r.registerSubstitutions(ObjectSubstitutions.class);
+        r.registerSubstitutions(SystemSubstitutions.class);
+        r.registerSubstitutions(ThreadSubstitutions.class);
+        r.registerSubstitutions(UnsafeSubstitutions.class);
+        r.registerSubstitutions(ClassSubstitutions.class);
+        r.registerSubstitutions(AESCryptSubstitutions.class);
+        r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
+        r.registerSubstitutions(CRC32Substitutions.class);
+        r.registerSubstitutions(ReflectionSubstitutions.class);
 
         checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(this, r, graalRuntime.getTarget());
         instanceofSnippets = new InstanceOfSnippets.Templates(this, r, graalRuntime.getTarget());

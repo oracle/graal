@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
 
@@ -52,7 +52,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
 
     @Override
     protected StructuredGraph getSnippetGraph(LoweringTool tool) {
-        if (!IntrinsifyObjectClone.getValue()) {
+        if (!shouldIntrinsify(getTargetMethod())) {
             return null;
         }
 

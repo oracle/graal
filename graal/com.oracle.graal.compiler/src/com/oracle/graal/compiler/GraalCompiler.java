@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler;
 
+import static com.oracle.graal.compiler.MethodFilter.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
@@ -55,6 +56,39 @@ public class GraalCompiler {
 
     private static final DebugTimer FrontEnd = Debug.timer("FrontEnd");
     private static final DebugTimer BackEnd = Debug.timer("BackEnd");
+
+    private static final MethodFilter[] positiveIntrinsificationFilter;
+    private static final MethodFilter[] negativeIntrinsificationFilter;
+    static {
+        if (GraalDebugConfig.IntrinsificationsDisabled.getValue() != null) {
+            negativeIntrinsificationFilter = parse(GraalDebugConfig.IntrinsificationsDisabled.getValue());
+        } else {
+            negativeIntrinsificationFilter = null;
+        }
+
+        if (GraalDebugConfig.IntrinsificationsEnabled.getValue() != null) {
+            positiveIntrinsificationFilter = parse(GraalDebugConfig.IntrinsificationsEnabled.getValue());
+        } else if (negativeIntrinsificationFilter != null) {
+            positiveIntrinsificationFilter = new MethodFilter[0];
+        } else {
+            positiveIntrinsificationFilter = null;
+        }
+    }
+
+    /**
+     * Determines if a given method should be intrinsified based on the values of
+     * {@link GraalDebugConfig#IntrinsificationsEnabled} and
+     * {@link GraalDebugConfig#IntrinsificationsDisabled}.
+     */
+    public static boolean shouldIntrinsify(JavaMethod method) {
+        if (positiveIntrinsificationFilter == null) {
+            return true;
+        }
+        if (positiveIntrinsificationFilter.length == 0 || matches(positiveIntrinsificationFilter, method)) {
+            return negativeIntrinsificationFilter == null || !matches(negativeIntrinsificationFilter, method);
+        }
+        return false;
+    }
 
     /**
      * Requests compilation of a given graph.

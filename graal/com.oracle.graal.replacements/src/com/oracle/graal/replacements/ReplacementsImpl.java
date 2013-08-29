@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
@@ -138,7 +139,7 @@ public class ReplacementsImpl implements Replacements {
                 Member originalMethod = originalMethod(classSubstitution, methodSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMethodSubstitution(originalMethod, substituteMethod);
-                    if (original != null && methodSubstitution.forced()) {
+                    if (original != null && methodSubstitution.forced() && shouldIntrinsify(original)) {
                         forcedSubstitutions.add(original);
                     }
                 }
@@ -149,7 +150,7 @@ public class ReplacementsImpl implements Replacements {
                 Member originalMethod = originalMethod(classSubstitution, macroSubstitution.optional(), originalName, originalParameters);
                 if (originalMethod != null) {
                     ResolvedJavaMethod original = registerMacroSubstitution(originalMethod, macroSubstitution.macro());
-                    if (original != null && macroSubstitution.forced()) {
+                    if (original != null && macroSubstitution.forced() && shouldIntrinsify(original)) {
                         forcedSubstitutions.add(original);
                     }
                 }
