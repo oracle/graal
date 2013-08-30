@@ -32,7 +32,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.MoveOp;
@@ -117,34 +116,6 @@ public class AMD64Move {
         }
     }
 
-    public static class LoadCompressedPointer extends LoadOp {
-
-        private long base;
-        private int shift;
-        private int alignment;
-        @Alive({REG}) protected AllocatableValue heapBaseRegister;
-
-        public LoadCompressedPointer(Kind kind, AllocatableValue result, AllocatableValue heapBaseRegister, AMD64AddressValue address, LIRFrameState state, long base, int shift, int alignment) {
-            super(kind, result, address, state);
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.heapBaseRegister = heapBaseRegister;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitMemAccess(AMD64MacroAssembler masm) {
-            Register resRegister = asRegister(result);
-            masm.movl(resRegister, address.toAddress());
-            if (kind == Kind.Object) {
-                decodePointer(masm, resRegister, asRegister(heapBaseRegister), base, shift, alignment);
-            } else {
-                decodeKlassPointer(masm, resRegister, asRegister(heapBaseRegister), base, shift, alignment);
-            }
-        }
-    }
-
     public static class LoadOp extends MemOp {
 
         @Def({REG}) protected AllocatableValue result;
@@ -185,44 +156,6 @@ public class AMD64Move {
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        }
-    }
-
-    public static class StoreCompressedPointer extends AMD64LIRInstruction {
-
-        protected final Kind kind;
-        private long base;
-        private int shift;
-        private int alignment;
-        @Temp({REG}) private AllocatableValue scratch;
-        @Alive({REG}) protected AllocatableValue input;
-        @Alive({COMPOSITE}) protected AMD64AddressValue address;
-        @State protected LIRFrameState state;
-
-        public StoreCompressedPointer(Kind kind, AMD64AddressValue address, AllocatableValue input, AllocatableValue scratch, LIRFrameState state, long base, int shift, int alignment) {
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            this.kind = kind;
-            this.address = address;
-            this.state = state;
-            this.input = input;
-            assert kind == Kind.Object || kind == Kind.Long;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.movq(asRegister(scratch), asRegister(input));
-            if (kind == Kind.Object) {
-                encodePointer(masm, asRegister(scratch), tasm.runtime.heapBaseRegister(), base, shift, alignment);
-            } else {
-                encodeKlassPointer(masm, asRegister(scratch), tasm.runtime.heapBaseRegister(), base, shift, alignment);
-            }
-            if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
-            }
-            masm.movl(address.toAddress(), asRegister(scratch));
         }
     }
 
@@ -271,12 +204,10 @@ public class AMD64Move {
     public static class StoreConstantOp extends MemOp {
 
         protected final Constant input;
-        private final boolean compressible;
 
-        public StoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state, boolean compressible) {
+        public StoreConstantOp(Kind kind, AMD64AddressValue address, Constant input, LIRFrameState state) {
             super(kind, address, state);
             this.input = input;
-            this.compressible = compressible;
         }
 
         @Override
@@ -295,11 +226,7 @@ public class AMD64Move {
                     break;
                 case Long:
                     if (NumUtil.isInt(input.asLong())) {
-                        if (compressible) {
-                            masm.movl(address.toAddress(), (int) input.asLong());
-                        } else {
-                            masm.movslq(address.toAddress(), (int) input.asLong());
-                        }
+                        masm.movslq(address.toAddress(), (int) input.asLong());
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
@@ -311,11 +238,7 @@ public class AMD64Move {
                     throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                 case Object:
                     if (input.isNull()) {
-                        if (compressible) {
-                            masm.movl(address.toAddress(), 0);
-                        } else {
-                            masm.movptr(address.toAddress(), 0);
-                        }
+                        masm.movptr(address.toAddress(), 0);
                     } else {
                         throw GraalInternalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
                     }
@@ -407,38 +330,6 @@ public class AMD64Move {
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
-        }
-    }
-
-    @Opcode("CAS")
-    public static class CompareAndSwapCompressedOp extends AMD64LIRInstruction {
-
-        @Def protected AllocatableValue result;
-        @Alive({COMPOSITE}) protected AMD64AddressValue address;
-        @Alive protected AllocatableValue cmpValue;
-        @Alive protected AllocatableValue newValue;
-        @Temp({REG}) protected AllocatableValue scratch;
-
-        private long base;
-        private int shift;
-        private int alignment;
-
-        public CompareAndSwapCompressedOp(AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue, AllocatableValue scratch, long base, int shift,
-                        int alignment) {
-            this.base = base;
-            this.shift = shift;
-            this.alignment = alignment;
-            this.scratch = scratch;
-            this.result = result;
-            this.address = address;
-            this.cmpValue = cmpValue;
-            this.newValue = newValue;
-            assert cmpValue.getKind() == Kind.Object;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwapCompressed(tasm, masm, result, address, cmpValue, newValue, scratch, base, shift, alignment);
         }
     }
 
@@ -649,86 +540,5 @@ public class AMD64Move {
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
-    }
-
-    protected static void compareAndSwapCompressed(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
-                    AllocatableValue newValue, AllocatableValue scratch, long base, int shift, int alignment) {
-        assert AMD64.rax.equals(asRegister(cmpValue)) && AMD64.rax.equals(asRegister(result));
-        final Register scratchRegister = asRegister(scratch);
-        final Register cmpRegister = asRegister(cmpValue);
-        final Register newRegister = asRegister(newValue);
-        encodePointer(masm, cmpRegister, tasm.runtime.heapBaseRegister(), base, shift, alignment);
-        masm.movq(scratchRegister, newRegister);
-        encodePointer(masm, scratchRegister, tasm.runtime.heapBaseRegister(), base, shift, alignment);
-        if (tasm.target.isMP) {
-            masm.lock();
-        }
-        masm.cmpxchgl(scratchRegister, address.toAddress());
-    }
-
-    private static void encodePointer(AMD64MacroAssembler masm, Register scratchRegister, Register heapBaseRegister, long base, int shift, int alignment) {
-        // If the base is zero, the uncompressed address has to be shifted right
-        // in order to be compressed.
-        if (base == 0) {
-            if (shift != 0) {
-                assert alignment == shift : "Encode algorithm is wrong";
-                masm.shrq(scratchRegister, alignment);
-            }
-        } else {
-            // Otherwise the heap base, which resides always in register 12, is subtracted
-            // followed by right shift.
-            masm.testq(scratchRegister, scratchRegister);
-            // If the stored reference is null, move the heap to scratch
-            // register and then calculate the compressed oop value.
-            masm.cmovq(ConditionFlag.Equal, scratchRegister, heapBaseRegister);
-            masm.subq(scratchRegister, heapBaseRegister);
-            masm.shrq(scratchRegister, alignment);
-        }
-    }
-
-    private static void decodePointer(AMD64MacroAssembler masm, Register resRegister, Register heapBaseRegister, long base, int shift, int alignment) {
-        // If the base is zero, the compressed address has to be shifted left
-        // in order to be uncompressed.
-        if (base == 0) {
-            if (shift != 0) {
-                assert alignment == shift : "Decode algorithm is wrong";
-                masm.shlq(resRegister, alignment);
-            }
-        } else {
-            Label done = new Label();
-            masm.shlq(resRegister, alignment);
-            masm.jccb(ConditionFlag.Equal, done);
-            // Otherwise the heap base is added to the shifted address.
-            masm.addq(resRegister, heapBaseRegister);
-            masm.bind(done);
-        }
-    }
-
-    private static void encodeKlassPointer(AMD64MacroAssembler masm, Register scratchRegister, Register heapBaseRegister, long base, int shift, int alignment) {
-        if (base != 0) {
-            masm.subq(scratchRegister, heapBaseRegister);
-        }
-        if (shift != 0) {
-            assert alignment == shift : "Encode algorithm is wrong";
-            masm.shrq(scratchRegister, alignment);
-        }
-    }
-
-    private static void decodeKlassPointer(AMD64MacroAssembler masm, Register resRegister, Register heapBaseRegister, long base, int shift, int alignment) {
-        if (shift != 0) {
-            assert alignment == shift : "Decode algorithm is wrong";
-            masm.shlq(resRegister, alignment);
-            if (base != 0) {
-                masm.addq(resRegister, heapBaseRegister);
-            }
-        } else {
-            assert base == 0 : "Sanity";
-        }
-    }
-
-    public static void decodeKlassPointer(AMD64MacroAssembler masm, Register register, Register heapBaseRegister, AMD64Address address, long narrowKlassBase, int narrowKlassShift,
-                    int logKlassAlignment) {
-        masm.movl(register, address);
-        decodeKlassPointer(masm, register, heapBaseRegister, narrowKlassBase, narrowKlassShift, logKlassAlignment);
     }
 }

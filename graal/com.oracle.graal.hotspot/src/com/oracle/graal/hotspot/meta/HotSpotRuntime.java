@@ -361,6 +361,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     public abstract Register threadRegister();
 
     /**
+     * Returns the register used by the runtime for maintaining the heap base address for compressed
+     * pointers.
+     */
+    public abstract Register heapBaseRegister();
+
+    /**
      * Gets the stack pointer register.
      */
     public abstract Register stackPointerRegister();
@@ -492,6 +498,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             throw new IllegalArgumentException(array + " is not an array");
         }
         return Array.getLength(array.asObject());
+    }
+
+    public boolean useCompressedOops() {
+        return config.useCompressedOops;
+    }
+
+    public boolean useCompressedKlassPointers() {
+        return config.useCompressedKlassPointers;
     }
 
     @Override
@@ -879,13 +893,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private FloatingReadNode createReadHub(StructuredGraph graph, Kind wordKind, ValueNode object, GuardingNode guard) {
         LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        return graph.add(new FloatingReadNode(object, location, null, StampFactory.forKind(wordKind()), guard, BarrierType.NONE, config.useCompressedKlassPointers));
+        return graph.add(new FloatingReadNode(object, location, null, StampFactory.forKind(wordKind()), guard, BarrierType.NONE, useCompressedKlassPointers()));
     }
 
     private WriteNode createWriteHub(StructuredGraph graph, Kind wordKind, ValueNode object, ValueNode value) {
         LocationNode location = ConstantLocationNode.create(ANY_LOCATION, wordKind, config.hubOffset, graph);
         assert !object.isConstant() || object.asConstant().isNull();
-        return graph.add(new WriteNode(object, value, location, BarrierType.NONE, config.useCompressedKlassPointers));
+        return graph.add(new WriteNode(object, value, location, BarrierType.NONE, useCompressedKlassPointers()));
     }
 
     private static BarrierType getFieldLoadBarrierType(HotSpotResolvedJavaField loadField) {
@@ -943,7 +957,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public int getScalingFactor(Kind kind) {
-        if (config.useCompressedOops && kind == Kind.Object) {
+        if (useCompressedOops() && kind == Kind.Object) {
             return this.graalRuntime.getTarget().arch.getSizeInBytes(Kind.Int);
         } else {
             return this.graalRuntime.getTarget().arch.getSizeInBytes(kind);
@@ -1150,7 +1164,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             case Int:
                 return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
-                if (displacement == config().hubOffset && this.getGraalRuntime().getRuntime().config.useCompressedKlassPointers) {
+                if (displacement == config().hubOffset && useCompressedKlassPointers()) {
                     if (base == null) {
                         throw new GraalInternalError("Base of object must not be null");
                     } else {

@@ -244,10 +244,10 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64Address src = new AMD64Address(receiver, config.hubOffset);
 
             AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
-            HotSpotRuntime hr = ((HotSpotRuntime) gen.getRuntime());
-            if (hr.config.useCompressedKlassPointers) {
+            AMD64HotSpotRuntime hr = ((AMD64HotSpotRuntime) gen.getRuntime());
+            if (hr.useCompressedKlassPointers()) {
                 Register register = r10;
-                AMD64Move.decodeKlassPointer(asm, register, hr.heapBaseRegister(), src, hr.config.narrowKlassBase, hr.config.narrowKlassShift, hr.config.logKlassAlignment);
+                AMD64HotSpotMove.decodeKlassPointer(asm, register, hr.heapBaseRegister(), src, config.narrowKlassBase, config.narrowKlassShift, config.logKlassAlignment);
                 asm.cmpq(inlineCacheKlass, register);
             } else {
                 asm.cmpq(inlineCacheKlass, src);

@@ -89,12 +89,4 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * Gets a description of the target architecture.
      */
     TargetDescription getTarget();
-
-    /**
-     * Returns the register the runtime uses for maintaining the heap base address. This is mainly
-     * utilized by runtimes which support compressed pointers.
-     * 
-     * @return the register that keeps the heap base address
-     */
-    Register heapBaseRegister();
 }
