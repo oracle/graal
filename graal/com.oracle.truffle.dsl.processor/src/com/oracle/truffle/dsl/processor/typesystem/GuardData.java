@@ -60,7 +60,7 @@ public class GuardData extends TemplateMethod {
 
     @Override
     public String toString() {
-        return getMethodName() + getParameters().toString();
+        return (negated ? "!" : "") + getMethodName() + getParameters().toString();
     }
 
 }
