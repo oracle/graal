@@ -396,11 +396,13 @@ public class NodeParser extends TemplateParser<NodeData> {
                 nodeChild.addError("The @%s of the node and the @%s of the @%s does not match. %s != %s. ", TypeSystem.class.getSimpleName(), TypeSystem.class.getSimpleName(),
                                 NodeChild.class.getSimpleName(), Utils.getSimpleName(node.getTypeSystem().getTemplateType()), Utils.getSimpleName(fieldNodeData.getTypeSystem().getTemplateType()));
             }
-            List<ExecutableTypeData> types = nodeChild.findGenericExecutableTypes(context);
-            if (types.isEmpty()) {
-                AnnotationValue executeWithValue = Utils.getAnnotationValue(nodeChild.getMessageAnnotation(), "executeWith");
-                nodeChild.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s.", nodeChild.getExecuteWith().size(),
-                                Utils.getSimpleName(nodeChild.getNodeType()));
+            if (fieldNodeData != null) {
+                List<ExecutableTypeData> types = nodeChild.findGenericExecutableTypes(context);
+                if (types.isEmpty()) {
+                    AnnotationValue executeWithValue = Utils.getAnnotationValue(nodeChild.getMessageAnnotation(), "executeWith");
+                    nodeChild.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s.", nodeChild.getExecuteWith().size(),
+                                    Utils.getSimpleName(nodeChild.getNodeType()));
+                }
             }
         }
     }
