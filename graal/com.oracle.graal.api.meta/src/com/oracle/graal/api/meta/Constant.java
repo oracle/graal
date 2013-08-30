@@ -454,4 +454,102 @@ public final class Constant extends Value {
                 throw new IllegalArgumentException(kind.toString());
         }
     }
+
+    /**
+     * Returns the zero value for a given numeric kind.
+     */
+    public static Constant zero(Kind kind) {
+        switch (kind) {
+            case Byte:
+                return forByte((byte) 0);
+            case Char:
+                return forChar((char) 0);
+            case Double:
+                return DOUBLE_0;
+            case Float:
+                return FLOAT_0;
+            case Int:
+                return INT_0;
+            case Long:
+                return LONG_0;
+            case Short:
+                return forShort((short) 0);
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
+    }
+
+    /**
+     * Returns the one value for a given numeric kind.
+     */
+    public static Constant one(Kind kind) {
+        switch (kind) {
+            case Byte:
+                return forByte((byte) 1);
+            case Char:
+                return forChar((char) 1);
+            case Double:
+                return DOUBLE_1;
+            case Float:
+                return FLOAT_1;
+            case Int:
+                return INT_1;
+            case Long:
+                return LONG_1;
+            case Short:
+                return forShort((short) 1);
+            default:
+                throw new IllegalArgumentException(kind.toString());
+        }
+    }
+
+    /**
+     * Adds two numeric constants.
+     */
+    public static Constant add(Constant x, Constant y) {
+        assert x.getKind() == y.getKind();
+        switch (x.getKind()) {
+            case Byte:
+                return forByte((byte) (x.asInt() + y.asInt()));
+            case Char:
+                return forChar((char) (x.asInt() + y.asInt()));
+            case Double:
+                return forDouble(x.asDouble() + y.asDouble());
+            case Float:
+                return forFloat(x.asFloat() + y.asFloat());
+            case Int:
+                return forInt(x.asInt() + y.asInt());
+            case Long:
+                return forLong(x.asLong() + y.asLong());
+            case Short:
+                return forShort((short) (x.asInt() + y.asInt()));
+            default:
+                throw new IllegalArgumentException(x.getKind().toString());
+        }
+    }
+
+    /**
+     * Multiplies two numeric constants.
+     */
+    public static Constant mul(Constant x, Constant y) {
+        assert x.getKind() == y.getKind();
+        switch (x.getKind()) {
+            case Byte:
+                return forByte((byte) (x.asInt() * y.asInt()));
+            case Char:
+                return forChar((char) (x.asInt() * y.asInt()));
+            case Double:
+                return forDouble(x.asDouble() * y.asDouble());
+            case Float:
+                return forFloat(x.asFloat() * y.asFloat());
+            case Int:
+                return forInt(x.asInt() * y.asInt());
+            case Long:
+                return forLong(x.asLong() * y.asLong());
+            case Short:
+                return forShort((short) (x.asInt() * y.asInt()));
+            default:
+                throw new IllegalArgumentException(x.getKind().toString());
+        }
+    }
 }

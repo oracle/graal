@@ -83,6 +83,57 @@ public abstract class BinaryNode extends FloatingNode {
         }
     }
 
+    public static BinaryNode add(ValueNode x, ValueNode y) {
+        assert x.kind() == y.kind();
+        switch (x.kind()) {
+            case Byte:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+                return IntegerArithmeticNode.add(x, y);
+            case Float:
+            case Double:
+                return x.graph().unique(new FloatAddNode(x.kind(), x, y, false));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public static BinaryNode sub(ValueNode x, ValueNode y) {
+        assert x.kind() == y.kind();
+        switch (x.kind()) {
+            case Byte:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+                return IntegerArithmeticNode.sub(x, y);
+            case Float:
+            case Double:
+                return x.graph().unique(new FloatSubNode(x.kind(), x, y, false));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public static BinaryNode mul(ValueNode x, ValueNode y) {
+        assert x.kind() == y.kind();
+        switch (x.kind()) {
+            case Byte:
+            case Char:
+            case Short:
+            case Int:
+            case Long:
+                return IntegerArithmeticNode.mul(x, y);
+            case Float:
+            case Double:
+                return x.graph().unique(new FloatMulNode(x.kind(), x, y, false));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     public static boolean canTryReassociate(BinaryNode node) {
         return node instanceof IntegerAddNode || node instanceof IntegerSubNode || node instanceof IntegerMulNode || node instanceof AndNode || node instanceof OrNode || node instanceof XorNode;
     }
