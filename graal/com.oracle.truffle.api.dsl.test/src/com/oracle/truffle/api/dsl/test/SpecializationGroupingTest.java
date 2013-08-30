@@ -203,7 +203,7 @@ public class SpecializationGroupingTest {
 
     @Test
     public void testElseConnectionBug2() {
-        TestHelper.assertRuns(TestElseConnectionBug2Factory.getInstance(), 42, TestHelper.array(42));
+        TestHelper.assertRuns(TestElseConnectionBug2Factory.getInstance(), 42, 42);
     }
 
     @SuppressWarnings("unused")
