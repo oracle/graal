@@ -27,7 +27,6 @@ import java.util.*;
 import javax.lang.model.element.*;
 
 import com.oracle.truffle.dsl.processor.*;
-import com.oracle.truffle.dsl.processor.api.element.*;
 import com.oracle.truffle.dsl.processor.typesystem.*;
 
 public abstract class Template extends MessageContainer {
@@ -35,8 +34,6 @@ public abstract class Template extends MessageContainer {
     private final TypeElement templateType;
     private final String templateMethodName;
     private final AnnotationMirror annotation;
-
-    private List<? extends WritableElement> extensionElements;
 
     public Template(TypeElement templateType, String templateMethodName, AnnotationMirror annotation) {
         this.templateType = templateType;
@@ -49,6 +46,19 @@ public abstract class Template extends MessageContainer {
     @Override
     public Element getMessageElement() {
         return templateType;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Template) {
+            return Utils.typeEquals(getTemplateType().asType(), ((Template) obj).getTemplateType().asType());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return templateType.hashCode();
     }
 
     @Override
@@ -66,14 +76,6 @@ public abstract class Template extends MessageContainer {
 
     public AnnotationMirror getTemplateTypeAnnotation() {
         return annotation;
-    }
-
-    public List<? extends WritableElement> getExtensionElements() {
-        return extensionElements;
-    }
-
-    public void setExtensionElements(List<? extends WritableElement> extensionMethods) {
-        this.extensionElements = extensionMethods;
     }
 
     @Override

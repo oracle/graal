@@ -96,7 +96,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
 
     private static void handleThrowable(AnnotationProcessor generator, Throwable t, Element e) {
         String message = "Uncaught error in " + generator.getClass().getSimpleName() + " while processing " + e;
-        generator.getContext().getLog().message(Kind.ERROR, e, null, null, message + ": " + Utils.printException(t));
+        generator.getContext().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + Utils.printException(t), e);
     }
 
     @SuppressWarnings("unchecked")

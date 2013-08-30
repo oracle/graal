@@ -334,7 +334,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setFields(parseFields(typeHierarchy, elements));
         parsedNodes.put(Utils.getQualifiedName(templateType), nodeData);
         // parseChildren invokes cyclic parsing.
-        nodeData.setChildren(parseChildren(elements, typeHierarchy));
+        nodeData.setChildren(parseChildren(nodeData, elements, typeHierarchy));
         nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         return nodeData;
@@ -384,7 +384,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         return fields;
     }
 
-    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
+    private List<NodeChildData> parseChildren(NodeData node, List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
         Set<String> shortCircuits = new HashSet<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
@@ -462,8 +462,10 @@ public class NodeParser extends TemplateParser<NodeData> {
                 nodeChild.setNode(fieldNodeData);
                 if (fieldNodeData == null) {
                     nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
+                } else if (!fieldNodeData.getTypeSystem().equals(node.getTypeSystem())) {
+                    nodeChild.addError("The @%s of the node and the @%s of the @%s does not match. %s != %s. ", TypeSystem.class.getSimpleName(), TypeSystem.class.getSimpleName(),
+                                    NodeChild.class.getSimpleName(), Utils.getSimpleName(node.getTypeSystem().getTemplateType()), Utils.getSimpleName(fieldNodeData.getTypeSystem().getTemplateType()));
                 }
-
                 index++;
             }
         }
@@ -1009,9 +1011,6 @@ public class NodeParser extends TemplateParser<NodeData> {
         Set<Element> unusedElements = new HashSet<>(elements);
         for (TemplateMethod method : nodeData.getAllTemplateMethods()) {
             unusedElements.remove(method.getMethod());
-        }
-        if (nodeData.getExtensionElements() != null) {
-            unusedElements.removeAll(nodeData.getExtensionElements());
         }
 
         for (NodeFieldData field : nodeData.getFields()) {

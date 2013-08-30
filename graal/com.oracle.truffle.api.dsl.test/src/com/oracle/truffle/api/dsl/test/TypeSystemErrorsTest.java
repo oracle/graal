@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.*;
 
 public class TypeSystemErrorsTest {
 
@@ -56,6 +57,13 @@ public class TypeSystemErrorsTest {
         boolean asInteger(Object value) {
             return (boolean) value;
         }
+
+    }
+
+    @TypeSystemReference(Types0.class)
+    @NodeChild
+    @ExpectError("The @TypeSystem of the node and the @TypeSystem of the @NodeChild does not match. Types0 != SimpleTypes. ")
+    abstract static class ErrorNode1 extends ValueNode {
 
     }
 
