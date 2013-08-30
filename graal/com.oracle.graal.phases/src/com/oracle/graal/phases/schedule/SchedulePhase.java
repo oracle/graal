@@ -770,12 +770,12 @@ public final class SchedulePhase extends Phase {
                     // If a FrameState is an outer FrameState this method behaves as if the inner
                     // FrameState was the actual usage, by recursing.
                     blocksForUsage(node, unscheduledUsage, closure, strategy);
-                } else if (unscheduledUsage instanceof MergeNode) {
-                    // Only FrameStates can be connected to MergeNodes.
+                } else if (unscheduledUsage instanceof AbstractBeginNode) {
+                    // Only FrameStates can be connected to BeginNodes.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
                     }
-                    // If a FrameState belongs to a MergeNode then it's inputs will be placed at the
+                    // If a FrameState belongs to a BeginNode then it's inputs will be placed at the
                     // common dominator of all EndNodes.
                     for (Node pred : unscheduledUsage.cfgPredecessors()) {
                         closure.apply(cfg.getNodeToBlock().get(pred));

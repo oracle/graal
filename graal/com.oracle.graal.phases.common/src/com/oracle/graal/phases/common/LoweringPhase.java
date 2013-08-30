@@ -128,7 +128,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
-            assert n == null || n.isAlive() : n;
+            assert n.isAlive() : n;
             lastFixedNode = n;
         }
     }
@@ -220,7 +220,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
             // Lower the instructions of this block.
             List<ScheduledNode> nodes = schedule.nodesFor(b);
-            loweringTool.setLastFixedNode(null);
+            loweringTool.setLastFixedNode(b.getBeginNode());
             for (Node node : nodes) {
 
                 if (node.isDeleted()) {
@@ -228,23 +228,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     continue;
                 }
 
-                if (loweringTool.lastFixedNode() == null) {
-                    AbstractBeginNode beginNode = b.getBeginNode();
-                    if (node == beginNode) {
-                        loweringTool.setLastFixedNode(beginNode);
-                    } else {
-                        assert !(node instanceof Lowerable) : "SchedulingError: Lowerable " + node + " should not float before begin node " + beginNode;
-                        assert node instanceof FloatingNode : "skipped node must be a FloatingNode: " + node;
-                        continue;
-                    }
-                }
-
                 // Cache the next node to be able to reconstruct the previous of the next node
                 // after lowering.
                 FixedNode nextNode = null;
                 if (node instanceof FixedWithNextNode) {
-                    FixedWithNextNode fixed = (FixedWithNextNode) node;
-                    nextNode = fixed.next();
+                    nextNode = ((FixedWithNextNode) node).next();
                 } else {
                     nextNode = loweringTool.lastFixedNode().next();
                 }
@@ -255,14 +243,19 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
 
                 if (!nextNode.isAlive()) {
+                    // can happen when the rest of the block is killed by lowering (e.g. by a
+                    // unconditional deopt)
                     break;
                 } else {
                     Node nextLastFixed = nextNode.predecessor();
-                    if (nextLastFixed instanceof FixedWithNextNode) {
-                        loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
-                    } else {
-                        loweringTool.setLastFixedNode((FixedWithNextNode) nextNode);
+                    if (!(nextLastFixed instanceof FixedWithNextNode)) {
+                        // insert begin node, to have a valid last fixed for next lowerable node.
+                        BeginNode begin = node.graph().add(new BeginNode());
+                        nextLastFixed.replaceFirstSuccessor(nextNode, begin);
+                        begin.setNext(nextNode);
+                        nextLastFixed = begin;
                     }
+                    loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
                 }
             }
         }

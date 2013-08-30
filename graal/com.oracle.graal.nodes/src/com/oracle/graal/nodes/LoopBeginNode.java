@@ -47,6 +47,7 @@ public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, L
     }
 
     public void setLoopFrequency(double loopFrequency) {
+        assert loopFrequency >= 0;
         this.loopFrequency = loopFrequency;
     }
 
