@@ -41,12 +41,14 @@ public final class SpecializationGroup {
     private final List<TypeGuard> typeGuards;
     private final List<GuardData> guards;
 
+    private final NodeData node;
     private final SpecializationData specialization;
     private final List<SpecializationGroup> children = new ArrayList<>();
 
     private SpecializationGroup parent;
 
     private SpecializationGroup(SpecializationData data) {
+        this.node = data.getNode();
         this.assumptions = new ArrayList<>();
         this.typeGuards = new ArrayList<>();
         this.guards = new ArrayList<>();
@@ -61,9 +63,11 @@ public final class SpecializationGroup {
     }
 
     public SpecializationGroup(List<SpecializationGroup> children, List<String> assumptionMatches, List<TypeGuard> typeGuardsMatches, List<GuardData> guardMatches) {
+        assert !children.isEmpty() : "children must not be empty";
         this.assumptions = assumptionMatches;
         this.typeGuards = typeGuardsMatches;
         this.guards = guardMatches;
+        this.node = children.get(0).node;
         this.specialization = null;
         updateChildren(children);
     }
@@ -114,8 +118,7 @@ public final class SpecializationGroup {
                 return null;
             }
             GuardData previousGuard = previous.getGuards().get(elseConnectedGuards.size());
-            if (guard.getMethod().equals(previousGuard.getMethod())) {
-                assert guard.isNegated() != previousGuard.isNegated();
+            if (guard.getMethod().equals(previousGuard.getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
                 return guard;
             }
         }
@@ -205,14 +208,27 @@ public final class SpecializationGroup {
         for (Iterator<GuardData> iterator = guardMatches.iterator(); iterator.hasNext();) {
             GuardData guardMatch = iterator.next();
 
-            List<TypeMirror> guardTypes = TemplateMethod.getSignatureTypes(guardMatch.getParameters());
-            for (int i = 0; i < guardTypes.size(); i++) {
-                TypeMirror guardType = guardTypes.get(i);
-                int signatureIndex = i + 1;
+            int signatureIndex = 0;
+            for (ActualParameter parameter : guardMatch.getParameters()) {
+                signatureIndex++;
+                if (parameter.getSpecification().isSignature()) {
+                    continue;
+                }
+
+                TypeMirror guardType = parameter.getType();
 
                 // object guards can be safely moved up
                 if (Utils.isObject(guardType)) {
                     continue;
+                }
+
+                // generic guards can be safely moved up
+                SpecializationData generic = first.node.getGenericSpecialization();
+                if (generic != null) {
+                    ActualParameter genericParameter = generic.findParameter(parameter.getLocalName());
+                    if (genericParameter != null && Utils.typeEquals(genericParameter.getType(), guardType)) {
+                        continue;
+                    }
                 }
 
                 // signature index required for moving up guards
