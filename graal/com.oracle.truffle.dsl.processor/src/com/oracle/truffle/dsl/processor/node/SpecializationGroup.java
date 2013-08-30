@@ -110,17 +110,18 @@ public final class SpecializationGroup {
     }
 
     private GuardData findNegatedGuardInPrevious(GuardData guard) {
-        SpecializationGroup previous = this;
-        while ((previous = previous.getPreviousGroup()) != null) {
-            List<GuardData> elseConnectedGuards = previous.getElseConnectableGuards();
+        SpecializationGroup previous = this.getPreviousGroup();
+        if (previous == null) {
+            return null;
+        }
+        List<GuardData> elseConnectedGuards = previous.getElseConnectableGuards();
 
-            if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
-                return null;
-            }
-            GuardData previousGuard = previous.getGuards().get(elseConnectedGuards.size());
-            if (guard.getMethod().equals(previousGuard.getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
-                return guard;
-            }
+        if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
+            return null;
+        }
+        GuardData previousGuard = previous.getGuards().get(elseConnectedGuards.size());
+        if (guard.getMethod().equals(previousGuard.getMethod()) && guard.isNegated() != previousGuard.isNegated()) {
+            return guard;
         }
         return null;
     }

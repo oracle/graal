@@ -27,6 +27,7 @@ import org.junit.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug1Factory;
+import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestElseConnectionBug2Factory;
 import com.oracle.truffle.api.dsl.test.SpecializationGroupingTestFactory.TestGroupingFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.SimpleTypes;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
@@ -198,6 +199,39 @@ public class SpecializationGroupingTest {
             return 42;
         }
 
+    }
+
+    @Test
+    public void testElseConnectionBug2() {
+        TestHelper.assertRuns(TestElseConnectionBug2Factory.getInstance(), 42, TestHelper.array(42));
+    }
+
+    @SuppressWarnings("unused")
+    @NodeChild
+    public abstract static class TestElseConnectionBug2 extends ValueNode {
+
+        @Specialization(order = 2, guards = "guard0")
+        public int doGuard0(int value) {
+            throw new AssertionError();
+        }
+
+        @Specialization(order = 3, guards = "guard1")
+        public int doGuard1(int value) {
+            throw new AssertionError();
+        }
+
+        @Specialization(order = 4, guards = "!guard0")
+        public int doUninitialized(int value) {
+            return value;
+        }
+
+        boolean guard0(int value) {
+            return false;
+        }
+
+        boolean guard1(int value) {
+            return false;
+        }
     }
 
     private static class MockAssumption implements Assumption {
