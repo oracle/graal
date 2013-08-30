@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import static com.oracle.truffle.api.dsl.test.TestHelper.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
