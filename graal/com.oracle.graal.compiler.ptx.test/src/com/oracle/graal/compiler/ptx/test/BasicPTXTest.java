@@ -41,7 +41,7 @@ public class BasicPTXTest extends PTXTestBase {
         invoke(compile("testConstI"));
     }
 
-    public int testConstI() {
+    public static int testConstI() {
         return 42;
     }
 
