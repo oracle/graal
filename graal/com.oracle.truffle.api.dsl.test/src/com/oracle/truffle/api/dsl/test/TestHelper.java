@@ -22,6 +22,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static com.oracle.truffle.api.dsl.test.TestHelper.*;
+import static org.junit.Assert.*;
+
 import java.util.*;
 
 import com.oracle.truffle.api.*;
@@ -113,6 +116,31 @@ class TestHelper {
         }
 
         return output;
+    }
+
+    /* Methods tests all test values in combinational order. */
+    static void assertRuns(NodeFactory<? extends ValueNode> factory, Object result, Object... testValues) {
+        // test each run by its own.
+        for (int i = 0; i < testValues.length; i++) {
+            assertValue(createRoot(factory), result, testValues);
+        }
+
+        // test all combinations of the test values
+        List<List<Object>> permuts = permutations(Arrays.asList(testValues));
+        for (List<Object> list : permuts) {
+            TestRootNode<?> root = createRoot(factory);
+            for (Object object : list) {
+                assertValue(root, result, object);
+            }
+        }
+    }
+
+    static void assertValue(TestRootNode<? extends ValueNode> root, Object result, Object testValues) {
+        if (testValues instanceof Object[]) {
+            assertEquals(result, executeWith(root, (Object[]) testValues));
+        } else {
+            assertEquals(result, executeWith(root, testValues));
+        }
     }
 
 }

@@ -27,18 +27,18 @@ import com.oracle.truffle.api.dsl.*;
 public class TypeSystemErrorsTest {
 
     @TypeSystem({int.class, boolean.class})
-    static class Types0 {
+    public static class Types0 {
 
     }
 
     @ExpectError("Invalid type order. The type(s) [java.lang.String] are inherited from a earlier defined type java.lang.CharSequence.")
     @TypeSystem({CharSequence.class, String.class})
-    static class Types1 {
+    public static class Types1 {
 
     }
 
     @TypeSystem({int.class, boolean.class})
-    static class Types2 {
+    public static class Types2 {
 
         @TypeCast
         @ExpectError("The provided return type \"String\" does not match expected return type \"int\".%")
@@ -49,7 +49,7 @@ public class TypeSystemErrorsTest {
     }
 
     @TypeSystem({int.class, boolean.class})
-    static class Types3 {
+    public static class Types3 {
 
         @TypeCast
         @ExpectError("The provided return type \"boolean\" does not match expected return type \"int\".%")
