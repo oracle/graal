@@ -861,7 +861,7 @@ public final class SchedulePhase extends Phase {
     private static List<ScheduledNode> filterSchedulableNodes(List<ScheduledNode> list) {
         List<ScheduledNode> result = new ArrayList<>();
         for (ScheduledNode n : list) {
-            if (!(n instanceof LocalNode) && !(n instanceof PhiNode)) {
+            if (!(n instanceof PhiNode)) {
                 result.add(n);
             }
         }
@@ -984,7 +984,7 @@ public final class SchedulePhase extends Phase {
     }
 
     private void addToLatestSorting(Block b, ScheduledNode i, List<ScheduledNode> sortedInstructions, NodeBitMap visited, List<FloatingReadNode> reads, NodeBitMap beforeLastLocation) {
-        if (i == null || visited.isMarked(i) || cfg.getNodeToBlock().get(i) != b || i instanceof PhiNode || i instanceof LocalNode) {
+        if (i == null || visited.isMarked(i) || cfg.getNodeToBlock().get(i) != b || i instanceof PhiNode) {
             return;
         }
 
@@ -1045,7 +1045,7 @@ public final class SchedulePhase extends Phase {
     private void addToEarliestSorting(Block b, ScheduledNode i, List<ScheduledNode> sortedInstructions, NodeBitMap visited) {
         ScheduledNode instruction = i;
         while (true) {
-            if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode || instruction instanceof LocalNode) {
+            if (instruction == null || visited.isMarked(instruction) || cfg.getNodeToBlock().get(instruction) != b || instruction instanceof PhiNode) {
                 return;
             }
 
