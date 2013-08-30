@@ -462,7 +462,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                 nodeChild.setNode(fieldNodeData);
                 if (fieldNodeData == null) {
                     nodeChild.addError("Node type '%s' is invalid or not a valid Node.", Utils.getQualifiedName(childType));
-                } else if (!fieldNodeData.getTypeSystem().equals(node.getTypeSystem())) {
+                } else if (!Utils.typeEquals(fieldNodeData.getTypeSystem().getTemplateType().asType(), (node.getTypeSystem().getTemplateType().asType()))) {
                     nodeChild.addError("The @%s of the node and the @%s of the @%s does not match. %s != %s. ", TypeSystem.class.getSimpleName(), TypeSystem.class.getSimpleName(),
                                     NodeChild.class.getSimpleName(), Utils.getSimpleName(node.getTypeSystem().getTemplateType()), Utils.getSimpleName(fieldNodeData.getTypeSystem().getTemplateType()));
                 }

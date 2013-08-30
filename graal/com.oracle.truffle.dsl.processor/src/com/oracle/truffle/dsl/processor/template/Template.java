@@ -49,19 +49,6 @@ public abstract class Template extends MessageContainer {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Template) {
-            return Utils.typeEquals(getTemplateType().asType(), ((Template) obj).getTemplateType().asType());
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return templateType.hashCode();
-    }
-
-    @Override
     protected List<MessageContainer> findChildContainers() {
         return Collections.emptyList();
     }
