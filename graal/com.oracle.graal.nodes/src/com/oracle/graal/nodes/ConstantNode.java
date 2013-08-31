@@ -77,6 +77,14 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Returns a node for a primitive constant.
+     */
+    public static ConstantNode forPrimitive(Constant constant, Graph graph) {
+        assert constant.getKind() != Kind.Object;
+        return forConstant(constant, null, graph);
+    }
+
+    /**
      * Returns a node for a double constant.
      * 
      * @param d the double value for which to create the instruction
