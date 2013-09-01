@@ -121,7 +121,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
             ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions());
             if (isCloneableType(type, tool.getMetaAccessProvider())) {
                 if (!type.isArray()) {
-                    VirtualInstanceNode newVirtual = new VirtualInstanceNode(type);
+                    VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
                     ResolvedJavaField[] fields = newVirtual.getFields();
 
                     ValueNode[] state = new ValueNode[fields.length];
