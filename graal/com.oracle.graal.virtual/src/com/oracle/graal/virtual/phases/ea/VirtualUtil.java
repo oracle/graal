@@ -67,9 +67,6 @@ public final class VirtualUtil {
         }
 
         for (Node node : graph.getNodes()) {
-            if (node instanceof LocalNode) {
-                flood.add(node);
-            }
             if (flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
                     flood.add(input);
