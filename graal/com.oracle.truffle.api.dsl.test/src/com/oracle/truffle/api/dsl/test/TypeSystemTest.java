@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.*;
 
 public class TypeSystemTest {
 
-    @TypeSystem({int.class, boolean.class, String.class, Str.class, CallTarget.class, Object[].class})
+    @TypeSystem({int.class, boolean.class, String.class, Str.class, CallTarget.class, BExtendsAbstract.class, CExtendsAbstract.class, Abstract.class, Object[].class})
     static class SimpleTypes {
 
         static int intCheck;
@@ -71,6 +71,14 @@ public class TypeSystemTest {
 
         public Object[] executeIntArray(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectObjectArray(execute(frame));
+        }
+
+        public BExtendsAbstract executeBExtendsAbstract(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectBExtendsAbstract(execute(frame));
+        }
+
+        public CExtendsAbstract executeCExtendsAbstract(VirtualFrame frame) throws UnexpectedResultException {
+            return SimpleTypesGen.SIMPLETYPES.expectCExtendsAbstract(execute(frame));
         }
 
         public abstract Object execute(VirtualFrame frame);
@@ -152,6 +160,20 @@ public class TypeSystemTest {
             throw new UnexpectedResultException(o);
         }
 
+    }
+
+    abstract static class Abstract {
+    }
+
+    static final class BExtendsAbstract extends Abstract {
+
+        static final BExtendsAbstract INSTANCE = new BExtendsAbstract();
+
+    }
+
+    static final class CExtendsAbstract extends Abstract {
+
+        static final CExtendsAbstract INSTANCE = new CExtendsAbstract();
     }
 
 }

@@ -34,11 +34,15 @@ import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithBaseInterfaceF
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithBoxedPrimitiveFactory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.GuardWithObjectFactory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.InvocationGuardFactory;
+import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestAbstractGuard1Factory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve1Factory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve2Factory;
 import com.oracle.truffle.api.dsl.test.GuardsTestFactory.TestGuardResolve3Factory;
 import com.oracle.truffle.api.dsl.test.NodeContainerTest.Str;
 import com.oracle.truffle.api.dsl.test.NodeContainerTest.StrBase;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
+import com.oracle.truffle.api.dsl.test.TypeSystemTest.CExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 
@@ -268,6 +272,45 @@ public class GuardsTest {
         @Specialization(guards = "guard")
         int doSpecialized(Str value0) {
             return 42;
+        }
+    }
+
+    @NodeChild("expression")
+    public abstract static class TestGuardResolve4 extends ValueNode {
+
+        boolean guard(StrBase primitive) {
+            return false;
+        }
+
+        @Specialization(guards = "guard")
+        int doSpecialized(Str value0) {
+            return 42;
+        }
+    }
+
+    @Test
+    public void testAbstractGuard1() {
+        TestRootNode<?> root = createRoot(TestAbstractGuard1Factory.getInstance());
+
+        assertEquals(BExtendsAbstract.INSTANCE, executeWith(root, BExtendsAbstract.INSTANCE));
+        assertEquals(CExtendsAbstract.INSTANCE, executeWith(root, CExtendsAbstract.INSTANCE));
+    }
+
+    @NodeChild("expression")
+    public abstract static class TestAbstractGuard1 extends ValueNode {
+
+        boolean guard(Abstract value0) {
+            return true;
+        }
+
+        @Specialization(order = 1, guards = "guard")
+        BExtendsAbstract doSpecialized1(BExtendsAbstract value0) {
+            return value0;
+        }
+
+        @Specialization(order = 2, guards = "guard")
+        CExtendsAbstract doSpecialized2(CExtendsAbstract value0) {
+            return value0;
         }
     }
 
