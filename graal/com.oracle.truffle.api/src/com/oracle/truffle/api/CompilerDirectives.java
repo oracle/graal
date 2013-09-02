@@ -205,4 +205,13 @@ public class CompilerDirectives {
     @Target({ElementType.METHOD})
     public @interface SlowPath {
     }
+
+    /**
+     * Marks classes as value types. Reference comparisons (==) between instances of those classes
+     * have undefined semantics and can either return true or false.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE})
+    public @interface ValueType {
+    }
 }
