@@ -146,4 +146,21 @@ public class NodeFieldTest {
 
     }
 
+    @Test
+    public void testObjectContainer() {
+        assertEquals("42", createCallTarget(ObjectContainerNodeFactory.create("42")).call());
+    }
+
+    @NodeField(name = "object", type = Object.class)
+    abstract static class ObjectContainerNode extends ValueNode {
+
+        public abstract Object getObject();
+
+        @Specialization
+        Object containerField() {
+            return getObject();
+        }
+
+    }
+
 }

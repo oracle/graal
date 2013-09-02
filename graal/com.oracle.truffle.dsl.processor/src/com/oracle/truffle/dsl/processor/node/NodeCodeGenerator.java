@@ -621,6 +621,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 int index = 0;
                 for (VariableElement param : element.getParameters()) {
+                    if (Utils.isObject(param.asType())) {
+                        continue;
+                    }
                     builder.string(" && ");
                     if (!param.asType().getKind().isPrimitive()) {
                         builder.string("(arguments[" + index + "] == null || ");
@@ -639,7 +642,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 index = 0;
                 for (VariableElement param : element.getParameters()) {
                     builder.startGroup();
-                    builder.string("(").type(param.asType()).string(") ");
+                    if (!Utils.isObject(param.asType())) {
+                        builder.string("(").type(param.asType()).string(") ");
+                    }
                     builder.string("arguments[").string(String.valueOf(index)).string("]");
                     builder.end();
                     index++;
