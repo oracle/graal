@@ -82,11 +82,11 @@ public abstract class PTXTestBase extends GraalCompilerTest {
         return sg;
     }
 
-    protected void invoke(CompilationResult result, Object... args) {
+    protected Object invoke(CompilationResult result, Object... args) {
         try {
             if (((ExternalCompilationResult) result).getEntryPoint() == 0) {
                 Debug.dump(result, "[CUDA] *** Null entry point - Not launching kernel");
-                return;
+                return null;
             }
 
             /* Check if the method compiled is static */
@@ -95,9 +95,11 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
             HotSpotRuntime hsr = (HotSpotRuntime) runtime;
             InstalledCode installedCode = hsr.addExternalMethod(sg.method(), result, sg);
-            installedCode.executeVarargs(executeArgs);
+            Object r = installedCode.executeVarargs(executeArgs);
+            return r;
         } catch (Throwable th) {
             th.printStackTrace();
+            return null;
         }
     }
 }

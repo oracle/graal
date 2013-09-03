@@ -110,9 +110,6 @@ public class DeadCodeEliminationPhase extends Phase {
 
     private static void iterateInputs(NodeFlood flood, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
-            if (node instanceof LocalNode) {
-                flood.add(node);
-            }
             if (flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
                     flood.add(input);

@@ -38,15 +38,15 @@ public class GraalDebugConfig implements DebugConfig {
     // @formatter:off
     @Option(help = "Enable scope-based debugging", name = "Debug")
     public static final OptionValue<Boolean> DebugEnabled = new OptionValue<>(true);
-    @Option(help = "Scopes to be dumped")
+    @Option(help = "Pattern for scope(s) to in which dumping is enabled (see DebugFilter and Debug.dump)")
     public static final OptionValue<String> Dump = new OptionValue<>(null);
-    @Option(help = "Scopes to be metered")
+    @Option(help = "Pattern for scope(s) to in which metering is enabled (see DebugFilter and Debug.metric)")
     public static final OptionValue<String> Meter = new OptionValue<>(null);
-    @Option(help = "Scopes to be timed")
+    @Option(help = "Pattern for scope(s) to in which timing is enabled (see DebugFilter and Debug.timer)")
     public static final OptionValue<String> Time = new OptionValue<>(null);
-    @Option(help = "Scopes to be logged")
+    @Option(help = "Pattern for scope(s) to in which logging is enabled (see DebugFilter and Debug.log)")
     public static final OptionValue<String> Log = new OptionValue<>(null);
-    @Option(help = "Filters debug scope output by method name/pattern")
+    @Option(help = "Pattern for filtering debug scope output based on method context (see MethodFilter)")
     public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
     @Option(help = "How to print metric and timing values:%n" +
                    "Name - aggregate by unqualified name%n" +
@@ -85,11 +85,7 @@ public class GraalDebugConfig implements DebugConfig {
         if (methodFilter == null || methodFilter.isEmpty()) {
             this.methodFilter = null;
         } else {
-            String[] filters = methodFilter.split(",");
-            this.methodFilter = new MethodFilter[filters.length];
-            for (int i = 0; i < filters.length; i++) {
-                this.methodFilter[i] = new MethodFilter(filters[i]);
-            }
+            this.methodFilter = com.oracle.graal.compiler.MethodFilter.parse(methodFilter);
         }
 
         // Report the filters that have been configured so the user can verify it's what they expect
@@ -156,10 +152,8 @@ public class GraalDebugConfig implements DebugConfig {
                 } else if (methodFilter != null) {
                     JavaMethod method = asJavaMethod(o);
                     if (method != null) {
-                        for (MethodFilter filter : methodFilter) {
-                            if (filter.matches(method)) {
-                                return true;
-                            }
+                        if (com.oracle.graal.compiler.MethodFilter.matches(methodFilter, method)) {
+                            return true;
                         }
                     }
                 }

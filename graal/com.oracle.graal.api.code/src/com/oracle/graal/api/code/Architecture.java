@@ -192,7 +192,7 @@ public abstract class Architecture {
      *            null if no arithmetic needs to be performed on the vector
      * @return a supported vector size, but at most {@code maxLength}
      */
-    public int getSupportedVectorLength(Kind kind, int maxLength, ArithmeticOperation arithmetic) {
+    public int getSupportedVectorLength(Kind kind, int maxLength, Class<? extends ArithmeticOperation> arithmetic) {
         return 1;
     }
 

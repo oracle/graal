@@ -22,12 +22,13 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import org.junit.Test;
+import org.junit.*;
 
 import java.lang.reflect.Method;
 
 public class ControlTest extends PTXTestBase {
 
+    @Ignore
     @Test
     public void testControl() {
         compile("testSwitch1I");

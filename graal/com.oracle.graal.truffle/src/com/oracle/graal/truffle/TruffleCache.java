@@ -205,6 +205,10 @@ public final class TruffleCache {
     }
 
     private void expandPath(StructuredGraph newGraph, int maxNodes, NodeBitMap visitedNodes, AbstractBeginNode start, Queue<AbstractBeginNode> workQueue) {
+        if (start.isDeleted()) {
+            return;
+        }
+
         FixedNode next = start;
         while (!visitedNodes.isMarked(next)) {
             visitedNodes.mark(next);

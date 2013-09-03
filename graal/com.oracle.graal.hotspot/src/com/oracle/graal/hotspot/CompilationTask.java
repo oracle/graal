@@ -113,6 +113,8 @@ public final class CompilationTask implements Runnable {
      */
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
 
+    public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
+
     public void runCompilation() {
         /*
          * no code must be outside this try/finally because it could happen otherwise that
@@ -164,7 +166,9 @@ public final class CompilationTask implements Runnable {
                 }
             }
 
-            installMethod(result);
+            try (TimerCloseable b = CodeInstallationTime.start()) {
+                installMethod(result);
+            }
             stats.finish(method);
         } catch (BailoutException bailout) {
             Debug.metric("Bailouts").increment();

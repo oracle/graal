@@ -145,6 +145,9 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
         }
         Debug.dump(graph, "Graph");
         new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
+        for (FrameState fs : local.usages().filter(FrameState.class).snapshot()) {
+            fs.replaceFirstInput(local, null);
+        }
         StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
         assertEquals(referenceGraph, graph);
     }
