@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
@@ -184,8 +185,17 @@ public class PartialEvaluator {
                     materializeNode.replaceAtUsages(materializeNode.getFrame());
                     graph.removeFixed(materializeNode);
                 }
-                for (VirtualOnlyInstanceNode virtualOnlyNode : graph.getNodes(VirtualOnlyInstanceNode.class)) {
-                    virtualOnlyNode.setAllowMaterialization(true);
+                for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.class)) {
+                    if (virtualObjectNode instanceof VirtualOnlyInstanceNode) {
+                        VirtualOnlyInstanceNode virtualOnlyInstanceNode = (VirtualOnlyInstanceNode) virtualObjectNode;
+                        virtualOnlyInstanceNode.setAllowMaterialization(true);
+                    } else if (virtualObjectNode instanceof VirtualInstanceNode) {
+                        VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;
+                        ResolvedJavaType type = virtualInstanceNode.type();
+                        if (type.getAnnotation(CompilerDirectives.ValueType.class) != null) {
+                            virtualInstanceNode.setIdentity(false);
+                        }
+                    }
                 }
 
                 // Convert deopt to guards.

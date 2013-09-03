@@ -25,6 +25,7 @@ package com.oracle.graal.lir;
 import java.lang.annotation.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -45,8 +46,11 @@ public abstract class CompositeValue extends Value {
 
     private final CompositeValueClass valueClass;
 
+    private static final DebugMetric COMPOSITE_VALUE_COUNT = Debug.metric("CompositeValues");
+
     public CompositeValue(PlatformKind kind) {
         super(kind);
+        COMPOSITE_VALUE_COUNT.increment();
         valueClass = CompositeValueClass.get(getClass());
     }
 

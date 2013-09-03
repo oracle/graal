@@ -55,6 +55,19 @@ public class PTXControlFlow {
         }
     }
 
+    public static class ReturnNoValOp extends PTXLIRInstruction {
+
+        public ReturnNoValOp() { }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+            if (tasm.frameContext != null) {
+                tasm.frameContext.leave(tasm);
+            }
+            masm.ret();
+        }
+    }
+
     public static class BranchOp extends PTXLIRInstruction implements StandardOp.BranchOp {
 
         protected Condition condition;

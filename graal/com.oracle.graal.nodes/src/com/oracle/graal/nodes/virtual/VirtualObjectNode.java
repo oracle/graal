@@ -23,14 +23,18 @@
 package com.oracle.graal.nodes.virtual;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable {
+public abstract class VirtualObjectNode extends ValueNode implements LIRLowerable, Node.IterableNodeType {
 
-    public VirtualObjectNode() {
+    private boolean hasIdentity;
+
+    public VirtualObjectNode(boolean hasIdentity) {
         super(StampFactory.virtual());
+        this.hasIdentity = hasIdentity;
     }
 
     /**
@@ -72,7 +76,11 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
      * comparison of two virtual objects is determined by comparing their contents.
      */
     public boolean hasIdentity() {
-        return true;
+        return hasIdentity;
+    }
+
+    public void setIdentity(boolean identity) {
+        this.hasIdentity = identity;
     }
 
     /**

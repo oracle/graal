@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.compiler.ptx;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
+
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -32,6 +36,11 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.lir.LIRInstruction.OperandFlag;
+import com.oracle.graal.lir.LIRInstruction.OperandMode;
+import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.graph.GraalInternalError;
 
 /**
  * PTX specific backend.
@@ -84,67 +93,121 @@ public class PTXBackend extends Backend {
         return tasm;
     }
 
-    @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
-        // Emit the prologue
+    private static void emitKernelEntry(TargetMethodAssembler tasm, LIRGenerator lirGen,
+                                        ResolvedJavaMethod codeCacheOwner) {
+        // Emit PTX kernel entry text based on PTXParameterOp
+        // instructions in the start block.  Remove the instructions
+        // once kernel entry text and directives are emitted to
+        // facilitate seemless PTX code generation subsequently.
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
         final String name = codeCacheOwner.getName();
         Buffer codeBuffer = tasm.asm.codeBuffer;
+
+        // Emit initial boiler-plate directives.
         codeBuffer.emitString(".version 1.4");
         codeBuffer.emitString(".target sm_10");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 
-        Signature signature = codeCacheOwner.getSignature();
-        int paramCount = signature.getParameterCount(false);
-        // TODO - Revisit this.
-        // Bit-size of registers to be declared and used by the kernel.
-        int regSize = 32;
-        for (int i = 0; i < paramCount; i++) {
-            String param;
-            // No unsigned types in Java. So using .s specifier
-            switch (signature.getParameterKind(i)) {
-                case Boolean:
-                case Byte:
-                    param = ".param .s8 param" + i;
-                    regSize = 8;
-                    break;
-                case Char:
-                case Short:
-                    param = ".param .s16 param" + i;
-                    regSize = 16;
-                    break;
-                case Int:
-                    param = ".param .s32 param" + i;
-                    regSize = 32;
-                    break;
-                case Long:
-                case Float:
-                case Double:
-                case Void:
-                    param = ".param .s64 param" + i;
-                    regSize = 32;
-                    break;
-                default:
-                    // Not sure but specify 64-bit specifier??
-                    param = ".param .s64 param" + i;
-                    break;
+        // Get the start block
+        Block startBlock = lirGen.lir.cfg.getStartBlock();
+        // Keep a list of ParameterOp instructions to delete from the
+        // list of instructions in the block.
+        ArrayList<LIRInstruction> deleteOps = new ArrayList<>();
+
+        // Emit .param arguments to kernel entry based on ParameterOp
+        // instruction.
+        for (LIRInstruction op : lirGen.lir.lir(startBlock)) {
+            if (op instanceof PTXParameterOp) {
+                op.emitCode(tasm);
+                deleteOps.add(op);
             }
-            if (i != (paramCount - 1)) {
-                param += ",";
-            }
-            codeBuffer.emitString(param);
         }
 
+        // Delete ParameterOp instructions.
+        for (LIRInstruction op : deleteOps) {
+            lirGen.lir.lir(startBlock).remove(op);
+        }
+
+        // Start emiting body of the PTX kernel.
         codeBuffer.emitString0(") {");
         codeBuffer.emitString("");
 
-        // XXX For now declare one predicate and all registers
-        codeBuffer.emitString("  .reg .pred %p,%q;");
-        codeBuffer.emitString("  .reg .s" + regSize + " %r<16>;");
+        codeBuffer.emitString(".reg .u64" + " %rax;");
+    }
 
+    // Emit .reg space declarations
+    private static void emitRegisterDecl(TargetMethodAssembler tasm, LIRGenerator lirGen,
+                                         ResolvedJavaMethod codeCacheOwner) {
+        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+        Buffer codeBuffer = tasm.asm.codeBuffer;
+
+        final SortedSet<Integer> signed32 = new TreeSet<>();
+        final SortedSet<Integer> signed64 = new TreeSet<>();
+
+        ValueProcedure trackRegisterKind = new ValueProcedure() {
+
+            @Override
+            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+                if (isRegister(value)) {
+                    RegisterValue regVal = (RegisterValue) value;
+                    Kind regKind = regVal.getKind();
+                    switch (regKind) {
+                       case Int:
+                           signed32.add(regVal.getRegister().encoding());
+                           break;
+                       case Long:
+                           signed64.add(regVal.getRegister().encoding());
+                           break;
+                       default :
+                           throw GraalInternalError.shouldNotReachHere("unhandled register type "  + value.toString());
+                    }
+                }
+                return value;
+            }
+        };
+
+        for (Block b : lirGen.lir.codeEmittingOrder()) {
+            for (LIRInstruction op : lirGen.lir.lir(b)) {
+                op.forEachOutput(trackRegisterKind);
+            }
+        }
+
+        for (Integer i : signed32) {
+            codeBuffer.emitString("  .reg .s32 %r" + i.intValue() + ";");
+        }
+        for (Integer i : signed64) {
+            codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
+        }
+    }
+
+    @Override
+    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
+        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+        Buffer codeBuffer = tasm.asm.codeBuffer;
+        // Emit the prologue
+        emitKernelEntry(tasm, lirGen, codeCacheOwner);
+
+        // Emit register declarations
+        try {
+            emitRegisterDecl(tasm, lirGen, codeCacheOwner);
+        } catch (GraalInternalError e) {
+            // TODO : Better error handling needs to be done once
+            //        all types of parameters are handled.
+            codeBuffer.setPosition(0);
+            codeBuffer.close(false);
+            return;
+        }
         // Emit code for the LIR
-        lirGen.lir.emitCode(tasm);
+        try {
+            lirGen.lir.emitCode(tasm);
+        } catch (GraalInternalError e) {
+            // TODO : Better error handling needs to be done once
+            //        all types of parameters are handled.
+            codeBuffer.setPosition(0);
+            codeBuffer.close(false);
+            return;
+        }
 
         // Emit the epilogue
         codeBuffer.emitString0("}");

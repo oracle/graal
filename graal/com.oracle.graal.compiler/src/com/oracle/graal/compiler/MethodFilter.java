@@ -88,6 +88,31 @@ public class MethodFilter {
     private final Pattern methodName;
     private final Pattern[] signature;
 
+    /**
+     * Parses a string containing list of comma separated filter patterns into an array of
+     * {@link MethodFilter}s.
+     */
+    public static MethodFilter[] parse(String commaSeparatedPatterns) {
+        String[] filters = commaSeparatedPatterns.split(",");
+        MethodFilter[] methodFilters = new MethodFilter[filters.length];
+        for (int i = 0; i < filters.length; i++) {
+            methodFilters[i] = new MethodFilter(filters[i]);
+        }
+        return methodFilters;
+    }
+
+    /**
+     * Determines if a given method is matched by a given array of filters.
+     */
+    public static boolean matches(MethodFilter[] filters, JavaMethod method) {
+        for (MethodFilter filter : filters) {
+            if (filter.matches(method)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public MethodFilter(String sourcePattern) {
         String pattern = sourcePattern.trim();
 

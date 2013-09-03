@@ -92,12 +92,12 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         throw new RuntimeException("Frame field not found: " + fieldName);
     }
 
-    public static class VirtualOnlyInstanceNode extends VirtualInstanceNode implements Node.IterableNodeType {
+    public static class VirtualOnlyInstanceNode extends VirtualInstanceNode {
 
         private boolean allowMaterialization;
 
         public VirtualOnlyInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields) {
-            super(type, fields);
+            super(type, fields, false);
         }
 
         @Override

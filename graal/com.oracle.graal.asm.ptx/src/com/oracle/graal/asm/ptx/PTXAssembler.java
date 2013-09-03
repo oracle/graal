@@ -272,59 +272,69 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     public final void ld_global_b8(Register d, Register a, long immOff) {
-        emitString("ld.global.b8" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.b8" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_b16(Register d, Register a, long immOff) {
-        emitString("ld.global.b16" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.b16" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_b32(Register d, Register a, long immOff) {
-        emitString("ld.global.b32" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.b32" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_b64(Register d, Register a, long immOff) {
-        emitString("ld.global.b64" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.b64" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_u8(Register d, Register a, long immOff) {
-        emitString("ld.global.u8" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.u8" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_u16(Register d, Register a, long immOff) {
-        emitString("ld.global.u16" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.u16" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_u32(Register d, Register a, long immOff) {
-        emitString("ld.global.u32" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.u32" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_u64(Register d, Register a, long immOff) {
-        emitString("ld.global.u64" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.u64" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_s8(Register d, Register a, long immOff) {
-        emitString("ld.global.s8" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.s8" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_s16(Register d, Register a, long immOff) {
-        emitString("ld.global.s16" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.s16" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_s32(Register d, Register a, long immOff) {
-        emitString("ld.global.s32" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.s32" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_s64(Register d, Register a, long immOff) {
-        emitString("ld.global.s64" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.s64" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_f32(Register d, Register a, long immOff) {
-        emitString("ld.global.f32" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.f32" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void ld_global_f64(Register d, Register a, long immOff) {
-        emitString("ld.global.f64" + " " + "%r" + d.encoding() + ", [%r" + a.encoding() + " + " + immOff + "]" + ";" + "");
+        emitString("ld.global.f64" + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
+    }
+
+    // Load from state space to destination register
+    public final void ld_from_state_space(String s, Register d, Register a, long immOff) {
+        emitString("ld" + s + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
+    }
+
+    // Load return address from return parameter which is in .param state space
+    public final void ld_return_address(String s, Register d, Register a, long immOff) {
+        emitString("ld.param." + s + " " + "%r" + d.encoding() + ", [" + a.toString() + " + " + immOff + "]" + ";" + "");
     }
 
     public final void mov_b16(Register d, Register a) {
@@ -537,6 +547,18 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void or_b64(Register d, Register a, long b64) {
         emitString("or.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + b64 + ";" + "");
+    }
+
+    public final void param_8_decl(Register d, boolean lastParam) {
+        emitString(".param" + " " + ".s8" + " " + d.toString() + (lastParam ? "" : ","));
+    }
+
+    public final void param_32_decl(Register d, boolean lastParam) {
+        emitString(".param" + " " + ".s32" + " " + d.toString() + (lastParam ? "" : ","));
+    }
+
+    public final void param_64_decl(Register d, boolean lastParam) {
+        emitString(".param" + " " + ".s64" + " " + d.toString() + (lastParam ? "" : ","));
     }
 
     public final void popc_b32(Register d, Register a) {
@@ -923,6 +945,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("shr.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", " + u64 + ";" + "");
     }
 
+    // Store in global state space
+
     public final void st_global_b8(Register a, long immOff, Register b) {
         emitString("st.global.b8" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
     }
@@ -978,6 +1002,37 @@ public class PTXAssembler extends AbstractPTXAssembler {
     public final void st_global_f64(Register a, long immOff, Register b) {
         emitString("st.global.f64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
     }
+
+    // Store return value
+    public final void st_global_return_value_s8(Register a, long immOff, Register b) {
+        emitString("st.global.s8" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_s32(Register a, long immOff, Register b) {
+        emitString("st.global.s32" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_s64(Register a, long immOff, Register b) {
+        emitString("st.global.s64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_f32(Register a, long immOff, Register b) {
+        emitString("st.global.f32" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_f64(Register a, long immOff, Register b) {
+        emitString("st.global.f64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_u32(Register a, long immOff, Register b) {
+        emitString("st.global.u32" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    public final void st_global_return_value_u64(Register a, long immOff, Register b) {
+        emitString("st.global.u64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
+    }
+
+    // Subtract instruction
 
     public final void sub_f32(Register d, Register a, Register b) {
         emitString("sub.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
