@@ -144,13 +144,17 @@ public class StructuredGraph extends Graph {
         return copy(name);
     }
 
-    @Override
-    public StructuredGraph copy(String newName) {
-        StructuredGraph copy = new StructuredGraph(newName, method, graphId, entryBCI);
+    public StructuredGraph copy(String newName, ResolvedJavaMethod newMethod) {
+        StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI);
         HashMap<Node, Node> replacements = new HashMap<>();
         replacements.put(start, copy.start);
         copy.addDuplicates(getNodes(), replacements);
         return copy;
+    }
+
+    @Override
+    public StructuredGraph copy(String newName) {
+        return copy(newName, method);
     }
 
     public LocalNode getLocal(int index) {
