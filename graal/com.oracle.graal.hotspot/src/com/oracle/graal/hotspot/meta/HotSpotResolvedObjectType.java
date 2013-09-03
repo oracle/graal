@@ -83,6 +83,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private ResolvedJavaType[] interfaces;
     private ConstantPool constantPool;
     private boolean isInitialized;
+    private boolean isLinked;
     private ResolvedJavaType arrayOfType;
 
     /**
@@ -292,9 +293,18 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     @Override
+    public boolean isLinked() {
+        if (!isLinked) {
+            isLinked = graalRuntime().getCompilerToVM().isTypeLinked(this);
+        }
+        return isLinked;
+    }
+
+    @Override
     public void initialize() {
         if (!isInitialized) {
             graalRuntime().getCompilerToVM().initializeType(this);
+            assert graalRuntime().getCompilerToVM().isTypeInitialized(this);
         }
         isInitialized = true;
     }

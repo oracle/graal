@@ -594,6 +594,7 @@ public class TestResolvedJavaType extends TypeUniverse {
         "getDeclaredMethods",
         "getDeclaredConstructors",
         "isInitialized",
+        "isLinked",
         "getEncoding",
         "hasFinalizableSubclass",
         "hasFinalizer",

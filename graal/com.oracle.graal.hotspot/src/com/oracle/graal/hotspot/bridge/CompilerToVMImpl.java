@@ -102,6 +102,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     @Override
     public native boolean isTypeInitialized(HotSpotResolvedObjectType klass);
 
+    public native boolean isTypeLinked(HotSpotResolvedObjectType hotSpotResolvedObjectType);
+
     @Override
     public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
 
