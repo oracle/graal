@@ -174,7 +174,7 @@ public class PTXBackend extends Backend {
         }
 
         for (Integer i : signed32) {
-            codeBuffer.emitString("  .reg .s32 %r" + i.intValue() + ";");
+            codeBuffer.emitString(".reg .s32 %r" + i.intValue() + ";");
         }
         for (Integer i : signed64) {
             codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");

@@ -316,7 +316,7 @@ public enum PTXArithmetic {
                     masm.cvt_f32_f64(asFloatReg(dst), asDoubleReg(src));
                     break;
                 case LSHL:
-                    masm.shl_s64(asLongReg(dst), asLongReg(dst), asIntReg(src));
+                    masm.shl_b64(asLongReg(dst), asLongReg(dst), asIntReg(src));
                     break;
                 case LSHR:
                     masm.shr_s64(asLongReg(dst), asLongReg(dst), asIntReg(src));
@@ -360,19 +360,19 @@ public enum PTXArithmetic {
             switch (opcode) {
             case IADD:  masm.add_s32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
             case ISUB:  masm.sub_s32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
-            case IMUL:  masm.mul_s32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
+            case IMUL:  masm.mul_lo_s32(asIntReg(dst), asIntReg(src1),    tasm.asIntConst(src2));    break;
             case IAND:  masm.and_b32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
-            case ISHL:  masm.shl_s32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
+            case ISHL:  masm.shl_b32_const(asIntReg(dst), asIntReg(src1), tasm.asIntConst(src2));    break;
             case ISHR:  masm.shr_s32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
             case IUSHR: masm.shr_u32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
             case IXOR:  masm.xor_b32(asIntReg(dst),    asIntReg(src1),    tasm.asIntConst(src2));    break;
             case LXOR:  masm.xor_b64(asLongReg(dst),   asLongReg(src1),   tasm.asLongConst(src2));   break;
             case LUSHR: masm.shr_u64(asLongReg(dst),   asLongReg(src1),   tasm.asLongConst(src2));   break;
             case FADD:  masm.add_f32(asFloatReg(dst),  asFloatReg(src1),  tasm.asFloatConst(src2));  break;
-            case FMUL:  masm.mul_f32(asFloatReg(dst),  asFloatReg(src1),  tasm.asFloatConst(src2));  break;
+            case FMUL:  masm.mul_lo_f32(asFloatReg(dst), asFloatReg(src1), tasm.asFloatConst(src2)); break;
             case FDIV:  masm.div_f32(asFloatReg(dst),  asFloatReg(src1),  tasm.asFloatConst(src2));  break;
             case DADD:  masm.add_f64(asDoubleReg(dst), asDoubleReg(src1), tasm.asDoubleConst(src2)); break;
-            case DMUL:  masm.mul_f64(asDoubleReg(dst), asDoubleReg(src1), tasm.asDoubleConst(src2)); break;
+            case DMUL:  masm.mul_lo_f64(asDoubleReg(dst), asDoubleReg(src1), tasm.asDoubleConst(src2)); break;
             case DDIV:  masm.div_f64(asDoubleReg(dst), asDoubleReg(src1), tasm.asDoubleConst(src2)); break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -387,34 +387,34 @@ public enum PTXArithmetic {
             // case D:  new Mul(Double, dst, src1, src2);
             case IADD:  masm.add_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case ISUB:  masm.sub_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
-            case IMUL:  masm.mul_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
+            case IMUL:  masm.mul_lo_s32(asIntReg(dst), asIntReg(src1),    asIntReg(src2));    break;
             case IDIV:  masm.div_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case IAND:  masm.and_b32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case IOR:    masm.or_b32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case IXOR:  masm.xor_b32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
-            case ISHL:  masm.shl_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
+            case ISHL:  masm.shl_b32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case ISHR:  masm.shr_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case IUSHR: masm.shr_u32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case IREM:  masm.rem_s32(asIntReg(dst),    asIntReg(src1),    asIntReg(src2));    break;
             case LADD:  masm.add_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
             case LSUB:  masm.sub_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
-            case LMUL:  masm.mul_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
+            case LMUL:  masm.mul_lo_s64(asLongReg(dst), asLongReg(src1),  asLongReg(src2));   break;
             case LDIV:  masm.div_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
             case LAND:  masm.and_b64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
-            case LOR:    masm.or_b64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
+            case LOR:   masm.or_b64(asLongReg(dst),    asLongReg(src1),   asLongReg(src2));   break;
             case LXOR:  masm.xor_b64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
-            case LSHL:  masm.shl_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
+            case LSHL:  masm.shl_b64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
             case LSHR:  masm.shr_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
             case LUSHR: masm.shr_u64(asLongReg(dst),   asLongReg(src1),   asIntReg(src2));    break;
             case LREM:  masm.rem_s64(asLongReg(dst),   asLongReg(src1),   asLongReg(src2));   break;
             case FADD:  masm.add_f32(asFloatReg(dst),  asFloatReg(src1),  asFloatReg(src2));  break;
             case FSUB:  masm.sub_f32(asFloatReg(dst),  asFloatReg(src1),  asFloatReg(src2));  break;
-            case FMUL:  masm.mul_f32(asFloatReg(dst),  asFloatReg(src1),  asFloatReg(src2));  break;
+            case FMUL:  masm.mul_lo_f32(asFloatReg(dst), asFloatReg(src1), asFloatReg(src2)); break;
             case FDIV:  masm.div_f32(asFloatReg(dst),  asFloatReg(src1),  asFloatReg(src2));  break;
             case FREM:  masm.div_f32(asFloatReg(dst),  asFloatReg(src1),  asFloatReg(src2));  break;
             case DADD:  masm.add_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
             case DSUB:  masm.sub_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
-            case DMUL:  masm.mul_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
+            case DMUL:  masm.mul_lo_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
             case DDIV:  masm.div_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
             case DREM:  masm.div_f64(asDoubleReg(dst), asDoubleReg(src1), asDoubleReg(src2)); break;
             default:
