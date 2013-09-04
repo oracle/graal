@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph;
 
+import static com.oracle.graal.graph.Graph.*;
+
 import java.lang.annotation.*;
 import java.util.*;
 
@@ -121,7 +123,6 @@ public abstract class Node implements Cloneable, Formattable {
 
     private NodeUsagesList usages;
     private Node predecessor;
-    private int modCount;
 
     public Node() {
         this.graph = null;
@@ -165,11 +166,16 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     final int modCount() {
-        return modCount;
+        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+            return graph.modCount(this);
+        }
+        return 0;
     }
 
     final void incModCount() {
-        modCount++;
+        if (MODIFICATION_COUNTS_ENABLED && graph != null) {
+            graph.incModCount(this);
+        }
     }
 
     public boolean isDeleted() {
@@ -375,7 +381,6 @@ public abstract class Node implements Cloneable, Formattable {
         into.register(newNode);
         newNode.usages = new NodeUsagesList();
         newNode.predecessor = null;
-        newNode.modCount = 0;
         return newNode;
     }
 
