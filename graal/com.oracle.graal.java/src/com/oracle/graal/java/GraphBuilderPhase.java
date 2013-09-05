@@ -242,7 +242,7 @@ public class GraphBuilderPhase extends Phase {
 
         // remove dead FrameStates
         for (Node n : currentGraph.getNodes(FrameState.class)) {
-            if (n.usages().count() == 0 && n.predecessor() == null) {
+            if (n.usages().isEmpty() && n.predecessor() == null) {
                 n.safeDelete();
             }
         }
