@@ -43,10 +43,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     private static final PrintStream OUT = TTY.out().out();
     private static final int MIN_INVOKES_AFTER_INLINING = 2;
 
-    protected OptimizedCallTarget(RootNode rootNode, FrameDescriptor descriptor, TruffleCompiler compiler, int compilationThreshold) {
+    protected OptimizedCallTarget(RootNode rootNode, FrameDescriptor descriptor, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
         super(rootNode, descriptor);
         this.compiler = compiler;
-        this.invokeCounter = compilationThreshold >> 7;
+        this.invokeCounter = invokeCounter;
         this.loopAndInvokeCounter = compilationThreshold;
         this.originalInvokeCounter = compilationThreshold;
         this.rootNode.setCallTarget(this);
@@ -185,7 +185,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     @Override
     public void reportLoopCount(int count) {
-        loopAndInvokeCounter -= count;
+        loopAndInvokeCounter = Math.max(0, loopAndInvokeCounter - count);
     }
 
     @Override

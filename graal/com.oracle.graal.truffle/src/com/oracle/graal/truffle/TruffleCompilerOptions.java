@@ -46,6 +46,8 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Integer> TruffleCompilationThreshold = new OptionValue<>(1000);
     @Option(help = "")
+    public static final OptionValue<Integer> TruffleMinInvokeThreshold = new OptionValue<>(3);
+    @Option(help = "")
     public static final OptionValue<Integer> TruffleInvalidationReprofileCount = new OptionValue<>(3);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleReplaceReprofileCount = new OptionValue<>(10);
