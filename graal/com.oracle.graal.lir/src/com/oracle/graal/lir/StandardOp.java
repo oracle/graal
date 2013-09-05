@@ -54,12 +54,30 @@ public class StandardOp {
      */
     public static class LabelOp extends LIRInstruction {
 
+        private static final Value[] NO_VALUES = new Value[0];
+
+        /**
+         * In the LIR, every register and variable must be defined before it is used. For method
+         * parameters that are passed in fixed registers, exception objects passed to the exception
+         * handler in a fixed register, or any other use of a fixed register not defined in this
+         * method, an artificial definition is necessary. To avoid spill moves to be inserted
+         * between the label at the beginning of a block an an actual definition in the second
+         * instruction of a block, the registers are defined here in the label.
+         */
+        @Def({REG, STACK}) private Value[] incomingValues;
+
         private final Label label;
         private final boolean align;
 
         public LabelOp(Label label, boolean align) {
             this.label = label;
             this.align = align;
+            this.incomingValues = NO_VALUES;
+        }
+
+        public void setIncomingValues(Value[] values) {
+            assert incomingValues.length == 0;
+            incomingValues = values;
         }
 
         @Override
@@ -118,25 +136,6 @@ public class StandardOp {
         Value getInput();
 
         AllocatableValue getResult();
-    }
-
-    /**
-     * Meta-operation that defines the incoming method parameters. In the LIR, every register and
-     * variable must be defined before it is used. This operation is the definition point of method
-     * parameters, but is otherwise a no-op. In particular, it is not the actual method prologue.
-     */
-    public static final class ParametersOp extends LIRInstruction {
-
-        @Def({REG, STACK}) protected Value[] params;
-
-        public ParametersOp(Value[] params) {
-            this.params = params;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm) {
-            // No code to emit.
-        }
     }
 
     /**

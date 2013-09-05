@@ -45,7 +45,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
-import com.oracle.graal.lir.StandardOp.ParametersOp;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
@@ -214,7 +214,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         };
         for (Block block : lir.codeEmittingOrder()) {
             for (LIRInstruction op : lir.lir(block)) {
-                if (op instanceof ParametersOp) {
+                if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
                     op.forEachTemp(defProc);

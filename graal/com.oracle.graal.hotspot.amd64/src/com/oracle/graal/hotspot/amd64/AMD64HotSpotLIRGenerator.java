@@ -46,7 +46,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.ParametersOp;
 import com.oracle.graal.lir.StandardOp.PlaceholderOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
@@ -162,9 +161,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             }
         }
         params[params.length - 1] = rbpParam;
-        ParametersOp paramsOp = new ParametersOp(params);
 
-        append(paramsOp);
+        emitIncomingValues(params);
 
         saveRbp = new SaveRbp(new PlaceholderOp(currentBlock, lir.lir(currentBlock).size()));
         append(saveRbp.placeholder);
