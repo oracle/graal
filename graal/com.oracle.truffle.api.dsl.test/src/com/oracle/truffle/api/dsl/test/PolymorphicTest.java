@@ -37,6 +37,17 @@ import com.oracle.truffle.api.nodes.NodeInfo.Kind;
 
 public class PolymorphicTest {
 
+    private static void assertParent(Node expectedParent, Node child) {
+        Node parent = child.getParent();
+        while (parent != null && parent != expectedParent) {
+            parent = parent.getParent();
+        }
+
+        if (parent != expectedParent) {
+            assertEquals(expectedParent, parent);
+        }
+    }
+
     @Test
     public void testJustSpecialize() {
         TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
@@ -45,8 +56,8 @@ public class PolymorphicTest {
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(boolean,int)", executeWith(node, false, 42));
         assertEquals(Kind.SPECIALIZED, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @Test
@@ -55,8 +66,8 @@ public class PolymorphicTest {
         assertEquals("(int,boolean)", executeWith(node, 42, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
         assertEquals(Kind.POLYMORPHIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @Test
@@ -66,8 +77,8 @@ public class PolymorphicTest {
         assertEquals("(boolean,boolean)", executeWith(node, true, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
         assertEquals(Kind.POLYMORPHIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @Test
@@ -78,17 +89,17 @@ public class PolymorphicTest {
         assertEquals("(boolean,boolean)", executeWith(node, true, false));
         assertEquals("(int,int)", executeWith(node, 42, 42));
         assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @Test
     public void testGenericInitial() {
         TestRootNode<Node1> node = TestHelper.createRoot(Node1Factory.getInstance());
-        assertEquals("(generic,generic)", executeWith(node, "", ""));
+        assertEquals("(generic,generic)", executeWith(node, "1", "1"));
         assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @Test
@@ -99,8 +110,8 @@ public class PolymorphicTest {
         assertEquals("(generic,generic)", executeWith(node, "", ""));
         assertEquals(Kind.GENERIC, node.getNode().getClass().getAnnotation(NodeInfo.class).kind());
         /* Assertions for bug GRAAL-425 */
-        assertEquals(node.getNode(), node.getNode().getLeft().getParent());
-        assertEquals(node.getNode(), node.getNode().getRight().getParent());
+        assertParent(node.getNode(), node.getNode().getLeft());
+        assertParent(node.getNode(), node.getNode().getRight());
     }
 
     @SuppressWarnings("unused")
