@@ -69,4 +69,9 @@ public class SLTypes {
     public boolean isBigInteger(@SuppressWarnings("unused") int value) {
         return true;
     }
+
+    @ImplicitCast
+    public BigInteger castBigInteger(int value) {
+        return BigInteger.valueOf(value);
+    }
 }
