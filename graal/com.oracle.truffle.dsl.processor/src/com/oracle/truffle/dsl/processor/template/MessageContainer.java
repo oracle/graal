@@ -129,7 +129,7 @@ public abstract class MessageContainer {
 
         TypeElement rootEnclosing = Utils.findRootEnclosingType(getMessageElement());
         TypeElement baseEnclosing = Utils.findRootEnclosingType(baseType);
-        if (rootEnclosing == null || !Utils.typeEquals(baseEnclosing.asType(), rootEnclosing.asType()) || this != message.getOriginalContainer()) {
+        if (rootEnclosing == null || !Utils.typeEquals(baseEnclosing.asType(), rootEnclosing.asType())) {
             // redirect message
             MessageContainer original = message.getOriginalContainer();
             messageElement = baseType;
