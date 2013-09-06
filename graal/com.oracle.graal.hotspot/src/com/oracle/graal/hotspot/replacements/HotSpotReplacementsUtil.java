@@ -167,7 +167,7 @@ public class HotSpotReplacementsUtil {
      */
     public static boolean clearPendingException(Word thread) {
         boolean result = thread.readObject(threadPendingExceptionOffset(), PENDING_EXCEPTION_LOCATION) != null;
-        thread.writeObject(threadPendingExceptionOffset(), null);
+        thread.writeObject(threadPendingExceptionOffset(), null, PENDING_EXCEPTION_LOCATION);
         return result;
     }
 
@@ -178,7 +178,7 @@ public class HotSpotReplacementsUtil {
      */
     public static Object getAndClearObjectResult(Word thread) {
         Object result = thread.readObject(objectResultOffset(), OBJECT_RESULT_LOCATION);
-        thread.writeObject(objectResultOffset(), null);
+        thread.writeObject(objectResultOffset(), null, OBJECT_RESULT_LOCATION);
         return result;
     }
 
