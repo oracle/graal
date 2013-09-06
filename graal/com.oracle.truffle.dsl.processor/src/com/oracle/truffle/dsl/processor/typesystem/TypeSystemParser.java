@@ -71,7 +71,7 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         }
 
         typeSystem.setTypes(parseTypes(typeSystem));
-        if (typeSystem.getTypes() == null) {
+        if (typeSystem.hasErrors()) {
             return typeSystem;
         }
 
@@ -91,6 +91,8 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
         if (casts == null || checks == null || implicitCasts == null) {
             return typeSystem;
         }
+
+        typeSystem.setImplicitCasts(implicitCasts);
         typeSystem.setCasts(casts);
         typeSystem.setChecks(checks);
 
@@ -106,11 +108,30 @@ public class TypeSystemParser extends TemplateParser<TypeSystemData> {
             cast.getTargetType().addTypeCast(cast);
         }
 
+        verifyImplicitCasts(typeSystem);
         verifyGenericTypeChecksAndCasts(typeSystem);
         verifyMethodSignatures(typeSystem);
         verifyNamesUnique(typeSystem);
 
         return typeSystem;
+    }
+
+    private static void verifyImplicitCasts(TypeSystemData typeSystem) {
+        Set<TypeData> types = new HashSet<>();
+        Set<TypeData> duplicateSourceTypes = new HashSet<>();
+        for (ImplicitCastData cast : typeSystem.getImplicitCasts()) {
+            if (types.contains(cast.getSourceType())) {
+                duplicateSourceTypes.add(cast.getSourceType());
+            }
+            types.add(cast.getSourceType());
+        }
+        for (TypeData duplicateType : duplicateSourceTypes) {
+            for (ImplicitCastData cast : typeSystem.getImplicitCasts()) {
+                if (cast.getSourceType().equals(duplicateType)) {
+                    cast.addError("Duplicate cast source type %s.", Utils.getSimpleName(duplicateType.getPrimitiveType()), ImplicitCast.class.getSimpleName());
+                }
+            }
+        }
     }
 
     private static void verifyGenericTypeChecksAndCasts(TypeSystemData typeSystem) {

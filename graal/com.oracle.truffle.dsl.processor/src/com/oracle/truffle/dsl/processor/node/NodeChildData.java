@@ -49,6 +49,7 @@ public class NodeChildData extends MessageContainer {
         DEFAULT, SHORT_CIRCUIT
     }
 
+    private final NodeData parent;
     private final Element sourceElement;
     private final AnnotationMirror sourceAnnotationMirror;
 
@@ -64,8 +65,9 @@ public class NodeChildData extends MessageContainer {
 
     private NodeData nodeData;
 
-    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality,
-                    ExecutionKind executionKind) {
+    public NodeChildData(NodeData parent, Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement,
+                    Cardinality cardinality, ExecutionKind executionKind) {
+        this.parent = parent;
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
         this.name = name;
@@ -82,6 +84,31 @@ public class NodeChildData extends MessageContainer {
 
     void setExecuteWith(List<NodeChildData> executeWith) {
         this.executeWith = executeWith;
+    }
+
+    public boolean needsImplicitCast(ProcessorContext context) {
+        if (!parent.needsRewrites(context)) {
+            return false;
+        }
+
+        boolean used = false;
+        SpecializationData generic = parent.getGenericSpecialization();
+        for (ActualParameter param : generic.getParameters()) {
+            if (!param.getSpecification().isSignature()) {
+                continue;
+            }
+            NodeChildData child = parent.findChild(param.getSpecification().getName());
+            if (child == this) {
+                used = true;
+                break;
+            }
+        }
+
+        if (!used) {
+            return false;
+        }
+
+        return getNodeData().getTypeSystem().getImplicitCasts() != null && !getNodeData().getTypeSystem().getImplicitCasts().isEmpty();
     }
 
     public ExecutableTypeData findExecutableType(ProcessorContext context, TypeData targetType) {

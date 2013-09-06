@@ -26,8 +26,32 @@ import com.oracle.truffle.dsl.processor.template.*;
 
 public class ImplicitCastData extends TemplateMethod {
 
-    public ImplicitCastData(TemplateMethod method) {
+    private final TypeData sourceType;
+    private final TypeData targetType;
+
+    public ImplicitCastData(TemplateMethod method, TypeData sourceType, TypeData targetType) {
         super(method);
+        this.sourceType = sourceType;
+        this.targetType = targetType;
+    }
+
+    public TypeData getSourceType() {
+        return sourceType;
+    }
+
+    public TypeData getTargetType() {
+        return targetType;
+    }
+
+    @Override
+    public int compareTo(TemplateMethod o) {
+        if (o instanceof ImplicitCastData) {
+            // implicit casts are ordered by source type since
+            // its also the order in which they are checked.
+            TypeData otherSourceType = ((ImplicitCastData) o).getSourceType();
+            return this.sourceType.compareTo(otherSourceType);
+        }
+        return super.compareTo(o);
     }
 
 }

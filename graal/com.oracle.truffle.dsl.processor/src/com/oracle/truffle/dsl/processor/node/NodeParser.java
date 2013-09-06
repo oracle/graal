@@ -332,7 +332,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         nodeData.setNodeContainer(nodeContainer != null);
         nodeData.setTypeSystem(typeSystem);
         nodeData.setFields(parseFields(typeHierarchy, elements));
-        nodeData.setChildren(parseChildren(elements, typeHierarchy));
+        nodeData.setChildren(parseChildren(nodeData, elements, typeHierarchy));
         nodeData.setExecutableTypes(groupExecutableTypes(new ExecutableTypeMethodParser(context, nodeData).parse(elements)));
 
         // resolveChildren invokes cyclic parsing.
@@ -407,7 +407,7 @@ public class NodeParser extends TemplateParser<NodeData> {
         }
     }
 
-    private List<NodeChildData> parseChildren(List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
+    private List<NodeChildData> parseChildren(NodeData parent, List<? extends Element> elements, final List<TypeElement> typeHierarchy) {
         Set<String> shortCircuits = new HashSet<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = Utils.findAnnotationMirror(processingEnv, method, ShortCircuit.class);
@@ -472,7 +472,7 @@ public class NodeParser extends TemplateParser<NodeData> {
                     kind = ExecutionKind.SHORT_CIRCUIT;
                 }
 
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
+                NodeChildData nodeChild = new NodeChildData(parent, type, childMirror, name, childType, originalChildType, getter, cardinality, kind);
 
                 parsedChildren.add(nodeChild);
 

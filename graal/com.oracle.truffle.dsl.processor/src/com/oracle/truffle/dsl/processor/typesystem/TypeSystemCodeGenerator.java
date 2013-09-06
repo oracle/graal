@@ -44,8 +44,20 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
         return "is" + Utils.getTypeId(type.getBoxedType());
     }
 
+    public static String isImplicitTypeMethodName(TypeData type) {
+        return "isImplicit" + Utils.getTypeId(type.getBoxedType());
+    }
+
     public static String asTypeMethodName(TypeData type) {
         return "as" + Utils.getTypeId(type.getBoxedType());
+    }
+
+    public static String asImplicitTypeMethodName(TypeData type) {
+        return "asImplicit" + Utils.getTypeId(type.getBoxedType());
+    }
+
+    public static String getImplicitClass(TypeData type) {
+        return "getImplicit" + Utils.getTypeId(type.getBoxedType()) + "Class";
     }
 
     public static String expectTypeMethodName(TypeData type) {
@@ -100,6 +112,20 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
                             clazz.add(expect);
                         }
                     }
+
+                    CodeExecutableElement asImplicit = createAsImplicitTypeMethod(type);
+                    if (asImplicit != null) {
+                        clazz.add(asImplicit);
+                    }
+                    CodeExecutableElement isImplicit = createIsImplicitTypeMethod(type);
+                    if (isImplicit != null) {
+                        clazz.add(isImplicit);
+                    }
+
+                    CodeExecutableElement typeIndex = createGetTypeIndex(type);
+                    if (typeIndex != null) {
+                        clazz.add(typeIndex);
+                    }
                 }
             }
 
@@ -131,6 +157,95 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             CodeVariableElement field = new CodeVariableElement(modifiers(PUBLIC, STATIC, FINAL), clazz.asType(), singletonName(getModel().getTemplateType().asType()));
             field.createInitBuilder().startNew(clazz.asType()).end();
             return field;
+        }
+
+        private CodeExecutableElement createIsImplicitTypeMethod(TypeData type) {
+            TypeSystemData typeSystem = getModel();
+            List<ImplicitCastData> casts = typeSystem.lookupByTargetType(type);
+            if (casts.isEmpty()) {
+                return null;
+            }
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(boolean.class), TypeSystemCodeGenerator.isImplicitTypeMethodName(type));
+            method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
+            CodeTreeBuilder builder = method.createBuilder();
+
+            List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
+
+            builder.startReturn();
+            String sep = "";
+            for (TypeData sourceType : sourceTypes) {
+                builder.string(sep);
+                builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                sep = " || ";
+            }
+            builder.end();
+            return method;
+        }
+
+        private CodeExecutableElement createAsImplicitTypeMethod(TypeData type) {
+            TypeSystemData typeSystem = getModel();
+            List<ImplicitCastData> casts = typeSystem.lookupByTargetType(type);
+            if (casts.isEmpty()) {
+                return null;
+            }
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), type.getPrimitiveType(), TypeSystemCodeGenerator.asImplicitTypeMethodName(type));
+            method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
+
+            List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
+
+            CodeTreeBuilder builder = method.createBuilder();
+            boolean elseIf = false;
+            for (TypeData sourceType : sourceTypes) {
+                elseIf = builder.startIf(elseIf);
+                builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                builder.end().startBlock();
+
+                builder.startReturn();
+                ImplicitCastData cast = typeSystem.lookupCast(sourceType, type);
+                if (cast != null) {
+                    builder.startCall(cast.getMethodName());
+                }
+                builder.startCall(asTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                if (cast != null) {
+                    builder.end();
+                }
+                builder.end();
+                builder.end();
+            }
+
+            builder.startElseBlock();
+            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+            builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class)).doubleQuote("Illegal type ").end().end();
+            builder.end();
+            return method;
+        }
+
+        private CodeExecutableElement createGetTypeIndex(TypeData type) {
+            TypeSystemData typeSystem = getModel();
+            List<ImplicitCastData> casts = typeSystem.lookupByTargetType(type);
+            if (casts.isEmpty()) {
+                return null;
+            }
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(Class.class), TypeSystemCodeGenerator.getImplicitClass(type));
+            method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
+
+            List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
+            CodeTreeBuilder builder = method.createBuilder();
+            boolean elseIf = false;
+            for (TypeData sourceType : sourceTypes) {
+                elseIf = builder.startIf(elseIf);
+                builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                builder.end().startBlock();
+                builder.startReturn().typeLiteral(sourceType.getPrimitiveType()).end();
+                builder.end();
+            }
+
+            builder.startElseBlock();
+            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+            builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class)).doubleQuote("Illegal type ").end().end();
+            builder.end();
+
+            return method;
         }
 
         private CodeExecutableElement createIsTypeMethod(TypeData type) {
@@ -174,8 +289,8 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             method.addThrownType(getContext().getTruffleTypes().getUnexpectedValueException());
 
             CodeTreeBuilder body = method.createBuilder();
-            body.startIf().startCall(null, TypeSystemCodeGenerator.isTypeMethodName(expectedType)).string(LOCAL_VALUE).end().end().startBlock();
-            body.startReturn().startCall(null, TypeSystemCodeGenerator.asTypeMethodName(expectedType)).string(LOCAL_VALUE).end().end();
+            body.startIf().startCall(TypeSystemCodeGenerator.isTypeMethodName(expectedType)).string(LOCAL_VALUE).end().end().startBlock();
+            body.startReturn().startCall(TypeSystemCodeGenerator.asTypeMethodName(expectedType)).string(LOCAL_VALUE).end().end();
             body.end(); // if-block
             body.startThrow().startNew(getContext().getTruffleTypes().getUnexpectedValueException()).string(LOCAL_VALUE).end().end();
 

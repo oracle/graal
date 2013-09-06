@@ -56,7 +56,20 @@ public class ImplicitCastParser extends TypeSystemMethodParser<ImplicitCastData>
 
     @Override
     public ImplicitCastData create(TemplateMethod method, boolean invalid) {
-        return new ImplicitCastData(method);
-    }
+        if (invalid) {
+            return new ImplicitCastData(method, null, null);
+        }
 
+        ActualParameter target = method.findParameter("targetValue");
+        ActualParameter source = method.findParameter("sourceValue");
+
+        TypeData targetType = target.getTypeSystemType();
+        TypeData sourceType = source.getTypeSystemType();
+
+        if (targetType.equals(sourceType)) {
+            method.addError("Target type and source type of an @%s must not be the same type.", ImplicitCast.class.getSimpleName());
+        }
+
+        return new ImplicitCastData(method, sourceType, targetType);
+    }
 }
