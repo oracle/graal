@@ -528,8 +528,6 @@ public class SnippetTemplate {
         ReturnNode retNode = null;
         StartNode entryPointNode = snippet.start();
 
-        new DeadCodeEliminationPhase().apply(snippetCopy);
-
         nodes = new ArrayList<>(snippet.getNodeCount());
         for (Node node : snippet.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
