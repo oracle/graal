@@ -42,23 +42,23 @@ public class PTXParameterOp extends LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm) {
-        PTXAssembler ptxasm = (PTXAssembler) tasm.asm;
+        PTXAssembler masm = (PTXAssembler) tasm.asm;
         // Emit parameter directives for arguments
         int argCount = params.length;
         for (int i = 0; i < argCount; i++) {
             Kind paramKind = params[i].getKind();
             switch (paramKind) {
             case Int :
-                ptxasm.param_32_decl(asIntReg(params[i]), (i == (argCount - 1)));
+                masm.param_32_decl(asIntReg(params[i]), (i == (argCount - 1)));
                 break;
             case Long :
-                ptxasm.param_64_decl(asLongReg(params[i]), (i == (argCount - 1)));
+                masm.param_64_decl(asLongReg(params[i]), (i == (argCount - 1)));
                 break;
             case Float :
-                ptxasm.param_32_decl(asFloatReg(params[i]), (i == (argCount - 1)));
+                masm.param_32_decl(asFloatReg(params[i]), (i == (argCount - 1)));
                 break;
             case Double :
-                ptxasm.param_64_decl(asDoubleReg(params[i]), (i == (argCount - 1)));
+                masm.param_64_decl(asDoubleReg(params[i]), (i == (argCount - 1)));
                 break;
             default :
                 throw GraalInternalError.shouldNotReachHere("unhandled parameter type "  + paramKind.toString());

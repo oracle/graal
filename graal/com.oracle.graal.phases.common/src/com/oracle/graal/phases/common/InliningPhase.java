@@ -512,7 +512,7 @@ public class InliningPhase extends AbstractInliningPhase {
             while ((current = nextQueuedNode()) != null) {
                 assert current.isAlive();
 
-                if (current instanceof Invoke) {
+                if (current instanceof Invoke && ((Invoke) current).callTarget() instanceof MethodCallTargetNode) {
                     if (current != start) {
                         invokes.addLast((Invoke) current);
                     }

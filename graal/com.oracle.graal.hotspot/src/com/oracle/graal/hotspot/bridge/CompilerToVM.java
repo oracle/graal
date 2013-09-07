@@ -226,4 +226,6 @@ public interface CompilerToVM {
     void reprofile(long metaspaceMethod);
 
     void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
+
+    boolean isTypeLinked(HotSpotResolvedObjectType hotSpotResolvedObjectType);
 }

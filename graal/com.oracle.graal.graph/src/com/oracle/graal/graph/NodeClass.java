@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.graph;
 
+import static com.oracle.graal.graph.Graph.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.Map.Entry;
@@ -432,7 +434,7 @@ public final class NodeClass extends FieldIntrospection {
          */
         private NodeClassIterator(Node node, long[] offsets, int directCount) {
             this.node = node;
-            this.modCount = node.modCount();
+            this.modCount = MODIFICATION_COUNTS_ENABLED ? node.modCount() : 0;
             this.offsets = offsets;
             this.directCount = directCount;
             index = NOT_ITERABLE;

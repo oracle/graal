@@ -158,7 +158,7 @@ public class PTXMemOp {
                     masm.ld_from_state_space(".param.s16", asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
                 case Char:
-                    masm.ld_from_state_space(".param.s16", asRegister(result), addr.getBase(), addr.getDisplacement());
+                    masm.ld_from_state_space(".param.u16", asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
                 case Int:
                     masm.ld_from_state_space(".param.s32", asRegister(result), addr.getBase(), addr.getDisplacement());

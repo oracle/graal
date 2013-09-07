@@ -112,7 +112,8 @@ public interface ResolvedJavaType extends JavaType {
     int getModifiers();
 
     /**
-     * Checks whether this type is initialized.
+     * Checks whether this type is initialized. If a type is initialized it implies that is was
+     * {@link #isLinked() linked} and that the static initializer has run.
      * 
      * @return {@code true} if this type is initialized
      */
@@ -122,6 +123,14 @@ public interface ResolvedJavaType extends JavaType {
      * Initializes this type.
      */
     void initialize();
+
+    /**
+     * Checks whether this type is linked and verified. When a type is linked the static initializer
+     * has not necessarily run. An {@link #isInitialized() initialized} type is always linked.
+     * 
+     * @return {@code true} if this type is linked
+     */
+    boolean isLinked();
 
     /**
      * Determines if this type is either the same as, or is a superclass or superinterface of, the

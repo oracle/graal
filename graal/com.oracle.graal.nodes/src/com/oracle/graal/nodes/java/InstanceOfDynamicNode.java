@@ -23,9 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -73,13 +71,5 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
 
     public ValueNode mirror() {
         return mirror;
-    }
-
-    @Override
-    public boolean verify() {
-        for (Node usage : usages()) {
-            assertTrue(usage instanceof IfNode || usage instanceof FixedGuardNode || usage instanceof ConditionalNode, "unsupported usage: %s", usage);
-        }
-        return super.verify();
     }
 }

@@ -231,7 +231,7 @@ public class LoopFragmentInside extends LoopFragment {
         StructuredGraph graph = graph();
         if (endsToMerge.size() == 1) {
             AbstractEndNode end = endsToMerge.get(0);
-            assert end.usages().count() == 0;
+            assert end.usages().isEmpty();
             newExit = graph.add(new BeginNode());
             end.replaceAtPredecessor(newExit);
             end.safeDelete();
