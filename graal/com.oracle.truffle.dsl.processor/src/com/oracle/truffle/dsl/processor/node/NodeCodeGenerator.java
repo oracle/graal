@@ -2003,6 +2003,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 startCallTypeSystemMethod(getContext(), builder, child.getNodeData(), cast.getMethodName());
             }
 
+            if (targetExecutable.getType().needsCastTo(context, targetParameter.getTypeSystemType()) && cast == null) {
+                startCallTypeSystemMethod(getContext(), builder, child.getNodeData(), TypeSystemCodeGenerator.expectTypeMethodName(targetParameter.getTypeSystemType()));
+            }
+
             NodeData node = getModel().getNode();
             ActualParameter sourceParameter = sourceExecutable.findParameter(targetParameter.getLocalName());
             if (sourceParameter == null) {
@@ -2011,6 +2015,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 CodeTree var = CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter));
                 builder.tree(createExpectExecutableType(node, sourceParameter.getTypeSystemType(), targetExecutable, var));
             }
+
+            if (targetExecutable.getType().needsCastTo(context, targetParameter.getTypeSystemType())) {
+                builder.end().end();
+            }
+
             if (cast != null) {
                 builder.end().end();
             }
@@ -2049,6 +2058,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         }
 
         private boolean hasUnexpectedType(ExecutableTypeData target, ActualParameter sourceParameter, TypeData type) {
+            boolean targetCast = target.getType().needsCastTo(context, type);
+            if (targetCast && getModel().getNode().getTypeSystem().lookupCast(target.getType(), type) == null) {
+                return true;
+            }
             if (sourceParameter == null) {
                 return target.hasUnexpectedValue(getContext());
             } else {
