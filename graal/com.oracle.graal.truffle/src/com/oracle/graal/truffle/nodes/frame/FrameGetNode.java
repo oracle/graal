@@ -25,7 +25,6 @@ package com.oracle.graal.truffle.nodes.frame;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -40,7 +39,7 @@ import com.oracle.truffle.api.frame.*;
  * Intrinsic node for read access to a Truffle frame.
  */
 @NodeInfo(nameTemplate = "FrameGet{p#slotKind/s}{p#frameSlot/s}")
-public class FrameGetNode extends FrameAccessNode implements IterableNodeType, Virtualizable, Lowerable {
+public class FrameGetNode extends FrameAccessNode implements Node.IterableNodeType, Virtualizable, Lowerable {
 
     public FrameGetNode(Kind kind, ValueNode frame, ValueNode slot, ResolvedJavaField field) {
         super(StampFactory.forKind(kind), kind, frame, slot, field);

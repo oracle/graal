@@ -31,7 +31,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
 
@@ -40,7 +39,7 @@ import com.oracle.graal.graph.Node.Verbosity;
  * <ul>
  * <li>The offsets of fields annotated with {@link Input} and {@link Successor} as well as methods
  * for iterating over such fields.</li>
- * <li>The identifier for an {@link IterableNodeType} class.</li>
+ * <li>The identifier for an {@link Node.IterableNodeType} class.</li>
  * </ul>
  */
 public final class NodeClass extends FieldIntrospection {
