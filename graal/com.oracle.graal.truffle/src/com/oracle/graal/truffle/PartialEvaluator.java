@@ -31,6 +31,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.hotspot.*;
@@ -148,7 +149,7 @@ public class PartialEvaluator {
                     for (Constant c : constantReceivers) {
                         histogram.add(c.asObject().getClass().getSimpleName());
                     }
-                    histogram.print(TTY.out().out());
+                    new DebugHistogramAsciiPrinter(TTY.out().out()).print(histogram);
                 }
 
                 // Additional inlining.
