@@ -160,14 +160,13 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     if (!tryCanonicalize(node)) {
                         if (node instanceof ValueNode) {
                             ValueNode valueNode = (ValueNode) node;
-                            if (tryInferStamp(valueNode)) {
-                                Constant constant = valueNode.stamp().asConstant();
-                                if (constant != null) {
-                                    performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
-                                } else {
-                                    // the improved stamp may enable additional canonicalization
-                                    tryCanonicalize(valueNode);
-                                }
+                            boolean improvedStamp = tryInferStamp(valueNode);
+                            Constant constant = valueNode.stamp().asConstant();
+                            if (constant != null && !(node instanceof ConstantNode)) {
+                                performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
+                            } else if (improvedStamp) {
+                                // the improved stamp may enable additional canonicalization
+                                tryCanonicalize(valueNode);
                             }
                         }
                     }
