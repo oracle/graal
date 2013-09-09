@@ -156,7 +156,7 @@ public class Graph {
     int usageModCount(Node node) {
         int id = extractOriginalNodeId(node);
         if (id >= 0 && id < nodeUsageModCounts.length) {
-            return nodeUsageModCounts[node.id];
+            return nodeUsageModCounts[id];
         }
         return 0;
     }
