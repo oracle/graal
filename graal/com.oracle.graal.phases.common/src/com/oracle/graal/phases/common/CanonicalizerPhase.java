@@ -31,8 +31,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
@@ -71,6 +69,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer).run(graph);
     }
 
+    /**
+     * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by this
+     *            mark are processed
+     */
     public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark) {
         applyIncremental(graph, context, newNodesMark, true);
     }
@@ -79,6 +81,10 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
+    /**
+     * @param workingSet the initial working set of nodes on which the canonicalizer works, should
+     *            be an auto-grow node bitmap
+     */
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet) {
         applyIncremental(graph, context, workingSet, true);
     }
@@ -100,7 +106,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         plan.addPhase(PhasePosition.AFTER_PARSING, new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer));
     }
 
-    public static class Instance extends Phase {
+    private static final class Instance extends Phase {
 
         private final int newNodesMark;
         private final Assumptions assumptions;
@@ -112,38 +118,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private NodeWorkList workList;
         private Tool tool;
 
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads) {
-            this(runtime, assumptions, canonicalizeReads, null);
-        }
-
         private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, null, 0, customCanonicalizer);
         }
 
-        /**
-         * @param runtime
-         * @param assumptions
-         * @param workingSet the initial working set of nodes on which the canonicalizer works,
-         *            should be an auto-grow node bitmap
-         * @param customCanonicalizer
-         * @param canonicalizeReads flag to indicate if
-         *            {@link LoadFieldNode#canonical(CanonicalizerTool)} and
-         *            {@link ReadNode#canonical(CanonicalizerTool)} should canonicalize reads of
-         *            constant fields.
-         */
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, workingSet, 0, customCanonicalizer);
         }
 
-        /**
-         * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
-         *            this mark are processed otherwise all nodes in the graph are processed
-         */
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, null, newNodesMark, customCanonicalizer);
         }
 
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
             super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.assumptions = assumptions;
