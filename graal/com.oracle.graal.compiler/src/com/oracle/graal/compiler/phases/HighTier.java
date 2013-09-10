@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.phases;
 
+import static com.oracle.graal.compiler.phases.HighTier.Options.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
@@ -36,12 +37,15 @@ import com.oracle.graal.virtual.phases.ea.*;
 
 public class HighTier extends PhaseSuite<HighTierContext> {
 
-    // @formatter:off
-    @Option(help = "")
-    public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
-    @Option(help = "Enable inlining")
-    public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
-    // @formatter:on
+    static class Options {
+
+        // @formatter:off
+        @Option(help = "")
+        public static final OptionValue<Boolean> VerifyUsageWithEquals = new OptionValue<>(true);
+        @Option(help = "Enable inlining")
+        public static final OptionValue<Boolean> Inline = new OptionValue<>(true);
+        // @formatter:on
+    }
 
     public HighTier() {
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());

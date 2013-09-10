@@ -41,11 +41,12 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     private static final int MAX_ITERATION_PER_NODE = 10;
     private static final DebugMetric METRIC_CANONICALIZED_NODES = Debug.metric("CanonicalizedNodes");
+    private static final DebugMetric METRIC_PROCESSED_NODES = Debug.metric("ProcessedNodes");
     private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
     private static final DebugMetric METRIC_INFER_STAMP_CALLED = Debug.metric("InferStampCalled");
     private static final DebugMetric METRIC_STAMP_CHANGED = Debug.metric("StampChanged");
     private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
-    public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
+    private static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final boolean canonicalizeReads;
     private final CustomCanonicalizer customCanonicalizer;

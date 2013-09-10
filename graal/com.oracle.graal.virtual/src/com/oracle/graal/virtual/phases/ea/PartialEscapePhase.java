@@ -23,6 +23,7 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.virtual.phases.ea.PartialEscapePhase.Options.*;
 
 import java.util.*;
 
@@ -40,10 +41,13 @@ import com.oracle.graal.phases.tiers.*;
 
 public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
-    //@formatter:off
-    @Option(help = "")
-    public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
-    //@formatter:on
+    static class Options {
+
+        //@formatter:off
+        @Option(help = "")
+        public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
+        //@formatter:on
+    }
 
     private final boolean readElimination;
 
