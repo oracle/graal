@@ -51,7 +51,7 @@ public class GraalDebugConfig implements DebugConfig {
                    "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)%n" +
                    "Complete - aggregate by qualified name%n" +
                    "Thread - aggregate by qualified name and thread")
-    public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Complete");
+    public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
     @Option(help = "Send Graal IR to dump handlers on error")
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
     @Option(help = "Enable expensive assertions")
