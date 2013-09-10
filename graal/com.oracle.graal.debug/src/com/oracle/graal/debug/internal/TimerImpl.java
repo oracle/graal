@@ -38,9 +38,19 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
     };
 
     private ThreadLocal<Long> valueToSubstract = new ThreadLocal<>();
+    private boolean conditional;
 
-    public TimerImpl(String name) {
+    public TimerImpl(String name, boolean conditional) {
         super(name);
+        this.conditional = conditional;
+    }
+
+    public void setConditional(boolean flag) {
+        conditional = flag;
+    }
+
+    public boolean isConditional() {
+        return conditional;
     }
 
     @Override
