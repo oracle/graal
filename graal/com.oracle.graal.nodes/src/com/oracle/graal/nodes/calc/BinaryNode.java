@@ -150,14 +150,22 @@ public abstract class BinaryNode extends FloatingNode {
         return null;
     }
 
+    //@formatter:off
     /*
      * In reassociate, complexity comes from the handling of IntegerSub (non commutative) which can
-     * be mixed with IntegerAdd. if first tries to find m1, m2 which match the criterion : (a o m2)
-     * o m1 (m2 o a) o m1 m1 o (a o m2) m1 o (m2 o a) It then produces 4 boolean for the -/+ case
-     * invertA : should the final expression be like *-a (rather than a+*) aSub : should the final
-     * expression be like a-* (rather than a+*) invertM1 : should the final expression contain -m1
+     * be mixed with IntegerAdd. It first tries to find m1, m2 which match the criterion :
+     * (a o m2) o m1
+     * (m2 o a) o m1
+     * m1 o (a o m2)
+     * m1 o (m2 o a)
+     * It then produces 4 boolean for the -/+ cases:
+     * invertA : should the final expression be like *-a (rather than a+*)
+     * aSub : should the final expression be like a-* (rather than a+*)
+     * invertM1 : should the final expression contain -m1
      * invertM2 : should the final expression contain -m2
+     *
      */
+    //@formatter:on
     /**
      * Tries to re-associate values which satisfy the criterion. For example with a constantness
      * criterion : (a + 2) + 1 => a + (1 + 2)<br>
