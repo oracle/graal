@@ -309,7 +309,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new PartialEscapePhase(false).apply(graph, context);
+        new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
     }
 
     private void compareGraphs(final String snippet, final String referenceSnippet) {
@@ -332,7 +332,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 }
                 new DeadCodeEliminationPhase().apply(graph);
                 canonicalizer.apply(graph, context);
-                new PartialEscapePhase(false).apply(graph, context);
+                new PartialEscapePhase(false, canonicalizer).apply(graph, context);
 
                 new DeadCodeEliminationPhase().apply(graph);
                 canonicalizer.apply(graph, context);

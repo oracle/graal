@@ -112,7 +112,7 @@ public final class TruffleCache {
                     optimizeGraph(newGraph, tmpAssumptions);
 
                     PhaseContext context = new PhaseContext(metaAccessProvider, tmpAssumptions, replacements);
-                    PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false);
+                    PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue()));
                     partialEscapePhase.apply(newGraph, context);
 
                     cache.put(method, newGraph);
@@ -153,7 +153,7 @@ public final class TruffleCache {
         ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
         ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
         CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
-        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase();
+        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase(canonicalizerPhase);
 
         int maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
 

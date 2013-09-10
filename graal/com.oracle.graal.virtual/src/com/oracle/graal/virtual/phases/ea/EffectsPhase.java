@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-
 import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
@@ -47,9 +45,11 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     }
 
     private final int maxIterations;
+    private final CanonicalizerPhase canonicalizer;
 
-    public EffectsPhase(int maxIterations) {
+    public EffectsPhase(int maxIterations, CanonicalizerPhase canonicalizer) {
         this.maxIterations = maxIterations;
+        this.canonicalizer = canonicalizer;
     }
 
     @Override
@@ -90,7 +90,7 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
                             listener.getChangedNodes().add(node);
                         }
                     }
-                    new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), listener.getChangedNodes(), null).apply(graph);
+                    canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
 
                     return true;
                 }

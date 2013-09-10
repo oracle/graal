@@ -245,6 +245,6 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-        new PartialEscapePhase(false, true).apply(graph, context);
+        new PartialEscapePhase(false, true, new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

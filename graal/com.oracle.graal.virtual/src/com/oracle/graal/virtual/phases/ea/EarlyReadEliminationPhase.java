@@ -25,13 +25,14 @@ package com.oracle.graal.virtual.phases.ea;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class EarlyReadEliminationPhase extends EffectsPhase<PhaseContext> {
 
-    public EarlyReadEliminationPhase() {
-        super(1);
+    public EarlyReadEliminationPhase(CanonicalizerPhase canonicalizer) {
+        super(1, canonicalizer);
     }
 
     @Override
