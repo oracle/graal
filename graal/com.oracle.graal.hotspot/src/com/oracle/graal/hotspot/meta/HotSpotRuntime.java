@@ -676,12 +676,6 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             StoreHubNode storeHub = (StoreHubNode) n;
             WriteNode hub = createWriteHub(graph, wordKind, storeHub.getObject(), storeHub.getValue());
             graph.replaceFixed(storeHub, hub);
-        } else if (n instanceof FixedGuardNode) {
-            FixedGuardNode node = (FixedGuardNode) n;
-            GuardingNode guard = tool.createGuard(node.condition(), node.getReason(), node.getAction(), node.isNegated());
-            ValueAnchorNode newAnchor = graph.add(new ValueAnchorNode(guard.asNode()));
-            node.replaceAtUsages(guard.asNode());
-            graph.replaceFixedWithFixed(node, newAnchor);
         } else if (n instanceof CommitAllocationNode) {
             if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
                 CommitAllocationNode commit = (CommitAllocationNode) n;
