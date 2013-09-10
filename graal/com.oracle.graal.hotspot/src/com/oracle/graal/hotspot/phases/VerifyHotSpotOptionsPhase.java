@@ -57,20 +57,24 @@ public class VerifyHotSpotOptionsPhase extends Phase {
             for (OptionDescriptor desc : opts) {
                 if (HotSpotOptions.isHotSpotOption(desc)) {
                     HotSpotResolvedObjectType holder = (HotSpotResolvedObjectType) runtime.lookupJavaType(desc.getDeclaringClass());
-                    if (!checked.contains(holder)) {
-                        checked.add(holder);
-                        for (ResolvedJavaMethod method : holder.getMethods()) {
-                            if (method.isClassInitializer()) {
-                                StructuredGraph graph = new StructuredGraph(method);
-                                new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                                new VerifyHotSpotOptionsPhase(holder, runtime).apply(graph);
-                            }
-                        }
-                    }
+                    checkType(runtime, checked, holder);
                 }
             }
         }
         return true;
+    }
+
+    private static void checkType(HotSpotRuntime runtime, Set<HotSpotResolvedObjectType> checked, HotSpotResolvedObjectType holder) {
+        if (!checked.contains(holder)) {
+            checked.add(holder);
+            for (ResolvedJavaMethod method : holder.getMethods()) {
+                if (method.isClassInitializer()) {
+                    StructuredGraph graph = new StructuredGraph(method);
+                    new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                    new VerifyHotSpotOptionsPhase(holder, runtime).apply(graph);
+                }
+            }
+        }
     }
 
     private final HotSpotRuntime runtime;
