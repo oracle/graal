@@ -44,7 +44,7 @@ public final class CStringNode extends FloatingNode implements Lowerable {
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         byte[] formatBytes = string.getBytes();
         long cstring = unsafe.allocateMemory(formatBytes.length + 1);
         for (int i = 0; i < formatBytes.length; i++) {

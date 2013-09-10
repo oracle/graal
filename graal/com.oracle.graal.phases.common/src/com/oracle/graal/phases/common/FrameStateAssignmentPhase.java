@@ -27,6 +27,7 @@ import java.util.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.GuardsPhase;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -77,6 +78,8 @@ public class FrameStateAssignmentPhase extends Phase {
     protected void run(StructuredGraph graph) {
         assert checkFixedDeopts(graph);
         ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null, null);
+
+        graph.setGuardsPhase(GuardsPhase.AFTER_FSA);
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {

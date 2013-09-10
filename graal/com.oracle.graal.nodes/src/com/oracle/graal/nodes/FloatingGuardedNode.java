@@ -49,10 +49,4 @@ public abstract class FloatingGuardedNode extends FloatingNode implements Guarde
         updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
         this.guard = guard;
     }
-
-    @Override
-    public FloatingNode asNode() {
-        return this;
-    }
-
 }

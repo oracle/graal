@@ -30,4 +30,22 @@ public abstract class LogicNode extends FloatingNode {
     public LogicNode() {
         super(StampFactory.condition());
     }
+
+    public static LogicNode and(LogicNode a, LogicNode b, double shortCircuitProbability) {
+        return and(a, false, b, false, shortCircuitProbability);
+    }
+
+    public static LogicNode and(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
+        StructuredGraph graph = a.graph();
+        ShortCircuitOrNode notAorNotB = graph.unique(new ShortCircuitOrNode(a, !negateA, b, !negateB, shortCircuitProbability));
+        return graph.unique(new LogicNegationNode(notAorNotB));
+    }
+
+    public static LogicNode or(LogicNode a, LogicNode b, double shortCircuitProbability) {
+        return or(a, false, b, false, shortCircuitProbability);
+    }
+
+    public static LogicNode or(LogicNode a, boolean negateA, LogicNode b, boolean negateB, double shortCircuitProbability) {
+        return a.graph().unique(new ShortCircuitOrNode(a, negateA, b, negateB, shortCircuitProbability));
+    }
 }

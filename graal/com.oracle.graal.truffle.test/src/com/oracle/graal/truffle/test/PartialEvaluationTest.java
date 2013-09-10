@@ -36,7 +36,6 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
@@ -197,7 +196,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizer.apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                new LoweringPhase(LoweringType.BEFORE_GUARDS, new CanonicalizerPhase(true)).apply(graph, context);
+                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 canonicalizer.apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;

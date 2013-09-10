@@ -92,8 +92,8 @@ public final class UnsafeArrayCopyNode extends ArrayRangeWriteNode implements Lo
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (loweringType == LoweringType.AFTER_FSA) {
+    public void lower(LoweringTool tool) {
+        if (graph().getGuardsPhase() == StructuredGraph.GuardsPhase.AFTER_FSA) {
             UnsafeArrayCopySnippets.Templates templates = tool.getReplacements().getSnippetTemplateCache(UnsafeArrayCopySnippets.Templates.class);
             templates.lower(this);
         }

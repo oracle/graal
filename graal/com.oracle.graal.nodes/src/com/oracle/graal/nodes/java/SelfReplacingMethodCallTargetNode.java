@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.JavaType;
 import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.graph.GraalInternalError;
 import com.oracle.graal.graph.NodeInputList;
-import com.oracle.graal.nodes.ValueNode;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.LIRGeneratorTool;
 import com.oracle.graal.nodes.spi.Lowerable;
 import com.oracle.graal.nodes.spi.LoweringTool;
@@ -68,7 +68,7 @@ public class SelfReplacingMethodCallTargetNode extends MethodCallTargetNode impl
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         InvokeKind invokeKind = Modifier.isStatic(replacementTargetMethod.getModifiers()) ? InvokeKind.Static : InvokeKind.Special;
         MethodCallTargetNode replacement = graph().add(
                         new MethodCallTargetNode(invokeKind, replacementTargetMethod, replacementArguments.toArray(new ValueNode[replacementArguments.size()]), replacementReturnType));

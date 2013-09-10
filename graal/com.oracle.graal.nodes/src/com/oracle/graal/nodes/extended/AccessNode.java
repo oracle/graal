@@ -78,11 +78,6 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
     }
 
     @Override
-    public AccessNode asNode() {
-        return this;
-    }
-
-    @Override
     public boolean canDeoptimize() {
         return nullCheck;
     }

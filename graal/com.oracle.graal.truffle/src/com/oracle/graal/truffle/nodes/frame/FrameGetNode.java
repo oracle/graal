@@ -70,7 +70,7 @@ public class FrameGetNode extends FrameAccessNode implements Node.IterableNodeTy
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         assert !(getFrame() instanceof NewFrameNode);
         StructuredGraph structuredGraph = graph();
 

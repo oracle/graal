@@ -29,7 +29,6 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.Lowerable.*;
 import com.oracle.graal.nodes.type.*;
 
 public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode implements LIRGenLowerable {
@@ -82,7 +81,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     protected abstract Value generateArithmetic(LIRGeneratorTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
-        if (tool.getLoweringType() == LoweringType.AFTER_GUARDS) {
+        if (node.asNode().graph().getGuardsPhase() == StructuredGraph.GuardsPhase.FIXED_DEOPTS) {
             FloatingNode floatingNode = (FloatingNode) node;
             FixedWithNextNode previous = tool.lastFixedNode();
             FixedNode next = previous.next();

@@ -123,7 +123,7 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         throw new GraalInternalError("Branch probability could not be injected, because the probability value did not reduce to a constant value.");
     }
 }
