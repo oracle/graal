@@ -22,6 +22,10 @@
  */
 package com.oracle.graal.phases.common;
 
+import java.util.*;
+
+import com.oracle.graal.graph.Graph.NodeChangedListener;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
@@ -36,8 +40,24 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
 
     @Override
     protected void run(StructuredGraph graph, C context) {
-        int mark = graph.getMark();
+        int newNodesMark = graph.getMark();
+        final Set<Node> changedNodes = new HashSet<>();
+
+        NodeChangedListener listener = new NodeChangedListener() {
+
+            @Override
+            public void nodeChanged(Node node) {
+                changedNodes.add(node);
+            }
+        };
+        graph.trackInputChange(listener);
+        graph.trackUsagesDroppedZero(listener);
+
         super.run(graph, context);
-        canonicalizer.applyIncremental(graph, context, mark, false);
+
+        graph.stopTrackingInputChange();
+        graph.stopTrackingUsagesDroppedZero();
+
+        canonicalizer.applyIncremental(graph, context, changedNodes, newNodesMark, false);
     }
 }

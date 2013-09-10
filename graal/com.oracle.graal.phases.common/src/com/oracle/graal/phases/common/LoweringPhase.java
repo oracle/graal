@@ -156,11 +156,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     protected void run(final StructuredGraph graph, PhaseContext context) {
         int i = 0;
         while (true) {
-            Round round = new Round(i++, context);
             int mark = graph.getMark();
 
-            round.apply(graph);
-            canonicalizer.applyIncremental(graph, context, mark);
+            IncrementalCanonicalizerPhase<PhaseContext> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
+            incrementalCanonicalizer.appendPhase(new Round(i++, context));
+            incrementalCanonicalizer.apply(graph, context);
 
             if (!containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!
