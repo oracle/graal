@@ -167,7 +167,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         private final SchedulePhase schedule;
 
         private Round(int iteration, PhaseContext context) {
-            super(String.format("Lowering iteration %d", iteration));
+            super("LoweringIteration" + iteration);
             this.context = context;
             this.schedule = new SchedulePhase();
         }
