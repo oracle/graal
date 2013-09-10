@@ -42,8 +42,8 @@ import com.oracle.graal.phases.tiers.*;
 
 /**
  * This class is a phase that looks for opportunities for tail duplication. The static method
- * {@link #tailDuplicate(MergeNode, TailDuplicationDecision, List, PhaseContext)} can also be used
- * to drive tail duplication from other places, e.g., inlining.
+ * {@link #tailDuplicate(MergeNode, TailDuplicationDecision, List, PhaseContext, CanonicalizerPhase)}
+ * can also be used to drive tail duplication from other places, e.g., inlining.
  */
 public class TailDuplicationPhase extends BasePhase<PhaseContext> {
 
@@ -52,6 +52,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
      */
     private static final DebugMetric metricDuplicationConsidered = Debug.metric("DuplicationConsidered");
     private static final DebugMetric metricDuplicationPerformed = Debug.metric("DuplicationPerformed");
+
+    private final CanonicalizerPhase canonicalizer;
 
     /**
      * This interface is used by tail duplication to let clients decide if tail duplication should
@@ -129,6 +131,10 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         }
     };
 
+    public TailDuplicationPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
+    }
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext phaseContext) {
         NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
@@ -137,7 +143,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         // duplication.
         for (MergeNode merge : graph.getNodes(MergeNode.class).snapshot()) {
             if (!(merge instanceof LoopBeginNode) && nodeProbabilities.get(merge) >= TailDuplicationProbability.getValue()) {
-                tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext);
+                tailDuplicate(merge, DEFAULT_DECISION, null, phaseContext, canonicalizer);
             }
         }
     }
@@ -159,7 +165,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
      *            {@link PiNode} in the duplicated branch that corresponds to the entry.
      * @param phaseContext
      */
-    public static boolean tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<GuardedValueNode> replacements, PhaseContext phaseContext) {
+    public static boolean tailDuplicate(MergeNode merge, TailDuplicationDecision decision, List<GuardedValueNode> replacements, PhaseContext phaseContext, CanonicalizerPhase canonicalizer) {
         assert !(merge instanceof LoopBeginNode);
         assert replacements == null || replacements.size() == merge.forwardEndCount();
         FixedNode fixed = merge;
@@ -172,7 +178,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             metricDuplicationConsidered.increment();
             if (decision.doTransform(merge, fixedCount)) {
                 metricDuplicationPerformed.increment();
-                new DuplicationOperation(merge, replacements).duplicate(phaseContext);
+                new DuplicationOperation(merge, replacements, canonicalizer).duplicate(phaseContext);
                 return true;
             }
         }
@@ -190,6 +196,8 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
         private final HashMap<ValueNode, PhiNode> bottomPhis = new HashMap<>();
         private final List<GuardedValueNode> replacements;
 
+        private final CanonicalizerPhase canonicalizer;
+
         /**
          * Initializes the tail duplication operation without actually performing any work.
          * 
@@ -197,10 +205,11 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @param replacements A list of replacement {@link PiNode}s, or null. If this is non-null,
          *            then the size of the list needs to match the number of end nodes at the merge.
          */
-        public DuplicationOperation(MergeNode merge, List<GuardedValueNode> replacements) {
+        public DuplicationOperation(MergeNode merge, List<GuardedValueNode> replacements, CanonicalizerPhase canonicalizer) {
             this.merge = merge;
             this.replacements = replacements;
             this.graph = merge.graph();
+            this.canonicalizer = canonicalizer;
         }
 
         /**
@@ -289,7 +298,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
                     phi.setMerge(mergeAfter);
                 }
             }
-            new CanonicalizerPhase.Instance(phaseContext.getRuntime(), phaseContext.getAssumptions(), !AOTCompilation.getValue(), graph.getNewNodes(startMark), null).apply(graph);
+            canonicalizer.applyIncremental(graph, phaseContext, startMark);
             Debug.dump(graph, "After tail duplication at %s", merge);
         }
 

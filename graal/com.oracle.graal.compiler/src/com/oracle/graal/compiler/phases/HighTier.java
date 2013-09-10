@@ -77,7 +77,7 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         if (OptTailDuplication.getValue()) {
-            appendPhase(new TailDuplicationPhase());
+            appendPhase(new TailDuplicationPhase(canonicalizer));
         }
 
         if (PartialEscapeAnalysis.getValue()) {
