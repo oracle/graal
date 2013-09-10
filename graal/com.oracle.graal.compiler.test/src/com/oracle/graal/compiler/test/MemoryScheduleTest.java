@@ -504,7 +504,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase().apply(graph, context);
                 }
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+                new LoweringPhase(LoweringType.BEFORE_GUARDS, new CanonicalizerPhase(true)).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {
@@ -523,8 +523,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
                 MidTierContext midContext = new MidTierContext(runtime(), assumptions, replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
                 new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, midContext);
-                new LoweringPhase(LoweringType.AFTER_FSA).apply(graph, midContext);
+                new LoweringPhase(LoweringType.AFTER_GUARDS, new CanonicalizerPhase(true)).apply(graph, midContext);
+                new LoweringPhase(LoweringType.AFTER_FSA, new CanonicalizerPhase(true)).apply(graph, midContext);
 
                 SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched);
                 schedule.apply(graph);

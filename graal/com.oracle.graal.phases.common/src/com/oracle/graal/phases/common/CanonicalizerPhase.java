@@ -49,6 +49,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final boolean canonicalizeReads;
+    private final CustomCanonicalizer customCanonicalizer;
 
     public interface CustomCanonicalizer {
 
@@ -56,12 +57,41 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public CanonicalizerPhase(boolean canonicalizeReads) {
+        this(canonicalizeReads, null);
+    }
+
+    public CanonicalizerPhase(boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
         this.canonicalizeReads = canonicalizeReads;
+        this.customCanonicalizer = customCanonicalizer;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads).run(graph);
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer).run(graph);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark) {
+        applyIncremental(graph, context, newNodesMark, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet) {
+        applyIncremental(graph, context, workingSet, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark) {
+        applyIncremental(graph, context, workingSet, newNodesMark, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
     public static class Instance extends Phase {
@@ -77,7 +107,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private Tool tool;
 
         public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads) {
-            this(runtime, assumptions, canonicalizeReads, null, 0, null);
+            this(runtime, assumptions, canonicalizeReads, null);
+        }
+
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
+            this(runtime, assumptions, canonicalizeReads, null, 0, customCanonicalizer);
         }
 
         /**

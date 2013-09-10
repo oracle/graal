@@ -51,7 +51,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
         }
 
         if (OptFloatingReads.getValue()) {
-            IncrementalCanonicalizerPhase<MidTierContext> incCanonicalizer = new IncrementalCanonicalizerPhase<>();
+            IncrementalCanonicalizerPhase<MidTierContext> incCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
             incCanonicalizer.appendPhase(new FloatingReadPhase());
             appendPhase(incCanonicalizer);
             if (OptReadElimination.getValue()) {
@@ -86,7 +86,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new GuardLoweringPhase());
 
-        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS));
+        appendPhase(new LoweringPhase(LoweringType.AFTER_GUARDS, canonicalizer));
 
         appendPhase(new FrameStateAssignmentPhase());
 

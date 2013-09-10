@@ -98,6 +98,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
             appendPhase(canonicalizer);
         }
 
-        appendPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS));
+        appendPhase(new LoweringPhase(LoweringType.BEFORE_GUARDS, canonicalizer));
     }
 }

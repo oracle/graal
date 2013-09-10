@@ -135,10 +135,12 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     }
 
     private final LoweringType loweringType;
+    private final CanonicalizerPhase canonicalizer;
 
-    public LoweringPhase(LoweringType loweringType) {
+    public LoweringPhase(LoweringType loweringType, CanonicalizerPhase canonicalizer) {
         super("Lowering (" + loweringType.name() + ")");
         this.loweringType = loweringType;
+        this.canonicalizer = canonicalizer;
     }
 
     private static boolean containsLowerable(NodeIterable<Node> nodes) {
@@ -157,9 +159,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             Round round = new Round(i++, context);
             int mark = graph.getMark();
 
-            IncrementalCanonicalizerPhase<PhaseContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
-            canonicalizer.appendPhase(round);
-            canonicalizer.apply(graph, context);
+            round.apply(graph);
+            canonicalizer.applyIncremental(graph, context, mark);
 
             if (!containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!

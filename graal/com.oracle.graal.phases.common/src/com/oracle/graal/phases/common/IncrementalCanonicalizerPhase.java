@@ -22,29 +22,22 @@
  */
 package com.oracle.graal.phases.common;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.tiers.*;
 
 public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
 
-    private final CustomCanonicalizer customCanonicalizer;
+    private final CanonicalizerPhase canonicalizer;
 
-    public IncrementalCanonicalizerPhase() {
-        this(null);
-    }
-
-    public IncrementalCanonicalizerPhase(CustomCanonicalizer customCanonicalizer) {
-        this.customCanonicalizer = customCanonicalizer;
+    public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
     }
 
     @Override
     protected void run(StructuredGraph graph, C context) {
         int mark = graph.getMark();
         super.run(graph, context);
-        new CanonicalizerPhase.Instance(context.getRuntime(), context.getAssumptions(), !AOTCompilation.getValue(), mark, customCanonicalizer).apply(graph);
+        canonicalizer.applyIncremental(graph, context, mark, false);
     }
 }

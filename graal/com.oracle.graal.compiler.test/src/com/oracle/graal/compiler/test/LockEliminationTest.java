@@ -96,7 +96,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         new InliningPhase().apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
-        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+        new LoweringPhase(LoweringType.BEFORE_GUARDS, new CanonicalizerPhase(true)).apply(graph, context);
         new ValueAnchorCleanupPhase().apply(graph);
         new LockEliminationPhase().apply(graph);
         return graph;

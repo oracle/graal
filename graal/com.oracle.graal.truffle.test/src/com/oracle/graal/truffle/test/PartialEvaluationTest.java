@@ -195,7 +195,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+                new LoweringPhase(LoweringType.BEFORE_GUARDS, new CanonicalizerPhase(true)).apply(graph, context);
                 canonicalizerPhase.apply(graph);
                 new DeadCodeEliminationPhase().apply(graph);
                 return graph;
