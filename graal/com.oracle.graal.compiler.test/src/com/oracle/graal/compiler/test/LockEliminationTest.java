@@ -62,7 +62,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedSnippet", new A(), new A());
 
         StructuredGraph graph = getGraph("testSynchronizedSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -80,7 +80,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedMethodSnippet", new A());
 
         StructuredGraph graph = getGraph("testSynchronizedMethodSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());

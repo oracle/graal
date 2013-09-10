@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 
 public class CanonicalizerPhase extends BasePhase<PhaseContext> {
@@ -92,6 +93,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark, boolean dumpGraph) {
         new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    @Deprecated
+    public void addToPhasePlan(PhasePlan plan, PhaseContext context) {
+        plan.addPhase(PhasePosition.AFTER_PARSING, new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer));
     }
 
     public static class Instance extends Phase {
