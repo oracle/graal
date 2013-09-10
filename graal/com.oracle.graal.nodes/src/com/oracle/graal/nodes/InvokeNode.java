@@ -133,11 +133,6 @@ public final class InvokeNode extends AbstractStateSplit implements StateSplit, 
     }
 
     @Override
-    public FixedNode asNode() {
-        return this;
-    }
-
-    @Override
     public FrameState stateDuring() {
         FrameState stateAfter = stateAfter();
         if (stateAfter == null) {

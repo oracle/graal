@@ -119,11 +119,6 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Node.It
     }
 
     @Override
-    public FixedNode asNode() {
-        return this;
-    }
-
-    @Override
     public void setNext(FixedNode x) {
         if (x != null) {
             this.setNext(AbstractBeginNode.begin(x));

@@ -133,11 +133,6 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
     }
 
     @Override
-    public FixedGuardNode asNode() {
-        return this;
-    }
-
-    @Override
     public boolean canDeoptimize() {
         return true;
     }

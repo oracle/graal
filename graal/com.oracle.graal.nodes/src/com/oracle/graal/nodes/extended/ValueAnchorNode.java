@@ -114,9 +114,4 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         }
         tool.delete();
     }
-
-    @Override
-    public ValueNode asNode() {
-        return this;
-    }
 }

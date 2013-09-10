@@ -115,11 +115,6 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
                     @ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter Stamp stamp);
 
     @Override
-    public ValueNode asNode() {
-        return this;
-    }
-
-    @Override
     public ValueNode getOriginalValue() {
         return object;
     }

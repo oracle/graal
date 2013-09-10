@@ -120,8 +120,4 @@ public class ProxyNode extends FloatingNode implements Node.IterableNodeType, Va
     public ValueNode getOriginalValue() {
         return value;
     }
-
-    public ValueNode asNode() {
-        return this;
-    }
 }

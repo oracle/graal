@@ -248,9 +248,4 @@ public class PhiNode extends FloatingNode implements Canonicalizable, Node.Itera
     public boolean isLoopPhi() {
         return merge() instanceof LoopBeginNode;
     }
-
-    @Override
-    public PhiNode asNode() {
-        return this;
-    }
 }
