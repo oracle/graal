@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
@@ -425,7 +426,7 @@ public class SnippetTemplate {
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, 0, null).apply(snippetCopy);
+            new CanonicalizerPhase(true).apply(snippetCopy, new PhaseContext(runtime, replacements.getAssumptions(), replacements));
         }
         NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
@@ -482,7 +483,8 @@ public class SnippetTemplate {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions(), true);
-                    new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, mark, null).apply(snippetCopy);
+                    PhaseContext context = new PhaseContext(runtime, replacements.getAssumptions(), replacements);
+                    new CanonicalizerPhase(true).applyIncremental(snippetCopy, context, mark);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();
