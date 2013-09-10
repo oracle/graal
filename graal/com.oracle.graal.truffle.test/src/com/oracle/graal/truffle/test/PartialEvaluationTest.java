@@ -118,7 +118,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                             if (ex.counted().isConstantMaxTripCount()) {
                                 long constant = ex.counted().constantMaxTripCount();
                                 if (constant <= UNROLL_LIMIT) {
-                                    LoopTransformations.fullUnroll(ex, runtime, assumptions, canonicalizeReads);
+                                    LoopTransformations.fullUnroll(ex, context, canonicalizer);
                                     Debug.dump(resultGraph, "After loop unrolling %d times", constant);
 
                                     canonicalizer.apply(resultGraph, context);

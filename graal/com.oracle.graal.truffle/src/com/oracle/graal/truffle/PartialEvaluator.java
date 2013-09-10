@@ -231,7 +231,7 @@ public class PartialEvaluator {
                         StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
                         NewFrameNode otherNewFrame = null;
                         if (inlineGraph == null) {
-                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, !AOTCompilation.getValue());
+                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions);
                             otherNewFrame = inlineGraph.getNodes(NewFrameNode.class).first();
                         }
 
@@ -259,7 +259,7 @@ public class PartialEvaluator {
         } while (changed && newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty());
     }
 
-    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final boolean canonicalizeReads) {
+    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions) {
 
         final StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions);
         Debug.scope("parseGraph", targetMethod, new Runnable() {
@@ -290,7 +290,7 @@ public class PartialEvaluator {
                             if (ex.counted().isConstantMaxTripCount()) {
                                 long constant = ex.counted().constantMaxTripCount();
                                 if (constant <= TruffleConstantUnrollLimit.getValue() || targetMethod.getAnnotation(ExplodeLoop.class) != null) {
-                                    LoopTransformations.fullUnroll(ex, metaAccessProvider, assumptions, canonicalizeReads);
+                                    LoopTransformations.fullUnroll(ex, context, canonicalizer);
                                     Debug.dump(graph, "After loop unrolling %d times", constant);
                                     canonicalizer.apply(graph, context);
                                     unrolled = true;

@@ -389,6 +389,8 @@ public class SnippetTemplate {
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
+        PhaseContext context = new PhaseContext(runtime, replacements.getAssumptions(), replacements);
+
         // Copy snippet graph, replacing constant parameters with given arguments
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
@@ -426,7 +428,7 @@ public class SnippetTemplate {
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase(true).apply(snippetCopy, new PhaseContext(runtime, replacements.getAssumptions(), replacements));
+            new CanonicalizerPhase(true).apply(snippetCopy, context);
         }
         NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
@@ -482,8 +484,7 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions(), true);
-                    PhaseContext context = new PhaseContext(runtime, replacements.getAssumptions(), replacements);
+                    LoopTransformations.fullUnroll(loop, context, new CanonicalizerPhase(true));
                     new CanonicalizerPhase(true).applyIncremental(snippetCopy, context, mark);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
