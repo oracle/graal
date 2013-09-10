@@ -75,7 +75,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
                     if (ConditionalElimination.getValue() && OptCanonicalizer.getValue()) {
                         canonicalizer.apply(graph, context);
-                        new IterativeConditionalEliminationPhase().apply(graph, context);
+                        new IterativeConditionalEliminationPhase(canonicalizer).apply(graph, context);
                     }
 
                     return progress;
