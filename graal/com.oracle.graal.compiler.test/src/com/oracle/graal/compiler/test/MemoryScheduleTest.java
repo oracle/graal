@@ -36,7 +36,6 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -502,9 +501,9 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 new CanonicalizerPhase(true).apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    new InliningPhase().apply(graph, context);
+                    new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 }
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {
@@ -523,8 +522,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
                 MidTierContext midContext = new MidTierContext(runtime(), assumptions, replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
                 new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, midContext);
-                new LoweringPhase(LoweringType.AFTER_FSA).apply(graph, midContext);
+                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);
+                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);
 
                 SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched);
                 schedule.apply(graph);

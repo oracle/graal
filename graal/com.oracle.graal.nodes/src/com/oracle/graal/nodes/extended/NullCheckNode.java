@@ -54,9 +54,4 @@ public class NullCheckNode extends DeoptimizingFixedWithNextNode implements LIRL
     public DeoptimizationReason getDeoptimizationReason() {
         return DeoptimizationReason.NullCheckException;
     }
-
-    @Override
-    public ValueNode asNode() {
-        return this;
-    }
 }

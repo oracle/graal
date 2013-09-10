@@ -44,6 +44,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
@@ -331,7 +332,7 @@ public class ReplacementsImpl implements Replacements {
                     new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
                     if (OptCanonicalizer.getValue()) {
                         new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
-                        new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(graph);
+                        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
                     }
                 }
             });
@@ -352,7 +353,7 @@ public class ReplacementsImpl implements Replacements {
         protected void afterInline(StructuredGraph caller, StructuredGraph callee, Object beforeInlineData) {
             if (OptCanonicalizer.getValue()) {
                 new WordTypeRewriterPhase(runtime, target.wordKind).apply(caller);
-                new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(caller);
+                new CanonicalizerPhase(true).apply(caller, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
             }
         }
 
@@ -366,7 +367,7 @@ public class ReplacementsImpl implements Replacements {
 
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase.Instance(runtime, assumptions, true).apply(graph);
+                new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
             }
         }
 

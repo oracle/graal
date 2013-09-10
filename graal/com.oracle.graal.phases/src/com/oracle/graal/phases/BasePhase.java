@@ -33,8 +33,8 @@ import com.oracle.graal.nodes.*;
 public abstract class BasePhase<C> {
 
     private String name;
+
     private static final DebugMetric metricPhaseRuns = Debug.metric("Runs");
-    protected static final DebugMetric METRIC_PROCESSED_NODES = Debug.metric("ProcessedNodes");
 
     protected BasePhase() {
         this.name = this.getClass().getSimpleName();

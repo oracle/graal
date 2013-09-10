@@ -32,6 +32,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * Collection of tests for {@link ConditionalEliminationPhase} including those that triggered bugs
@@ -141,7 +142,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         StructuredGraph graph = parse("testNullnessSnippet");
         new ConditionalEliminationPhase(runtime()).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
             assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
         }
@@ -163,7 +164,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testDisjunction() {
         StructuredGraph graph = parse("testDisjunctionSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         IfNode ifNode = (IfNode) graph.start().next();
         InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
         IsNullNode x = graph.unique(new IsNullNode(graph.getLocal(0)));
@@ -171,9 +172,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         ShortCircuitOrNode disjunction = graph.unique(new ShortCircuitOrNode(x, false, y, false, NOT_FREQUENT_PROBABILITY));
         LogicNegationNode negation = graph.unique(new LogicNegationNode(disjunction));
         ifNode.setCondition(negation);
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new ConditionalEliminationPhase(runtime()).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
             assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
         }
@@ -191,7 +192,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     public void testInvoke() {
         test("testInvokeSnippet", new Integer(16));
         StructuredGraph graph = parse("testInvokeSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new ConditionalEliminationPhase(runtime()).apply(graph);
 
         InvokeNode invoke = graph.getNodes(InvokeNode.class).first();
@@ -221,9 +222,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testTypeMerging() {
         StructuredGraph graph = parse("testTypeMergingSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new ConditionalEliminationPhase(runtime()).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
 
         assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
     }

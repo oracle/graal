@@ -106,9 +106,12 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (loweringType == LoweringType.BEFORE_GUARDS) {
-            tool.getRuntime().lower(this, tool);
+    public void lower(LoweringTool tool) {
+        if (graph().getGuardsPhase() == StructuredGraph.GuardsPhase.FLOATING_GUARDS) {
+            GuardingNode guard = tool.createGuard(condition(), getReason(), getAction(), isNegated());
+            ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
+            this.replaceAtUsages(guard.asNode());
+            graph().replaceFixedWithFixed(this, newAnchor);
         } else {
             FixedNode next = next();
             setNext(null);
@@ -127,11 +130,6 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
             this.replaceAtUsages(noDeoptSuccessor);
             GraphUtil.killWithUnusedFloatingInputs(this);
         }
-    }
-
-    @Override
-    public FixedGuardNode asNode() {
-        return this;
     }
 
     @Override

@@ -22,9 +22,6 @@
  */
 package com.oracle.graal.truffle.phases;
 
-import static com.oracle.graal.phases.GraalOptions.*;
-
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.java.*;
@@ -33,27 +30,25 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.*;
 
 /**
  * Inline all trivial getters (i.e. simple field loads).
  */
-public class InlineTrivialGettersPhase extends Phase {
+public class InlineTrivialGettersPhase extends BasePhase<PhaseContext> {
 
     private static final int TRIVIAL_GETTER_SIZE = 5;
     private final MetaAccessProvider metaAccessProvider;
-    private final Assumptions assumptions;
-    private final CustomCanonicalizer customCanonicalizer;
+    private final CanonicalizerPhase canonicalizer;
 
-    public InlineTrivialGettersPhase(MetaAccessProvider metaAccessProvider, Assumptions assumptions, CustomCanonicalizer customCanonicalizer) {
+    public InlineTrivialGettersPhase(MetaAccessProvider metaAccessProvider, CanonicalizerPhase canonicalizer) {
         this.metaAccessProvider = metaAccessProvider;
-        this.assumptions = assumptions;
-        this.customCanonicalizer = customCanonicalizer;
+        this.canonicalizer = canonicalizer;
     }
 
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, PhaseContext context) {
         for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
             if (methodCallTarget.isAlive()) {
                 InvokeKind invokeKind = methodCallTarget.invokeKind();
@@ -66,7 +61,7 @@ public class InlineTrivialGettersPhase extends Phase {
                             int mark = graph.getMark();
                             InliningUtil.inline(methodCallTarget.invoke(), inlineGraph, false);
                             Debug.dump(graph, "After inlining trivial getter %s", targetMethod.toString());
-                            new CanonicalizerPhase.Instance(metaAccessProvider, assumptions, !AOTCompilation.getValue(), mark, customCanonicalizer).apply(graph);
+                            canonicalizer.applyIncremental(graph, context, mark);
                         }
                     }
                 }

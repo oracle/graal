@@ -24,7 +24,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
-import static com.oracle.graal.hotspot.HotSpotVMConfig.*;
 import static java.nio.file.Files.*;
 
 import java.io.*;
@@ -179,9 +178,11 @@ public class HotSpotOptions {
     /**
      * Called from VM code once all Graal command line options have been processed by
      * {@link #setOption(String)}.
+     * 
+     * @param ciTime the value of the CITime HotSpot VM option
      */
-    public static void finalizeOptions() {
-        if (areDebugScopePatternsEnabled() || getVMOption("CITime")) {
+    public static void finalizeOptions(boolean ciTime) {
+        if (areDebugScopePatternsEnabled() || ciTime) {
             Debug.enable();
         }
     }

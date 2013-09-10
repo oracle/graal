@@ -53,7 +53,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
                 Assumptions assumptions = new Assumptions(true);
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
                 Debug.dump(graph, "Graph");
-                new InliningPhase().apply(graph, context);
+                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 Debug.dump(graph, "Graph");
                 new CanonicalizerPhase(true).apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);

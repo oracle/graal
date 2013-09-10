@@ -50,7 +50,7 @@ public final class MonitorEnterNode extends AccessMonitorNode implements Virtual
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

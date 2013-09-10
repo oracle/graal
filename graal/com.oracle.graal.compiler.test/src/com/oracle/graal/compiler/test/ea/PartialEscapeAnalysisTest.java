@@ -199,10 +199,10 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase().apply(graph, context);
+                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
                 new CanonicalizerPhase(true).apply(graph, context);
-                new PartialEscapePhase(false).apply(graph, context);
+                new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
 
                 for (MergeNode merge : graph.getNodes(MergeNode.class)) {
                     merge.setStateAfter(null);

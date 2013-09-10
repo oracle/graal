@@ -185,9 +185,4 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
             throw new UnsupportedOperationException();
         }
     }
-
-    @Override
-    public AbstractBeginNode asNode() {
-        return this;
-    }
 }

@@ -35,7 +35,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.schedule.*;
@@ -73,11 +72,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public LoweringType getLoweringType() {
-            return loweringType;
-        }
-
-        @Override
         public GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object) {
             if (ObjectStamp.isObjectNonNull(object)) {
                 // Short cut creation of null check guard if the object is known to be non-null.
@@ -101,8 +95,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-            if (loweringType != LoweringType.BEFORE_GUARDS) {
-                throw new GraalInternalError("Cannot create guards in after-guard lowering");
+            if (condition.graph().getGuardsPhase().ordinal() > StructuredGraph.GuardsPhase.FLOATING_GUARDS.ordinal()) {
+                throw new GraalInternalError("Cannot create guards after guard lowering");
             }
             if (OptEliminateGuards.getValue()) {
                 for (Node usage : condition.usages()) {
@@ -134,11 +128,10 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
     }
 
-    private final LoweringType loweringType;
+    private final CanonicalizerPhase canonicalizer;
 
-    public LoweringPhase(LoweringType loweringType) {
-        super("Lowering (" + loweringType.name() + ")");
-        this.loweringType = loweringType;
+    public LoweringPhase(CanonicalizerPhase canonicalizer) {
+        this.canonicalizer = canonicalizer;
     }
 
     private static boolean containsLowerable(NodeIterable<Node> nodes) {
@@ -154,12 +147,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     protected void run(final StructuredGraph graph, PhaseContext context) {
         int i = 0;
         while (true) {
-            Round round = new Round(i++, context);
             int mark = graph.getMark();
 
-            IncrementalCanonicalizerPhase<PhaseContext> canonicalizer = new IncrementalCanonicalizerPhase<>();
-            canonicalizer.appendPhase(round);
-            canonicalizer.apply(graph, context);
+            IncrementalCanonicalizerPhase<PhaseContext> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
+            incrementalCanonicalizer.appendPhase(new Round(i++, context));
+            incrementalCanonicalizer.apply(graph, context);
 
             if (!containsLowerable(graph.getNewNodes(mark))) {
                 // No new lowerable nodes - done!
@@ -239,7 +231,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
                 if (node instanceof Lowerable) {
                     assert checkUsagesAreScheduled(node);
-                    ((Lowerable) node).lower(loweringTool, loweringType);
+                    ((Lowerable) node).lower(loweringTool);
                 }
 
                 if (!nextNode.isAlive()) {

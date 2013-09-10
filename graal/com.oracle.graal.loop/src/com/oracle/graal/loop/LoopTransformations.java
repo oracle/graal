@@ -25,13 +25,13 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public abstract class LoopTransformations {
 
@@ -53,7 +53,7 @@ public abstract class LoopTransformations {
         loop.inside().duplicate().insertBefore(loop);
     }
 
-    public static void fullUnroll(LoopEx loop, MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads) {
+    public static void fullUnroll(LoopEx loop, PhaseContext context, CanonicalizerPhase canonicalizer) {
         // assert loop.isCounted(); //TODO (gd) strenghten : counted with known trip count
         int iterations = 0;
         LoopBeginNode loopBegin = loop.loopBegin();
@@ -61,7 +61,7 @@ public abstract class LoopTransformations {
         while (!loopBegin.isDeleted()) {
             int mark = graph.getMark();
             peel(loop);
-            new CanonicalizerPhase.Instance(runtime, assumptions, canonicalizeReads, mark, null).apply(graph);
+            canonicalizer.applyIncremental(graph, context, mark);
             if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }

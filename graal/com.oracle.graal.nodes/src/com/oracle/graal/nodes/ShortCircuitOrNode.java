@@ -22,27 +22,79 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
-/**
- * The short-circuit <b>OR</b> (i.e. {@code ||} in Java) operator.
- */
-public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canonicalizable {
+public class ShortCircuitOrNode extends LogicNode implements Node.IterableNodeType, Canonicalizable {
+
+    @Input private LogicNode x;
+    @Input private LogicNode y;
+    private boolean xNegated;
+    private boolean yNegated;
+    private double shortCircuitProbability;
 
     public ShortCircuitOrNode(LogicNode x, boolean xNegated, LogicNode y, boolean yNegated, double shortCircuitProbability) {
-        super(x, xNegated, y, yNegated, shortCircuitProbability);
+        this.x = x;
+        this.xNegated = xNegated;
+        this.y = y;
+        this.yNegated = yNegated;
+        this.shortCircuitProbability = shortCircuitProbability;
+    }
+
+    public LogicNode getX() {
+        return x;
+    }
+
+    public LogicNode getY() {
+        return y;
+    }
+
+    public boolean isXNegated() {
+        return xNegated;
+    }
+
+    public boolean isYNegated() {
+        return yNegated;
+    }
+
+    /**
+     * Gets the probability that the {@link #getY() y} part of this binary node is <b>not</b>
+     * evaluated. This is the probability that this operator will short-circuit its execution.
+     */
+    public double getShortCircuitProbability() {
+        return shortCircuitProbability;
+    }
+
+    protected ShortCircuitOrNode canonicalizeNegation() {
+        LogicNode xCond = x;
+        boolean xNeg = xNegated;
+        while (xCond instanceof LogicNegationNode) {
+            xCond = ((LogicNegationNode) xCond).getInput();
+            xNeg = !xNeg;
+        }
+
+        LogicNode yCond = y;
+        boolean yNeg = yNegated;
+        while (yCond instanceof LogicNegationNode) {
+            yCond = ((LogicNegationNode) yCond).getInput();
+            yNeg = !yNeg;
+        }
+
+        if (xCond != x || yCond != y) {
+            return graph().unique(new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, shortCircuitProbability));
+        } else {
+            return null;
+        }
     }
 
     @Override
     public LogicNode canonical(CanonicalizerTool tool) {
-        ShortCircuitBooleanNode ret = canonicalizeNegation();
+        ShortCircuitOrNode ret = canonicalizeNegation();
         if (ret != null) {
             return ret;
         }
 
-        LogicNode x = getX();
-        LogicNode y = getY();
-        if (x == y) {
+        if (getX() == getY()) {
             // @formatter:off
             //  a ||  a = a
             //  a || !a = true
@@ -52,7 +104,7 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
             if (isXNegated()) {
                 if (isYNegated()) {
                     // !a || !a = !a
-                    return graph().unique(new LogicNegationNode(x));
+                    return graph().unique(new LogicNegationNode(getX()));
                 } else {
                     // !a || a = true
                     return LogicConstantNode.tautology(graph());
@@ -63,37 +115,32 @@ public class ShortCircuitOrNode extends ShortCircuitBooleanNode implements Canon
                     return LogicConstantNode.tautology(graph());
                 } else {
                     // a || a = a
-                    return x;
+                    return getX();
                 }
             }
         }
-        if (x instanceof LogicConstantNode) {
-            if (((LogicConstantNode) x).getValue() ^ isXNegated()) {
+        if (getX() instanceof LogicConstantNode) {
+            if (((LogicConstantNode) getX()).getValue() ^ isXNegated()) {
                 return LogicConstantNode.tautology(graph());
             } else {
                 if (isYNegated()) {
-                    return graph().unique(new LogicNegationNode(y));
+                    return graph().unique(new LogicNegationNode(getY()));
                 } else {
-                    return y;
+                    return getY();
                 }
             }
         }
-        if (y instanceof LogicConstantNode) {
-            if (((LogicConstantNode) y).getValue() ^ isYNegated()) {
+        if (getY() instanceof LogicConstantNode) {
+            if (((LogicConstantNode) getY()).getValue() ^ isYNegated()) {
                 return LogicConstantNode.tautology(graph());
             } else {
                 if (isXNegated()) {
-                    return graph().unique(new LogicNegationNode(x));
+                    return graph().unique(new LogicNegationNode(getX()));
                 } else {
-                    return x;
+                    return getX();
                 }
             }
         }
         return this;
-    }
-
-    @Override
-    protected ShortCircuitBooleanNode createCopy(LogicNode xCond, boolean xNeg, LogicNode yCond, boolean yNeg, double probability) {
-        return new ShortCircuitOrNode(xCond, xNeg, yCond, yNeg, probability);
     }
 }

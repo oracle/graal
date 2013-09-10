@@ -32,6 +32,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.test.*;
 
 /**
@@ -55,7 +56,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test1() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), new Assumptions(false), replacements));
         new DeadCodeEliminationPhase().apply(graph);
 
         for (Node node : graph.getNodes()) {

@@ -87,7 +87,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Node.Iter
         // additions, etc.
         PhaseContext context = new PhaseContext(tool.getRuntime(), tool.assumptions(), tool.getReplacements());
         new CanonicalizerPhase(true).apply(snippetGraph, context);
-        new LoopFullUnrollPhase(true).apply(snippetGraph, context);
+        new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(snippetGraph, context);
         new CanonicalizerPhase(true).apply(snippetGraph, context);
     }
 

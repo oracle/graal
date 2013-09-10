@@ -33,7 +33,7 @@ public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         InvokeNode invoke = createInvoke();
         graph().replaceFixedWithFixed(this, invoke);
         invoke.setUseForInlining(false);

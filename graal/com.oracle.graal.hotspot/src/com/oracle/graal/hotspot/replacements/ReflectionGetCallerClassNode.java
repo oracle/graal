@@ -47,7 +47,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         ConstantNode callerClassNode = getCallerClassNode(tool.getRuntime());
 
         if (callerClassNode != null) {
