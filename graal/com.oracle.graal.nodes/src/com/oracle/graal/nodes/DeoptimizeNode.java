@@ -59,7 +59,7 @@ public class DeoptimizeNode extends ControlSinkNode implements Node.IterableNode
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 

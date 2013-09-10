@@ -166,7 +166,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         if (!enabled) {
             throw new GraalInternalError("counter nodes shouldn't exist when not enabled");
         }

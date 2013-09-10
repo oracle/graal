@@ -77,7 +77,7 @@ public class IntegerSubExactNode extends IntegerSubNode implements Canonicalizab
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         IntegerExactArithmeticSplitNode.lower(tool, this);
     }
 

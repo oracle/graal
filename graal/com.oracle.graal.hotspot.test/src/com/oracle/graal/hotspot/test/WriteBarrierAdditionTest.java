@@ -39,7 +39,6 @@ import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -250,9 +249,9 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                 HighTierContext highContext = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 MidTierContext midContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
                 new InliningPhase(new InliningPhase.InlineEverythingPolicy()).apply(graph, highContext);
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highContext);
+                new LoweringPhase().apply(graph, highContext);
                 new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, midContext);
+                new LoweringPhase().apply(graph, midContext);
                 new WriteBarrierAdditionPhase().apply(graph);
                 Debug.dump(graph, "After Write Barrier Addition");
 

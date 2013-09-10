@@ -96,7 +96,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      * {@code LoweringPhase.checkUsagesAreScheduled()}.
      */
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
         Stamp stamp = StampFactory.declared(type);
         if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {

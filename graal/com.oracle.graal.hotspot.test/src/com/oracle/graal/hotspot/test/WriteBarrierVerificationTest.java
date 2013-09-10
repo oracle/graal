@@ -36,7 +36,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
@@ -637,10 +636,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
 
-                new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, highTierContext);
+                new LoweringPhase().apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);
                 new SafepointInsertionPhase().apply(graph);
-                new LoweringPhase(LoweringType.AFTER_GUARDS).apply(graph, highTierContext);
+                new LoweringPhase().apply(graph, highTierContext);
 
                 new WriteBarrierAdditionPhase().apply(graph);
 

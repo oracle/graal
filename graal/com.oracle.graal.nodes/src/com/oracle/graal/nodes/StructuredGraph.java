@@ -37,6 +37,10 @@ import com.oracle.graal.nodes.util.*;
  */
 public class StructuredGraph extends Graph {
 
+    public static enum GuardsPhase {
+        FLOATING_GUARDS, FIXED_DEOPTS, AFTER_FSA
+    }
+
     public static final int INVOCATION_ENTRY_BCI = -1;
     public static final long INVALID_GRAPH_ID = -1;
 
@@ -48,6 +52,7 @@ public class StructuredGraph extends Graph {
     private final ResolvedJavaMethod method;
     private final long graphId;
     private final int entryBCI;
+    private GuardsPhase guardsPhase = GuardsPhase.FLOATING_GUARDS;
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
@@ -385,5 +390,14 @@ public class StructuredGraph extends Graph {
         } else {
             singleEnd.replaceAndDelete(sux);
         }
+    }
+
+    public GuardsPhase getGuardsPhase() {
+        return guardsPhase;
+    }
+
+    public void setGuardsPhase(GuardsPhase guardsPhase) {
+        assert guardsPhase.ordinal() >= this.guardsPhase.ordinal();
+        this.guardsPhase = guardsPhase;
     }
 }

@@ -50,8 +50,8 @@ public final class CustomTypeCheckNode extends LogicNode implements Lowerable, V
         return customType;
     }
 
-    public void lower(LoweringTool tool, LoweringType loweringType) {
-        if (loweringType == LoweringType.BEFORE_GUARDS) {
+    public void lower(LoweringTool tool) {
+        if (graph().getGuardsPhase() == StructuredGraph.GuardsPhase.FLOATING_GUARDS) {
             this.replaceAtUsages(graph().unique(new IntegerEqualsNode(condition, ConstantNode.forInt(1, graph()))));
             this.safeDelete();
         }
