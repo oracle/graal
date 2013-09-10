@@ -66,7 +66,7 @@ public class IterativeInliningPhase extends AbstractInliningPhase {
 
                     Map<Invoke, Double> hints = PEAInliningHints.getValue() ? PartialEscapePhase.getHints(graph) : null;
 
-                    InliningPhase inlining = new InliningPhase(hints);
+                    InliningPhase inlining = new InliningPhase(hints, new CanonicalizerPhase(true));
                     inlining.setMaxMethodsPerInlining(simple ? 1 : Integer.MAX_VALUE);
                     inlining.apply(graph, context);
                     progress |= inlining.getInliningCount() > 0;

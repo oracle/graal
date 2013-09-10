@@ -52,4 +52,8 @@ public class HighTierContext extends PhaseContext {
     public OptimisticOptimizations getOptimisticOptimizations() {
         return optimisticOpts;
     }
+
+    public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
+        return new HighTierContext(getRuntime(), newAssumptions, getReplacements(), getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
+    }
 }

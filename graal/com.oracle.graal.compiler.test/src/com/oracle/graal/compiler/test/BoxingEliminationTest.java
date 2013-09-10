@@ -308,7 +308,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         graph = parse(snippet);
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-        new InliningPhase().apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new PartialEscapePhase(false).apply(graph, context);
     }
 
@@ -326,7 +326,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-                new InliningPhase().apply(graph, context);
+                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 if (loopPeeling) {
                     new LoopTransformHighPhase().apply(graph);
                 }
@@ -338,7 +338,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
                 canonicalizer.apply(graph, context);
 
                 StructuredGraph referenceGraph = parse(referenceSnippet);
-                new InliningPhase().apply(referenceGraph, context);
+                new InliningPhase(new CanonicalizerPhase(true)).apply(referenceGraph, context);
                 new DeadCodeEliminationPhase().apply(referenceGraph);
                 new CanonicalizerPhase(true).apply(referenceGraph, context);
 

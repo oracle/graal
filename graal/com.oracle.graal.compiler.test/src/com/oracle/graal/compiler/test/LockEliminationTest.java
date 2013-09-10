@@ -93,7 +93,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(true);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
-        new InliningPhase().apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
         new LoweringPhase(LoweringType.BEFORE_GUARDS, new CanonicalizerPhase(true)).apply(graph, context);

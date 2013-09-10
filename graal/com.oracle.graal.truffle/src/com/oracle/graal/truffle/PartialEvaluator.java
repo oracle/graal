@@ -69,6 +69,7 @@ public class PartialEvaluator {
     private final ResolvedJavaType nodeClass;
     private final ResolvedJavaMethod executeHelperMethod;
     private final CustomCanonicalizer customCanonicalizer;
+    private final CanonicalizerPhase canonicalizer;
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final Replacements replacements;
     private Set<Constant> constantReceivers;
@@ -79,6 +80,7 @@ public class PartialEvaluator {
         this.metaAccessProvider = metaAccessProvider;
         this.nodeClass = metaAccessProvider.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
         this.customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccessProvider, nodeClass);
+        this.canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue(), customCanonicalizer);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(metaAccessProvider);
         this.replacements = replacements;
         this.cache = HotSpotGraalRuntime.graalRuntime().getCache();
@@ -164,7 +166,7 @@ public class PartialEvaluator {
                 new DeadCodeEliminationPhase().apply(graph);
 
                 HighTierContext context = new HighTierContext(metaAccessProvider, assumptions, replacements, cache, plan, OptimisticOptimizations.NONE);
-                InliningPhase inliningPhase = new InliningPhase(customCanonicalizer);
+                InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, context);
 
                 // Convert deopt to guards.
