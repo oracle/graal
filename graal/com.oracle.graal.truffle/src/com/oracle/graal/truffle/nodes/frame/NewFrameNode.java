@@ -27,7 +27,6 @@ import java.util.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -43,7 +42,7 @@ import com.oracle.truffle.api.frame.*;
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
  * class.
  */
-public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
+public class NewFrameNode extends FixedWithNextNode implements Node.IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     static final ResolvedJavaType FRAME_TYPE = Graal.getRequiredCapability(MetaAccessProvider.class).lookupJavaType(FrameWithoutBoxing.class);
 

@@ -36,8 +36,6 @@ import com.oracle.graal.options.*;
 public class GraalDebugConfig implements DebugConfig {
 
     // @formatter:off
-    @Option(help = "Enable scope-based debugging", name = "Debug")
-    public static final OptionValue<Boolean> DebugEnabled = new OptionValue<>(true);
     @Option(help = "Pattern for scope(s) to in which dumping is enabled (see DebugFilter and Debug.dump)")
     public static final OptionValue<String> Dump = new OptionValue<>(null);
     @Option(help = "Pattern for scope(s) to in which metering is enabled (see DebugFilter and Debug.metric)")
@@ -67,6 +65,10 @@ public class GraalDebugConfig implements DebugConfig {
         }
     };
     // @formatter:on
+
+    public static boolean areDebugScopePatternsEnabled() {
+        return DumpOnError.getValue() || Dump.getValue() != null || Meter.getValue() != null || Time.getValue() != null || Log.getValue() != null;
+    }
 
     private final DebugFilter logFilter;
     private final DebugFilter meterFilter;

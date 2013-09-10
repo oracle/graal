@@ -14,8 +14,8 @@ can be done with the following simple command.
 This builds the 'product' version of HotSpot with the Graal modifications.
 To build the debug or fastdebug versions:
 
-  mx build debug
-  mx build fastdebug
+  mx --vmbuild debug build
+  mx --vmbuild fastdebug build
 
 Running Graal
 -------------
@@ -26,11 +26,11 @@ To run the VM, use 'mx vm' in place of the standard 'java' command:
 
 To select the fastdebug or debug versions of the VM:
 
-% mx --fastdebug vm ...
-% mx --debug vm ...
+% mx --vmbuild fastdebug vm ...
+% mx --vmbuild debug vm ...
 
 Graal has an optional bootstrap step where it compiles itself before
-compiling any application code. This bootstrap step currently takes about 7 seconds
+compiling any application code. This bootstrap step currently takes about 20 seconds
 on a fast x64 machine. It's useful to disable this bootstrap step when running small
 programs with the -XX:-BootstrapGraal options. For example:
 
@@ -45,26 +45,36 @@ is the only compiler. This binary is the Graal VM binary and identifies as
 such with the -version option:
 
 % mx vm -XX:-BootstrapGraal -version
-java version "1.7.0_07"
-Java(TM) SE Runtime Environment (build 1.7.0_07-b10)
-OpenJDK 64-Bit Graal VM (build 25.0-b10-internal, mixed mode)
+java version "1.7.0_25"
+Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
+OpenJDK 64-Bit Graal VM (build 25.0-b43-internal, mixed mode)
 
 It's also possible to build and execute the standard HotSpot binaries
 using the --vm option:
 
 % mx --vm server build
 % mx --vm server vm -version
-java version "1.7.0_07"
-Java(TM) SE Runtime Environment (build 1.7.0_07-b10)
-OpenJDK 64-Bit Server VM (build 25.0-b10-internal, mixed mode)
+java version "1.7.0_25"
+Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
+OpenJDK 64-Bit Server VM (build 25.0-b43-internal, mixed mode)
 
 These standard binaries still include the code necessary to support use of the
 Graal compiler for explicit compilation requests. However, in this configuration
 the Graal compiler will not service VM issued compilation requests (e.g., upon
 counter overflow in the interpreter).
 
-To build a HotSpot binary that completely omits all VM support for Graal,
-define an environment variable OMIT_GRAAL (its value does not matter) and build
-with the --vm option as above (doing a clean first if necessary):
+To build and run a HotSpot binary that completely omits all VM support for Graal,
+use the following as a guide:
 
-% env OMIT_GRAAL= mx --vm server build
+% mx --vm server-nograal build
+% mx --vm server-nograal vm -version
+java version "1.7.0_25"
+Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
+OpenJDK 64-Bit Server VM (build 25.0-b43-internal, mixed mode)
+
+% mx --vm client-nograal build
+% mx --vm client-nograal vm -version
+java version "1.7.0_25"
+Java(TM) SE Runtime Environment (build 1.7.0_25-b15)
+OpenJDK 64-Bit Cleint VM (build 25.0-b43-internal, mixed mode)
+
