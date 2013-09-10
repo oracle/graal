@@ -67,7 +67,7 @@ public class InliningPhase extends AbstractInliningPhase {
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
-    private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
+    private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
 
     public InliningPhase(CanonicalizerPhase canonicalizer) {
         this(new GreedyInliningPolicy(null), canonicalizer);

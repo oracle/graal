@@ -37,8 +37,8 @@ public abstract class BasePhase<C> {
 
     private final String name;
 
-    private static final DebugMetric metricPhaseRuns = Debug.metric("Runs");
     private final DebugTimer phaseTimer;
+    private final DebugMetric phaseMetric;
 
     private static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
 
@@ -56,12 +56,14 @@ public abstract class BasePhase<C> {
         }
         assert checkName(name);
         phaseTimer = Debug.timer("Phase_" + name);
+        phaseMetric = Debug.metric("Phase_" + name);
     }
 
     protected BasePhase(String name) {
         assert checkName(name);
         this.name = name;
         phaseTimer = Debug.timer("Phase_" + name);
+        phaseMetric = Debug.metric("Phase_" + name);
     }
 
     protected String getDetailedName() {
@@ -79,7 +81,7 @@ public abstract class BasePhase<C> {
 
                 public void run() {
                     BasePhase.this.run(graph, context);
-                    metricPhaseRuns.increment();
+                    phaseMetric.increment();
                     if (dumpGraph) {
                         Debug.dump(graph, "After phase %s", name);
                     }
