@@ -132,8 +132,6 @@ public class PTXBackend extends Backend {
         // Start emiting body of the PTX kernel.
         codeBuffer.emitString0(") {");
         codeBuffer.emitString("");
-
-        codeBuffer.emitString(".reg .u64" + " %rax;");
     }
 
     // Emit .reg space declarations
@@ -144,6 +142,8 @@ public class PTXBackend extends Backend {
 
         final SortedSet<Integer> signed32 = new TreeSet<>();
         final SortedSet<Integer> signed64 = new TreeSet<>();
+        final SortedSet<Integer> float32 = new TreeSet<>();
+        final SortedSet<Integer> float64 = new TreeSet<>();
 
         ValueProcedure trackRegisterKind = new ValueProcedure() {
 
@@ -158,6 +158,12 @@ public class PTXBackend extends Backend {
                            break;
                        case Long:
                            signed64.add(regVal.getRegister().encoding());
+                           break;
+                       case Float:
+                           float32.add(regVal.getRegister().encoding());
+                           break;
+                       case Double:
+                           float64.add(regVal.getRegister().encoding());
                            break;
                        default :
                            throw GraalInternalError.shouldNotReachHere("unhandled register type "  + value.toString());
@@ -178,6 +184,12 @@ public class PTXBackend extends Backend {
         }
         for (Integer i : signed64) {
             codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
+        }
+        for (Integer i : float32) {
+            codeBuffer.emitString(".reg .f32 %r" + i.intValue() + ";");
+        }
+        for (Integer i : float64) {
+            codeBuffer.emitString(".reg .f64 %r" + i.intValue() + ";");
         }
     }
 

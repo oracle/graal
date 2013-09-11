@@ -48,6 +48,9 @@ public class PTXParameterOp extends LIRInstruction {
         for (int i = 0; i < argCount; i++) {
             Kind paramKind = params[i].getKind();
             switch (paramKind) {
+            case Byte :
+                masm.param_8_decl(asRegister(params[i]), (i == (argCount - 1)));
+                break;
             case Int :
                 masm.param_32_decl(asIntReg(params[i]), (i == (argCount - 1)));
                 break;

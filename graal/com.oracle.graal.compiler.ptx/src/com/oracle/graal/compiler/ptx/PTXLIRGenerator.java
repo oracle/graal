@@ -123,7 +123,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         // Additional argument for return value.
         Value[] params = new Value[argCount + 1];
         for (int i = 0; i < argCount; i++) {
-            params[i] = toParamKind(incomingArguments.getArgument(i));
+            params[i] = incomingArguments.getArgument(i);
         }
         // Add the return value as the last parameter.
         params[argCount] =  incomingArguments.getReturn();
@@ -131,7 +131,6 @@ public class PTXLIRGenerator extends LIRGenerator {
         append(new PTXParameterOp(params));
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
-            assert param.getKind() == local.kind().getStackKind();
             setResult(local, emitLoadParam(param.getKind(), param, null));
         }
     }
