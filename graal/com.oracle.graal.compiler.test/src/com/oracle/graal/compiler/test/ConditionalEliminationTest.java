@@ -229,4 +229,36 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
     }
 
+    public static String testInstanceOfCheckCastSnippet(Object e) {
+        if (e instanceof Entry) {
+            return ((Entry) e).name;
+        }
+        return null;
+    }
+
+    @Test
+    public void testInstanceOfCheckCast() {
+        StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
+
+        assertEquals(0, graph.getNodes().filter(CheckCastNode.class).count());
+    }
+
+    @Test
+    @Ignore
+    public void testInstanceOfCheckCastLowered() {
+        StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
+
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        PhaseContext context = new PhaseContext(runtime(), null, replacements);
+
+        new LoweringPhase(canonicalizer).apply(graph, context);
+        canonicalizer.apply(graph, context);
+        new ConditionalEliminationPhase(runtime()).apply(graph);
+        canonicalizer.apply(graph, context);
+
+        assertEquals(0, graph.getNodes().filter(GuardNode.class).count());
+    }
 }
