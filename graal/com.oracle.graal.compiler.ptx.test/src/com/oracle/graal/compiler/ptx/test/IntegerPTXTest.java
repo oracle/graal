@@ -32,7 +32,16 @@ public class IntegerPTXTest extends PTXTestBase {
     @Test
     public void testAdd() {
 
-        Integer r4 = (Integer) invoke(compile("testAdd2I"), 18, 24);
+        Integer r4 = (Integer) invoke(compile("testAdd2B"), (byte) 6, (byte) 4);
+        if (r4 == null) {
+            printReport("testAdd2B FAILED");
+        } else if (r4.intValue() == testAdd2B((byte) 6, (byte) 4)) {
+            printReport("testAdd2B PASSED");
+        } else {
+            printReport("testAdd2B FAILED");
+        }
+
+        r4 = (Integer) invoke(compile("testAdd2I"), 18, 24);
         if (r4 == null) {
             printReport("testAdd2I FAILED");
         } else if (r4.intValue() == testAdd2I(18, 24)) {
@@ -49,8 +58,6 @@ public class IntegerPTXTest extends PTXTestBase {
         } else {
             printReport("testAdd2L FAILED");
         }
-
-        //invoke(compile("testAdd2B"), (byte) 6, (byte) 4);
 
         r4 = (Integer) invoke(compile("testAddIConst"), 5);
         if (r4 == null) {
@@ -69,7 +76,6 @@ public class IntegerPTXTest extends PTXTestBase {
         } else {
             printReport("testAddConstI FAILED");
         }
-
     }
 
     public static int testAdd2I(int a, int b) {
@@ -288,7 +294,7 @@ public class IntegerPTXTest extends PTXTestBase {
     public static long testRem2L(long a, long b) {
         return a % b;
     }
-    @Ignore
+
     @Test
     public void testIntConversion() {
         Long r1 = (Long) invoke(compile("testI2L"), 8);

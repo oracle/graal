@@ -208,6 +208,12 @@ public class PTXMemOp {
                 case Long:
                     masm.ld_return_address("u64", asRegister(result), addr.getBase(), addr.getDisplacement());
                     break;
+                case Float:
+                    masm.ld_return_address("f32", asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
+                case Double:
+                    masm.ld_return_address("f64", asRegister(result), addr.getBase(), addr.getDisplacement());
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
