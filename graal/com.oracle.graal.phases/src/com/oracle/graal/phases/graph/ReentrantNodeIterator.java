@@ -44,6 +44,15 @@ public final class ReentrantNodeIterator {
         protected abstract StateT afterSplit(AbstractBeginNode node, StateT oldState);
 
         protected abstract Map<LoopExitNode, StateT> processLoop(LoopBeginNode loop, StateT initialState);
+
+        /**
+         * Determine whether iteration should continue in the current state.
+         * 
+         * @param currentState
+         */
+        protected boolean continueIteration(StateT currentState) {
+            return true;
+        }
     }
 
     private ReentrantNodeIterator() {
@@ -83,64 +92,69 @@ public final class ReentrantNodeIterator {
                 } else {
                     FixedNode next = ((FixedWithNextNode) current).next();
                     state = closure.processNode(current, state);
-                    current = next;
+                    current = closure.continueIteration(state) ? next : null;
                 }
             }
 
             if (current != null) {
                 state = closure.processNode(current, state);
 
-                NodeClassIterator successors = current.successors().iterator();
-                if (!successors.hasNext()) {
-                    if (current instanceof LoopEndNode) {
-                        blockEndStates.put(current, state);
-                    } else if (current instanceof EndNode) {
-                        // add the end node and see if the merge is ready for processing
-                        MergeNode merge = ((EndNode) current).merge();
-                        if (merge instanceof LoopBeginNode) {
-                            Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
-                            for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {
-                                blockEndStates.put(entry.getKey(), entry.getValue());
-                                nodeQueue.add(entry.getKey());
-                            }
-                        } else {
-                            assert !blockEndStates.containsKey(current);
-                            blockEndStates.put(current, state);
-                            boolean endsVisited = true;
-                            for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
-                                if (!blockEndStates.containsKey(forwardEnd)) {
-                                    endsVisited = false;
-                                    break;
-                                }
-                            }
-                            if (endsVisited) {
-                                ArrayList<StateT> states = new ArrayList<>(merge.forwardEndCount());
-                                for (int i = 0; i < merge.forwardEndCount(); i++) {
-                                    AbstractEndNode forwardEnd = merge.forwardEndAt(i);
-                                    assert blockEndStates.containsKey(forwardEnd);
-                                    StateT other = blockEndStates.get(forwardEnd);
-                                    states.add(other);
-                                }
-                                state = closure.merge(merge, states);
-                                current = merge;
-                                continue;
-                            }
-                        }
-                    }
-                } else {
-                    FixedNode firstSuccessor = (FixedNode) successors.next();
+                if (closure.continueIteration(state)) {
+                    NodeClassIterator successors = current.successors().iterator();
                     if (!successors.hasNext()) {
-                        current = firstSuccessor;
-                        continue;
-                    } else {
-                        while (successors.hasNext()) {
-                            AbstractBeginNode successor = (AbstractBeginNode) successors.next();
-                            blockEndStates.put(successor, closure.afterSplit(successor, state));
-                            nodeQueue.add(successor);
+                        if (current instanceof LoopEndNode) {
+                            blockEndStates.put(current, state);
+                        } else if (current instanceof EndNode) {
+                            // add the end node and see if the merge is ready for processing
+                            MergeNode merge = ((EndNode) current).merge();
+                            if (merge instanceof LoopBeginNode) {
+                                Map<LoopExitNode, StateT> loopExitState = closure.processLoop((LoopBeginNode) merge, state);
+                                for (Map.Entry<LoopExitNode, StateT> entry : loopExitState.entrySet()) {
+                                    blockEndStates.put(entry.getKey(), entry.getValue());
+                                    nodeQueue.add(entry.getKey());
+                                }
+                            } else {
+                                assert !blockEndStates.containsKey(current);
+                                blockEndStates.put(current, state);
+                                boolean endsVisited = true;
+                                for (AbstractEndNode forwardEnd : merge.forwardEnds()) {
+                                    if (!blockEndStates.containsKey(forwardEnd)) {
+                                        endsVisited = false;
+                                        break;
+                                    }
+                                }
+                                if (endsVisited) {
+                                    ArrayList<StateT> states = new ArrayList<>(merge.forwardEndCount());
+                                    for (int i = 0; i < merge.forwardEndCount(); i++) {
+                                        AbstractEndNode forwardEnd = merge.forwardEndAt(i);
+                                        assert blockEndStates.containsKey(forwardEnd);
+                                        StateT other = blockEndStates.get(forwardEnd);
+                                        states.add(other);
+                                    }
+                                    state = closure.merge(merge, states);
+                                    current = closure.continueIteration(state) ? merge : null;
+                                    continue;
+                                }
+                            }
                         }
-                        state = closure.afterSplit((AbstractBeginNode) firstSuccessor, state);
-                        current = firstSuccessor;
-                        continue;
+                    } else {
+                        FixedNode firstSuccessor = (FixedNode) successors.next();
+                        if (!successors.hasNext()) {
+                            current = firstSuccessor;
+                            continue;
+                        } else {
+                            while (successors.hasNext()) {
+                                AbstractBeginNode successor = (AbstractBeginNode) successors.next();
+                                StateT successorState = closure.afterSplit(successor, state);
+                                if (closure.continueIteration(successorState)) {
+                                    blockEndStates.put(successor, successorState);
+                                    nodeQueue.add(successor);
+                                }
+                            }
+                            state = closure.afterSplit((AbstractBeginNode) firstSuccessor, state);
+                            current = closure.continueIteration(state) ? firstSuccessor : null;
+                            continue;
+                        }
                     }
                 }
             }
