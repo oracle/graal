@@ -45,7 +45,7 @@ public class ConditionTest {
                         Constant b = Constant.forInt(i < 100 ? a.asInt() : rand.nextInt());
                         boolean result1 = c1.foldCondition(a, b, null, false);
                         boolean result2 = c2.foldCondition(a, b, null, false);
-                        if (result1 && implies) {
+                        if (result1) {
                             assertTrue(result2);
                         }
                     }
@@ -60,7 +60,7 @@ public class ConditionTest {
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 Condition join = c1.join(c2);
-                assertTrue(join == c2.join(c1));
+                assertEquals(join, c2.join(c1));
                 if (join != null) {
                     for (int i = 0; i < 1000; i++) {
                         Constant a = Constant.forInt(rand.nextInt());
@@ -70,6 +70,8 @@ public class ConditionTest {
                         boolean resultJoin = join.foldCondition(a, b, null, false);
                         if (result1 && result2) {
                             assertTrue(resultJoin);
+                        } else {
+                            assertFalse(resultJoin);
                         }
                     }
                 }
@@ -83,7 +85,7 @@ public class ConditionTest {
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 Condition meet = c1.meet(c2);
-                assertTrue(meet == c2.meet(c1));
+                assertEquals(meet, c2.meet(c1));
                 if (meet != null) {
                     for (int i = 0; i < 1000; i++) {
                         Constant a = Constant.forInt(rand.nextInt());
@@ -93,6 +95,8 @@ public class ConditionTest {
                         boolean resultMeet = meet.foldCondition(a, b, null, false);
                         if (result1 || result2) {
                             assertTrue(resultMeet);
+                        } else {
+                            assertFalse(resultMeet);
                         }
                     }
                 }
