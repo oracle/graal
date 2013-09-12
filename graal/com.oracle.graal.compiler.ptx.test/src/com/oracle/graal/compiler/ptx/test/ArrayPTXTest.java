@@ -104,8 +104,8 @@ public class ArrayPTXTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        ArrayTest test = new ArrayTest();
-        for (Method m : ArrayTest.class.getMethods()) {
+        ArrayPTXTest test = new ArrayPTXTest();
+        for (Method m : ArrayPTXTest.class.getMethods()) {
             String name = m.getName();
             if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
                 // CheckStyle: stop system..print check
