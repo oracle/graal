@@ -55,15 +55,15 @@ public abstract class BasePhase<C> {
             name = nm;
         }
         assert checkName(name);
-        phaseTimer = Debug.timer("Phase_" + name);
-        phaseMetric = Debug.metric("Phase_" + name);
+        phaseTimer = Debug.timer("PhaseTime_" + name);
+        phaseMetric = Debug.metric("PhaseCount_" + name);
     }
 
     protected BasePhase(String name) {
         assert checkName(name);
         this.name = name;
-        phaseTimer = Debug.timer("Phase_" + name);
-        phaseMetric = Debug.metric("Phase_" + name);
+        phaseTimer = Debug.timer("PhaseTime_" + name);
+        phaseMetric = Debug.metric("PhaseCount_" + name);
     }
 
     protected String getDetailedName() {
