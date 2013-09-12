@@ -66,7 +66,6 @@ import com.oracle.truffle.api.nodes.*;
 public class PartialEvaluator {
 
     private final MetaAccessProvider metaAccessProvider;
-    private final ResolvedJavaType nodeClass;
     private final ResolvedJavaMethod executeHelperMethod;
     private final CanonicalizerPhase canonicalizer;
     private final ResolvedJavaType[] skippedExceptionTypes;
@@ -77,8 +76,7 @@ public class PartialEvaluator {
 
     public PartialEvaluator(MetaAccessProvider metaAccessProvider, Replacements replacements, TruffleCache truffleCache) {
         this.metaAccessProvider = metaAccessProvider;
-        this.nodeClass = metaAccessProvider.lookupJavaType(com.oracle.truffle.api.nodes.Node.class);
-        CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccessProvider, nodeClass);
+        CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccessProvider);
         this.canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue(), customCanonicalizer);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(metaAccessProvider);
         this.replacements = replacements;

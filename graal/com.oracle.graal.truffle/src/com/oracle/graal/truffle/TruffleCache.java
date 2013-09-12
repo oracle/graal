@@ -180,6 +180,8 @@ public final class TruffleCache {
 
     private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase conditionalEliminationPhase, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
                     CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, PhaseContext context) {
+        new ReplaceLoadFinalPhase().apply(newGraph);
+
         // Canonicalize / constant propagate.
         canonicalizerPhase.apply(newGraph, context);
 
