@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.debug;
 
-import static com.oracle.graal.debug.Debug.Initializer.*;
+import static com.oracle.graal.debug.Debug.Initialization.*;
 
 import java.io.*;
 import java.util.*;
@@ -32,27 +32,38 @@ import com.oracle.graal.debug.internal.*;
 
 /**
  * Scope based debugging facility. This facility is {@link #isEnabled()} if assertions are enabled
- * for the {@link Debug} class or the {@value Initializer#INITIALIZER_PROPERTY_NAME} system property
- * is {@code "true"} when {@link Debug} is initialized.
+ * for the {@link Debug} class or the {@value Initialization#INITIALIZER_PROPERTY_NAME} system
+ * property is {@code "true"} when {@link Debug} is initialized.
  */
 public class Debug {
 
     /**
-     * Class declaring the name of the system property to be used enabling the debugging facilities.
+     * Class to assist with initialization of {@link Debug}.
      */
-    public static class Initializer {
+    public static class Initialization {
 
         public static final String INITIALIZER_PROPERTY_NAME = "graal.debug.enable";
+
+        private static boolean initialized;
+
+        /**
+         * Determines if {@link Debug} has been initialized.
+         */
+        public static boolean isDebugInitialized() {
+            return initialized;
+        }
+
     }
 
     @SuppressWarnings("all")
-    private static boolean assertionsEnabled() {
-        boolean enabled = false;
-        assert enabled = true;
-        return enabled;
+    private static boolean initialize() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        Initialization.initialized = true;
+        return assertionsEnabled || Boolean.getBoolean(INITIALIZER_PROPERTY_NAME);
     }
 
-    private static final boolean ENABLED = assertionsEnabled() || Boolean.getBoolean(INITIALIZER_PROPERTY_NAME);
+    private static final boolean ENABLED = initialize();
 
     public static boolean isEnabled() {
         return ENABLED;
