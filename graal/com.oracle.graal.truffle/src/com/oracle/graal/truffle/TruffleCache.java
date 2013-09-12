@@ -306,14 +306,18 @@ public final class TruffleCache {
 
     private static boolean checkArgumentStamps(StructuredGraph graph, NodeInputList<ValueNode> arguments) {
         assert graph.getNodes(LocalNode.class).count() <= arguments.count();
-        for (LocalNode localNode : graph.getNodes(LocalNode.class)) {
-            Stamp newStamp = localNode.stamp().meet(arguments.get(localNode.index()).stamp());
-            if (!newStamp.equals(localNode.stamp())) {
-                if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
-                    TTY.println(String.format("[truffle] graph cache entry too specific for method %s argument %s previous stamp %s new stamp %s.", graph.method(), localNode, localNode.stamp(),
-                                    newStamp));
+        FrameState startState = graph.start().stateAfter();
+        for (int i = 0; i < arguments.size(); i++) {
+            ValueNode localNode = startState.localAt(i);
+            if (localNode != null) {
+                Stamp newStamp = localNode.stamp().meet(arguments.get(i).stamp());
+                if (!newStamp.equals(localNode.stamp())) {
+                    if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+                        TTY.println(String.format("[truffle] graph cache entry too specific for method %s argument %s previous stamp %s new stamp %s.", graph.method(), localNode, localNode.stamp(),
+                                        newStamp));
+                    }
+                    return false;
                 }
-                return false;
             }
         }
 
