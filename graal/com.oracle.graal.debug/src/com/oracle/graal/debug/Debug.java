@@ -22,23 +22,37 @@
  */
 package com.oracle.graal.debug;
 
-import com.oracle.graal.debug.internal.*;
+import static com.oracle.graal.debug.Debug.Initializer.*;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.debug.internal.*;
+
+/**
+ * Scope based debugging facility. This facility is {@link #isEnabled()} if assertions are enabled
+ * for the {@link Debug} class or the {@value Initializer#INITIALIZER_PROPERTY_NAME} system property
+ * is {@code "true"} when {@link Debug} is initialized.
+ */
 public class Debug {
 
-    private static boolean ENABLED = false;
+    /**
+     * Class declaring the name of the system property to be used enabling the debugging facilities.
+     */
+    public static class Initializer {
 
-    public static void enable() {
-        ENABLED = true;
+        public static final String INITIALIZER_PROPERTY_NAME = "graal.debug.enable";
     }
 
-    public static void disable() {
-        ENABLED = false;
+    @SuppressWarnings("all")
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert enabled = true;
+        return enabled;
     }
+
+    private static final boolean ENABLED = assertionsEnabled() || Boolean.getBoolean(INITIALIZER_PROPERTY_NAME);
 
     public static boolean isEnabled() {
         return ENABLED;

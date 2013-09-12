@@ -183,7 +183,7 @@ public class HotSpotOptions {
      */
     public static void finalizeOptions(boolean ciTime) {
         if (areDebugScopePatternsEnabled() || ciTime) {
-            Debug.enable();
+            System.setProperty(Debug.Initializer.INITIALIZER_PROPERTY_NAME, "true");
         }
     }
 
