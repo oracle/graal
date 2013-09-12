@@ -26,7 +26,7 @@ import java.lang.reflect.Method;
 
 import org.junit.*;
 
-public class ArrayTest extends PTXTestBase {
+public class ArrayPTXTest extends PTXTestBase {
 
     @Ignore
     @Test
