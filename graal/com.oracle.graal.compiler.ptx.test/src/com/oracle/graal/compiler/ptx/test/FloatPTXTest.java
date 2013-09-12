@@ -368,9 +368,7 @@ public class FloatPTXTest extends PTXTestBase {
         FloatPTXTest test = new FloatPTXTest();
         for (Method m : FloatPTXTest.class.getMethods()) {
             String name = m.getName();
-            if (m.getAnnotation(Test.class) == null &&
-                    name.startsWith("test") &&
-                    name.startsWith("testRem") == false) {
+            if (m.getAnnotation(Test.class) == null && name.startsWith("test") && name.startsWith("testRem") == false) {
                 // CheckStyle: stop system..print check
                 System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
                 // CheckStyle: resume system..print check
