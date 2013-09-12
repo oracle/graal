@@ -71,7 +71,12 @@ public abstract class Node implements Cloneable {
      */
     public final void assignSourceSection(SourceSection section) {
         if (sourceSection != null) {
-            throw new IllegalStateException("Source section is already assigned.");
+            // Patch this test during the transition to constructor-based
+            // source attribution, which would otherwise trigger this
+            // exception. This method will eventually be deprecated.
+            if (getSourceSection() != section) {
+                throw new IllegalStateException("Source section is already assigned.");
+            }
         }
         this.sourceSection = section;
     }
