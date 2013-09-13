@@ -95,7 +95,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
         @Override
         public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-            if (condition.graph().getGuardsPhase().ordinal() > StructuredGraph.GuardsPhase.FLOATING_GUARDS.ordinal()) {
+            if (condition.graph().getGuardsPhase().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
                 throw new GraalInternalError("Cannot create guards after guard lowering");
             }
             if (OptEliminateGuards.getValue()) {

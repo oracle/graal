@@ -37,8 +37,33 @@ import com.oracle.graal.nodes.util.*;
  */
 public class StructuredGraph extends Graph {
 
-    public static enum GuardsPhase {
-        FLOATING_GUARDS, FIXED_DEOPTS, AFTER_FSA
+    /**
+     * The different stages of the compilation of a {@link Graph} regarding the status of
+     * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
+     * framestates}. The stage of a graph progresses monotonously.
+     * 
+     */
+    public static enum GuardsStage {
+        /**
+         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}
+         * such as {@link GuardNode GuardNodes}. New {@link DeoptimizingNode DeoptimizingNodes} can
+         * be introduced without constraints. {@link FrameState} nodes are associated with
+         * {@link StateSplit} nodes.
+         */
+        FLOATING_GUARDS,
+        /**
+         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
+         * {@link FixedNode fixed} but new {@link DeoptimizingNode DeoptimizingNodes} can still be
+         * introduced. {@link FrameState} nodes are still associated with {@link StateSplit} nodes.
+         */
+        FIXED_DEOPTS,
+        /**
+         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
+         * {@link FixedNode fixed}. New {@link DeoptimizingNode DeoptimizingNodes} can not be
+         * introduced any more. {@link FrameState} nodes are now associated with
+         * {@link DeoptimizingNode} nodes.
+         */
+        AFTER_FSA
     }
 
     public static final int INVOCATION_ENTRY_BCI = -1;
@@ -52,7 +77,7 @@ public class StructuredGraph extends Graph {
     private final ResolvedJavaMethod method;
     private final long graphId;
     private final int entryBCI;
-    private GuardsPhase guardsPhase = GuardsPhase.FLOATING_GUARDS;
+    private GuardsStage guardsPhase = GuardsStage.FLOATING_GUARDS;
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
@@ -392,11 +417,11 @@ public class StructuredGraph extends Graph {
         }
     }
 
-    public GuardsPhase getGuardsPhase() {
+    public GuardsStage getGuardsPhase() {
         return guardsPhase;
     }
 
-    public void setGuardsPhase(GuardsPhase guardsPhase) {
+    public void setGuardsPhase(GuardsStage guardsPhase) {
         assert guardsPhase.ordinal() >= this.guardsPhase.ordinal();
         this.guardsPhase = guardsPhase;
     }
