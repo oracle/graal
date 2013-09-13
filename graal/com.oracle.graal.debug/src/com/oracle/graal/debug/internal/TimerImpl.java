@@ -48,7 +48,7 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
 
     @Override
     public TimerCloseable start() {
-        if (Debug.isTimeEnabled()) {
+        if (!isConditional() || Debug.isTimeEnabled()) {
             long startTime;
             if (threadMXBean.isCurrentThreadCpuTimeSupported()) {
                 startTime = threadMXBean.getCurrentThreadCpuTime();
