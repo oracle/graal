@@ -74,7 +74,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final Method method = getMethod("testMethod");
         final StructuredGraph graph = parseDebug(method);
         int graphLineSPs = 0;
-        for (InfopointNode ipn : graph.getNodes(InfopointNode.class)) {
+        for (InfopointNode ipn : graph.getNodes().filter(InfopointNode.class)) {
             if (ipn.reason == InfopointReason.LINE_NUMBER) {
                 ++graphLineSPs;
             }

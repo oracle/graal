@@ -279,7 +279,7 @@ public class InliningTest extends GraalCompilerTest {
     private static int[] countMethodInfopoints(StructuredGraph graph) {
         int start = 0;
         int end = 0;
-        for (InfopointNode ipn : graph.getNodes(InfopointNode.class)) {
+        for (InfopointNode ipn : graph.getNodes().filter(InfopointNode.class)) {
             if (ipn.reason == InfopointReason.METHOD_START) {
                 ++start;
             } else if (ipn.reason == InfopointReason.METHOD_END) {

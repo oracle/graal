@@ -45,7 +45,7 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        test("test1Snippet", CheckCastNode.class);
+        testHelper("test1Snippet", CheckCastNode.class);
     }
 
     public static int test1Snippet(Object a) {
@@ -57,7 +57,7 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        test("test2Snippet", CheckCastNode.class);
+        testHelper("test2Snippet", CheckCastNode.class);
     }
 
     public static int test2Snippet(Object a) {
@@ -162,7 +162,7 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     @Test
     public void test6() {
-        test("test6Snippet", CheckCastNode.class);
+        testHelper("test6Snippet", CheckCastNode.class);
     }
 
     public static int test6Snippet(int i) throws IOException {
@@ -237,7 +237,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    private <T extends Node & IterableNodeType> void test(String snippet, Class<T> clazz) {
+    private <T extends Node> void testHelper(String snippet, Class<T> clazz) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
@@ -245,6 +245,6 @@ public class TypeSystemTest extends GraalCompilerTest {
         new ConditionalEliminationPhase(runtime()).apply(graph);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), assumptions, replacements));
         Debug.dump(graph, "Graph");
-        Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes(clazz).iterator().hasNext());
+        Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes().filter(clazz).iterator().hasNext());
     }
 }

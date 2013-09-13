@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Implements a type check against a compile-time known type.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, IterableNodeType, Virtualizable, ValueProxy {
+public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable, ValueProxy {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;

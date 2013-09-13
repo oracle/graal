@@ -167,8 +167,8 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
     final void testMaterialize(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         StructuredGraph result = processMethod(snippet);
         try {
-            Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes(NewInstanceNode.class).isEmpty());
-            Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes(NewArrayNode.class).isEmpty());
+            Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes().filter(NewInstanceNode.class).isEmpty());
+            Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes().filter(NewArrayNode.class).isEmpty());
 
             NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(result).apply();
             double probabilitySum = 0;

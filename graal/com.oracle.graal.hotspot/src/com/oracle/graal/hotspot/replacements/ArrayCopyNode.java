@@ -26,7 +26,6 @@ import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -37,7 +36,7 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class ArrayCopyNode extends MacroNode implements Virtualizable, IterableNodeType, Lowerable {
+public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable {
 
     public ArrayCopyNode(Invoke invoke) {
         super(invoke);

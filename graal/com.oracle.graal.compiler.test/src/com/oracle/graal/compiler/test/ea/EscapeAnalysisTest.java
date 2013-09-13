@@ -244,7 +244,8 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
                     Assert.assertTrue(returnNode.result().toString(), returnNode.result().isConstant());
                     Assert.assertEquals(expectedConstantResult, returnNode.result().asConstant());
                 }
-                int newInstanceCount = graph.getNodes(NewInstanceNode.class).count() + graph.getNodes(NewArrayNode.class).count() + graph.getNodes(CommitAllocationNode.class).count();
+                int newInstanceCount = graph.getNodes().filter(NewInstanceNode.class).count() + graph.getNodes().filter(NewArrayNode.class).count() +
+                                graph.getNodes(CommitAllocationNode.class).count();
                 Assert.assertEquals(0, newInstanceCount);
                 return returnNode;
             }

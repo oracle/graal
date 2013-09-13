@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class LoopExitNode extends BeginStateSplitNode {
+public class LoopExitNode extends BeginStateSplitNode implements IterableNodeType {
 
     @Input(notDataflow = true) private LoopBeginNode loopBegin;
 
