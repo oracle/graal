@@ -68,12 +68,14 @@ public final class ReentrantNodeIterator {
 
         LoopInfo<StateT> info = new LoopInfo<>();
         for (LoopEndNode end : loop.loopEnds()) {
-            assert blockEndStates.containsKey(end) : "no end state for " + end;
-            info.endStates.put(end, blockEndStates.get(end));
+            if (blockEndStates.containsKey(end)) {
+                info.endStates.put(end, blockEndStates.get(end));
+            }
         }
         for (LoopExitNode exit : loop.loopExits()) {
-            assert blockEndStates.containsKey(exit) : "no exit state for " + exit;
-            info.exitStates.put(exit, blockEndStates.get(exit));
+            if (blockEndStates.containsKey(exit)) {
+                info.exitStates.put(exit, blockEndStates.get(exit));
+            }
         }
         return info;
     }
