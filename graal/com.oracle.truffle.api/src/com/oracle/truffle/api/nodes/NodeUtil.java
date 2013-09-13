@@ -423,6 +423,24 @@ public class NodeUtil {
         return result;
     }
 
+    /**
+     * Get the nth parent of a node, where the 0th parent is the node itself. Returns null if there
+     * are less than n ancestors.
+     */
+    public static Node getNthParent(Node node, int n) {
+        Node parent = node;
+
+        for (int i = 0; i < n; i++) {
+            parent = parent.getParent();
+
+            if (parent == null) {
+                return null;
+            }
+        }
+
+        return parent;
+    }
+
     /** find annotation in class/interface hierarchy. */
     public static <T extends Annotation> T findAnnotation(Class<?> clazz, Class<T> annotationClass) {
         if (clazz.getAnnotation(annotationClass) != null) {
