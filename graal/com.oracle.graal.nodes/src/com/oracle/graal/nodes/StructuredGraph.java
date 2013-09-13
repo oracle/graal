@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.util.*;
  */
 public class StructuredGraph extends Graph {
 
-    public static enum GuardsPhase {
+    public static enum GuardsStage {
         FLOATING_GUARDS, FIXED_DEOPTS, AFTER_FSA
     }
 
@@ -52,7 +52,7 @@ public class StructuredGraph extends Graph {
     private final ResolvedJavaMethod method;
     private final long graphId;
     private final int entryBCI;
-    private GuardsPhase guardsPhase = GuardsPhase.FLOATING_GUARDS;
+    private GuardsStage guardsPhase = GuardsStage.FLOATING_GUARDS;
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()
@@ -392,11 +392,11 @@ public class StructuredGraph extends Graph {
         }
     }
 
-    public GuardsPhase getGuardsPhase() {
+    public GuardsStage getGuardsPhase() {
         return guardsPhase;
     }
 
-    public void setGuardsPhase(GuardsPhase guardsPhase) {
+    public void setGuardsPhase(GuardsStage guardsPhase) {
         assert guardsPhase.ordinal() >= this.guardsPhase.ordinal();
         this.guardsPhase = guardsPhase;
     }

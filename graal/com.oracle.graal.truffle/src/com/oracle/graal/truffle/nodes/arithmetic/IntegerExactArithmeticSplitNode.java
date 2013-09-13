@@ -81,7 +81,7 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
     protected abstract Value generateArithmetic(LIRGeneratorTool generator);
 
     static void lower(LoweringTool tool, IntegerExactArithmeticNode node) {
-        if (node.asNode().graph().getGuardsPhase() == StructuredGraph.GuardsPhase.FIXED_DEOPTS) {
+        if (node.asNode().graph().getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
             FloatingNode floatingNode = (FloatingNode) node;
             FixedWithNextNode previous = tool.lastFixedNode();
             FixedNode next = previous.next();

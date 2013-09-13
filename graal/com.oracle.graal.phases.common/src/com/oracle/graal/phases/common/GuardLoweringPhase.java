@@ -29,7 +29,7 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.StructuredGraph.GuardsPhase;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -189,7 +189,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             processBlock(block, schedule, context.getTarget().implicitNullCheckLimit);
         }
 
-        graph.setGuardsPhase(GuardsPhase.FIXED_DEOPTS);
+        graph.setGuardsPhase(GuardsStage.FIXED_DEOPTS);
     }
 
     private static void processBlock(Block block, SchedulePhase schedule, int implicitNullCheckLimit) {
