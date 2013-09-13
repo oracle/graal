@@ -31,24 +31,25 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 
 public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     private static final int MAX_ITERATION_PER_NODE = 10;
     private static final DebugMetric METRIC_CANONICALIZED_NODES = Debug.metric("CanonicalizedNodes");
+    private static final DebugMetric METRIC_PROCESSED_NODES = Debug.metric("ProcessedNodes");
     private static final DebugMetric METRIC_CANONICALIZATION_CONSIDERED_NODES = Debug.metric("CanonicalizationConsideredNodes");
     private static final DebugMetric METRIC_INFER_STAMP_CALLED = Debug.metric("InferStampCalled");
     private static final DebugMetric METRIC_STAMP_CHANGED = Debug.metric("StampChanged");
     private static final DebugMetric METRIC_SIMPLIFICATION_CONSIDERED_NODES = Debug.metric("SimplificationConsideredNodes");
-    public static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
+    private static final DebugMetric METRIC_GLOBAL_VALUE_NUMBERING_HITS = Debug.metric("GlobalValueNumberingHits");
 
     private final boolean canonicalizeReads;
+    private final CustomCanonicalizer customCanonicalizer;
 
     public interface CustomCanonicalizer {
 
@@ -56,15 +57,57 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public CanonicalizerPhase(boolean canonicalizeReads) {
+        this(canonicalizeReads, null);
+    }
+
+    public CanonicalizerPhase(boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
         this.canonicalizeReads = canonicalizeReads;
+        this.customCanonicalizer = customCanonicalizer;
     }
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads).run(graph);
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer).run(graph);
     }
 
-    public static class Instance extends Phase {
+    /**
+     * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by this
+     *            mark are processed
+     */
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark) {
+        applyIncremental(graph, context, newNodesMark, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    /**
+     * @param workingSet the initial working set of nodes on which the canonicalizer works, should
+     *            be an auto-grow node bitmap
+     */
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet) {
+        applyIncremental(graph, context, workingSet, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark) {
+        applyIncremental(graph, context, workingSet, newNodesMark, true);
+    }
+
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark, boolean dumpGraph) {
+        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+    }
+
+    @Deprecated
+    public void addToPhasePlan(PhasePlan plan, PhaseContext context) {
+        plan.addPhase(PhasePosition.AFTER_PARSING, new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer));
+    }
+
+    private static final class Instance extends Phase {
 
         private final int newNodesMark;
         private final Assumptions assumptions;
@@ -76,34 +119,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private NodeWorkList workList;
         private Tool tool;
 
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads) {
-            this(runtime, assumptions, canonicalizeReads, null, 0, null);
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
+            this(runtime, assumptions, canonicalizeReads, null, 0, customCanonicalizer);
         }
 
-        /**
-         * @param runtime
-         * @param assumptions
-         * @param workingSet the initial working set of nodes on which the canonicalizer works,
-         *            should be an auto-grow node bitmap
-         * @param customCanonicalizer
-         * @param canonicalizeReads flag to indicate if
-         *            {@link LoadFieldNode#canonical(CanonicalizerTool)} and
-         *            {@link ReadNode#canonical(CanonicalizerTool)} should canonicalize reads of
-         *            constant fields.
-         */
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, workingSet, 0, customCanonicalizer);
         }
 
-        /**
-         * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by
-         *            this mark are processed otherwise all nodes in the graph are processed
-         */
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
             this(runtime, assumptions, canonicalizeReads, null, newNodesMark, customCanonicalizer);
         }
 
-        public Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
             super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.assumptions = assumptions;
@@ -160,14 +188,13 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     if (!tryCanonicalize(node)) {
                         if (node instanceof ValueNode) {
                             ValueNode valueNode = (ValueNode) node;
-                            if (tryInferStamp(valueNode)) {
-                                Constant constant = valueNode.stamp().asConstant();
-                                if (constant != null) {
-                                    performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
-                                } else {
-                                    // the improved stamp may enable additional canonicalization
-                                    tryCanonicalize(valueNode);
-                                }
+                            boolean improvedStamp = tryInferStamp(valueNode);
+                            Constant constant = valueNode.stamp().asConstant();
+                            if (constant != null && !(node instanceof ConstantNode)) {
+                                performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
+                            } else if (improvedStamp) {
+                                // the improved stamp may enable additional canonicalization
+                                tryCanonicalize(valueNode);
                             }
                         }
                     }

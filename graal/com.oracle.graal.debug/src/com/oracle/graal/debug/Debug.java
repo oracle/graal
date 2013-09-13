@@ -22,23 +22,48 @@
  */
 package com.oracle.graal.debug;
 
-import com.oracle.graal.debug.internal.*;
+import static com.oracle.graal.debug.Debug.Initialization.*;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
+import com.oracle.graal.debug.internal.*;
+
+/**
+ * Scope based debugging facility. This facility is {@link #isEnabled()} if assertions are enabled
+ * for the {@link Debug} class or the {@value Initialization#INITIALIZER_PROPERTY_NAME} system
+ * property is {@code "true"} when {@link Debug} is initialized.
+ */
 public class Debug {
 
-    private static boolean ENABLED = false;
+    /**
+     * Class to assist with initialization of {@link Debug}.
+     */
+    public static class Initialization {
 
-    public static void enable() {
-        ENABLED = true;
+        public static final String INITIALIZER_PROPERTY_NAME = "graal.debug.enable";
+
+        private static boolean initialized;
+
+        /**
+         * Determines if {@link Debug} has been initialized.
+         */
+        public static boolean isDebugInitialized() {
+            return initialized;
+        }
+
     }
 
-    public static void disable() {
-        ENABLED = false;
+    @SuppressWarnings("all")
+    private static boolean initialize() {
+        boolean assertionsEnabled = false;
+        assert assertionsEnabled = true;
+        Initialization.initialized = true;
+        return assertionsEnabled || Boolean.getBoolean(INITIALIZER_PROPERTY_NAME);
     }
+
+    private static final boolean ENABLED = initialize();
 
     public static boolean isEnabled() {
         return ENABLED;
@@ -330,7 +355,7 @@ public class Debug {
 
     public static DebugMetric metric(String name) {
         if (ENABLED) {
-            return new MetricImpl(name);
+            return new MetricImpl(name, true);
         } else {
             return VOID_METRIC;
         }
@@ -342,6 +367,9 @@ public class Debug {
         }
     }
 
+    /**
+     * Creates an object for counting value frequencies.
+     */
     public static DebugHistogram createHistogram(String name) {
         return new DebugHistogramImpl(name);
     }
@@ -402,11 +430,19 @@ public class Debug {
 
         public void add(long value) {
         }
+
+        public void setConditional(boolean flag) {
+            throw new InternalError("Cannot make void metric conditional");
+        }
+
+        public boolean isConditional() {
+            return false;
+        }
     };
 
     public static DebugTimer timer(String name) {
         if (ENABLED) {
-            return new TimerImpl(name);
+            return new TimerImpl(name, true);
         } else {
             return VOID_TIMER;
         }
@@ -416,6 +452,14 @@ public class Debug {
 
         public TimerCloseable start() {
             return TimerImpl.VOID_CLOSEABLE;
+        }
+
+        public void setConditional(boolean flag) {
+            throw new InternalError("Cannot make void timer conditional");
+        }
+
+        public boolean isConditional() {
+            return false;
         }
     };
 }

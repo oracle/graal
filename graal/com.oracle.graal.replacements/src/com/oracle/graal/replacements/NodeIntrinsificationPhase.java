@@ -67,7 +67,7 @@ public class NodeIntrinsificationPhase extends Phase {
         }
     }
 
-    private boolean tryIntrinsify(MethodCallTargetNode methodCallTargetNode, List<Node> cleanUpReturnList) {
+    protected boolean tryIntrinsify(MethodCallTargetNode methodCallTargetNode, List<Node> cleanUpReturnList) {
         ResolvedJavaMethod target = methodCallTargetNode.targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
@@ -94,7 +94,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
             cleanUpReturnList.add(newInstance);
-        } else if (target.getAnnotation(Fold.class) != null) {
+        } else if (isFoldable(target)) {
             ResolvedJavaType[] parameterTypes = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(target), declaringClass);
 
             // Prepare the arguments for the reflective method call
@@ -128,9 +128,16 @@ public class NodeIntrinsificationPhase extends Phase {
     }
 
     /**
+     * Permits a subclass to override the default definition of "foldable".
+     */
+    protected boolean isFoldable(ResolvedJavaMethod method) {
+        return method.getAnnotation(Fold.class) != null;
+    }
+
+    /**
      * Converts the arguments of an invoke node to object values suitable for use as the arguments
      * to a reflective invocation of a Java constructor or method.
-     * 
+     *
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't

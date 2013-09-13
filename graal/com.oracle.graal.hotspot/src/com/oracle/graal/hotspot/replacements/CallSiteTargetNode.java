@@ -66,7 +66,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         ConstantNode target = getConstantCallTarget(tool.getRuntime(), tool.assumptions());
 
         if (target != null) {

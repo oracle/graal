@@ -27,7 +27,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -35,40 +34,30 @@ import com.oracle.truffle.api.nodes.Node.Child;
 final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCanonicalizer {
 
     private final MetaAccessProvider metaAccessProvider;
-    private final ResolvedJavaType nodeClass;
 
-    PartialEvaluatorCanonicalizer(MetaAccessProvider metaAccessProvider, ResolvedJavaType nodeClass) {
+    PartialEvaluatorCanonicalizer(MetaAccessProvider metaAccessProvider) {
         this.metaAccessProvider = metaAccessProvider;
-        this.nodeClass = nodeClass;
     }
 
     @Override
     public ValueNode canonicalize(ValueNode node) {
         if (node instanceof LoadFieldNode) {
             LoadFieldNode loadFieldNode = (LoadFieldNode) node;
-            if (!loadFieldNode.isStatic() &&
-                            loadFieldNode.object().isConstant() &&
-                            !loadFieldNode.object().isNullConstant() &&
-                            ((loadFieldNode.kind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) || Modifier.isFinal(loadFieldNode.field().getModifiers()) || loadFieldNode.field().getAnnotation(
-                                            CompilerDirectives.CompilationFinal.class) != null)) {
-                Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
-                return ConstantNode.forConstant(constant, metaAccessProvider, node.graph());
-            }
-        } else if (node instanceof LoadIndexedNode) {
-            LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
-            Stamp stamp = loadIndexedNode.array().stamp();
-            if (stamp.kind() == Kind.Object && loadIndexedNode.array().isConstant() && !loadIndexedNode.array().isNullConstant() && loadIndexedNode.index().isConstant()) {
-                ObjectStamp objectStamp = (ObjectStamp) stamp;
-                ResolvedJavaType type = objectStamp.type();
-                if (type != null && type.isArray() && this.nodeClass.isAssignableFrom(type.getComponentType())) {
-                    Object array = loadIndexedNode.array().asConstant().asObject();
-                    int index = loadIndexedNode.index().asConstant().asInt();
-                    Object value = Array.get(array, index);
-                    return ConstantNode.forObject(value, metaAccessProvider, node.graph());
+            if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
+                if (Modifier.isFinal(loadFieldNode.field().getModifiers()) || (loadFieldNode.kind() == Kind.Object && loadFieldNode.field().getAnnotation(Child.class) != null) ||
+                                loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
+                    Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
+                    assert verifyFieldValue(loadFieldNode.field(), constant);
+                    return ConstantNode.forConstant(constant, metaAccessProvider, node.graph());
                 }
             }
         }
 
         return node;
+    }
+
+    private static boolean verifyFieldValue(ResolvedJavaField field, Constant constant) {
+        assert field.getAnnotation(Child.class) == null || constant.isNull() || constant.asObject() instanceof com.oracle.truffle.api.nodes.Node : "@Child field value must be a Node: " + field;
+        return true;
     }
 }

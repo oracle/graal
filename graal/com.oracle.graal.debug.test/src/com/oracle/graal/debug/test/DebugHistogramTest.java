@@ -27,6 +27,7 @@ import java.io.*;
 import org.junit.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 
 public class DebugHistogramTest {
 
@@ -34,8 +35,13 @@ public class DebugHistogramTest {
     public void testEmptyHistogram() {
         DebugHistogram histogram = Debug.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        histogram.print(new PrintStream(outputStream));
+
+        new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
         Assert.assertEquals("TestHistogram is empty.\n", outputStream.toString());
+
+        outputStream.reset();
+        new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
+        Assert.assertEquals("", outputStream.toString());
     }
 
     @Test
@@ -44,19 +50,28 @@ public class DebugHistogramTest {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add(new Integer(1));
         histogram.add(new Integer(1));
-        histogram.print(new PrintStream(outputStream));
+        new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
         String[] lines = outputStream.toString().split("\n");
-        Assert.assertEquals(4, lines.length);
-        Assert.assertEquals("TestHistogram has 1 unique elements and 2 total elements:", lines[0]);
-        Assert.assertEquals(
-                        "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
-                        lines[1]);
-        Assert.assertEquals(
-                        "| 1                                                  | 2          | ==================================================================================================== |",
-                        lines[2]);
-        Assert.assertEquals(
-                        "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
-                        lines[3]);
+        // @formatter:off
+        String[] expected = {
+            "TestHistogram has 1 unique elements and 2 total elements:",
+            "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+            "| 1                                                  | 2          | ==================================================================================================== |",
+            "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+        };
+        // @formatter:on
+        Assert.assertArrayEquals(expected, lines);
+
+        outputStream.reset();
+        new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
+        lines = outputStream.toString().split("\n");
+        // @formatter:off
+        expected = new String[] {
+            "TestHistogram <- c(2);",
+            "names(TestHistogram) <- c(\"1\");"
+        };
+        // @formatter:on
+        Assert.assertArrayEquals(expected, lines);
     }
 
     @Test
@@ -66,22 +81,29 @@ public class DebugHistogramTest {
         histogram.add(new Integer(1));
         histogram.add(new Integer(2));
         histogram.add(new Integer(2));
-        histogram.print(new PrintStream(outputStream));
+        new DebugHistogramAsciiPrinter(new PrintStream(outputStream)).print(histogram);
         String[] lines = outputStream.toString().split("\n");
-        Assert.assertEquals(5, lines.length);
-        Assert.assertEquals("TestHistogram has 2 unique elements and 3 total elements:", lines[0]);
-        Assert.assertEquals(
-                        "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
-                        lines[1]);
-        Assert.assertEquals(
-                        "| 2                                                  | 2          | ==================================================================================================== |",
-                        lines[2]);
-        Assert.assertEquals(
-                        "| 1                                                  | 1          | ==================================================                                                   |",
-                        lines[3]);
-        Assert.assertEquals(
-                        "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
-                        lines[4]);
+        // @formatter:off
+        String[] expected = new String[] {
+            "TestHistogram has 2 unique elements and 3 total elements:",
+            "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------",
+            "| 2                                                  | 2          | ==================================================================================================== |",
+            "| 1                                                  | 1          | ==================================================                                                   |",
+            "--------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+        };
+        // @formatter:on
+        Assert.assertArrayEquals(expected, lines);
+
+        outputStream.reset();
+        new DebugHistogramRPrinter(new PrintStream(outputStream)).print(histogram);
+        lines = outputStream.toString().split("\n");
+        // @formatter:off
+        expected = new String[] {
+            "TestHistogram <- c(2, 1);",
+            "names(TestHistogram) <- c(\"2\", \"1\");"
+        };
+        // @formatter:on
+        Assert.assertArrayEquals(expected, lines);
     }
 
     @Test
@@ -89,7 +111,7 @@ public class DebugHistogramTest {
         DebugHistogram histogram = Debug.createHistogram("TestHistogram");
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         histogram.add("MyCustomValue");
-        histogram.print(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10);
+        new DebugHistogramAsciiPrinter(new PrintStream(outputStream), Integer.MAX_VALUE, 10, 10).print(histogram);
         String[] lines = outputStream.toString().split("\n");
         Assert.assertEquals(4, lines.length);
         Assert.assertEquals("TestHistogram has 1 unique elements and 1 total elements:", lines[0]);

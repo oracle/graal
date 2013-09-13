@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Reads an {@linkplain AccessNode accessed} value.
  */
-public final class ReadNode extends FloatableAccessNode implements Node.IterableNodeType, LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
+public final class ReadNode extends FloatableAccessNode implements IterableNodeType, LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, barrierType, compressible);
@@ -72,7 +72,7 @@ public final class ReadNode extends FloatableAccessNode implements Node.Iterable
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
         MetaAccessProvider runtime = tool.runtime();
-        if (read.usages().count() == 0) {
+        if (read.usages().isEmpty()) {
             // Read without usages can be savely removed.
             return null;
         }

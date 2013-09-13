@@ -64,7 +64,7 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
     public static native void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value);
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, value.kind(), displacement, offset, graph(), 1);
         WriteNode write = graph().add(new WriteNode(object, value, location, BarrierType.NONE, value.kind() == Kind.Object));
         graph().replaceFixedWithFixed(this, write);

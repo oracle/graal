@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * A node that attaches a type profile to a proxied input node.
  */
-public final class TypeProfileProxyNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType, ValueProxy {
+public final class TypeProfileProxyNode extends FloatingNode implements Canonicalizable, IterableNodeType, ValueProxy {
 
     @Input private ValueNode object;
     private final JavaTypeProfile profile;

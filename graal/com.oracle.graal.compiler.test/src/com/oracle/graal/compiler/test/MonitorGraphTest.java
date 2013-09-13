@@ -95,7 +95,7 @@ public class MonitorGraphTest extends GraalCompilerTest {
         }
         Assumptions assumptions = new Assumptions(false);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-        new InliningPhase(hints).apply(graph, context);
+        new InliningPhase(hints, new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
         return graph;

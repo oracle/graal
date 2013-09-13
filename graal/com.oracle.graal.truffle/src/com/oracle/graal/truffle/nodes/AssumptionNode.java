@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.*;
 
-public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType, Simplifiable {
+public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType, Simplifiable {
 
     public AssumptionNode(Invoke invoke) {
         super(invoke);

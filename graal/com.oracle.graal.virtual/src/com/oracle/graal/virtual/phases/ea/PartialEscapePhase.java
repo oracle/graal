@@ -23,6 +23,7 @@
 package com.oracle.graal.virtual.phases.ea;
 
 import static com.oracle.graal.phases.GraalOptions.*;
+import static com.oracle.graal.virtual.phases.ea.PartialEscapePhase.Options.*;
 
 import java.util.*;
 
@@ -33,25 +34,29 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 
 public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
 
-    //@formatter:off
-    @Option(help = "")
-    public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
-    //@formatter:on
+    static class Options {
+
+        //@formatter:off
+        @Option(help = "")
+        public static final OptionValue<Boolean> OptEarlyReadElimination = new OptionValue<>(true);
+        //@formatter:on
+    }
 
     private final boolean readElimination;
 
-    public PartialEscapePhase(boolean iterative) {
-        this(iterative, OptEarlyReadElimination.getValue());
+    public PartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer) {
+        this(iterative, OptEarlyReadElimination.getValue(), canonicalizer);
     }
 
-    public PartialEscapePhase(boolean iterative, boolean readElimination) {
-        super(iterative ? EscapeAnalysisIterations.getValue() : 1);
+    public PartialEscapePhase(boolean iterative, boolean readElimination, CanonicalizerPhase canonicalizer) {
+        super(iterative ? EscapeAnalysisIterations.getValue() : 1, canonicalizer);
         this.readElimination = readElimination;
     }
 

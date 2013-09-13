@@ -22,9 +22,32 @@
  */
 package com.oracle.graal.debug;
 
+/**
+ * A counter for some value of interest.
+ */
 public interface DebugMetric {
 
+    /**
+     * Adds 1 to this counter if metering is {@link Debug#isMeterEnabled() enabled} or this is an
+     * {@linkplain #isConditional() unconditional} metric.
+     */
     void increment();
 
+    /**
+     * Adds {@code value} to this counter if metering is {@link Debug#isMeterEnabled() enabled} or
+     * this is an {@linkplain #isConditional() unconditional} metric.
+     */
     void add(long value);
+
+    /**
+     * Sets a flag determining if this counter is only enabled if metering is
+     * {@link Debug#isMeterEnabled() enabled}.
+     */
+    void setConditional(boolean flag);
+
+    /**
+     * Determines if this counter is only enabled if metering is {@link Debug#isMeterEnabled()
+     * enabled}.
+     */
+    boolean isConditional();
 }

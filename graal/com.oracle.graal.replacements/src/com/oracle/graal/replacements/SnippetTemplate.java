@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
@@ -388,6 +389,8 @@ public class SnippetTemplate {
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
+        PhaseContext context = new PhaseContext(runtime, replacements.getAssumptions(), replacements);
+
         // Copy snippet graph, replacing constant parameters with given arguments
         StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
@@ -425,7 +428,7 @@ public class SnippetTemplate {
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
             new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
 
-            new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, 0, null).apply(snippetCopy);
+            new CanonicalizerPhase(true).apply(snippetCopy, context);
         }
         NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
@@ -481,8 +484,8 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
                     int mark = snippetCopy.getMark();
-                    LoopTransformations.fullUnroll(loop, runtime, replacements.getAssumptions(), true);
-                    new CanonicalizerPhase.Instance(runtime, replacements.getAssumptions(), true, mark, null).apply(snippetCopy);
+                    LoopTransformations.fullUnroll(loop, context, new CanonicalizerPhase(true));
+                    new CanonicalizerPhase(true).applyIncremental(snippetCopy, context, mark);
                 }
                 FixedNode explodeLoopNext = explodeLoop.next();
                 explodeLoop.clearSuccessors();
@@ -527,8 +530,6 @@ public class SnippetTemplate {
         this.snippet = snippetCopy;
         ReturnNode retNode = null;
         StartNode entryPointNode = snippet.start();
-
-        new DeadCodeEliminationPhase().apply(snippetCopy);
 
         nodes = new ArrayList<>(snippet.getNodeCount());
         for (Node node : snippet.getNodes()) {

@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "OSRLocal({p#index})")
-public class OSRLocalNode extends AbstractLocalNode implements Node.IterableNodeType {
+public class OSRLocalNode extends AbstractLocalNode implements IterableNodeType {
 
     public OSRLocalNode(int index, Stamp stamp) {
         super(index, stamp);

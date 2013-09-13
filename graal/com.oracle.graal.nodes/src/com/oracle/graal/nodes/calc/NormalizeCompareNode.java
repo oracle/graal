@@ -48,7 +48,7 @@ public final class NormalizeCompareNode extends BinaryNode implements Lowerable 
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         LogicNode equalComp;
         LogicNode lessComp;
         if (x().kind() == Kind.Double || x().kind() == Kind.Float) {

@@ -32,7 +32,7 @@ import com.oracle.graal.graph.*;
 
 public class TypedNodeIteratorTest {
 
-    private static class TestNode extends Node implements Node.IterableNodeType, TestNodeInterface {
+    private static class TestNode extends Node implements IterableNodeType, TestNodeInterface {
 
         private final String name;
 

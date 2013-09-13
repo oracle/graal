@@ -38,7 +38,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Implements a type check against a compile-time known type.
  */
-public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Node.IterableNodeType, Virtualizable, ValueProxy {
+public final class CheckCastNode extends FixedWithNextNode implements Canonicalizable, Lowerable, Virtualizable, ValueProxy {
 
     @Input private ValueNode object;
     private final ResolvedJavaType type;
@@ -96,7 +96,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      * {@code LoweringPhase.checkUsagesAreScheduled()}.
      */
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
         Stamp stamp = StampFactory.declared(type);
         if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
@@ -118,7 +118,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
-                condition = graph().unique(new ShortCircuitOrNode(graph().unique(new IsNullNode(object)), false, typeTest, false, shortCircuitProbability));
+                condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
         GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
@@ -159,7 +159,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         if (ObjectStamp.isObjectAlwaysNull(object())) {
             return object();
         }
-        if (tool.assumptions().useOptimisticAssumptions()) {
+        if (tool.assumptions() != null && tool.assumptions().useOptimisticAssumptions()) {
             ResolvedJavaType exactType = type.findUniqueConcreteSubtype();
             if (exactType != null && exactType != type) {
                 // Propagate more precise type information to usages of the checkcast.

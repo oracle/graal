@@ -31,7 +31,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class LoopBeginNode extends MergeNode implements Node.IterableNodeType, LIRLowerable {
+public class LoopBeginNode extends MergeNode implements IterableNodeType, LIRLowerable {
 
     private double loopFrequency;
     private int nextEndIndex;

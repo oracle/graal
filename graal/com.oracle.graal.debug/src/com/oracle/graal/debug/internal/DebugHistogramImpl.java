@@ -22,28 +22,25 @@
  */
 package com.oracle.graal.debug.internal;
 
-import java.io.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
 
 public class DebugHistogramImpl implements DebugHistogram {
 
-    public static final int NumberSize = 10;
-    public static final int DefaultNameSize = 50;
-    public static final int DefaultBarSize = 100;
     private final String name;
-    private HashMap<Object, Integer> map = new HashMap<>();
+    private HashMap<Object, CountedValue> map = new HashMap<>();
 
     public DebugHistogramImpl(String name) {
         this.name = name;
     }
 
     public void add(Object value) {
-        if (!map.containsKey(value)) {
-            map.put(value, 1);
+        CountedValue cv = map.get(value);
+        if (cv == null) {
+            map.put(value, new CountedValue(1, value));
         } else {
-            map.put(value, map.get(value) + 1);
+            cv.inc();
         }
     }
 
@@ -52,59 +49,9 @@ public class DebugHistogramImpl implements DebugHistogram {
         return name;
     }
 
-    @Override
-    public void print(PrintStream os) {
-        print(os, Integer.MAX_VALUE, DefaultNameSize, DefaultBarSize);
-    }
-
-    public void print(PrintStream os, int limit, int nameSize, int barSize) {
-
-        List<Object> list = new ArrayList<>(map.keySet());
-        if (list.size() == 0) {
-            // No elements in the histogram.
-            os.printf("%s is empty.\n", name);
-            return;
-        }
-
-        // Sort from highest to smallest.
-        Collections.sort(list, new Comparator<Object>() {
-
-            @Override
-            public int compare(Object o1, Object o2) {
-                return map.get(o2) - map.get(o1);
-            }
-        });
-
-        // Sum up the total number of elements.
-        int total = 0;
-        for (Object o : list) {
-            total += map.get(o);
-        }
-
-        // Print header.
-        os.printf("%s has %d unique elements and %d total elements:\n", name, list.size(), total);
-
-        int max = map.get(list.get(0));
-        final int lineSize = nameSize + NumberSize + barSize + 10;
-        printLine(os, '-', lineSize);
-        String formatString = "| %-" + nameSize + "s | %-" + NumberSize + "d | %-" + barSize + "s |\n";
-        for (int i = 0; i < list.size() && i < limit; ++i) {
-            Object o = list.get(i);
-            int value = map.get(o);
-            char[] bar = new char[(int) (((double) value / (double) max) * barSize)];
-            Arrays.fill(bar, '=');
-            String objectString = o.toString();
-            if (objectString.length() > nameSize) {
-                objectString = objectString.substring(0, nameSize - 3) + "...";
-            }
-            os.printf(formatString, objectString, value, new String(bar));
-        }
-        printLine(os, '-', lineSize);
-    }
-
-    private static void printLine(PrintStream printStream, char c, int lineSize) {
-        char[] charArr = new char[lineSize];
-        Arrays.fill(charArr, c);
-        printStream.printf("%s\n", new String(charArr));
+    public List<CountedValue> getValues() {
+        ArrayList<CountedValue> res = new ArrayList<>(map.values());
+        Collections.sort(res);
+        return res;
     }
 }

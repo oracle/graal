@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.nodes.spi;
 
+import com.oracle.graal.nodes.*;
+
 public interface Lowerable {
 
-    public enum LoweringType {
-        BEFORE_GUARDS, AFTER_GUARDS, AFTER_FSA
-    }
+    void lower(LoweringTool tool);
 
-    void lower(LoweringTool tool, LoweringType loweringType);
+    ValueNode asNode();
 }

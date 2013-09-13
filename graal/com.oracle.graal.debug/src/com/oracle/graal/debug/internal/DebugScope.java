@@ -92,7 +92,6 @@ public final class DebugScope {
     private static ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
     private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
     private static ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
-    private static DebugTimer scopeTime = Debug.timer("ScopeTime");
 
     private final DebugScope parent;
     private IndentImpl lastUsedIndent;
@@ -239,7 +238,7 @@ public final class DebugScope {
         }
         instanceTL.set(newChild);
         newChild.updateFlags();
-        try (TimerCloseable a = scopeTime.start()) {
+        try {
             return executeScope(runnable, callable);
         } finally {
             newChild.context = null;

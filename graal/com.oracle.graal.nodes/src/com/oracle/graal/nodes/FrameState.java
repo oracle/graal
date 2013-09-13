@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.virtual.*;
  * stack) at a particular point in the abstract interpretation.
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
-public final class FrameState extends VirtualState implements Node.IterableNodeType {
+public final class FrameState extends VirtualState implements IterableNodeType {
 
     protected final int localsSize;
 

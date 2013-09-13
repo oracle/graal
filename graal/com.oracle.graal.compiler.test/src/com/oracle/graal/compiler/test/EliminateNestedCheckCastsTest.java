@@ -31,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
 
@@ -113,8 +114,8 @@ public class EliminateNestedCheckCastsTest extends GraalCompilerTest {
             public StructuredGraph call() throws Exception {
                 Debug.dump(graph, "After parsing: " + snippet);
                 Assert.assertEquals(checkcasts, graph.getNodes().filter(CheckCastNode.class).count());
-                new CanonicalizerPhase.Instance(runtime(), new Assumptions(false), true).apply(graph);
-                Assert.assertEquals(afterCanon, graph.getNodes(CheckCastNode.class).count());
+                new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), new Assumptions(false), replacements));
+                Assert.assertEquals(afterCanon, graph.getNodes().filter(CheckCastNode.class).count());
                 return graph;
             }
 

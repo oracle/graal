@@ -70,11 +70,6 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
     }
 
     @Override
-    public FloatingAccessNode asNode() {
-        return this;
-    }
-
-    @Override
     public boolean canDeoptimize() {
         return nullCheck;
     }

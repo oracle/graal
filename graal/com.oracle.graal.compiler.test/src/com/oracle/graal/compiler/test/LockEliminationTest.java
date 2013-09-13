@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.Lowerable.LoweringType;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -62,7 +61,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedSnippet", new A(), new A());
 
         StructuredGraph graph = getGraph("testSynchronizedSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -80,7 +79,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedMethodSnippet", new A());
 
         StructuredGraph graph = getGraph("testSynchronizedMethodSnippet");
-        new CanonicalizerPhase.Instance(runtime(), null, true).apply(graph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -93,10 +92,10 @@ public class LockEliminationTest extends GraalCompilerTest {
         Assumptions assumptions = new Assumptions(true);
         HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
-        new InliningPhase().apply(graph, context);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);
         new DeadCodeEliminationPhase().apply(graph);
-        new LoweringPhase(LoweringType.BEFORE_GUARDS).apply(graph, context);
+        new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new ValueAnchorCleanupPhase().apply(graph);
         new LockEliminationPhase().apply(graph);
         return graph;

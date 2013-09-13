@@ -112,7 +112,7 @@ public class GraphBuilderPhase extends Phase {
      * jump. When the block is seen the second time, a MergeNode is created to correctly merge the
      * now two different predecessor states.
      */
-    private static class BlockPlaceholderNode extends FixedWithNextNode implements Node.IterableNodeType {
+    private static class BlockPlaceholderNode extends FixedWithNextNode implements IterableNodeType {
 
         public BlockPlaceholderNode() {
             super(StampFactory.forVoid());
@@ -242,7 +242,7 @@ public class GraphBuilderPhase extends Phase {
 
         // remove dead FrameStates
         for (Node n : currentGraph.getNodes(FrameState.class)) {
-            if (n.usages().count() == 0 && n.predecessor() == null) {
+            if (n.usages().isEmpty() && n.predecessor() == null) {
                 n.safeDelete();
             }
         }

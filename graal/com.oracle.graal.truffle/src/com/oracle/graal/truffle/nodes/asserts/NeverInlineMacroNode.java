@@ -26,14 +26,14 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
+public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType {
 
     public NeverInlineMacroNode(Invoke invoke) {
         super(invoke);
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         InvokeNode invoke = createInvoke();
         graph().replaceFixedWithFixed(this, invoke);
         invoke.setUseForInlining(false);

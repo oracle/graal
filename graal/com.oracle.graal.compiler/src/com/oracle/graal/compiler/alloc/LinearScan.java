@@ -686,9 +686,8 @@ public final class LinearScan {
             List<LIRInstruction> instructions = ir.lir(block);
             int numInst = instructions.size();
 
-            // iterate all instructions of the block. skip the first because it is always a label
-            assert !instructions.get(0).hasOperands() : "first operation must always be a label";
-            for (int j = 1; j < numInst; j++) {
+            // iterate all instructions of the block
+            for (int j = 0; j < numInst; j++) {
                 final LIRInstruction op = instructions.get(j);
 
                 ValueProcedure useProc = new ValueProcedure() {
@@ -1174,10 +1173,8 @@ public final class LinearScan {
             }
 
             // iterate all instructions of the block in reverse order.
-            // skip the first instruction because it is always a label
             // definitions of intervals are processed before uses
-            assert !instructions.get(0).hasOperands() : "first operation must always be a label";
-            for (int j = instructions.size() - 1; j >= 1; j--) {
+            for (int j = instructions.size() - 1; j >= 0; j--) {
                 final LIRInstruction op = instructions.get(j);
                 final int opId = op.id();
 

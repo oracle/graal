@@ -140,4 +140,8 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
         assertTrue(kind() == kind().getStackKind(), "Should have a stack kind : %s", kind());
         return super.verify();
     }
+
+    public ValueNode asNode() {
+        return this;
+    }
 }

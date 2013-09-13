@@ -112,7 +112,7 @@ public final class TruffleCache {
                     optimizeGraph(newGraph, tmpAssumptions);
 
                     PhaseContext context = new PhaseContext(metaAccessProvider, tmpAssumptions, replacements);
-                    PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false);
+                    PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue()));
                     partialEscapePhase.apply(newGraph, context);
 
                     cache.put(method, newGraph);
@@ -153,7 +153,7 @@ public final class TruffleCache {
         ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
         ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
         CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
-        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase();
+        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase(canonicalizerPhase);
 
         int maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
 
@@ -180,6 +180,8 @@ public final class TruffleCache {
 
     private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase conditionalEliminationPhase, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
                     CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, PhaseContext context) {
+        new ReplaceLoadFinalPhase().apply(newGraph);
+
         // Canonicalize / constant propagate.
         canonicalizerPhase.apply(newGraph, context);
 
@@ -306,14 +308,18 @@ public final class TruffleCache {
 
     private static boolean checkArgumentStamps(StructuredGraph graph, NodeInputList<ValueNode> arguments) {
         assert graph.getNodes(LocalNode.class).count() <= arguments.count();
-        for (LocalNode localNode : graph.getNodes(LocalNode.class)) {
-            Stamp newStamp = localNode.stamp().meet(arguments.get(localNode.index()).stamp());
-            if (!newStamp.equals(localNode.stamp())) {
-                if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
-                    TTY.println(String.format("[truffle] graph cache entry too specific for method %s argument %s previous stamp %s new stamp %s.", graph.method(), localNode, localNode.stamp(),
-                                    newStamp));
+        FrameState startState = graph.start().stateAfter();
+        for (int i = 0; i < arguments.size(); i++) {
+            ValueNode localNode = startState.localAt(i);
+            if (localNode != null) {
+                Stamp newStamp = localNode.stamp().meet(arguments.get(i).stamp());
+                if (!newStamp.equals(localNode.stamp())) {
+                    if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+                        TTY.println(String.format("[truffle] graph cache entry too specific for method %s argument %s previous stamp %s new stamp %s.", graph.method(), localNode, localNode.stamp(),
+                                        newStamp));
+                    }
+                    return false;
                 }
-                return false;
             }
         }
 

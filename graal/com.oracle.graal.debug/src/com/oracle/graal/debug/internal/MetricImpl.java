@@ -26,8 +26,8 @@ import com.oracle.graal.debug.*;
 
 public final class MetricImpl extends DebugValue implements DebugMetric {
 
-    public MetricImpl(String name) {
-        super(name);
+    public MetricImpl(String name, boolean conditional) {
+        super(name, conditional);
     }
 
     public void increment() {
@@ -35,7 +35,7 @@ public final class MetricImpl extends DebugValue implements DebugMetric {
     }
 
     public void add(long value) {
-        if (Debug.isMeterEnabled()) {
+        if (!isConditional() || Debug.isMeterEnabled()) {
             super.addToCurrentValue(value);
         }
     }

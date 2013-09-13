@@ -30,6 +30,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
 
@@ -133,8 +134,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         }
 
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(graph);
-        new CanonicalizerPhase.Instance(runtime(), assumptions, true).apply(referenceGraph);
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(runtime(), assumptions, replacements));
         Debug.scope("Test", new DebugDumpScope("Test:" + snippet), new Runnable() {
 
             @Override

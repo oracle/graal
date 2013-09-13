@@ -39,7 +39,6 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
-import com.oracle.graal.phases.common.CanonicalizerPhase.CustomCanonicalizer;
 import com.oracle.graal.phases.common.InliningUtil.InlineInfo;
 import com.oracle.graal.phases.common.InliningUtil.Inlineable;
 import com.oracle.graal.phases.common.InliningUtil.InlineableGraph;
@@ -59,7 +58,7 @@ public class InliningPhase extends AbstractInliningPhase {
     }
 
     private final InliningPolicy inliningPolicy;
-    private final CustomCanonicalizer customCanonicalizer;
+    private final CanonicalizerPhase canonicalizer;
 
     private int inliningCount;
     private int maxMethodPerInlining = Integer.MAX_VALUE;
@@ -68,27 +67,19 @@ public class InliningPhase extends AbstractInliningPhase {
     private static final DebugMetric metricInliningPerformed = Debug.metric("InliningPerformed");
     private static final DebugMetric metricInliningConsidered = Debug.metric("InliningConsidered");
     private static final DebugMetric metricInliningStoppedByMaxDesiredSize = Debug.metric("InliningStoppedByMaxDesiredSize");
-    private static final DebugMetric metricInliningRuns = Debug.metric("Runs");
+    private static final DebugMetric metricInliningRuns = Debug.metric("InliningRuns");
 
-    public InliningPhase() {
-        this(new GreedyInliningPolicy(null), null);
-    }
-
-    public InliningPhase(CustomCanonicalizer canonicalizer) {
+    public InliningPhase(CanonicalizerPhase canonicalizer) {
         this(new GreedyInliningPolicy(null), canonicalizer);
     }
 
-    public InliningPhase(Map<Invoke, Double> hints) {
-        this(new GreedyInliningPolicy(hints), null);
+    public InliningPhase(Map<Invoke, Double> hints, CanonicalizerPhase canonicalizer) {
+        this(new GreedyInliningPolicy(hints), canonicalizer);
     }
 
-    public InliningPhase(InliningPolicy policy) {
-        this(policy, null);
-    }
-
-    private InliningPhase(InliningPolicy policy, CustomCanonicalizer customCanonicalizer) {
+    public InliningPhase(InliningPolicy policy, CanonicalizerPhase canonicalizer) {
         this.inliningPolicy = policy;
-        this.customCanonicalizer = customCanonicalizer;
+        this.canonicalizer = canonicalizer;
     }
 
     public void setMaxMethodsPerInlining(int max) {
@@ -163,7 +154,7 @@ public class InliningPhase extends AbstractInliningPhase {
             MethodInvocation calleeInvocation = data.pushInvocation(info, parentAssumptions, invokeProbability, invokeRelevance);
 
             for (int i = 0; i < info.numberOfMethods(); i++) {
-                Inlineable elem = getInlineableElement(info.methodAt(i), info.invoke(), calleeInvocation.assumptions(), context);
+                Inlineable elem = getInlineableElement(info.methodAt(i), info.invoke(), context.replaceAssumptions(calleeInvocation.assumptions()));
                 info.setInlinableElement(i, elem);
                 if (elem instanceof InlineableGraph) {
                     data.pushGraph(((InlineableGraph) elem).getGraph(), invokeProbability * info.probabilityAt(i), invokeRelevance * info.relevanceAt(i));
@@ -200,7 +191,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
             if (OptCanonicalizer.getValue()) {
                 int markBeforeCanonicalization = callerGraph.getMark();
-                new CanonicalizerPhase.Instance(context.getRuntime(), callerAssumptions, !AOTCompilation.getValue(), invokeUsages, markBeforeInlining, customCanonicalizer).apply(callerGraph);
+                canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
 
                 // process invokes that are possibly created during canonicalization
                 for (Node newNode : callerGraph.getNewNodes(markBeforeCanonicalization)) {
@@ -223,16 +214,16 @@ public class InliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, Assumptions assumptions, HighTierContext context) {
+    private Inlineable getInlineableElement(final ResolvedJavaMethod method, Invoke invoke, HighTierContext context) {
         Class<? extends FixedWithNextNode> macroNodeClass = InliningUtil.getMacroNodeClass(context.getReplacements(), method);
         if (macroNodeClass != null) {
             return new InlineableMacroNode(macroNodeClass);
         } else {
-            return new InlineableGraph(buildGraph(method, invoke, assumptions, context));
+            return new InlineableGraph(buildGraph(method, invoke, context));
         }
     }
 
-    private static StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final Assumptions assumptions, final HighTierContext context) {
+    private StructuredGraph buildGraph(final ResolvedJavaMethod method, final Invoke invoke, final HighTierContext context) {
         final StructuredGraph newGraph;
         final boolean parseBytecodes;
 
@@ -258,7 +249,7 @@ public class InliningPhase extends AbstractInliningPhase {
             @Override
             public StructuredGraph call() throws Exception {
                 if (parseBytecodes) {
-                    parseBytecodes(newGraph, assumptions, context);
+                    parseBytecodes(newGraph, context);
                 }
 
                 boolean callerHasMoreInformationAboutArguments = false;
@@ -285,7 +276,7 @@ public class InliningPhase extends AbstractInliningPhase {
                 }
 
                 if (OptCanonicalizer.getValue()) {
-                    new CanonicalizerPhase.Instance(context.getRuntime(), assumptions, !AOTCompilation.getValue()).apply(newGraph);
+                    canonicalizer.apply(newGraph, context);
                 }
 
                 return newGraph;
@@ -303,7 +294,7 @@ public class InliningPhase extends AbstractInliningPhase {
         return null;
     }
 
-    private static StructuredGraph parseBytecodes(StructuredGraph newGraph, Assumptions assumptions, HighTierContext context) {
+    private StructuredGraph parseBytecodes(StructuredGraph newGraph, HighTierContext context) {
         boolean hasMatureProfilingInfo = newGraph.method().getProfilingInfo().isMature();
 
         if (context.getPhasePlan() != null) {
@@ -314,7 +305,7 @@ public class InliningPhase extends AbstractInliningPhase {
         new DeadCodeEliminationPhase().apply(newGraph);
 
         if (OptCanonicalizer.getValue()) {
-            new CanonicalizerPhase.Instance(context.getRuntime(), assumptions, !AOTCompilation.getValue()).apply(newGraph);
+            canonicalizer.apply(newGraph, context);
         }
 
         if (CacheGraphs.getValue() && context.getGraphCache() != null) {
@@ -512,7 +503,7 @@ public class InliningPhase extends AbstractInliningPhase {
             while ((current = nextQueuedNode()) != null) {
                 assert current.isAlive();
 
-                if (current instanceof Invoke) {
+                if (current instanceof Invoke && ((Invoke) current).callTarget() instanceof MethodCallTargetNode) {
                     if (current != start) {
                         invokes.addLast((Invoke) current);
                     }

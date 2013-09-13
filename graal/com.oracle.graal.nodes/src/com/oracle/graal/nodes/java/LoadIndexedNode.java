@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code LoadIndexedNode} represents a read from an element of an array.
  */
-public final class LoadIndexedNode extends AccessIndexedNode implements Node.IterableNodeType, Virtualizable {
+public final class LoadIndexedNode extends AccessIndexedNode implements IterableNodeType, Virtualizable {
 
     /**
      * Creates a new LoadIndexedNode.

@@ -79,7 +79,7 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         boolean nullCheck = false;
         StructuredGraph replacementGraph = getSnippetGraph(tool);
         if (replacementGraph == null) {

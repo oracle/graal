@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, Node.IterableNodeType, GuardingNode {
+public abstract class AbstractBeginNode extends FixedWithNextNode implements StateSplit, LIRLowerable, Simplifiable, GuardingNode {
 
     @Input(notDataflow = true) private FrameState stateAfter;
 
@@ -184,10 +184,5 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
         public void remove() {
             throw new UnsupportedOperationException();
         }
-    }
-
-    @Override
-    public AbstractBeginNode asNode() {
-        return this;
     }
 }

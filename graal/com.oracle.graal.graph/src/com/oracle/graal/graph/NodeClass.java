@@ -31,7 +31,6 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
-import com.oracle.graal.graph.Node.IterableNodeType;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
 
@@ -185,14 +184,14 @@ public final class NodeClass extends FieldIntrospection {
         }
         this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
         this.shortName = newShortName;
-        if (Node.IterableNodeType.class.isAssignableFrom(clazz)) {
+        if (IterableNodeType.class.isAssignableFrom(clazz)) {
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
             for (FieldIntrospection nodeClass : allClasses.values()) {
                 if (clazz.isAssignableFrom(nodeClass.clazz)) {
                     existingClasses.add((NodeClass) nodeClass);
                 }
-                if (nodeClass.clazz.isAssignableFrom(clazz) && Node.IterableNodeType.class.isAssignableFrom(nodeClass.clazz)) {
+                if (nodeClass.clazz.isAssignableFrom(clazz) && IterableNodeType.class.isAssignableFrom(nodeClass.clazz)) {
                     NodeClass superNodeClass = (NodeClass) nodeClass;
                     superNodeClass.iterableIds = Arrays.copyOf(superNodeClass.iterableIds, superNodeClass.iterableIds.length + 1);
                     superNodeClass.iterableIds[superNodeClass.iterableIds.length - 1] = this.iterableId;

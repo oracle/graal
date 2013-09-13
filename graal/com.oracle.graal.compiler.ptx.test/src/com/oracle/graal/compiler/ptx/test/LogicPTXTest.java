@@ -26,7 +26,6 @@ import java.lang.reflect.Method;
 
 import org.junit.Test;
 
-
 /* PTX ISA 3.1 - 8.7.5 Logic and Shift Instructions */
 public class LogicPTXTest extends PTXTestBase {
 

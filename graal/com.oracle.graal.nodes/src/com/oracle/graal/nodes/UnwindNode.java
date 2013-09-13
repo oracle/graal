@@ -23,14 +23,13 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
  */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
 
     @Input private ValueNode exception;
 
@@ -50,7 +49,7 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
     }
 
     @Override
-    public void lower(LoweringTool tool, LoweringType loweringType) {
+    public void lower(LoweringTool tool) {
         tool.getRuntime().lower(this, tool);
     }
 }

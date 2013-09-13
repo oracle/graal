@@ -39,7 +39,7 @@ public class RemoveValueProxyPhase extends Phase {
             FrameState stateAfter = exit.stateAfter();
             if (stateAfter != null) {
                 exit.setStateAfter(null);
-                if (stateAfter.usages().count() == 0) {
+                if (stateAfter.usages().isEmpty()) {
                     stateAfter.safeDelete();
                 }
             }

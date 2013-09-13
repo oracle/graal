@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public class MethodCallTargetNode extends CallTargetNode implements Node.IterableNodeType, Canonicalizable {
+public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Canonicalizable {
 
     public enum InvokeKind {
         Interface, Special, Static, Virtual

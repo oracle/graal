@@ -38,7 +38,7 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     private static final long serialVersionUID = -4744897993263044184L;
 
-    private final HotSpotDiagnosticMXBean diagnostic = ManagementFactoryHelper.getDiagnosticMXBean();
+    private static final HotSpotDiagnosticMXBean diagnostic = ManagementFactoryHelper.getDiagnosticMXBean();
 
     HotSpotVMConfig(CompilerToVM c2vm) {
         c2vm.initializeConfiguration(this);
@@ -52,9 +52,9 @@ public final class HotSpotVMConfig extends CompilerObject {
      * @return value of option
      * @throws IllegalArgumentException if option doesn't exist
      */
-    private int getVMOptionInt(String name) {
+    public static int getVMOptionInt(String name) {
         String value = diagnostic.getVMOption(name).getValue();
-        return new Integer(value).intValue();
+        return Integer.valueOf(value).intValue();
     }
 
     /**
@@ -64,7 +64,7 @@ public final class HotSpotVMConfig extends CompilerObject {
      * @param defaultValue default value if option is not exists (e.g. development options)
      * @return value of option or defaultValue if option doesn't exist
      */
-    private int getVMOption(String name, int defaultValue) {
+    public static int getVMOption(String name, int defaultValue) {
         try {
             return getVMOptionInt(name);
         } catch (IllegalArgumentException e) {
@@ -79,9 +79,9 @@ public final class HotSpotVMConfig extends CompilerObject {
      * @return value of option
      * @throws IllegalArgumentException if option doesn't exist
      */
-    private boolean getVMOption(String name) {
+    public static boolean getVMOption(String name) {
         String value = diagnostic.getVMOption(name).getValue();
-        return new Boolean(value).booleanValue();
+        return Boolean.valueOf(value).booleanValue();
     }
 
     /**
@@ -91,7 +91,7 @@ public final class HotSpotVMConfig extends CompilerObject {
      * @param defaultValue default value if option is not exists (e.g. development options)
      * @return value of option or defaultValue if option doesn't exist
      */
-    private boolean getVMOption(String name, boolean defaultValue) {
+    public static boolean getVMOption(String name, boolean defaultValue) {
         try {
             return getVMOption(name);
         } catch (IllegalArgumentException e) {

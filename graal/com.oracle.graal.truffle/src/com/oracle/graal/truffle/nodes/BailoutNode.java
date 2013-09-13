@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class BailoutNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType, Canonicalizable {
+public class BailoutNode extends MacroNode implements Canonicalizable {
 
     public BailoutNode(Invoke invoke) {
         super(invoke);

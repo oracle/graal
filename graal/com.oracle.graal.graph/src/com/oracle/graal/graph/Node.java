@@ -111,9 +111,6 @@ public abstract class Node implements Cloneable, Formattable {
     public interface ValueNumberable {
     }
 
-    public interface IterableNodeType {
-    }
-
     private Graph graph;
     int id;
 
@@ -236,11 +233,7 @@ public abstract class Node implements Cloneable, Formattable {
             if (usage1 == null) {
                 return 1;
             }
-            int count = 2;
-            for (int i = 0; i < extraUsages.length && extraUsages[i] != null; i++) {
-                count++;
-            }
-            return count;
+            return 2 + indexOfLastNonNull(extraUsages) + 1;
         }
     }
 
@@ -249,6 +242,40 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public final NodeIterable<Node> usages() {
         return new NodeUsageIterable();
+    }
+
+    /**
+     * Finds the index of the last non-null entry in a node array. The search assumes that all
+     * non-null entries precede the first null entry in the array.
+     * 
+     * @param nodes the array to search
+     * @return the index of the last non-null entry in {@code nodes} if it exists, else -1
+     */
+    private static int indexOfLastNonNull(Node[] nodes) {
+        if (nodes.length == 0 || nodes[0] == null) {
+            return -1;
+        }
+        if (nodes[nodes.length - 1] != null) {
+            return nodes.length - 1;
+        }
+
+        // binary search
+        int low = 0;
+        int high = nodes.length - 1;
+        while (true) {
+            int mid = (low + high) >>> 1;
+            if (nodes[mid] == null) {
+                if (nodes[mid - 1] != null) {
+                    return mid - 1;
+                }
+                high = mid - 1;
+            } else {
+                if (mid == nodes.length - 1 || nodes[mid + 1] == null) {
+                    return mid;
+                }
+                low = mid + 1;
+            }
+        }
     }
 
     /**
@@ -264,35 +291,21 @@ public abstract class Node implements Cloneable, Formattable {
             usage1 = node;
         } else {
             int length = extraUsages.length;
-            int start = extraUsages.length >> 1;
-            if (start < length && extraUsages[start] == null) {
-                start = 0;
-            }
-            for (int i = start; i < length; i++) {
-                if (extraUsages[i] == null) {
-                    extraUsages[i] = node;
-                    return;
+            if (length == 0) {
+                extraUsages = new Node[4];
+                extraUsages[0] = node;
+            } else {
+                int lastNonNull = indexOfLastNonNull(extraUsages);
+                if (lastNonNull == length - 1) {
+                    extraUsages = Arrays.copyOf(extraUsages, length * 2 + 1);
+                    extraUsages[length] = node;
+                } else if (lastNonNull == -1) {
+                    extraUsages[0] = node;
+                } else {
+                    extraUsages[lastNonNull + 1] = node;
                 }
             }
-            extraUsages = Arrays.copyOf(extraUsages, length * 2 + 1);
-            extraUsages[length] = node;
         }
-    }
-
-    private Node removeFirstExtraUsage() {
-        Node res = null;
-        if (extraUsages.length > 0) {
-            res = extraUsages[0];
-            for (int i = 1; i < extraUsages.length; ++i) {
-                Node n = extraUsages[i];
-                extraUsages[i - 1] = n;
-                if (n == null) {
-                    break;
-                }
-            }
-            extraUsages[extraUsages.length - 1] = null;
-        }
-        return res;
     }
 
     /**
@@ -305,36 +318,47 @@ public abstract class Node implements Cloneable, Formattable {
         // It is critical that this method maintains the invariant that
         // the usage list has no null element preceding a non-null element
         incUsageModCount();
-        if (usage0 == null) {
-            return false;
-        }
         if (usage0 == node) {
-            usage0 = usage1;
             if (usage1 != null) {
-                usage1 = removeFirstExtraUsage();
+                int lastNonNull = indexOfLastNonNull(extraUsages);
+                if (lastNonNull >= 0) {
+                    usage0 = extraUsages[lastNonNull];
+                    extraUsages[lastNonNull] = null;
+                } else {
+                    // usage1 is the last element
+                    usage0 = usage1;
+                    usage1 = null;
+                }
+            } else {
+                // usage0 is the last element
+                usage0 = null;
             }
             return true;
         }
-        if (usage1 == null) {
-            return false;
-        }
         if (usage1 == node) {
-            usage1 = removeFirstExtraUsage();
+            int lastNonNull = indexOfLastNonNull(extraUsages);
+            if (lastNonNull >= 0) {
+                usage1 = extraUsages[lastNonNull];
+                extraUsages[lastNonNull] = null;
+            } else {
+                // usage1 is the last element
+                usage1 = null;
+            }
             return true;
         }
-        int length = extraUsages.length;
-        for (int i = 0; i < length; i++) {
-            if (extraUsages[i] == node) {
-                for (int j = i + 1; j < length; j++) {
-                    Node toMove = extraUsages[j];
-                    extraUsages[j - 1] = toMove;
-                    if (toMove == null) {
-                        break;
+        int lastNonNull = indexOfLastNonNull(extraUsages);
+        if (lastNonNull >= 0) {
+            for (int i = 0; i <= lastNonNull; ++i) {
+                Node n = extraUsages[i];
+                if (n == node) {
+                    if (i < lastNonNull) {
+                        extraUsages[i] = extraUsages[lastNonNull];
+                        extraUsages[lastNonNull] = null;
+                    } else {
+                        extraUsages[i] = null;
                     }
+                    return true;
                 }
-                extraUsages[length - 1] = null;
-
-                return true;
             }
         }
         return false;

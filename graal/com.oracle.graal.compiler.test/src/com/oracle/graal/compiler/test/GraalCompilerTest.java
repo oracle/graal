@@ -87,7 +87,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     @BeforeClass
-    public static void initializeDebgging() {
+    public static void initializeDebugging() {
         DebugEnvironment.initialize(System.out);
     }
 
