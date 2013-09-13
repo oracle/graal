@@ -37,8 +37,33 @@ import com.oracle.graal.nodes.util.*;
  */
 public class StructuredGraph extends Graph {
 
+    /**
+     * The different stages of the compilation of a {@link Graph} regarding the status of
+     * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
+     * framestates}. The stage of a graph progresses monotonously.
+     * 
+     */
     public static enum GuardsStage {
-        FLOATING_GUARDS, FIXED_DEOPTS, AFTER_FSA
+        /**
+         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}
+         * such as {@link GuardNode GuardNodes}. New {@link DeoptimizingNode DeoptimizingNodes} can
+         * be introduced without constraints. {@link FrameState} nodes are associated with
+         * {@link StateSplit} nodes.
+         */
+        FLOATING_GUARDS,
+        /**
+         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
+         * {@link FixedNode fixed} but new {@link DeoptimizingNode DeoptimizingNodes} can still be
+         * introduced. {@link FrameState} nodes are still associated with {@link StateSplit} nodes.
+         */
+        FIXED_DEOPTS,
+        /**
+         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
+         * {@link FixedNode fixed}. New {@link DeoptimizingNode DeoptimizingNodes} can not be
+         * introduced any more. {@link FrameState} nodes are now associated with
+         * {@link DeoptimizingNode} nodes.
+         */
+        AFTER_FSA
     }
 
     public static final int INVOCATION_ENTRY_BCI = -1;

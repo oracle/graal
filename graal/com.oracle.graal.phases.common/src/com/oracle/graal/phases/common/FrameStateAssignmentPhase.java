@@ -33,6 +33,16 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
+/**
+ * This phase transfers {@link FrameState} nodes from {@link StateSplit} nodes to
+ * {@link DeoptimizingNode DeoptimizingNodes}.
+ * 
+ * This allow to enter the {@link GuardsStage#AFTER_FSA AFTER_FSA} stage of the graph where no new
+ * node that may cause deoptimization can be introduced anymore.
+ * <p>
+ * This Phase processes the graph in post order, assigning the {@link FrameState} from the last
+ * {@link StateSplit} node to {@link DeoptimizingNode DeoptimizingNodes}.
+ */
 public class FrameStateAssignmentPhase extends Phase {
 
     private static class FrameStateAssignmentClosure extends NodeIteratorClosure<FrameState> {

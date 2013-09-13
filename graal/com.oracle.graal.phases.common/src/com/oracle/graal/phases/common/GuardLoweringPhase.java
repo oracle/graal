@@ -43,9 +43,9 @@ import com.oracle.graal.phases.tiers.*;
  * This phase lowers {@link GuardNode GuardNodes} into corresponding control-flow structure and
  * {@link DeoptimizeNode DeoptimizeNodes}.
  * 
- * This allow to enter a phase of the compiler where all node that may cause deoptimization are
- * fixed.
- * 
+ * This allow to enter the {@link GuardsStage#FIXED_DEOPTS FIXED_DEOPTS} stage of the graph where
+ * all node that may cause deoptimization are fixed.
+ * <p>
  * It first makes a schedule in order to know where the control flow should be placed. Then, for
  * each block, it applies two passes. The first one tries to replace null-check guards with implicit
  * null checks performed by access to the objects that need to be null checked. The second phase
