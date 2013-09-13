@@ -43,7 +43,7 @@ public class TypedNodeIteratorTest2 {
         }
     }
 
-    private static class NodeB extends NodeA implements Node.IterableNodeType {
+    private static class NodeB extends NodeA implements IterableNodeType {
 
         public NodeB(String name) {
             super(name);

@@ -112,7 +112,7 @@ public class GraphBuilderPhase extends Phase {
      * jump. When the block is seen the second time, a MergeNode is created to correctly merge the
      * now two different predecessor states.
      */
-    private static class BlockPlaceholderNode extends FixedWithNextNode implements Node.IterableNodeType {
+    private static class BlockPlaceholderNode extends FixedWithNextNode implements IterableNodeType {
 
         public BlockPlaceholderNode() {
             super(StampFactory.forVoid());

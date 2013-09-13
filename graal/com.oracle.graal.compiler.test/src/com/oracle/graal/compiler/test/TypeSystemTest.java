@@ -237,7 +237,7 @@ public class TypeSystemTest extends GraalCompilerTest {
         }
     }
 
-    private <T extends Node & Node.IterableNodeType> void test(String snippet, Class<T> clazz) {
+    private <T extends Node & IterableNodeType> void test(String snippet, Class<T> clazz) {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);

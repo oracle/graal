@@ -413,7 +413,7 @@ public class Graph {
     private static final Node PLACE_HOLDER = new Node() {
     };
 
-    private class TypedNodeIterator<T extends Node.IterableNodeType> implements Iterator<T> {
+    private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
 
         private final int[] ids;
         private final Node[] current;
@@ -517,9 +517,9 @@ public class Graph {
      * {@code type}.
      * 
      * @param type the type of node to return
-     * @return an {@link Iterable} providing all the matching nodes.
+     * @return an {@link Iterable} providing all the matching nodes
      */
-    public <T extends Node & Node.IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
+    public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final Class<T> type) {
         final NodeClass nodeClass = NodeClass.get(type);
         return new AbstractNodeIterable<T>() {
 
@@ -536,7 +536,7 @@ public class Graph {
      * @param type the type of node that is checked for occurrence
      * @return whether there is at least one such node
      */
-    public <T extends Node & Node.IterableNodeType> boolean hasNode(final Class<T> type) {
+    public <T extends Node & IterableNodeType> boolean hasNode(final Class<T> type) {
         return getNodes(type).iterator().hasNext();
     }
 

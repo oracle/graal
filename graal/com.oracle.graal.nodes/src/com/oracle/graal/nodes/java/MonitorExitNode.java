@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 /**
  * The {@code MonitorEnterNode} represents a monitor release.
  */
-public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, Node.IterableNodeType, MonitorExit, MemoryCheckpoint.Single, MonitorReference {
+public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single, MonitorReference {
 
     private int lockDepth;
 

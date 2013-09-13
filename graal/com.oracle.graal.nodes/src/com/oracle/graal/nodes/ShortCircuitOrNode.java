@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class ShortCircuitOrNode extends LogicNode implements Node.IterableNodeType, Canonicalizable {
+public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable {
 
     @Input private LogicNode x;
     @Input private LogicNode y;

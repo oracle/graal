@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
  */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, Node.IterableNodeType {
+public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable, IterableNodeType {
 
     @Input private ValueNode exception;
 

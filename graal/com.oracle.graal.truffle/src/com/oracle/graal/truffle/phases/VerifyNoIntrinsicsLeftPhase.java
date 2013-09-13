@@ -39,7 +39,7 @@ public class VerifyNoIntrinsicsLeftPhase extends Phase {
         verifyNoInstanceLeft(graph, NewFrameNode.class);
     }
 
-    public static <T extends Node & Node.IterableNodeType> void verifyNoInstanceLeft(StructuredGraph graph, Class<T> clazz) {
+    public static <T extends Node & IterableNodeType> void verifyNoInstanceLeft(StructuredGraph graph, Class<T> clazz) {
         if (graph.getNodes(clazz).count() != 0) {
             throw new VerificationError("Found unexpected node(s): %s", graph.getNodes(clazz));
         }

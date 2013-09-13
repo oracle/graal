@@ -25,7 +25,7 @@ package com.oracle.graal.truffle.nodes.asserts;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.nodes.*;
 
-public class NeverPartOfCompilationNode extends MacroNode implements com.oracle.graal.graph.Node.IterableNodeType {
+public class NeverPartOfCompilationNode extends MacroNode implements com.oracle.graal.graph.IterableNodeType {
 
     private final String message;
 

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
-public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implements Canonicalizable, Lowerable, ArrayLengthProvider, Node.IterableNodeType {
+public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implements Canonicalizable, Lowerable, ArrayLengthProvider, IterableNodeType {
 
     @Input private ValueNode length;
     private final boolean fillContents;

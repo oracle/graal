@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 @NodeInfo(nameTemplate = "Alloc {i#virtualObjects}")
-public final class CommitAllocationNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, Node.IterableNodeType, Simplifiable {
+public final class CommitAllocationNode extends FixedWithNextNode implements VirtualizableAllocation, Lowerable, IterableNodeType, Simplifiable {
 
     @Input private final NodeInputList<VirtualObjectNode> virtualObjects = new NodeInputList<>(this);
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);

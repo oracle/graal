@@ -36,7 +36,7 @@ import com.oracle.truffle.api.frame.*;
  * Intrinsic node for write access to a Truffle frame.
  */
 @NodeInfo(nameTemplate = "FrameSet{p#slotKind/s}{p#frameSlot/s}")
-public class FrameSetNode extends FrameAccessNode implements Node.IterableNodeType, Virtualizable, Lowerable {
+public class FrameSetNode extends FrameAccessNode implements IterableNodeType, Virtualizable, Lowerable {
 
     @Input private ValueNode value;
 

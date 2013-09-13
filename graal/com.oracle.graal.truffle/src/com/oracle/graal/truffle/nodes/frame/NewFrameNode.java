@@ -42,7 +42,7 @@ import com.oracle.truffle.api.frame.*;
  * Intrinsic node representing the call for creating a frame in the {@link OptimizedCallTarget}
  * class.
  */
-public class NewFrameNode extends FixedWithNextNode implements Node.IterableNodeType, VirtualizableAllocation, Canonicalizable {
+public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
     static final ResolvedJavaType FRAME_TYPE = Graal.getRequiredCapability(MetaAccessProvider.class).lookupJavaType(FrameWithoutBoxing.class);
 

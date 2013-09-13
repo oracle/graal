@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Marks a position in the graph where a safepoint should be emitted.
  */
-public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, Node.IterableNodeType {
+public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable, IterableNodeType {
 
     public SafepointNode() {
         this(StampFactory.forVoid());

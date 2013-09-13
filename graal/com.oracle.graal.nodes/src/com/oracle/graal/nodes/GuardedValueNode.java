@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * 
  * A GuardedValueNode will only go away if its guard is null or {@link StructuredGraph#start()}.
  */
-public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Node.IterableNodeType, GuardingNode, Canonicalizable, ValueProxy {
+public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, GuardingNode, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
 

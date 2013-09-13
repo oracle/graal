@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * variable.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Phi({i#values})")
-public class PhiNode extends FloatingNode implements Canonicalizable, Node.IterableNodeType, GuardingNode {
+public class PhiNode extends FloatingNode implements Canonicalizable, IterableNodeType, GuardingNode {
 
     public static enum PhiType {
         Value(null), // normal value phis

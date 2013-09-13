@@ -23,14 +23,14 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Nodes of this type are inserted into the graph to denote points of interest to debugging.
  */
-public class InfopointNode extends AbstractStateSplit implements LIRLowerable, Node.IterableNodeType {
+public class InfopointNode extends AbstractStateSplit implements LIRLowerable, IterableNodeType {
 
     public final InfopointReason reason;
 

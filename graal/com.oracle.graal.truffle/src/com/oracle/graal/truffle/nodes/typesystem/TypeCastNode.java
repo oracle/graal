@@ -28,7 +28,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.Node.IterableNodeType, ValueProxy, Virtualizable {
+public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.IterableNodeType, ValueProxy, Virtualizable {
 
     @Input private ValueNode receiver;
     @Input private ValueNode object;

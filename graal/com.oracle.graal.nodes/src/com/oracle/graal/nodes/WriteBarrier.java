@@ -27,7 +27,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, Node.IterableNodeType {
+public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, IterableNodeType {
 
     @Input private ValueNode object;
     @Input private LocationNode location;

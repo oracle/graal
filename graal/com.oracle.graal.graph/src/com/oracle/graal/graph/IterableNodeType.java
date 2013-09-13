@@ -20,29 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.frame;
-
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.truffle.*;
+package com.oracle.graal.graph;
 
 /**
- * Intrinsic node for materializing a Truffle frame.
+ * A marker for a node type supporting {@linkplain Graph#getNodes(Class) fast iteration} of its
+ * instances in a graph. The support for fast iteration comes with a memory cost (e.g., extra data
+ * structures {@link Graph}) so only node types for which fast iteration provides a compilation
+ * performance benefit should implement this interface.
  */
-@NodeInfo(nameTemplate = "MaterializeFrame{p#frame/s}")
-public class MaterializeFrameNode extends FixedWithNextNode implements IterableNodeType {
-
-    @Input private ValueNode frame;
-
-    public MaterializeFrameNode(ValueNode frame) {
-        super(frame.stamp());
-        this.frame = frame;
-    }
-
-    public ValueNode getFrame() {
-        return frame;
-    }
-
-    @NodeIntrinsic
-    public static native <T> T materialize(FrameWithoutBoxing frame);
+public interface IterableNodeType {
 }
