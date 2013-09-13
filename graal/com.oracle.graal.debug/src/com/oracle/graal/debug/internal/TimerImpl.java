@@ -42,19 +42,8 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
      */
     private static ThreadLocal<AbstractTimer> currentTimer = new ThreadLocal<>();
 
-    private boolean conditional;
-
     public TimerImpl(String name, boolean conditional) {
-        super(name);
-        this.conditional = conditional;
-    }
-
-    public void setConditional(boolean flag) {
-        conditional = flag;
-    }
-
-    public boolean isConditional() {
-        return conditional;
+        super(name, conditional);
     }
 
     @Override
@@ -80,9 +69,13 @@ public final class TimerImpl extends DebugValue implements DebugTimer {
         }
     }
 
+    public static String valueToString(long value) {
+        return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
+    }
+
     @Override
     public String toString(long value) {
-        return String.format("%d.%d ms", value / 1000000, (value / 100000) % 10);
+        return valueToString(value);
     }
 
     private abstract class AbstractTimer implements TimerCloseable {
