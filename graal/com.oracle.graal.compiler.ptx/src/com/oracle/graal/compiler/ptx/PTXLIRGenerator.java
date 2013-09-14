@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -786,9 +787,9 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        // LIRFrameState info = state();
+        // LIRFrameState info = state(i);
         // append(new PTXSafepointOp(info, runtime().config, this));
-        throw new InternalError("NYI");
+        Debug.log("visitSafePointNode unimplemented");
     }
 
     @Override

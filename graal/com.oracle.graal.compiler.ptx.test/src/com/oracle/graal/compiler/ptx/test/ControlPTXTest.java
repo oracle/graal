@@ -26,15 +26,25 @@ import org.junit.*;
 
 import java.lang.reflect.Method;
 
-public class ControlTest extends PTXTestBase {
+public class ControlPTXTest extends PTXTestBase {
 
     @Ignore
     @Test
     public void testControl() {
-        compile("testSwitch1I");
-        compile("testStatic");
-        compile("testCall");
-        compile("testLookupSwitch1I");
+        compile("testLoop");
+        // compile("testSwitch1I");
+        // compile("testStatic");
+        // compile("testCall");
+        // compile("testLookupSwitch1I");
+    }
+
+    public static int testLoop(int n) {
+        int sum = 0;
+
+        for (int i = 0; i < n; i++) {
+            sum++;
+        }
+        return sum;
     }
 
     public static int testSwitch1I(int a) {
@@ -95,8 +105,8 @@ public class ControlTest extends PTXTestBase {
     }
 
     public static void main(String[] args) {
-        ControlTest test = new ControlTest();
-        for (Method m : ControlTest.class.getMethods()) {
+        ControlPTXTest test = new ControlPTXTest();
+        for (Method m : ControlPTXTest.class.getMethods()) {
             String name = m.getName();
             if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
                 // CheckStyle: stop system..print check
