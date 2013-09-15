@@ -364,6 +364,7 @@ public class NodeUtil {
             if (unsafe.getObject(parent, fieldOffset) == oldChild) {
                 assert assertAssignable(nodeClass, fieldOffset, newChild);
                 unsafe.putObject(parent, fieldOffset, newChild);
+                return;
             }
         }
 
@@ -376,6 +377,7 @@ public class NodeUtil {
                     if (array[i] == oldChild) {
                         assert assertAssignable(nodeClass, fieldOffset, newChild);
                         array[i] = newChild;
+                        return;
                     }
                 }
             }
