@@ -237,6 +237,16 @@ public abstract class Node implements Cloneable, Formattable {
         }
     }
 
+    int getUsageCountUpperBound() {
+        if (usage0 == null) {
+            return 0;
+        }
+        if (usage1 == null) {
+            return 1;
+        }
+        return 2 + extraUsages.length;
+    }
+
     /**
      * Gets the list of nodes that use this node (e.g., as an input).
      */
