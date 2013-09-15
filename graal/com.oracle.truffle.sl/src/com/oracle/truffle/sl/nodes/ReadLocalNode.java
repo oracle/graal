@@ -50,7 +50,7 @@ public abstract class ReadLocalNode extends FrameSlotNode {
         try {
             return frame.getObject(slot);
         } catch (FrameSlotTypeException e) {
-            throw new RuntimeException("uninitialized variable " + slot.getIdentifier());
+            throw new IllegalStateException();
         }
     }
 

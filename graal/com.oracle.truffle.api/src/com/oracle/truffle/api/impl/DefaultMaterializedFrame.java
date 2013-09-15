@@ -46,7 +46,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setObject(FrameSlot slot, Object value) throws FrameSlotTypeException {
+    public void setObject(FrameSlot slot, Object value) {
         wrapped.setObject(slot, value);
     }
 

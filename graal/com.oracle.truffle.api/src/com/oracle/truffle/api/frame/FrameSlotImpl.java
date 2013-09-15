@@ -51,9 +51,10 @@ public final class FrameSlotImpl implements FrameSlot {
     }
 
     public void setKind(final FrameSlotKind kind) {
-        assert this.kind != kind;
-        this.kind = kind;
-        this.descriptor.updateVersion();
+        if (this.kind != kind) {
+            this.kind = kind;
+            this.descriptor.updateVersion();
+        }
     }
 
     @Override
