@@ -42,6 +42,8 @@ public class ReplaceLoadFinalPhase extends Phase {
                 if (!loadFieldNode.isStatic() && isCompilationFinal(loadFieldNode.field())) {
                     graph.replaceFixedWithFixed(loadIndexedNode, graph.add(new LoadIndexedFinalNode(loadIndexedNode.array(), loadIndexedNode.index(), loadIndexedNode.elementKind())));
                 }
+            } else if (loadIndexedNode.array() instanceof ConstantNode) {
+                graph.replaceFixedWithFixed(loadIndexedNode, graph.add(new LoadIndexedFinalNode(loadIndexedNode.array(), loadIndexedNode.index(), loadIndexedNode.elementKind())));
             }
         }
     }

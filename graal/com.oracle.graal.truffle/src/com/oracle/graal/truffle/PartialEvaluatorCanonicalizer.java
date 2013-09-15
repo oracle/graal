@@ -57,7 +57,8 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
     }
 
     private static boolean verifyFieldValue(ResolvedJavaField field, Constant constant) {
-        assert field.getAnnotation(Child.class) == null || constant.isNull() || constant.asObject() instanceof com.oracle.truffle.api.nodes.Node : "@Child field value must be a Node: " + field;
+        assert field.getAnnotation(Child.class) == null || constant.isNull() || constant.asObject() instanceof com.oracle.truffle.api.nodes.Node : "@Child field value must be a Node: " + field +
+                        ", but was: " + constant.asObject();
         return true;
     }
 }

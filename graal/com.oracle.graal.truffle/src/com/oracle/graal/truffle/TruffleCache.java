@@ -34,6 +34,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -48,6 +49,7 @@ import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
+import com.oracle.truffle.api.nodes.Node.*;
 
 /**
  * Implementation of a cache for Truffle graphs for improving partial evaluation time.
@@ -59,6 +61,7 @@ public final class TruffleCache {
     private final OptimisticOptimizations optimisticOptimizations;
     private final Replacements replacements;
 
+    private final HashMap<ResolvedJavaMethod, StructuredGraph> rawCache = new HashMap<>();
     private final HashMap<ResolvedJavaMethod, StructuredGraph> cache = new HashMap<>();
 
     public TruffleCache(MetaAccessProvider metaAccessProvider, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
@@ -68,7 +71,7 @@ public final class TruffleCache {
         this.replacements = replacements;
     }
 
-    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions) {
+    public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
 
         StructuredGraph resultGraph = null;
         if (cache.containsKey(method)) {
@@ -82,7 +85,7 @@ public final class TruffleCache {
             resultGraph = Debug.sandbox("TruffleCache", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Callable<StructuredGraph>() {
 
                 public StructuredGraph call() {
-                    StructuredGraph newGraph = parseGraph(method);
+                    StructuredGraph newGraph = parseGraph(method).copy();
 
                     // Get stamps from actual arguments.
                     List<Stamp> stamps = new ArrayList<>();
@@ -101,15 +104,20 @@ public final class TruffleCache {
                     }
 
                     // Set stamps into graph before optimizing.
+                    List<Node> modifiedLocals = new ArrayList<>(arguments.size());
                     for (LocalNode localNode : newGraph.getNodes(LocalNode.class)) {
                         int index = localNode.index();
                         Stamp stamp = stamps.get(index);
-                        localNode.setStamp(stamp);
+
+                        if (!stamp.equals(localNode.stamp())) {
+                            localNode.setStamp(stamp);
+                            modifiedLocals.add(localNode);
+                        }
                     }
 
                     Assumptions tmpAssumptions = new Assumptions(false);
 
-                    optimizeGraph(newGraph, tmpAssumptions);
+                    optimizeGraph(newGraph, tmpAssumptions, newGraph.getNodes().snapshot());
 
                     PhaseContext context = new PhaseContext(metaAccessProvider, tmpAssumptions, replacements);
                     PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue()));
@@ -124,6 +132,8 @@ public final class TruffleCache {
             });
         }
 
+        // histogram.add(resultGraph);
+
         final StructuredGraph clonedResultGraph = resultGraph.copy();
 
         Debug.sandbox("TruffleCacheConstants", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Runnable() {
@@ -131,24 +141,64 @@ public final class TruffleCache {
             public void run() {
 
                 Debug.dump(clonedResultGraph, "before applying constants");
+                List<Node> modifiedLocals = new ArrayList<>(arguments.size());
                 // Pass on constant arguments.
                 for (LocalNode local : clonedResultGraph.getNodes(LocalNode.class)) {
                     ValueNode arg = arguments.get(local.index());
                     if (arg.isConstant()) {
                         Constant constant = arg.asConstant();
-                        local.replaceAndDelete(ConstantNode.forConstant(constant, metaAccessProvider, clonedResultGraph));
-                    } else {
+                        ConstantNode constantNode = ConstantNode.forConstant(constant, metaAccessProvider, clonedResultGraph);
+                        local.replaceAndDelete(constantNode);
+                        modifiedLocals.add(constantNode);
+                    } else if (!local.stamp().equals(arg.stamp())) {
                         local.setStamp(arg.stamp());
+                        modifiedLocals.add(local);
                     }
                 }
                 Debug.dump(clonedResultGraph, "after applying constants");
-                optimizeGraph(clonedResultGraph, assumptions);
+                List<Node> modifiedLocalsUsages = new ArrayList<>(modifiedLocals.size() * 2);
+                for (Node local : modifiedLocals) {
+                    for (Node usage : local.usages()) {
+                        if (usage instanceof Canonicalizable) {
+                            modifiedLocalsUsages.add(usage);
+                        }
+                    }
+                }
+                optimizeGraph(clonedResultGraph, assumptions, modifiedLocalsUsages);
+
+                modifiedLocalsUsages.clear();
+                for (Node local : modifiedLocals) {
+                    for (Node usage : local.usages()) {
+                        if (usage instanceof Canonicalizable) {
+                            modifiedLocalsUsages.add(usage);
+                        }
+                    }
+                }
+
+                int newNodesMark = clonedResultGraph.getMark();
+                new ReplaceLoadFinalPhase().apply(clonedResultGraph);
+                for (Node n : clonedResultGraph.getNewNodes(newNodesMark)) {
+                    if (n instanceof Canonicalizable) {
+                        modifiedLocalsUsages.add(n);
+                    }
+                }
+                finalCanonicalizer.applyIncremental(clonedResultGraph, new PhaseContext(metaAccessProvider, assumptions, replacements), modifiedLocalsUsages);
+
+                for (Node n : clonedResultGraph.getNodes()) {
+                    if (n instanceof LoadFieldNode) {
+                        LoadFieldNode loadFieldNode = (LoadFieldNode) n;
+                        if (loadFieldNode.field().getAnnotation(Child.class) != null) {
+                            throw new RuntimeException("found remaining child load field ");
+                        }
+
+                    }
+                }
             }
         });
         return clonedResultGraph;
     }
 
-    private void optimizeGraph(StructuredGraph newGraph, Assumptions assumptions) {
+    private void optimizeGraph(StructuredGraph newGraph, Assumptions assumptions, Iterable<Node> changedNodes) {
         PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
         ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
         ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
@@ -157,20 +207,21 @@ public final class TruffleCache {
 
         int maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
 
-        contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, context);
+        contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, changedNodes, context);
 
         while (newGraph.getNodeCount() <= maxNodes) {
 
             int mark = newGraph.getMark();
 
             expandGraph(newGraph, maxNodes);
+            NodeIterable<Node> newNodes = newGraph.getNewNodes(mark);
 
-            if (newGraph.getNewNodes(mark).count() == 0) {
+            if (newNodes.isEmpty()) {
                 // No progress => exit iterative optimization.
                 break;
             }
 
-            contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, context);
+            contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, newNodes, context);
         }
 
         if (newGraph.getNodeCount() > maxNodes && (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue() || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue())) {
@@ -179,11 +230,10 @@ public final class TruffleCache {
     }
 
     private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase conditionalEliminationPhase, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
-                    CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, PhaseContext context) {
-        new ReplaceLoadFinalPhase().apply(newGraph);
+                    CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, Iterable<Node> newNodes, PhaseContext context) {
 
         // Canonicalize / constant propagate.
-        canonicalizerPhase.apply(newGraph, context);
+        canonicalizerPhase.applyIncremental(newGraph, context, newNodes);
 
         // Early read eliminiation
         readEliminationPhase.apply(newGraph, context);
@@ -298,12 +348,29 @@ public final class TruffleCache {
         return invoke.asNode();
     }
 
-    private StructuredGraph parseGraph(ResolvedJavaMethod method) {
-        StructuredGraph graph = new StructuredGraph(method);
-        new GraphBuilderPhase(metaAccessProvider, config, optimisticOptimizations).apply(graph);
-        // Intrinsify methods.
-        new ReplaceIntrinsicsPhase(replacements).apply(graph);
-        return graph;
+    private StructuredGraph parseGraph(final ResolvedJavaMethod method) {
+        if (rawCache.containsKey(method)) {
+            return rawCache.get(method);
+        }
+
+        StructuredGraph resultGraph = Debug.sandbox("InnerTruffleCache", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Callable<StructuredGraph>() {
+
+            public StructuredGraph call() {
+                final StructuredGraph graph = new StructuredGraph(method);
+                new GraphBuilderPhase(metaAccessProvider, config, optimisticOptimizations).apply(graph);
+                // Intrinsify methods.
+                new ReplaceIntrinsicsPhase(replacements).apply(graph);
+                for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
+                    if (d.getDeoptimizationReason() == DeoptimizationReason.Unresolved) {
+                        // Cannot store this graph.
+                        return graph;
+                    }
+                }
+                rawCache.put(method, graph);
+                return graph;
+            }
+        });
+        return resultGraph;
     }
 
     private static boolean checkArgumentStamps(StructuredGraph graph, NodeInputList<ValueNode> arguments) {
