@@ -305,6 +305,7 @@ public class GraphBuilderPhase extends Phase {
      * @param type the unresolved type of the constant
      */
     protected void handleUnresolvedLoadConstant(JavaType type) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.push(Kind.Object, appendConstant(Constant.NULL_OBJECT));
     }
@@ -314,6 +315,7 @@ public class GraphBuilderPhase extends Phase {
      * @param object the object value whose type is being checked against {@code type}
      */
     protected void handleUnresolvedCheckCast(JavaType type, ValueNode object) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new FixedGuardNode(currentGraph.unique(new IsNullNode(object)), Unresolved, InvalidateRecompile));
         frameState.apush(appendConstant(Constant.NULL_OBJECT));
     }
@@ -323,6 +325,7 @@ public class GraphBuilderPhase extends Phase {
      * @param object the object value whose type is being checked against {@code type}
      */
     protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
+        assert !graphBuilderConfig.eagerResolving();
         BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
         DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
@@ -334,6 +337,7 @@ public class GraphBuilderPhase extends Phase {
      * @param type the type being instantiated
      */
     protected void handleUnresolvedNewInstance(JavaType type) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.apush(appendConstant(Constant.NULL_OBJECT));
     }
@@ -343,6 +347,7 @@ public class GraphBuilderPhase extends Phase {
      * @param length the length of the array
      */
     protected void handleUnresolvedNewObjectArray(JavaType type, ValueNode length) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.apush(appendConstant(Constant.NULL_OBJECT));
     }
@@ -352,6 +357,7 @@ public class GraphBuilderPhase extends Phase {
      * @param dims the dimensions for the multi-array
      */
     protected void handleUnresolvedNewMultiArray(JavaType type, ValueNode[] dims) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.apush(appendConstant(Constant.NULL_OBJECT));
     }
@@ -361,6 +367,7 @@ public class GraphBuilderPhase extends Phase {
      * @param receiver the object containing the field or {@code null} if {@code field} is static
      */
     protected void handleUnresolvedLoadField(JavaField field, ValueNode receiver) {
+        assert !graphBuilderConfig.eagerResolving();
         Kind kind = field.getKind();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.push(kind.getStackKind(), appendConstant(Constant.defaultForKind(kind)));
@@ -372,6 +379,7 @@ public class GraphBuilderPhase extends Phase {
      * @param receiver the object containing the field or {@code null} if {@code field} is static
      */
     protected void handleUnresolvedStoreField(JavaField field, ValueNode value, ValueNode receiver) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
     }
 
@@ -380,10 +388,12 @@ public class GraphBuilderPhase extends Phase {
      * @param type
      */
     protected void handleUnresolvedExceptionType(Representation representation, JavaType type) {
+        assert !graphBuilderConfig.eagerResolving();
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
     }
 
     protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
+        assert !graphBuilderConfig.eagerResolving();
         boolean withReceiver = invokeKind != InvokeKind.Static;
         append(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         frameState.popArguments(javaMethod.getSignature().getParameterSlots(withReceiver), javaMethod.getSignature().getParameterCount(withReceiver));
@@ -1643,9 +1653,9 @@ public class GraphBuilderPhase extends Phase {
         if (initialized && graphBuilderConfig.getSkippedExceptionTypes() != null) {
             ResolvedJavaType resolvedCatchType = (ResolvedJavaType) catchType;
             for (ResolvedJavaType skippedType : graphBuilderConfig.getSkippedExceptionTypes()) {
-                initialized &= !skippedType.isAssignableFrom(resolvedCatchType);
-                if (!initialized) {
-                    break;
+                if (skippedType.isAssignableFrom(resolvedCatchType)) {
+                    append(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
+                    return;
                 }
             }
         }
