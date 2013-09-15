@@ -100,7 +100,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
                 }
                 constants[i] = constantValue;
             }
-            PhiNode newPhi = graph().add(new PhiNode(stamp(), phi.merge()));
+            PhiNode newPhi = graph().addWithoutUnique(new PhiNode(stamp(), phi.merge()));
             for (int i = 0; i < phi.valueCount(); i++) {
                 newPhi.addInput(ConstantNode.forConstant(constants[i], runtime, graph()));
             }

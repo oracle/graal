@@ -116,7 +116,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     }
 
     private ConditionalNode(ValueNode type, ValueNode object) {
-        this(type.graph().add(new InstanceOfDynamicNode(type, object)));
+        this(type.graph().unique(new InstanceOfDynamicNode(type, object)));
     }
 
     @NodeIntrinsic

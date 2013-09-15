@@ -578,7 +578,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 // removed
                 MergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
-                PhiNode newPhi = graph().add(new PhiNode(oldPhi.stamp(), newMerge));
+                PhiNode newPhi = graph().addWithoutUnique(new PhiNode(oldPhi.stamp(), newMerge));
 
                 for (AbstractEndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));

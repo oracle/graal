@@ -222,6 +222,24 @@ public class Graph {
      * @return the node which was added to the graph
      */
     public <T extends Node> T add(T node) {
+        if (node.getNodeClass().valueNumberable()) {
+            throw new IllegalStateException("Using add for value numberable node. Consider using either unique or addWithoutUnique.");
+        }
+        return addHelper(node);
+    }
+
+    public <T extends Node> T addWithoutUnique(T node) {
+        return addHelper(node);
+    }
+
+    public <T extends Node> T addOrUnique(T node) {
+        if (node.getNodeClass().valueNumberable()) {
+            return uniqueHelper(node);
+        }
+        return add(node);
+    }
+
+    private <T extends Node> T addHelper(T node) {
         node.initialize(this);
         return node;
     }
@@ -260,9 +278,13 @@ public class Graph {
      * @return the node which was added to the graph or a <i>similar</i> which was already in the
      *         graph.
      */
-    @SuppressWarnings("unchecked")
     public <T extends Node & ValueNumberable> T unique(T node) {
         assert checkValueNumberable(node);
+        return uniqueHelper(node);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Node> T uniqueHelper(T node) {
 
         for (Node input : node.inputs()) {
             if (input != null) {
@@ -271,14 +293,14 @@ public class Graph {
                         return (T) usage;
                     }
                 }
-                return add(node);
+                return addHelper(node);
             }
         }
         Node cachedNode = cachedNodes.get(new CacheEntry(node));
         if (cachedNode != null && cachedNode.isAlive()) {
             return (T) cachedNode;
         } else {
-            Node result = add(node);
+            Node result = addHelper(node);
             cachedNodes.put(new CacheEntry(node), result);
             return (T) result;
         }

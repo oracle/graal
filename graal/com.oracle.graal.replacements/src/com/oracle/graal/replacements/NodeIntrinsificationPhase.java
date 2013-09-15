@@ -89,7 +89,7 @@ public class NodeIntrinsificationPhase extends Phase {
             Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
-            methodCallTargetNode.graph().add(newInstance);
+            newInstance = methodCallTargetNode.graph().addOrUnique(newInstance);
             methodCallTargetNode.invoke().intrinsify(newInstance);
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -137,7 +137,7 @@ public class NodeIntrinsificationPhase extends Phase {
     /**
      * Converts the arguments of an invoke node to object values suitable for use as the arguments
      * to a reflective invocation of a Java constructor or method.
-     *
+     * 
      * @param folding specifies if the invocation is for handling a {@link Fold} annotation
      * @return the arguments for the reflective invocation or null if an argument of {@code invoke}
      *         that is expected to be constant isn't

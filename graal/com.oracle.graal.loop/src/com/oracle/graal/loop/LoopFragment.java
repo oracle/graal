@@ -295,7 +295,7 @@ public abstract class LoopFragment {
                 final ValueNode replaceWith;
                 ProxyNode newVpn = getDuplicatedNode(vpn);
                 if (newVpn != null) {
-                    PhiNode phi = graph.add(vpn.type() == PhiType.Value ? new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge, vpn.getIdentity()));
+                    PhiNode phi = graph.addWithoutUnique(vpn.type() == PhiType.Value ? new PhiNode(vpn.kind(), merge) : new PhiNode(vpn.type(), merge, vpn.getIdentity()));
                     phi.addInput(vpn);
                     phi.addInput(newVpn);
                     replaceWith = phi;

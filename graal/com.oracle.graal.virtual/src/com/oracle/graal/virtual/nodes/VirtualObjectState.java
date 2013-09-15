@@ -53,7 +53,7 @@ public final class VirtualObjectState extends EscapeObjectState implements Itera
 
     @Override
     public VirtualObjectState duplicateWithVirtualState() {
-        return graph().add(new VirtualObjectState(object(), fieldValues));
+        return graph().addWithoutUnique(new VirtualObjectState(object(), fieldValues));
     }
 
     @Override

@@ -97,7 +97,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      */
     @Override
     public void lower(LoweringTool tool) {
-        InstanceOfNode typeTest = graph().add(new InstanceOfNode(type, object, profile));
+        InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         Stamp stamp = StampFactory.declared(type);
         if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
             stamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp);

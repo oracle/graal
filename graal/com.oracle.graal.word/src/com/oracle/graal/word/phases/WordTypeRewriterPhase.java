@@ -282,7 +282,7 @@ public class WordTypeRewriterPhase extends Phase {
     private ValueNode nodeClassOp(StructuredGraph graph, Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right, Invoke invoke) {
         try {
             Constructor<? extends ValueNode> constructor = nodeClass.getConstructor(Kind.class, ValueNode.class, ValueNode.class);
-            ValueNode result = graph.add(constructor.newInstance(wordKind, left, right));
+            ValueNode result = graph.addOrUnique(constructor.newInstance(wordKind, left, right));
             if (result instanceof FixedWithNextNode) {
                 graph.addBeforeFixed(invoke.asNode(), (FixedWithNextNode) result);
             }

@@ -52,7 +52,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
             // Only null profiling is not beneficial enough to keep the node around.
             return object;
         }
-        return object.graph().add(new TypeProfileProxyNode(object, profile));
+        return object.graph().addWithoutUnique(new TypeProfileProxyNode(object, profile));
     }
 
     private TypeProfileProxyNode(ValueNode object, JavaTypeProfile profile) {

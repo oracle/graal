@@ -113,7 +113,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert !node.isAlive() && !node.isDeleted() : node + " " + cause;
-                graph.add(node);
+                graph.addWithoutUnique(node);
             }
         });
     }
@@ -187,7 +187,7 @@ public class GraphEffectList extends EffectList {
                         stateAfter.virtualObjectMappings().remove(i);
                     }
                 }
-                stateAfter.addVirtualObjectMapping(graph.add(state));
+                stateAfter.addVirtualObjectMapping(graph.addWithoutUnique(state));
             }
 
             @Override
@@ -328,7 +328,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 for (ValueNode otherAllocation : otherAllocations) {
-                    graph.add(otherAllocation);
+                    graph.addWithoutUnique(otherAllocation);
                     if (otherAllocation instanceof FixedWithNextNode) {
                         graph.addBeforeFixed(position, (FixedWithNextNode) otherAllocation);
                     } else {
@@ -344,7 +344,7 @@ public class GraphEffectList extends EffectList {
                         graph.addBeforeFixed(position, commit);
                     }
                     for (AllocatedObjectNode obj : objects) {
-                        graph.add(obj);
+                        graph.addWithoutUnique(obj);
                         commit.getVirtualObjects().add(obj.getVirtualObject());
                         obj.setCommit(commit);
                     }

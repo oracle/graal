@@ -44,7 +44,7 @@ public final class MaterializedObjectState extends EscapeObjectState implements 
 
     @Override
     public MaterializedObjectState duplicateWithVirtualState() {
-        return graph().add(new MaterializedObjectState(object(), materializedValue));
+        return graph().addWithoutUnique(new MaterializedObjectState(object(), materializedValue));
     }
 
     @Override
