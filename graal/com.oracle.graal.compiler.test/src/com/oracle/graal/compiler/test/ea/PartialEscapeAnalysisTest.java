@@ -173,7 +173,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
             NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(result).apply();
             double probabilitySum = 0;
             int materializeCount = 0;
-            for (CommitAllocationNode materialize : result.getNodes(CommitAllocationNode.class)) {
+            for (CommitAllocationNode materialize : result.getNodes().filter(CommitAllocationNode.class)) {
                 probabilitySum += nodeProbabilities.get(materialize) * materialize.getVirtualObjects().size();
                 materializeCount += materialize.getVirtualObjects().size();
             }

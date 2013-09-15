@@ -81,7 +81,7 @@ public class PartialEscapePhase extends EffectsPhase<PhaseContext> {
     public static Map<Invoke, Double> getHints(StructuredGraph graph) {
         NodesToDoubles probabilities = new ComputeProbabilityClosure(graph).apply();
         Map<Invoke, Double> hints = null;
-        for (CommitAllocationNode commit : graph.getNodes(CommitAllocationNode.class)) {
+        for (CommitAllocationNode commit : graph.getNodes().filter(CommitAllocationNode.class)) {
             double sum = 0;
             double invokeSum = 0;
             for (Node commitUsage : commit.usages()) {
