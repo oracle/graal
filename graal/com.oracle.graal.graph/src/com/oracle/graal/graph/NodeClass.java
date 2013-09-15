@@ -139,6 +139,7 @@ public final class NodeClass extends FieldIntrospection {
     private final long[] successorOffsets;
     private final Class<?>[] dataTypes;
     private final boolean canGVN;
+    private final boolean isLeafNode;
     private final int startGVNNumber;
     private final String shortName;
     private final String nameTemplate;
@@ -212,6 +213,8 @@ public final class NodeClass extends FieldIntrospection {
             this.iterableId = NOT_ITERABLE;
             this.iterableIds = null;
         }
+
+        isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
     }
 
     @Override
@@ -248,6 +251,10 @@ public final class NodeClass extends FieldIntrospection {
 
     public boolean valueNumberable() {
         return canGVN;
+    }
+
+    public boolean isLeafNode() {
+        return isLeafNode;
     }
 
     public static int cacheSize() {

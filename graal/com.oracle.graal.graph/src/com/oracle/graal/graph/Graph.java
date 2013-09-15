@@ -65,6 +65,8 @@ public class Graph {
         private final Node node;
 
         public CacheEntry(Node node) {
+            assert node.getNodeClass().valueNumberable();
+            assert node.getNodeClass().isLeafNode();
             this.node = node;
         }
 
@@ -82,7 +84,7 @@ public class Graph {
                 CacheEntry other = (CacheEntry) obj;
                 NodeClass nodeClass = node.getNodeClass();
                 if (other.node.getNodeClass() == nodeClass) {
-                    return nodeClass.valueNumberable() && nodeClass.valueEqual(node, other.node) && nodeClass.edgesEqual(node, other.node);
+                    return nodeClass.valueEqual(node, other.node);
                 }
             }
             return false;
@@ -284,30 +286,47 @@ public class Graph {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends Node> T uniqueHelper(T node) {
-
-        for (Node input : node.inputs()) {
-            if (input != null) {
-                for (Node usage : input.usages()) {
-                    if (usage != node && node.getNodeClass().valueEqual(node, usage) && node.getNodeClass().edgesEqual(node, usage)) {
-                        return (T) usage;
-                    }
-                }
-                return addHelper(node);
-            }
-        }
-        Node cachedNode = cachedNodes.get(new CacheEntry(node));
-        if (cachedNode != null && cachedNode.isAlive()) {
-            return (T) cachedNode;
+    <T extends Node> T uniqueHelper(T node) {
+        assert node.getNodeClass().valueNumberable();
+        Node other = this.findDuplicate(node);
+        if (other != null) {
+            return (T) other;
         } else {
             Node result = addHelper(node);
-            cachedNodes.put(new CacheEntry(node), result);
+            if (node.getNodeClass().isLeafNode()) {
+                putNodeIntoCache(result);
+            }
             return (T) result;
         }
     }
 
+    void putNodeIntoCache(Node node) {
+        assert node.graph() == this || node.graph() == null;
+        assert node.getNodeClass().valueNumberable();
+        assert node.getNodeClass().isLeafNode() : node.getClass();
+        cachedNodes.put(new CacheEntry(node), node);
+    }
+
+    Node findNodeInCache(Node node) {
+        CacheEntry key = new CacheEntry(node);
+        Node result = cachedNodes.get(key);
+        if (result != null && result.isDeleted()) {
+            cachedNodes.remove(key);
+            return null;
+        }
+        return result;
+    }
+
     public Node findDuplicate(Node node) {
-        if (node.getNodeClass().valueNumberable()) {
+        assert node.getNodeClass().valueNumberable();
+        if (node.getNodeClass().isLeafNode()) {
+            Node cachedNode = findNodeInCache(node);
+            if (cachedNode != null) {
+                return cachedNode;
+            } else {
+                return null;
+            }
+        } else {
             for (Node input : node.inputs()) {
                 if (input != null) {
                     for (Node usage : input.usages()) {
@@ -318,17 +337,6 @@ public class Graph {
                     return null;
                 }
             }
-        }
-        CacheEntry key = new CacheEntry(node);
-        Node cachedNode = cachedNodes.get(key);
-        if (cachedNode != null) {
-            if (!cachedNode.isAlive()) {
-                cachedNodes.remove(key);
-                return null;
-            }
-            return cachedNode != node ? cachedNode : null;
-        } else {
-            cachedNodes.put(key, node);
             return null;
         }
     }
