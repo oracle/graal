@@ -81,6 +81,11 @@ public class GraphBuilderPhase extends Phase {
 
     protected StructuredGraph currentGraph;
 
+    /**
+     * Head of placeholder list.
+     */
+    protected BlockPlaceholderNode placeholders;
+
     private final MetaAccessProvider runtime;
     private ConstantPool constantPool;
     private ResolvedJavaMethod method;
@@ -109,13 +114,24 @@ public class GraphBuilderPhase extends Phase {
     /**
      * Node that marks the begin of block during bytecode parsing. When a block is identified the
      * first time as a jump target, the placeholder is created and used as the successor for the
-     * jump. When the block is seen the second time, a MergeNode is created to correctly merge the
-     * now two different predecessor states.
+     * jump. When the block is seen the second time, a {@link MergeNode} is created to correctly
+     * merge the now two different predecessor states.
      */
-    private static class BlockPlaceholderNode extends FixedWithNextNode implements IterableNodeType {
+    private static class BlockPlaceholderNode extends FixedWithNextNode {
 
-        public BlockPlaceholderNode() {
+        // Cannot be explicitly declared as a Node type since it is not an input;
+        // would cause the !NODE_CLASS.isAssignableFrom(type) guarantee
+        // in NodeClass.FieldScanner.scanField() to fail.
+        private final Object nextPlaceholder;
+
+        public BlockPlaceholderNode(GraphBuilderPhase builder) {
             super(StampFactory.forVoid());
+            nextPlaceholder = builder.placeholders;
+            builder.placeholders = this;
+        }
+
+        BlockPlaceholderNode nextPlaceholder() {
+            return (BlockPlaceholderNode) nextPlaceholder;
         }
     }
 
@@ -236,9 +252,12 @@ public class GraphBuilderPhase extends Phase {
         connectLoopEndToBegin();
 
         // remove Placeholders
-        for (BlockPlaceholderNode n : currentGraph.getNodes(BlockPlaceholderNode.class)) {
-            currentGraph.removeFixed(n);
+        for (BlockPlaceholderNode n = placeholders; n != null; n = n.nextPlaceholder()) {
+            if (!n.isDeleted()) {
+                currentGraph.removeFixed(n);
+            }
         }
+        placeholders = null;
 
         // remove dead FrameStates
         for (Node n : currentGraph.getNodes(FrameState.class)) {
@@ -323,7 +342,7 @@ public class GraphBuilderPhase extends Phase {
      * @param object the object value whose type is being checked against {@code type}
      */
     protected void handleUnresolvedInstanceOf(JavaType type, ValueNode object) {
-        BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode());
+        BlockPlaceholderNode successor = currentGraph.add(new BlockPlaceholderNode(this));
         DeoptimizeNode deopt = currentGraph.add(new DeoptimizeNode(InvalidateRecompile, Unresolved));
         append(new IfNode(currentGraph.unique(new IsNullNode(object)), successor, deopt, 1));
         lastInstr = successor;
@@ -925,8 +944,8 @@ public class GraphBuilderPhase extends Phase {
         if (ObjectStamp.isObjectNonNull(receiver.stamp())) {
             return;
         }
-        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
-        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
+        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
+        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
         append(new IfNode(currentGraph.unique(new IsNullNode(receiver)), trueSucc, falseSucc, 0.01));
         lastInstr = falseSucc;
 
@@ -949,8 +968,8 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void emitBoundsCheck(ValueNode index, ValueNode length) {
-        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode());
-        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode());
+        BlockPlaceholderNode trueSucc = currentGraph.add(new BlockPlaceholderNode(this));
+        BlockPlaceholderNode falseSucc = currentGraph.add(new BlockPlaceholderNode(this));
         append(new IfNode(currentGraph.unique(new IntegerBelowThanNode(index, length)), trueSucc, falseSucc, 0.99));
         lastInstr = trueSucc;
 
@@ -1448,7 +1467,7 @@ public class GraphBuilderPhase extends Phase {
             // This is the first time we see this block as a branch target.
             // Create and return a placeholder that later can be replaced with a MergeNode when we
             // see this block again.
-            block.firstInstruction = currentGraph.add(new BlockPlaceholderNode());
+            block.firstInstruction = currentGraph.add(new BlockPlaceholderNode(this));
             Target target = checkLoopExit(block.firstInstruction, block, state);
             FixedNode result = target.fixed;
             block.entryState = target.state == state ? state.copy() : target.state;
