@@ -48,20 +48,29 @@ public class PTXParameterOp extends LIRInstruction {
         for (int i = 0; i < argCount; i++) {
             Kind paramKind = params[i].getKind();
             switch (paramKind) {
-            case Byte :
+            case Byte:
                 masm.param_8_decl(asRegister(params[i]), (i == (argCount - 1)));
                 break;
-            case Int :
+            case Short:
+                masm.param_16_decl(asRegister(params[i]), (i == (argCount - 1)));
+                break;
+            case Char:
+                masm.param_u16_decl(asRegister(params[i]), (i == (argCount - 1)));
+                break;
+            case Int:
                 masm.param_32_decl(asIntReg(params[i]), (i == (argCount - 1)));
                 break;
-            case Long :
+            case Long:
                 masm.param_64_decl(asLongReg(params[i]), (i == (argCount - 1)));
                 break;
-            case Float :
+            case Float:
                 masm.param_32_decl(asFloatReg(params[i]), (i == (argCount - 1)));
                 break;
-            case Double :
+            case Double:
                 masm.param_64_decl(asDoubleReg(params[i]), (i == (argCount - 1)));
+                break;
+            case Object:
+                masm.param_64_decl(asObjectReg(params[i]), (i == (argCount - 1)));
                 break;
             default :
                 throw GraalInternalError.shouldNotReachHere("unhandled parameter type "  + paramKind.toString());

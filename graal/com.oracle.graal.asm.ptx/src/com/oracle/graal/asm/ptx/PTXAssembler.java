@@ -553,6 +553,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString(".param" + " " + ".s8" + " " + d + (lastParam ? "" : ","));
     }
 
+    public final void param_16_decl(Register d, boolean lastParam) {
+        emitString(".param" + " " + ".s16" + " " + d + (lastParam ? "" : ","));
+    }
+
+    public final void param_u16_decl(Register d, boolean lastParam) {
+        emitString(".param" + " " + ".s16" + " " + d + (lastParam ? "" : ","));
+    }
+
     public final void param_32_decl(Register d, boolean lastParam) {
         emitString(".param" + " " + ".s32" + " " + d + (lastParam ? "" : ","));
     }

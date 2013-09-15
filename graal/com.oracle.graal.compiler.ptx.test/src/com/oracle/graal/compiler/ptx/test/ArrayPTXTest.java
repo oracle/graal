@@ -31,20 +31,24 @@ public class ArrayPTXTest extends PTXTestBase {
     @Ignore
     @Test
     public void testArray() {
-        compile("testArray1I");
-        compile("testArray1J");
-        compile("testArray1B");
-        compile("testArray1S");
-        compile("testArray1C");
-        compile("testArray1F");
-        compile("testArray1D");
-        compile("testArray1L");
-        compile("testStoreArray1I");
-        compile("testStoreArray1J");
-        compile("testStoreArray1B");
-        compile("testStoreArray1S");
-        compile("testStoreArray1F");
-        compile("testStoreArray1D");
+        int[] arrayI = {
+            1, 2, 3, 4, 5
+        };
+        Integer resI = (Integer) invoke(compile("testArray1I"), arrayI, 3);
+        printReport("testArray1I: " + resI);
+        // compile("testArray1J");
+        // compile("testArray1B");
+        // compile("testArray1S");
+        // compile("testArray1C");
+        // compile("testArray1F");
+        // compile("testArray1D");
+        // compile("testArray1L");
+        // compile("testStoreArray1I");
+        // compile("testStoreArray1J");
+        // compile("testStoreArray1B");
+        // compile("testStoreArray1S");
+        // compile("testStoreArray1F");
+        // compile("testStoreArray1D");
     }
 
     public static int testArray1I(int[] array, int i) {
@@ -101,6 +105,13 @@ public class ArrayPTXTest extends PTXTestBase {
 
     public static void testStoreArray1D(double[] array, int i, double val) {
         array[i] = val;
+    }
+
+    public static void printReport(String message) {
+        // CheckStyle: stop system..print check
+        System.out.println(message);
+        // CheckStyle: resume system..print check
+
     }
 
     public static void main(String[] args) {
