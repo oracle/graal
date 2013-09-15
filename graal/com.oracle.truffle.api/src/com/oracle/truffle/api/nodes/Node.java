@@ -75,7 +75,7 @@ public abstract class Node implements Cloneable {
             // source attribution, which would otherwise trigger this
             // exception. This method will eventually be deprecated.
             if (getSourceSection() != section) {
-                throw new IllegalStateException("Source section is already assigned.");
+                throw new IllegalStateException("Source section is already assigned. Old: " + getSourceSection() + ", new: " + section);
             }
         }
         this.sourceSection = section;
@@ -174,7 +174,7 @@ public abstract class Node implements Cloneable {
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
-        if (sourceSection != null) {
+        if (sourceSection != null && newNode.getSourceSection() == null) {
             // Pass on the source section to the new node.
             newNode.assignSourceSection(sourceSection);
         }
