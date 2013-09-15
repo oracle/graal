@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
@@ -144,6 +145,8 @@ public final class NodeClass extends FieldIntrospection {
     private final int iterableId;
     private int[] iterableIds;
 
+    private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
+
     private NodeClass(Class<?> clazz) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
@@ -185,6 +188,7 @@ public final class NodeClass extends FieldIntrospection {
         this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
         this.shortName = newShortName;
         if (IterableNodeType.class.isAssignableFrom(clazz)) {
+            ITERABLE_NODE_TYPES.increment();
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
             for (FieldIntrospection nodeClass : allClasses.values()) {
