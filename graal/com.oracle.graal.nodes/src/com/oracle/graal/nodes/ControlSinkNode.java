@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class ControlSinkNode extends FixedNode implements IterableNodeType {
+public abstract class ControlSinkNode extends FixedNode {
 
     public ControlSinkNode(Stamp stamp) {
         super(stamp);
