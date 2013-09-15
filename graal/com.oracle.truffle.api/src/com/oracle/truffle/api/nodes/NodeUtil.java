@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node.Children;
 /**
  * Utility class that manages the special access methods for node instances.
  */
-public class NodeUtil {
+public final class NodeUtil {
 
     /**
      * Interface that allows the customization of field offsets used for {@link Unsafe} field
@@ -274,7 +274,7 @@ public class NodeUtil {
         return array;
     }
 
-    protected static final Unsafe unsafe = getUnsafe();
+    private static final Unsafe unsafe = getUnsafe();
 
     private static Unsafe getUnsafe() {
         try {

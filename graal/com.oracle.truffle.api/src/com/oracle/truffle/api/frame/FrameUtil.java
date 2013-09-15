@@ -35,14 +35,7 @@ public final class FrameUtil {
      * @param value the new value of the local variable
      */
     public static void setObjectSafe(Frame frame, FrameSlot slot, Object value) {
-        if (slot.getKind() != FrameSlotKind.Object) {
-            slot.setKind(FrameSlotKind.Object);
-        }
-        try {
-            frame.setObject(slot, value);
-        } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
-        }
+        frame.setObject(slot, value);
     }
 
     /**
