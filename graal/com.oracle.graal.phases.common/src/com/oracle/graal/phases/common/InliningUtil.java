@@ -621,7 +621,7 @@ public class InliningUtil {
 
                 FixedNode exceptionSux = exceptionEdge.next();
                 graph.addBeforeFixed(exceptionSux, exceptionMerge);
-                exceptionObjectPhi = graph.add(new PhiNode(Kind.Object, exceptionMerge));
+                exceptionObjectPhi = graph.addWithoutUnique(new PhiNode(Kind.Object, exceptionMerge));
                 exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(invoke.stateAfter().bci, true, Kind.Object, exceptionObjectPhi));
             }
 
