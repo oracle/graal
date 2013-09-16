@@ -49,7 +49,7 @@ public class InstanceOfTest extends TypeCheckTest {
     protected void replaceProfile(StructuredGraph graph, JavaTypeProfile profile) {
         InstanceOfNode ion = graph.getNodes().filter(InstanceOfNode.class).first();
         if (ion != null) {
-            InstanceOfNode ionNew = graph.add(new InstanceOfNode(ion.type(), ion.object(), profile));
+            InstanceOfNode ionNew = graph.unique(new InstanceOfNode(ion.type(), ion.object(), profile));
             graph.replaceFloating(ion, ionNew);
         }
     }
