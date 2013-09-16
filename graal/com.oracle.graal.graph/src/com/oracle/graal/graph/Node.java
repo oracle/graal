@@ -456,7 +456,7 @@ public abstract class Node implements Cloneable, Formattable {
                 oldSuccessor.predecessor = null;
             }
             if (newSuccessor != null) {
-                assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s", newSuccessor, newSuccessor.predecessor);
+                assert assertTrue(newSuccessor.predecessor == null, "unexpected non-null predecessor in new successor (%s): %s, this=%s", newSuccessor, newSuccessor.predecessor, this);
                 newSuccessor.predecessor = this;
             }
         }
