@@ -103,7 +103,6 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     public FrameState(ResolvedJavaMethod method, int bci, List<ValueNode> values, int localsSize, int stackSize, boolean rethrowException, boolean duringCall,
                     List<EscapeObjectState> virtualObjectMappings) {
         assert stackSize >= 0;
-        assert (bci >= 0 && method != null) || (bci < 0 && method == null && values.isEmpty());
         this.method = method;
         this.bci = bci;
         this.localsSize = localsSize;
@@ -125,29 +124,24 @@ public final class FrameState extends VirtualState implements IterableNodeType {
     }
 
     public FrameState(ResolvedJavaMethod method, int bci, ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks, boolean rethrowException, boolean duringCall) {
-        this.method = method;
-        this.bci = bci;
-        this.localsSize = locals.length;
-        this.stackSize = stack.size();
-        final ValueNode[] newValues = new ValueNode[locals.length + stack.size() + locks.length];
-        int pos = 0;
+        this(method, bci, createValues(locals, stack, locks), locals.length, stack.size(), rethrowException, duringCall, Collections.<EscapeObjectState> emptyList());
+    }
+
+    private static List<ValueNode> createValues(ValueNode[] locals, List<ValueNode> stack, ValueNode[] locks) {
+        List<ValueNode> newValues = new ArrayList<>(locals.length + stack.size() + locks.length);
         for (ValueNode value : locals) {
-            newValues[pos++] = value;
-        }
-        for (ValueNode value : stack) {
-            newValues[pos++] = value;
-        }
-        for (ValueNode value : locks) {
-            newValues[pos++] = value;
-        }
-        for (ValueNode value : newValues) {
+            newValues.add(value);
             assert value == null || value.isAlive();
         }
-        this.values = new NodeInputList<>(this, newValues);
-        this.virtualObjectMappings = new NodeInputList<>(this);
-        this.rethrowException = rethrowException;
-        this.duringCall = duringCall;
-        assert !rethrowException || stackSize == 1 : "must have exception on top of the stack";
+        for (ValueNode value : stack) {
+            newValues.add(value);
+            assert value == null || value.isAlive();
+        }
+        for (ValueNode value : locks) {
+            newValues.add(value);
+            assert value == null || value.isAlive();
+        }
+        return newValues;
     }
 
     public NodeInputList<ValueNode> values() {
