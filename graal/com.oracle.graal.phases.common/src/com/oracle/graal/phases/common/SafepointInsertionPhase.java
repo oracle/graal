@@ -24,8 +24,10 @@ package com.oracle.graal.phases.common;
 
 import static com.oracle.graal.phases.GraalOptions.*;
 
+import java.util.*;
+
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -35,23 +37,41 @@ public class SafepointInsertionPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        if (GenLoopSafepoints.getValue()) {
+        final boolean addLoopSafepoints = GenLoopSafepoints.getValue();
+        if (addLoopSafepoints && !GenSafepoints.getValue()) {
+            // Use (faster) typed node iteration if we are not adding return safepoints
             for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.class)) {
-                if (!loopEndNode.canSafepoint()) {
-                    continue;
-                }
-                SafepointNode safepointNode = graph.add(new SafepointNode());
-                graph.addBeforeFixed(loopEndNode, safepointNode);
+                addLoopSafepoint(graph, loopEndNode);
             }
         }
 
         if (GenSafepoints.getValue()) {
-            if (!OptEliminateSafepoints.getValue() || graph.getNodes(MethodCallTargetNode.class).isNotEmpty()) {
-                for (ReturnNode returnNode : graph.getNodes().filter(ReturnNode.class)) {
+            List<ReturnNode> returnNodes = new ArrayList<>();
+            boolean addReturnSafepoints = !OptEliminateSafepoints.getValue();
+            for (Node n : graph.getNodes()) {
+                if (addLoopSafepoints && n instanceof LoopEndNode) {
+                    addLoopSafepoint(graph, (LoopEndNode) n);
+                } else if (n instanceof ReturnNode) {
+                    returnNodes.add((ReturnNode) n);
+                } else {
+                    if (!addReturnSafepoints && n instanceof LoweredCallTargetNode) {
+                        addReturnSafepoints = true;
+                    }
+                }
+            }
+            if (addReturnSafepoints) {
+                for (ReturnNode returnNode : returnNodes) {
                     SafepointNode safepoint = graph.add(new SafepointNode());
                     graph.addBeforeFixed(returnNode, safepoint);
                 }
             }
+        }
+    }
+
+    private static void addLoopSafepoint(StructuredGraph graph, LoopEndNode loopEndNode) {
+        if (loopEndNode.canSafepoint()) {
+            SafepointNode safepointNode = graph.add(new SafepointNode());
+            graph.addBeforeFixed(loopEndNode, safepointNode);
         }
     }
 }
