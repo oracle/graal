@@ -72,7 +72,7 @@ public class InsertStateAfterPlaceholderPhase extends Phase {
             }
         }
         if (needsPlaceHolder) {
-            for (ReturnNode ret : graph.getNodes(ReturnNode.class)) {
+            for (ReturnNode ret : graph.getNodes().filter(ReturnNode.class)) {
                 PlaceholderNode p = graph.add(new PlaceholderNode());
                 p.setStateAfter(graph.add(new FrameState(FrameState.AFTER_BCI)));
                 graph.addBeforeFixed(ret, p);

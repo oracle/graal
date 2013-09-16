@@ -47,7 +47,7 @@ public class SafepointInsertionPhase extends Phase {
 
         if (GenSafepoints.getValue()) {
             if (!OptEliminateSafepoints.getValue() || graph.getNodes(MethodCallTargetNode.class).isNotEmpty()) {
-                for (ReturnNode returnNode : graph.getNodes(ReturnNode.class)) {
+                for (ReturnNode returnNode : graph.getNodes().filter(ReturnNode.class)) {
                     SafepointNode safepoint = graph.add(new SafepointNode());
                     graph.addBeforeFixed(returnNode, safepoint);
                 }
