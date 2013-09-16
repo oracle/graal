@@ -188,8 +188,7 @@ public class Graph {
      */
     public Graph copy(String newName) {
         Graph copy = new Graph(newName);
-        Map<Node, Node> emptyMap = Collections.emptyMap();
-        copy.addDuplicates(getNodes(), emptyMap);
+        copy.addDuplicates(getNodes(), (Map<Node, Node>) null);
         return copy;
     }
 
