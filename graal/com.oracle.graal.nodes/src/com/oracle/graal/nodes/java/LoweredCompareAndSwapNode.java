@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -32,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
  */
-public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, IterableNodeType {
+public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode expectedValue;
     @Input private ValueNode newValue;

@@ -262,7 +262,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                     barriers = graph.getNodes(SerialWriteBarrier.class).count();
                 }
                 Assert.assertEquals(expectedBarriers, barriers);
-                for (WriteNode write : graph.getNodes(WriteNode.class)) {
+                for (WriteNode write : graph.getNodes().filter(WriteNode.class)) {
                     if (useG1GC()) {
                         if (write.getBarrierType() != BarrierType.NONE) {
                             Assert.assertEquals(1, write.successors().count());
@@ -277,7 +277,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
                     }
                 }
 
-                for (ReadNode read : graph.getNodes(ReadNode.class)) {
+                for (ReadNode read : graph.getNodes().filter(ReadNode.class)) {
                     if (read.getBarrierType() != BarrierType.NONE) {
                         if (read.location() instanceof ConstantLocationNode) {
                             Assert.assertEquals(referentOffset(), ((ConstantLocationNode) (read.location())).getDisplacement());

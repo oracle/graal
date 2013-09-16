@@ -66,7 +66,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
         assertEquals(runtime.getTarget().wordKind, result.getNodes().filter(ConstantNode.class).first().kind());
         assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -75,7 +75,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
         assertEquals(Kind.Object, result.getNodes().filter(ConstantNode.class).first().kind());
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Class getClassObject() {
@@ -92,7 +92,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(type.klass(), filter.first().asConstant());
 
         assertEquals(1, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -106,7 +106,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(AheadOfTimeCompilationTest.class, mirror);
 
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Class getPrimitiveClassObject() {
@@ -121,7 +121,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(runtime.getTarget().wordKind, filter.first().kind());
 
         assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     @Test
@@ -134,7 +134,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals(Integer.TYPE, mirror);
 
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static String getStringObject() {
@@ -162,7 +162,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         assertEquals("test string", mirror);
 
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(ReadNode.class).count());
+        assertEquals(0, result.getNodes().filter(ReadNode.class).count());
     }
 
     public static Boolean getBoxedBoolean() {
