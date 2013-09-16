@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -32,7 +31,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Reads an {@linkplain AccessNode accessed} value.
  */
-public final class ReadNode extends FloatableAccessNode implements IterableNodeType, LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
+public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
 
     public ReadNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, barrierType, compressible);

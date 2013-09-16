@@ -22,14 +22,13 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * Base class for nodes that modify a range of an array.
  */
-public abstract class ArrayRangeWriteNode extends AbstractStateSplit implements IterableNodeType {
+public abstract class ArrayRangeWriteNode extends AbstractStateSplit {
 
     protected ArrayRangeWriteNode(Stamp stamp) {
         super(stamp);

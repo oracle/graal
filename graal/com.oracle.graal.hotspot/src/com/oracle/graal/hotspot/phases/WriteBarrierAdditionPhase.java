@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
@@ -37,18 +38,18 @@ public class WriteBarrierAdditionPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        for (ReadNode node : graph.getNodes(ReadNode.class)) {
-            addReadNodeBarriers(node, graph);
-        }
-        for (WriteNode node : graph.getNodes(WriteNode.class)) {
-            addWriteNodeBarriers(node, graph);
-        }
-        for (LoweredCompareAndSwapNode node : graph.getNodes(LoweredCompareAndSwapNode.class)) {
-            addCASBarriers(node, graph);
-        }
-        for (ArrayRangeWriteNode node : graph.getNodes(ArrayRangeWriteNode.class)) {
-            if (node.isObjectArray()) {
-                addArrayRangeBarriers(node, graph);
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ReadNode) {
+                addReadNodeBarriers((ReadNode) n, graph);
+            } else if (n instanceof WriteNode) {
+                addWriteNodeBarriers((WriteNode) n, graph);
+            } else if (n instanceof LoweredCompareAndSwapNode) {
+                addCASBarriers((LoweredCompareAndSwapNode) n, graph);
+            } else if (n instanceof ArrayRangeWriteNode) {
+                ArrayRangeWriteNode node = (ArrayRangeWriteNode) n;
+                if (node.isObjectArray()) {
+                    addArrayRangeBarriers(node, graph);
+                }
             }
         }
     }

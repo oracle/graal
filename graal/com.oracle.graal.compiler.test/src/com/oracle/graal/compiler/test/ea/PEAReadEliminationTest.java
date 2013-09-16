@@ -236,8 +236,8 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
 
     final ReturnNode getReturn(String snippet) {
         processMethod(snippet);
-        assertEquals(1, graph.getNodes(ReturnNode.class).count());
-        return graph.getNodes(ReturnNode.class).first();
+        assertEquals(1, graph.getNodes().filter(ReturnNode.class).count());
+        return graph.getNodes().filter(ReturnNode.class).first();
     }
 
     protected void processMethod(final String snippet) {
