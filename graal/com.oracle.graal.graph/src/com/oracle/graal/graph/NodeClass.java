@@ -969,7 +969,6 @@ public final class NodeClass extends FieldIntrospection {
 
     static Map<Node, Node> addGraphDuplicate(Graph graph, Iterable<Node> nodes, DuplicationReplacement replacements) {
         Map<Node, Node> newNodes = new IdentityHashMap<>();
-        Map<Node, Node> replacementsMap = new IdentityHashMap<>();
         // create node duplicates
         for (Node node : nodes) {
             if (node != null) {
@@ -998,16 +997,12 @@ public final class NodeClass extends FieldIntrospection {
                 Node target = newNodes.get(input);
                 NodeClass nodeClass = node.getNodeClass();
                 if (target == null) {
-                    target = replacementsMap.get(input);
-                    if (target == null) {
-                        Node replacement = replacements.replacement(input);
-                        if (replacement != input) {
-                            replacementsMap.put(input, replacement);
-                            assert isAssignable(nodeClass.fieldTypes.get(nodeClass.inputOffsets[pos.index]), replacement);
-                            target = replacement;
-                        } else if (input.graph() == graph) { // patch to the outer world
-                            target = input;
-                        }
+                    Node replacement = replacements.replacement(input);
+                    if (replacement != input) {
+                        assert isAssignable(nodeClass.fieldTypes.get(nodeClass.inputOffsets[pos.index]), replacement);
+                        target = replacement;
+                    } else if (input.graph() == graph) { // patch to the outer world
+                        target = input;
                     }
                 }
                 nodeClass.set(node, pos, target);
@@ -1026,14 +1021,10 @@ public final class NodeClass extends FieldIntrospection {
                 Node succ = oldNode.getNodeClass().get(oldNode, pos);
                 Node target = newNodes.get(succ);
                 if (target == null) {
-                    target = replacementsMap.get(succ);
-                    if (target == null) {
-                        Node replacement = replacements.replacement(succ);
-                        if (replacement != succ) {
-                            replacementsMap.put(succ, replacement);
-                            assert isAssignable(node.getNodeClass().fieldTypes.get(node.getNodeClass().successorOffsets[pos.index]), replacement);
-                            target = replacement;
-                        }
+                    Node replacement = replacements.replacement(succ);
+                    if (replacement != succ) {
+                        assert isAssignable(node.getNodeClass().fieldTypes.get(node.getNodeClass().successorOffsets[pos.index]), replacement);
+                        target = replacement;
                     }
                 }
                 node.getNodeClass().set(node, pos, target);

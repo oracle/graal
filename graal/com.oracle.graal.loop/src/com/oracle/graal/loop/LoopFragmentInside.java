@@ -125,16 +125,36 @@ public class LoopFragmentInside extends LoopFragment {
         final StructuredGraph graph = graph();
         return new DuplicationReplacement() {
 
+            private HashMap<Node, Node> seenNode = new HashMap<>();
+
             @Override
             public Node replacement(Node original) {
                 if (original == loopBegin) {
-                    return graph.add(new BeginNode());
+                    Node value = seenNode.get(original);
+                    if (value != null) {
+                        return value;
+                    }
+                    BeginNode newValue = graph.add(new BeginNode());
+                    seenNode.put(original, newValue);
+                    return newValue;
                 }
                 if (original instanceof LoopExitNode && ((LoopExitNode) original).loopBegin() == loopBegin) {
-                    return graph.add(new BeginNode());
+                    Node value = seenNode.get(original);
+                    if (value != null) {
+                        return value;
+                    }
+                    BeginNode newValue = graph.add(new BeginNode());
+                    seenNode.put(original, newValue);
+                    return newValue;
                 }
                 if (original instanceof LoopEndNode && ((LoopEndNode) original).loopBegin() == loopBegin) {
-                    return graph.add(new EndNode());
+                    Node value = seenNode.get(original);
+                    if (value != null) {
+                        return value;
+                    }
+                    EndNode newValue = graph.add(new EndNode());
+                    seenNode.put(original, newValue);
+                    return newValue;
                 }
                 return original;
             }

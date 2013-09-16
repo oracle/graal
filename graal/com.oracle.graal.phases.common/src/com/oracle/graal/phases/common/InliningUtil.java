@@ -38,6 +38,7 @@ import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -604,7 +605,7 @@ public class InliningUtil {
             ValueNode originalReceiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
             // setup merge and phi nodes for results and exceptions
             MergeNode returnMerge = graph.add(new MergeNode());
-            returnMerge.setStateAfter(invoke.stateAfter().duplicate(invoke.stateAfter().bci));
+            returnMerge.setStateAfter(invoke.stateAfter());
 
             PhiNode returnValuePhi = null;
             if (invoke.asNode().kind() != Kind.Void) {
@@ -1288,7 +1289,7 @@ public class InliningUtil {
      *            false if no such check is required
      */
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
-        NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
+        final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = invoke.asNode().graph();
 
         FrameState stateAfter = invoke.stateAfter();
@@ -1297,17 +1298,14 @@ public class InliningUtil {
             nonNullReceiver(invoke);
         }
 
-        IdentityHashMap<Node, Node> replacements = new IdentityHashMap<>();
-        ArrayList<Node> nodes = new ArrayList<>();
+        ArrayList<Node> nodes = new ArrayList<>(inlineGraph.getNodes().count());
         ReturnNode returnNode = null;
         UnwindNode unwindNode = null;
-        StartNode entryPointNode = inlineGraph.start();
+        final StartNode entryPointNode = inlineGraph.start();
         FixedNode firstCFGNode = entryPointNode.next();
         for (Node node : inlineGraph.getNodes()) {
-            if (node == entryPointNode || node == entryPointNode.stateAfter()) {
+            if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof LocalNode) {
                 // Do nothing.
-            } else if (node instanceof LocalNode) {
-                replacements.put(node, parameters.get(((LocalNode) node).index()));
             } else {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
@@ -1319,13 +1317,24 @@ public class InliningUtil {
                 }
             }
         }
-        // ensure proper anchoring of things that were anchored to the StartNode
-        replacements.put(entryPointNode, AbstractBeginNode.prevBegin(invoke.asNode()));
+
+        final AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(invoke.asNode());
+        DuplicationReplacement localReplacement = new DuplicationReplacement() {
+
+            public Node replacement(Node node) {
+                if (node instanceof LocalNode) {
+                    return parameters.get(((LocalNode) node).index());
+                } else if (node == entryPointNode) {
+                    return prevBegin;
+                }
+                return node;
+            }
+        };
 
         assert invoke.asNode().successors().first() != null : invoke;
         assert invoke.asNode().predecessor() != null;
 
-        Map<Node, Node> duplicates = graph.addDuplicates(nodes, replacements);
+        Map<Node, Node> duplicates = graph.addDuplicates(nodes, localReplacement);
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
         invoke.asNode().replaceAtPredecessor(firstCFGNodeDuplicate);
 
@@ -1410,7 +1419,7 @@ public class InliningUtil {
         Node returnValue = null;
         if (returnNode != null) {
             if (returnNode.result() instanceof LocalNode) {
-                returnValue = replacements.get(returnNode.result());
+                returnValue = localReplacement.replacement(returnNode.result());
             } else {
                 returnValue = duplicates.get(returnNode.result());
             }
