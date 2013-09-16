@@ -594,6 +594,10 @@ public abstract class Node implements Cloneable, Formattable {
     static int count = 0;
 
     public Node clone(Graph into) {
+        return clone(into, true);
+    }
+
+    Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
         if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
@@ -608,8 +612,10 @@ public abstract class Node implements Cloneable, Formattable {
         } catch (CloneNotSupportedException e) {
             throw new GraalInternalError(e).addContext(this);
         }
-        nodeClass.clearInputs(newNode);
-        nodeClass.clearSuccessors(newNode);
+        if (clearInputsAndSuccessors) {
+            nodeClass.clearInputs(newNode);
+            nodeClass.clearSuccessors(newNode);
+        }
         newNode.graph = into;
         newNode.typeCacheNext = null;
         newNode.id = INITIAL_ID;
