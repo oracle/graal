@@ -129,13 +129,7 @@ public abstract class LoopFragment {
                     }
                 };
             } else {
-                dr = new DuplicationReplacement() {
-
-                    @Override
-                    public Node replacement(Node o) {
-                        return o;
-                    }
-                };
+                dr = null;
             }
             duplicationMap = graph().addDuplicates(original().nodes(), dr);
             finishDuplication();

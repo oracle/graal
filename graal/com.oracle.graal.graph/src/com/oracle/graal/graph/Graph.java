@@ -743,19 +743,8 @@ public class Graph {
 
     }
 
-    private static final DuplicationReplacement NO_REPLACEMENT = new DuplicationReplacement() {
-
-        @Override
-        public Node replacement(Node original) {
-            return original;
-        }
-    };
-
     @SuppressWarnings("all")
     public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, DuplicationReplacement replacements) {
-        if (replacements == null) {
-            replacements = NO_REPLACEMENT;
-        }
         return NodeClass.addGraphDuplicate(this, newNodes, replacements);
     }
 }
