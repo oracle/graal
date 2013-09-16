@@ -432,7 +432,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         bootstrapRunning = false;
 
-        TTY.println(" in %d ms", System.currentTimeMillis() - startTime);
+        TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
         if (graalRuntime.getCache() != null) {
             graalRuntime.getCache().clear();
         }
