@@ -26,7 +26,6 @@ import static com.oracle.graal.graph.Graph.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
@@ -1048,8 +1047,8 @@ public final class NodeClass extends FieldIntrospection {
         return nameTemplate;
     }
 
-    static Map<Node, Node> addGraphDuplicate(final Graph graph, Iterable<Node> nodes, final DuplicationReplacement replacements) {
-        final IdentityHashMap<Node, Node> newNodes = new IdentityHashMap<>();
+    static Map<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<Node> nodes, final DuplicationReplacement replacements) {
+        final Map<Node, Node> newNodes = (estimatedNodeCount > (oldGraph.getNodeCount() + oldGraph.getDeletedNodeCount() >> 4)) ? new NodeNodeMap(oldGraph) : new IdentityHashMap<Node, Node>();
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
         DuplicationReplacement replacementClosure = new DuplicationReplacement() {
@@ -1074,9 +1073,8 @@ public final class NodeClass extends FieldIntrospection {
         };
 
         // re-wire inputs
-        for (Entry<Node, Node> entry : newNodes.entrySet()) {
-            Node oldNode = entry.getKey();
-            Node node = entry.getValue();
+        for (Node oldNode : nodes) {
+            Node node = newNodes.get(oldNode);
             NodeClass oldNodeClass = oldNode.getNodeClass();
             NodeClass nodeClass = node.getNodeClass();
             if (oldNodeClass == nodeClass && (replacements == null || replacements.replacement(oldNode) == oldNode)) {
@@ -1089,7 +1087,7 @@ public final class NodeClass extends FieldIntrospection {
         return newNodes;
     }
 
-    private static void createNodeDuplicates(final Graph graph, Iterable<Node> nodes, final DuplicationReplacement replacements, final IdentityHashMap<Node, Node> newNodes) {
+    private static void createNodeDuplicates(final Graph graph, Iterable<Node> nodes, final DuplicationReplacement replacements, final Map<Node, Node> newNodes) {
         for (Node node : nodes) {
             if (node != null) {
                 assert !node.isDeleted() : "trying to duplicate deleted node: " + node;
@@ -1110,8 +1108,8 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
-    private static void transferValuesDifferentNodeClass(final Graph graph, final DuplicationReplacement replacements, final IdentityHashMap<Node, Node> newNodes, Node oldNode, Node node,
-                    NodeClass oldNodeClass, NodeClass nodeClass) {
+    private static void transferValuesDifferentNodeClass(final Graph graph, final DuplicationReplacement replacements, final Map<Node, Node> newNodes, Node oldNode, Node node, NodeClass oldNodeClass,
+                    NodeClass nodeClass) {
         for (NodeClassIterator iter = oldNode.inputs().iterator(); iter.hasNext();) {
             Position pos = iter.nextPosition();
             if (!nodeClass.isValid(pos, oldNodeClass)) {

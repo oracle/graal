@@ -260,11 +260,11 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             for (final AbstractEndNode forwardEnd : merge.forwardEnds()) {
                 Map<Node, Node> duplicates;
                 if (replacements == null || replacements.get(endIndex) == null) {
-                    duplicates = graph.addDuplicates(duplicatedNodes, (DuplicationReplacement) null);
+                    duplicates = graph.addDuplicates(duplicatedNodes, graph, duplicatedNodes.size(), (DuplicationReplacement) null);
                 } else {
                     HashMap<Node, Node> replace = new HashMap<>();
                     replace.put(replacements.get(endIndex).object(), replacements.get(endIndex));
-                    duplicates = graph.addDuplicates(duplicatedNodes, replace);
+                    duplicates = graph.addDuplicates(duplicatedNodes, graph, duplicatedNodes.size(), replace);
                 }
                 for (Map.Entry<ValueNode, PhiNode> phi : bottomPhis.entrySet()) {
                     phi.getValue().initializeValueAt(merge.forwardEndIndex(forwardEnd), (ValueNode) duplicates.get(phi.getKey()));

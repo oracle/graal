@@ -178,7 +178,7 @@ public class StructuredGraph extends Graph {
         StructuredGraph copy = new StructuredGraph(newName, newMethod, graphId, entryBCI);
         HashMap<Node, Node> replacements = new HashMap<>();
         replacements.put(start, copy.start);
-        copy.addDuplicates(getNodes(), replacements);
+        copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
         return copy;
     }
 

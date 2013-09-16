@@ -26,11 +26,11 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.*;
 import java.util.Map.Entry;
 
-public final class NodeMap<T> {
+public class NodeMap<T> {
 
     private final Graph graph;
     private final boolean autogrow;
-    private Object[] values;
+    protected Object[] values;
 
     public NodeMap(Graph graph) {
         this(graph, false);
@@ -52,6 +52,29 @@ public final class NodeMap<T> {
     public T get(Node node) {
         check(node);
         return (T) values[node.id()];
+    }
+
+    public boolean isEmpty() {
+        return !entries().iterator().hasNext();
+    }
+
+    public boolean containsKey(Object key) {
+        if (key instanceof Node) {
+            Node node = (Node) key;
+            if (node.graph() == graph()) {
+                return get(node) != null;
+            }
+        }
+        return false;
+    }
+
+    public boolean containsValue(Object value) {
+        for (Object o : values) {
+            if (o == value) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Graph graph() {

@@ -188,7 +188,7 @@ public class Graph {
      */
     public Graph copy(String newName) {
         Graph copy = new Graph(newName);
-        copy.addDuplicates(getNodes(), (Map<Node, Node>) null);
+        copy.addDuplicates(getNodes(), this, this.getNodeCount(), (Map<Node, Node>) null);
         return copy;
     }
 
@@ -712,14 +712,14 @@ public class Graph {
      * @param replacementsMap the replacement map (can be null if no replacement is to be performed)
      * @return a map which associates the original nodes from {@code nodes} to their duplicates
      */
-    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, Map<Node, Node> replacementsMap) {
+    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, final Graph oldGraph, int estimatedNodeCount, Map<Node, Node> replacementsMap) {
         DuplicationReplacement replacements;
         if (replacementsMap == null) {
             replacements = null;
         } else {
             replacements = new MapReplacement(replacementsMap);
         }
-        return addDuplicates(newNodes, replacements);
+        return addDuplicates(newNodes, oldGraph, estimatedNodeCount, replacements);
     }
 
     public interface DuplicationReplacement {
@@ -744,7 +744,7 @@ public class Graph {
     }
 
     @SuppressWarnings("all")
-    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, DuplicationReplacement replacements) {
-        return NodeClass.addGraphDuplicate(this, newNodes, replacements);
+    public Map<Node, Node> addDuplicates(Iterable<Node> newNodes, final Graph oldGraph, int estimatedNodeCount, DuplicationReplacement replacements) {
+        return NodeClass.addGraphDuplicate(this, oldGraph, estimatedNodeCount, newNodes, replacements);
     }
 }

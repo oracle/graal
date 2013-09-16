@@ -1334,7 +1334,7 @@ public class InliningUtil {
         assert invoke.asNode().successors().first() != null : invoke;
         assert invoke.asNode().predecessor() != null;
 
-        Map<Node, Node> duplicates = graph.addDuplicates(nodes, localReplacement);
+        Map<Node, Node> duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
         FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
         invoke.asNode().replaceAtPredecessor(firstCFGNodeDuplicate);
 
@@ -1377,7 +1377,8 @@ public class InliningUtil {
         if (stateAfter != null) {
             FrameState outerFrameState = null;
             int callerLockDepth = stateAfter.nestedLockDepth();
-            for (Node node : duplicates.values()) {
+            for (Node inlinedNode : inlineGraph.getNodes()) {
+                Node node = duplicates.get(inlinedNode);
                 if (node instanceof FrameState) {
                     FrameState frameState = (FrameState) node;
                     assert frameState.bci != FrameState.BEFORE_BCI : frameState;
@@ -1420,7 +1421,7 @@ public class InliningUtil {
         if (returnNode != null) {
             if (returnNode.result() instanceof LocalNode) {
                 returnValue = localReplacement.replacement(returnNode.result());
-            } else {
+            } else if (returnNode.result() != null) {
                 returnValue = duplicates.get(returnNode.result());
             }
             invoke.asNode().replaceAtUsages(returnValue);

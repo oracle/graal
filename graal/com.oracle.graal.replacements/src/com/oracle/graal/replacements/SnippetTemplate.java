@@ -420,7 +420,7 @@ public class SnippetTemplate {
                 placeholders[i] = placeholder;
             }
         }
-        snippetCopy.addDuplicates(snippetGraph.getNodes(), nodeReplacements);
+        snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
 
         Debug.dump(snippetCopy, "Before specialization");
         if (!nodeReplacements.isEmpty()) {
@@ -750,7 +750,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
-            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
             // Re-wire the control flow graph around the replacee
@@ -791,7 +791,7 @@ public class SnippetTemplate {
             if (returnNode != null) {
                 if (returnNode.result() instanceof LocalNode) {
                     returnValue = (ValueNode) replacements.get(returnNode.result());
-                } else {
+                } else if (returnNode.result() != null) {
                     returnValue = (ValueNode) duplicates.get(returnNode.result());
                 }
                 Node returnDuplicate = duplicates.get(returnNode);
@@ -844,7 +844,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
-            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, replacements);
+            Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
             FixedWithNextNode lastFixedNode = tool.lastFixedNode();

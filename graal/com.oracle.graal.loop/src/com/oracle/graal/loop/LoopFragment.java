@@ -131,7 +131,8 @@ public abstract class LoopFragment {
             } else {
                 dr = null;
             }
-            duplicationMap = graph().addDuplicates(original().nodes(), dr);
+            NodeIterable<Node> nodesIterable = original().nodes();
+            duplicationMap = graph().addDuplicates(nodesIterable, graph(), nodesIterable.count(), dr);
             finishDuplication();
             nodesReady = true;
         } else {
