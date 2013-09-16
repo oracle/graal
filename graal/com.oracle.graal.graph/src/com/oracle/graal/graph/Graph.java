@@ -83,7 +83,7 @@ public class Graph {
             if (obj instanceof CacheEntry) {
                 CacheEntry other = (CacheEntry) obj;
                 NodeClass nodeClass = node.getNodeClass();
-                if (other.node.getNodeClass() == nodeClass) {
+                if (other.node.getClass() == node.getClass()) {
                     return nodeClass.valueEqual(node, other.node);
                 }
             }
@@ -344,7 +344,7 @@ public class Graph {
             }
             if (minCountNode != null) {
                 for (Node usage : minCountNode.usages()) {
-                    if (usage != node && nodeClass == usage.getNodeClass() && nodeClass.valueEqual(node, usage) && node.getNodeClass().edgesEqual(node, usage)) {
+                    if (usage != node && nodeClass == usage.getNodeClass() && nodeClass.valueEqual(node, usage) && nodeClass.edgesEqual(node, usage)) {
                         return usage;
                     }
                 }

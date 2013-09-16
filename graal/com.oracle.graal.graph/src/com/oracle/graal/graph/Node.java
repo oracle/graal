@@ -800,6 +800,7 @@ public abstract class Node implements Cloneable, Formattable {
 
         boolean neighborsAlternate = ((flags & FormattableFlags.LEFT_JUSTIFY) == FormattableFlags.LEFT_JUSTIFY);
         int neighborsFlags = (neighborsAlternate ? FormattableFlags.ALTERNATE | FormattableFlags.LEFT_JUSTIFY : 0);
+        NodeClass nodeClass = getNodeClass();
         if (width > 0) {
             if (this.predecessor != null) {
                 formatter.format(" pred={");
@@ -810,10 +811,10 @@ public abstract class Node implements Cloneable, Formattable {
             NodeClassIterator inputIter = inputs().iterator();
             while (inputIter.hasNext()) {
                 Position position = inputIter.nextPosition();
-                Node input = getNodeClass().get(this, position);
+                Node input = nodeClass.get(this, position);
                 if (input != null) {
                     formatter.format(" ");
-                    formatter.format(getNodeClass().getName(position));
+                    formatter.format(nodeClass.getName(position));
                     formatter.format("={");
                     input.formatTo(formatter, neighborsFlags, width - 1, 0);
                     formatter.format("}");
@@ -838,10 +839,10 @@ public abstract class Node implements Cloneable, Formattable {
             NodeClassIterator succIter = successors().iterator();
             while (succIter.hasNext()) {
                 Position position = succIter.nextPosition();
-                Node successor = getNodeClass().get(this, position);
+                Node successor = nodeClass.get(this, position);
                 if (successor != null) {
                     formatter.format(" ");
-                    formatter.format(getNodeClass().getName(position));
+                    formatter.format(nodeClass.getName(position));
                     formatter.format("={");
                     successor.formatTo(formatter, neighborsFlags, 0, precision - 1);
                     formatter.format("}");
