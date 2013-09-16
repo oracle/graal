@@ -147,6 +147,7 @@ public final class NodeClass extends FieldIntrospection {
     private int[] iterableIds;
 
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
+    private final DebugMetric nodeIterableCount;
 
     private NodeClass(Class<?> clazz) {
         super(clazz);
@@ -215,6 +216,7 @@ public final class NodeClass extends FieldIntrospection {
         }
 
         isLeafNode = (this.inputOffsets.length == 0 && this.successorOffsets.length == 0);
+        nodeIterableCount = Debug.metric("NodeIterable_" + shortName);
     }
 
     @Override
@@ -242,6 +244,7 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public int[] iterableIds() {
+        nodeIterableCount.increment();
         return iterableIds;
     }
 
