@@ -110,7 +110,7 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
     }
 
     protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {
-        for (InvokeNode invoke : snippetGraph.getNodes(InvokeNode.class)) {
+        for (InvokeNode invoke : snippetGraph.getNodes().filter(InvokeNode.class)) {
             if (((MethodCallTargetNode) invoke.callTarget()).targetMethod() != getTargetMethod()) {
                 throw new GraalInternalError("unexpected invoke %s in snippet", getClass().getSimpleName());
             }

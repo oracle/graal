@@ -237,10 +237,10 @@ public class ForeignCallStub extends Stub {
             Debug.dump(builder.graph, "Initial stub graph");
         }
 
-        for (InvokeNode invoke : builder.graph.getNodes(InvokeNode.class).snapshot()) {
+        for (InvokeNode invoke : builder.graph.getNodes().filter(InvokeNode.class).snapshot()) {
             inline(invoke);
         }
-        assert builder.graph.getNodes(InvokeNode.class).isEmpty();
+        assert builder.graph.getNodes().filter(InvokeNode.class).isEmpty();
 
         if (Debug.isDumpEnabled()) {
             Debug.dump(builder.graph, "Stub graph before compilation");

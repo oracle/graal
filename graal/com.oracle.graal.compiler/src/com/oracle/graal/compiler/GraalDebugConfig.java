@@ -48,6 +48,7 @@ public class GraalDebugConfig implements DebugConfig {
     public static final OptionValue<String> MethodFilter = new OptionValue<>(null);
     @Option(help = "How to print metric and timing values:%n" +
                    "Name - aggregate by unqualified name%n" +
+                   "CSV - aggregate by unqualified name and write to .csv files (e.g., for importing to R with read.csv)%n" +
                    "Partial - aggregate by partially qualified name (e.g., A.B.C.D.Counter and X.Y.Z.D.Counter will be merged to D.Counter)%n" +
                    "Complete - aggregate by qualified name%n" +
                    "Thread - aggregate by qualified name and thread")
