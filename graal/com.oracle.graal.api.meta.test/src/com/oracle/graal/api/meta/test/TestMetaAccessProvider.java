@@ -107,15 +107,13 @@ public class TestMetaAccessProvider extends TypeUniverse {
     @Test
     public void lookupArrayLengthTest() {
         for (Constant c : constants) {
+            Integer actual = runtime.lookupArrayLength(c);
             if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
-                try {
-                    int length = runtime.lookupArrayLength(c);
-                    fail("Expected " + IllegalArgumentException.class.getName() + " for " + c + ", not " + length);
-                } catch (IllegalArgumentException e) {
-                    // pass
-                }
+                assertNull(actual);
             } else {
-                assertEquals(Array.getLength(c.asObject()), runtime.lookupArrayLength(c));
+                assertNotNull(actual);
+                int actualInt = actual;
+                assertEquals(Array.getLength(c.asObject()), actualInt);
             }
         }
     }
