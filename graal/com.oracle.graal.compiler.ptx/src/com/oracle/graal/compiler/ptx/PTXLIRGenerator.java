@@ -60,6 +60,7 @@ import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.StoreReturnValOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 
 /**
@@ -169,26 +170,25 @@ public class PTXLIRGenerator extends LIRGenerator {
             baseRegister = asAllocatable(base);
         }
 
-        if (index != Value.ILLEGAL && scale != 0) {
+        @SuppressWarnings("unused") Value indexRegister;
+        if (!index.equals(Value.ILLEGAL) && scale != 0) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
+                indexRegister = Value.ILLEGAL;
             } else {
-                Value indexRegister;
                 if (scale != 1) {
-                    indexRegister = emitMul(index, Constant.forInt(scale));
+                    Variable longIndex = emitConvert(Op.I2L, index);
+                    if (CodeUtil.isPowerOf2(scale)) {
+                        indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
+                    } else {
+                        indexRegister = emitMul(longIndex, Constant.forLong(scale));
+                    }
                 } else {
-                    indexRegister = index;
-                }
-
-                if (baseRegister == Value.ILLEGAL) {
-                    baseRegister = asAllocatable(indexRegister);
-                } else {
-                    Variable newBase = newVariable(Kind.Int);
-                    emitMove(newBase, baseRegister);
-                    baseRegister = newBase;
-                    baseRegister = emitAdd(baseRegister, indexRegister);
+                    indexRegister = asAllocatable(index);
                 }
             }
+        } else {
+            indexRegister = Value.ILLEGAL;
         }
 
         return new PTXAddressValue(target().wordKind, baseRegister, finalDisp);

@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.CompilationResult;
 /* PTX ISA 3.1 - 8.7.3 Floating-Point Instructions */
 public class FloatPTXTest extends PTXTestBase {
 
+    @Ignore
     @Test
     public void testAdd() {
         CompilationResult r = compile("testAdd2F");

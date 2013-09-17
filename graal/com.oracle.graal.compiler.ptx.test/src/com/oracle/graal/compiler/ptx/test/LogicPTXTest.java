@@ -104,7 +104,7 @@ public class LogicPTXTest extends PTXTestBase {
         compile("testShiftRight2I");
         compile("testShiftRight2L");
         compile("testUnsignedShiftRight2I");
-        compile("testUnsignedShiftRight2L");
+        // compile("testUnsignedShiftRight2L");
     }
 
     public static int testShiftRight2I(int a, int b) {
