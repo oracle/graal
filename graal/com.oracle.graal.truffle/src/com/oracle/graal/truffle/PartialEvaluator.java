@@ -170,11 +170,6 @@ public class PartialEvaluator {
                 InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, context);
 
-                for (MethodCallTargetNode mctn : graph.getNodes(MethodCallTargetNode.class)) {
-                    String methodName = mctn.targetName();
-                    // System.out.println("remaining invoke: " + methodName);
-                }
-
                 for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
                     Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
                     throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
@@ -205,7 +200,7 @@ public class PartialEvaluator {
         return graph;
     }
 
-    private void expandTree(@SuppressWarnings("unused") GraphBuilderConfiguration config, StructuredGraph graph, NewFrameNode newFrameNode, Assumptions assumptions) {
+    private void expandTree(@SuppressWarnings("unused") GraphBuilderConfiguration config, StructuredGraph graph, @SuppressWarnings("unused") NewFrameNode newFrameNode, Assumptions assumptions) {
         PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
         boolean changed;
         do {

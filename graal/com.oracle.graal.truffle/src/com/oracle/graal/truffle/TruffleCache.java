@@ -49,7 +49,6 @@ import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.api.nodes.Node.*;
 
 /**
  * Implementation of a cache for Truffle graphs for improving partial evaluation time.
@@ -71,6 +70,7 @@ public final class TruffleCache {
         this.replacements = replacements;
     }
 
+    @SuppressWarnings("unused")
     public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
 
         StructuredGraph resultGraph = null;
