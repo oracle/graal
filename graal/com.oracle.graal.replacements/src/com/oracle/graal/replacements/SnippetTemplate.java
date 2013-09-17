@@ -744,14 +744,12 @@ public class SnippetTemplate {
         try (TimerCloseable a = instantiationTimer.start()) {
             instantiationCounter.increment();
             // Inline the snippet nodes, replacing parameters with the given args in the process
-            String name = snippet.name == null ? "{copy}" : snippet.name + "{copy}";
-            StructuredGraph snippetCopy = new StructuredGraph(name, snippet.method());
             StartNode entryPointNode = snippet.start();
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, runtime, args);
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
-            Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
+            Debug.dump(replaceeGraph, "After inlining snippet %s", snippet.method());
 
             // Re-wire the control flow graph around the replacee
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
