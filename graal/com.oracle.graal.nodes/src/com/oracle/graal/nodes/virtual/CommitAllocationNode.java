@@ -55,7 +55,7 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public boolean verify() {
-        assertTrue(virtualObjects.size() == locks.size(), "lockCounts size doesn't match");
+        assertTrue(virtualObjects.size() == locks.size(), "lockCounts size doesn't match " + virtualObjects + ", " + locks);
         int valueCount = 0;
         for (VirtualObjectNode virtual : virtualObjects) {
             valueCount += virtual.entryCount();
@@ -70,10 +70,8 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     }
 
     @Override
-    public Node clone(Graph into) {
-        CommitAllocationNode clone = (CommitAllocationNode) super.clone(into);
-        clone.locks = new ArrayList<>(locks);
-        return clone;
+    public void afterClone(Node other) {
+        locks = new ArrayList<>(((CommitAllocationNode) other).locks);
     }
 
     @Override

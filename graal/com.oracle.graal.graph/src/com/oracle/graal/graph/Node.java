@@ -593,11 +593,11 @@ public abstract class Node implements Cloneable, Formattable {
 
     static int count = 0;
 
-    public Node clone(Graph into) {
+    public final Node clone(Graph into) {
         return clone(into, true);
     }
 
-    Node clone(Graph into, boolean clearInputsAndSuccessors) {
+    final Node clone(Graph into, boolean clearInputsAndSuccessors) {
         NodeClass nodeClass = getNodeClass();
         if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
@@ -628,7 +628,11 @@ public abstract class Node implements Cloneable, Formattable {
         if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             into.putNodeIntoCache(newNode);
         }
+        newNode.afterClone(this);
         return newNode;
+    }
+
+    protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
     public boolean verify() {

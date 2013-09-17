@@ -170,10 +170,9 @@ public abstract class SwitchNode extends ControlSplitNode {
     }
 
     @Override
-    public SwitchNode clone(Graph into) {
-        SwitchNode newSwitch = (SwitchNode) super.clone(into);
-        newSwitch.keyProbabilities = Arrays.copyOf(keyProbabilities, keyProbabilities.length);
-        newSwitch.keySuccessors = Arrays.copyOf(keySuccessors, keySuccessors.length);
-        return newSwitch;
+    public void afterClone(Node other) {
+        SwitchNode oldSwitch = (SwitchNode) other;
+        keyProbabilities = Arrays.copyOf(oldSwitch.keyProbabilities, oldSwitch.keyProbabilities.length);
+        keySuccessors = Arrays.copyOf(oldSwitch.keySuccessors, oldSwitch.keySuccessors.length);
     }
 }
