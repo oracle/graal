@@ -138,7 +138,7 @@ public class PartialEvaluator {
                 Debug.dump(graph, "Before inlining");
 
                 // Make sure frame does not escape.
-                expandTree(config, graph, newFrameNode, assumptions);
+                expandTree(graph, assumptions);
 
                 new VerifyFrameDoesNotEscapePhase().apply(graph, false);
 
@@ -200,14 +200,14 @@ public class PartialEvaluator {
         return graph;
     }
 
-    private void expandTree(@SuppressWarnings("unused") GraphBuilderConfiguration config, StructuredGraph graph, @SuppressWarnings("unused") NewFrameNode newFrameNode, Assumptions assumptions) {
+    private void expandTree(StructuredGraph graph, Assumptions assumptions) {
         PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
         boolean changed;
         do {
             changed = false;
             for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
                 InvokeKind kind = methodCallTargetNode.invokeKind();
-                if (kind == InvokeKind.Static || (kind == InvokeKind.Special && methodCallTargetNode.receiver().isConstant())) {
+                if (kind == InvokeKind.Static || (kind == InvokeKind.Special && (methodCallTargetNode.receiver().isConstant() || methodCallTargetNode.receiver() instanceof NewFrameNode))) {
                     if (TruffleInlinePrinter.getValue()) {
                         InlinePrinterProcessor.addInlining(MethodHolder.getNewTruffleExecuteMethod(methodCallTargetNode));
                     }
