@@ -76,6 +76,10 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     @Override
     public Object call(PackedFrame caller, Arguments args) {
+        return callHelper(caller, args);
+    }
+
+    private Object callHelper(PackedFrame caller, Arguments args) {
         if (TruffleCallTargetProfiling.getValue()) {
             callCount++;
         }
