@@ -407,7 +407,7 @@ public class InliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static final class GreedyInliningPolicy extends AbstractInliningPolicy {
+    public static class GreedyInliningPolicy extends AbstractInliningPolicy {
 
         public GreedyInliningPolicy(Map<Invoke, Double> hints) {
             super(hints);
