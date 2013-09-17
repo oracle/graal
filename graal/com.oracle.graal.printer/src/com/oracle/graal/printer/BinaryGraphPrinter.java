@@ -66,6 +66,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int PROPERTY_TRUE = 0x05;
     private static final int PROPERTY_FALSE = 0x06;
     private static final int PROPERTY_ARRAY = 0x07;
+    private static final int PROPERTY_SUBGRAPH = 0x08;
 
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
@@ -115,6 +116,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) throws IOException {
+        writeByte(BEGIN_GRAPH);
+        writePoolObject(title);
+        writeGraph(graph, predefinedSchedule);
+        flush();
+    }
+
+    private void writeGraph(Graph graph) throws IOException {
+        writeGraph(graph, null);
+    }
+
+    private void writeGraph(Graph graph, SchedulePhase predefinedSchedule) throws IOException {
         SchedulePhase schedule = predefinedSchedule;
         if (schedule == null) {
             try {
@@ -126,11 +138,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
         BlockMap<List<ScheduledNode>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
         Block[] blocks = cfg == null ? null : cfg.getBlocks();
-        writeByte(BEGIN_GRAPH);
-        writePoolObject(title);
         writeNodes(graph);
         writeBlocks(blocks, blockToNodes);
-        flush();
     }
 
     private void flush() throws IOException {
@@ -343,6 +352,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
             } else {
                 writeByte(PROPERTY_FALSE);
             }
+        } else if (obj instanceof Graph) {
+            writeByte(PROPERTY_SUBGRAPH);
+            writeGraph((Graph) obj);
         } else if (obj != null && obj.getClass().isArray()) {
             Class<?> componentType = obj.getClass().getComponentType();
             if (componentType.isPrimitive()) {
