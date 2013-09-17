@@ -241,7 +241,7 @@ public class PTXControlFlow {
         int highKey = lowKey + targets.length - 1;
         if (lowKey != 0) {
             // subtract the low value from the switch value
-            masm.sub_s32(value, value, lowKey);
+            // new Sub(value, value, lowKey).emit(masm);
             masm.setp_gt_s32(value, highKey - lowKey);
         } else {
             masm.setp_gt_s32(value, highKey);

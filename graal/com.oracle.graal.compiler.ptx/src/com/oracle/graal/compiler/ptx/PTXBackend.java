@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.cfg.Block;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
+import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.graph.GraalInternalError;
 
 /**
@@ -178,7 +179,12 @@ public class PTXBackend extends Backend {
 
         for (Block b : lirGen.lir.codeEmittingOrder()) {
             for (LIRInstruction op : lirGen.lir.lir(b)) {
-                op.forEachOutput(trackRegisterKind);
+                if (op instanceof LabelOp) {
+                    // Don't consider this as a definition
+                } else {
+                    op.forEachTemp(trackRegisterKind);
+                    op.forEachOutput(trackRegisterKind);
+                }
             }
         }
 

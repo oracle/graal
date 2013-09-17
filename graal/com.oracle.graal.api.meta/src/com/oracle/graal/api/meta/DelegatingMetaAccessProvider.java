@@ -67,7 +67,7 @@ public class DelegatingMetaAccessProvider implements MetaAccessProvider {
         return delegate.constantEquals(x, y);
     }
 
-    public int lookupArrayLength(Constant array) {
+    public Integer lookupArrayLength(Constant array) {
         return delegate.lookupArrayLength(array);
     }
 
