@@ -131,71 +131,7 @@ public final class TruffleCache {
                 }
             });
         }
-
-        // histogram.add(resultGraph);
-
-        final StructuredGraph clonedResultGraph = resultGraph.copy();
-
-        Debug.sandbox("TruffleCacheConstants", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Runnable() {
-
-            public void run() {
-
-                Debug.dump(clonedResultGraph, "before applying constants");
-                List<Node> modifiedLocals = new ArrayList<>(arguments.size());
-                // Pass on constant arguments.
-                for (LocalNode local : clonedResultGraph.getNodes(LocalNode.class)) {
-                    ValueNode arg = arguments.get(local.index());
-                    if (arg.isConstant()) {
-                        Constant constant = arg.asConstant();
-                        ConstantNode constantNode = ConstantNode.forConstant(constant, metaAccessProvider, clonedResultGraph);
-                        local.replaceAndDelete(constantNode);
-                        modifiedLocals.add(constantNode);
-                    } else if (!local.stamp().equals(arg.stamp())) {
-                        local.setStamp(arg.stamp());
-                        modifiedLocals.add(local);
-                    }
-                }
-                Debug.dump(clonedResultGraph, "after applying constants");
-                List<Node> modifiedLocalsUsages = new ArrayList<>(modifiedLocals.size() * 2);
-                for (Node local : modifiedLocals) {
-                    for (Node usage : local.usages()) {
-                        if (usage instanceof Canonicalizable) {
-                            modifiedLocalsUsages.add(usage);
-                        }
-                    }
-                }
-                optimizeGraph(clonedResultGraph, assumptions, modifiedLocalsUsages);
-
-                modifiedLocalsUsages.clear();
-                for (Node local : modifiedLocals) {
-                    for (Node usage : local.usages()) {
-                        if (usage instanceof Canonicalizable) {
-                            modifiedLocalsUsages.add(usage);
-                        }
-                    }
-                }
-
-                int newNodesMark = clonedResultGraph.getMark();
-                new ReplaceLoadFinalPhase().apply(clonedResultGraph);
-                for (Node n : clonedResultGraph.getNewNodes(newNodesMark)) {
-                    if (n instanceof Canonicalizable) {
-                        modifiedLocalsUsages.add(n);
-                    }
-                }
-                finalCanonicalizer.applyIncremental(clonedResultGraph, new PhaseContext(metaAccessProvider, assumptions, replacements), modifiedLocalsUsages);
-
-                for (Node n : clonedResultGraph.getNodes()) {
-                    if (n instanceof LoadFieldNode) {
-                        LoadFieldNode loadFieldNode = (LoadFieldNode) n;
-                        if (loadFieldNode.field().getAnnotation(Child.class) != null) {
-                            throw new RuntimeException("found remaining child load field ");
-                        }
-
-                    }
-                }
-            }
-        });
-        return clonedResultGraph;
+        return resultGraph;
     }
 
     private void optimizeGraph(StructuredGraph newGraph, Assumptions assumptions, Iterable<Node> changedNodes) {

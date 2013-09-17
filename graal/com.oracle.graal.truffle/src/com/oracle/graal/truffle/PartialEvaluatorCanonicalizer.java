@@ -24,6 +24,8 @@ package com.oracle.graal.truffle;
 
 import java.lang.reflect.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -51,8 +53,20 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                     return ConstantNode.forConstant(constant, metaAccessProvider, node.graph());
                 }
             }
+        } else if (node instanceof LoadIndexedNode) {
+            LoadIndexedNode loadIndexedNode = (LoadIndexedNode) node;
+            if (loadIndexedNode.array().isConstant() && !loadIndexedNode.array().isNullConstant() && loadIndexedNode.index().isConstant()) {
+                Object array = loadIndexedNode.array().asConstant().asObject();
+                long index = loadIndexedNode.index().asConstant().asLong();
+                if (index >= 0 && index < Array.getLength(array)) {
+                    int arrayBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(array.getClass());
+                    int arrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
+                    Constant constant = metaAccessProvider.readUnsafeConstant(loadIndexedNode.elementKind(), array, arrayBaseOffset + index * arrayIndexScale,
+                                    loadIndexedNode.elementKind() == Kind.Object);
+                    return ConstantNode.forConstant(constant, metaAccessProvider, loadIndexedNode.graph());
+                }
+            }
         }
-
         return node;
     }
 

@@ -26,6 +26,7 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
@@ -169,6 +170,11 @@ public class PartialEvaluator {
                 InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, context);
 
+                for (MethodCallTargetNode mctn : graph.getNodes(MethodCallTargetNode.class)) {
+                    String methodName = mctn.targetName();
+                    // System.out.println("remaining invoke: " + methodName);
+                }
+
                 for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
                     Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
                     throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
@@ -199,43 +205,46 @@ public class PartialEvaluator {
         return graph;
     }
 
-    private void expandTree(GraphBuilderConfiguration config, StructuredGraph graph, NewFrameNode newFrameNode, Assumptions assumptions) {
+    private void expandTree(@SuppressWarnings("unused") GraphBuilderConfiguration config, StructuredGraph graph, NewFrameNode newFrameNode, Assumptions assumptions) {
+        PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
         boolean changed;
         do {
             changed = false;
-            for (Node usage : newFrameNode.usages().snapshot()) {
-                if (usage instanceof MethodCallTargetNode && !usage.isDeleted()) {
-                    MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) usage;
-                    InvokeKind kind = methodCallTargetNode.invokeKind();
-                    if (kind == InvokeKind.Special || kind == InvokeKind.Static) {
-                        if (TruffleInlinePrinter.getValue()) {
-                            InlinePrinterProcessor.addInlining(MethodHolder.getNewTruffleExecuteMethod(methodCallTargetNode));
-                        }
-                        if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special && methodCallTargetNode.arguments().first() instanceof ConstantNode) {
-                            ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
-                            constantReceivers.add(constantNode.asConstant());
-                        }
-                        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                        NewFrameNode otherNewFrame = null;
-                        if (inlineGraph == null) {
-                            inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions);
-                            otherNewFrame = inlineGraph.getNodes(NewFrameNode.class).first();
-                        }
+            for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.class)) {
+                InvokeKind kind = methodCallTargetNode.invokeKind();
+                if (kind == InvokeKind.Static || (kind == InvokeKind.Special && methodCallTargetNode.receiver().isConstant())) {
+                    if (TruffleInlinePrinter.getValue()) {
+                        InlinePrinterProcessor.addInlining(MethodHolder.getNewTruffleExecuteMethod(methodCallTargetNode));
+                    }
+                    if (TraceTruffleCompilationDetails.getValue() && kind == InvokeKind.Special) {
+                        ConstantNode constantNode = (ConstantNode) methodCallTargetNode.arguments().first();
+                        constantReceivers.add(constantNode.asConstant());
+                    }
+                    StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
 
+                    if (inlineGraph == null) {
+                        Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
+                        if (macroSubstitution != null) {
+                            InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                            changed = true;
+                            continue;
+                        }
+                    }
+
+                    if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
+                        inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, context);
+                    }
+
+                    if (inlineGraph != null) {
                         int nodeCountBefore = graph.getNodeCount();
-                        Map<Node, Node> mapping = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                        int mark = graph.getMark();
+                        InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                        canonicalizer.applyIncremental(graph, context, mark);
                         if (Debug.isDumpEnabled()) {
                             int nodeCountAfter = graph.getNodeCount();
                             Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                         }
                         changed = true;
-
-                        if (otherNewFrame != null) {
-                            otherNewFrame = (NewFrameNode) mapping.get(otherNewFrame);
-                            if (otherNewFrame.isAlive() && otherNewFrame.usages().isNotEmpty()) {
-                                expandTree(config, graph, otherNewFrame, assumptions);
-                            }
-                        }
                     }
                 }
 
@@ -243,52 +252,68 @@ public class PartialEvaluator {
                     throw new BailoutException("Truffle compilation is exceeding maximum node count: " + graph.getNodeCount());
                 }
             }
-        } while (changed && newFrameNode.isAlive() && newFrameNode.usages().isNotEmpty());
+        } while (changed);
     }
 
-    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions) {
+    private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext context) {
 
-        final StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer);
-        Debug.scope("parseGraph", targetMethod, new Runnable() {
+        StructuredGraph graph = truffleCache.lookup(targetMethod, arguments, assumptions, canonicalizer);
 
-            @Override
-            public void run() {
+        if (targetMethod.getAnnotation(ExplodeLoop.class) != null) {
+            assert graph.hasLoops();
+            final StructuredGraph graphCopy = graph.copy();
+            final List<Node> modifiedNodes = new ArrayList<>();
+            for (LocalNode local : graphCopy.getNodes(LocalNode.class)) {
+                ValueNode arg = arguments.get(local.index());
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    ConstantNode constantNode = ConstantNode.forConstant(constant, metaAccessProvider, graphCopy);
+                    local.replaceAndDelete(constantNode);
+                    for (Node usage : constantNode.usages()) {
+                        if (usage instanceof Canonicalizable) {
+                            modifiedNodes.add(usage);
+                        }
+                    }
+                }
+            }
+            Debug.scope("TruffleUnrollLoop", targetMethod, new Runnable() {
 
-                if (graph.hasLoops()) {
+                @Override
+                public void run() {
+
+                    canonicalizer.applyIncremental(graphCopy, context, modifiedNodes);
                     boolean unrolled;
                     do {
                         unrolled = false;
-                        LoopsData loopsData = new LoopsData(graph);
+                        LoopsData loopsData = new LoopsData(graphCopy);
                         loopsData.detectedCountedLoops();
                         for (LoopEx ex : innerLoopsFirst(loopsData.countedLoops())) {
                             if (ex.counted().isConstantMaxTripCount()) {
                                 long constant = ex.counted().constantMaxTripCount();
-                                if (constant <= TruffleConstantUnrollLimit.getValue() || targetMethod.getAnnotation(ExplodeLoop.class) != null) {
-                                    PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
-                                    LoopTransformations.fullUnroll(ex, context, canonicalizer);
-                                    Debug.dump(graph, "After loop unrolling %d times", constant);
-                                    unrolled = true;
-                                    break;
-                                }
+                                LoopTransformations.fullUnroll(ex, context, canonicalizer);
+                                Debug.dump(graphCopy, "After loop unrolling %d times", constant);
+                                unrolled = true;
+                                break;
                             }
                         }
                     } while (unrolled);
                 }
-            }
 
-            private List<LoopEx> innerLoopsFirst(Collection<LoopEx> loops) {
-                ArrayList<LoopEx> sortedLoops = new ArrayList<>(loops);
-                Collections.sort(sortedLoops, new Comparator<LoopEx>() {
+                private List<LoopEx> innerLoopsFirst(Collection<LoopEx> loops) {
+                    ArrayList<LoopEx> sortedLoops = new ArrayList<>(loops);
+                    Collections.sort(sortedLoops, new Comparator<LoopEx>() {
 
-                    @Override
-                    public int compare(LoopEx o1, LoopEx o2) {
-                        return o2.lirLoop().depth - o1.lirLoop().depth;
-                    }
-                });
-                return sortedLoops;
-            }
-        });
-
-        return graph;
+                        @Override
+                        public int compare(LoopEx o1, LoopEx o2) {
+                            return o2.lirLoop().depth - o1.lirLoop().depth;
+                        }
+                    });
+                    return sortedLoops;
+                }
+            });
+            return graphCopy;
+        } else {
+            return graph;
+        }
     }
 }
