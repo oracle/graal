@@ -195,7 +195,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), null, replacements));
         new ConditionalEliminationPhase(runtime()).apply(graph);
 
-        InvokeNode invoke = graph.getNodes(InvokeNode.class).first();
+        InvokeNode invoke = graph.getNodes().filter(InvokeNode.class).first();
         assertEquals(InvokeKind.Special, ((MethodCallTargetNode) invoke.callTarget()).invokeKind());
     }
 
