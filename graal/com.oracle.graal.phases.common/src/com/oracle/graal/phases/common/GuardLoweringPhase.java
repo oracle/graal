@@ -193,10 +193,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
     }
 
     private static void processBlock(Block block, SchedulePhase schedule, int implicitNullCheckLimit) {
-        List<ScheduledNode> nodes = schedule.nodesFor(block);
         if (OptImplicitNullChecks.getValue() && implicitNullCheckLimit > 0) {
-            new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(nodes, block.getBeginNode());
+            new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(block, schedule);
         }
-        new LowerGuards(block).processNodes(nodes, block.getBeginNode());
+        new LowerGuards(block).processNodes(block, schedule);
     }
 }

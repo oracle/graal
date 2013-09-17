@@ -26,6 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.schedule.*;
 
 /**
@@ -41,11 +42,12 @@ public abstract class ScheduledNodeIterator {
     private FixedWithNextNode reconnect;
     private ListIterator<ScheduledNode> iterator;
 
-    public void processNodes(List<ScheduledNode> nodes, FixedWithNextNode begin) {
-        assert begin != null;
-        lastFixed = begin;
+    public void processNodes(Block block, SchedulePhase shedule) {
+        lastFixed = block.getBeginNode();
+        assert lastFixed != null;
         reconnect = null;
-        iterator = nodes.listIterator();
+        iterator = shedule.nodesFor(block).listIterator();
+
         while (iterator.hasNext()) {
             Node node = iterator.next();
             if (!node.isAlive()) {
@@ -60,7 +62,10 @@ public abstract class ScheduledNodeIterator {
             }
             processNode(node);
         }
-        assert reconnect == null;
+        if (reconnect != null) {
+            assert block.getSuccessorCount() == 1;
+            reconnect.setNext(block.getFirstSuccessor().getBeginNode());
+        }
     }
 
     protected void insert(FixedNode start, FixedWithNextNode end) {
