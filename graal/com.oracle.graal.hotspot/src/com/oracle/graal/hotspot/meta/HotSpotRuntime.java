@@ -605,15 +605,18 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, storeIndexed.index());
             ValueNode value = storeIndexed.value();
             ValueNode array = storeIndexed.array();
+
+            CheckCastNode checkcastNode = null;
+            CheckCastDynamicNode checkcastDynamicNode = null;
             if (elementKind == Kind.Object && !ObjectStamp.isObjectAlwaysNull(value)) {
                 // Store check!
                 ResolvedJavaType arrayType = ObjectStamp.typeOrNull(array);
                 if (arrayType != null && ObjectStamp.isExactType(array)) {
                     ResolvedJavaType elementType = arrayType.getComponentType();
                     if (!MetaUtil.isJavaLangObject(elementType)) {
-                        CheckCastNode checkcast = graph.add(new CheckCastNode(elementType, value, null, true));
-                        graph.addBeforeFixed(storeIndexed, checkcast);
-                        value = checkcast;
+                        checkcastNode = graph.add(new CheckCastNode(elementType, value, null, true));
+                        graph.addBeforeFixed(storeIndexed, checkcastNode);
+                        value = checkcastNode;
                     }
                 } else {
                     LoadHubNode arrayClass = graph.unique(new LoadHubNode(array, wordKind, boundsCheck.asNode()));
@@ -624,9 +627,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                      * parts of the compiled method.
                      */
                     FloatingReadNode arrayElementKlass = graph.unique(new FloatingReadNode(arrayClass, location, null, StampFactory.forKind(wordKind()), BeginNode.prevBegin(storeIndexed)));
-                    CheckCastDynamicNode checkcast = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
-                    graph.addBeforeFixed(storeIndexed, checkcast);
-                    value = checkcast;
+                    checkcastDynamicNode = graph.add(new CheckCastDynamicNode(arrayElementKlass, value, true));
+                    graph.addBeforeFixed(storeIndexed, checkcastDynamicNode);
+                    value = checkcastDynamicNode;
                 }
             }
             BarrierType barrierType = getArrayStoreBarrierType(storeIndexed);
@@ -635,6 +638,12 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             memoryWrite.setStateAfter(storeIndexed.stateAfter());
             graph.replaceFixedWithFixed(storeIndexed, memoryWrite);
 
+            // Lower the associated checkcast node.
+            if (checkcastNode != null) {
+                checkcastNode.lower(tool);
+            } else if (checkcastDynamicNode != null) {
+                checkcastDynamicSnippets.lower(checkcastDynamicNode);
+            }
         } else if (n instanceof UnsafeLoadNode) {
             if (graph.getGuardsPhase().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
                 UnsafeLoadNode load = (UnsafeLoadNode) n;
