@@ -1176,7 +1176,7 @@ public class GraphBuilderPhase extends Phase {
         }
         if (invokeKind != InvokeKind.Static) {
             emitExplicitExceptions(args[0], null);
-            if (invokeKind != InvokeKind.Special) {
+            if (invokeKind != InvokeKind.Special && this.optimisticOpts.useTypeCheckHints()) {
                 JavaTypeProfile profile = profilingInfo.getTypeProfile(bci());
                 args[0] = TypeProfileProxyNode.create(args[0], profile);
             }
