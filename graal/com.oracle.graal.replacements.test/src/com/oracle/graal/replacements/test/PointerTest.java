@@ -131,7 +131,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         WriteNode write = (WriteNode) graph.start().next();
         Assert.assertEquals(graph.getLocal(2), write.value());
         Assert.assertEquals(Kind.Void, write.kind());
-        Assert.assertEquals(FrameState.INVALID_FRAMESTATE_BCI, write.stateAfter().bci);
+        Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);
 
         UnsafeCastNode cast = (UnsafeCastNode) write.object();
         Assert.assertEquals(graph.getLocal(0), cast.object());
@@ -150,10 +150,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
             Assert.assertEquals(graph.getLocal(1), location.getIndex());
         }
 
-        AbstractStateSplit stateSplit = (AbstractStateSplit) write.next();
-        Assert.assertEquals(FrameState.AFTER_BCI, stateSplit.stateAfter().bci);
-
-        ReturnNode ret = (ReturnNode) stateSplit.next();
+        ReturnNode ret = (ReturnNode) write.next();
         Assert.assertEquals(null, ret.result());
     }
 
