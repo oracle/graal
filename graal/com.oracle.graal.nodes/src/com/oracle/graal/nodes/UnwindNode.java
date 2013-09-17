@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Unwinds the current frame to an exception handler in the caller frame.
  */
-public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRLowerable {
+public final class UnwindNode extends ControlSinkNode implements LIRLowerable {
 
     @Input private ValueNode exception;
 
@@ -46,10 +46,5 @@ public final class UnwindNode extends ControlSinkNode implements Lowerable, LIRL
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitUnwind(gen.operand(exception()));
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
     }
 }
