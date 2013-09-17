@@ -24,6 +24,8 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
+import java.util.concurrent.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.phases.*;
@@ -62,7 +64,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
         return arguments.get(4);
     }
 
-    private StructuredGraph selectSnippet(LoweringTool tool, Replacements replacements) {
+    private StructuredGraph selectSnippet(LoweringTool tool, final Replacements replacements) {
         ResolvedJavaType srcType = ObjectStamp.typeOrNull(getSource().stamp());
         ResolvedJavaType destType = ObjectStamp.typeOrNull(getDestination().stamp());
 
@@ -73,8 +75,15 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             return null;
         }
         Kind componentKind = srcType.getComponentType().getKind();
-        ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
-        return replacements.getSnippet(snippetMethod);
+        final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
+        return Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
+
+            @Override
+            public StructuredGraph call() throws Exception {
+                return replacements.getSnippet(snippetMethod);
+            }
+        });
+
     }
 
     private static void unrollFixedLengthLoop(StructuredGraph snippetGraph, int length, LoweringTool tool) {
@@ -91,23 +100,37 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
     }
 
     @Override
-    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
+    protected StructuredGraph getSnippetGraph(final LoweringTool tool) {
         if (!shouldIntrinsify(getTargetMethod())) {
             return null;
         }
 
-        Replacements replacements = tool.getReplacements();
+        final Replacements replacements = tool.getReplacements();
         StructuredGraph snippetGraph = selectSnippet(tool, replacements);
         if (snippetGraph == null) {
-            ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
-            snippetGraph = replacements.getSnippet(snippetMethod).copy();
+            final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
+            snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
+
+                @Override
+                public StructuredGraph call() throws Exception {
+                    return replacements.getSnippet(snippetMethod).copy();
+                }
+            });
             replaceSnippetInvokes(snippetGraph);
         } else {
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
 
             if (getLength().isConstant() && getLength().asConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue()) {
-                snippetGraph = snippetGraph.copy();
-                unrollFixedLengthLoop(snippetGraph, getLength().asConstant().asInt(), tool);
+                final StructuredGraph copy = snippetGraph.copy();
+                snippetGraph = copy;
+                Debug.scope("ArrayCopySnippetSpecialization", snippetGraph.method(), new Runnable() {
+
+                    @Override
+                    public void run() {
+                        unrollFixedLengthLoop(copy, getLength().asConstant().asInt(), tool);
+                    }
+                });
+
             }
         }
         return snippetGraph;
