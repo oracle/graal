@@ -350,10 +350,11 @@ public class InliningUtil {
      * Represents an inlining opportunity where the compiler can statically determine a monomorphic
      * target method and therefore is able to determine the called method exactly.
      */
-    private static class ExactInlineInfo extends AbstractInlineInfo {
+    public static class ExactInlineInfo extends AbstractInlineInfo {
 
         protected final ResolvedJavaMethod concrete;
         private Inlineable inlineableElement;
+        private boolean suppressNullCheck;
 
         public ExactInlineInfo(Invoke invoke, ResolvedJavaMethod concrete) {
             super(invoke);
@@ -361,9 +362,13 @@ public class InliningUtil {
             assert concrete != null;
         }
 
+        public void suppressNullCheck() {
+            suppressNullCheck = true;
+        }
+
         @Override
         public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-            inline(invoke, concrete, inlineableElement, assumptions, true);
+            inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
         }
 
         @Override
@@ -1020,7 +1025,7 @@ public class InliningUtil {
 
     /**
      * Determines if inlining is possible at the given invoke node.
-     * 
+     *
      * @param invoke the invoke that should be inlined
      * @return an instance of InlineInfo, or null if no inlining is possible at the given invoke
      */
@@ -1282,7 +1287,7 @@ public class InliningUtil {
 
     /**
      * Performs an actual inlining, thereby replacing the given invoke with the given inlineGraph.
-     * 
+     *
      * @param invoke the invoke that will be replaced
      * @param inlineGraph the graph that the invoke will be replaced with
      * @param receiverNullCheck true if a null check needs to be generated for non-static inlinings,
