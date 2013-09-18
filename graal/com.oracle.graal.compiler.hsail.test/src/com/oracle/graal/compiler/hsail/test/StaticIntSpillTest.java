@@ -25,7 +25,8 @@ package com.oracle.graal.compiler.hsail.test;
 import java.util.*;
 
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
-import org.junit.Test;
+
+import org.junit.*;
 
 /**
  * Tests the spilling of integers into memory.
@@ -87,6 +88,7 @@ public class StaticIntSpillTest extends GraalKernelTester {
     }
 
     // Marked to only run on hardware until simulator spill bug is fixed.
+    @Ignore
     @Test
     public void test() {
         testGeneratedHsail();
