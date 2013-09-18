@@ -81,8 +81,10 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
             throw new GraalInternalError("Cannot create guards in after-guard lowering");
         }
         GuardingNode guard = tool.createGuard(condition, reason, action, negated);
+        ValueAnchorNode anchor = graph().add(new ValueAnchorNode((ValueNode) guard));
         PiNode pi = graph().unique(new PiNode(object, stamp(), guard));
-        graph().replaceFixedWithFloating(this, pi);
+        replaceAtUsages(pi);
+        graph().replaceFixedWithFixed(this, anchor);
     }
 
     @Override
