@@ -58,7 +58,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
     }
 
     public NewFrameNode(ValueNode descriptor, ValueNode caller, ValueNode arguments) {
-        this(StampFactory.declaredNonNull(FRAME_TYPE), descriptor, caller, arguments);
+        this(StampFactory.exactNonNull(FRAME_TYPE), descriptor, caller, arguments);
     }
 
     public ValueNode getDescriptor() {

@@ -1630,11 +1630,6 @@ public class GraphBuilderPhase extends Phase {
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
-        if (Modifier.isSynchronized(method.getModifiers())) {
-            append(new ValueAnchorNode(true, x));
-            assert !frameState.rethrowException();
-        }
-
         synchronizedEpilogue(FrameState.AFTER_BCI);
         if (frameState.lockDepth() != 0) {
             throw new BailoutException("unbalanced monitors");

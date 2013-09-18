@@ -37,16 +37,9 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
     @Input private final NodeInputList<ValueNode> anchored;
 
     public ValueAnchorNode(ValueNode... values) {
-        this(false, values);
-    }
-
-    public ValueAnchorNode(boolean permanent, ValueNode... values) {
         super(StampFactory.dependency());
-        this.permanent = permanent;
         this.anchored = new NodeInputList<>(this, values);
     }
-
-    private boolean permanent;
 
     @Override
     public void generate(LIRGeneratorTool gen) {
@@ -67,19 +60,8 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         return anchored;
     }
 
-    public void setPermanent(boolean permanent) {
-        this.permanent = permanent;
-    }
-
-    public boolean isPermanent() {
-        return permanent;
-    }
-
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (permanent) {
-            return this;
-        }
         if (this.predecessor() instanceof ValueAnchorNode) {
             ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
             if (previousAnchor.usages().isEmpty()) { // avoid creating cycles
@@ -103,9 +85,6 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (permanent) {
-            return;
-        }
         for (ValueNode node : anchored.nonNull().and(isNotA(AbstractBeginNode.class))) {
             State state = tool.getObjectState(node);
             if (state == null || state.getState() != EscapeState.Virtual) {
