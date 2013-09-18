@@ -74,11 +74,8 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
 
     private static Register[] initAllocatable() {
         Register[] registers = new Register[] {
-            param0, param1, param2, param3,
-            param4, param5, param6, param7,
             r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
             r8,  r9,  r10, r11, r12, r13, r14, r15,
-            // retReg,
         };
 
         return registers;

@@ -34,7 +34,7 @@ import com.oracle.graal.lir.asm.*;
 public class PTXMemOp {
 
     // Load operation from .global state space
-    @Opcode("LOAD")
+    @Opcode("LOAD_REGBASE_DISP")
     public static class LoadOp extends PTXLIRInstruction {
 
         private final Kind kind;
@@ -132,7 +132,7 @@ public class PTXMemOp {
     }
 
     // Load operation from .param state space
-    @Opcode("LOAD")
+    @Opcode("LOAD_PARAM")
     public static class LoadParamOp extends PTXLIRInstruction {
 
         private final Kind kind;
@@ -240,7 +240,6 @@ public class PTXMemOp {
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
             assert isRegister(input);
             PTXAddress addr = address.toAddress();
-            // masm.st_global_return_value_s64(addr.getBase(), addr.getDisplacement(), asRegister(input));
 
             switch (kind) {
                 case Byte:

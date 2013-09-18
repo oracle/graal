@@ -42,30 +42,6 @@ public class PTX extends Architecture {
 
     // @formatter:off
 
-    /* Parameter State Space
-     *
-     * The parameter (.param) state space is used (1) to pass input
-     * arguments from the host to the kernel, (2a) to declare formal
-     * input and return parameters for device functions called from
-     * within kernel execution, and (2b) to declare locally-scoped
-     * byte array variables that serve as function call arguments,
-     * typically for passing large structures by value to a function.
-     *
-     * TODO: XXX
-     * The parameters are virtual symbols - just like registers. Bit,
-     * Till we figure out how to model a virtual register set in Graal,
-     * we will pretend that we can use only 8 parameters.
-    */
-
-    public static final Register param0  = new Register(0,  0,  "param0",  PARAM);
-    public static final Register param1  = new Register(1,  1,  "param1",  PARAM);
-    public static final Register param2  = new Register(2,  2,  "param2",  PARAM);
-    public static final Register param3  = new Register(3,  3,  "param3",  PARAM);
-    public static final Register param4  = new Register(4,  4,  "param4",  PARAM);
-    public static final Register param5  = new Register(5,  5,  "param5",  PARAM);
-    public static final Register param6  = new Register(6,  6,  "param6",  PARAM);
-    public static final Register param7  = new Register(7,  7,  "param7",  PARAM);
-
     /*
      * Register State Space
      *
@@ -85,35 +61,59 @@ public class PTX extends Architecture {
      * will pretend that we can use only 16 registers.
      */
 
-    public static final Register r0  = new Register(8,   8,  "r0",  REG);
-    public static final Register r1  = new Register(9,   9,  "r1",  REG);
-    public static final Register r2  = new Register(10, 10,  "r2",  REG);
-    public static final Register r3  = new Register(11,  11,  "r3",  REG);
-    public static final Register r4  = new Register(12, 12,  "r4",  REG);
-    public static final Register r5  = new Register(13, 13,  "r5",  REG);
-    public static final Register r6  = new Register(14, 14,  "r6",  REG);
-    public static final Register r7  = new Register(15, 15,  "r7",  REG);
+    public static final Register r0  = new Register(0,   0,  "r0",  REG);
+    public static final Register r1  = new Register(1,   1,  "r1",  REG);
+    public static final Register r2  = new Register(2,   2,  "r2",  REG);
+    public static final Register r3  = new Register(3,   3,  "r3",  REG);
+    public static final Register r4  = new Register(4,   4,  "r4",  REG);
+    public static final Register r5  = new Register(5,   5,  "r5",  REG);
+    public static final Register r6  = new Register(6,   6,  "r6",  REG);
+    public static final Register r7  = new Register(7,   7,  "r7",  REG);
 
-    public static final Register r8  = new Register(16, 16,  "r8",  REG);
-    public static final Register r9  = new Register(17, 17,  "r9",  REG);
-    public static final Register r10 = new Register(18, 18, "r10", REG);
-    public static final Register r11 = new Register(19, 19, "r11", REG);
-    public static final Register r12 = new Register(20, 20, "r12", REG);
-    public static final Register r13 = new Register(21, 21, "r13", REG);
-    public static final Register r14 = new Register(22, 22, "r14", REG);
-    public static final Register r15 = new Register(23, 23, "r15", REG);
-
-    // Define a virtual register that holds return value
-    public static final Register retReg = new Register(24, 24, "retReg", REG);
+    public static final Register r8  = new Register(8,   8,  "r8",  REG);
+    public static final Register r9  = new Register(9,   9,  "r9",  REG);
+    public static final Register r10 = new Register(10, 10, "r10", REG);
+    public static final Register r11 = new Register(11, 11, "r11", REG);
+    public static final Register r12 = new Register(12, 12, "r12", REG);
+    public static final Register r13 = new Register(13, 13, "r13", REG);
+    public static final Register r14 = new Register(14, 14, "r14", REG);
+    public static final Register r15 = new Register(15, 15, "r15", REG);
 
     public static final Register[] gprRegisters = {
         r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
         r8,  r9,  r10, r11, r12, r13, r14, r15
     };
 
+    /* Parameter State Space
+     *
+     * The parameter (.param) state space is used (1) to pass input
+     * arguments from the host to the kernel, (2a) to declare formal
+     * input and return parameters for device functions called from
+     * within kernel execution, and (2b) to declare locally-scoped
+     * byte array variables that serve as function call arguments,
+     * typically for passing large structures by value to a function.
+     *
+     * TODO: XXX
+     * The parameters are virtual symbols - just like registers. Bit,
+     * Till we figure out how to model a virtual register set in Graal,
+     * we will pretend that we can use only 8 parameters.
+    */
+
+    public static final Register param0  = new Register(16, 16,  "param0",  PARAM);
+    public static final Register param1  = new Register(17, 17,  "param1",  PARAM);
+    public static final Register param2  = new Register(18, 18,  "param2",  PARAM);
+    public static final Register param3  = new Register(19, 19,  "param3",  PARAM);
+    public static final Register param4  = new Register(20, 20,  "param4",  PARAM);
+    public static final Register param5  = new Register(21, 21,  "param5",  PARAM);
+    public static final Register param6  = new Register(22, 22,  "param6",  PARAM);
+    public static final Register param7  = new Register(23, 23,  "param7",  PARAM);
+
     public static final Register[] paramRegisters = {
         param0,  param1,  param2,  param3,  param4,  param5,  param6,  param7
     };
+
+    // Define a virtual register that holds return value
+    public static final Register retReg = new Register(24, 24, "retReg", REG);
 
     // PTX ISA Manual: Section 9:. Special Registers
 

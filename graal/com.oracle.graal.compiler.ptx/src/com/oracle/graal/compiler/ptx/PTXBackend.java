@@ -81,7 +81,7 @@ public class PTXBackend extends Backend {
 
     @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
-        // Omit the frame if the method:
+        // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
         // - has no incoming arguments passed on the stack
@@ -90,14 +90,13 @@ public class PTXBackend extends Backend {
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
         TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
-        tasm.setFrameSize(frameMap.frameSize());
+        tasm.setFrameSize(0);
         return tasm;
     }
 
-    private static void emitKernelEntry(TargetMethodAssembler tasm, LIRGenerator lirGen,
-                                        ResolvedJavaMethod codeCacheOwner) {
+    private static void emitKernelEntry(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         // Emit PTX kernel entry text based on PTXParameterOp
-        // instructions in the start block.  Remove the instructions
+        // instructions in the start block. Remove the instructions
         // once kernel entry text and directives are emitted to
         // facilitate seemless PTX code generation subsequently.
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
@@ -154,23 +153,39 @@ public class PTXBackend extends Backend {
                     RegisterValue regVal = (RegisterValue) value;
                     Kind regKind = regVal.getKind();
                     switch (regKind) {
-                       case Int:
-                           signed32.add(regVal.getRegister().encoding());
-                           break;
-                       case Long:
-                           signed64.add(regVal.getRegister().encoding());
-                           break;
-                       case Float:
-                           float32.add(regVal.getRegister().encoding());
-                           break;
-                       case Double:
-                           float64.add(regVal.getRegister().encoding());
-                           break;
-                       case Object:
-                           signed64.add(regVal.getRegister().encoding());
-                           break;
-                       default :
-                           throw GraalInternalError.shouldNotReachHere("unhandled register type "  + value.toString());
+                        case Int:
+                            // If the register was used as a wider signed type
+                            // do not add it here
+                            if (!signed64.contains(regVal.getRegister().encoding())) {
+                                signed32.add(regVal.getRegister().encoding());
+                            }
+                            break;
+                        case Long:
+                        case Object:
+                            // If the register was used as a narrower signed type
+                            // remove it from there and add it to wider type.
+                            if (signed32.contains(regVal.getRegister().encoding())) {
+                                signed32.remove(regVal.getRegister().encoding());
+                            }
+                            signed64.add(regVal.getRegister().encoding());
+                            break;
+                        case Float:
+                            // If the register was used as a wider signed type
+                            // do not add it here
+                            if (!float64.contains(regVal.getRegister().encoding())) {
+                                float32.add(regVal.getRegister().encoding());
+                            }
+                            break;
+                        case Double:
+                            // If the register was used as a narrower signed type
+                            // remove it from there and add it to wider type.
+                            if (float32.contains(regVal.getRegister().encoding())) {
+                                float32.remove(regVal.getRegister().encoding());
+                            }
+                            float64.add(regVal.getRegister().encoding());
+                            break;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere("unhandled register type " + value.toString());
                     }
                 }
                 return value;
@@ -199,6 +214,11 @@ public class PTXBackend extends Backend {
         }
         for (Integer i : float64) {
             codeBuffer.emitString(".reg .f64 %r" + i.intValue() + ";");
+        }
+        // emit predicate register declaration
+        int maxPredRegNum = ((PTXLIRGenerator) lirGen).getNextPredRegNumber();
+        if (maxPredRegNum > 0) {
+            codeBuffer.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
     }
 

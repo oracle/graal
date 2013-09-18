@@ -28,12 +28,28 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.Node;
+import com.oracle.graal.nodes.calc.ConvertNode;
 
 public class PTXHotSpotRuntime extends HotSpotRuntime {
 
     public PTXHotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
         super(config, graalRuntime);
 
+    }
+
+    @Override
+    public void lower(Node n, LoweringTool tool) {
+        if (n instanceof ConvertNode) {
+            // PTX has a cvt instruction that "takes a variety of
+            // operand types and sizes, as its job is to convert from
+            // nearly any data type to any other data type (and
+            // size)." [Section 6.2 of PTX ISA manual]
+            // So, there is no need to lower the operation.
+            return;
+        } else {
+            super.lower(n, tool);
+        }
     }
 
     @Override

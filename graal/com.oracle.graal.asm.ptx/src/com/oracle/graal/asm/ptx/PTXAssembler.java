@@ -39,14 +39,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
         super(target);
     }
 
-    public final void at() {
-        emitString("@%p" + " " + "");
-    }
-
-    public final void atq() {
-        emitString("@%q" + " " + "");
-    }
-
     public static class StandardFormat {
 
         protected Kind valueKind;
@@ -287,8 +279,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     // Checkstyle: stop method name check
-    public final void bra(String tgt) {
-        emitString("bra" + " " + tgt + ";" + "");
+    public final void bra(String tgt, int pred) {
+        emitString((pred >= 0) ? "" : ("@%p" + pred + "  ") + "bra" + " " + tgt + ";" + "");
     }
 
     public final void bra_uni(String tgt) {
@@ -573,228 +565,228 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("ret.uni;" + " " + "");
     }
 
-    public final void setp_eq_f32(Register a, Register b) {
-        emitString("setp.eq.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_f32(Register a, Register b, int p) {
+        emitString("setp.eq.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_f32(Register a, Register b) {
-        emitString("setp.ne.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_f32(Register a, Register b, int p) {
+        emitString("setp.ne.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_f32(Register a, Register b) {
-        emitString("setp.lt.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_f32(Register a, Register b, int p) {
+        emitString("setp.lt.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_f32(Register a, Register b) {
-        emitString("setp.le.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_f32(Register a, Register b, int p) {
+        emitString("setp.le.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_f32(Register a, Register b) {
-        emitString("setp.gt.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_f32(Register a, Register b, int p) {
+        emitString("setp.gt.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_f32(Register a, Register b) {
-        emitString("setp.ge.f32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_f32(Register a, Register b, int p) {
+        emitString("setp.ge.f32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_f32(float f32, Register b) {
-        emitString("setp.eq.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_f32(float f32, Register b, int p) {
+        emitString("setp.eq.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_f32(float f32, Register b) {
-        emitString("setp.ne.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_f32(float f32, Register b, int p) {
+        emitString("setp.ne.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_f32(float f32, Register b) {
-        emitString("setp.lt.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_f32(float f32, Register b, int p) {
+        emitString("setp.lt.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_f32(float f32, Register b) {
-        emitString("setp.le.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_f32(float f32, Register b, int p) {
+        emitString("setp.le.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_f32(float f32, Register b) {
-        emitString("setp.gt.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_f32(float f32, Register b, int p) {
+        emitString("setp.gt.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_f32(float f32, Register b) {
-        emitString("setp.ge.f32" + " " + "%p" + ", " + f32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_f32(float f32, Register b, int p) {
+        emitString("setp.ge.f32" + " " + "%p" + p + ", " + f32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_f64(double f64, Register b) {
-        emitString("setp.eq.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_f64(double f64, Register b, int p) {
+        emitString("setp.eq.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_f64(double f64, Register b) {
-        emitString("setp.ne.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_f64(double f64, Register b, int p) {
+        emitString("setp.ne.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_f64(double f64, Register b) {
-        emitString("setp.lt.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_f64(double f64, Register b, int p) {
+        emitString("setp.lt.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_f64(double f64, Register b) {
-        emitString("setp.le.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_f64(double f64, Register b, int p) {
+        emitString("setp.le.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_f64(double f64, Register b) {
-        emitString("setp.gt.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_f64(double f64, Register b, int p) {
+        emitString("setp.gt.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_f64(double f64, Register b) {
-        emitString("setp.ge.f64" + " " + "%p" + ", " + f64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_f64(double f64, Register b, int p) {
+        emitString("setp.ge.f64" + " " + "%p" + p + ", " + f64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_s64(Register a, Register b) {
-        emitString("setp.eq.s64" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_s64(Register a, Register b, int p) {
+        emitString("setp.eq.s64" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_s64(long s64, Register b) {
-        emitString("setp.eq.s64" + " " + "%p" + ", " + s64 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_s64(long s64, Register b, int p) {
+        emitString("setp.eq.s64" + " " + "%p" + p + ", " + s64 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_s32(Register a, Register b) {
-        emitString("setp.eq.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_s32(Register a, Register b, int p) {
+        emitString("setp.eq.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_s32(Register a, Register b) {
-        emitString("setp.ne.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_s32(Register a, Register b, int p) {
+        emitString("setp.ne.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_s32(Register a, Register b) {
-        emitString("setp.lt.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_s32(Register a, Register b, int p) {
+        emitString("setp.lt.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_s32(Register a, Register b) {
-        emitString("setp.le.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_s32(Register a, Register b, int p) {
+        emitString("setp.le.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_s32(Register a, Register b) {
-        emitString("setp.gt.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_s32(Register a, Register b, int p) {
+        emitString("setp.gt.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_s32(Register a, Register b) {
-        emitString("setp.ge.s32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_s32(Register a, Register b, int p) {
+        emitString("setp.ge.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_s32(Register a, int s32) {
-        emitString("setp.eq.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_eq_s32(Register a, int s32, int p) {
+        emitString("setp.eq.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_ne_s32(Register a, int s32) {
-        emitString("setp.ne.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_ne_s32(Register a, int s32, int p) {
+        emitString("setp.ne.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_lt_s32(Register a, int s32) {
-        emitString("setp.lt.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_lt_s32(Register a, int s32, int p) {
+        emitString("setp.lt.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_le_s32(Register a, int s32) {
-        emitString("setp.le.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_le_s32(Register a, int s32, int p) {
+        emitString("setp.le.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_gt_s32(Register a, int s32) {
-        emitString("setp.gt.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_gt_s32(Register a, int s32, int p) {
+        emitString("setp.gt.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_ge_s32(Register a, int s32) {
-        emitString("setp.ge.s32" + " " + "%p" + ", %r" + a.encoding() + ", " + s32 + ";" + "");
+    public final void setp_ge_s32(Register a, int s32, int p) {
+        emitString("setp.ge.s32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + s32 + ";" + "");
     }
 
-    public final void setp_eq_s32(int s32, Register b) {
-        emitString("setp.eq.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_s32(int s32, Register b, int p) {
+        emitString("setp.eq.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_s32(int s32, Register b) {
-        emitString("setp.ne.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_s32(int s32, Register b, int p) {
+        emitString("setp.ne.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_s32(int s32, Register b) {
-        emitString("setp.lt.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_s32(int s32, Register b, int p) {
+        emitString("setp.lt.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_s32(int s32, Register b) {
-        emitString("setp.le.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_s32(int s32, Register b, int p) {
+        emitString("setp.le.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_s32(int s32, Register b) {
-        emitString("setp.gt.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_s32(int s32, Register b, int p) {
+        emitString("setp.gt.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_s32(int s32, Register b) {
-        emitString("setp.ge.s32" + " " + "%p" + ", " + s32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_s32(int s32, Register b, int p) {
+        emitString("setp.ge.s32" + " " + "%p" + p + ", " + s32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_u32(Register a, Register b) {
-        emitString("setp.eq.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_u32(Register a, Register b, int p) {
+        emitString("setp.eq.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_u32(Register a, Register b) {
-        emitString("setp.ne.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_u32(Register a, Register b, int p) {
+        emitString("setp.ne.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_u32(Register a, Register b) {
-        emitString("setp.lt.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_u32(Register a, Register b, int p) {
+        emitString("setp.lt.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_u32(Register a, Register b) {
-        emitString("setp.le.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_u32(Register a, Register b, int p) {
+        emitString("setp.le.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_u32(Register a, Register b) {
-        emitString("setp.gt.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_u32(Register a, Register b, int p) {
+        emitString("setp.gt.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_u32(Register a, Register b) {
-        emitString("setp.ge.u32" + " " + "%p" + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_u32(Register a, Register b, int p) {
+        emitString("setp.ge.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_eq_u32(Register a, int u32) {
-        emitString("setp.eq.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_eq_u32(Register a, int u32, int p) {
+        emitString("setp.eq.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_ne_u32(Register a, int u32) {
-        emitString("setp.ne.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_ne_u32(Register a, int u32, int p) {
+        emitString("setp.ne.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_lt_u32(Register a, int u32) {
-        emitString("setp.lt.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_lt_u32(Register a, int u32, int p) {
+        emitString("setp.lt.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_le_u32(Register a, int u32) {
-        emitString("setp.le.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_le_u32(Register a, int u32, int p) {
+        emitString("setp.le.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_gt_u32(Register a, int u32) {
-        emitString("setp.gt.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_gt_u32(Register a, int u32, int p) {
+        emitString("setp.gt.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_ge_u32(Register a, int u32) {
-        emitString("setp.ge.u32" + " " + "%p" + ", %r" + a.encoding() + ", " + u32 + ";" + "");
+    public final void setp_ge_u32(Register a, int u32, int p) {
+        emitString("setp.ge.u32" + " " + "%p" + p + ", %r" + a.encoding() + ", " + u32 + ";" + "");
     }
 
-    public final void setp_eq_u32(int u32, Register b) {
-        emitString("setp.eq.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_eq_u32(int u32, Register b, int p) {
+        emitString("setp.eq.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ne_u32(int u32, Register b) {
-        emitString("setp.ne.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ne_u32(int u32, Register b, int p) {
+        emitString("setp.ne.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_lt_u32(int u32, Register b) {
-        emitString("setp.lt.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_lt_u32(int u32, Register b, int p) {
+        emitString("setp.lt.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_le_u32(int u32, Register b) {
-        emitString("setp.le.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_le_u32(int u32, Register b, int p) {
+        emitString("setp.le.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_gt_u32(int u32, Register b) {
-        emitString("setp.gt.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_gt_u32(int u32, Register b, int p) {
+        emitString("setp.gt.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
-    public final void setp_ge_u32(int u32, Register b) {
-        emitString("setp.ge.u32" + " " + "%p" + ", " + u32 + ", %r" + b.encoding() + ";" + "");
+    public final void setp_ge_u32(int u32, Register b, int p) {
+        emitString("setp.ge.u32" + " " + "%p" + p + ", " + u32 + ", %r" + b.encoding() + ";" + "");
     }
 
     // Store in global state space
