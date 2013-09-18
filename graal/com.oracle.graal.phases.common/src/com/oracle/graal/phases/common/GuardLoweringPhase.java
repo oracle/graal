@@ -189,7 +189,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             processBlock(block, schedule, context.getTarget().implicitNullCheckLimit);
         }
 
-        graph.setGuardsPhase(GuardsStage.FIXED_DEOPTS);
+        graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
     }
 
     private static void processBlock(Block block, SchedulePhase schedule, int implicitNullCheckLimit) {

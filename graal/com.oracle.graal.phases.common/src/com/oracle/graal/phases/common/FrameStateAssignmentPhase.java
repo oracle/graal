@@ -89,7 +89,7 @@ public class FrameStateAssignmentPhase extends Phase {
         assert checkFixedDeopts(graph);
         ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null, null);
 
-        graph.setGuardsPhase(GuardsStage.AFTER_FSA);
+        graph.setGuardsStage(GuardsStage.AFTER_FSA);
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {

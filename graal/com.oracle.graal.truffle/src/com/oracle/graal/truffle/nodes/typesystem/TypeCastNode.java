@@ -60,7 +60,7 @@ public final class TypeCastNode extends FixedWithNextNode implements Lowerable, 
     }
 
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsPhase() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
             ValueAnchorNode valueAnchorNode = graph().add(new ValueAnchorNode());
             UnsafeCastNode unsafeCast = graph().unique(new UnsafeCastNode(object, this.stamp(), (GuardingNode) valueAnchorNode));
             this.replaceAtUsages(unsafeCast);

@@ -645,7 +645,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 checkcastDynamicSnippets.lower(checkcastDynamicNode);
             }
         } else if (n instanceof UnsafeLoadNode) {
-            if (graph.getGuardsPhase().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
+            if (graph.getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
                 UnsafeLoadNode load = (UnsafeLoadNode) n;
                 assert load.kind() != Kind.Illegal;
                 boolean compressible = (!load.object().isNullConstant() && load.accessKind() == Kind.Object);
@@ -685,7 +685,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             WriteNode hub = createWriteHub(graph, wordKind, storeHub.getObject(), storeHub.getValue());
             graph.replaceFixed(storeHub, hub);
         } else if (n instanceof CommitAllocationNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 CommitAllocationNode commit = (CommitAllocationNode) n;
 
                 ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
@@ -761,7 +761,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 graph.removeFixed(commit);
             }
         } else if (n instanceof OSRStartNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 OSRStartNode osrStart = (OSRStartNode) n;
                 StartNode newStart = graph.add(new StartNode());
                 LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind())));
@@ -790,31 +790,31 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);
         } else if (n instanceof InstanceOfNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 instanceofSnippets.lower((InstanceOfNode) n, tool);
             }
         } else if (n instanceof InstanceOfDynamicNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 instanceofSnippets.lower((InstanceOfDynamicNode) n, tool);
             }
         } else if (n instanceof NewInstanceNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewInstanceNode) n);
             }
         } else if (n instanceof NewArrayNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewArrayNode) n);
             }
         } else if (n instanceof DynamicNewArrayNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((DynamicNewArrayNode) n);
             }
         } else if (n instanceof MonitorEnterNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 monitorSnippets.lower((MonitorEnterNode) n, tool);
             }
         } else if (n instanceof MonitorExitNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
         } else if (n instanceof G1PreWriteBarrier) {
@@ -832,7 +832,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         } else if (n instanceof G1ArrayRangePostWriteBarrier) {
             writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, tool);
         } else if (n instanceof NewMultiArrayNode) {
-            if (graph.getGuardsPhase() == StructuredGraph.GuardsStage.AFTER_FSA) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewMultiArrayNode) n);
             }
         } else if (n instanceof LoadExceptionObjectNode) {
@@ -851,7 +851,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {
-        if (useG1GC() && load.graph().getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object &&
+        if (useG1GC() && load.graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS && load.object().kind() == Kind.Object && load.accessKind() == Kind.Object &&
                         !ObjectStamp.isObjectAlwaysNull(load.object())) {
             ResolvedJavaType type = ObjectStamp.typeOrNull(load.object());
             if (type != null && !type.isArray()) {

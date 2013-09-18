@@ -77,7 +77,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsPhase() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
             throw new GraalInternalError("Cannot create guards in after-guard lowering");
         }
         GuardingNode guard = tool.createGuard(condition, reason, action, negated);
