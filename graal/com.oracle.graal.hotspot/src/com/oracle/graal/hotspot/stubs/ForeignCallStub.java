@@ -29,6 +29,7 @@ import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -223,13 +224,16 @@ public class ForeignCallStub extends Stub {
         boolean isObjectResult = linkage.getOutgoingCallingConvention().getReturn().getKind() == Kind.Object;
         GraphBuilder builder = new GraphBuilder(this);
         LocalNode[] locals = createLocals(builder, args);
+        List<InvokeNode> invokes = new ArrayList<>(3);
 
         ReadRegisterNode thread = prependThread || isObjectResult ? builder.append(new ReadRegisterNode(runtime.threadRegister(), true, false)) : null;
         ValueNode result = createTargetCall(builder, locals, thread);
-        createInvoke(builder, StubUtil.class, "handlePendingException", ConstantNode.forBoolean(isObjectResult, builder.graph));
+        invokes.add(createInvoke(builder, StubUtil.class, "handlePendingException", ConstantNode.forBoolean(isObjectResult, builder.graph)));
         if (isObjectResult) {
             InvokeNode object = createInvoke(builder, HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
             result = createInvoke(builder, StubUtil.class, "verifyObject", object);
+            invokes.add(object);
+            invokes.add((InvokeNode) result);
         }
         builder.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
 
@@ -240,7 +244,7 @@ public class ForeignCallStub extends Stub {
         /* Rewrite all word types that can come in from the method argument types. */
         new WordTypeRewriterPhase(runtime, wordKind()).apply(builder.graph);
         /* Inline all method calls that are create above. */
-        for (InvokeNode invoke : builder.graph.getNodes().filter(InvokeNode.class).snapshot()) {
+        for (InvokeNode invoke : invokes) {
             inline(invoke);
         }
         /* Clean up all code that is now dead after inlining. */
