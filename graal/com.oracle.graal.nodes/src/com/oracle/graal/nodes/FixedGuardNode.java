@@ -107,7 +107,7 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsPhase() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
             GuardingNode guard = tool.createGuard(condition(), getReason(), getAction(), isNegated());
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
             this.replaceAtUsages(guard.asNode());

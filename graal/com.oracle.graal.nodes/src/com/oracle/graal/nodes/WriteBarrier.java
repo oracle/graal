@@ -54,7 +54,7 @@ public abstract class WriteBarrier extends FixedWithNextNode implements Lowerabl
 
     @Override
     public void lower(LoweringTool generator) {
-        assert graph().getGuardsPhase() == StructuredGraph.GuardsStage.AFTER_FSA;
+        assert graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA;
         generator.getRuntime().lower(this, generator);
     }
 }
