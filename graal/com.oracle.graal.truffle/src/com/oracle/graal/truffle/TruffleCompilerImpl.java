@@ -77,7 +77,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.graalRuntime = HotSpotGraalRuntime.graalRuntime();
         this.skippedExceptionTypes = getSkippedExceptionTypes(metaAccessProvider);
 
-        final GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
+        final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
         this.truffleCache = new TruffleCache(this.runtime, config, TruffleCompilerImpl.Optimizations, this.replacements);
 

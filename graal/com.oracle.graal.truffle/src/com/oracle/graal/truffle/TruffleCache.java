@@ -31,22 +31,16 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.truffle.phases.*;
-import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
 
@@ -60,8 +54,8 @@ public final class TruffleCache {
     private final OptimisticOptimizations optimisticOptimizations;
     private final Replacements replacements;
 
-    private final HashMap<ResolvedJavaMethod, StructuredGraph> rawCache = new HashMap<>();
-    private final HashMap<ResolvedJavaMethod, StructuredGraph> cache = new HashMap<>();
+    private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
+    private final StructuredGraph markerGraph = new StructuredGraph();
 
     public TruffleCache(MetaAccessProvider metaAccessProvider, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
         this.metaAccessProvider = metaAccessProvider;
@@ -73,185 +67,78 @@ public final class TruffleCache {
     @SuppressWarnings("unused")
     public StructuredGraph lookup(final ResolvedJavaMethod method, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final CanonicalizerPhase finalCanonicalizer) {
 
-        StructuredGraph resultGraph = null;
-        if (cache.containsKey(method)) {
-            StructuredGraph graph = cache.get(method);
-            if (checkArgumentStamps(graph, arguments)) {
-                resultGraph = graph;
+        List<Object> key = new ArrayList<>(arguments.size() + 1);
+        key.add(method);
+        for (ValueNode v : arguments) {
+            if (v.kind() == Kind.Object) {
+                key.add(v.stamp());
             }
         }
-
-        if (resultGraph == null) {
-            resultGraph = Debug.sandbox("TruffleCache", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Callable<StructuredGraph>() {
-
-                public StructuredGraph call() {
-                    StructuredGraph newGraph = parseGraph(method).copy();
-
-                    // Get stamps from actual arguments.
-                    List<Stamp> stamps = new ArrayList<>();
-                    for (ValueNode arg : arguments) {
-                        stamps.add(arg.stamp());
-                    }
-
-                    if (cache.containsKey(method)) {
-                        // Make sure stamps are generalized based on previous stamps.
-                        StructuredGraph graph = cache.get(method);
-                        for (LocalNode localNode : graph.getNodes(LocalNode.class)) {
-                            int index = localNode.index();
-                            Stamp stamp = stamps.get(index);
-                            stamps.set(index, stamp.meet(localNode.stamp()));
-                        }
-                    }
-
-                    // Set stamps into graph before optimizing.
-                    List<Node> modifiedLocals = new ArrayList<>(arguments.size());
-                    for (LocalNode localNode : newGraph.getNodes(LocalNode.class)) {
-                        int index = localNode.index();
-                        Stamp stamp = stamps.get(index);
-
-                        if (!stamp.equals(localNode.stamp())) {
-                            localNode.setStamp(stamp);
-                            modifiedLocals.add(localNode);
-                        }
-                    }
-
-                    Assumptions tmpAssumptions = new Assumptions(false);
-
-                    optimizeGraph(newGraph, tmpAssumptions, newGraph.getNodes().snapshot());
-
-                    PhaseContext context = new PhaseContext(metaAccessProvider, tmpAssumptions, replacements);
-                    PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, new CanonicalizerPhase(!AOTCompilation.getValue()));
-                    partialEscapePhase.apply(newGraph, context);
-
-                    cache.put(method, newGraph);
-                    if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
-                        TTY.println(String.format("[truffle] added to graph cache method %s with %d nodes.", method, newGraph.getNodeCount()));
-                    }
-                    return newGraph;
-                }
-            });
+        StructuredGraph resultGraph = cache.get(key);
+        if (resultGraph != null) {
+            return resultGraph;
         }
+
+        if (resultGraph == markerGraph) {
+            // Avoid recursive inline.
+            return null;
+        }
+
+        cache.put(key, markerGraph);
+        resultGraph = Debug.scope("TruffleCache", new Object[]{metaAccessProvider, method}, new Callable<StructuredGraph>() {
+
+            public StructuredGraph call() {
+
+                final StructuredGraph graph = new StructuredGraph(method);
+                PhaseContext context = new PhaseContext(metaAccessProvider, new Assumptions(false), replacements);
+                new GraphBuilderPhase(metaAccessProvider, config, optimisticOptimizations).apply(graph);
+
+                for (LocalNode l : graph.getNodes(LocalNode.class)) {
+                    if (l.kind() == Kind.Object) {
+                        ValueNode actualArgument = arguments.get(l.index());
+                        l.setStamp(l.stamp().join(actualArgument.stamp()));
+                    }
+                }
+
+                // Intrinsify methods.
+                new ReplaceIntrinsicsPhase(replacements).apply(graph);
+
+                // Convert deopt to guards.
+                new ConvertDeoptimizeToGuardPhase().apply(graph);
+
+                CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
+
+                // Canonicalize / constant propagate.
+                canonicalizerPhase.apply(graph, context);
+
+                int mark = graph.getMark();
+                for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                    if (graph.getMark() != mark) {
+                        canonicalizerPhase.applyIncremental(graph, context, mark);
+                        mark = graph.getMark();
+                    }
+                    String name = methodCallTarget.targetName();
+                    expandInvoke(methodCallTarget.invoke());
+                }
+
+                // Convert deopt to guards.
+                new ConvertDeoptimizeToGuardPhase().apply(graph);
+
+                // Canonicalize / constant propagate.
+                canonicalizerPhase.apply(graph, context);
+
+                // Conditional elimination.
+                ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
+                conditionalEliminationPhase.apply(graph);
+
+                if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+                    TTY.println(String.format("[truffle] added to graph cache method %s with %d nodes.", method, graph.getNodeCount()));
+                }
+                return graph;
+            }
+        });
+        cache.put(key, resultGraph);
         return resultGraph;
-    }
-
-    private void optimizeGraph(StructuredGraph newGraph, Assumptions assumptions, Iterable<Node> changedNodes) {
-        PhaseContext context = new PhaseContext(metaAccessProvider, assumptions, replacements);
-        ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase = new ConvertDeoptimizeToGuardPhase();
-        CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
-        EarlyReadEliminationPhase readEliminationPhase = new EarlyReadEliminationPhase(canonicalizerPhase);
-
-        int maxNodes = TruffleCompilerOptions.TruffleOperationCacheMaxNodes.getValue();
-
-        contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, changedNodes, context);
-
-        while (newGraph.getNodeCount() <= maxNodes) {
-
-            int mark = newGraph.getMark();
-
-            expandGraph(newGraph, maxNodes);
-            NodeIterable<Node> newNodes = newGraph.getNewNodes(mark);
-
-            if (newNodes.isEmpty()) {
-                // No progress => exit iterative optimization.
-                break;
-            }
-
-            contractGraph(newGraph, conditionalEliminationPhase, convertDeoptimizeToGuardPhase, canonicalizerPhase, readEliminationPhase, newNodes, context);
-        }
-
-        if (newGraph.getNodeCount() > maxNodes && (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue() || TruffleCompilerOptions.TraceTrufflePerformanceWarnings.getValue())) {
-            TTY.println(String.format("[truffle] PERFORMANCE WARNING: method %s got too large with %d nodes.", newGraph.method(), newGraph.getNodeCount()));
-        }
-    }
-
-    private static void contractGraph(StructuredGraph newGraph, ConditionalEliminationPhase conditionalEliminationPhase, ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuardPhase,
-                    CanonicalizerPhase canonicalizerPhase, EarlyReadEliminationPhase readEliminationPhase, Iterable<Node> newNodes, PhaseContext context) {
-
-        // Canonicalize / constant propagate.
-        canonicalizerPhase.applyIncremental(newGraph, context, newNodes);
-
-        // Early read eliminiation
-        readEliminationPhase.apply(newGraph, context);
-
-        // Convert deopt to guards.
-        convertDeoptimizeToGuardPhase.apply(newGraph);
-
-        // Conditional elimination.
-        conditionalEliminationPhase.apply(newGraph);
-    }
-
-    private void expandGraph(StructuredGraph newGraph, int maxNodes) {
-        NodeBitMap visitedNodes = newGraph.createNodeBitMap(true);
-        Queue<AbstractBeginNode> workQueue = new LinkedList<>();
-        workQueue.add(newGraph.start());
-
-        while (!workQueue.isEmpty() && newGraph.getNodeCount() <= maxNodes) {
-            AbstractBeginNode start = workQueue.poll();
-            expandPath(newGraph, maxNodes, visitedNodes, start, workQueue);
-        }
-    }
-
-    private void expandPath(StructuredGraph newGraph, int maxNodes, NodeBitMap visitedNodes, AbstractBeginNode start, Queue<AbstractBeginNode> workQueue) {
-        if (start.isDeleted()) {
-            return;
-        }
-
-        FixedNode next = start;
-        while (!visitedNodes.isMarked(next)) {
-            visitedNodes.mark(next);
-            if (next instanceof Invoke) {
-                Invoke invoke = (Invoke) next;
-                next = expandInvoke(invoke);
-                if (newGraph.getNodeCount() > maxNodes) {
-                    return;
-                }
-            }
-
-            if (next instanceof InvokeWithExceptionNode) {
-                InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) next;
-                next = invokeWithExceptionNode.next();
-            } else if (next instanceof IfNode && isAssertionsEnabledCondition(((IfNode) next).condition())) {
-                next = ((IfNode) next).falseSuccessor();
-            } else if (next instanceof ControlSplitNode) {
-                ControlSplitNode controlSplitNode = (ControlSplitNode) next;
-                AbstractBeginNode maxProbNode = null;
-                for (Node succ : controlSplitNode.cfgSuccessors()) {
-                    AbstractBeginNode successor = (AbstractBeginNode) succ;
-                    if (maxProbNode == null || controlSplitNode.probability(successor) > controlSplitNode.probability(maxProbNode)) {
-                        maxProbNode = successor;
-                    }
-                }
-                for (Node succ : controlSplitNode.cfgSuccessors()) {
-                    AbstractBeginNode successor = (AbstractBeginNode) succ;
-                    if (successor != maxProbNode) {
-                        workQueue.add(successor);
-                    }
-                }
-                next = maxProbNode;
-            } else if (next instanceof EndNode) {
-                EndNode endNode = (EndNode) next;
-                next = endNode.merge();
-            } else if (next instanceof ControlSinkNode) {
-                return;
-            } else if (next instanceof FixedWithNextNode) {
-                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) next;
-                next = fixedWithNextNode.next();
-            }
-        }
-    }
-
-    private static boolean isAssertionsEnabledCondition(LogicNode condition) {
-        if (condition instanceof IntegerEqualsNode) {
-            IntegerEqualsNode equalsNode = (IntegerEqualsNode) condition;
-            if (equalsNode.x() instanceof LoadFieldNode && equalsNode.y().isConstant()) {
-                LoadFieldNode loadFieldNode = (LoadFieldNode) equalsNode.x();
-                if (loadFieldNode.isStatic() && loadFieldNode.field().getName().equals("$assertionsDisabled") && loadFieldNode.field().isSynthetic()) {
-                    return ((ConstantNode) equalsNode.y()).value.equals(Constant.INT_0);
-                }
-            }
-        }
-        return false;
     }
 
     private FixedNode expandInvoke(Invoke invoke) {
@@ -270,11 +157,15 @@ public final class TruffleCache {
                         public StructuredGraph call() {
                             StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
                             if (inlineGraph == null) {
-                                inlineGraph = parseGraph(methodCallTargetNode.targetMethod());
+                                inlineGraph = TruffleCache.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
                             }
                             return inlineGraph;
                         }
                     });
+                    if (inlinedGraph == null) {
+                        // Can happen for recursive calls.
+                        return invoke.asNode();
+                    }
                     FixedNode fixedNode = (FixedNode) invoke.predecessor();
                     InliningUtil.inline(invoke, inlinedGraph, true);
                     return fixedNode;
@@ -282,50 +173,5 @@ public final class TruffleCache {
             }
         }
         return invoke.asNode();
-    }
-
-    private StructuredGraph parseGraph(final ResolvedJavaMethod method) {
-        if (rawCache.containsKey(method)) {
-            return rawCache.get(method);
-        }
-
-        StructuredGraph resultGraph = Debug.sandbox("InnerTruffleCache", new Object[]{metaAccessProvider, method}, DebugScope.getConfig(), new Callable<StructuredGraph>() {
-
-            public StructuredGraph call() {
-                final StructuredGraph graph = new StructuredGraph(method);
-                new GraphBuilderPhase(metaAccessProvider, config, optimisticOptimizations).apply(graph);
-                // Intrinsify methods.
-                new ReplaceIntrinsicsPhase(replacements).apply(graph);
-                for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.class)) {
-                    if (d.getDeoptimizationReason() == DeoptimizationReason.Unresolved) {
-                        // Cannot store this graph.
-                        return graph;
-                    }
-                }
-                rawCache.put(method, graph);
-                return graph;
-            }
-        });
-        return resultGraph;
-    }
-
-    private static boolean checkArgumentStamps(StructuredGraph graph, NodeInputList<ValueNode> arguments) {
-        assert graph.getNodes(LocalNode.class).count() <= arguments.count();
-        FrameState startState = graph.start().stateAfter();
-        for (int i = 0; i < arguments.size(); i++) {
-            ValueNode localNode = startState.localAt(i);
-            if (localNode != null) {
-                Stamp newStamp = localNode.stamp().meet(arguments.get(i).stamp());
-                if (!newStamp.equals(localNode.stamp())) {
-                    if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
-                        TTY.println(String.format("[truffle] graph cache entry too specific for method %s argument %s previous stamp %s new stamp %s.", graph.method(), localNode, localNode.stamp(),
-                                        newStamp));
-                    }
-                    return false;
-                }
-            }
-        }
-
-        return true;
     }
 }
