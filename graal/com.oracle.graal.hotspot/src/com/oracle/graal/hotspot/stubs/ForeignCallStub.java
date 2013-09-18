@@ -237,9 +237,14 @@ public class ForeignCallStub extends Stub {
             Debug.dump(builder.graph, "Initial stub graph");
         }
 
+        /* Rewrite all word types that can come in from the method argument types. */
+        new WordTypeRewriterPhase(runtime, wordKind()).apply(builder.graph);
+        /* Inline all method calls that are create above. */
         for (InvokeNode invoke : builder.graph.getNodes().filter(InvokeNode.class).snapshot()) {
             inline(invoke);
         }
+        /* Clean up all code that is now dead after inlining. */
+        new DeadCodeEliminationPhase().apply(builder.graph);
         assert builder.graph.getNodes().filter(InvokeNode.class).isEmpty();
 
         if (Debug.isDumpEnabled()) {
@@ -294,13 +299,9 @@ public class ForeignCallStub extends Stub {
     }
 
     private void inline(InvokeNode invoke) {
-        StructuredGraph graph = invoke.graph();
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
         ReplacementsImpl repl = new ReplacementsImpl(runtime, new Assumptions(false), runtime.getTarget());
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null);
         InliningUtil.inline(invoke, calleeGraph, false);
-        new NodeIntrinsificationPhase(runtime).apply(graph);
-        new WordTypeRewriterPhase(runtime, wordKind()).apply(graph);
-        new DeadCodeEliminationPhase().apply(graph);
     }
 }

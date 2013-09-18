@@ -36,8 +36,8 @@ import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Operation;
 
 /**
- * Verifies invariants that must hold for snippet code above and beyond normal bytecode
- * verification.
+ * Verifies invariants that must hold for code that uses the {@link WordBase word type} above and
+ * beyond normal bytecode verification.
  */
 public class WordTypeVerificationPhase extends Phase {
 
@@ -49,6 +49,17 @@ public class WordTypeVerificationPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        assert verify(graph);
+    }
+
+    protected boolean verify(StructuredGraph inputGraph) {
+        /*
+         * This is a verification phase, so we do not want to have side effects. Since inferStamps()
+         * modifies the stamp of nodes, we copy the graph before running the verification.
+         */
+        StructuredGraph graph = inputGraph.copy();
+        wordAccess.inferStamps(graph);
+
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             for (Node usage : node.usages()) {
                 if (usage instanceof AccessMonitorNode) {
@@ -70,32 +81,7 @@ public class WordTypeVerificationPhase extends Phase {
                     verify(!isWord(node) || ((StoreIndexedNode) usage).value() != node, node, usage, "cannot store word value to array");
                 } else if (usage instanceof MethodCallTargetNode) {
                     MethodCallTargetNode callTarget = (MethodCallTargetNode) usage;
-                    ResolvedJavaMethod method = callTarget.targetMethod();
-                    if (method.getAnnotation(NodeIntrinsic.class) == null) {
-                        Invoke invoke = (Invoke) callTarget.usages().first();
-                        NodeInputList<ValueNode> arguments = callTarget.arguments();
-                        boolean isStatic = Modifier.isStatic(method.getModifiers());
-                        int argc = 0;
-                        if (!isStatic) {
-                            ValueNode receiver = arguments.get(argc);
-                            if (receiver == node && isWord(node)) {
-                                ResolvedJavaMethod resolvedMethod = wordAccess.getWordImplType().resolveMethod(method);
-                                verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
-                                Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
-                                verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
-                            }
-                            argc++;
-                        }
-                        Signature signature = method.getSignature();
-                        for (int i = 0; i < signature.getParameterCount(false); i++) {
-                            ValueNode argument = arguments.get(argc);
-                            if (argument == node) {
-                                ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
-                                verify(isWord(type) == isWord(argument), node, invoke.asNode(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
-                            }
-                            argc++;
-                        }
-                    }
+                    verifyInvoke(node, callTarget);
                 } else if (usage instanceof ObjectEqualsNode) {
                     verify(!isWord(node) || ((ObjectEqualsNode) usage).x() != node, node, usage, "cannot use word type in comparison");
                     verify(!isWord(node) || ((ObjectEqualsNode) usage).y() != node, node, usage, "cannot use word type in comparison");
@@ -111,19 +97,39 @@ public class WordTypeVerificationPhase extends Phase {
                 }
             }
         }
+        return true;
+    }
+
+    protected void verifyInvoke(ValueNode node, MethodCallTargetNode callTarget) {
+        ResolvedJavaMethod method = callTarget.targetMethod();
+        if (method.getAnnotation(NodeIntrinsic.class) == null) {
+            Invoke invoke = (Invoke) callTarget.usages().first();
+            NodeInputList<ValueNode> arguments = callTarget.arguments();
+            boolean isStatic = Modifier.isStatic(method.getModifiers());
+            int argc = 0;
+            if (!isStatic) {
+                ValueNode receiver = arguments.get(argc);
+                if (receiver == node && isWord(node)) {
+                    ResolvedJavaMethod resolvedMethod = wordAccess.wordImplType.resolveMethod(method);
+                    verify(resolvedMethod != null, node, invoke.asNode(), "cannot resolve method on Word class: " + MetaUtil.format("%H.%n(%P) %r", method));
+                    Operation operation = resolvedMethod.getAnnotation(Word.Operation.class);
+                    verify(operation != null, node, invoke.asNode(), "cannot dispatch on word value to non @Operation annotated method " + resolvedMethod);
+                }
+                argc++;
+            }
+            Signature signature = method.getSignature();
+            for (int i = 0; i < signature.getParameterCount(false); i++) {
+                ValueNode argument = arguments.get(argc);
+                if (argument == node) {
+                    ResolvedJavaType type = (ResolvedJavaType) signature.getParameterType(i, method.getDeclaringClass());
+                    verify(isWord(type) == isWord(argument), node, invoke.asNode(), "cannot pass word value to non-word parameter " + i + " or vice-versa");
+                }
+                argc++;
+            }
+        }
     }
 
     private boolean isWord(ValueNode node) {
-        if (node instanceof ProxyNode) {
-            /*
-             * The proxy node will eventually get the same stamp as the value it is proxying.
-             * However, since we cannot guarantee the order in which isWord is called during the
-             * verification phase, the stamp assignment for the value might not have happened yet.
-             * Therefore, we check the proxied value directly instead of the proxy.
-             */
-            return isWord(((ProxyNode) node).value());
-        }
-
         return wordAccess.isWord(node);
     }
 

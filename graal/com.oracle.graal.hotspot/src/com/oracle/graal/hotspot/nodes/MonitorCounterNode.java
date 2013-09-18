@@ -27,7 +27,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -35,8 +34,8 @@ import com.oracle.graal.word.*;
  */
 public final class MonitorCounterNode extends FloatingNode implements LIRGenLowerable {
 
-    public MonitorCounterNode() {
-        super(StampFactory.forWord());
+    private MonitorCounterNode() {
+        super(null);
     }
 
     @Override
@@ -47,6 +46,6 @@ public final class MonitorCounterNode extends FloatingNode implements LIRGenLowe
         gen.setResult(this, result);
     }
 
-    @NodeIntrinsic
+    @NodeIntrinsic(setStampFromReturnType = true)
     public static native Word counter();
 }

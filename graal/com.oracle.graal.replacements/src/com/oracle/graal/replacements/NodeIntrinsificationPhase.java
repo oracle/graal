@@ -76,7 +76,6 @@ public class NodeIntrinsificationPhase extends Phase {
             assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
 
             ResolvedJavaType[] parameterTypes = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(target), declaringClass);
-            ResolvedJavaType returnType = target.getSignature().getReturnType(declaringClass).resolve(declaringClass);
 
             // Prepare the arguments for the reflective constructor call on the node class.
             Constant[] nodeConstructorArguments = prepareArguments(methodCallTargetNode, parameterTypes, target, false);
@@ -86,7 +85,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             // Create the new node instance.
             ResolvedJavaType c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(c, parameterTypes, returnType, intrinsic.setStampFromReturnType(), nodeConstructorArguments);
+            Node newInstance = createNodeInstance(c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
             newInstance = methodCallTargetNode.graph().addOrUnique(newInstance);
@@ -194,7 +193,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return result;
     }
 
-    private Node createNodeInstance(ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, ResolvedJavaType returnType, boolean setStampFromReturnType, Constant[] nodeConstructorArguments) {
+    private Node createNodeInstance(ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType, Constant[] nodeConstructorArguments) {
         ResolvedJavaMethod constructor = null;
         Constant[] arguments = null;
 
@@ -218,11 +217,7 @@ public class NodeIntrinsificationPhase extends Phase {
             ValueNode intrinsicNode = (ValueNode) constructor.newInstance(arguments).asObject();
 
             if (setStampFromReturnType) {
-                if (returnType.getKind() == Kind.Object) {
-                    intrinsicNode.setStamp(StampFactory.declared(returnType));
-                } else {
-                    intrinsicNode.setStamp(StampFactory.forKind(returnType.getKind()));
-                }
+                intrinsicNode.setStamp(invokeStamp);
             }
             return intrinsicNode;
         } catch (Exception e) {

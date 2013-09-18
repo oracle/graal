@@ -46,7 +46,6 @@ import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
-import com.oracle.graal.word.phases.*;
 
 /**
  * A snippet template is a graph created by parsing a snippet method and then specialized by binding
@@ -352,7 +351,7 @@ public class SnippetTemplate {
 
                         @Override
                         public SnippetTemplate call() throws Exception {
-                            return new SnippetTemplate(runtime, replacements, target, args);
+                            return new SnippetTemplate(runtime, replacements, args);
                         }
                     });
                     templates.put(args.cacheKey, template);
@@ -383,7 +382,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    protected SnippetTemplate(MetaAccessProvider runtime, Replacements replacements, TargetDescription target, Arguments args) {
+    protected SnippetTemplate(MetaAccessProvider runtime, Replacements replacements, Arguments args) {
         StructuredGraph snippetGraph = replacements.getSnippet(args.info.method);
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -426,8 +425,6 @@ public class SnippetTemplate {
         if (!nodeReplacements.isEmpty()) {
             // Do deferred intrinsification of node intrinsics
             new NodeIntrinsificationPhase(runtime).apply(snippetCopy);
-            new WordTypeRewriterPhase(runtime, target.wordKind).apply(snippetCopy);
-
             new CanonicalizerPhase(true).apply(snippetCopy, context);
         }
         NodeIntrinsificationVerificationPhase.verify(snippetCopy);

@@ -104,6 +104,9 @@ public abstract class Node implements Cloneable, Formattable {
         /**
          * Determines if the stamp of the instantiated intrinsic node has its stamp set from the
          * return type of the annotated method.
+         * <p>
+         * When it is set to true, the stamp that is passed in to the constructor of ValueNode is
+         * ignored and can therefore safely be {@code null}.
          */
         boolean setStampFromReturnType() default false;
     }

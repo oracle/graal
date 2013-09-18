@@ -28,7 +28,6 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -38,8 +37,8 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLo
 
     private int lockDepth;
 
-    public CurrentLockNode(int lockDepth) {
-        super(StampFactory.forWord());
+    private CurrentLockNode(int lockDepth) {
+        super(null);
         this.lockDepth = lockDepth;
     }
 
@@ -53,6 +52,6 @@ public final class CurrentLockNode extends FixedWithNextNode implements LIRGenLo
         gen.setResult(this, result);
     }
 
-    @NodeIntrinsic
+    @NodeIntrinsic(setStampFromReturnType = true)
     public static native Word currentLock(@ConstantNodeParameter int lockDepth);
 }
