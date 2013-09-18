@@ -36,7 +36,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
@@ -87,7 +86,13 @@ public class WordTypeRewriterPhase extends Phase {
         boolean stampChanged;
         do {
             stampChanged = false;
-            for (Node n : GraphOrder.forwardGraph(graph)) {
+            /*
+             * We could use GraphOrder.forwardGraph() to process the nodes in a defined order and
+             * propagate long def-use chains in fewer iterations. However, measurements showed that
+             * we have few iterations anyway, and the overhead of computing the order is much higher
+             * than the benefit.
+             */
+            for (Node n : graph.getNodes()) {
                 if (n instanceof ValueNode) {
                     ValueNode node = (ValueNode) n;
                     if (node.kind() == Kind.Object) {
@@ -197,108 +202,114 @@ public class WordTypeRewriterPhase extends Phase {
      */
     protected void rewriteInvoke(StructuredGraph graph, MethodCallTargetNode callTargetNode) {
         ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
-        if (!callTargetNode.isStatic() && (callTargetNode.receiver().kind() == wordKind || isWord(callTargetNode.receiver()))) {
+        if (!wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass())) {
+            /* Not a method defined on WordBase or a subclass / subinterface, so nothing to rewrite. */
+            return;
+        }
+
+        if (!callTargetNode.isStatic()) {
+            assert callTargetNode.receiver().kind() == wordKind : "changeToWord() missed the receiver";
             targetMethod = wordImplType.resolveMethod(targetMethod);
         }
         Operation operation = targetMethod.getAnnotation(Word.Operation.class);
-        if (operation != null) {
-            NodeInputList<ValueNode> arguments = callTargetNode.arguments();
-            Invoke invoke = callTargetNode.invoke();
+        assert operation != null : targetMethod;
 
-            switch (operation.opcode()) {
-                case NODE_CLASS:
-                    assert arguments.size() == 2;
-                    ValueNode left = arguments.get(0);
-                    ValueNode right = operation.rightOperandIsInt() ? toUnsigned(graph, arguments.get(1), Kind.Int) : fromSigned(graph, arguments.get(1));
+        NodeInputList<ValueNode> arguments = callTargetNode.arguments();
+        Invoke invoke = callTargetNode.invoke();
 
-                    ValueNode replacement = graph.addOrUnique(createBinaryNodeInstance(operation.node(), wordKind, left, right));
-                    if (replacement instanceof FixedWithNextNode) {
-                        graph.addBeforeFixed(invoke.asNode(), (FixedWithNextNode) replacement);
-                    }
-                    replace(invoke, replacement);
-                    break;
+        switch (operation.opcode()) {
+            case NODE_CLASS:
+                assert arguments.size() == 2;
+                ValueNode left = arguments.get(0);
+                ValueNode right = operation.rightOperandIsInt() ? toUnsigned(graph, arguments.get(1), Kind.Int) : fromSigned(graph, arguments.get(1));
 
-                case COMPARISON:
-                    assert arguments.size() == 2;
-                    replace(invoke, comparisonOp(graph, operation.condition(), arguments.get(0), fromSigned(graph, arguments.get(1))));
-                    break;
-
-                case NOT:
-                    assert arguments.size() == 1;
-                    replace(invoke, graph.unique(new XorNode(wordKind, arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
-                    break;
-
-                case READ: {
-                    assert arguments.size() == 2 || arguments.size() == 3;
-                    Kind readKind = asKind(callTargetNode.returnType());
-                    LocationNode location;
-                    if (arguments.size() == 2) {
-                        location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
-                    } else {
-                        location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
-                    }
-                    replace(invoke, readOp(graph, arguments.get(0), invoke, location, BarrierType.NONE, false));
-                    break;
+                ValueNode replacement = graph.addOrUnique(createBinaryNodeInstance(operation.node(), wordKind, left, right));
+                if (replacement instanceof FixedWithNextNode) {
+                    graph.addBeforeFixed(invoke.asNode(), (FixedWithNextNode) replacement);
                 }
-                case READ_HEAP: {
-                    assert arguments.size() == 4;
-                    Kind readKind = asKind(callTargetNode.returnType());
-                    LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
-                    BarrierType barrierType = (BarrierType) arguments.get(2).asConstant().asObject();
-                    replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, arguments.get(3).asConstant().asInt() == 0 ? false : true));
-                    break;
+                replace(invoke, replacement);
+                break;
+
+            case COMPARISON:
+                assert arguments.size() == 2;
+                replace(invoke, comparisonOp(graph, operation.condition(), arguments.get(0), fromSigned(graph, arguments.get(1))));
+                break;
+
+            case NOT:
+                assert arguments.size() == 1;
+                replace(invoke, graph.unique(new XorNode(wordKind, arguments.get(0), ConstantNode.forIntegerKind(wordKind, -1, graph))));
+                break;
+
+            case READ: {
+                assert arguments.size() == 2 || arguments.size() == 3;
+                Kind readKind = asKind(callTargetNode.returnType());
+                LocationNode location;
+                if (arguments.size() == 2) {
+                    location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                } else {
+                    location = makeLocation(graph, arguments.get(1), readKind, arguments.get(2));
                 }
-                case WRITE:
-                case INITIALIZE: {
-                    assert arguments.size() == 3 || arguments.size() == 4;
-                    Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
-                    LocationNode location;
-                    if (arguments.size() == 3) {
-                        location = makeLocation(graph, arguments.get(1), writeKind, LocationIdentity.ANY_LOCATION);
-                    } else {
-                        location = makeLocation(graph, arguments.get(1), writeKind, arguments.get(3));
-                    }
-                    replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location, operation.opcode()));
-                    break;
-                }
-                case ZERO:
-                    assert arguments.size() == 0;
-                    replace(invoke, ConstantNode.forIntegerKind(wordKind, 0L, graph));
-                    break;
-
-                case FROM_UNSIGNED:
-                    assert arguments.size() == 1;
-                    replace(invoke, fromUnsigned(graph, arguments.get(0)));
-                    break;
-
-                case FROM_SIGNED:
-                    assert arguments.size() == 1;
-                    replace(invoke, fromSigned(graph, arguments.get(0)));
-                    break;
-
-                case TO_RAW_VALUE:
-                    assert arguments.size() == 1;
-                    replace(invoke, toUnsigned(graph, arguments.get(0), Kind.Long));
-                    break;
-
-                case FROM_OBJECT:
-                    assert arguments.size() == 1;
-                    replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), StampFactory.forKind(wordKind))));
-                    break;
-
-                case FROM_ARRAY:
-                    assert arguments.size() == 2;
-                    replace(invoke, graph.unique(new ComputeAddressNode(arguments.get(0), arguments.get(1), StampFactory.forKind(wordKind))));
-                    break;
-
-                case TO_OBJECT:
-                    assert arguments.size() == 1;
-                    replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), invoke.asNode().stamp())));
-                    break;
-
-                default:
-                    throw new GraalInternalError("Unknown opcode: %s", operation.opcode());
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, BarrierType.NONE, false));
+                break;
             }
+            case READ_HEAP: {
+                assert arguments.size() == 4;
+                Kind readKind = asKind(callTargetNode.returnType());
+                LocationNode location = makeLocation(graph, arguments.get(1), readKind, ANY_LOCATION);
+                BarrierType barrierType = (BarrierType) arguments.get(2).asConstant().asObject();
+                replace(invoke, readOp(graph, arguments.get(0), invoke, location, barrierType, arguments.get(3).asConstant().asInt() == 0 ? false : true));
+                break;
+            }
+            case WRITE:
+            case INITIALIZE: {
+                assert arguments.size() == 3 || arguments.size() == 4;
+                Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
+                LocationNode location;
+                if (arguments.size() == 3) {
+                    location = makeLocation(graph, arguments.get(1), writeKind, LocationIdentity.ANY_LOCATION);
+                } else {
+                    location = makeLocation(graph, arguments.get(1), writeKind, arguments.get(3));
+                }
+                replace(invoke, writeOp(graph, arguments.get(0), arguments.get(2), invoke, location, operation.opcode()));
+                break;
+            }
+            case ZERO:
+                assert arguments.size() == 0;
+                replace(invoke, ConstantNode.forIntegerKind(wordKind, 0L, graph));
+                break;
+
+            case FROM_UNSIGNED:
+                assert arguments.size() == 1;
+                replace(invoke, fromUnsigned(graph, arguments.get(0)));
+                break;
+
+            case FROM_SIGNED:
+                assert arguments.size() == 1;
+                replace(invoke, fromSigned(graph, arguments.get(0)));
+                break;
+
+            case TO_RAW_VALUE:
+                assert arguments.size() == 1;
+                replace(invoke, toUnsigned(graph, arguments.get(0), Kind.Long));
+                break;
+
+            case FROM_OBJECT:
+                assert arguments.size() == 1;
+                replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), StampFactory.forKind(wordKind))));
+                break;
+
+            case FROM_ARRAY:
+                assert arguments.size() == 2;
+                replace(invoke, graph.unique(new ComputeAddressNode(arguments.get(0), arguments.get(1), StampFactory.forKind(wordKind))));
+                break;
+
+            case TO_OBJECT:
+                assert arguments.size() == 1;
+                replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), invoke.asNode().stamp())));
+                break;
+
+            default:
+                throw new GraalInternalError("Unknown opcode: %s", operation.opcode());
         }
     }
 
