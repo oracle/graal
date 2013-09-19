@@ -25,6 +25,7 @@ package com.oracle.graal.phases.common;
 import java.util.*;
 
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.phases.*;
 
 /**
@@ -35,6 +36,7 @@ public class DeoptimizationGroupingPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
+        ControlFlowGraph cfg = null;
         for (FrameState fs : graph.getNodes(FrameState.class)) {
             FixedNode target = null;
             List<DeoptimizeNode> obsoletes = null;
@@ -42,12 +44,16 @@ public class DeoptimizationGroupingPhase extends Phase {
                 if (target == null) {
                     target = deopt;
                 } else {
+                    if (cfg == null) {
+                        cfg = ControlFlowGraph.compute(graph, true, true, false, false);
+                    }
                     MergeNode merge;
                     if (target instanceof DeoptimizeNode) {
                         merge = graph.add(new MergeNode());
                         EndNode firstEnd = graph.add(new EndNode());
                         merge.addForwardEnd(firstEnd);
                         target.predecessor().replaceFirstSuccessor(target, firstEnd);
+                        exitLoops((DeoptimizeNode) target, firstEnd, cfg);
                         merge.setNext(target);
                         obsoletes = new LinkedList<>();
                         target = merge;
@@ -57,6 +63,7 @@ public class DeoptimizationGroupingPhase extends Phase {
                     EndNode newEnd = graph.add(new EndNode());
                     merge.addForwardEnd(newEnd);
                     deopt.predecessor().replaceFirstSuccessor(deopt, newEnd);
+                    exitLoops(deopt, newEnd, cfg);
                     obsoletes.add(deopt);
                 }
             }
@@ -65,6 +72,15 @@ public class DeoptimizationGroupingPhase extends Phase {
                     obsolete.safeDelete();
                 }
             }
+        }
+    }
+
+    private static void exitLoops(DeoptimizeNode deopt, EndNode end, ControlFlowGraph cfg) {
+        Block block = cfg.blockFor(deopt);
+        Loop loop = block.getLoop();
+        while (loop != null) {
+            end.graph().addBeforeFixed(end, end.graph().add(new LoopExitNode(loop.loopBegin())));
+            loop = loop.parent;
         }
     }
 }
