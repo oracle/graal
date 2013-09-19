@@ -209,6 +209,9 @@ public final class DebugScope {
             for (DebugDumpHandler dumpHandler : config.dumpHandlers()) {
                 dumpHandler.dump(object, message);
             }
+        } else {
+            PrintStream out = System.out;
+            out.println("Forced dump ignored because debugging is disabled - use -G:Dump=xxx option");
         }
     }
 
