@@ -214,7 +214,8 @@ public class PartialEvaluator {
                         }
                     }
 
-                    if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers())) {
+                    if (inlineGraph == null && !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) &&
+                                    methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null) {
                         inlineGraph = parseGraph(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), assumptions, context);
                     }
 
