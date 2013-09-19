@@ -58,7 +58,6 @@ import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.StoreReturnValOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 
 /**
@@ -78,7 +77,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
         @Override
         public LIRInstruction createMove(AllocatableValue result, Value input) {
-            throw new InternalError("NYI");
+            throw GraalInternalError.unimplemented("PTXSpillMoveFactory.createMove()");
         }
     }
 
@@ -163,6 +162,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public PTXAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
+        /*
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -177,29 +177,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         } else {
             baseRegister = asAllocatable(base);
         }
-
-        @SuppressWarnings("unused") Value indexRegister;
-        if (!index.equals(Value.ILLEGAL) && scale != 0) {
-            if (isConstant(index)) {
-                finalDisp += asConstant(index).asLong() * scale;
-                indexRegister = Value.ILLEGAL;
-            } else {
-                if (scale != 1) {
-                    Variable longIndex = emitConvert(Op.I2L, index);
-                    if (CodeUtil.isPowerOf2(scale)) {
-                        indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
-                    } else {
-                        indexRegister = emitMul(longIndex, Constant.forLong(scale));
-                    }
-                } else {
-                    indexRegister = asAllocatable(index);
-                }
-            }
-        } else {
-            indexRegister = Value.ILLEGAL;
-        }
-
-        return new PTXAddressValue(target().wordKind, baseRegister, finalDisp);
+        */
+        return new PTXAddressValue(target().wordKind, load(base), displacement);
     }
 
     private PTXAddressValue asAddress(Value address) {
@@ -227,7 +206,7 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAddress(StackSlot address) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitAddress()");
     }
 
     @Override
@@ -265,12 +244,12 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitOverflowCheckBranch()");
     }
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitIntegerTestBranch()");
     }
 
     @Override
@@ -278,7 +257,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         // TODO: There is no conventional conditional move instruction in PTX.
         // So, this method is changed to throw NYI exception.
         // To be revisited if this needs to be really implemented.
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitConditionalMove()");
     }
 
 
@@ -434,12 +413,12 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitUDiv()");
     }
 
     @Override
     public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitURem()");
     }
 
     @Override
@@ -620,22 +599,22 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMembar()");
     }
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitDirectCall()");
     }
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitIndirectCall()");
     }
 
     @Override
     protected void emitForeignCall(ForeignCallLinkage callTarget, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitForeignCall()");
     }
 
     @Override
@@ -649,47 +628,47 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitBitScanForward(Variable result, Value value) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitBitScanForward()");
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitBitScanReverse()");
     }
 
     @Override
     public Value emitMathAbs(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathAbs()");
     }
 
     @Override
     public Value emitMathSqrt(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathSqrt()");
     }
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathLog()");
     }
 
     @Override
     public Value emitMathCos(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathCos()");
     }
 
     @Override
     public Value emitMathSin(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathSin()");
     }
 
     @Override
     public Value emitMathTan(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitMathTan()");
     }
 
     @Override
     public void emitByteSwap(Variable result, Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitByteSwap()");
     }
 
     @Override
@@ -728,12 +707,12 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitCompareAndSwap()");
     }
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitBreakpointNode()");
     }
 
     @Override
@@ -745,17 +724,17 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitUnwind(Value operand) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitUnwind()");
     }
 
     @Override
     public void emitNullCheck(ValueNode v, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitNullCheck()");
     }
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
     }
 
     public Variable emitLoadParam(Kind kind, Value address, DeoptimizingNode deopting) {

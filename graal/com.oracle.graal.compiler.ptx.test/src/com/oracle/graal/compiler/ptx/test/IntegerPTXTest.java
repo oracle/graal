@@ -26,6 +26,7 @@ import org.junit.*;
 
 import java.lang.reflect.Method;
 
+@Ignore
 public class IntegerPTXTest extends PTXTestBase {
 
     @Test

@@ -256,12 +256,14 @@ public enum PTXArithmetic {
 
     protected static void emit(@SuppressWarnings("unused") TargetMethodAssembler tasm,
                                PTXAssembler masm, PTXArithmetic opcode, Value result) {
+
+        Variable var = (Variable) result;
         switch (opcode) {
             case L2I:
-                new And(result, result, Constant.forLong(0xFFFFFFFF)).emit(masm);
+                new And(var, var, Constant.forLong(0xFFFFFFFF)).emit(masm);
                 break;
             case I2C:
-                new And(result, result, Constant.forInt((short) 0xFFFF)).emit(masm);
+                new And(var, var, Constant.forInt((short) 0xFFFF)).emit(masm);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
@@ -270,61 +272,38 @@ public enum PTXArithmetic {
 
     public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
+        Variable dest = (Variable) dst;
+        Variable source = (Variable) src;
+
         if (isRegister(src)) {
             switch (opcode) {
                 case INEG:
-                    masm.neg_s32(asIntReg(dst), asIntReg(src));
+                case FNEG:
+                case DNEG:
+                    new Neg(dest, source).emit(masm);
                     break;
                 case INOT:
-                    masm.not_s32(asIntReg(dst), asIntReg(src));
-                    break;
                 case LNOT:
-                    masm.not_s64(asLongReg(dst), asLongReg(src));
+                    new Not(dest, source).emit(masm);
                     break;
                 case I2L:
-                    masm.cvt_s64_s32(asLongReg(dst), asIntReg(src));
-                    break;
                 case I2C:
-                    masm.cvt_b16_s32(asIntReg(dst), asIntReg(src));
-                    break;
                 case I2B:
-                    masm.cvt_s8_s32(asIntReg(dst), asIntReg(src));
-                    break;
                 case I2F:
-                    masm.cvt_f32_s32(asFloatReg(dst), asIntReg(src));
-                    break;
                 case I2D:
-                    masm.cvt_f64_s32(asDoubleReg(dst), asIntReg(src));
-                    break;
-                case FNEG:
-                    masm.neg_f32(asFloatReg(dst), asFloatReg(src));
-                    break;
-                case DNEG:
-                    masm.neg_f64(asDoubleReg(dst), asDoubleReg(src));
-                    break;
                 case F2I:
-                    masm.cvt_s32_f32(asIntReg(dst), asFloatReg(src));
-                    break;
                 case F2L:
-                    masm.cvt_s64_f32(asLongReg(dst), asFloatReg(src));
-                    break;
                 case F2D:
-                    masm.cvt_f64_f32(asDoubleReg(dst), asFloatReg(src));
-                    break;
                 case D2I:
-                    masm.cvt_s32_f64(asIntReg(dst), asDoubleReg(src));
-                    break;
                 case D2L:
-                    masm.cvt_s64_f64(asLongReg(dst), asDoubleReg(src));
-                    break;
                 case D2F:
-                    masm.cvt_f32_f64(asFloatReg(dst), asDoubleReg(src));
+                    new Cvt(dest, source).emit(masm);
                     break;
                 case LSHL:
-                    new Shl(dst, dst, src).emit(masm);
+                    new Shl(dest, dest, src).emit(masm);
                     break;
                 case LSHR:
-                    new Shr(dst, dst, src).emit(masm);
+                    new Shr(dest, dest, src).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
@@ -332,13 +311,13 @@ public enum PTXArithmetic {
         } else if (isConstant(src)) {
             switch (opcode) {
                 case ISUB:
-                    new Sub(dst, src, src).emit(masm);
+                    new Sub(dest, dest, src).emit(masm);
                     break;
                 case IAND:
-                    new And(dst, src, src).emit(masm);
+                    new And(dest, dest, src).emit(masm);
                     break;
                 case LSHL:
-                    new Shl(dst, dst, src).emit(masm);
+                    new Shl(dest, dest, src).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -359,60 +338,63 @@ public enum PTXArithmetic {
     public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXArithmetic opcode,
                             Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
+        Variable dest = (Variable) dst;
+        Variable source1 = (Variable) src1;
+
         switch (opcode) {
             case IADD:
             case LADD:
             case FADD:
             case DADD:
-                new Add(dst, src1, src2).emit(masm);
+                new Add(dest, source1, src2).emit(masm);
                 break;
             case IAND:
             case LAND:
-                new And(dst, src1, src2).emit(masm);
+                new And(dest, source1, src2).emit(masm);
                 break;
             case ISUB:
             case LSUB:
             case FSUB:
             case DSUB:
-                new Sub(dst, src1, src2).emit(masm);
+                new Sub(dest, source1, src2).emit(masm);
                 break;
             case IMUL:
             case LMUL:
             case FMUL:
             case DMUL:
-                new Mul(dst, src1, src2).emit(masm);
+                new Mul(dest, source1, src2).emit(masm);
                 break;
             case IDIV:
             case LDIV:
             case FDIV:
             case DDIV:
-                new Div(dst, src1, src2).emit(masm);
+                new Div(dest, source1, src2).emit(masm);
                 break;
             case IOR:
             case LOR:
-                new Or(dst, src1, src2).emit(masm);
+                new Or(dest, source1, src2).emit(masm);
                 break;
             case IXOR:
             case LXOR:
-                new Xor(dst, src1, src2).emit(masm);
+                new Xor(dest, source1, src2).emit(masm);
                 break;
             case ISHL:
             case LSHL:
-                new Shl(dst, src1, src2).emit(masm);
+                new Shl(dest, source1, src2).emit(masm);
                 break;
             case ISHR:
             case LSHR:
-                new Shr(dst, src1, src2).emit(masm);
+                new Shr(dest, source1, src2).emit(masm);
                 break;
             case IUSHR:
             case LUSHR:
-                new Ushr(dst, src1, src2).emit(masm);
+                new Ushr(dest, source1, src2).emit(masm);
                 break;
             case IREM:
             case LREM:
             case FREM:
             case DREM:
-                new Rem(dst, src1, src2).emit(masm);
+                new Rem(dest, source1, src2).emit(masm);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);

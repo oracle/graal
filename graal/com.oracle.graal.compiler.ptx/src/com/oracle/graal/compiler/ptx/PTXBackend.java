@@ -142,6 +142,7 @@ public class PTXBackend extends Backend {
 
         final SortedSet<Integer> signed32 = new TreeSet<>();
         final SortedSet<Integer> signed64 = new TreeSet<>();
+        final SortedSet<Integer> unsigned64 = new TreeSet<>();
         final SortedSet<Integer> float32 = new TreeSet<>();
         final SortedSet<Integer> float64 = new TreeSet<>();
 
@@ -161,7 +162,6 @@ public class PTXBackend extends Backend {
                             }
                             break;
                         case Long:
-                        case Object:
                             // If the register was used as a narrower signed type
                             // remove it from there and add it to wider type.
                             if (signed32.contains(regVal.getRegister().encoding())) {
@@ -183,6 +183,9 @@ public class PTXBackend extends Backend {
                                 float32.remove(regVal.getRegister().encoding());
                             }
                             float64.add(regVal.getRegister().encoding());
+                            break;
+                        case Object:
+                            unsigned64.add(regVal.getRegister().encoding());
                             break;
                         default:
                             throw GraalInternalError.shouldNotReachHere("unhandled register type " + value.toString());
@@ -208,6 +211,9 @@ public class PTXBackend extends Backend {
         }
         for (Integer i : signed64) {
             codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
+        }
+        for (Integer i : unsigned64) {
+            codeBuffer.emitString(".reg .u64 %r" + i.intValue() + ";");
         }
         for (Integer i : float32) {
             codeBuffer.emitString(".reg .f32 %r" + i.intValue() + ";");

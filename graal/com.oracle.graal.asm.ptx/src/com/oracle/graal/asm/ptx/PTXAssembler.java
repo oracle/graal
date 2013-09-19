@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.Constant;
 import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.api.meta.Value;
 import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.lir.Variable;
 
 public class PTXAssembler extends AbstractPTXAssembler {
 
@@ -42,12 +43,12 @@ public class PTXAssembler extends AbstractPTXAssembler {
     public static class StandardFormat {
 
         protected Kind valueKind;
-        protected Value dest;
-        protected Value source1;
+        protected Variable dest;
+        protected Variable source1;
         protected Value source2;
         private boolean logicInstruction = false;
 
-        public StandardFormat(Value dst, Value src1, Value src2) {
+        public StandardFormat(Variable dst, Variable src1, Value src2) {
             setDestination(dst);
             setSource1(src1);
             setSource2(src2);
@@ -60,16 +61,16 @@ public class PTXAssembler extends AbstractPTXAssembler {
             valueKind = k;
         }
 
-        public void setDestination(Value v) {
-            dest = v;
+        public void setDestination(Variable var) {
+            dest = var;
         }
 
-        public void setSource1(Value v) {
-            source1 = v;
+        public void setSource1(Variable var) {
+            source1 = var;
         }
 
-        public void setSource2(Value v) {
-            source2 = v;
+        public void setSource2(Value val) {
+            source2 = val;
         }
 
         public void setLogicInstruction(boolean b) {
@@ -117,21 +118,21 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emit() {
-            return (typeForKind(valueKind) + emitRegister(dest) + emitValue(source1) + emitValue(source2) + ";");
+            return (typeForKind(valueKind) + emitRegister(dest) + emitRegister(source1) + emitValue(source2) + ";");
         }
 
         public String emitValue(Value v) {
             assert v != null;
 
             if (isConstant(v)) {
-                return (", " + emitConstant(v));
+                return (emitConstant(v));
             } else {
-                return ("," + emitRegister(v));
+                return (emitRegister((Variable) v));
             }
         }
 
-        public String emitRegister(Value v) {
-            return (" %r" + asRegister(v).encoding());
+        public String emitRegister(Variable v) {
+            return (" %r" + v.index + ",");
         }
 
         public String emitConstant(Value v) {
@@ -152,9 +153,120 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
     }
 
+    public static class SingleOperandFormat {
+
+        protected Variable dest;
+        protected Value    source;
+
+        public SingleOperandFormat(Variable dst, Value src) {
+            setDestination(dst);
+            setSource(src);
+        }
+
+        public void setDestination(Variable var) {
+            dest = var;
+        }
+
+        public void setSource(Value var) {
+            source = var;
+        }
+
+        public String typeForKind(Kind k) {
+            switch (k.getTypeChar()) {
+                case 'z':
+                    return "u8";
+                case 'b':
+                    return "s8";
+                case 's':
+                    return "s16";
+                case 'c':
+                    return "u16";
+                case 'i':
+                    return "s32";
+                case 'f':
+                    return "f32";
+                case 'j':
+                    return "s64";
+                case 'd':
+                    return "f64";
+                case 'a':
+                    return "u64";
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        public String emit() {
+            return (typeForKind(dest.getKind()) + " " + emitVariable(dest) + ", " + emitValue(source) + ";");
+        }
+
+        public String emitValue(Value v) {
+            assert v != null;
+
+            if (isConstant(v)) {
+                return (emitConstant(v));
+            } else {
+                return (emitVariable((Variable) v));
+            }
+        }
+
+        public String emitConstant(Value v) {
+            Constant constant = (Constant) v;
+
+            switch (v.getKind().getTypeChar()) {
+                case 'i':
+                    return (String.valueOf((int) constant.asLong()));
+                case 'f':
+                    return (String.valueOf(constant.asFloat()));
+                case 'j':
+                    return (String.valueOf(constant.asLong()));
+                case 'd':
+                    return (String.valueOf(constant.asDouble()));
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+        public String emitVariable(Variable v) {
+            return (" %r" + v.index);
+        }
+    }
+
+    public static class ConversionFormat extends SingleOperandFormat {
+
+        public ConversionFormat(Variable dst, Value src) {
+            super(dst, src);
+        }
+
+        @Override
+        public String emit() {
+            return (typeForKind(dest.getKind()) + "." + typeForKind(source.getKind()) + " " +
+                    emitVariable(dest) + ", " + emitValue(source) + ";");
+        }
+    }
+
+    public static class LoadStoreFormat extends StandardFormat {
+
+        protected PTXStateSpace space;
+
+        public LoadStoreFormat(PTXStateSpace space, Variable dst, Variable src1, Value src2) {
+            super(dst, src1, src2);
+            setStateSpace(space);
+        }
+
+        public void setStateSpace(PTXStateSpace ss) {
+            space = ss;
+        }
+
+        @Override
+        public String emit() {
+            return (space.getStateName() + "." + typeForKind(valueKind) +
+                    emitRegister(dest) + emitRegister(source1) + emitValue(source2) + ";");
+        }
+    }
+
     public static class Add extends StandardFormat {
 
-        public Add(Value dst, Value src1, Value src2) {
+        public Add(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -165,7 +277,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class And extends StandardFormat {
 
-        public And(Value dst, Value src1, Value src2) {
+        public And(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
             setLogicInstruction(true);
         }
@@ -177,7 +289,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Div extends StandardFormat {
 
-        public Div(Value dst, Value src1, Value src2) {
+        public Div(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -188,7 +300,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Mul extends StandardFormat {
 
-        public Mul(Value dst, Value src1, Value src2) {
+        public Mul(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -199,7 +311,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Or extends StandardFormat {
 
-        public Or(Value dst, Value src1, Value src2) {
+        public Or(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
             setLogicInstruction(true);
         }
@@ -211,7 +323,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Rem extends StandardFormat {
 
-        public Rem(Value dst, Value src1, Value src2) {
+        public Rem(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -222,7 +334,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Shl extends StandardFormat {
 
-        public Shl(Value dst, Value src1, Value src2) {
+        public Shl(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
             setLogicInstruction(true);
         }
@@ -234,7 +346,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Shr extends StandardFormat {
 
-        public Shr(Value dst, Value src1, Value src2) {
+        public Shr(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -245,7 +357,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Sub extends StandardFormat {
 
-        public Sub(Value dst, Value src1, Value src2) {
+        public Sub(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
         }
 
@@ -256,7 +368,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Ushr extends StandardFormat {
 
-        public Ushr(Value dst, Value src1, Value src2) {
+        public Ushr(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
             setKind(Kind.Illegal);  // get around not having an Unsigned Kind
         }
@@ -268,7 +380,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class Xor extends StandardFormat {
 
-        public Xor(Value dst, Value src1, Value src2) {
+        public Xor(Variable dst, Variable src1, Value src2) {
             super(dst, src1, src2);
             setLogicInstruction(true);
         }
@@ -287,58 +399,82 @@ public class PTXAssembler extends AbstractPTXAssembler {
         emitString("bra.uni" + " " + tgt + ";" + "");
     }
 
-    public final void cvt_s32_f32(Register d, Register a) {
-        emitString("cvt.s32.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
+    public static class Cvt extends ConversionFormat {
 
-    public final void cvt_s64_f32(Register d, Register a) {
-        emitString("cvt.s64.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
+        public Cvt(Variable dst, Variable src) {
+            super(dst, src);
+        }
 
-    public final void cvt_f64_f32(Register d, Register a) {
-        emitString("cvt.f64.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public void emit(PTXAssembler asm) {
+            asm.emitString("cvt." + super.emit());
+        }
     }
+    
+    public static class Mov extends SingleOperandFormat {
 
-    public final void cvt_f32_f64(Register d, Register a) {
-        emitString("cvt.f32.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public Mov(Variable dst, Value src) {
+            super(dst, src);
+        }
+
+        /*
+        public Mov(Variable dst, AbstractAddress src) {
+            throw GraalInternalError.unimplemented("AbstractAddress Mov");
+        }
+        */
+        
+        public void emit(PTXAssembler asm) {
+            asm.emitString("mov." + super.emit());
+        }
     }
+    
+    public static class Neg extends SingleOperandFormat {
 
-    public final void cvt_s32_f64(Register d, Register a) {
-        emitString("cvt.s32.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public Neg(Variable dst, Variable src) {
+            super(dst, src);
+        }
+
+        public void emit(PTXAssembler asm) {
+            asm.emitString("neg." + super.emit());
+        }
     }
+    
+    public static class Not extends SingleOperandFormat {
 
-    public final void cvt_s64_f64(Register d, Register a) {
-        emitString("cvt.s64.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public Not(Variable dst, Variable src) {
+            super(dst, src);
+        }
+
+        public void emit(PTXAssembler asm) {
+            asm.emitString("not." + super.emit());
+        }
     }
+    
+    public static class Ld extends LoadStoreFormat {
 
-    public final void cvt_f32_s32(Register d, Register a) {
-        emitString("cvt.f32.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public Ld(PTXStateSpace space, Variable dst, Variable src1, Value src2) {
+            super(space, dst, src1, src2);
+        }
+
+        public void emit(PTXAssembler asm) {
+            asm.emitString("ld." + super.emit());
+        }
     }
+    
+    public static class St extends LoadStoreFormat {
 
-    public final void cvt_f64_s32(Register d, Register a) {
-        emitString("cvt.f64.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
+        public St(PTXStateSpace space, Variable dst, Variable src1, Value src2) {
+            super(space, dst, src1, src2);
+        }
+
+        public void emit(PTXAssembler asm) {
+            asm.emitString("ld." + super.emit());
+        }
     }
-
-    public final void cvt_s8_s32(Register d, Register a) {
-        emitString("cvt.s8.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void cvt_b16_s32(Register d, Register a) {
-        emitString("cvt.b16.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void cvt_s64_s32(Register d, Register a) {
-        emitString("cvt.s64.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void cvt_s32_s64(Register d, Register a) {
-        emitString("cvt.s32.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
+    
     public final void exit() {
         emitString("exit;" + " " + "");
     }
-
+/*
     public final void ld_global_b8(Register d, Register a, long immOff) {
         emitString("ld.global.b8" + " " + "%r" + d.encoding() + ", [" + a + " + " + immOff + "]" + ";" + "");
     }
@@ -399,134 +535,14 @@ public class PTXAssembler extends AbstractPTXAssembler {
     public final void ld_from_state_space(String s, Register d, Register a, long immOff) {
         emitString("ld" + s + " " + "%r" + d.encoding() + ", [" + a + " + " + immOff + "]" + ";" + "");
     }
-
     // Load return address from return parameter which is in .param state space
     public final void ld_return_address(String s, Register d, Register a, long immOff) {
         emitString("ld.param." + s + " " + "%r" + d.encoding() + ", [" + a + " + " + immOff + "]" + ";" + "");
     }
-
-    public final void mov_b16(Register d, Register a) {
-        emitString("mov.b16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_b32(Register d, Register a) {
-        emitString("mov.b32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_b64(Register d, Register a) {
-        emitString("mov.b64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_u16(Register d, Register a) {
-        emitString("mov.u16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_u32(Register d, Register a) {
-        emitString("mov.u32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_u64(Register d, Register a) {
-        emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
+ */
 
     public final void mov_u64(@SuppressWarnings("unused") Register d, @SuppressWarnings("unused") AbstractAddress a) {
         // emitString("mov.u64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_s16(Register d, Register a) {
-        emitString("mov.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_s32(Register d, Register a) {
-        emitString("mov.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_s64(Register d, Register a) {
-        emitString("mov.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_f32(Register d, Register a) {
-        emitString("mov.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_f64(Register d, Register a) {
-        emitString("mov.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void mov_b16(Register d, short b16) {
-        emitString("mov.b16" + " " + "%r" + d.encoding() + ", " + b16 + ";" + "");
-    }
-
-    public final void mov_b32(Register d, int b32) {
-        emitString("mov.b32" + " " + "%r" + d.encoding() + ", " + b32 + ";" + "");
-    }
-
-    public final void mov_b64(Register d, long b64) {
-        emitString("mov.b64" + " " + "%r" + d.encoding() + ", " + b64 + ";" + "");
-    }
-
-    public final void mov_u16(Register d, short u16) {
-        emitString("mov.u16" + " " + "%r" + d.encoding() + ", " + u16 + ";" + "");
-    }
-
-    public final void mov_u32(Register d, int u32) {
-        emitString("mov.u32" + " " + "%r" + d.encoding() + ", " + u32 + ";" + "");
-    }
-
-    public final void mov_u64(Register d, long u64) {
-        emitString("mov.u64" + " " + "%r" + d.encoding() + ", " + u64 + ";" + "");
-    }
-
-    public final void mov_s16(Register d, short s16) {
-        emitString("mov.s16" + " " + "%r" + d.encoding() + ", " + s16 + ";" + "");
-    }
-
-    public final void mov_s32(Register d, int s32) {
-        emitString("mov.s32" + " " + "%r" + d.encoding() + ", " + s32 + ";" + "");
-    }
-
-    public final void mov_s64(Register d, long s64) {
-        emitString("mov.s64" + " " + "%r" + d.encoding() + ", " + s64 + ";" + "");
-    }
-
-    public final void mov_f32(Register d, float f32) {
-        emitString("mov.f32" + " " + "%r" + d.encoding() + ", " + f32 + ";" + "");
-    }
-
-    public final void mov_f64(Register d, double f64) {
-        emitString("mov.f64" + " " + "%r" + d.encoding() + ", " + f64 + ";" + "");
-    }
-
-    public final void neg_f32(Register d, Register a) {
-        emitString("neg.f32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void neg_f64(Register d, Register a) {
-        emitString("neg.f64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void neg_s16(Register d, Register a) {
-        emitString("neg.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void neg_s32(Register d, Register a) {
-        emitString("neg.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void neg_s64(Register d, Register a) {
-        emitString("neg.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void not_s16(Register d, Register a) {
-        emitString("not.s16" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void not_s32(Register d, Register a) {
-        emitString("not.s32" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
-    }
-
-    public final void not_s64(Register d, Register a) {
-        emitString("not.s64" + " " + "%r" + d.encoding() + ", %r" + a.encoding() + ";" + "");
     }
 
     public final void param_8_decl(Register d, boolean lastParam) {
@@ -790,7 +806,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     // Store in global state space
-
+/*
     public final void st_global_b8(Register a, long immOff, Register b) {
         emitString("st.global.b8" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
     }
@@ -875,10 +891,10 @@ public class PTXAssembler extends AbstractPTXAssembler {
     public final void st_global_return_value_u64(Register a, long immOff, Register b) {
         emitString("st.global.u64" + " " + "[%r" + a.encoding() + " + " + immOff + "], %r" + b.encoding() + ";" + "");
     }
-
+*/
     @Override
     public PTXAddress makeAddress(Register base, int displacement) {
-        return new PTXAddress(base, displacement);
+        throw GraalInternalError.shouldNotReachHere();
     }
 
     @Override

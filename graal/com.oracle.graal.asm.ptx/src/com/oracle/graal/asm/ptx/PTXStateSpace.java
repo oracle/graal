@@ -20,43 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.ptx.test;
-
-import java.lang.reflect.Method;
-
-import org.junit.Ignore;
-import org.junit.Test;
+package com.oracle.graal.asm.ptx;
 
 /**
- * Test class for small Java methods compiled to PTX kernels.
+ * Represents the various PTX state spaces.
  */
-@Ignore
-public class BasicPTXTest extends PTXTestBase {
+public enum PTXStateSpace {
 
-    @Test
-    public void testAdd() {
-        invoke(compile("testConstI"));
+    Parameter("param"),
+
+    Shared("shared"),
+
+    Local("local"),
+
+    Global("global"),
+
+    Const("const");
+
+    private final String stateName;
+
+    private PTXStateSpace(String name) {
+        this.stateName = name;
     }
 
-    @Test
-    public void testInvoke() {
-        invoke(compile("testConstI"));
-    }
-
-    public static int testConstI() {
-        return 42;
-    }
-
-    public static void main(String[] args) {
-        BasicPTXTest test = new BasicPTXTest();
-        Method[] methods = BasicPTXTest.class.getMethods();
-        for (Method m : methods) {
-            String name = m.getName();
-            if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
-            }
-        }
+    public String getStateName() {
+        return stateName;
     }
 }
