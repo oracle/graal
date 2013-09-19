@@ -34,6 +34,7 @@ import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
@@ -58,7 +59,7 @@ public class SnippetTemplate {
     /**
      * Holds the {@link ResolvedJavaMethod} of the snippet, together with some information about the
      * method that needs to be computed only once. The {@link SnippetInfo} should be created once
-     * per snippet an then cached.
+     * per snippet and then cached.
      */
     public static class SnippetInfo {
 
@@ -149,9 +150,9 @@ public class SnippetTemplate {
 
         protected int nextParamIdx;
 
-        public Arguments(SnippetInfo info) {
+        public Arguments(SnippetInfo info, GuardsStage guardsStage) {
             this.info = info;
-            this.cacheKey = new CacheKey(info);
+            this.cacheKey = new CacheKey(info, guardsStage);
             this.values = new Object[info.getParameterCount()];
         }
 
@@ -268,10 +269,12 @@ public class SnippetTemplate {
 
         private final ResolvedJavaMethod method;
         private final Object[] values;
+        private final GuardsStage guardsStage;
         private int hash;
 
-        protected CacheKey(SnippetInfo info) {
+        protected CacheKey(SnippetInfo info, GuardsStage guardsStage) {
             this.method = info.method;
+            this.guardsStage = guardsStage;
             this.values = new Object[info.getParameterCount()];
             this.hash = info.method.hashCode();
         }
@@ -288,6 +291,9 @@ public class SnippetTemplate {
             }
             CacheKey other = (CacheKey) obj;
             if (method != other.method) {
+                return false;
+            }
+            if (guardsStage != other.guardsStage) {
                 return false;
             }
             for (int i = 0; i < values.length; i++) {
@@ -493,7 +499,12 @@ public class SnippetTemplate {
             }
         } while (exploded);
 
-        // Remove all frame states from inlined snippet graph. Snippets must be atomic (i.e. free
+        // Perform lowering on the snippet
+        snippetCopy.setGuardsStage(args.cacheKey.guardsStage);
+        PhaseContext c = new PhaseContext(runtime, new Assumptions(false), replacements);
+        new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+
+        // Remove all frame states from snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).
         ArrayList<StateSplit> curSideEffectNodes = new ArrayList<>();
         ArrayList<DeoptimizingNode> curDeoptNodes = new ArrayList<>();

@@ -74,7 +74,7 @@ public class CheckCastDynamicSnippets implements Snippets {
             StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
 
-            Arguments args = new Arguments(dynamic);
+            Arguments args = new Arguments(dynamic, graph.getGuardsStage());
             args.add("hub", checkcast.hub());
             args.add("object", object);
 

@@ -340,7 +340,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(SerialWriteBarrier writeBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(serialWriteBarrier);
+            Arguments args = new Arguments(serialWriteBarrier, writeBarrier.graph().getGuardsStage());
             args.add("object", writeBarrier.getObject());
             args.add("location", writeBarrier.getLocation());
             args.addConst("usePrecise", writeBarrier.usePrecise());
@@ -349,7 +349,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(serialArrayRangeWriteBarrier);
+            Arguments args = new Arguments(serialArrayRangeWriteBarrier, arrayRangeWriteBarrier.graph().getGuardsStage());
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
@@ -357,7 +357,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1PreWriteBarrier writeBarrierPre, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(g1PreWriteBarrier);
+            Arguments args = new Arguments(g1PreWriteBarrier, writeBarrierPre.graph().getGuardsStage());
             args.add("object", writeBarrierPre.getObject());
             args.add("expectedObject", writeBarrierPre.getExpectedObject());
             args.add("location", writeBarrierPre.getLocation());
@@ -368,7 +368,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1ReferentFieldReadBarrier readBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(g1ReferentReadBarrier);
+            Arguments args = new Arguments(g1ReferentReadBarrier, readBarrier.graph().getGuardsStage());
             args.add("object", readBarrier.getObject());
             args.add("expectedObject", readBarrier.getExpectedObject());
             args.add("location", readBarrier.getLocation());
@@ -379,7 +379,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(g1PostWriteBarrier);
+            Arguments args = new Arguments(g1PostWriteBarrier, writeBarrierPost.graph().getGuardsStage());
             args.add("object", writeBarrierPost.getObject());
             args.add("value", writeBarrierPost.getValue());
             args.add("location", writeBarrierPost.getLocation());
@@ -390,7 +390,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1ArrayRangePreWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(g1ArrayRangePreWriteBarrier);
+            Arguments args = new Arguments(g1ArrayRangePreWriteBarrier, arrayRangeWriteBarrier.graph().getGuardsStage());
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
@@ -398,7 +398,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1ArrayRangePostWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(g1ArrayRangePostWriteBarrier);
+            Arguments args = new Arguments(g1ArrayRangePostWriteBarrier, arrayRangeWriteBarrier.graph().getGuardsStage());
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());

@@ -58,7 +58,7 @@ public class UnsafeLoadSnippets implements Snippets {
         }
 
         public void lower(UnsafeLoadNode load, @SuppressWarnings("unused") LoweringTool tool) {
-            Arguments args = new Arguments(unsafeLoad);
+            Arguments args = new Arguments(unsafeLoad, load.graph().getGuardsStage());
             args.add("object", load.object());
             args.add("offset", load.offset());
             args.add("disp", load.displacement());

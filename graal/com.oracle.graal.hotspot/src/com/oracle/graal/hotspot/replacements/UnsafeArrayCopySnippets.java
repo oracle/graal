@@ -279,7 +279,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
                 assert snippet != null : "arraycopy snippet for " + elementKind.name() + " not found";
             }
 
-            Arguments args = new Arguments(snippet);
+            Arguments args = new Arguments(snippet, node.graph().getGuardsStage());
             node.addSnippetArguments(args);
 
             SnippetTemplate template = template(args);

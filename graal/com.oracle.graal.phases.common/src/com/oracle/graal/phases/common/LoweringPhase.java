@@ -31,6 +31,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -77,10 +78,17 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 // Short cut creation of null check guard if the object is known to be non-null.
                 return null;
             }
-            GuardingNode guard = createGuard(object.graph().unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
-            assert guardedNode.getGuard() == null;
-            guardedNode.setGuard(guard);
-            return guard;
+            StructuredGraph graph = object.graph();
+            if (graph.getGuardsStage().ordinal() > GuardsStage.FLOATING_GUARDS.ordinal()) {
+                NullCheckNode nullCheck = graph.add(new NullCheckNode(object));
+                graph.addBeforeFixed((FixedNode) guardedNode, nullCheck);
+                return nullCheck;
+            } else {
+                GuardingNode guard = createGuard(graph.unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+                assert guardedNode.getGuard() == null;
+                guardedNode.setGuard(guard);
+                return guard;
+            }
         }
 
         @Override
@@ -202,7 +210,9 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
             if (parentAnchor == null && OptEliminateGuards.getValue()) {
                 for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
-                    activeGuards.clear(guard);
+                    if (activeGuards.contains(guard)) {
+                        activeGuards.clear(guard);
+                    }
                 }
             }
         }

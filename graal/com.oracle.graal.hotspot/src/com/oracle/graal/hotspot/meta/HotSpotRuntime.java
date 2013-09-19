@@ -554,9 +554,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             assert loadField.kind() != Kind.Illegal;
             BarrierType barrierType = getFieldLoadBarrierType(field);
             ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field), loadField.stamp(), barrierType, (loadField.kind() == Kind.Object)));
-            tool.createNullCheckGuard(memoryRead, object);
-
             graph.replaceFixedWithFixed(loadField, memoryRead);
+            tool.createNullCheckGuard(memoryRead, object);
 
             if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));

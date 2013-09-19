@@ -255,7 +255,7 @@ public class NewObjectSnippets implements Snippets {
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
             int size = instanceSize(type);
 
-            Arguments args = new Arguments(allocateInstance);
+            Arguments args = new Arguments(allocateInstance, graph.getGuardsStage());
             args.addConst("size", size);
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
@@ -278,7 +278,7 @@ public class NewObjectSnippets implements Snippets {
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
             int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) runtime).getScalingFactor(elementKind));
 
-            Arguments args = new Arguments(allocateArray);
+            Arguments args = new Arguments(allocateArray, graph.getGuardsStage());
             args.add("hub", hub);
             args.add("length", newArrayNode.length());
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
@@ -292,7 +292,7 @@ public class NewObjectSnippets implements Snippets {
         }
 
         public void lower(DynamicNewArrayNode newArrayNode) {
-            Arguments args = new Arguments(allocateArrayDynamic);
+            Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage());
             args.add("elementType", newArrayNode.getElementType());
             args.add("length", newArrayNode.length());
             args.addConst("fillContents", newArrayNode.fillContents());
@@ -311,7 +311,7 @@ public class NewObjectSnippets implements Snippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
 
-            Arguments args = new Arguments(newmultiarray);
+            Arguments args = new Arguments(newmultiarray, graph.getGuardsStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(Kind.Int), dims);

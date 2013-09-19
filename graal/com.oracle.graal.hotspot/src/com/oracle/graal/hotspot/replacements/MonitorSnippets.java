@@ -405,9 +405,9 @@ public class MonitorSnippets implements Snippets {
 
             Arguments args;
             if (useFastLocking) {
-                args = new Arguments(monitorenter);
+                args = new Arguments(monitorenter, graph.getGuardsStage());
             } else {
-                args = new Arguments(monitorenterStub);
+                args = new Arguments(monitorenterStub, graph.getGuardsStage());
             }
             args.add("object", monitorenterNode.object());
             args.addConst("lockDepth", monitorenterNode.getLockDepth());
@@ -430,9 +430,9 @@ public class MonitorSnippets implements Snippets {
 
             Arguments args;
             if (useFastLocking) {
-                args = new Arguments(monitorexit);
+                args = new Arguments(monitorexit, graph.getGuardsStage());
             } else {
-                args = new Arguments(monitorexitStub);
+                args = new Arguments(monitorexitStub, graph.getGuardsStage());
             }
             args.add("object", monitorexitNode.object());
             args.addConst("lockDepth", monitorexitNode.getLockDepth());
@@ -507,7 +507,7 @@ public class MonitorSnippets implements Snippets {
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
-                        Arguments args = new Arguments(checkCounter);
+                        Arguments args = new Arguments(checkCounter, graph.getGuardsStage());
                         args.addConst("errMsg", msg);
                         inlineeGraph = template(args).copySpecializedGraph();
 

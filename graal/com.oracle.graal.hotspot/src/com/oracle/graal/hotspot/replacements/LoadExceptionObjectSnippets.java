@@ -78,7 +78,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
-                Arguments args = new Arguments(loadException);
+                Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage());
                 template(args).instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
