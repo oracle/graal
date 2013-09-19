@@ -70,6 +70,14 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
         if (state != null && state.getState() == EscapeState.Virtual) {
+            ResolvedJavaType virtualObjectType = state.getVirtualObject().type();
+            if (this.kind() == Kind.Object) {
+                ObjectStamp myStamp = ((ObjectStamp) this.stamp());
+                ResolvedJavaType myType = myStamp.type();
+                if (!myType.isAssignableFrom(virtualObjectType)) {
+                    return;
+                }
+            }
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
