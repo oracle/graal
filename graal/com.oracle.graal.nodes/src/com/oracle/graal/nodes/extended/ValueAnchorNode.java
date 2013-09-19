@@ -50,7 +50,7 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (anchored != null && !anchored.isConstant()) {
+        if (anchored != null && !anchored.isConstant() && !(anchored instanceof FixedNode)) {
             // Found entry that needs this anchor.
             return this;
         }
