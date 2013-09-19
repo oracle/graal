@@ -990,13 +990,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
         }
     }
 
-    private static GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
-        StructuredGraph graph = n.graph();
-        ArrayLengthNode arrayLength = graph.add(new ArrayLengthNode(n.array()));
-        GuardingNode guard = tool.createGuard(graph.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
-
-        graph.addBeforeFixed(n, arrayLength);
-        return guard;
+    private GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
+        StructuredGraph g = n.graph();
+        ValueNode array = n.array();
+        Stamp stamp = StampFactory.positiveInt();
+        ReadNode arrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, g), stamp, BarrierType.NONE, false));
+        g.addBeforeFixed(n, arrayLength);
+        tool.createNullCheckGuard(arrayLength, array);
+        return tool.createGuard(g.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
