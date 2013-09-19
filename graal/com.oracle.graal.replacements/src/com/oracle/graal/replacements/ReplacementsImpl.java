@@ -292,11 +292,8 @@ public class ReplacementsImpl implements Replacements {
 
             if (original == null) {
                 new SnippetFrameStateCleanupPhase().apply(graph);
-                new DeadCodeEliminationPhase().apply(graph);
-                new InsertStateAfterPlaceholderPhase().apply(graph);
-            } else {
-                new DeadCodeEliminationPhase().apply(graph);
             }
+            new DeadCodeEliminationPhase().apply(graph);
         }
 
         private StructuredGraph parseGraph(final ResolvedJavaMethod methodToParse, final SnippetInliningPolicy policy) {
