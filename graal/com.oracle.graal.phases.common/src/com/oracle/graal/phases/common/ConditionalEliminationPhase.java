@@ -505,7 +505,7 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                     ValueAnchorNode anchor = null;
                     if (replacementAnchor == null) {
-                        anchor = graph.add(new ValueAnchorNode());
+                        anchor = graph.add(new ValueAnchorNode(null));
                         replacementAnchor = anchor;
                     }
                     PiNode piNode;

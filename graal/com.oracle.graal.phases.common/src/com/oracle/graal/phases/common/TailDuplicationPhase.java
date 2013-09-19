@@ -309,7 +309,7 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
          * @return The new {@link ValueAnchorNode} that was created.
          */
         private ValueAnchorNode addValueAnchor() {
-            ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
+            ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
             graph.addAfterFixed(merge, anchor);
             for (Node usage : merge.usages().snapshot()) {
                 if (usage instanceof PhiNode && ((PhiNode) usage).merge() == merge) {

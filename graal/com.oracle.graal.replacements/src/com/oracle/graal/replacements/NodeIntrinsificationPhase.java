@@ -302,7 +302,7 @@ public class NodeIntrinsificationPhase extends Phase {
     private static void checkCheckCastUsage(StructuredGraph graph, Node intrinsifiedNode, Node input, Node usage) {
         if (usage instanceof ValueAnchorNode) {
             ValueAnchorNode valueAnchorNode = (ValueAnchorNode) usage;
-            valueAnchorNode.removeAnchoredNode((ValueNode) input);
+            valueAnchorNode.removeAnchoredNode();
             Debug.log("%s: Removed a ValueAnchor input", Debug.contextSnapshot(JavaMethod.class));
         } else if (usage instanceof UnboxNode) {
             UnboxNode unbox = (UnboxNode) usage;

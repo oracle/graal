@@ -22,8 +22,6 @@
  */
 package com.oracle.graal.nodes.extended;
 
-import static com.oracle.graal.graph.iterators.NodePredicates.*;
-
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,11 +32,11 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class ValueAnchorNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, IterableNodeType, Virtualizable, GuardingNode {
 
-    @Input private final NodeInputList<ValueNode> anchored;
+    @Input private ValueNode anchored;
 
-    public ValueAnchorNode(ValueNode... values) {
+    public ValueAnchorNode(ValueNode value) {
         super(StampFactory.dependency());
-        this.anchored = new NodeInputList<>(this, values);
+        this.anchored = value;
     }
 
     @Override
@@ -46,51 +44,39 @@ public final class ValueAnchorNode extends FixedWithNextNode implements Canonica
         // Nothing to emit, since this node is used for structural purposes only.
     }
 
-    public void addAnchoredNode(ValueNode value) {
-        if (!anchored.contains(value)) {
-            this.anchored.add(value);
-        }
-    }
-
-    public void removeAnchoredNode(ValueNode value) {
-        this.anchored.remove(value);
-    }
-
-    public NodeInputList<ValueNode> getAnchoredNodes() {
+    public ValueNode getAnchoredNode() {
         return anchored;
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (this.predecessor() instanceof ValueAnchorNode) {
-            ValueAnchorNode previousAnchor = (ValueAnchorNode) this.predecessor();
-            if (previousAnchor.usages().isEmpty()) { // avoid creating cycles
-                // transfer values and remove
-                for (ValueNode node : anchored.nonNull().distinct()) {
-                    previousAnchor.addAnchoredNode(node);
-                }
-                return previousAnchor;
-            }
+        if (anchored != null && !anchored.isConstant()) {
+            // Found entry that needs this anchor.
+            return this;
         }
-        for (Node node : anchored.nonNull().and(isNotA(FixedNode.class))) {
-            if (!(node instanceof ConstantNode)) {
-                return this; // still necessary
-            }
+
+        if (usages().isNotEmpty()) {
+            // A not uses this anchor => anchor is necessary.
+            return this;
         }
-        if (usages().isEmpty()) {
-            return null; // no node which require an anchor found
-        }
-        return this;
+
+        // Anchor is not necessary any more => remove.
+        return null;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        for (ValueNode node : anchored.nonNull().and(isNotA(AbstractBeginNode.class))) {
-            State state = tool.getObjectState(node);
+        if (anchored != null && !(anchored instanceof AbstractBeginNode)) {
+            State state = tool.getObjectState(anchored);
             if (state == null || state.getState() != EscapeState.Virtual) {
                 return;
             }
         }
         tool.delete();
+    }
+
+    public void removeAnchoredNode() {
+        this.updateUsages(anchored, null);
+        this.anchored = null;
     }
 }

@@ -73,14 +73,15 @@ public class ValueAnchorCleanupPhase extends Phase {
         protected void node(FixedNode node) {
             if (node instanceof ValueAnchorNode) {
                 ValueAnchorNode anchor = (ValueAnchorNode) node;
-                for (ValueNode anchored : anchor.getAnchoredNodes().snapshot()) {
+                ValueNode anchored = anchor.getAnchoredNode();
+                if (anchored != null) {
                     if (state.anchoredValues.contains(anchored)) {
-                        anchor.removeAnchoredNode(anchored);
+                        anchor.removeAnchoredNode();
                     } else {
                         state.anchoredValues.add(anchored);
                     }
                 }
-                if (anchor.getAnchoredNodes().isEmpty() && anchor.usages().isEmpty()) {
+                if (anchor.getAnchoredNode() == null && anchor.usages().isEmpty()) {
                     node.graph().removeFixed(anchor);
                 }
             }
