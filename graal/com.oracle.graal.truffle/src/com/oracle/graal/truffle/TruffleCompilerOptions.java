@@ -71,7 +71,10 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleInliningTrivialSize = new OptionValue<>(10);
     @Option(help = "")
     public static final OptionValue<Double> TruffleInliningMinFrequency = new OptionValue<>(0.3);
-
+    @Option(help = "")
+    public static final OptionValue<Boolean> TruffleUseTimeForCompilationDecision = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Integer> TruffleCompilationDecisionTime = new OptionValue<>(100);
     // tracing
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(true);
