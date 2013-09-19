@@ -360,6 +360,10 @@ public class Graph {
         return true;
     }
 
+    public boolean isNew(int mark, Node node) {
+        return node.id >= mark;
+    }
+
     /**
      * Gets a mark that can be used with {@link #getNewNodes(int)}.
      */
