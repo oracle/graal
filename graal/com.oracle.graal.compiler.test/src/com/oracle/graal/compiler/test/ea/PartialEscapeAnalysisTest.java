@@ -126,7 +126,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testCache() {
-        testMaterialize("testCacheSnippet", 0.5, 1);
+        testMaterialize("testCacheSnippet", 0.75, 1);
     }
 
     public static class CacheKey {
