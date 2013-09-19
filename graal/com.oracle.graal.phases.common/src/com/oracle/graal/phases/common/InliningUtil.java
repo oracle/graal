@@ -1308,6 +1308,9 @@ public class InliningUtil {
         UnwindNode unwindNode = null;
         final StartNode entryPointNode = inlineGraph.start();
         FixedNode firstCFGNode = entryPointNode.next();
+        if (firstCFGNode == null) {
+            throw new IllegalStateException("Inlined graph is in invalid state");
+        }
         for (Node node : inlineGraph.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter() || node instanceof LocalNode) {
                 // Do nothing.

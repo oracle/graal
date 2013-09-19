@@ -56,7 +56,6 @@ public final class TruffleReplacements extends ReplacementsImpl {
         truffleReplacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);
         truffleReplacements.registerSubstitutions(ExactMathSubstitutions.class);
         truffleReplacements.registerSubstitutions(UnexpectedResultExceptionSubstitutions.class);
-        truffleReplacements.registerSubstitutions(SlowPathExceptionSubstitutions.class);
         truffleReplacements.registerSubstitutions(FrameWithoutBoxingSubstitutions.class);
         truffleReplacements.registerSubstitutions(OptimizedAssumptionSubstitutions.class);
         truffleReplacements.registerSubstitutions(OptimizedCallTargetSubstitutions.class);

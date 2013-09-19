@@ -32,11 +32,13 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -115,10 +117,23 @@ public final class TruffleCache {
                 for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
                     if (graph.getMark() != mark) {
                         canonicalizerPhase.applyIncremental(graph, context, mark);
+
+                        // Make sure macro substitutions such as
+                        // CompilerDirectives.transferToInterpreter get processed first.
+                        for (Node newNode : graph.getNewNodes(mark)) {
+                            if (newNode instanceof MethodCallTargetNode) {
+                                MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
+                                Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
+                                if (macroSubstitution != null) {
+                                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                                }
+                            }
+                        }
                         mark = graph.getMark();
                     }
-                    String name = methodCallTarget.targetName();
-                    expandInvoke(methodCallTarget.invoke());
+                    if (methodCallTarget.isAlive() && methodCallTarget.invoke() != null) {
+                        expandInvoke(methodCallTarget.invoke());
+                    }
                 }
 
                 // Convert deopt to guards.
@@ -148,28 +163,33 @@ public final class TruffleCache {
             if ((methodCallTargetNode.invokeKind() == InvokeKind.Special || methodCallTargetNode.invokeKind() == InvokeKind.Static) &&
                             !Modifier.isNative(methodCallTargetNode.targetMethod().getModifiers()) && methodCallTargetNode.targetMethod().getAnnotation(ExplodeLoop.class) == null &&
                             methodCallTargetNode.targetMethod().getAnnotation(CompilerDirectives.SlowPath.class) == null) {
-                Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
-                if (macroSubstitution != null) {
-                    return InliningUtil.inlineMacroNode(invoke, methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
-                } else {
-                    StructuredGraph inlinedGraph = Debug.scope("ExpandInvoke", methodCallTargetNode.targetMethod(), new Callable<StructuredGraph>() {
-
-                        public StructuredGraph call() {
-                            StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
-                            if (inlineGraph == null) {
-                                inlineGraph = TruffleCache.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
-                            }
-                            return inlineGraph;
-                        }
-                    });
-                    if (inlinedGraph == null) {
-                        // Can happen for recursive calls.
-                        return invoke.asNode();
+                if (methodCallTargetNode.targetMethod().isConstructor()) {
+                    ResolvedJavaType runtimeException = metaAccessProvider.lookupJavaType(RuntimeException.class);
+                    if (runtimeException.isAssignableFrom(methodCallTargetNode.targetMethod().getDeclaringClass())) {
+                        DeoptimizeNode deoptNode = invoke.asNode().graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));
+                        FixedNode invokeNode = methodCallTargetNode.invoke().asNode();
+                        invokeNode.replaceAtPredecessor(deoptNode);
+                        GraphUtil.killCFG(invokeNode);
+                        return deoptNode;
                     }
-                    FixedNode fixedNode = (FixedNode) invoke.predecessor();
-                    InliningUtil.inline(invoke, inlinedGraph, true);
-                    return fixedNode;
                 }
+                StructuredGraph inlinedGraph = Debug.scope("ExpandInvoke", methodCallTargetNode.targetMethod(), new Callable<StructuredGraph>() {
+
+                    public StructuredGraph call() {
+                        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
+                        if (inlineGraph == null) {
+                            inlineGraph = TruffleCache.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
+                        }
+                        return inlineGraph;
+                    }
+                });
+                if (inlinedGraph == this.markerGraph) {
+                    // Can happen for recursive calls.
+                    throw new IllegalStateException("Found illegal recursive call to " + methodCallTargetNode.targetMethod() + ", must annotate such calls with @CompilerDirectives.Slowpath!");
+                }
+                FixedNode fixedNode = (FixedNode) invoke.predecessor();
+                InliningUtil.inline(invoke, inlinedGraph, true);
+                return fixedNode;
             }
         }
         return invoke.asNode();
