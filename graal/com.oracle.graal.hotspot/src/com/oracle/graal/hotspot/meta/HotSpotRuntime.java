@@ -618,7 +618,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                         value = checkcastNode;
                     }
                 } else {
-                    LoadHubNode arrayClass = graph.unique(new LoadHubNode(array, wordKind, boundsCheck.asNode()));
+                    FloatingReadNode arrayClass = createReadHub(graph, wordKind, array, boundsCheck);
                     LocationNode location = ConstantLocationNode.create(FINAL_LOCATION, wordKind, config.arrayClassElementOffset, graph);
                     /*
                      * Anchor the read of the element klass to the cfg, because it is only valid
