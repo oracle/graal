@@ -23,12 +23,11 @@
 
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -46,35 +45,7 @@ public class PTXParameterOp extends LIRInstruction {
         // Emit parameter directives for arguments
         int argCount = params.length;
         for (int i = 0; i < argCount; i++) {
-            Kind paramKind = params[i].getKind();
-            switch (paramKind) {
-            case Byte:
-                masm.param_8_decl(asRegister(params[i]), (i == (argCount - 1)));
-                break;
-            case Short:
-                masm.param_16_decl(asRegister(params[i]), (i == (argCount - 1)));
-                break;
-            case Char:
-                masm.param_u16_decl(asRegister(params[i]), (i == (argCount - 1)));
-                break;
-            case Int:
-                masm.param_32_decl(asIntReg(params[i]), (i == (argCount - 1)));
-                break;
-            case Long:
-                masm.param_64_decl(asLongReg(params[i]), (i == (argCount - 1)));
-                break;
-            case Float:
-                masm.param_32_decl(asFloatReg(params[i]), (i == (argCount - 1)));
-                break;
-            case Double:
-                masm.param_64_decl(asDoubleReg(params[i]), (i == (argCount - 1)));
-                break;
-            case Object:
-                masm.param_64_decl(asObjectReg(params[i]), (i == (argCount - 1)));
-                break;
-            default :
-                throw GraalInternalError.shouldNotReachHere("unhandled parameter type "  + paramKind.toString());
-            }
+            new Param((Variable) params[i], (i == (argCount - 1))).emit(masm);
         }
     }
 }
