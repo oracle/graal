@@ -29,6 +29,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
 import org.junit.*;
 import org.junit.internal.*;
@@ -170,7 +171,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return parse(getMethod(methodName));
     }
 
-    private static int compilationId = 0;
+    private static AtomicInteger compilationId = new AtomicInteger();
 
     /**
      * Compares two given objects for {@linkplain Assert#assertEquals(Object, Object) equality}.
@@ -453,7 +454,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
         }
 
-        final int id = compilationId++;
+        final int id = compilationId.incrementAndGet();
 
         InstalledCode installedCode = Debug.scope("Compiling", new Object[]{runtime, new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
