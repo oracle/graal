@@ -104,7 +104,6 @@ public class MonitorTest extends GraalCompilerTest {
     /**
      * Extends {@link #test5()} with contention.
      */
-    @Ignore
     @Test
     public void test7() {
         char[] src = "1234567890".toCharArray();
