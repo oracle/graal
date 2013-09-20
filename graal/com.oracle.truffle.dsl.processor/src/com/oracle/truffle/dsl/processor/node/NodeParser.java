@@ -1052,7 +1052,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         boolean parametersFound = false;
         for (ExecutableElement constructor : constructors) {
-            if (!constructor.getParameters().isEmpty()) {
+            if (!constructor.getParameters().isEmpty() && !isSourceSectionConstructor(context, constructor)) {
                 parametersFound = true;
             }
         }
@@ -1075,6 +1075,10 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         // not found
         nodeData.addError("Specialization constructor '%s(%s previousNode) { this(...); }' is required.", Utils.getSimpleName(type), Utils.getSimpleName(type));
+    }
+
+    static boolean isSourceSectionConstructor(ProcessorContext context, ExecutableElement constructor) {
+        return constructor.getParameters().size() == 1 && constructor.getParameters().get(0).asType().equals(context.getTruffleTypes().getSourceSection());
     }
 
     private static boolean verifySpecializationParameters(NodeData nodeData) {

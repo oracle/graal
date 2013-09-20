@@ -1102,15 +1102,19 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private void createConstructors(NodeData node, CodeTypeElement clazz) {
             List<ExecutableElement> constructors = findUserConstructors(node.getNodeType());
+            ExecutableElement sourceSectionConstructor = null;
             if (constructors.isEmpty()) {
                 clazz.add(createUserConstructor(clazz, null));
             } else {
                 for (ExecutableElement constructor : constructors) {
                     clazz.add(createUserConstructor(clazz, constructor));
+                    if (NodeParser.isSourceSectionConstructor(context, constructor)) {
+                        sourceSectionConstructor = constructor;
+                    }
                 }
             }
             if (node.needsRewrites(getContext())) {
-                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType())));
+                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType()), sourceSectionConstructor));
             }
         }
 
@@ -1199,13 +1203,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
+        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor, ExecutableElement sourceSectionConstructor) {
             CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
             CodeTreeBuilder builder = method.createBuilder();
             method.getParameters().add(new CodeVariableElement(type.asType(), "copy"));
 
             if (superConstructor != null) {
                 builder.startStatement().startSuperCall().string("copy").end().end();
+            } else if (sourceSectionConstructor != null) {
+                builder.startStatement().startSuperCall().string("copy.getSourceSection()").end().end();
             }
 
             for (VariableElement var : type.getFields()) {

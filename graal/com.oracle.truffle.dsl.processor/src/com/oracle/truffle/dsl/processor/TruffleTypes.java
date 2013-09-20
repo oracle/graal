@@ -56,6 +56,7 @@ public final class TruffleTypes {
     private final TypeMirror compilerDirectives;
     private final TypeMirror compilerAsserts;
     private final DeclaredType slowPath;
+    private final DeclaredType sourceSection;
     private final DeclaredType truffleOptions;
     private final TypeElement expectError;
 
@@ -75,6 +76,7 @@ public final class TruffleTypes {
         nodeInfoAnnotation = getRequired(context, NodeInfo.class);
         nodeInfoKind = getRequired(context, NodeInfo.Kind.class);
         slowPath = getRequired(context, SlowPath.class);
+        sourceSection = getRequired(context, SourceSection.class);
         truffleOptions = getRequired(context, TruffleOptions.class);
         expectError = (TypeElement) getRequired(context, ExpectError.class).asElement();
     }
@@ -157,5 +159,9 @@ public final class TruffleTypes {
 
     public DeclaredType getSlowPath() {
         return slowPath;
+    }
+
+    public Object getSourceSection() {
+        return sourceSection;
     }
 }
