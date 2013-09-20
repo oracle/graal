@@ -250,24 +250,54 @@ public class Graph {
         void nodeChanged(Node node);
     }
 
+    private static class ChainedNodeChangedListener implements NodeChangedListener {
+
+        NodeChangedListener head;
+        NodeChangedListener next;
+
+        ChainedNodeChangedListener(NodeChangedListener head, NodeChangedListener next) {
+            this.head = head;
+            this.next = next;
+        }
+
+        public void nodeChanged(Node node) {
+            head.nodeChanged(node);
+            next.nodeChanged(node);
+        }
+    }
+
     public void trackInputChange(NodeChangedListener inputChangedListener) {
-        assert this.inputChanged == null;
-        this.inputChanged = inputChangedListener;
+        if (inputChanged == null) {
+            inputChanged = inputChangedListener;
+        } else {
+            inputChanged = new ChainedNodeChangedListener(inputChangedListener, inputChanged);
+        }
     }
 
     public void stopTrackingInputChange() {
         assert inputChanged != null;
-        inputChanged = null;
+        if (inputChanged instanceof ChainedNodeChangedListener) {
+            inputChanged = ((ChainedNodeChangedListener) inputChanged).next;
+        } else {
+            inputChanged = null;
+        }
     }
 
     public void trackUsagesDroppedZero(NodeChangedListener usagesDroppedZeroListener) {
-        assert this.usagesDroppedZero == null;
-        this.usagesDroppedZero = usagesDroppedZeroListener;
+        if (usagesDroppedZero == null) {
+            usagesDroppedZero = usagesDroppedZeroListener;
+        } else {
+            usagesDroppedZero = new ChainedNodeChangedListener(usagesDroppedZeroListener, usagesDroppedZero);
+        }
     }
 
     public void stopTrackingUsagesDroppedZero() {
         assert usagesDroppedZero != null;
-        usagesDroppedZero = null;
+        if (usagesDroppedZero instanceof ChainedNodeChangedListener) {
+            usagesDroppedZero = ((ChainedNodeChangedListener) usagesDroppedZero).next;
+        } else {
+            usagesDroppedZero = null;
+        }
     }
 
     /**
