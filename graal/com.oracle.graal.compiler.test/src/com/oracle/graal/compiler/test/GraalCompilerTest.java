@@ -25,6 +25,7 @@ package com.oracle.graal.compiler.test;
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -206,11 +207,45 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    @SuppressWarnings("serial")
+    public static class MultiCauseAssertionError extends AssertionError {
+
+        private Throwable[] causes;
+
+        public MultiCauseAssertionError(String message, Throwable... causes) {
+            super(message);
+            this.causes = causes;
+        }
+
+        @Override
+        public void printStackTrace(PrintStream out) {
+            super.printStackTrace(out);
+            int num = 0;
+            for (Throwable cause : causes) {
+                if (cause != null) {
+                    out.print("cause " + (num++));
+                    cause.printStackTrace(out);
+                }
+            }
+        }
+
+        @Override
+        public void printStackTrace(PrintWriter out) {
+            super.printStackTrace(out);
+            int num = 0;
+            for (Throwable cause : causes) {
+                if (cause != null) {
+                    out.print("cause " + (num++) + ": ");
+                    cause.printStackTrace(out);
+                }
+            }
+        }
+    }
+
     protected void testN(int n, final String name, final Object... args) {
-        final Throwable[] errors = new Throwable[n];
+        final List<Throwable> errors = new ArrayList<>(n);
         Thread[] threads = new Thread[n];
         for (int i = 0; i < n; i++) {
-            final int idx = i;
             Thread t = new Thread(i + ":" + name) {
 
                 @Override
@@ -218,26 +253,23 @@ public abstract class GraalCompilerTest extends GraalTest {
                     try {
                         test(name, args);
                     } catch (Throwable e) {
-                        errors[idx] = e;
+                        errors.add(e);
                     }
                 }
             };
             threads[i] = t;
             t.start();
         }
-        int failed = 0;
         for (int i = 0; i < n; i++) {
             try {
                 threads[i].join();
             } catch (InterruptedException e) {
-                errors[i] = e;
-            }
-            if (errors[i] != null) {
-                errors[i].printStackTrace();
-                failed++;
+                errors.add(e);
             }
         }
-        Assert.assertTrue(failed + " of " + n + " failed", failed == 0);
+        if (!errors.isEmpty()) {
+            throw new MultiCauseAssertionError(errors.size() + " failures", errors.toArray(new Throwable[errors.size()]));
+        }
     }
 
     protected Object referenceInvoke(Method method, Object receiver, Object... args) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
