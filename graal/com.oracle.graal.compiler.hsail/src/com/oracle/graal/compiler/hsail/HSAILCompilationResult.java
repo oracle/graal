@@ -23,33 +23,25 @@
 
 package com.oracle.graal.compiler.hsail;
 
-import static com.oracle.graal.api.code.CodeUtil.*;
-
+import java.lang.reflect.*;
 import java.util.logging.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CallingConvention.*;
-import com.oracle.graal.api.runtime.Graal;
-import com.oracle.graal.compiler.GraalCompiler;
-import com.oracle.graal.java.GraphBuilderConfiguration;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.spi.GraalCodeCacheProvider;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.phases.PhasePlan;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.compiler.target.Backend;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hsail.*;
-
-import java.lang.reflect.Method;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * Class that represents a HSAIL compilation result. Includes the compiled HSAIL code.
@@ -96,6 +88,33 @@ public class HSAILCompilationResult {
         return getHSAILCompilationResult(graph);
     }
 
+    /**
+     * HSAIL doesn't have a calling convention as such. Function arguments are actually passed in
+     * memory but then loaded into registers in the function body. This routine makes sure that
+     * arguments to a kernel or function are loaded (by the kernel or function body) into registers
+     * of the appropriate sizes. For example, int and float parameters should appear in S registers,
+     * whereas double and long parameters should appear in d registers.
+     */
+    public static CallingConvention getHSAILCallingConvention(CallingConvention.Type type, TargetDescription target, ResolvedJavaMethod method, boolean stackOnly) {
+        Signature sig = method.getSignature();
+        JavaType retType = sig.getReturnType(null);
+        int sigCount = sig.getParameterCount(false);
+        JavaType[] argTypes;
+        int argIndex = 0;
+        if (!Modifier.isStatic(method.getModifiers())) {
+            argTypes = new JavaType[sigCount + 1];
+            argTypes[argIndex++] = method.getDeclaringClass();
+        } else {
+            argTypes = new JavaType[sigCount];
+        }
+        for (int i = 0; i < sigCount; i++) {
+            argTypes[argIndex++] = sig.getParameterType(i, null);
+        }
+
+        RegisterConfig registerConfig = new HSAILRegisterConfig();
+        return registerConfig.getCallingConvention(type, retType, argTypes, target, stackOnly);
+    }
+
     public static HSAILCompilationResult getHSAILCompilationResult(StructuredGraph graph) {
         Debug.dump(graph, "Graph");
         TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
@@ -105,7 +124,7 @@ public class HSAILCompilationResult {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new HSAILPhase());
         new HSAILPhase().apply(graph);
-        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+        CallingConvention cc = getHSAILCallingConvention(Type.JavaCallee, target, graph.method(), false);
         try {
             CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, hsailBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
                             new SpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
