@@ -1185,24 +1185,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createCopyArray(CodeTreeBuilder parent, NodeChildData child, TypeMirror arrayType, CodeBlock<String> accessElement) {
-            CodeTreeBuilder builder = parent.create();
-            NodeData node = getModel().getNode();
-            builder.string("new ").type(arrayType).string(" {");
-            builder.startCommaGroup();
-            for (ActualParameter parameter : getModel().getParameters()) {
-                NodeChildData foundChild = node.findChild(parameter.getSpecification().getName());
-                if (foundChild == child) {
-                    builder.startGroup();
-                    builder.tree(accessElement.create(builder, String.valueOf(parameter.getIndex())));
-                    builder.end();
-                }
-            }
-            builder.end();
-            builder.end().string("}");
-            return builder.getRoot();
-        }
-
         private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor, ExecutableElement sourceSectionConstructor) {
             CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
             CodeTreeBuilder builder = method.createBuilder();
@@ -1219,18 +1201,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 final String varName = var.getSimpleName().toString();
                 final TypeMirror varType = var.asType();
 
-                final String copyAccess = "copy." + varName;
-                CodeTree init = CodeTreeBuilder.singleString(copyAccess);
-                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    NodeChildData child = getModel().getNode().findChild(varName);
-                    init = createCopyArray(builder, child, varType, new CodeBlock<String>() {
-
-                        public CodeTree create(CodeTreeBuilder parent, String index) {
-                            return CodeTreeBuilder.singleString(copyAccess + "[" + index + "]");
-                        }
-                    });
+                String copyAccess = "copy." + varName;
+                if (Utils.isAssignable(getContext(), varType, getContext().getTruffleTypes().getNodeArray())) {
+                    copyAccess += ".clone()";
                 }
-                init = createAdoptChild(builder, varType, init);
+                CodeTree init = createAdoptChild(builder, varType, CodeTreeBuilder.singleString(copyAccess));
                 builder.startStatement().string("this.").string(varName).string(" = ").tree(init).end();
             }
             if (getModel().getNode().isPolymorphic()) {
