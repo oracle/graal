@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
@@ -76,11 +75,21 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
+    private final boolean makeReadsFloating;
+
+    public FloatingReadPhase() {
+        this(true);
+    }
+
+    public FloatingReadPhase(boolean makeReadsFloating) {
+        this.makeReadsFloating = makeReadsFloating;
+    }
+
     @Override
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = new IdentityHashMap<>();
         ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>(), null);
-        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops), graph.start(), new MemoryMapImpl(graph.start()), null);
+        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, makeReadsFloating), graph.start(), new MemoryMapImpl(graph.start()), null);
     }
 
     private static class CollectMemoryCheckpointsClosure extends NodeIteratorClosure<Set<LocationIdentity>> {
@@ -138,14 +147,16 @@ public class FloatingReadPhase extends Phase {
     private static class FloatingReadClosure extends NodeIteratorClosure<MemoryMapImpl> {
 
         private final Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops;
+        private final boolean makeReadsFloating;
 
-        public FloatingReadClosure(Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops) {
+        public FloatingReadClosure(Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops, boolean makeFloating) {
             this.modifiedInLoops = modifiedInLoops;
+            this.makeReadsFloating = makeFloating;
         }
 
         @Override
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
-            if (node instanceof FloatableAccessNode) {
+            if (node instanceof FloatableAccessNode && makeReadsFloating) {
                 processFloatable((FloatableAccessNode) node, state);
             } else if (node instanceof MemoryCheckpoint.Single) {
                 processCheckpoint((MemoryCheckpoint.Single) node, state);
@@ -154,6 +165,9 @@ public class FloatingReadPhase extends Phase {
             }
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
+            if (!makeReadsFloating && node instanceof ReturnNode) {
+                node.graph().add(new MemoryState(new MemoryMapImpl(state), node));
+            }
             return state;
         }
 
