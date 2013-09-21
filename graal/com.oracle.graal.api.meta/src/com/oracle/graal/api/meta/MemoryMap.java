@@ -20,12 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+public interface MemoryMap<T> {
 
-public interface MemoryMap {
-
-    Node getLastLocationAccess(LocationIdentity locationIdentity);
+    T getLastLocationAccess(LocationIdentity locationIdentity);
 }

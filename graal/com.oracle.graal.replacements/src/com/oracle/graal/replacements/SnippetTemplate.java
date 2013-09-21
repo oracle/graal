@@ -648,7 +648,7 @@ public class SnippetTemplate {
     /**
      * mapping of killing locations to memory checkpoints (nodes).
      */
-    private MemoryMap memoryMap;
+    private MemoryMap<Node> memoryMap;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
@@ -742,7 +742,7 @@ public class SnippetTemplate {
         /**
          * Replaces all usages of {@code oldNode} with direct or indirect usages of {@code newNode}.
          */
-        void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap);
+        void replace(ValueNode oldNode, ValueNode newNode, MemoryMap<Node> mmap);
     }
 
     /**
@@ -752,7 +752,7 @@ public class SnippetTemplate {
     public static final UsageReplacer DEFAULT_REPLACER = new UsageReplacer() {
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap<Node> mmap) {
             oldNode.replaceAtUsages(newNode);
             if (mmap == null || newNode == null) {
                 return;
@@ -774,7 +774,7 @@ public class SnippetTemplate {
         }
     };
 
-    private class DuplicateMapper implements MemoryMap {
+    private class DuplicateMapper implements MemoryMap<Node> {
 
         Map<Node, Node> duplicates;
         StartNode replaceeStart;
@@ -860,7 +860,7 @@ public class SnippetTemplate {
                     returnValue = (ValueNode) duplicates.get(returnNode.result());
                 }
                 Node returnDuplicate = duplicates.get(returnNode);
-                MemoryMap mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
+                MemoryMap<Node> mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
                 if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
                     replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor(), mmap);
                 } else {

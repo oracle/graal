@@ -22,14 +22,15 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 
 public class MemoryState extends VirtualState {
 
-    private MemoryMap memoryMap;
+    private MemoryMap<Node> memoryMap;
     @Input private Node object;
 
-    public MemoryState(MemoryMap memoryMap, FixedNode object) {
+    public MemoryState(MemoryMap<Node> memoryMap, FixedNode object) {
         this.memoryMap = memoryMap;
         this.object = object;
     }
@@ -38,7 +39,7 @@ public class MemoryState extends VirtualState {
         return object;
     }
 
-    public MemoryMap getMemoryMap() {
+    public MemoryMap<Node> getMemoryMap() {
         return memoryMap;
     }
 

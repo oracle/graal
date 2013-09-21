@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
@@ -37,7 +38,7 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 public class FloatingReadPhase extends Phase {
 
-    public static class MemoryMapImpl implements MemoryMap {
+    public static class MemoryMapImpl implements MemoryMap<Node> {
 
         private IdentityHashMap<LocationIdentity, ValueNode> lastMemorySnapshot;
 
