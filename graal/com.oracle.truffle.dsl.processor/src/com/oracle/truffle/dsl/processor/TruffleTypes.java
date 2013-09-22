@@ -161,7 +161,7 @@ public final class TruffleTypes {
         return slowPath;
     }
 
-    public Object getSourceSection() {
+    public DeclaredType getSourceSection() {
         return sourceSection;
     }
 }

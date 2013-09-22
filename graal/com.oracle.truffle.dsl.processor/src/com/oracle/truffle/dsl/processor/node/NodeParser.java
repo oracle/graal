@@ -1078,7 +1078,7 @@ public class NodeParser extends TemplateParser<NodeData> {
     }
 
     static boolean isSourceSectionConstructor(ProcessorContext context, ExecutableElement constructor) {
-        return constructor.getParameters().size() == 1 && constructor.getParameters().get(0).asType().equals(context.getTruffleTypes().getSourceSection());
+        return constructor.getParameters().size() == 1 && Utils.typeEquals(constructor.getParameters().get(0).asType(), context.getTruffleTypes().getSourceSection());
     }
 
     private static boolean verifySpecializationParameters(NodeData nodeData) {
