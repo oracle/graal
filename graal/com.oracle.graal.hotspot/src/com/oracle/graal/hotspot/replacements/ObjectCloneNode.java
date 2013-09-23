@@ -53,7 +53,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
     }
 
     @Override
-    protected StructuredGraph getSnippetGraph(LoweringTool tool) {
+    protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
         if (!shouldIntrinsify(getTargetMethod())) {
             return null;
         }
@@ -82,7 +82,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
         });
 
         assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-        return snippetGraph;
+        return lowerReplacement(snippetGraph.copy(), tool);
     }
 
     private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
