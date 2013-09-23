@@ -637,10 +637,15 @@ public class InliningPhase extends AbstractInliningPhase {
             }
         }
 
+        private static final Object[] NO_CONTEXT = {};
+
         /**
-         * Gets the call hierarchy of this inling from outer most call to inner most callee.
+         * Gets the call hierarchy of this inlining from outer most call to inner most callee.
          */
         public Object[] inliningContext() {
+            if (!Debug.isDumpEnabled()) {
+                return NO_CONTEXT;
+            }
             Object[] result = new Object[graphQueue.size()];
             int i = 0;
             for (GraphInfo g : graphQueue) {
