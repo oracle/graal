@@ -433,15 +433,15 @@ public abstract class Node implements Cloneable, Formattable {
                 assert assertTrue(result, "not found in usages, old input: %s", oldInput);
             }
             if (newInput != null) {
-                NodeChangedListener inputChanged = graph.inputChanged;
-                if (inputChanged != null) {
-                    inputChanged.nodeChanged(this);
+                NodeChangedListener listener = graph.inputChangedListener;
+                if (listener != null) {
+                    listener.nodeChanged(this);
                 }
                 newInput.addUsage(this);
             } else if (oldInput != null && oldInput.usages().isEmpty()) {
-                NodeChangedListener nodeChangedListener = graph.usagesDroppedZero;
-                if (nodeChangedListener != null) {
-                    nodeChangedListener.nodeChanged(oldInput);
+                NodeChangedListener listener = graph.usagesDroppedToZeroListener;
+                if (listener != null) {
+                    listener.nodeChanged(oldInput);
                 }
             }
         }
@@ -495,9 +495,9 @@ public abstract class Node implements Cloneable, Formattable {
             boolean result = usage.getNodeClass().replaceFirstInput(usage, this, other);
             assert assertTrue(result, "not found in inputs, usage: %s", usage);
             if (other != null) {
-                NodeChangedListener inputChanged = graph.inputChanged;
-                if (inputChanged != null) {
-                    inputChanged.nodeChanged(usage);
+                NodeChangedListener listener = graph.inputChangedListener;
+                if (listener != null) {
+                    listener.nodeChanged(usage);
                 }
                 other.addUsage(usage);
             }
@@ -542,9 +542,9 @@ public abstract class Node implements Cloneable, Formattable {
         for (Node input : inputs()) {
             removeThisFromUsages(input);
             if (input.usages().isEmpty()) {
-                NodeChangedListener nodeChangedListener = graph.usagesDroppedZero;
-                if (nodeChangedListener != null) {
-                    nodeChangedListener.nodeChanged(input);
+                NodeChangedListener listener = graph.usagesDroppedToZeroListener;
+                if (listener != null) {
+                    listener.nodeChanged(input);
                 }
             }
         }
