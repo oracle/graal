@@ -20,16 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.extended;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
  * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
  */
-public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLengthProvider {
+public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
     @Input private ValueNode length;
 
@@ -37,18 +36,9 @@ public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLe
         return length;
     }
 
-    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp) {
+    public PiArrayNode(ValueNode object, ValueNode length, Stamp stamp) {
         super(object, stamp);
         this.length = length;
-    }
-
-    public UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, GuardingNode anchor) {
-        super(object, stamp, anchor);
-        this.length = length;
-    }
-
-    private UnsafeArrayCastNode(ValueNode object, ValueNode length, Stamp stamp, ValueNode anchor) {
-        this(object, length, stamp, (GuardingNode) anchor);
     }
 
     @Override
@@ -60,8 +50,5 @@ public final class UnsafeArrayCastNode extends UnsafeCastNode implements ArrayLe
     }
 
     @NodeIntrinsic
-    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp);
-
-    @NodeIntrinsic
-    public static native <T> T unsafeArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp, Object anchor);
+    public static native <T> T piArrayCast(Object object, int length, @ConstantNodeParameter Stamp stamp);
 }

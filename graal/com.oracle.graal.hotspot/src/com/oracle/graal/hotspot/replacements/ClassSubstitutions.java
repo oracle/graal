@@ -23,7 +23,7 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
+import static com.oracle.graal.nodes.PiNode.*;
 
 import java.lang.reflect.*;
 
@@ -96,7 +96,7 @@ public class ClassSubstitutions {
                     if (superKlass.equal(0)) {
                         return null;
                     } else {
-                        return unsafeCast(superKlass.readObject(classMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
+                        return piCast(superKlass.readObject(classMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
                     }
                 }
             }
@@ -110,7 +110,7 @@ public class ClassSubstitutions {
         Word klass = loadWordFromObject(thisObj, klassOffset());
         if (klass.notEqual(0)) {
             if ((readLayoutHelper(klass) & arrayKlassLayoutHelperIdentifier()) != 0) {
-                return unsafeCast(klass.readObject(arrayKlassComponentMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
+                return piCast(klass.readObject(arrayKlassComponentMirrorOffset(), LocationIdentity.FINAL_LOCATION), Class.class, true, true);
             }
         }
         return null;

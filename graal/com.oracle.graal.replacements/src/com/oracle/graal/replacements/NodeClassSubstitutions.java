@@ -36,8 +36,8 @@ import com.oracle.graal.replacements.nodes.*;
  * Substitutions for improving the performance of some critical methods in {@link NodeClass}
  * methods. These substitutions improve the performance by forcing the relevant methods to be
  * inlined (intrinsification being a special form of inlining) and removing a checked cast. The
- * latter cannot be done directly in Java code as {@link UnsafeCastNode} is not available to the
- * project containing {@link NodeClass}.
+ * latter cannot be done directly in Java code as {@link PiNode} is not available to the project
+ * containing {@link NodeClass}.
  */
 @ClassSubstitution(NodeClass.class)
 public class NodeClassSubstitutions {
@@ -64,12 +64,12 @@ public class NodeClassSubstitutions {
 
     @MethodSubstitution
     private static Node getNode(Node node, long offset) {
-        return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class, false, false);
+        return PiNode.piCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class, false, false);
     }
 
     @MethodSubstitution
     private static NodeList getNodeList(Node node, long offset) {
-        return UnsafeCastNode.unsafeCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class, false, false);
+        return PiNode.piCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class, false, false);
     }
 
     @MethodSubstitution
