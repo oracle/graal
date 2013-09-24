@@ -78,6 +78,23 @@ public class FloatingReadPhase extends Phase {
         public String toString() {
             return "Map=" + lastMemorySnapshot.toString();
         }
+
+        public boolean isEmpty() {
+            if (lastMemorySnapshot.size() == 0) {
+                return true;
+            }
+            if (lastMemorySnapshot.size() == 1) {
+                if (lastMemorySnapshot.get(ANY_LOCATION) instanceof StartNode) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Set<LocationIdentity> getLocations() {
+            return new HashSet<>(lastMemorySnapshot.keySet());
+        }
+
     }
 
     private final ExecutionMode execmode;
