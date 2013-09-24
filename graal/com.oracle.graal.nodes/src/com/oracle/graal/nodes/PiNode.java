@@ -61,7 +61,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     @Override
     public void generate(LIRGeneratorTool generator) {
         assert kind() == Kind.Object && object.kind() == Kind.Object;
-        assert ObjectStamp.typeOrNull(object) == null || ObjectStamp.typeOrNull(this).isInterface() || ObjectStamp.typeOrNull(object).isInterface() ||
+        assert ObjectStamp.typeOrNull(this) == null || ObjectStamp.typeOrNull(object) == null || ObjectStamp.typeOrNull(this).isInterface() || ObjectStamp.typeOrNull(object).isInterface() ||
                         ObjectStamp.typeOrNull(object).isAssignableFrom(ObjectStamp.typeOrNull(this));
 
         if (object.kind() != Kind.Void && object.kind() != Kind.Illegal) {
