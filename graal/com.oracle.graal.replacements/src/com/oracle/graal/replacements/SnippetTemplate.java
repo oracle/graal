@@ -759,8 +759,7 @@ public class SnippetTemplate {
             }
             for (Node usage : newNode.usages().snapshot()) {
                 if (usage instanceof FloatingReadNode && ((FloatingReadNode) usage).lastLocationAccess() == newNode) {
-                    // TODO: add graph state for FloatingReadPhase
-                    assert newNode.graph().getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal();
+                    assert newNode.graph().isAfterFloatingReadPhase();
 
                     // lastLocationAccess points into the snippet graph. find a proper
                     // MemoryCheckPoint inside the snippet graph

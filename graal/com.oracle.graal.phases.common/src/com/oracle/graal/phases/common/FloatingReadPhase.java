@@ -91,6 +91,10 @@ public class FloatingReadPhase extends Phase {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = new IdentityHashMap<>();
         ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>(), null);
         ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, makeReadsFloating), graph.start(), new MemoryMapImpl(graph.start()), null);
+        if (makeReadsFloating) {
+            assert !graph.isAfterFloatingReadPhase();
+            graph.setAfterFloatingReadPhase(true);
+        }
     }
 
     private static class CollectMemoryCheckpointsClosure extends NodeIteratorClosure<Set<LocationIdentity>> {
