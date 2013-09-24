@@ -38,6 +38,10 @@ import com.oracle.graal.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 
 public class FloatingReadPhase extends Phase {
 
+    public enum ExecutionMode {
+        ANALYSIS_ONLY, CREATE_FLOATING_READS
+    }
+
     public static class MemoryMapImpl implements MemoryMap<Node> {
 
         private IdentityHashMap<LocationIdentity, ValueNode> lastMemorySnapshot;
@@ -76,22 +80,22 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    private final boolean makeReadsFloating;
+    private final ExecutionMode execmode;
 
     public FloatingReadPhase() {
-        this(true);
+        this(ExecutionMode.CREATE_FLOATING_READS);
     }
 
-    public FloatingReadPhase(boolean makeReadsFloating) {
-        this.makeReadsFloating = makeReadsFloating;
+    public FloatingReadPhase(ExecutionMode execmode) {
+        this.execmode = execmode;
     }
 
     @Override
     protected void run(StructuredGraph graph) {
         Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops = new IdentityHashMap<>();
         ReentrantNodeIterator.apply(new CollectMemoryCheckpointsClosure(modifiedInLoops), graph.start(), new HashSet<LocationIdentity>(), null);
-        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, makeReadsFloating), graph.start(), new MemoryMapImpl(graph.start()), null);
-        if (makeReadsFloating) {
+        ReentrantNodeIterator.apply(new FloatingReadClosure(modifiedInLoops, execmode), graph.start(), new MemoryMapImpl(graph.start()), null);
+        if (execmode == ExecutionMode.CREATE_FLOATING_READS) {
             assert !graph.isAfterFloatingReadPhase();
             graph.setAfterFloatingReadPhase(true);
         }
@@ -152,16 +156,16 @@ public class FloatingReadPhase extends Phase {
     private static class FloatingReadClosure extends NodeIteratorClosure<MemoryMapImpl> {
 
         private final Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops;
-        private final boolean makeReadsFloating;
+        private final ExecutionMode execmode;
 
-        public FloatingReadClosure(Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops, boolean makeFloating) {
+        public FloatingReadClosure(Map<LoopBeginNode, Set<LocationIdentity>> modifiedInLoops, ExecutionMode execmode) {
             this.modifiedInLoops = modifiedInLoops;
-            this.makeReadsFloating = makeFloating;
+            this.execmode = execmode;
         }
 
         @Override
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
-            if (node instanceof FloatableAccessNode && makeReadsFloating) {
+            if (node instanceof FloatableAccessNode && execmode == ExecutionMode.CREATE_FLOATING_READS) {
                 processFloatable((FloatableAccessNode) node, state);
             } else if (node instanceof MemoryCheckpoint.Single) {
                 processCheckpoint((MemoryCheckpoint.Single) node, state);
@@ -170,7 +174,7 @@ public class FloatingReadPhase extends Phase {
             }
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
-            if (!makeReadsFloating && node instanceof ReturnNode) {
+            if (execmode == ExecutionMode.ANALYSIS_ONLY && node instanceof ReturnNode) {
                 node.graph().add(new MemoryState(new MemoryMapImpl(state), node));
             }
             return state;

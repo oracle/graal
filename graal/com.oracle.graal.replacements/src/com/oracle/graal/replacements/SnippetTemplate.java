@@ -536,7 +536,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(false).apply(snippetCopy);
+        new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
         this.memoryMap = null;
 
         this.snippet = snippetCopy;
