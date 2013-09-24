@@ -56,6 +56,8 @@ public class LIR {
      */
     private final List<Block> codeEmittingOrder;
 
+    private int firstVariableNumber;
+
     private int numVariables;
 
     public SpillMoveFactory spillMoveFactory;
@@ -135,7 +137,11 @@ public class LIR {
     }
 
     public int nextVariable() {
-        return numVariables++;
+        return firstVariableNumber + numVariables++;
+    }
+
+    public void setFirstVariableNumber(int num) {
+        firstVariableNumber = num;
     }
 
     public void emitCode(TargetMethodAssembler tasm) {

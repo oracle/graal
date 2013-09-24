@@ -24,7 +24,6 @@ package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.asm.ptx.PTXStateSpace.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
@@ -193,7 +192,6 @@ public class PTXMemOp {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            assert isRegister(input);
             PTXAddress addr = address.toAddress();
 
             switch (kind) {

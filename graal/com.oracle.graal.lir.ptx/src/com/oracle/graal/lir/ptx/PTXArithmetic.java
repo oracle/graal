@@ -24,6 +24,7 @@ package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
@@ -62,7 +63,22 @@ public enum PTXArithmetic {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            PTXMove.move(tasm, masm, result, x);
+            switch (opcode) {
+                case I2L:
+                case I2C:
+                case I2B:
+                case I2F:
+                case I2D:
+                case F2I:
+                case F2L:
+                case F2D:
+                case D2I:
+                case D2L:
+                case D2F:
+                    break;  // cvt handles the move 
+                default:
+                    PTXMove.move(tasm, masm, result, x);
+            }
             emit(tasm, masm, opcode, result, x, null);
         }
     }
@@ -273,9 +289,9 @@ public enum PTXArithmetic {
     public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         Variable dest = (Variable) dst;
-        Variable source = (Variable) src;
 
-        if (isRegister(src)) {
+        if (isVariable(src)) {
+            Variable source = (Variable) src;
             switch (opcode) {
                 case INEG:
                 case FNEG:
@@ -339,62 +355,61 @@ public enum PTXArithmetic {
                             Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         Variable dest = (Variable) dst;
-        Variable source1 = (Variable) src1;
 
         switch (opcode) {
             case IADD:
             case LADD:
             case FADD:
             case DADD:
-                new Add(dest, source1, src2).emit(masm);
+                new Add(dest, src1, src2).emit(masm);
                 break;
             case IAND:
             case LAND:
-                new And(dest, source1, src2).emit(masm);
+                new And(dest, src1, src2).emit(masm);
                 break;
             case ISUB:
             case LSUB:
             case FSUB:
             case DSUB:
-                new Sub(dest, source1, src2).emit(masm);
+                new Sub(dest, src1, src2).emit(masm);
                 break;
             case IMUL:
             case LMUL:
             case FMUL:
             case DMUL:
-                new Mul(dest, source1, src2).emit(masm);
+                new Mul(dest, src1, src2).emit(masm);
                 break;
             case IDIV:
             case LDIV:
             case FDIV:
             case DDIV:
-                new Div(dest, source1, src2).emit(masm);
+                new Div(dest, src1, src2).emit(masm);
                 break;
             case IOR:
             case LOR:
-                new Or(dest, source1, src2).emit(masm);
+                new Or(dest, src1, src2).emit(masm);
                 break;
             case IXOR:
             case LXOR:
-                new Xor(dest, source1, src2).emit(masm);
+                new Xor(dest, src1, src2).emit(masm);
                 break;
             case ISHL:
             case LSHL:
-                new Shl(dest, source1, src2).emit(masm);
+                new Shl(dest, src1, src2).emit(masm);
                 break;
             case ISHR:
             case LSHR:
-                new Shr(dest, source1, src2).emit(masm);
+                new Shr(dest, src1, src2).emit(masm);
                 break;
             case IUSHR:
             case LUSHR:
-                new Ushr(dest, source1, src2).emit(masm);
+                new Ushr(dest, src1, src2).emit(masm);
                 break;
             case IREM:
             case LREM:
             case FREM:
             case DREM:
-                new Rem(dest, source1, src2).emit(masm);
+                new Rem(dest, src1, src2).emit(masm);
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);

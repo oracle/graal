@@ -24,6 +24,7 @@ package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
@@ -171,14 +172,14 @@ public class PTXMove {
     }
 
     public static void move(TargetMethodAssembler tasm, PTXAssembler masm, Value result, Value input) {
-        if (isRegister(input)) {
-            if (isRegister(result)) {
+        if (isVariable(input)) {
+            if (isVariable(result)) {
                 reg2reg(masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
-            if (isRegister(result)) {
+            if (isVariable(result)) {
                 const2reg(tasm, masm, result, (Constant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
