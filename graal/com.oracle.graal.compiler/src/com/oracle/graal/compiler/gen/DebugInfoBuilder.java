@@ -122,7 +122,7 @@ public class DebugInfoBuilder {
         if (state.outerFrameState() != null) {
             caller = computeFrameForState(state.outerFrameState());
         }
-        assert state.bci != FrameState.UNKNOWN_BCI : "bci == " + state.bci;
+        assert state.bci >= FrameState.BEFORE_BCI : "bci == " + state.bci;
         return new BytecodeFrame(caller, state.method(), state.bci, state.rethrowException(), state.duringCall(), values, numLocals, numStack, numLocks);
     }
 

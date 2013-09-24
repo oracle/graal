@@ -57,7 +57,8 @@ public class SnippetFrameStateCleanupPhase extends Phase {
                 StateSplit stateSplit = (StateSplit) node;
                 FrameState frameState = stateSplit.stateAfter();
                 if (frameState != null) {
-                    if (stateSplit.hasSideEffect()) {
+                    // the stateSplit == currentState case comes from merge handling
+                    if (stateSplit.hasSideEffect() || stateSplit == currentState) {
                         stateSplit.setStateAfter(createInvalidFrameState(node));
                         state = stateSplit;
                     } else if (hasInvalidState(state)) {
@@ -78,7 +79,19 @@ public class SnippetFrameStateCleanupPhase extends Phase {
 
         @Override
         protected StateSplit merge(MergeNode merge, List<StateSplit> states) {
-            return merge;
+            boolean invalid = false;
+            for (StateSplit state : states) {
+                if (state != null && state.stateAfter() != null && state.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) {
+                    invalid = true;
+                    state.setStateAfter(merge.graph().add(new FrameState(FrameState.AFTER_BCI)));
+                }
+            }
+            if (invalid) {
+                // at the next processNode call, stateSplit == currentState == merge
+                return merge;
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -103,7 +116,8 @@ public class SnippetFrameStateCleanupPhase extends Phase {
         }
 
         private static boolean hasInvalidState(StateSplit state) {
-            return state != null && state.stateAfter() != null && state.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI;
+            assert state == null || (state.stateAfter() != null && state.stateAfter().bci == FrameState.INVALID_FRAMESTATE_BCI) : state + " " + state.stateAfter();
+            return state != null;
         }
 
         private static FrameState createInvalidFrameState(FixedNode node) {
