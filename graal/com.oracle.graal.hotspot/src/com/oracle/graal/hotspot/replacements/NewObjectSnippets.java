@@ -184,7 +184,7 @@ public class NewObjectSnippets implements Snippets {
         Word dims = DimensionsNode.allocaDimsArray(rank);
         ExplodeLoopNode.explodeLoop();
         for (int i = 0; i < rank; i++) {
-            dims.writeInt(i * 4, dimensions[i], ANY_LOCATION);
+            dims.writeInt(i * 4, dimensions[i], INIT_LOCATION);
         }
         return NewMultiArrayStubCall.call(hub, rank, dims);
     }
