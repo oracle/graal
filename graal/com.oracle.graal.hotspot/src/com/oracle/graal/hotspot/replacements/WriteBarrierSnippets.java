@@ -62,9 +62,9 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter g1EffectiveRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveRefFieldBarrierCounter",
                     "Number of G1 effective Ref Field Read Barriers");
 
-    private static final LocationIdentity GC_CARD_LOCATION = new NamedLocationIdentity("GC-Card");
-    private static final LocationIdentity GC_LOG_LOCATION = new NamedLocationIdentity("GC-Log");
-    private static final LocationIdentity GC_INDEX_LOCATION = new NamedLocationIdentity("GC-Index");
+    public static final LocationIdentity GC_CARD_LOCATION = new NamedLocationIdentity("GC-Card");
+    public static final LocationIdentity GC_LOG_LOCATION = new NamedLocationIdentity("GC-Log");
+    public static final LocationIdentity GC_INDEX_LOCATION = new NamedLocationIdentity("GC-Index");
 
     @Snippet
     public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull) {
