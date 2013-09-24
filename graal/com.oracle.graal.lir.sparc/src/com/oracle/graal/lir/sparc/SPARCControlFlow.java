@@ -247,8 +247,12 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+            emitCodeHelper(tasm, masm);
+        }
+
+        public static void emitCodeHelper(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
             new Ret().emit(masm);
-            // On SPARC we always leave the frame.
+            // On SPARC we always leave the frame (in the delay slot).
             tasm.frameContext.leave(tasm);
         }
     }

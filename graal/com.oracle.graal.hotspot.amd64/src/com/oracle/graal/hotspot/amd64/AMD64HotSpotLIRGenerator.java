@@ -176,7 +176,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     protected void emitReturn(Value input) {
-        append(new AMD64HotSpotReturnOp(input));
+        append(new AMD64HotSpotReturnOp(input, getStub() != null));
     }
 
     @Override
@@ -287,7 +287,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void visitSafepointNode(SafepointNode i) {
         LIRFrameState info = state(i);
-        append(new AMD64SafepointOp(info, runtime().config, this));
+        append(new AMD64HotSpotSafepointOp(info, runtime().config, this));
     }
 
     @SuppressWarnings("hiding")

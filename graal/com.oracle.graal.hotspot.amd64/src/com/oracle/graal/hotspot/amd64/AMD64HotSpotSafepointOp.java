@@ -23,12 +23,12 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
+import static com.oracle.graal.hotspot.bridge.Marks.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -38,14 +38,14 @@ import com.oracle.graal.nodes.spi.*;
  * Emits a safepoint poll.
  */
 @Opcode("SAFEPOINT")
-public class AMD64SafepointOp extends AMD64LIRInstruction {
+public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     @State protected LIRFrameState state;
     @Temp({OperandFlag.REG}) private AllocatableValue temp;
 
     private final HotSpotVMConfig config;
 
-    public AMD64SafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
+    public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
         temp = tool.newVariable(tool.target().wordKind);
@@ -53,19 +53,27 @@ public class AMD64SafepointOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
-        final int pos = asm.codeBuffer.position();
         RegisterValue scratch = (RegisterValue) temp;
+        emitCode(tasm, asm, config, false, state, scratch.getRegister());
+    }
+
+    public static void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
+        final int pos = asm.codeBuffer.position();
         if (config.isPollingPageFar) {
-            asm.movq(scratch.getRegister(), config.safepointPollingAddress);
-            tasm.recordMark(Marks.MARK_POLL_FAR);
-            tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-            asm.movq(scratch.getRegister(), new AMD64Address(scratch.getRegister()));
+            asm.movq(scratch, config.safepointPollingAddress);
+            tasm.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
+            if (state != null) {
+                tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            }
+            asm.movq(scratch, new AMD64Address(scratch));
         } else {
-            tasm.recordMark(Marks.MARK_POLL_NEAR);
-            tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            tasm.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
+            if (state != null) {
+                tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            }
             // The C++ code transforms the polling page offset into an RIP displacement
             // to the real address at that offset in the polling page.
-            asm.movq(scratch.getRegister(), new AMD64Address(rip, 0));
+            asm.movq(scratch, new AMD64Address(rip, 0));
         }
     }
 }

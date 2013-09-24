@@ -638,7 +638,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);
-                new SafepointInsertionPhase().apply(graph);
+                new LoopSafepointInsertionPhase().apply(graph);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
 
                 new WriteBarrierAdditionPhase().apply(graph);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.phases.common;
 
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import static com.oracle.graal.phases.GraalOptions.*;
+
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.*;
 
 /**
- * Marks a position in the graph where a safepoint should be emitted.
+ * Adds safepoints to loops.
  */
-public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
-
-    public SafepointNode() {
-        super(StampFactory.forVoid());
-    }
+public class LoopSafepointInsertionPhase extends Phase {
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitSafepointNode(this);
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return null;
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
+    protected void run(StructuredGraph graph) {
+        if (GenLoopSafepoints.getValue()) {
+            for (LoopEndNode loopEndNode : graph.getNodes(LoopEndNode.class)) {
+                if (loopEndNode.canSafepoint()) {
+                    SafepointNode safepointNode = graph.add(new SafepointNode());
+                    graph.addBeforeFixed(loopEndNode, safepointNode);
+                }
+            }
+        }
     }
 }
