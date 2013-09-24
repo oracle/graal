@@ -22,10 +22,16 @@
  */
 package com.oracle.graal.hotspot.amd64;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
+import com.oracle.graal.amd64.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -36,14 +42,31 @@ import com.oracle.graal.lir.asm.*;
 final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
 
     @Use({REG, ILLEGAL}) protected Value value;
+    private final boolean isStub;
 
-    AMD64HotSpotReturnOp(Value value) {
+    AMD64HotSpotReturnOp(Value value, boolean isStub) {
         this.value = value;
+        this.isStub = isStub;
     }
+
+    private static Register findPollOnReturnScratchRegister() {
+        RegisterConfig config = HotSpotGraalRuntime.graalRuntime().getRuntime().lookupRegisterConfig();
+        for (Register r : config.getAllocatableRegisters(Kind.Long)) {
+            if (r != config.getReturnRegister(Kind.Long) && r != AMD64.rbp) {
+                return r;
+            }
+        }
+        throw GraalInternalError.shouldNotReachHere();
+    }
+
+    private static final Register scratchForSafepointOnReturn = findPollOnReturnScratchRegister();
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
+        if (!isStub && (tasm.frameContext != null || !OptEliminateSafepoints.getValue())) {
+            AMD64HotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, scratchForSafepointOnReturn);
+        }
         masm.ret(0);
     }
 }

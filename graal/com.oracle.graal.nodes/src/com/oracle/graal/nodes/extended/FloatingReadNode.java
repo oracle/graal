@@ -53,6 +53,11 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
         return lastLocationAccess;
     }
 
+    public void setLastLocationAccess(Node newlla) {
+        updateUsages(lastLocationAccess, newlla);
+        lastLocationAccess = newlla;
+    }
+
     @Override
     public void generate(LIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));

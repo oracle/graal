@@ -100,7 +100,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
     }
 
     @Override
-    protected StructuredGraph getSnippetGraph(final LoweringTool tool) {
+    protected StructuredGraph getLoweredSnippetGraph(final LoweringTool tool) {
         if (!shouldIntrinsify(getTargetMethod())) {
             return null;
         }
@@ -119,10 +119,9 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             replaceSnippetInvokes(snippetGraph);
         } else {
             assert snippetGraph != null : "ArrayCopySnippets should be installed";
-
+            snippetGraph = snippetGraph.copy();
             if (getLength().isConstant() && getLength().asConstant().asInt() <= GraalOptions.MaximumEscapeAnalysisArrayLength.getValue()) {
-                final StructuredGraph copy = snippetGraph.copy();
-                snippetGraph = copy;
+                final StructuredGraph copy = snippetGraph;
                 Debug.scope("ArrayCopySnippetSpecialization", snippetGraph.method(), new Runnable() {
 
                     @Override
@@ -130,10 +129,9 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
                         unrollFixedLengthLoop(copy, getLength().asConstant().asInt(), tool);
                     }
                 });
-
             }
         }
-        return snippetGraph;
+        return lowerReplacement(snippetGraph, tool);
     }
 
     private static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {

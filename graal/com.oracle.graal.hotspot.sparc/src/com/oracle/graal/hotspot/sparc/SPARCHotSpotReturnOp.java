@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,38 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.sparc.SPARC.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
+import com.oracle.graal.sparc.*;
 
 /**
- * Emits a safepoint poll.
+ * Returns from a function.
  */
-@Opcode("SAFEPOINT")
-public class SPARCSafepointOp extends SPARCLIRInstruction {
+@Opcode("RETURN")
+final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
 
-    @State protected LIRFrameState state;
-    @Temp({OperandFlag.REG}) private AllocatableValue temp;
+    @Use({REG, ILLEGAL}) protected Value value;
+    private final boolean isStub;
 
-    private final HotSpotVMConfig config;
-
-    public SPARCSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
-        this.state = state;
-        this.config = config;
-        temp = tool.newVariable(tool.target().wordKind);
+    SPARCHotSpotReturnOp(Value value, boolean isStub) {
+        this.value = value;
+        this.isStub = isStub;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        final int pos = masm.codeBuffer.position();
-        Register scratch = ((RegisterValue) temp).getRegister();
-        new Setx(config.safepointPollingAddress, scratch).emit(masm);
-        tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
-        new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);
+        if (!isStub && (tasm.frameContext != null || !OptEliminateSafepoints.getValue())) {
+            // Using the same scratch register as LIR_Assembler::return_op
+            // in c1_LIRAssembler_sparc.cpp
+            SPARCHotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, SPARC.l0);
+        }
+        ReturnOp.emitCodeHelper(tasm, masm);
     }
 }

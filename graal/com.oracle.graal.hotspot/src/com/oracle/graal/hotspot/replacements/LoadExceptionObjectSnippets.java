@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.meta.HotSpotRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
+import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
@@ -57,7 +57,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         Object exception = readExceptionOop(thread);
         writeExceptionOop(thread, null);
         writeExceptionPc(thread, Word.zero());
-        return unsafeCast(exception, StampFactory.forNodeIntrinsic());
+        return piCast(exception, StampFactory.forNodeIntrinsic());
     }
 
     public static class Templates extends AbstractTemplates {

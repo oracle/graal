@@ -39,6 +39,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.Word.Opcode;
 import com.oracle.graal.word.Word.Operation;
+import com.oracle.graal.word.nodes.*;
 
 /**
  * Transforms all uses of the {@link Word} class into unsigned operations on {@code int} or
@@ -129,8 +130,6 @@ public class WordTypeRewriterPhase extends Phase {
     protected void rewriteNode(StructuredGraph graph, Node node) {
         if (node instanceof CheckCastNode) {
             rewriteCheckCast(graph, (CheckCastNode) node);
-        } else if (node instanceof UnsafeCastNode) {
-            rewriteUnsafeCast(graph, (UnsafeCastNode) node);
         } else if (node instanceof LoadFieldNode) {
             rewriteLoadField(graph, (LoadFieldNode) node);
         } else if (node instanceof AccessIndexedNode) {
@@ -147,16 +146,6 @@ public class WordTypeRewriterPhase extends Phase {
         if (node.kind() == wordKind) {
             node.replaceAtUsages(node.object());
             graph.removeFixed(node);
-        }
-    }
-
-    /**
-     * Remove unnecessary/redundant unsafe casts.
-     */
-    protected void rewriteUnsafeCast(StructuredGraph graph, UnsafeCastNode node) {
-        if (node.object().stamp() == node.stamp()) {
-            node.replaceAtUsages(node.object());
-            graph.removeFloating(node);
         }
     }
 
@@ -295,7 +284,9 @@ public class WordTypeRewriterPhase extends Phase {
 
             case FROM_OBJECT:
                 assert arguments.size() == 1;
-                replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), StampFactory.forKind(wordKind))));
+                WordCastNode objectToWord = graph.add(WordCastNode.objectToWord(arguments.get(0), wordKind));
+                graph.addBeforeFixed(invoke.asNode(), objectToWord);
+                replace(invoke, objectToWord);
                 break;
 
             case FROM_ARRAY:
@@ -305,7 +296,9 @@ public class WordTypeRewriterPhase extends Phase {
 
             case TO_OBJECT:
                 assert arguments.size() == 1;
-                replace(invoke, graph.unique(new UnsafeCastNode(arguments.get(0), invoke.asNode().stamp())));
+                WordCastNode wordToObject = graph.add(WordCastNode.wordToObject(arguments.get(0), wordKind));
+                graph.addBeforeFixed(invoke.asNode(), wordToObject);
+                replace(invoke, wordToObject);
                 break;
 
             default:

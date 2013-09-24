@@ -22,11 +22,11 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.ptx.*;
@@ -167,29 +167,20 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            if (key.getKind() == Kind.Int) {
-                Register intKey = asIntReg(key);
+            Kind keyKind = key.getKind();
+
+            if (keyKind == Kind.Int || keyKind == Kind.Long) {
                 for (int i = 0; i < keyConstants.length; i++) {
                     if (tasm.runtime.needsDataPatch(keyConstants[i])) {
                         tasm.recordDataReferenceInCode(keyConstants[i], 0, true);
                     }
-                    long lc = keyConstants[i].asLong();
-                    assert NumUtil.isInt(lc);
-                    masm.setp_eq_s32((int) lc, intKey, predRegNum);
+                    new Setp(EQ, keyConstants[i], key, predRegNum).emit(masm);
                     masm.bra(masm.nameOf(keyTargets[i].label()), predRegNum);
                 }
-            } else if (key.getKind() == Kind.Long) {
-                Register longKey = asLongReg(key);
+            } else if (keyKind == Kind.Object) {
                 for (int i = 0; i < keyConstants.length; i++) {
-                    masm.setp_eq_s64(tasm.asLongConst(keyConstants[i]), longKey, predRegNum);
-                    masm.bra(masm.nameOf(keyTargets[i].label()), predRegNum);
-                }
-            } else if (key.getKind() == Kind.Object) {
-                Register intKey = asObjectReg(key);
-                Register temp = asObjectReg(scratch);
-                for (int i = 0; i < keyConstants.length; i++) {
-                    PTXMove.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
-                    masm.setp_eq_u32(intKey, temp, predRegNum);
+                    PTXMove.move(tasm, masm, scratch, keyConstants[i]);
+                    new Setp(EQ, keyConstants[i], scratch, predRegNum).emit(masm);
                     masm.bra(keyTargets[i].label().toString(), predRegNum);
                 }
             } else {
@@ -234,21 +225,21 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch), predRegNum);
+            tableswitch(tasm, masm, lowKey, defaultTarget, targets, index, scratch, predRegNum);
         }
     }
 
     @SuppressWarnings("unused")
-    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch, int predNum) {
+    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value value, Value scratch, int predNum) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;
         if (lowKey != 0) {
             // subtract the low value from the switch value
             // new Sub(value, value, lowKey).emit(masm);
-            masm.setp_gt_s32(value, highKey - lowKey, predNum);
+            new Setp(GT, value, Constant.forInt(highKey - lowKey), predNum).emit(masm);
         } else {
-            masm.setp_gt_s32(value, highKey, predNum);
+            new Setp(GT, value, Constant.forInt(highKey), predNum).emit(masm);
         }
 
         // Jump to default target if index is not within the jump table

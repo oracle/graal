@@ -39,7 +39,10 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.sparc.*;
-import com.oracle.graal.lir.sparc.SPARCMove.*;
+import com.oracle.graal.lir.sparc.SPARCMove.CompareAndSwapOp;
+import com.oracle.graal.lir.sparc.SPARCMove.LoadOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreConstantOp;
+import com.oracle.graal.lir.sparc.SPARCMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
@@ -103,9 +106,14 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
+    protected void emitReturn(Value input) {
+        append(new SPARCHotSpotReturnOp(input, getStub() != null));
+    }
+
+    @Override
     public void visitSafepointNode(SafepointNode i) {
         LIRFrameState info = state(i);
-        append(new SPARCSafepointOp(info, runtime().config, this));
+        append(new SPARCHotSpotSafepointOp(info, runtime().config, this));
     }
 
     @Override

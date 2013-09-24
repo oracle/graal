@@ -25,9 +25,9 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.nodes.PiArrayNode.*;
+import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.nodes.extended.UnsafeArrayCastNode.*;
-import static com.oracle.graal.nodes.extended.UnsafeCastNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
@@ -35,6 +35,8 @@ import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.Node.ConstantNodeParameter;
+import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
@@ -87,8 +89,7 @@ public class NewObjectSnippets implements Snippets {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         }
-        BeginNode anchorNode = BeginNode.anchor();
-        return unsafeCast(verifyOop(result), StampFactory.forNodeIntrinsic(), anchorNode);
+        return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
 
     /**
@@ -121,8 +122,7 @@ public class NewObjectSnippets implements Snippets {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         }
-        BeginNode anchorNode = BeginNode.anchor();
-        return unsafeArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic(), anchorNode);
+        return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
     public static final ForeignCallDescriptor DYNAMIC_NEW_ARRAY = new ForeignCallDescriptor("dynamic_new_array", Object.class, Class.class, int.class);

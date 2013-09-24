@@ -36,6 +36,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
+import com.oracle.graal.word.nodes.*;
 
 /**
  * Tests for the {@link Pointer} read and write operations.
@@ -103,11 +104,13 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     private void assertRead(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
-        ReadNode read = (ReadNode) graph.start().next();
+        WordCastNode cast = (WordCastNode) graph.start().next();
+
+        ReadNode read = (ReadNode) cast.next();
         Assert.assertEquals(kind.getStackKind(), read.kind());
 
-        UnsafeCastNode cast = (UnsafeCastNode) read.object();
-        Assert.assertEquals(graph.getLocal(0), cast.object());
+        Assert.assertEquals(cast, read.object());
+        Assert.assertEquals(graph.getLocal(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.kind());
 
         IndexedLocationNode location = (IndexedLocationNode) read.location();
@@ -128,13 +131,15 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     }
 
     private void assertWrite(StructuredGraph graph, Kind kind, boolean indexConvert, LocationIdentity locationIdentity) {
-        WriteNode write = (WriteNode) graph.start().next();
+        WordCastNode cast = (WordCastNode) graph.start().next();
+
+        WriteNode write = (WriteNode) cast.next();
         Assert.assertEquals(graph.getLocal(2), write.value());
         Assert.assertEquals(Kind.Void, write.kind());
         Assert.assertEquals(FrameState.AFTER_BCI, write.stateAfter().bci);
 
-        UnsafeCastNode cast = (UnsafeCastNode) write.object();
-        Assert.assertEquals(graph.getLocal(0), cast.object());
+        Assert.assertEquals(cast, write.object());
+        Assert.assertEquals(graph.getLocal(0), cast.getInput());
         Assert.assertEquals(target.wordKind, cast.kind());
 
         IndexedLocationNode location = (IndexedLocationNode) write.location();

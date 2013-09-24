@@ -511,9 +511,9 @@ public class ConditionalEliminationPhase extends Phase {
                     PiNode piNode;
                     if (isNull) {
                         ConstantNode nullObject = ConstantNode.forObject(null, metaAccessProvider, graph);
-                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccessProvider), replacementAnchor));
+                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccessProvider), replacementAnchor.asNode()));
                     } else {
-                        piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor));
+                        piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor.asNode()));
                     }
                     checkCast.replaceAtUsages(piNode);
                     if (anchor != null) {

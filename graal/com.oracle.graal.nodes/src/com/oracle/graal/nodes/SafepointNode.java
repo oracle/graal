@@ -32,11 +32,7 @@ import com.oracle.graal.nodes.type.*;
 public class SafepointNode extends DeoptimizingFixedWithNextNode implements LIRLowerable {
 
     public SafepointNode() {
-        this(StampFactory.forVoid());
-    }
-
-    public SafepointNode(Stamp stamp) {
-        super(stamp);
+        super(StampFactory.forVoid());
     }
 
     @Override

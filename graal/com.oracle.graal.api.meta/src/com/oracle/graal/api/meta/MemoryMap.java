@@ -20,32 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.api.meta;
 
-package com.oracle.graal.lir.ptx;
+public interface MemoryMap<T> {
 
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
-
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-
-public class PTXParameterOp extends LIRInstruction {
-
-    @Def({REG}) protected Value[] params;
-
-    public PTXParameterOp(Value[] params) {
-        this.params = params;
-    }
-
-    @Override
-    public void emitCode(TargetMethodAssembler tasm) {
-        PTXAssembler masm = (PTXAssembler) tasm.asm;
-        // Emit parameter directives for arguments
-        int argCount = params.length;
-        for (int i = 0; i < argCount; i++) {
-            new Param((Variable) params[i], (i == (argCount - 1))).emit(masm);
-        }
-    }
+    T getLastLocationAccess(LocationIdentity locationIdentity);
 }

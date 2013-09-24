@@ -175,7 +175,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
         assertEquals(2, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(1, result.getNodes(UnsafeCastNode.class).count());
+        assertEquals(1, result.getNodes(PiNode.class).count());
         assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
         ConstantNode constant = result.getNodes().filter(ConstantNode.class).first();
         assertEquals(Kind.Long, constant.kind());
@@ -186,7 +186,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     public void testBoxedBoolean() {
         StructuredGraph result = compile("getBoxedBoolean", false);
         assertEquals(0, result.getNodes(FloatingReadNode.class).count());
-        assertEquals(0, result.getNodes(UnsafeCastNode.class).count());
+        assertEquals(0, result.getNodes(PiNode.class).count());
         assertEquals(1, result.getNodes().filter(ConstantNode.class).count());
         ConstantNode constant = result.getNodes().filter(ConstantNode.class).first();
         assertEquals(Kind.Object, constant.kind());

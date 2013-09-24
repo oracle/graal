@@ -59,9 +59,12 @@ public class HSAILBackend extends Backend {
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
     }
 
+    /**
+     * Use the HSAIL register set when the compilation target is HSAIL.
+     */
     @Override
     public FrameMap newFrameMap() {
-        return new HSAILFrameMap(runtime(), target, runtime().lookupRegisterConfig());
+        return new HSAILFrameMap(runtime(), target, new HSAILRegisterConfig());
     }
 
     @Override

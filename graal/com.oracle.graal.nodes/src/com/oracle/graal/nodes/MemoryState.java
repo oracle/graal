@@ -20,32 +20,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
-package com.oracle.graal.lir.ptx;
-
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
-import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.graph.*;
 
-public class PTXParameterOp extends LIRInstruction {
+public class MemoryState extends VirtualState {
 
-    @Def({REG}) protected Value[] params;
+    private MemoryMap<Node> memoryMap;
+    @Input private Node object;
 
-    public PTXParameterOp(Value[] params) {
-        this.params = params;
+    public MemoryState(MemoryMap<Node> memoryMap, FixedNode object) {
+        this.memoryMap = memoryMap;
+        this.object = object;
+    }
+
+    public Node object() {
+        return object;
+    }
+
+    public MemoryMap<Node> getMemoryMap() {
+        return memoryMap;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm) {
-        PTXAssembler masm = (PTXAssembler) tasm.asm;
-        // Emit parameter directives for arguments
-        int argCount = params.length;
-        for (int i = 0; i < argCount; i++) {
-            new Param((Variable) params[i], (i == (argCount - 1))).emit(masm);
-        }
+    public VirtualState duplicateWithVirtualState() {
+        throw new GraalInternalError("should not reach here");
+    }
+
+    @Override
+    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
+        throw new GraalInternalError("should not reach here");
+    }
+
+    @Override
+    public void applyToVirtual(VirtualClosure closure) {
+        throw new GraalInternalError("should not reach here");
+    }
+
+    @Override
+    public boolean isPartOfThisState(VirtualState state) {
+        throw new GraalInternalError("should not reach here");
     }
 }
