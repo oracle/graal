@@ -62,6 +62,8 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter g1EffectiveRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveRefFieldBarrierCounter",
                     "Number of G1 effective Ref Field Read Barriers");
 
+    private static final LocationIdentity GC_CARD_LOCATION = new NamedLocationIdentity("GC-Card");
+
     @Snippet
     public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull) {
         // No barriers are added if we are always storing a null.
@@ -85,7 +87,7 @@ public class WriteBarrierSnippets implements Snippets {
         } else {
             base = base.add(Word.unsigned(cardTableStart()));
         }
-        base.writeByte(displacement, (byte) 0);
+        base.writeByte(displacement, (byte) 0, GC_CARD_LOCATION);
     }
 
     @Snippet
