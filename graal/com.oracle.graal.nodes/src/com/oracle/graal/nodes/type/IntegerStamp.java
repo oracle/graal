@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.type;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
@@ -133,10 +135,12 @@ public class IntegerStamp extends Stamp {
             str.append(" [").append(lowerBound).append(" - ").append(upperBound).append(']');
         }
         if (downMask != 0) {
-            str.append(" \u21ca").append(Long.toHexString(downMask));
+            str.append(" \u21ca");
+            new Formatter(str).format("%016x", downMask);
         }
         if (upMask != defaultMask(kind())) {
-            str.append(" \u21c8").append(Long.toHexString(upMask));
+            str.append(" \u21c8");
+            new Formatter(str).format("%016x", upMask);
         }
         return str.toString();
     }
