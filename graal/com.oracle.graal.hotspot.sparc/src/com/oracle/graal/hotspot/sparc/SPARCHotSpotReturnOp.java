@@ -26,13 +26,12 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
+import com.oracle.graal.sparc.*;
 
 /**
  * Returns from a function.
@@ -50,11 +49,10 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        leaveFrame(tasm);
         if (!isStub && tasm.frameContext != null || !OptEliminateSafepoints.getValue()) {
-            Register scratchForSafepointOnReturn = null;
-            GraalInternalError.unimplemented("need to find a scratch register for the safepoint instruction sequence");
-            SPARCHotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, scratchForSafepointOnReturn);
+            // Using the same scratch register as LIR_Assembler::return_op
+            // in c1_LIRAssembler_sparc.cpp
+            SPARCHotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, SPARC.l0);
         }
         ReturnOp.emitCodeHelper(tasm, masm);
     }
