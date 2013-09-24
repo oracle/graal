@@ -64,7 +64,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
-        if (!isStub && tasm.frameContext != null || !OptEliminateSafepoints.getValue()) {
+        if (!isStub && (tasm.frameContext != null || !OptEliminateSafepoints.getValue())) {
             AMD64HotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, scratchForSafepointOnReturn);
         }
         masm.ret(0);
