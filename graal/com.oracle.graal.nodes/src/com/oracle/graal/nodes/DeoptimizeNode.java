@@ -86,4 +86,8 @@ public class DeoptimizeNode extends ControlSinkNode implements IterableNodeType,
     public DeoptimizationReason getDeoptimizationReason() {
         return reason;
     }
+
+    public FrameState getState() {
+        return deoptState;
+    }
 }

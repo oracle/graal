@@ -79,4 +79,8 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
             }
         }
     }
+
+    public FrameState getState() {
+        return stateAfter;
+    }
 }

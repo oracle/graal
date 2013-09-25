@@ -41,6 +41,10 @@ public abstract class AbstractStateSplit extends FixedWithNextNode implements St
         stateAfter = x;
     }
 
+    public FrameState getState() {
+        return stateAfter();
+    }
+
     public boolean hasSideEffect() {
         return true;
     }
