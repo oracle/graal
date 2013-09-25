@@ -216,16 +216,13 @@ public class GraphBuilderPhase extends Phase {
             lastInstr = genMonitorEnter(methodSynchronizedObject);
         }
         frameState.clearNonLiveLocals(blockMap.startBlock.localsLiveIn);
+        ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
 
         if (graphBuilderConfig.eagerInfopointMode()) {
-            ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
-            InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START));
+            InfopointNode ipn = currentGraph.add(new InfopointNode(InfopointReason.METHOD_START, frameState.create(0)));
             lastInstr.setNext(ipn);
             lastInstr = ipn;
         }
-
-        // finish the start block
-        ((StateSplit) lastInstr).setStateAfter(frameState.create(0));
 
         currentBlock = blockMap.startBlock;
         blockMap.startBlock.entryState = frameState;
@@ -1636,8 +1633,7 @@ public class GraphBuilderPhase extends Phase {
         }
 
         if (graphBuilderConfig.eagerInfopointMode()) {
-            InfopointNode ipn = append(new InfopointNode(InfopointReason.METHOD_END));
-            ipn.setStateAfter(frameState.create(FrameState.AFTER_BCI));
+            append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(FrameState.AFTER_BCI)));
         }
 
         append(new ReturnNode(x));
@@ -1752,8 +1748,7 @@ public class GraphBuilderPhase extends Phase {
             if (graphBuilderConfig.eagerInfopointMode() && lnt != null) {
                 currentLineNumber = lnt.getLineNumber(bci);
                 if (currentLineNumber != previousLineNumber) {
-                    InfopointNode ipn = append(new InfopointNode(InfopointReason.LINE_NUMBER));
-                    ipn.setStateAfter(frameState.create(bci));
+                    append(new InfopointNode(InfopointReason.LINE_NUMBER, frameState.create(bci)));
                     previousLineNumber = currentLineNumber;
                 }
             }

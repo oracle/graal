@@ -526,7 +526,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        if (i.stateAfter() != null && i.stateAfter().bci == FrameState.AFTER_BCI) {
+        if (i.getState() != null && i.getState().bci == FrameState.AFTER_BCI) {
             Debug.log("Ignoring InfopointNode for AFTER_BCI");
         } else {
             super.visitInfopointNode(i);
