@@ -20,41 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.*;
 
-public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, IterableNodeType {
+public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
 
-    @Input private ValueNode object;
-    @Input private LocationNode location;
-    private final boolean precise;
-
-    public ValueNode getObject() {
-        return object;
-    }
-
-    public LocationNode getLocation() {
-        return location;
-    }
-
-    public boolean usePrecise() {
-        return precise;
-    }
-
-    public WriteBarrier(ValueNode object, LocationNode location, boolean precise) {
-        super(StampFactory.forVoid());
-        this.object = object;
-        this.location = location;
-        this.precise = precise;
-    }
-
-    @Override
-    public void lower(LoweringTool generator) {
-        assert graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA;
-        generator.getRuntime().lower(this, generator);
+    public SerialArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
+        super(object, startIndex, length);
     }
 }

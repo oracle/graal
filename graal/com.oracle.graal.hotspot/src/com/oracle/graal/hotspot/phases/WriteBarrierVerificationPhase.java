@@ -28,6 +28,7 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import java.util.*;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;

@@ -20,32 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-/**
- * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
- * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
- * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
- * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
- */
-public class G1ReferentFieldReadBarrier extends WriteBarrier {
+public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, IterableNodeType {
 
-    @Input private ValueNode expectedObject;
-    private final boolean doLoad;
+    @Input private ValueNode object;
+    @Input private LocationNode location;
+    private final boolean precise;
 
-    public ValueNode getExpectedObject() {
-        return expectedObject;
+    public ValueNode getObject() {
+        return object;
     }
 
-    public boolean doLoad() {
-        return doLoad;
+    public LocationNode getLocation() {
+        return location;
     }
 
-    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
-        super(object, location, true);
-        this.doLoad = doLoad;
-        this.expectedObject = expectedObject;
+    public boolean usePrecise() {
+        return precise;
+    }
+
+    public WriteBarrier(ValueNode object, LocationNode location, boolean precise) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.location = location;
+        this.precise = precise;
+    }
+
+    @Override
+    public void lower(LoweringTool generator) {
+        assert graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA;
+        generator.getRuntime().lower(this, generator);
     }
 }

@@ -20,11 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
-    public SerialArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(object, startIndex, length);
+public class G1PostWriteBarrier extends WriteBarrier {
+
+    @Input private ValueNode value;
+
+    public ValueNode getValue() {
+        return value;
+    }
+
+    public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
+        super(object, location, precise);
+        this.value = value;
     }
 }
