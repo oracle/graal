@@ -89,6 +89,7 @@ public class ExceptionObjectNode extends DispatchBeginNode implements Lowerable,
         graph().addAfterFixed(this, loadException);
         setStateAfter(null);
         setStamp(StampFactory.forVoid());
+        loadException.lower(tool);
     }
 
     @Override

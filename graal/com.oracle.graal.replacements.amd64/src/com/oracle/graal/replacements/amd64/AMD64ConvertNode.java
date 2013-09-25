@@ -30,9 +30,8 @@ import com.oracle.graal.nodes.type.*;
 
 /**
  * This node has the semantics of the AMD64 conversions. It is used in the lowering of the
- * ConvertNode which, on AMD64 needs a AMD64ConvertNode plus some fixup code that handles the corner
- * cases that differ between AMD64 and Java.
- * 
+ * {@link ConvertNode} which, on AMD64 needs a {@link AMD64ConvertNode} plus some fixup code that
+ * handles the corner cases that differ between AMD64 and Java.
  */
 public class AMD64ConvertNode extends FloatingNode implements ArithmeticLIRLowerable {
 

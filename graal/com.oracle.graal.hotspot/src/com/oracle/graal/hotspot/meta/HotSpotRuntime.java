@@ -750,6 +750,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                     for (int lockDepth : commit.getLocks().get(objIndex)) {
                         MonitorEnterNode enter = graph.add(new MonitorEnterNode(allocations[objIndex], lockDepth));
                         graph.addBeforeFixed(commit, enter);
+                        enter.lower(tool);
                     }
                 }
                 for (Node usage : commit.usages().snapshot()) {

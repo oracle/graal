@@ -37,5 +37,6 @@ public class NeverInlineMacroNode extends MacroNode implements com.oracle.graal.
         InvokeNode invoke = createInvoke();
         graph().replaceFixedWithFixed(this, invoke);
         invoke.setUseForInlining(false);
+        invoke.lower(tool);
     }
 }

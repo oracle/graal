@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements.nodes;
 
+import static java.lang.reflect.Modifier.*;
+
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
@@ -106,18 +108,27 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
 
     @Override
     public void lower(LoweringTool tool) {
-        boolean nullCheck = false;
         StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
         if (replacementGraph == null) {
             replacementGraph = getLoweredSubstitutionGraph(tool);
-            nullCheck = true;
         }
 
         InvokeNode invoke = replaceWithInvoke();
         assert invoke.verify();
 
         if (replacementGraph != null) {
-            InliningUtil.inline(invoke, replacementGraph, nullCheck);
+            // Pull out the receiver null check so that a replaced
+            // receiver can be lowered if necessary
+            if (!isStatic(targetMethod.getModifiers())) {
+                ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
+                if (nonNullReceiver instanceof Lowerable) {
+                    ((Lowerable) nonNullReceiver).lower(tool);
+                }
+            }
+            InliningUtil.inline(invoke, replacementGraph, false);
+            Debug.dump(graph(), "After inlining replacement %s", replacementGraph);
+        } else {
+            invoke.lower(tool);
         }
     }
 

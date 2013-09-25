@@ -53,7 +53,9 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
         if (callerClassNode != null) {
             graph().replaceFixedWithFloating(this, callerClassNode);
         } else {
-            graph().replaceFixedWithFixed(this, createInvoke());
+            InvokeNode invoke = createInvoke();
+            graph().replaceFixedWithFixed(this, invoke);
+            invoke.lower(tool);
         }
     }
 

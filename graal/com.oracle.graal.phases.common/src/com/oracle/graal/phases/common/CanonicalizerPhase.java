@@ -267,7 +267,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 // @formatter:off
 //     cases:                                           original node:
 //                                         |Floating|Fixed-unconnected|Fixed-connected|
-//                                         -------------------------------------------|
+//                                         --------------------------------------------
 //                                     null|   1    |        X        |       3       |
 //                                         --------------------------------------------
 //                                 Floating|   2    |        X        |       4       |

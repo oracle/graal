@@ -72,7 +72,9 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
         if (target != null) {
             graph().replaceFixedWithFloating(this, target);
         } else {
-            graph().replaceFixedWithFixed(this, createInvoke());
+            InvokeNode invoke = createInvoke();
+            graph().replaceFixedWithFixed(this, invoke);
+            invoke.lower(tool);
         }
     }
 }

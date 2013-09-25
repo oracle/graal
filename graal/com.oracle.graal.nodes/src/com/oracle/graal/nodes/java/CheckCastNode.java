@@ -115,6 +115,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
                 graph().addBeforeFixed(this, nullGuard);
                 condition = typeTest;
                 stamp = stamp.join(StampFactory.objectNonNull());
+                nullGuard.lower(tool);
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
@@ -123,6 +124,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
         }
         GuardingPiNode checkedObject = graph().add(new GuardingPiNode(object, condition, false, forStoreCheck ? ArrayStoreException : ClassCastException, InvalidateReprofile, stamp));
         graph().replaceFixedWithFixed(this, checkedObject);
+        checkedObject.lower(tool);
     }
 
     @Override

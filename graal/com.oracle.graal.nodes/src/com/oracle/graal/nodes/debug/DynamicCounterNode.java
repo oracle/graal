@@ -183,6 +183,8 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
             graph().addBeforeFixed(this, load);
             graph().addBeforeFixed(this, store);
+            load.lower(tool);
+            store.lower(tool);
         }
         graph().removeFixed(this);
     }

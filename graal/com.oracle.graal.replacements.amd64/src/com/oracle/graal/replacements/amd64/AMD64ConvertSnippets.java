@@ -181,6 +181,7 @@ public class AMD64ConvertSnippets implements Snippets {
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
             template.instantiate(runtime, replacee, DEFAULT_REPLACER, tool, args);
+            graph.removeFloating(convert);
         }
     }
 }

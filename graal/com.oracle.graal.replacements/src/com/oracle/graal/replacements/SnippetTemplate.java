@@ -391,7 +391,7 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    protected SnippetTemplate(MetaAccessProvider runtime, Replacements replacements, Arguments args) {
+    protected SnippetTemplate(final MetaAccessProvider runtime, final Replacements replacements, Arguments args) {
         StructuredGraph snippetGraph = replacements.getSnippet(args.info.method);
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -400,7 +400,7 @@ public class SnippetTemplate {
         PhaseContext context = new PhaseContext(runtime, replacements.getAssumptions(), replacements);
 
         // Copy snippet graph, replacing constant parameters with given arguments
-        StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
+        final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
         IdentityHashMap<Node, Node> nodeReplacements = new IdentityHashMap<>();
         nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
@@ -504,8 +504,13 @@ public class SnippetTemplate {
 
         // Perform lowering on the snippet
         snippetCopy.setGuardsStage(args.cacheKey.guardsStage);
-        PhaseContext c = new PhaseContext(runtime, new Assumptions(false), replacements);
-        new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+        Debug.scope("LoweringSnippetTemplate", snippetCopy, new Runnable() {
+
+            public void run() {
+                PhaseContext c = new PhaseContext(runtime, new Assumptions(false), replacements);
+                new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+            }
+        });
 
         // Remove all frame states from snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).

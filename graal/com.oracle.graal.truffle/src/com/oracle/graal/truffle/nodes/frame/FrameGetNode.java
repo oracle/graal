@@ -88,6 +88,8 @@ public class FrameGetNode extends FrameAccessNode implements IterableNodeType, V
             loadNode = graph().add(new UnsafeLoadNode(loadFieldNode, Unsafe.ARRAY_LONG_BASE_OFFSET, slotOffset, getSlotKind()));
         }
         structuredGraph.replaceFixedWithFixed(this, loadNode);
+        loadFieldNode.lower(tool);
+        ((Lowerable) loadNode).lower(tool);
     }
 
     @NodeIntrinsic

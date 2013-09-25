@@ -86,6 +86,8 @@ public class FrameSetNode extends FrameAccessNode implements IterableNodeType, V
             storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, Kind.Long, value));
         }
         structuredGraph.replaceFixedWithFixed(this, storeNode);
+        loadFieldNode.lower(tool);
+        ((Lowerable) storeNode).lower(tool);
     }
 
     @NodeIntrinsic
