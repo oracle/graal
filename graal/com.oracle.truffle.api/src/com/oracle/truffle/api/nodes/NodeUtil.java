@@ -292,12 +292,8 @@ public final class NodeUtil {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T cloneNode(T orig) {
-        Class<? extends Node> clazz = orig.getClass();
-        NodeClass nodeClass = NodeClass.get(clazz);
-        Node clone = orig.copy();
-        if (clone == null) {
-            return null;
-        }
+        final Node clone = orig.copy();
+        NodeClass nodeClass = NodeClass.get(clone.getClass());
 
         unsafe.putObject(clone, nodeClass.parentOffset, null);
 
@@ -305,10 +301,6 @@ public final class NodeUtil {
             Node child = (Node) unsafe.getObject(orig, fieldOffset);
             if (child != null) {
                 Node clonedChild = cloneNode(child);
-                if (clonedChild == null) {
-                    return null;
-                }
-
                 unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                 unsafe.putObject(clone, fieldOffset, clonedChild);
             }
@@ -316,16 +308,13 @@ public final class NodeUtil {
         for (long fieldOffset : nodeClass.childrenOffsets) {
             Node[] children = (Node[]) unsafe.getObject(orig, fieldOffset);
             if (children != null) {
-                Node[] clonedChildren = children.clone();
-                Arrays.fill(clonedChildren, null);
+                Node[] clonedChildren = (Node[]) Array.newInstance(children.getClass().getComponentType(), children.length);
                 for (int i = 0; i < children.length; i++) {
-                    Node clonedChild = cloneNode(children[i]);
-                    if (clonedChild == null) {
-                        return null;
+                    if (children[i] != null) {
+                        Node clonedChild = cloneNode(children[i]);
+                        clonedChildren[i] = clonedChild;
+                        unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                     }
-
-                    clonedChildren[i] = clonedChild;
-                    unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                 }
                 unsafe.putObject(clone, fieldOffset, clonedChildren);
             }
