@@ -81,4 +81,8 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
             }
         }
     }
+
+    public FrameState getState() {
+        return stateAfter;
+    }
 }

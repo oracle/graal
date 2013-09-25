@@ -111,13 +111,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             return !(node instanceof CommitAllocationNode || node instanceof AllocatedObjectNode);
         }
         if (isMarked) {
-            if (node instanceof StateSplit) {
-                StateSplit split = (StateSplit) node;
-                FrameState stateAfter = split.stateAfter();
+            if (node instanceof NodeWithState) {
+                NodeWithState nodeWithState = (NodeWithState) node;
+                FrameState stateAfter = nodeWithState.getState();
                 if (stateAfter != null) {
                     if (stateAfter.usages().count() > 1) {
-                        stateAfter = (FrameState) stateAfter.copyWithInputs();
-                        split.setStateAfter(stateAfter);
+                        if (nodeWithState instanceof StateSplit) {
+                            StateSplit split = (StateSplit) nodeWithState;
+                            stateAfter = (FrameState) stateAfter.copyWithInputs();
+                            split.setStateAfter(stateAfter);
+                        } else {
+                            throw GraalInternalError.shouldNotReachHere();
+                        }
                     }
                     final HashSet<ObjectState> virtual = new HashSet<>();
                     stateAfter.applyToNonVirtual(new NodeClosure<ValueNode>() {

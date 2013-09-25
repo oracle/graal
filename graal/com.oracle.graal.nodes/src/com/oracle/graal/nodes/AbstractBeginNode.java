@@ -185,4 +185,8 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements Sta
             throw new UnsupportedOperationException();
         }
     }
+
+    public FrameState getState() {
+        return stateAfter();
+    }
 }

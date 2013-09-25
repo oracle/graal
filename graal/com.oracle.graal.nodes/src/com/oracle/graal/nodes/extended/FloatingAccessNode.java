@@ -95,6 +95,10 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
         return barrierType;
     }
 
+    public FrameState getState() {
+        return deoptState;
+    }
+
     @Override
     public boolean isCompressible() {
         return compressible;

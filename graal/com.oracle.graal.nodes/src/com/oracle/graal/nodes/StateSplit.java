@@ -22,10 +22,12 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.nodes.spi.*;
+
 /**
  * A state split is a node that may have a frame state associated with it.
  */
-public interface StateSplit {
+public interface StateSplit extends NodeWithState {
 
     /**
      * Gets the state of the JVM frame after execution of this node.

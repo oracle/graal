@@ -107,6 +107,10 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         return unsafeStoreNode;
     }
 
+    public FrameState getState() {
+        return stateAfter;
+    }
+
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
 
     @SuppressWarnings("unused")
