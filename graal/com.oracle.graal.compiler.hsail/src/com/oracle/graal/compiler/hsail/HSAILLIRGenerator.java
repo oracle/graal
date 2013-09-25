@@ -143,12 +143,12 @@ public class HSAILLIRGenerator extends LIRGenerator {
             } else {
                 baseRegister = load(base);
             }
-        } else if (base == Value.ILLEGAL) {
+        } else if (base.equals(Value.ILLEGAL)) {
             baseRegister = Value.ILLEGAL;
         } else {
             baseRegister = asAllocatable(base);
         }
-        if (index != Value.ILLEGAL) {
+        if (!index.equals(Value.ILLEGAL)) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
             } else {
@@ -160,7 +160,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
                 } else {
                     indexRegister = convertedIndex;
                 }
-                if (baseRegister == Value.ILLEGAL) {
+                if (baseRegister.equals(Value.ILLEGAL)) {
                     baseRegister = asAllocatable(indexRegister);
                 } else {
                     baseRegister = emitAdd(baseRegister, indexRegister);

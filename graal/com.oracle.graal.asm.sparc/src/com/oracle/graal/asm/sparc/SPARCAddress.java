@@ -121,7 +121,7 @@ public class SPARCAddress extends AbstractAddress {
             throw GraalInternalError.shouldNotReachHere("address has index register");
         }
         // TODO Should we also hide the register save area size here?
-        if (getBase() == sp || getBase() == fp) {
+        if (getBase().equals(sp) || getBase().equals(fp)) {
             return displacement + STACK_BIAS;
         }
         return displacement;

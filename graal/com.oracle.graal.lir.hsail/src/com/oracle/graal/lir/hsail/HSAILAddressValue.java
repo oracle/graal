@@ -66,7 +66,7 @@ public final class HSAILAddressValue extends CompositeValue {
     }
 
     public HSAILAddress toAddress() {
-        Register baseReg = base == Value.ILLEGAL ? Register.None : asRegister(base);
+        Register baseReg = base.equals(Value.ILLEGAL) ? Register.None : asRegister(base);
         return new HSAILAddress(baseReg, displacement);
     }
 
