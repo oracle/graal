@@ -34,11 +34,10 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call from within a stub.
  */
 @NodeInfo(nameTemplate = "StubForeignCall#{p#descriptor/s}")
-public class StubForeignCallNode extends FixedWithNextNode implements DeoptimizingNode, LIRLowerable, MemoryCheckpoint.Multi {
+public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final MetaAccessProvider runtime;
-    @Input private FrameState deoptState;
 
     private final ForeignCallDescriptor descriptor;
 
@@ -71,7 +70,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements Deoptimizi
         assert graph().start() instanceof StubStartNode;
         ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
-        Value result = gen.emitForeignCall(linkage, this, operands);
+        Value result = gen.emitForeignCall(linkage, null, operands);
         if (result != null) {
             gen.setResult(this, result);
         }
@@ -83,28 +82,5 @@ public class StubForeignCallNode extends FixedWithNextNode implements Deoptimizi
             return super.toString(verbosity) + "#" + descriptor;
         }
         return super.toString(verbosity);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return false;
-    }
-
-    @Override
-    public FrameState getDeoptimizationState() {
-        return null;
-    }
-
-    @Override
-    public void setDeoptimizationState(FrameState state) {
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return null;
-    }
-
-    public FrameState getState() {
-        return deoptState;
     }
 }

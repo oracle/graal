@@ -243,7 +243,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         Variable result;
 
         if (linkage.canDeoptimize()) {
-            assert info != null;
+            assert info != null || stub != null;
             append(new AMD64HotSpotCRuntimeCallPrologueOp());
             result = super.emitForeignCall(linkage, info, args);
             append(new AMD64HotSpotCRuntimeCallEpilogueOp());

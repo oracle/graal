@@ -616,7 +616,15 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public Variable emitForeignCall(ForeignCallLinkage linkage, DeoptimizingNode info, Value... args) {
-        LIRFrameState state = !linkage.canDeoptimize() ? null : stateFor(info.getDeoptimizationState(), info.getDeoptimizationReason());
+        LIRFrameState state = null;
+        if (linkage.canDeoptimize()) {
+            if (info != null) {
+                state = stateFor(info.getDeoptimizationState(), info.getDeoptimizationReason());
+            } else {
+                assert needOnlyOopMaps();
+                state = new LIRFrameState(null, null, null, (short) -1);
+            }
+        }
 
         // move the arguments into the correct location
         CallingConvention linkageCc = linkage.getOutgoingCallingConvention();
