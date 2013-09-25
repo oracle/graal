@@ -33,20 +33,18 @@ import com.oracle.graal.nodes.extended.*;
  */
 public class G1ReferentFieldReadBarrier extends WriteBarrier {
 
-    @Input private ValueNode expectedObject;
     private final boolean doLoad;
 
+    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
+        super(object, expectedObject, location, true);
+        this.doLoad = doLoad;
+    }
+
     public ValueNode getExpectedObject() {
-        return expectedObject;
+        return getValue();
     }
 
     public boolean doLoad() {
         return doLoad;
-    }
-
-    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
-        super(object, location, true);
-        this.doLoad = doLoad;
-        this.expectedObject = expectedObject;
     }
 }

@@ -29,17 +29,17 @@ public abstract class ArrayRangeWriteBarrier extends WriteBarrier {
     @Input private ValueNode startIndex;
     @Input private ValueNode length;
 
+    public ArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
+        super(object, null, null, true);
+        this.startIndex = startIndex;
+        this.length = length;
+    }
+
     public ValueNode getStartIndex() {
         return startIndex;
     }
 
     public ValueNode getLength() {
         return length;
-    }
-
-    public ArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(object, null, true);
-        this.startIndex = startIndex;
-        this.length = length;
     }
 }

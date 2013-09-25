@@ -31,8 +31,21 @@ import com.oracle.graal.nodes.type.*;
 public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, IterableNodeType {
 
     @Input private ValueNode object;
+    @Input private ValueNode value;
     @Input private LocationNode location;
     private final boolean precise;
+
+    public WriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.value = value;
+        this.location = location;
+        this.precise = precise;
+    }
+
+    public ValueNode getValue() {
+        return value;
+    }
 
     public ValueNode getObject() {
         return object;
@@ -44,13 +57,6 @@ public abstract class WriteBarrier extends FixedWithNextNode implements Lowerabl
 
     public boolean usePrecise() {
         return precise;
-    }
-
-    public WriteBarrier(ValueNode object, LocationNode location, boolean precise) {
-        super(StampFactory.forVoid());
-        this.object = object;
-        this.location = location;
-        this.precise = precise;
     }
 
     @Override

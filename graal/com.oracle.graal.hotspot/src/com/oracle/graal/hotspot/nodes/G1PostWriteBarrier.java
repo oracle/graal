@@ -27,14 +27,7 @@ import com.oracle.graal.nodes.extended.*;
 
 public class G1PostWriteBarrier extends WriteBarrier {
 
-    @Input private ValueNode value;
-
-    public ValueNode getValue() {
-        return value;
-    }
-
     public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
-        super(object, location, precise);
-        this.value = value;
+        super(object, value, location, precise);
     }
 }
