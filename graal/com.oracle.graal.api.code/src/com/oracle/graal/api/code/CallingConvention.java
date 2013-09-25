@@ -151,7 +151,7 @@ public class CallingConvention {
     private boolean verify() {
         for (int i = 0; i < argumentLocations.length; i++) {
             Value location = argumentLocations[i];
-            assert isStackSlot(location) || isRegister(location);
+            assert isStackSlot(location) || isAllocatableValue(location);
         }
         return true;
     }

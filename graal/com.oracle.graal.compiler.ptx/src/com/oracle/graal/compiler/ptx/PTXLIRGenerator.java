@@ -24,6 +24,7 @@
 package com.oracle.graal.compiler.ptx;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
@@ -58,6 +59,7 @@ import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.StoreReturnValOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 
 /**
@@ -84,6 +86,8 @@ public class PTXLIRGenerator extends LIRGenerator {
     public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, runtime, target, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
+        int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
+        lir.setFirstVariableNumber(callVariables);
         nextPredRegNum = 0;
     }
 
@@ -130,12 +134,12 @@ public class PTXLIRGenerator extends LIRGenerator {
         CallingConvention incomingArguments = cc;
         int argCount = incomingArguments.getArgumentCount();
         // Additional argument for return value.
-        Value[] params = new Value[argCount + 1];
+        Variable[] params = new Variable[argCount + 1];
         for (int i = 0; i < argCount; i++) {
-            params[i] = incomingArguments.getArgument(i);
+            params[i] = (Variable) incomingArguments.getArgument(i);
         }
         // Add the return value as the last parameter.
-        params[argCount] =  incomingArguments.getReturn();
+        params[argCount] =  (Variable) incomingArguments.getReturn();
 
         append(new PTXParameterOp(params));
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
@@ -162,7 +166,6 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public PTXAddressValue emitAddress(Value base, long displacement, Value index, int scale) {
-        /*
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
@@ -177,11 +180,34 @@ public class PTXLIRGenerator extends LIRGenerator {
         } else {
             baseRegister = asAllocatable(base);
         }
-        */
-        return new PTXAddressValue(target().wordKind, load(base), displacement);
+
+        @SuppressWarnings("unused") Value indexRegister;
+        if (!index.equals(Value.ILLEGAL) && scale != 0) {
+            if (isConstant(index)) {
+                finalDisp += asConstant(index).asLong() * scale;
+                indexRegister = Value.ILLEGAL;
+            } else {
+                if (scale != 1) {
+                    Variable longIndex = emitConvert(Op.I2L, index);
+                    if (CodeUtil.isPowerOf2(scale)) {
+                        indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
+                    } else {
+                        indexRegister = emitMul(longIndex, Constant.forLong(scale));
+                    }
+                } else {
+                    indexRegister = asAllocatable(index);
+                }
+            }
+        } else {
+            indexRegister = Value.ILLEGAL;
+        }
+
+        return new PTXAddressValue(target().wordKind, baseRegister, finalDisp);
     }
 
     private PTXAddressValue asAddress(Value address) {
+        assert address != null;
+
         if (address instanceof PTXAddressValue) {
             return (PTXAddressValue) address;
         } else {
@@ -757,6 +783,13 @@ public class PTXLIRGenerator extends LIRGenerator {
         append(new StoreReturnValOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
     }
 
+    @Override
+    public AllocatableValue resultOperandFor(Kind kind) {
+        if (kind == Kind.Void) {
+            return ILLEGAL;
+        }
+        return (new Variable(kind, 0));
+    }
 
     @Override
     public void visitReturn(ReturnNode x) {

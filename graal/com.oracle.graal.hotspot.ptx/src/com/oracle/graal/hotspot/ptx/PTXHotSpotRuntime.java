@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.ptx;
 import static com.oracle.graal.ptx.PTX.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
@@ -54,7 +55,7 @@ public class PTXHotSpotRuntime extends HotSpotRuntime {
 
     @Override
     public void registerReplacements(Replacements replacements) {
-        //TODO: Do we need to implement this functionality for PTX?
+        Debug.log("PTXHotSpotRuntime.registerReplacements unimplemented");
     }
 
     // PTX code does not use stack or stack pointer
@@ -77,6 +78,6 @@ public class PTXHotSpotRuntime extends HotSpotRuntime {
 
     @Override
     protected RegisterConfig createRegisterConfig() {
-        return new PTXHotSpotRegisterConfig(graalRuntime.getTarget().arch);
+        return new PTXHotSpotRegisterConfig();
     }
 }

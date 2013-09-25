@@ -26,12 +26,11 @@ import org.junit.*;
 
 import java.lang.reflect.Method;
 
-@Ignore
 public class IntegerPTXTest extends PTXTestBase {
 
     @Test
     public void testAdd() {
-
+        /*
         Integer r4 = (Integer) invoke(compile("testAdd2B"), (byte) 6, (byte) 4);
         if (r4 == null) {
             printReport("testAdd2B FAILED");
@@ -39,9 +38,9 @@ public class IntegerPTXTest extends PTXTestBase {
             printReport("testAdd2B PASSED");
         } else {
             printReport("testAdd2B FAILED");
-        }
+        } */
 
-        r4 = (Integer) invoke(compile("testAdd2I"), 18, 24);
+        Integer r4 = (Integer) invoke(compile("testAdd2I"), 18, 24);
         if (r4 == null) {
             printReport("testAdd2I FAILED");
         } else if (r4.intValue() == testAdd2I(18, 24)) {
@@ -50,14 +49,14 @@ public class IntegerPTXTest extends PTXTestBase {
             printReport("testAdd2I FAILED");
         }
 
-        Long r2 = (Long) invoke(compile("testAdd2L"), (long) 12, (long) 6);
+        /* Long r2 = (Long) invoke(compile("testAdd2L"), (long) 12, (long) 6);
         if (r2 == null) {
             printReport("testAdd2L FAILED");
         } else if (r2.longValue() == testAdd2L(12, 6)) {
             printReport("testAdd2L PASSED");
         } else {
             printReport("testAdd2L FAILED");
-        }
+        } 
 
         r4 = (Integer) invoke(compile("testAddIConst"), 5);
         if (r4 == null) {
@@ -75,7 +74,7 @@ public class IntegerPTXTest extends PTXTestBase {
             printReport("testAddConstI PASSED");
         } else {
             printReport("testAddConstI FAILED");
-        }
+        } */
     }
 
     public static int testAdd2I(int a, int b) {
@@ -98,6 +97,7 @@ public class IntegerPTXTest extends PTXTestBase {
         return 32 + a;
     }
 
+    @Ignore
     @Test
     public void testSub() {
 
@@ -155,6 +155,7 @@ public class IntegerPTXTest extends PTXTestBase {
         return 32 - a;
     }
 
+    @Ignore
     @Test
     public void testMul() {
 
@@ -266,6 +267,7 @@ public class IntegerPTXTest extends PTXTestBase {
         return 32 / a;
     }
 
+    @Ignore
     @Test
     public void testRem() {
         Integer r1 = (Integer) invoke(compile("testRem2I"), 8, 4);

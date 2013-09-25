@@ -20,20 +20,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.type.*;
 
-public class G1PostWriteBarrier extends WriteBarrier {
+public abstract class WriteBarrier extends FixedWithNextNode implements Lowerable, IterableNodeType {
 
+    @Input private ValueNode object;
     @Input private ValueNode value;
+    @Input private LocationNode location;
+    private final boolean precise;
+
+    public WriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
+        super(StampFactory.forVoid());
+        this.object = object;
+        this.value = value;
+        this.location = location;
+        this.precise = precise;
+    }
 
     public ValueNode getValue() {
         return value;
     }
 
-    public G1PostWriteBarrier(ValueNode object, ValueNode value, LocationNode location, boolean precise) {
-        super(object, location, precise);
-        this.value = value;
+    public ValueNode getObject() {
+        return object;
+    }
+
+    public LocationNode getLocation() {
+        return location;
+    }
+
+    public boolean usePrecise() {
+        return precise;
+    }
+
+    @Override
+    public void lower(LoweringTool generator) {
+        assert graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA;
+        generator.getRuntime().lower(this, generator);
     }
 }

@@ -68,7 +68,8 @@ public final class PTXAddressValue extends CompositeValue {
     }
 
     public PTXAddress toAddress() {
-        return new PTXAddress(null, displacement);
+        // Register baseReg = base == Value.ILLEGAL ? Register.None : asRegister(base);
+        return new PTXAddress((Variable) base, displacement);
     }
 
     @Override

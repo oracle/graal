@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.replacements;
 
+import static com.oracle.graal.api.meta.LocationIdentity.*;
+
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -42,6 +44,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.common.FloatingReadPhase.MemoryMapImpl;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
@@ -536,7 +539,7 @@ public class SnippetTemplate {
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
-        new FloatingReadPhase(false).apply(snippetCopy);
+        new FloatingReadPhase(FloatingReadPhase.ExecutionMode.ANALYSIS_ONLY).apply(snippetCopy);
         this.memoryMap = null;
 
         this.snippet = snippetCopy;
@@ -759,8 +762,7 @@ public class SnippetTemplate {
             }
             for (Node usage : newNode.usages().snapshot()) {
                 if (usage instanceof FloatingReadNode && ((FloatingReadNode) usage).lastLocationAccess() == newNode) {
-                    // TODO: add graph state for FloatingReadPhase
-                    assert newNode.graph().getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal();
+                    assert newNode.graph().isAfterFloatingReadPhase();
 
                     // lastLocationAccess points into the snippet graph. find a proper
                     // MemoryCheckPoint inside the snippet graph
@@ -773,6 +775,52 @@ public class SnippetTemplate {
             }
         }
     };
+
+    private boolean checkSnippetKills(ScheduledNode replacee) {
+        if (!replacee.graph().isAfterFloatingReadPhase()) {
+            // no floating reads yet, ignore locations created while lowering
+            return true;
+        }
+        if (memoryMap == null || ((MemoryMapImpl) memoryMap).isEmpty()) {
+            // there're no kills in the snippet graph
+            return true;
+        }
+
+        Set<LocationIdentity> kills = ((MemoryMapImpl) memoryMap).getLocations();
+
+        if (replacee instanceof MemoryCheckpoint.Single) {
+            // check if some node in snippet graph also kills the same location
+            LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
+            if (locationIdentity == ANY_LOCATION) {
+                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode);
+            }
+            assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
+            return true;
+        }
+        assert !(replacee instanceof MemoryCheckpoint.Multi) : replacee + " multi not supported (yet)";
+
+        Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). you might want %s to be a MemoryCheckpoint\n", replacee, kills, replacee);
+
+        // remove ANY_LOCATION if it's just a kill by the start node
+        if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) {
+            kills.remove(ANY_LOCATION);
+        }
+
+        // node can only lower to a ANY_LOCATION kill if the replacee also kills ANY_LOCATION
+        assert !kills.contains(ANY_LOCATION) : "snippet graph contains a kill to ANY_LOCATION, but replacee (" + replacee + ") doesn't kill ANY_LOCATION.  kills: " + kills;
+
+        /*
+         * kills to other locations than ANY_LOCATION can be still inserted if there aren't any
+         * floating reads accessing this locations. Example: In HotSpot, InstanceOfNode is lowered
+         * to a snippet containing a write to SECONDARY_SUPER_CACHE_LOCATION. This is runtime
+         * specific, so the runtime independent InstanceOfNode can not kill this location. However,
+         * if no FloatingReadNode is reading from this location, the kill to this location is fine.
+         */
+        for (FloatingReadNode frn : replacee.graph().getNodes(FloatingReadNode.class)) {
+            assert !(kills.contains(frn.location().getLocationIdentity())) : frn + " reads from " + frn.location().getLocationIdentity() + " but " + replacee + " does not kill this location";
+        }
+        return true;
+    }
 
     private class DuplicateMapper implements MemoryMap<Node> {
 
@@ -807,6 +855,7 @@ public class SnippetTemplate {
      * @return the map of duplicated nodes (original -> duplicate)
      */
     public Map<Node, Node> instantiate(MetaAccessProvider runtime, FixedNode replacee, UsageReplacer replacer, Arguments args) {
+        assert checkSnippetKills(replacee);
         try (TimerCloseable a = instantiationTimer.start()) {
             instantiationCounter.increment();
             // Inline the snippet nodes, replacing parameters with the given args in the process
@@ -899,6 +948,7 @@ public class SnippetTemplate {
      * @param args the arguments to be bound to the flattened positional parameters of the snippet
      */
     public void instantiate(MetaAccessProvider runtime, FloatingNode replacee, UsageReplacer replacer, LoweringTool tool, Arguments args) {
+        assert checkSnippetKills(replacee);
         try (TimerCloseable a = instantiationTimer.start()) {
             instantiationCounter.increment();
 

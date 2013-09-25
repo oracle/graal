@@ -63,6 +63,11 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public boolean shouldAllocateRegisters() {
+        return true;
+    }
+
+    @Override
     public FrameMap newFrameMap() {
         return new AMD64FrameMap(runtime(), target, runtime().lookupRegisterConfig());
     }

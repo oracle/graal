@@ -60,6 +60,11 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public boolean shouldAllocateRegisters() {
+        return true;
+    }
+
+    @Override
     public FrameMap newFrameMap() {
         return new SPARCFrameMap(runtime(), target, runtime().lookupRegisterConfig());
     }

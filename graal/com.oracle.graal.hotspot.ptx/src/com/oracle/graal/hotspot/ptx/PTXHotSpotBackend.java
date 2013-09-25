@@ -42,6 +42,11 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
+    public boolean shouldAllocateRegisters() {
+        throw new InternalError("NYI");
+    }
+
+    @Override
     public FrameMap newFrameMap() {
         throw new InternalError("NYI");
     }

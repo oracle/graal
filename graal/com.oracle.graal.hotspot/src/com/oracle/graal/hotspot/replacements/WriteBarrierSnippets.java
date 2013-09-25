@@ -62,6 +62,10 @@ public class WriteBarrierSnippets implements Snippets {
     private static final SnippetCounter g1EffectiveRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveRefFieldBarrierCounter",
                     "Number of G1 effective Ref Field Read Barriers");
 
+    public static final LocationIdentity GC_CARD_LOCATION = new NamedLocationIdentity("GC-Card");
+    public static final LocationIdentity GC_LOG_LOCATION = new NamedLocationIdentity("GC-Log");
+    public static final LocationIdentity GC_INDEX_LOCATION = new NamedLocationIdentity("GC-Index");
+
     @Snippet
     public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull) {
         // No barriers are added if we are always storing a null.
@@ -85,7 +89,7 @@ public class WriteBarrierSnippets implements Snippets {
         } else {
             base = base.add(Word.unsigned(cardTableStart()));
         }
-        base.writeByte(displacement, (byte) 0);
+        base.writeByte(displacement, (byte) 0, GC_CARD_LOCATION);
     }
 
     @Snippet
@@ -159,8 +163,8 @@ public class WriteBarrierSnippets implements Snippets {
                     Word nextIndex = indexValue.subtract(wordSize());
                     Word logAddress = bufferAddress.add(nextIndex);
                     // Log the object to be marked as well as update the SATB's buffer next index.
-                    logAddress.writeWord(0, previousOop);
-                    indexAddress.writeWord(0, nextIndex);
+                    logAddress.writeWord(0, previousOop, GC_LOG_LOCATION);
+                    indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
                 } else {
                     g1PreBarrierStub(G1WBPRECALL, previousOop.toObject());
                 }
@@ -221,7 +225,7 @@ public class WriteBarrierSnippets implements Snippets {
                 if (probability(LIKELY_PROBABILITY, cardByte != (byte) 0)) {
                     g1EffectivePostWriteBarrierCounter.inc();
                     log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
-                    cardAddress.writeByte(0, (byte) 0);
+                    cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
                     // If the thread local card queue is full, issue a native call which will
                     // initialize a new one and add the card entry.
                     if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
@@ -229,8 +233,8 @@ public class WriteBarrierSnippets implements Snippets {
                         Word logAddress = bufferAddress.add(nextIndex);
                         // Log the object to be scanned as well as update
                         // the card queue's next index.
-                        logAddress.writeWord(0, cardAddress);
-                        indexAddress.writeWord(0, nextIndex);
+                        logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
+                        indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
                     } else {
                         g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
                     }
@@ -264,8 +268,8 @@ public class WriteBarrierSnippets implements Snippets {
                     indexValue = indexValue - wordSize();
                     Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be marked as well as update the SATB's buffer next index.
-                    logAddress.writeWord(0, oop);
-                    indexAddress.writeWord(0, Word.unsigned(indexValue));
+                    logAddress.writeWord(0, oop, GC_LOG_LOCATION);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue), GC_INDEX_LOCATION);
                 } else {
                     g1PreBarrierStub(G1WBPRECALL, oop.toObject());
                 }
@@ -298,7 +302,7 @@ public class WriteBarrierSnippets implements Snippets {
             byte cardByte = cardAddress.readByte(0);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
             if (cardByte != (byte) 0) {
-                cardAddress.writeByte(0, (byte) 0);
+                cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
                 // If the thread local card queue is full, issue a native call which will
                 // initialize a new one and add the card entry.
                 if (indexValue != 0) {
@@ -306,8 +310,8 @@ public class WriteBarrierSnippets implements Snippets {
                     Word logAddress = bufferAddress.add(Word.unsigned(indexValue));
                     // Log the object to be scanned as well as update
                     // the card queue's next index.
-                    logAddress.writeWord(0, cardAddress);
-                    indexAddress.writeWord(0, Word.unsigned(indexValue));
+                    logAddress.writeWord(0, cardAddress, GC_LOG_LOCATION);
+                    indexAddress.writeWord(0, Word.unsigned(indexValue), GC_INDEX_LOCATION);
                 } else {
                     g1PostBarrierStub(G1WBPOSTCALL, cardAddress);
                 }

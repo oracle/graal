@@ -20,11 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
-public final class SerialArrayRangeWriteBarrier extends ArrayRangeWriteBarrier {
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.extended.*;
 
-    public SerialArrayRangeWriteBarrier(ValueNode object, ValueNode startIndex, ValueNode length) {
-        super(object, startIndex, length);
+/**
+ * The {@code G1ReferentFieldReadBarrier} is added when a read access is performed to the referent
+ * field of a {@link java.lang.ref.Reference} object (through a {@code LoadFieldNode} or an
+ * {@code UnsafeLoadNode}). The return value of the read is passed to the snippet implementing the
+ * read barrier and consequently is added to the SATB queue if the concurrent marker is enabled.
+ */
+public class G1ReferentFieldReadBarrier extends WriteBarrier {
+
+    private final boolean doLoad;
+
+    public G1ReferentFieldReadBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad) {
+        super(object, expectedObject, location, true);
+        this.doLoad = doLoad;
+    }
+
+    public ValueNode getExpectedObject() {
+        return getValue();
+    }
+
+    public boolean doLoad() {
+        return doLoad;
     }
 }

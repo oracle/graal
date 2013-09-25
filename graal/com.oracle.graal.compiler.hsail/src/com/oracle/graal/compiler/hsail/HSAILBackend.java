@@ -59,6 +59,11 @@ public class HSAILBackend extends Backend {
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
     }
 
+    @Override
+    public boolean shouldAllocateRegisters() {
+        return true;
+    }
+
     /**
      * Use the HSAIL register set when the compilation target is HSAIL.
      */

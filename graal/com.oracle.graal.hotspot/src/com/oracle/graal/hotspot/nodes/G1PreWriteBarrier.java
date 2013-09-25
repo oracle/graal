@@ -20,21 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes;
+package com.oracle.graal.hotspot.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 public class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode {
 
-    @Input private ValueNode expectedObject;
-    private final boolean doLoad;
-
     @Input private FrameState deoptimizationState;
     private final boolean nullCheck;
+    private final boolean doLoad;
+
+    public G1PreWriteBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad, boolean nullCheck) {
+        super(object, expectedObject, location, true);
+        this.doLoad = doLoad;
+        this.nullCheck = nullCheck;
+    }
 
     public ValueNode getExpectedObject() {
-        return expectedObject;
+        return getValue();
     }
 
     public boolean doLoad() {
@@ -43,13 +48,6 @@ public class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode 
 
     public boolean getNullCheck() {
         return nullCheck;
-    }
-
-    public G1PreWriteBarrier(ValueNode object, ValueNode expectedObject, LocationNode location, boolean doLoad, boolean nullCheck) {
-        super(object, location, true);
-        this.doLoad = doLoad;
-        this.nullCheck = nullCheck;
-        this.expectedObject = expectedObject;
     }
 
     @Override

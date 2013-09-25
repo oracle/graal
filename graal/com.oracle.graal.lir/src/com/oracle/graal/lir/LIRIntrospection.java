@@ -40,6 +40,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
     private static final Class<Value> VALUE_CLASS = Value.class;
     private static final Class<Constant> CONSTANT_CLASS = Constant.class;
+    private static final Class<Variable> VARIABLE_CLASS = Variable.class;
     private static final Class<RegisterValue> REGISTER_VALUE_CLASS = RegisterValue.class;
     private static final Class<StackSlot> STACK_SLOT_CLASS = StackSlot.class;
     private static final Class<Value[]> VALUE_ARRAY_CLASS = Value[].class;
@@ -106,7 +107,8 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
         private static boolean verifyFlags(Field field, Class<?> type, EnumSet<OperandFlag> flags) {
             if (flags.contains(REG)) {
-                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) : "Cannot assign RegisterValue to field with REG flag:" + field;
+                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) ||
+                       type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field with REG flag:" + field;
             }
             if (flags.contains(STACK)) {
                 assert type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field with STACK flag:" + field;

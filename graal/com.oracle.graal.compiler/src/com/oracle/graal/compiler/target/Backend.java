@@ -55,6 +55,8 @@ public abstract class Backend {
 
     public abstract TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult);
 
+    public abstract boolean shouldAllocateRegisters();
+
     /**
      * Emits the code for a given graph.
      * 
