@@ -551,6 +551,8 @@ public class SnippetTemplate {
         ReturnNode retNode = null;
         StartNode entryPointNode = snippet.start();
         nodes = new ArrayList<>(snippet.getNodeCount());
+        boolean seenReturn = false;
+        boolean containsMemoryState = false;
         for (Node node : snippet.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
                 // Do nothing.
@@ -562,11 +564,14 @@ public class SnippetTemplate {
                         this.memoryMap = memstate.getMemoryMap();
                         memstate.safeDelete();
                     }
-                    assert snippet.getNodes().filter(ReturnNode.class).count() == 1;
+                    assert !seenReturn : "can handle only one ReturnNode";
+                    seenReturn = true;
+                } else if (node instanceof MemoryState) {
+                    containsMemoryState = true;
                 }
             }
         }
-        assert !containsMemoryState(snippet);
+        assert !containsMemoryState;
 
         this.sideEffectNodes = curSideEffectNodes;
         this.deoptNodes = curDeoptNodes;
@@ -575,10 +580,6 @@ public class SnippetTemplate {
 
         this.instantiationCounter = Debug.metric("SnippetInstantiationCount[" + method.getName() + "]");
         this.instantiationTimer = Debug.timer("SnippetInstantiationTime[" + method.getName() + "]");
-    }
-
-    private static boolean containsMemoryState(StructuredGraph snippet) {
-        return snippet.getNodes().filter(MemoryState.class).count() > 0;
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
@@ -654,7 +655,7 @@ public class SnippetTemplate {
     private final ArrayList<Node> nodes;
 
     /**
-     * mapping of killing locations to memory checkpoints (nodes).
+     * map of killing locations to memory checkpoints (nodes).
      */
     private MemoryMap<Node> memoryMap;
 
@@ -771,11 +772,11 @@ public class SnippetTemplate {
 
                     // lastLocationAccess points into the snippet graph. find a proper
                     // MemoryCheckPoint inside the snippet graph
-                    FloatingReadNode frn = (FloatingReadNode) usage;
-                    Node newlla = mmap.getLastLocationAccess(frn.location().getLocationIdentity());
+                    FloatingReadNode read = (FloatingReadNode) usage;
+                    Node lastAccess = mmap.getLastLocationAccess(read.location().getLocationIdentity());
 
-                    assert newlla != null : "no mapping found for lowerable node " + oldNode + ". (No node in the snippet kill the same location as the lowerable node?)";
-                    frn.setLastLocationAccess(newlla);
+                    assert lastAccess != null : "no mapping found for lowerable node " + oldNode + ". (No node in the snippet kill the same location as the lowerable node?)";
+                    read.setLastLocationAccess(lastAccess);
                 }
             }
         }
@@ -804,7 +805,7 @@ public class SnippetTemplate {
         }
         assert !(replacee instanceof MemoryCheckpoint.Multi) : replacee + " multi not supported (yet)";
 
-        Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). you might want %s to be a MemoryCheckpoint\n", replacee, kills, replacee);
+        Debug.log("WARNING: %s is not a MemoryCheckpoint, but the snippet graph contains kills (%s). You might want %s to be a MemoryCheckpoint", replacee, kills, replacee);
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) {
