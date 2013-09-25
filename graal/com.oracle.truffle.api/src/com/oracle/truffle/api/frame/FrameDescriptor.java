@@ -93,7 +93,7 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * (db) to retrieve the list of all the identifiers associated with this frame descriptor.
+     * Retrieve the list of all the identifiers associated with this frame descriptor.
      * 
      * @return the list of all the identifiers in this frame descriptor
      */
