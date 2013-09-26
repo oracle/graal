@@ -223,11 +223,11 @@ public class PartialEvaluator {
                         int nodeCountBefore = graph.getNodeCount();
                         int mark = graph.getMark();
                         InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
-                        canonicalizer.applyIncremental(graph, context, mark);
                         if (Debug.isDumpEnabled()) {
                             int nodeCountAfter = graph.getNodeCount();
                             Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
                         }
+                        canonicalizer.applyIncremental(graph, context, mark);
                         changed = true;
                     }
                 }
