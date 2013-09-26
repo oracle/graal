@@ -50,6 +50,7 @@ public class WordTypeRewriterPhase extends Phase {
     protected final MetaAccessProvider metaAccess;
     protected final ResolvedJavaType wordBaseType;
     protected final ResolvedJavaType wordImplType;
+    protected final ResolvedJavaType objectAccessType;
     protected final Kind wordKind;
 
     public WordTypeRewriterPhase(MetaAccessProvider metaAccess, Kind wordKind) {
@@ -57,6 +58,7 @@ public class WordTypeRewriterPhase extends Phase {
         this.wordKind = wordKind;
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.wordImplType = metaAccess.lookupJavaType(Word.class);
+        this.objectAccessType = metaAccess.lookupJavaType(ObjectAccess.class);
     }
 
     @Override
@@ -191,8 +193,11 @@ public class WordTypeRewriterPhase extends Phase {
      */
     protected void rewriteInvoke(StructuredGraph graph, MethodCallTargetNode callTargetNode) {
         ResolvedJavaMethod targetMethod = callTargetNode.targetMethod();
-        if (!wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass())) {
-            /* Not a method defined on WordBase or a subclass / subinterface, so nothing to rewrite. */
+        if (!wordBaseType.isAssignableFrom(targetMethod.getDeclaringClass()) && !objectAccessType.equals(targetMethod.getDeclaringClass())) {
+            /*
+             * Not a method defined on WordBase or a subclass / subinterface, and not on
+             * ObjectAccess, so nothing to rewrite.
+             */
             return;
         }
 
@@ -252,7 +257,7 @@ public class WordTypeRewriterPhase extends Phase {
             case WRITE:
             case INITIALIZE: {
                 assert arguments.size() == 3 || arguments.size() == 4;
-                Kind writeKind = asKind(targetMethod.getSignature().getParameterType(1, targetMethod.getDeclaringClass()));
+                Kind writeKind = asKind(targetMethod.getSignature().getParameterType(Modifier.isStatic(targetMethod.getModifiers()) ? 2 : 1, targetMethod.getDeclaringClass()));
                 LocationNode location;
                 if (arguments.size() == 3) {
                     location = makeLocation(graph, arguments.get(1), writeKind, LocationIdentity.ANY_LOCATION);
