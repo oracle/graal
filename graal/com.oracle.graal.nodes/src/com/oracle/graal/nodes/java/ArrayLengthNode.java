@@ -45,23 +45,36 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if (array() instanceof ArrayLengthProvider) {
-            ValueNode length = ((ArrayLengthProvider) array()).length();
+        ValueNode length = readArrayLength(array(), tool.runtime());
+        if (length != null) {
+            return length;
+        }
+        return this;
+    }
+
+    /**
+     * Gets the length of an array if possible.
+     * 
+     * @param array an array
+     * @return a node representing the length of {@code array} or null if it is not available
+     */
+    public static ValueNode readArrayLength(ValueNode array, MetaAccessProvider runtime) {
+        if (array instanceof ArrayLengthProvider) {
+            ValueNode length = ((ArrayLengthProvider) array).length();
             if (length != null) {
                 return length;
             }
         }
-        MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && array().isConstant() && !array().isNullConstant()) {
-            Constant constantValue = array().asConstant();
+        if (runtime != null && array.isConstant() && !array.isNullConstant()) {
+            Constant constantValue = array.asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
                 Integer constantLength = runtime.lookupArrayLength(constantValue);
                 if (constantLength != null) {
-                    return ConstantNode.forInt(constantLength, graph());
+                    return ConstantNode.forInt(constantLength, array.graph());
                 }
             }
         }
-        return this;
+        return null;
     }
 
     @Override

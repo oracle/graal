@@ -49,6 +49,7 @@ import static com.oracle.graal.hotspot.stubs.NewInstanceStub.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import static com.oracle.graal.hotspot.stubs.UnwindExceptionToCallerStub.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;
+import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
 import static com.oracle.graal.nodes.java.RegisterFinalizerNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.replacements.Log.*;
@@ -994,10 +995,15 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     private GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph g = n.graph();
         ValueNode array = n.array();
-        Stamp stamp = StampFactory.positiveInt();
-        ReadNode arrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, g), stamp, BarrierType.NONE, false));
-        g.addBeforeFixed(n, arrayLength);
-        tool.createNullCheckGuard(arrayLength, array);
+        ValueNode arrayLength = readArrayLength(array, tool.getRuntime());
+        if (arrayLength == null) {
+            Stamp stamp = StampFactory.positiveInt();
+            ReadNode readArrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, g), stamp, BarrierType.NONE, false));
+            g.addBeforeFixed(n, readArrayLength);
+            tool.createNullCheckGuard(readArrayLength, array);
+            arrayLength = readArrayLength;
+        }
+
         return tool.createGuard(g.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
     }
 

@@ -447,7 +447,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testLoop4() {
         SchedulePhase schedule = getFinalSchedule("testLoop4Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL);
-        assertReadWithinStartBlock(schedule, true);
+        assertReadWithinStartBlock(schedule, false);
         assertReadWithinReturnBlock(schedule, false);
     }
 
