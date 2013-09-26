@@ -61,7 +61,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     }
 
     @Override
-    protected LIRFrameState newLIRFrameState(short reason, LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
-        return new HotSpotLIRFrameState(frame, virtualObjectsArray, exceptionEdge, reason);
+    protected LIRFrameState newLIRFrameState(LabelRef exceptionEdge, BytecodeFrame frame, VirtualObject[] virtualObjectsArray) {
+        return new HotSpotLIRFrameState(frame, virtualObjectsArray, exceptionEdge);
     }
 }
