@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import java.lang.reflect.*;
@@ -183,14 +184,24 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new SPARCHotSpotUnwindOp(exceptionParameter));
     }
 
+    private void moveDeoptimizationActionAndReasonToThread(DeoptimizationAction action, DeoptimizationReason reason) {
+        Constant encoded = runtime.encodeDeoptActionAndReason(action, reason);
+        int pendingDeoptimizationOffset = graalRuntime().getConfig().pendingDeoptimizationOffset;
+        RegisterValue thread = runtime().threadRegister().asValue(HotSpotGraalRuntime.wordKind());
+        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(encoded.getKind(), thread, pendingDeoptimizationOffset);
+        append(new StoreOp(encoded.getKind(), pendingDeoptAddress, emitMove(encoded), null));
+    }
+
     @Override
     public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
-        append(new SPARCDeoptimizeOp(action, deopting.getDeoptimizationReason(), state(deopting)));
+        moveDeoptimizationActionAndReasonToThread(action, deopting.getDeoptimizationReason());
+        append(new SPARCDeoptimizeOp(state(deopting)));
     }
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        append(new SPARCHotSpotDeoptimizeCallerOp(action, reason));
+        moveDeoptimizationActionAndReasonToThread(action, reason);
+        append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 
     @Override

@@ -58,7 +58,7 @@ public class DelegatingCodeCacheProvider extends DelegatingMetaAccessProvider im
         return delegate().lookupForeignCall(descriptor);
     }
 
-    public int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
+    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
         return delegate().encodeDeoptActionAndReason(action, reason);
     }
 
