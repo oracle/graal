@@ -33,8 +33,11 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.*;
 import com.oracle.graal.word.nodes.*;
 
@@ -399,4 +402,62 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
         Word.fromObject(o).writeObject(offset, value);
     }
 
+    private void assertNumWordCasts(String snippetName, int expectedWordCasts) {
+        Assumptions assumptions = new Assumptions(true);
+        HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, null, OptimisticOptimizations.ALL);
+
+        StructuredGraph graph = parse(snippetName);
+        new CanonicalizerPhase(false).apply(graph, context);
+        Assert.assertEquals(expectedWordCasts, graph.getNodes().filter(WordCastNode.class).count());
+    }
+
+    @Test
+    public void testUnusedFromObject() {
+        assertNumWordCasts("unusedFromObject", 0);
+    }
+
+    @Snippet
+    public static void unusedFromObject(Object o) {
+        Word.fromObject(o);
+    }
+
+    @Test
+    public void testUnusedRawValue() {
+        assertNumWordCasts("unusedRawValue", 0);
+    }
+
+    @Snippet
+    public static void unusedRawValue(Object o) {
+        Word.fromObject(o).rawValue();
+    }
+
+    @Test
+    public void testUsedRawValue() {
+        assertNumWordCasts("usedRawValue", 1);
+    }
+
+    @Snippet
+    public static long usedRawValue(Object o) {
+        return Word.fromObject(o).rawValue();
+    }
+
+    @Test
+    public void testUnusedToObject() {
+        assertNumWordCasts("unusedToObject", 0);
+    }
+
+    @Snippet
+    public static void unusedToObject(Word w) {
+        w.toObject();
+    }
+
+    @Test
+    public void testUsedToObject() {
+        assertNumWordCasts("usedToObject", 1);
+    }
+
+    @Snippet
+    public static Object usedToObject(Word w) {
+        return w.toObject();
+    }
 }

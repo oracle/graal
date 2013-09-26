@@ -22,11 +22,14 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code UnsafeCastNode} produces the same value as its input, but with a different type.
+ * A {@link PiNode} that also provides an array length in addition to a more refined stamp. A usage
+ * that reads the array length, such as an {@link ArrayLengthNode}, can be canonicalized base on
+ * this information.
  */
 public final class PiArrayNode extends PiNode implements ArrayLengthProvider {
 
