@@ -278,6 +278,10 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     Node nextLastFixed = nextNode.predecessor();
                     if (!(nextLastFixed instanceof FixedWithNextNode)) {
                         // insert begin node, to have a valid last fixed for next lowerable node.
+                        // This is about lowering a FixedWithNextNode to a control split while this
+                        // FixedWithNextNode is followed by some kind of BeginNode.
+                        // For example the when a FixedGuard followed by a loop exit is lowered to a
+                        // control-split + deopt.
                         BeginNode begin = node.graph().add(new BeginNode());
                         nextLastFixed.replaceFirstSuccessor(nextNode, begin);
                         begin.setNext(nextNode);
