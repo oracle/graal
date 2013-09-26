@@ -363,27 +363,28 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
 
-    private void moveDeoptimizationActionAndReasonToThread(DeoptimizationAction action, DeoptimizationReason reason) {
-        Constant encoded = runtime.encodeDeoptActionAndReason(action, reason);
+    private void moveDeoptimizationActionAndReasonToThread(Value actionAndReason) {
         int pendingDeoptimizationOffset = graalRuntime().getConfig().pendingDeoptimizationOffset;
         RegisterValue thread = runtime().threadRegister().asValue(HotSpotGraalRuntime.wordKind());
-        AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(encoded.getKind(), thread, pendingDeoptimizationOffset);
-        if (runtime.needsDataPatch(encoded)) {
-            append(new StoreOp(encoded.getKind(), pendingDeoptAddress, emitMove(encoded), null));
+        AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(actionAndReason.getKind(), thread, pendingDeoptimizationOffset);
+        if (actionAndReason instanceof Constant && !runtime.needsDataPatch((Constant) actionAndReason)) {
+            Constant constantActionAndReason = (Constant) actionAndReason;
+            assert !runtime.needsDataPatch(constantActionAndReason);
+            append(new StoreConstantOp(constantActionAndReason.getKind(), pendingDeoptAddress, constantActionAndReason, null));
         } else {
-            append(new StoreConstantOp(encoded.getKind(), pendingDeoptAddress, encoded, null));
+            append(new StoreOp(actionAndReason.getKind(), pendingDeoptAddress, load(actionAndReason), null));
         }
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, DeoptimizingNode deopting) {
-        moveDeoptimizationActionAndReasonToThread(action, reason);
+    public void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting) {
+        moveDeoptimizationActionAndReasonToThread(actionAndReason);
         append(new AMD64DeoptimizeOp(state(deopting)));
     }
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptimizationActionAndReasonToThread(action, reason);
+        moveDeoptimizationActionAndReasonToThread(runtime.encodeDeoptActionAndReason(action, reason));
         append(new AMD64HotSpotDeoptimizeCallerOp());
     }
 
