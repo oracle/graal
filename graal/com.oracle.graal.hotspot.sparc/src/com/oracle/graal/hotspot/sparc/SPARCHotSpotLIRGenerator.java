@@ -193,8 +193,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
-        moveDeoptimizationActionAndReasonToThread(action, deopting.getDeoptimizationReason());
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, DeoptimizingNode deopting) {
+        moveDeoptimizationActionAndReasonToThread(action, reason);
         append(new SPARCDeoptimizeOp(state(deopting)));
     }
 

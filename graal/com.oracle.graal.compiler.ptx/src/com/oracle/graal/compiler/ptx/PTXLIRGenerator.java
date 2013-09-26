@@ -139,7 +139,7 @@ public class PTXLIRGenerator extends LIRGenerator {
             params[i] = (Variable) incomingArguments.getArgument(i);
         }
         // Add the return value as the last parameter.
-        params[argCount] =  (Variable) incomingArguments.getReturn();
+        params[argCount] = (Variable) incomingArguments.getReturn();
 
         append(new PTXParameterOp(params));
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
@@ -181,7 +181,8 @@ public class PTXLIRGenerator extends LIRGenerator {
             baseRegister = asAllocatable(base);
         }
 
-        @SuppressWarnings("unused") Value indexRegister;
+        @SuppressWarnings("unused")
+        Value indexRegister;
         if (!index.equals(Value.ILLEGAL) && scale != 0) {
             if (isConstant(index)) {
                 finalDisp += asConstant(index).asLong() * scale;
@@ -285,7 +286,6 @@ public class PTXLIRGenerator extends LIRGenerator {
         // To be revisited if this needs to be really implemented.
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitConditionalMove()");
     }
-
 
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
@@ -619,7 +619,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
+    public void emitDeoptimize(DeoptimizationAction action, DeoptimizationReason reason, DeoptimizingNode deopting) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 

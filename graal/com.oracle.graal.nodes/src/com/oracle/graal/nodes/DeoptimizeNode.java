@@ -60,7 +60,7 @@ public class DeoptimizeNode extends ControlSinkNode implements IterableNodeType,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(action, this);
+        gen.emitDeoptimize(action, reason, this);
     }
 
     @NodeIntrinsic
@@ -80,11 +80,6 @@ public class DeoptimizeNode extends ControlSinkNode implements IterableNodeType,
     public void setDeoptimizationState(FrameState f) {
         updateUsages(deoptState, f);
         deoptState = f;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return reason;
     }
 
     public FrameState getState() {
