@@ -154,12 +154,10 @@ public class ControlFlowGraph {
     private void identifyBlocks() {
         // Find all block headers
         int numBlocks = 0;
-        for (Node node : graph.getNodes()) {
-            if (node instanceof AbstractBeginNode) {
-                Block block = new Block((AbstractBeginNode) node);
-                numBlocks++;
-                identifyBlock(block);
-            }
+        for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.class)) {
+            Block block = new Block(begin);
+            numBlocks++;
+            identifyBlock(block);
         }
 
         // Compute postorder.
