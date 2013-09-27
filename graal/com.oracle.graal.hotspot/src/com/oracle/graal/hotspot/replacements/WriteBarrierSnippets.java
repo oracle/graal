@@ -49,18 +49,16 @@ import com.oracle.graal.word.*;
 public class WriteBarrierSnippets implements Snippets {
 
     private static final SnippetCounter.Group countersWriteBarriers = SnippetCounters.getValue() ? new SnippetCounter.Group("WriteBarriers") : null;
-    private static final SnippetCounter serialFieldWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialFieldWriteBarrier", "Number of Serial Field Write Barriers");
-    private static final SnippetCounter serialArrayWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialArrayWriteBarrier", "Number of Serial Array Write Barriers");
-    private static final SnippetCounter g1AttemptedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPostWriteBarrierCounter",
-                    "Number of attempted G1 Post Write Barriers");
-    private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrierCounter", "Number of G1 attempted Pre Write Barriers");
-    private static final SnippetCounter g1AttemptedRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedRefFieldBarrierCounter",
-                    "Number of G1 attempted Ref Field Read Barriers");
-    private static final SnippetCounter g1EffectivePostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePostWriteBarrierCounter",
-                    "Number of effective G1 Post Write Barriers");
-    private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrierCounter", "Number of G1 effective Pre Write Barriers");
-    private static final SnippetCounter g1EffectiveRefFieldBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveRefFieldBarrierCounter",
-                    "Number of G1 effective Ref Field Read Barriers");
+    private static final SnippetCounter serialWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "serialWriteBarrier", "Number of Serial Write Barriers");
+    private static final SnippetCounter g1AttemptedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPreWriteBarrier", "Number of G1 attempted Pre Write Barriers");
+    private static final SnippetCounter g1EffectivePreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectivePreWriteBarrier", "Number of G1 effective Pre Write Barriers");
+    private static final SnippetCounter g1ExecutedPreWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1ExecutedPreWriteBarrier", "Number of G1 executed Pre Write Barriers");
+    private static final SnippetCounter g1AttemptedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1AttemptedPostWriteBarrier", "Number of attempted G1 Post Write Barriers");
+    private static final SnippetCounter g1EffectiveAfterXORPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveAfterXORPostWriteBarrier",
+                    "Number of effective G1 Post Write Barriers (after passing the XOR test)");
+    private static final SnippetCounter g1EffectiveAfterNullPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1EffectiveAfterNullPostWriteBarrier",
+                    "Number of effective G1 Post Write Barriers (after passing the NULL test)");
+    private static final SnippetCounter g1ExecutedPostWriteBarrierCounter = new SnippetCounter(countersWriteBarriers, "g1ExecutedPostWriteBarrier", "Number of executed G1 Post Write Barriers");
 
     public static final LocationIdentity GC_CARD_LOCATION = new NamedLocationIdentity("GC-Card");
     public static final LocationIdentity GC_LOG_LOCATION = new NamedLocationIdentity("GC-Log");
@@ -76,11 +74,10 @@ public class WriteBarrierSnippets implements Snippets {
         Pointer oop;
         if (usePrecise) {
             oop = Word.fromArray(fixedObject, location);
-            serialArrayWriteBarrierCounter.inc();
         } else {
             oop = Word.fromObject(fixedObject);
-            serialFieldWriteBarrierCounter.inc();
         }
+        serialWriteBarrierCounter.inc();
         Word base = (Word) oop.unsignedShiftRight(cardTableShift());
         long startAddress = cardTableStart();
         int displacement = 0;
@@ -136,6 +133,7 @@ public class WriteBarrierSnippets implements Snippets {
             log(trace, "[%d] G1-Pre Thread %p Marking %d\n", gcCycle, thread.rawValue(), markingValue);
             log(trace, "[%d] G1-Pre Thread %p DoLoad %d\n", gcCycle, thread.rawValue(), doLoad ? 1L : 0L);
         }
+        g1AttemptedPreWriteBarrierCounter.inc();
         // If the concurrent marker is enabled, the barrier is issued.
         if (probability(NOT_LIKELY_PROBABILITY, markingValue != (byte) 0)) {
             // If the previous value has to be loaded (before the write), the load is issued.
@@ -146,17 +144,11 @@ public class WriteBarrierSnippets implements Snippets {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), previousOop.rawValue());
                     verifyOop(previousOop.toObject());
                 }
-                g1AttemptedPreWriteBarrierCounter.inc();
-            } else {
-                g1AttemptedRefFieldBarrierCounter.inc();
             }
+            g1EffectivePreWriteBarrierCounter.inc();
             // If the previous value is null the barrier should not be issued.
             if (probability(FREQUENT_PROBABILITY, previousOop.notEqual(0))) {
-                if (doLoad) {
-                    g1EffectivePreWriteBarrierCounter.inc();
-                } else {
-                    g1EffectiveRefFieldBarrierCounter.inc();
-                }
+                g1ExecutedPreWriteBarrierCounter.inc();
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
                 if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
@@ -218,14 +210,19 @@ public class WriteBarrierSnippets implements Snippets {
 
         g1AttemptedPostWriteBarrierCounter.inc();
         if (probability(LIKELY_PROBABILITY, xorResult.notEqual(0))) {
+            g1EffectiveAfterXORPostWriteBarrierCounter.inc();
+
             // If the written value is not null continue with the barrier addition.
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 byte cardByte = cardAddress.readByte(0);
+                g1EffectiveAfterNullPostWriteBarrierCounter.inc();
+
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(LIKELY_PROBABILITY, cardByte != (byte) 0)) {
-                    g1EffectivePostWriteBarrierCounter.inc();
                     log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                     cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
+                    g1ExecutedPostWriteBarrierCounter.inc();
+
                     // If the thread local card queue is full, issue a native call which will
                     // initialize a new one and add the card entry.
                     if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
