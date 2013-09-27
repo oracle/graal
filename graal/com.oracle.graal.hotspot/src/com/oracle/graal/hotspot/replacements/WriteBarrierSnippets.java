@@ -135,7 +135,7 @@ public class WriteBarrierSnippets implements Snippets {
         }
         g1AttemptedPreWriteBarrierCounter.inc();
         // If the concurrent marker is enabled, the barrier is issued.
-        if (probability(NOT_LIKELY_PROBABILITY, markingValue != (byte) 0)) {
+        if (probability(NOT_FREQUENT_PROBABILITY, markingValue != (byte) 0)) {
             // If the previous value has to be loaded (before the write), the load is issued.
             // The load is always issued except the cases of CAS and referent field.
             if (probability(LIKELY_PROBABILITY, doLoad)) {
@@ -209,7 +209,7 @@ public class WriteBarrierSnippets implements Snippets {
         Word cardAddress = cardBase.add(displacement);
 
         g1AttemptedPostWriteBarrierCounter.inc();
-        if (probability(LIKELY_PROBABILITY, xorResult.notEqual(0))) {
+        if (probability(FREQUENT_PROBABILITY, xorResult.notEqual(0))) {
             g1EffectiveAfterXORPostWriteBarrierCounter.inc();
 
             // If the written value is not null continue with the barrier addition.
@@ -218,7 +218,7 @@ public class WriteBarrierSnippets implements Snippets {
                 g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
-                if (probability(LIKELY_PROBABILITY, cardByte != (byte) 0)) {
+                if (probability(NOT_FREQUENT_PROBABILITY, cardByte != (byte) 0)) {
                     log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), Word.unsigned(cardByte).rawValue());
                     cardAddress.writeByte(0, (byte) 0, GC_CARD_LOCATION);
                     g1ExecutedPostWriteBarrierCounter.inc();
