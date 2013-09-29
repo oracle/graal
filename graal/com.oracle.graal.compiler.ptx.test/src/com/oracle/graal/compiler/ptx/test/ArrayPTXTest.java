@@ -22,20 +22,22 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
+import static com.oracle.graal.lir.ptx.Warp.ThreadDimension.*;
 
-import org.junit.*;
+import com.oracle.graal.lir.ptx.Warp;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import org.junit.Test;
 
 public class ArrayPTXTest extends PTXTestBase {
 
-    @Ignore
     @Test
     public void testArray() {
         int[] arrayI = {
-            1, 2, 3, 4, 5
+            1, 2, 3, 4, 5, 6, 7, 8, 9,
         };
-        Integer resI = (Integer) invoke(compile("testArray1I"), arrayI, 3);
-        printReport("testArray1I: " + resI);
+        invoke(compile("testStoreArray1I"), arrayI, 2);
+        printReport("testStoreArray1I: " + Arrays.toString(arrayI));
         // compile("testArray1J");
         // compile("testArray1B");
         // compile("testArray1S");
@@ -83,8 +85,8 @@ public class ArrayPTXTest extends PTXTestBase {
         return array[i];
     }
 
-    public static void testStoreArray1I(int[] array, int i, int val) {
-        array[i] = val;
+    public static void testStoreArray1I(int[] array, @Warp(dimension = X) int i) {
+        array[i] = 42;
     }
 
     public static void testStoreArray1B(byte[] array, int i, byte val) {
@@ -111,7 +113,6 @@ public class ArrayPTXTest extends PTXTestBase {
         // CheckStyle: stop system..print check
         System.out.println(message);
         // CheckStyle: resume system..print check
-
     }
 
     public static void main(String[] args) {

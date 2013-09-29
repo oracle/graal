@@ -757,6 +757,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     @Override
     public PTXAddress getPlaceholder() {
-        throw GraalInternalError.unimplemented("PTXAddress.getPlaceholder()");
+        return null;
     }
 }
