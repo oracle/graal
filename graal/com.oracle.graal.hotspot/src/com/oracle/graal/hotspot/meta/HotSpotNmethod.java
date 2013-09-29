@@ -123,6 +123,15 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
         return true;
     }
 
+    public Object executeParallel(int dimX, int dimY, int dimZ, Object... args) throws InvalidInstalledCodeException {
+        assert checkArgs(args);
+
+        assert isExternal(); // for now
+
+        return graalRuntime().getCompilerToGPU().executeParallelMethodVarargs(dimX, dimY, dimZ, args, this);
+
+    }
+
     @Override
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);

@@ -32,11 +32,13 @@ import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.ptx.PTXBackend;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
+import com.oracle.graal.hotspot.meta.HotSpotNmethod;
 import com.oracle.graal.hotspot.meta.HotSpotRuntime;
 import com.oracle.graal.hotspot.meta.HotSpotResolvedJavaMethod;
 import com.oracle.graal.hotspot.ptx.PTXHotSpotRuntime;
 import com.oracle.graal.java.GraphBuilderConfiguration;
 import com.oracle.graal.java.GraphBuilderPhase;
+import com.oracle.graal.lir.ptx.ParallelOver;
 import com.oracle.graal.nodes.StructuredGraph;
 import com.oracle.graal.nodes.spi.GraalCodeCacheProvider;
 import com.oracle.graal.phases.OptimisticOptimizations;
@@ -44,6 +46,8 @@ import com.oracle.graal.phases.PhasePlan;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.ptx.PTX;
+
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 
 public abstract class PTXTestBase extends GraalCompilerTest {
@@ -102,8 +106,42 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             boolean isStatic = Modifier.isStatic(compiledMethod.getModifiers());
             Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
             HotSpotRuntime hsr = (HotSpotRuntime) runtime;
-            InstalledCode installedCode = hsr.addExternalMethod(sg.method(), result, sg);
-            Object r = installedCode.executeVarargs(executeArgs);
+            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result, sg);
+            Annotation[][] params = compiledMethod.getParameterAnnotations();
+
+            int dimensionX = 1;
+            int dimensionY = 1;
+            int dimensionZ = 1;
+
+            for (int p = 0; p < params.length; p++) {
+                Annotation[] annos = params[p];
+                if (annos != null) {
+                    for (int a = 0; a < annos.length; a++) {
+                        Annotation aa = annos[a];
+                        if (args[p] instanceof int[] && aa.annotationType().equals(ParallelOver.class)) {
+                            int[] iarray = (int[]) args[p];
+                            ParallelOver threadBlockDimension = (ParallelOver) aa;
+                            switch (threadBlockDimension.dimension()) {
+                                case X:
+                                    dimensionX = iarray.length;
+                                    break;
+                                case Y:
+                                    dimensionY = iarray.length;
+                                    break;
+                                case Z:
+                                    dimensionZ = iarray.length;
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            Object r;
+            if (dimensionX != 1 || dimensionY != 1 || dimensionZ != 1) {
+                r = ((HotSpotNmethod) installedCode).executeParallel(dimensionX, dimensionY, dimensionZ, executeArgs);
+            } else {
+                r = installedCode.executeVarargs(executeArgs);
+            }
             return r;
         } catch (Throwable th) {
             th.printStackTrace();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.graal.lir.ptx;
 
-package com.oracle.graal.hotspot.bridge;
-
-import com.oracle.graal.api.code.InvalidInstalledCodeException;
-import com.oracle.graal.hotspot.meta.HotSpotInstalledCode;
-
-
-/**
- * Entries into the HotSpot GPU interface from Java code.
- */
-public class CompilerToGPUImpl implements CompilerToGPU {
-
-    public native boolean deviceInit();
-
-    public native long generateKernel(byte[] code, String name) throws InvalidInstalledCodeException;
-
-    public native boolean deviceDetach();
-
-    public native Object executeExternalMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
-
-    public native Object executeParallelMethodVarargs(int dimX, int dimY, int dimZ,
-                                                      Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+public enum ThreadDimension {
+X,
+Y,
+Z
 }
+

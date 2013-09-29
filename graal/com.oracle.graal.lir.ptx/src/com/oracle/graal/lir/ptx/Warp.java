@@ -22,20 +22,16 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.lir.ptx.Warp.ThreadDimension.*;
+import static com.oracle.graal.lir.ptx.ThreadDimension.*;
 
 import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 public @interface Warp {
-    public enum ThreadDimension {
-        X,
-        Y,
-        Z
-    }
 
     String value() default "";
 
     ThreadDimension dimension() default X;
 }
+

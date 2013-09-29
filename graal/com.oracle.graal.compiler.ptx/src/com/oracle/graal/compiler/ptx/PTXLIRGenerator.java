@@ -123,7 +123,9 @@ public class PTXLIRGenerator extends LIRGenerator {
             if (isRegister(value)) {
                 return asRegister(value).asValue(value.getKind().getStackKind());
             } else if (isStackSlot(value)) {
-                return StackSlot.get(value.getKind().getStackKind(), asStackSlot(value).getRawOffset(), asStackSlot(value).getRawAddFrameSize());
+                return StackSlot.get(value.getKind().getStackKind(),
+                                     asStackSlot(value).getRawOffset(),
+                                     asStackSlot(value).getRawAddFrameSize());
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -164,14 +166,30 @@ public class PTXLIRGenerator extends LIRGenerator {
                 }
             }
             if (warpAnnotation != null) {
-                // setResult(local, emitWarpParam(param.getKind(), warpAnnotation));
+                setResult(local, emitWarpParam(param.getKind(), warpAnnotation));
+            } else {
+                setResult(local, emitLoadParam(param.getKind(), param, null));
             }
-            setResult(local, emitLoadParam(param.getKind(), param, null));
         }
     }
 
-    public Variable emitWarpParam(Kind kind, @SuppressWarnings("unused") Warp annotation) {
+    public Variable emitWarpParam(Kind kind, Warp annotation) {
         Variable result = newVariable(kind);
+        Variable tid = newVariable(Kind.Char);
+
+        switch (annotation.dimension()) {
+            case X:
+                tid.setName("%tid.x");
+                break;
+            case Y:
+                tid.setName("%tid.y");
+                break;
+            case Z:
+                tid.setName("%tid.y");
+                break;
+        }
+        emitMove(result, tid);
+
         return result;
     }
 

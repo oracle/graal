@@ -288,7 +288,13 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emitVariable(Variable v) {
-            return (" %r" + v.index);
+            String name = v.getName();
+
+            if (name == null) {
+                return (" %r" + v.index);
+            } else {
+                return name;
+            }
         }
     }
 

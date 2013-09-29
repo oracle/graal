@@ -55,4 +55,7 @@ public interface CompilerToGPU {
     long generateKernel(byte[] code, String name) throws InvalidInstalledCodeException;
 
     Object executeExternalMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+
+    Object executeParallelMethodVarargs(int dimX, int dimY, int dimZ,
+                                        Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 }
