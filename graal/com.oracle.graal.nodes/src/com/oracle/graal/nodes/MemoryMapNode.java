@@ -22,43 +22,16 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
 
-public class MemoryState extends VirtualState {
+public abstract class MemoryMapNode extends FloatingNode {
 
-    private MemoryMap<Node> memoryMap;
-    @Input private Node object;
-
-    public MemoryState(MemoryMap<Node> memoryMap, FixedNode object) {
-        this.memoryMap = memoryMap;
-        this.object = object;
+    public MemoryMapNode() {
+        super(StampFactory.forVoid());
     }
 
-    public Node object() {
-        return object;
-    }
-
-    public MemoryMap<Node> getMemoryMap() {
-        return memoryMap;
-    }
-
-    @Override
-    public VirtualState duplicateWithVirtualState() {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    @Override
-    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    @Override
-    public void applyToVirtual(VirtualClosure closure) {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    @Override
-    public boolean isPartOfThisState(VirtualState state) {
-        throw new GraalInternalError("should not reach here");
-    }
+    public abstract Node getLastLocationAccess(LocationIdentity locationIdentity);
 }
