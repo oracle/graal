@@ -190,4 +190,6 @@ public class CompilerToVMImpl implements CompilerToVM {
      * verified entry point of the given native method.
      */
     public static native Object executeCompiledMethodIntrinsic(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
+
+    public native long[] collectCounters();
 }

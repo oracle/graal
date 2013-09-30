@@ -74,6 +74,7 @@ import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
+import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.hotspot.replacements.*;
@@ -82,6 +83,7 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -787,6 +789,10 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 }
                 osrStart.replaceAtUsages(newStart);
                 osrStart.safeDelete();
+            }
+        } else if (n instanceof DynamicCounterNode) {
+            if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
+                BenchmarkCounters.lower((DynamicCounterNode) n, this);
             }
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);

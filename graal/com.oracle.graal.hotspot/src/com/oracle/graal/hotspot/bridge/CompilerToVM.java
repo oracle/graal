@@ -228,4 +228,9 @@ public interface CompilerToVM {
     void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
 
     boolean isTypeLinked(HotSpotResolvedObjectType hotSpotResolvedObjectType);
+
+    /**
+     * Collects the current values of all Graal benchmark counters, summed up over all threads.
+     */
+    long[] collectCounters();
 }
