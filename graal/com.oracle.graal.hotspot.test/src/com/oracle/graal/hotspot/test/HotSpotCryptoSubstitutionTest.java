@@ -60,30 +60,42 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testAESEncryptSubstitution() throws Exception {
+    public void testEncryptSubstitution() throws Exception {
         byte[] seed = {0x4, 0x7, 0x1, 0x1};
         SecureRandom random = new SecureRandom(seed);
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        KeyGenerator desKeyGen = KeyGenerator.getInstance("DESede");
         aesKeyGen.init(128, random);
+        desKeyGen.init(168, random);
         SecretKey aesKey = aesKeyGen.generateKey();
+        SecretKey desKey = desKeyGen.generateKey();
         byte[] input = readClassfile16(getClass());
 
-        ByteArrayOutputStream expected = new ByteArrayOutputStream();
-        expected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
-        expected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
+        ByteArrayOutputStream aesExpected = new ByteArrayOutputStream();
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
 
         if (compiledAndInstall("com.sun.crypto.provider.AESCrypt", "encryptBlock", "decryptBlock")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
-            Assert.assertArrayEquals(expected.toByteArray(), actual.toByteArray());
+            Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
         }
+
+        ByteArrayOutputStream desExpected = new ByteArrayOutputStream();
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
 
         if (compiledAndInstall("com.sun.crypto.provider.CipherBlockChaining", "encrypt", "decrypt")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
-            Assert.assertArrayEquals(expected.toByteArray(), actual.toByteArray());
+            Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
+
+            actual.reset();
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
+            Assert.assertArrayEquals(desExpected.toByteArray(), actual.toByteArray());
         }
     }
 

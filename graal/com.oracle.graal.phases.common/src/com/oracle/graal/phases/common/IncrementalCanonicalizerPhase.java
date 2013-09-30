@@ -30,6 +30,10 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
+/**
+ * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all
+ * phases in the suite have been applied if any of the phases changed the graph.
+ */
 public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends PhaseSuite<C> {
 
     private final CanonicalizerPhase canonicalizer;
@@ -58,6 +62,8 @@ public class IncrementalCanonicalizerPhase<C extends PhaseContext> extends Phase
         graph.stopTrackingInputChange();
         graph.stopTrackingUsagesDroppedZero();
 
-        canonicalizer.applyIncremental(graph, context, changedNodes, newNodesMark, false);
+        if (graph.getMark() != newNodesMark || !changedNodes.isEmpty()) {
+            canonicalizer.applyIncremental(graph, context, changedNodes, newNodesMark, false);
+        }
     }
 }
