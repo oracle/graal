@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.nodes;
+
+import com.oracle.graal.api.meta.*;
 
 public interface MemoryMap<T> {
 
