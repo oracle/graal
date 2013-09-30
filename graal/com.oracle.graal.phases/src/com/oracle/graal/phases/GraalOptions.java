@@ -167,6 +167,8 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
     @Option(help = "")
+    public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
+    @Option(help = "")
     public static final OptionValue<Boolean> PrintProfilingInformation = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintIRWithLIR = new OptionValue<>(false);
