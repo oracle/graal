@@ -236,11 +236,10 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = runtime().config;
-        Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
+        Label verifiedStub = new Label();
 
         // Emit the prefix
-
-        if (unverifiedStub != null) {
+        if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, new JavaType[]{runtime().lookupJavaType(Object.class)}, target, false);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
@@ -257,11 +256,13 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             } else {
                 asm.cmpq(inlineCacheKlass, src);
             }
-            asm.jcc(ConditionFlag.NotEqual, unverifiedStub);
+            asm.jcc(ConditionFlag.Equal, verifiedStub);
+            AMD64Call.directJmp(tasm, asm, runtime().lookupForeignCall(IC_MISS_HANDLER));
         }
 
         asm.align(config.codeEntryAlignment);
         tasm.recordMark(Marks.MARK_OSR_ENTRY);
+        asm.bind(verifiedStub);
         tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR
@@ -277,11 +278,6 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
             assert !frameMap.accessesCallerFrame() : lirGen.getGraph();
-        }
-
-        if (unverifiedStub != null) {
-            asm.bind(unverifiedStub);
-            AMD64Call.directJmp(tasm, asm, runtime().lookupForeignCall(IC_MISS_HANDLER));
         }
     }
 }
