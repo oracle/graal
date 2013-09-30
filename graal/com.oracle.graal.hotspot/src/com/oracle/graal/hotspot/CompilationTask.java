@@ -128,8 +128,7 @@ public final class CompilationTask implements Runnable {
             CompilationStatistics stats = CompilationStatistics.create(method, entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI);
             final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
             if (printCompilation) {
-                TTY.println(String.format("%-6d Graal %-70s %-45s %-50s %s...", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature(),
-                                entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") "));
+                TTY.println(getMethodDescription() + "...");
             }
             if (HotSpotPrintCompilation.getValue()) {
                 printCompilation();
@@ -161,7 +160,10 @@ public final class CompilationTask implements Runnable {
                 });
             } finally {
                 filter.remove();
-                if (printCompilation) {
+                final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
+                if (printAfterCompilation) {
+                    TTY.println(getMethodDescription() + String.format(" | %4dms %5dB", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
+                } else if (printCompilation) {
                     TTY.println(String.format("%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, (result != null ? result.getTargetCodeSize() : -1)));
                 }
             }
@@ -191,6 +193,11 @@ public final class CompilationTask implements Runnable {
             assert method.isQueuedForCompilation();
             method.clearQueuedForCompilation();
         }
+    }
+
+    private String getMethodDescription() {
+        return String.format("%-6d Graal %-70s %-45s %-50s %s", id, method.getDeclaringClass().getName(), method.getName(), method.getSignature().getMethodDescriptor(),
+                        entryBCI == StructuredGraph.INVOCATION_ENTRY_BCI ? "" : "(OSR@" + entryBCI + ") ");
     }
 
     /**
