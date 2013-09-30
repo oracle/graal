@@ -28,6 +28,7 @@ import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.spi.*;
@@ -177,6 +178,14 @@ public class AMD64Call {
     public static void directJmp(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget target) {
         int before = masm.codeBuffer.position();
         masm.jmp(0, true);
+        int after = masm.codeBuffer.position();
+        tasm.recordDirectCall(before, after, target, null);
+        masm.ensureUniquePC();
+    }
+
+    public static void directConditionalJmp(TargetMethodAssembler tasm, AMD64MacroAssembler masm, InvokeTarget target, ConditionFlag cond) {
+        int before = masm.codeBuffer.position();
+        masm.jcc(cond, 0, true);
         int after = masm.codeBuffer.position();
         tasm.recordDirectCall(before, after, target, null);
         masm.ensureUniquePC();
