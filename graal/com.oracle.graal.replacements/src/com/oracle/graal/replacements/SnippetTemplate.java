@@ -34,6 +34,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -540,7 +541,6 @@ public class SnippetTemplate {
         }
 
         new DeadCodeEliminationPhase().apply(snippetCopy);
-        new CanonicalizerPhase(true).apply(snippetCopy, context);
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
@@ -560,10 +560,12 @@ public class SnippetTemplate {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
                     retNode = (ReturnNode) node;
-                    for (MemoryState memstate : retNode.usages().filter(MemoryState.class).snapshot()) {
-                        this.memoryMap = memstate.getMemoryMap();
-                        memstate.safeDelete();
-                    }
+                    NodeIterable<MemoryState> memstates = retNode.usages().filter(MemoryState.class);
+                    assert memstates.count() == 1;
+                    MemoryState memstate = memstates.first();
+                    this.memoryMap = memstate.getMemoryMap();
+                    memstate.safeDelete();
+
                     assert !seenReturn : "can handle only one ReturnNode";
                     seenReturn = true;
                 } else if (node instanceof MemoryState) {
@@ -792,7 +794,7 @@ public class SnippetTemplate {
             return true;
         }
 
-        Set<LocationIdentity> kills = ((MemoryMapImpl) memoryMap).getLocations();
+        Set<LocationIdentity> kills = new HashSet<>(((MemoryMapImpl) memoryMap).getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location

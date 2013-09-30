@@ -92,7 +92,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public Set<LocationIdentity> getLocations() {
-            return new HashSet<>(lastMemorySnapshot.keySet());
+            return lastMemorySnapshot.keySet();
         }
 
     }
