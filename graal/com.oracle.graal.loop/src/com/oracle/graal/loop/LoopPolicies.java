@@ -48,11 +48,11 @@ public abstract class LoopPolicies {
             return false;
         }
         CountedLoopInfo counted = loop.counted();
-        long exactTrips = counted.constantMaxTripCount();
+        long maxTrips = counted.constantMaxTripCount();
         int maxNodes = (counted.isExactTripCount() && counted.isConstantExactTripCount()) ? ExactFullUnrollMaxNodes.getValue() : FullUnrollMaxNodes.getValue();
         maxNodes = Math.min(maxNodes, MaximumDesiredSize.getValue() - loop.loopBegin().graph().getNodeCount());
         int size = Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count());
-        return size * exactTrips <= maxNodes;
+        return size * maxTrips <= maxNodes;
     }
 
     public static boolean shouldTryUnswitch(LoopEx loop) {
