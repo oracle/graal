@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
@@ -33,6 +34,11 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
 
     public ValueNode getActionAndReason() {
         return actionAndReason;
+    }
+
+    @Override
+    public ValueNode getActionAndReason(MetaAccessProvider runtime) {
+        return getActionAndReason();
     }
 
     public void generate(LIRGeneratorTool generator) {

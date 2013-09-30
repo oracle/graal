@@ -72,13 +72,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
 
     /**
-     * Encodes a deoptimization action and a deoptimization reason in an integer value.
-     * 
-     * @return the encoded value as an integer
-     */
-    Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
-
-    /**
      * Determines if a {@link DataPatch} should be created for a given
      * {@linkplain Constant#getPrimitiveAnnotation() annotated} primitive constant that part of a
      * {@link CompilationResult}. A data patch is always created for an object constant.

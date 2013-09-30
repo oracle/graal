@@ -22,8 +22,8 @@
  */
 package com.oracle.graal.java;
 
-import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.TypeCheckHints.*;
+import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.bytecode.Bytecodes.*;
 import static com.oracle.graal.java.GraphBuilderPhase.RuntimeCalls.*;

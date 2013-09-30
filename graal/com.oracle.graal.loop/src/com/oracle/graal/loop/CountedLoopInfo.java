@@ -24,7 +24,6 @@ package com.oracle.graal.loop;
 
 import static com.oracle.graal.nodes.calc.IntegerArithmeticNode.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.loop.InductionVariable.Direction;

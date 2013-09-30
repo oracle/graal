@@ -113,4 +113,11 @@ public interface MetaAccessProvider {
      * Determines if deoptimization can occur during a given foreign call.
      */
     boolean canDeoptimize(ForeignCallDescriptor descriptor);
+
+    /**
+     * Encodes a deoptimization action and a deoptimization reason in an integer value.
+     * 
+     * @return the encoded value as an integer
+     */
+    Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 }

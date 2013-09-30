@@ -86,4 +86,8 @@ public class DelegatingMetaAccessProvider implements MetaAccessProvider {
     public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
         return delegate.canDeoptimize(descriptor);
     }
+
+    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
+        return delegate().encodeDeoptActionAndReason(action, reason);
+    }
 }

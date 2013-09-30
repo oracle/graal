@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -61,4 +62,6 @@ public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements 
     public FrameState getState() {
         return deoptState;
     }
+
+    public abstract ValueNode getActionAndReason(MetaAccessProvider runtime);
 }

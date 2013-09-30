@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -47,6 +46,11 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerab
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.emitDeoptimize(gen.getRuntime().encodeDeoptActionAndReason(action, reason), this);
+    }
+
+    @Override
+    public ValueNode getActionAndReason(MetaAccessProvider runtime) {
+        return ConstantNode.forConstant(runtime.encodeDeoptActionAndReason(action, reason), runtime, graph());
     }
 
     @NodeIntrinsic
