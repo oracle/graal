@@ -205,10 +205,13 @@ public interface ResolvedJavaType extends JavaType {
 
     /**
      * Resolves the method implementation for virtual dispatches on objects of this dynamic type.
+     * This resolution process only searches "up" the class hierarchy of this type. A broader search
+     * that also walks "down" the hierarchy is implemented by
+     * {@link #findUniqueConcreteMethod(ResolvedJavaMethod)}.
      * 
      * @param method the method to select the implementation of
-     * @return the method implementation that would be selected at runtime, or {@code null} if the
-     *         runtime cannot resolve the method at this point in time.
+     * @return the concrete method that would be selected at runtime, or {@code null} if there is no
+     *         concrete implementation of {@code method} in this type or any of its superclasses
      */
     ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method);
 

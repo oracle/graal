@@ -399,9 +399,11 @@ public class TestResolvedJavaType extends TypeUniverse {
             }
             for (Method m : c.getDeclaredMethods()) {
                 if (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers())) {
-                    Method overridden = vtable.methods.put(new NameAndSignature(m), m);
-                    if (overridden != null) {
-                        // println(m + " overrides " + overridden);
+                    if (isAbstract(m.getModifiers())) {
+                        // A subclass makes a concrete method in a superclass abstract
+                        vtable.methods.remove(new NameAndSignature(m));
+                    } else {
+                        vtable.methods.put(new NameAndSignature(m), m);
                     }
                 }
             }
@@ -438,7 +440,13 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void resolveMethodTest() {
         for (Class c : classes) {
-            if (!c.isPrimitive() && !c.isInterface()) {
+            if (c.isInterface() || c.isPrimitive()) {
+                ResolvedJavaType type = runtime.lookupJavaType(c);
+                for (Method m : c.getDeclaredMethods()) {
+                    ResolvedJavaMethod impl = type.resolveMethod(runtime.lookupJavaMethod(m));
+                    assertEquals(m.toString(), null, impl);
+                }
+            } else {
                 ResolvedJavaType type = runtime.lookupJavaType(c);
                 VTable vtable = getVTable(c);
                 for (Method impl : vtable.methods.values()) {
@@ -448,6 +456,11 @@ public class TestResolvedJavaType extends TypeUniverse {
                         ResolvedJavaMethod i = runtime.lookupJavaMethod(impl);
                         checkResolveMethod(type, m, i);
                     }
+                }
+                for (Method m : c.getDeclaredMethods()) {
+                    ResolvedJavaMethod impl = type.resolveMethod(runtime.lookupJavaMethod(m));
+                    ResolvedJavaMethod expected = isAbstract(m.getModifiers()) ? null : impl;
+                    assertEquals(type + " " + m.toString(), expected, impl);
                 }
             }
         }

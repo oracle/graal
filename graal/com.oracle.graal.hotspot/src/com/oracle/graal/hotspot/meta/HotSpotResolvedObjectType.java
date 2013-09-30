@@ -345,7 +345,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        return (ResolvedJavaMethod) graalRuntime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        ResolvedJavaMethod res = (ResolvedJavaMethod) graalRuntime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        if (res == null || isAbstract(res.getModifiers())) {
+            return null;
+        }
+        return res;
     }
 
     @Override
