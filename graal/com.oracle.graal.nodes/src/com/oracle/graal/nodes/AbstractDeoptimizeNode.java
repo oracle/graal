@@ -20,19 +20,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.nodes;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
-public class DeoptimizingStubCall extends DeoptimizingFixedWithNextNode {
+/**
+ * This node represents an unconditional explicit request for immediate deoptimization.
+ * 
+ * After this node, execution will continue using a fallback execution engine (such as an
+ * interpreter) at the position described by the {@link #getDeoptimizationState() deoptimization
+ * state}.
+ * 
+ */
+@NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
+public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode {
 
-    public DeoptimizingStubCall(Stamp stamp) {
-        super(stamp);
+    @Input private FrameState deoptState;
+
+    public AbstractDeoptimizeNode() {
+        super(StampFactory.forVoid());
     }
 
     @Override
     public boolean canDeoptimize() {
         return true;
+    }
+
+    @Override
+    public FrameState getDeoptimizationState() {
+        return deoptState;
+    }
+
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
+        deoptState = f;
+    }
+
+    public FrameState getState() {
+        return deoptState;
     }
 }

@@ -174,11 +174,6 @@ public final class InvokeNode extends AbstractStateSplit implements Invoke, LIRL
     }
 
     @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return null;
-    }
-
-    @Override
     public FrameState getDeoptimizationState() {
         if (deoptState == null) {
             FrameState stateDuring = stateDuring();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,20 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
+public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
+    @Input private ValueNode actionAndReason;
 
-    private final DeoptimizationAction action;
-    private final DeoptimizationReason reason;
-
-    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        this.action = action;
-        this.reason = reason;
+    public DynamicDeoptimizeNode(ValueNode actionAndReason) {
+        this.actionAndReason = actionAndReason;
     }
 
-    public DeoptimizationAction action() {
-        return action;
+    public ValueNode getActionAndReason() {
+        return actionAndReason;
     }
 
-    public DeoptimizationReason reason() {
-        return reason;
+    public void generate(LIRGeneratorTool generator) {
+        generator.emitDeoptimize(generator.operand(actionAndReason), this);
     }
-
-    @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(gen.getRuntime().encodeDeoptActionAndReason(action, reason), this);
-    }
-
-    @NodeIntrinsic
-    public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
 }

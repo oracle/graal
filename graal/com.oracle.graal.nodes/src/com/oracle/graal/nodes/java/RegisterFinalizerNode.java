@@ -105,11 +105,6 @@ public final class RegisterFinalizerNode extends AbstractStateSplit implements C
         deoptState = f;
     }
 
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return null;
-    }
-
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void register(Object thisObj) {

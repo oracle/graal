@@ -136,9 +136,4 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
     public boolean canDeoptimize() {
         return true;
     }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return reason;
-    }
 }

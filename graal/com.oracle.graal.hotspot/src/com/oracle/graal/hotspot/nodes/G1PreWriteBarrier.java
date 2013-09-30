@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.hotspot.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
@@ -64,11 +63,6 @@ public class G1PreWriteBarrier extends WriteBarrier implements DeoptimizingNode 
     public void setDeoptimizationState(FrameState state) {
         updateUsages(deoptimizationState, state);
         deoptimizationState = state;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.NullCheckException;
     }
 
     public FrameState getState() {
