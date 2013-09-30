@@ -58,7 +58,6 @@ import com.oracle.graal.word.*;
 public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = new NamedLocationIdentity("Initialization");
-    public static final LocationIdentity ARRAY_LENGTH_LOCATION = new NamedLocationIdentity("ArrayLength");
 
     @Snippet
     public static Word allocate(int size) {
@@ -222,7 +221,7 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     public static Object formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
-        memory.writeInt(arrayLengthOffset(), length, ARRAY_LENGTH_LOCATION);
+        memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
         /*
          * store hub last as the concurrent garbage collectors assume length is valid if hub field
          * is not null
