@@ -169,6 +169,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     private static final String SystemClassName = "Ljava/lang/System;";
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The {@code value} field in {@link OptionValue} is considered constant if the type of
+     * {@code receiver} is (assignable to) {@link StableOptionValue}.
+     */
     @Override
     public Constant readConstantValue(Constant receiver) {
         assert !AOTCompilation.getValue() || isCalledForSnippets() : receiver;
@@ -198,6 +204,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             } else {
                 Class<?> clazz = object.getClass();
                 if (StableOptionValue.class.isAssignableFrom(clazz)) {
+                    assert getName().equals("value") : "Unexpected field in " + StableOptionValue.class.getName() + " hierarchy:" + this;
                     StableOptionValue<?> option = (StableOptionValue<?>) object;
                     return Constant.forObject(option.getValue());
                 }
