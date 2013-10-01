@@ -41,7 +41,7 @@ public final class AndNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return x();
         }

@@ -71,7 +71,7 @@ public final class TypeProfileProxyNode extends FloatingNode implements Canonica
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (ObjectStamp.isExactType(object)) {
             // The profile is useless - we know the type!
             return object;

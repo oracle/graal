@@ -80,7 +80,7 @@ public final class SnippetLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (valueKind.isConstant() && locationIdentity.isConstant() && displacement.isConstant() && (indexScaling == null || indexScaling.isConstant())) {
             Kind constKind = (Kind) valueKind.asConstant().asObject();
             LocationIdentity constLocation = (LocationIdentity) locationIdentity.asConstant().asObject();

@@ -64,7 +64,7 @@ public class BranchProbabilityNode extends FloatingNode implements Canonicalizab
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (probability.isConstant()) {
             double probabilityValue = probability.asConstant().asDouble();
             if (probabilityValue < 0.0) {

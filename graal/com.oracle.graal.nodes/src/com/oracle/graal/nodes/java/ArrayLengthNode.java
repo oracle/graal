@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -44,7 +45,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode length = readArrayLength(array(), tool.runtime());
         if (length != null) {
             return length;

@@ -54,7 +54,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return LogicConstantNode.tautology(graph());
         }

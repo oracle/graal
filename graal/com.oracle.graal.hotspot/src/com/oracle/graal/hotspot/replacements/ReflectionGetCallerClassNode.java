@@ -38,7 +38,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ConstantNode callerClassNode = getCallerClassNode(tool.runtime());
         if (callerClassNode != null) {
             return callerClassNode;

@@ -35,7 +35,7 @@ public final class FloatDivNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
             if (kind() == Kind.Float) {
                 if (y().asConstant().asFloat() != 0) {

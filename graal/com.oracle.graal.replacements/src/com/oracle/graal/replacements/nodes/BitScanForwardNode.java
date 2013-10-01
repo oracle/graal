@@ -25,6 +25,7 @@ package com.oracle.graal.replacements.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -41,7 +42,7 @@ public class BitScanForwardNode extends FloatingNode implements LIRGenLowerable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             long v = value.asConstant().asLong();
             if (value.kind().getStackKind() == Kind.Int) {

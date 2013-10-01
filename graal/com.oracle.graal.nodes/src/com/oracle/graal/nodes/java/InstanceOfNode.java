@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -56,7 +57,7 @@ public final class InstanceOfNode extends LogicNode implements Canonicalizable, 
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         Stamp stamp = object().stamp();
         if (!(stamp instanceof ObjectStamp)) {
             return this;

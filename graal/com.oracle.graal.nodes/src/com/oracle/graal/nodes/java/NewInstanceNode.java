@@ -68,7 +68,7 @@ public final class NewInstanceNode extends DeoptimizingFixedWithNextNode impleme
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (usages().isEmpty()) {
             return null;
         } else {

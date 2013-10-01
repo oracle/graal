@@ -87,7 +87,7 @@ public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNu
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (type == PhiType.Value && value.isConstant()) {
             return value;
         }

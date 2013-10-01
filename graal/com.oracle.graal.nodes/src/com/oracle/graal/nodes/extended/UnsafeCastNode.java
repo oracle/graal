@@ -58,7 +58,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         assert kind() == Kind.Object && object.kind() == Kind.Object;
 
         ObjectStamp my = (ObjectStamp) stamp();

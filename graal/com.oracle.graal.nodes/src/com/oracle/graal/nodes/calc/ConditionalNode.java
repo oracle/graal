@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.calc;
 import static com.oracle.graal.nodes.calc.CompareNode.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -66,7 +67,7 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (condition instanceof LogicNegationNode) {
             LogicNegationNode negated = (LogicNegationNode) condition;
             return graph().unique(new ConditionalNode(negated.getInput(), falseValue(), trueValue()));

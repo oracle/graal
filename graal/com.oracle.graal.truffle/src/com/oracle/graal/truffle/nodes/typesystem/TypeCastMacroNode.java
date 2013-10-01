@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
@@ -46,7 +47,7 @@ public class TypeCastMacroNode extends NeverPartOfCompilationNode implements Can
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode classArgument = arguments.get(CLASS_ARGUMENT_INDEX);
         ValueNode customTypeArgument = arguments.get(CUSTOM_TYPE_ARGUMENT_INDEX);
         if (classArgument.isConstant() && customTypeArgument.isConstant()) {

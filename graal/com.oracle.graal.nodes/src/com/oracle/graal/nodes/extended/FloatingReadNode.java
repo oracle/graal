@@ -65,7 +65,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         return ReadNode.canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
 

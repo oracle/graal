@@ -36,7 +36,7 @@ public final class RightShiftNode extends ShiftNode implements Canonicalizable {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().stamp() instanceof IntegerStamp && ((IntegerStamp) x().stamp()).isPositive()) {
             return graph().unique(new UnsignedRightShiftNode(kind(), x(), y()));
         }

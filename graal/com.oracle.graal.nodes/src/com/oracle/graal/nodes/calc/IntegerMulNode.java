@@ -36,7 +36,7 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
             return graph().unique(new IntegerMulNode(kind(), y(), x()));
         }

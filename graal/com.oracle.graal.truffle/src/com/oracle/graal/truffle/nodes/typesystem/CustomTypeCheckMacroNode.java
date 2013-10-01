@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.truffle.nodes.typesystem;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -44,7 +45,7 @@ public class CustomTypeCheckMacroNode extends NeverPartOfCompilationNode impleme
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode customTypeArgument = arguments.get(CUSTOM_TYPE_ARGUMENT_INDEX);
         if (customTypeArgument.isConstant()) {
             Object typeToken = customTypeArgument.asConstant().asObject();

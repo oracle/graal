@@ -151,7 +151,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (value instanceof ConstantNode) {
             Constant c = ((ConstantNode) value).asConstant();
             switch (opcode) {

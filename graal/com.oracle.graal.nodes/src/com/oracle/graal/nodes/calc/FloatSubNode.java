@@ -35,7 +35,7 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forFloatingKind(kind(), 0.0f, graph());
         }

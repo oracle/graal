@@ -37,7 +37,7 @@ public class UnsignedRemNode extends FixedBinaryNode implements Canonicalizable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
             long yConst = y().asConstant().asLong();
             if (yConst == 0) {

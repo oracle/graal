@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -61,7 +62,7 @@ public class UnboxNode extends FloatingNode implements Virtualizable, Lowerable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             Constant constant = value.asConstant();
             Object o = constant.asObject();

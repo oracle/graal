@@ -83,7 +83,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         inferStamp();
         if (stamp().equals(object().stamp())) {
             return object();

@@ -41,7 +41,7 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forIntegerKind(kind(), 0, graph());
         }

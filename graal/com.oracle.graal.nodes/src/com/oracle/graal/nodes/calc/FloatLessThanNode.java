@@ -58,7 +58,7 @@ public final class FloatLessThanNode extends CompareNode {
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y() && !unorderedIsTrue()) {
             return LogicConstantNode.contradiction(graph());
         }

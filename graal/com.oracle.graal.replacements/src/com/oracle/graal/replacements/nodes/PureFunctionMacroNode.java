@@ -23,6 +23,7 @@
 package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -42,7 +43,7 @@ public abstract class PureFunctionMacroNode extends MacroNode implements Canonic
      */
     protected abstract Constant evaluate(Constant param, MetaAccessProvider metaAccess);
 
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (usages().isEmpty()) {
             return null;
         } else {

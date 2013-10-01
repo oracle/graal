@@ -231,7 +231,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, IterableNo
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode singleValue = singleValue();
 
         if (singleValue != null) {

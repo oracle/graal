@@ -40,7 +40,7 @@ public class LogicNegationNode extends LogicNode implements Canonicalizable, Ite
         return input;
     }
 
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (input instanceof LogicNegationNode) {
             return ((LogicNegationNode) input).getInput();
         } else {

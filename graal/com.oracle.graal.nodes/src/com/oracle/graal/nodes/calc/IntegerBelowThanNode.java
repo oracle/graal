@@ -54,7 +54,7 @@ public final class IntegerBelowThanNode extends CompareNode {
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return LogicConstantNode.contradiction(graph());
         } else {

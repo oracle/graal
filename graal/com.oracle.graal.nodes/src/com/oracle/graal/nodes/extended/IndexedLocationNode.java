@@ -85,7 +85,7 @@ public final class IndexedLocationNode extends LocationNode implements Canonical
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (index == null || indexScaling == 0) {
             return ConstantLocationNode.create(getLocationIdentity(), getValueKind(), displacement, graph());
         } else if (index.isConstant()) {

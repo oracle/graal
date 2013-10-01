@@ -69,7 +69,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x instanceof ConstantLocationNode) {
             return canonical((ConstantLocationNode) x, getY());
         }

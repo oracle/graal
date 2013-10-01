@@ -26,6 +26,7 @@ import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -56,7 +57,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ConstantNode target = getConstantCallTarget(tool.runtime(), tool.assumptions());
         if (target != null) {
             return target;

@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.graph.*;
 
 public interface Canonicalizable {
 
-    ValueNode canonical(CanonicalizerTool tool);
+    Node canonical(CanonicalizerTool tool);
 }

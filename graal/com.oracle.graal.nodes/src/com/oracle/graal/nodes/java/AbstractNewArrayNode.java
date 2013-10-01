@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.nodes.java;
 
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -75,7 +76,7 @@ public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implemen
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (usages().isEmpty()) {
             Stamp stamp = length.stamp();
             if (stamp instanceof IntegerStamp && ((IntegerStamp) stamp).isPositive()) {

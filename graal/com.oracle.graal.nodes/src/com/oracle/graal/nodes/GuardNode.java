@@ -90,7 +90,7 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (condition() instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition();
             return graph().unique(new GuardNode(negation.getInput(), getGuard(), reason, action, !negated));

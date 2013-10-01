@@ -135,7 +135,7 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         assert object() != null : this;
 
         ResolvedJavaType objectType = ObjectStamp.typeOrNull(object());

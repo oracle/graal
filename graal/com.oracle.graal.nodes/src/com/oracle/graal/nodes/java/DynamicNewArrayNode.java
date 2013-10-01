@@ -25,6 +25,7 @@ package com.oracle.graal.nodes.java;
 import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -51,7 +52,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (elementType.isConstant()) {
             Class<?> elementClass = (Class<?>) elementType.asConstant().asObject();
             if (elementClass != null && !(elementClass.equals(void.class))) {

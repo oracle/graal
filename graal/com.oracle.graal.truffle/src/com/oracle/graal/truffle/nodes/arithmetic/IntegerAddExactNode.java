@@ -23,6 +23,7 @@
 package com.oracle.graal.truffle.nodes.arithmetic;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
@@ -47,7 +48,7 @@ public class IntegerAddExactNode extends IntegerAddNode implements Canonicalizab
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
             return graph().unique(new IntegerAddExactNode(y(), x()));
         }

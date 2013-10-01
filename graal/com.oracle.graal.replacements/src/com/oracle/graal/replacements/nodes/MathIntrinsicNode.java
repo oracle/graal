@@ -86,7 +86,7 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant()) {
             double value = x().asConstant().asDouble();
             switch (operation()) {

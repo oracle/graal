@@ -125,7 +125,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (!isStatic()) {
             ValueNode receiver = receiver();
             if (receiver != null && ObjectStamp.isExactType(receiver) && ObjectStamp.typeOrNull(receiver) != null) {
