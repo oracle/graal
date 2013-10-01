@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 
@@ -637,6 +638,66 @@ public final class NodeUtil {
         p.flush();
     }
 
+    public static String printSourceAttributionTree(Node node) {
+        StringWriter out = new StringWriter();
+        printSourceAttributionTree(new PrintWriter(out), null, node, 1);
+        return out.toString();
+    }
+
+    public static void printSourceAttributionTree(OutputStream out, Node node) {
+        printSourceAttributionTree(new PrintWriter(out), null, node, 1);
+    }
+
+    private static void printSourceAttributionTree(PrintWriter p, Node parent, Node node, int level) {
+        if (node == null) {
+            return;
+        }
+        if (parent == null) {
+            // Add some preliminary information before starting with the root node
+            final SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection != null) {
+                final String txt = sourceSection.getSource().getCode();
+                p.println("Full source len=(" + txt.length() + ")  txt=___" + txt + "___");
+                p.println("AST source attribution:");
+            }
+        }
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < level; i++) {
+            sb.append("  ");
+        }
+
+        if (parent != null) {
+            String childName = "";
+            NodeField[] fields = NodeClass.get(parent.getClass()).fields;
+            for (NodeField field : fields) {
+                Object value = field.loadValue(parent);
+                if (value == node) {
+                    childName = field.getName();
+                    break;
+                } else if (value instanceof Node[]) {
+                    int index = 0;
+                    for (Node arrayNode : (Node[]) value) {
+                        if (arrayNode == node) {
+                            childName = field.getName() + "[" + index + "]";
+                            break;
+                        }
+                        index++;
+                    }
+                }
+            }
+            sb.append(childName);
+        }
+
+        sb.append("  (" + node.getClass().getSimpleName() + ")  ");
+        sb.append(displaySourceAttribution(node));
+        p.println(sb.toString());
+
+        for (Node child : node.getChildren()) {
+            printSourceAttributionTree(p, node, child, level + 1);
+        }
+        p.flush();
+    }
+
     /**
      * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This
      * print method does not check for cycles in the node structure.
@@ -723,5 +784,18 @@ public final class NodeUtil {
 
     private static String nodeName(Node node) {
         return node.getClass().getSimpleName();
+    }
+
+    private static String displaySourceAttribution(Node node) {
+        final SourceSection section = node.getSourceSection();
+        if (section != null) {
+            final String srcText = section.getCode();
+            final StringBuilder sb = new StringBuilder();
+            sb.append("source:  len=" + srcText.length());
+            sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
+            sb.append(" txt=___" + srcText + "___");
+            return sb.toString();
+        }
+        return "";
     }
 }
