@@ -25,8 +25,8 @@ package com.oracle.graal.hotspot.replacements;
 import java.lang.invoke.MethodHandle;
 
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.CanonicalizerTool;
 
 /**
  * Macro node for {@link MethodHandle}{@code .linkToSpecial(Object...)}.

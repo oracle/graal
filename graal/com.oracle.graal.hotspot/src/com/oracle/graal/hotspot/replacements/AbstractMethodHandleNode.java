@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.ResolvedJavaMethod;
 import com.oracle.graal.api.meta.ResolvedJavaType;
 import com.oracle.graal.graph.GraalInternalError;
 import com.oracle.graal.graph.NodeInputList;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.hotspot.meta.HotSpotResolvedJavaMethod;
 import com.oracle.graal.hotspot.meta.HotSpotResolvedObjectType;
 import com.oracle.graal.hotspot.meta.HotSpotSignature;
@@ -43,7 +44,6 @@ import com.oracle.graal.nodes.ValueNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.java.SelfReplacingMethodCallTargetNode;
-import com.oracle.graal.nodes.spi.Canonicalizable;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.replacements.nodes.MacroNode;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.graph.spi;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+/**
+ * This interface allows nodes to perform more complicated simplifications, in contrast to
+ * {@link Canonicalizable}, which supports only replacing the current node.
+ * 
+ * Implementors of this interface need to be aware that they need to call
+ * {@link SimplifierTool#addToWorkList(com.oracle.graal.graph.Node)} for each node that might be
+ * influenced (in terms of simplification and canonicalization) by the actions performed in
+ * simplify.
+ */
+public interface Simplifiable {
 
-public interface CanonicalizerTool {
-
-    Assumptions assumptions();
-
-    MetaAccessProvider runtime();
-
-    boolean canonicalizeReads();
-
-    void removeIfUnused(Node node);
+    void simplify(SimplifierTool tool);
 }

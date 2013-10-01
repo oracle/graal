@@ -24,8 +24,8 @@ package com.oracle.graal.phases.common;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.util.*;
 import com.oracle.graal.phases.tiers.*;
