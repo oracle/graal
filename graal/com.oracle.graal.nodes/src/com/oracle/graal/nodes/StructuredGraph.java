@@ -250,7 +250,7 @@ public class StructuredGraph extends Graph {
         node.safeDelete();
     }
 
-    public void replaceFloating(FloatingNode node, ValueNode replacement) {
+    public void replaceFloating(FloatingNode node, Node replacement) {
         assert node != null && replacement != null && node.isAlive() && replacement.isAlive() : "cannot replace " + node + " with " + replacement;
         node.replaceAtUsages(replacement);
         node.safeDelete();
@@ -324,7 +324,7 @@ public class StructuredGraph extends Graph {
         for (Node successor : snapshot) {
             if (successor != null && successor.isAlive()) {
                 if (successor != survivingSuccessor) {
-                    GraphUtil.killCFG((AbstractBeginNode) successor);
+                    GraphUtil.killCFG(successor);
                 }
             }
         }

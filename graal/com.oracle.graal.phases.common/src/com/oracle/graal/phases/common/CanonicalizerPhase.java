@@ -247,7 +247,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                 return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>() {
 
                     public Boolean call() {
-                        ValueNode canonical = ((Canonicalizable) node).canonical(tool);
+                        Node canonical = ((Canonicalizable) node).canonical(tool);
                         return performReplacement(node, canonical);
                     }
                 });
@@ -280,7 +280,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 //                                         --------------------------------------------
 //       X: must not happen (checked with assertions)
 // @formatter:on
-        private boolean performReplacement(final Node node, ValueNode canonical) {
+        private boolean performReplacement(final Node node, Node canonical) {
             if (canonical == node) {
                 Debug.log("Canonicalizer: work on %s", node);
                 return false;
@@ -362,7 +362,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private final class Tool implements SimplifierTool {
 
             @Override
-            public void deleteBranch(FixedNode branch) {
+            public void deleteBranch(Node branch) {
                 branch.predecessor().replaceFirstSuccessor(branch, null);
                 GraphUtil.killCFG(branch);
             }
