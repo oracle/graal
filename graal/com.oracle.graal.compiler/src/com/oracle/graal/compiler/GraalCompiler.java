@@ -86,7 +86,7 @@ public class GraalCompiler {
          */
         @Option(help = "Pattern for method(s) to which intrinsification will not be applied. " +
                        "See MethodFilter class for pattern syntax.")
-        public static final OptionValue<String> IntrinsificationsDisabled = new OptionValue<>("Object.clone");
+        public static final OptionValue<String> IntrinsificationsDisabled = new OptionValue<>(null);
         // @formatter:on
 
     }
