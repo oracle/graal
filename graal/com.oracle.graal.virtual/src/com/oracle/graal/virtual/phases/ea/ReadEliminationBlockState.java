@@ -103,7 +103,6 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public ReadEliminationBlockState(ReadEliminationBlockState other) {
-        super(other);
         readCache = new HashMap<>(other.readCache);
     }
 
@@ -114,10 +113,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     @Override
     public boolean equivalentTo(ReadEliminationBlockState other) {
-        if (!compareMapsNoSize(readCache, other.readCache)) {
-            return false;
-        }
-        return super.equivalentTo(other);
+        return compareMapsNoSize(readCache, other.readCache);
     }
 
     public void addCacheEntry(CacheEntry<?> identifier, ValueNode value) {

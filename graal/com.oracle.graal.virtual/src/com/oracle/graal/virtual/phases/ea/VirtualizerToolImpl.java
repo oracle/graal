@@ -36,18 +36,18 @@ import com.oracle.graal.nodes.virtual.*;
 
 class VirtualizerToolImpl implements VirtualizerTool {
 
-    private final NodeBitMap usages;
     private final MetaAccessProvider metaAccess;
     private final Assumptions assumptions;
+    private final PartialEscapeClosure<?> closure;
 
-    VirtualizerToolImpl(NodeBitMap usages, MetaAccessProvider metaAccess, Assumptions assumptions) {
-        this.usages = usages;
+    VirtualizerToolImpl(MetaAccessProvider metaAccess, Assumptions assumptions, PartialEscapeClosure<?> closure) {
         this.metaAccess = metaAccess;
         this.assumptions = assumptions;
+        this.closure = closure;
     }
 
     private boolean deleted;
-    private PartialEscapeBlockState state;
+    private PartialEscapeBlockState<?> state;
     private ValueNode current;
     private FixedNode position;
     private GraphEffectList effects;
@@ -76,15 +76,15 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public State getObjectState(ValueNode value) {
-        return state.getObjectState(value);
+        return closure.getObjectState(state, value);
     }
 
     @Override
     public void setVirtualEntry(State objectState, int index, ValueNode value) {
         ObjectState obj = (ObjectState) objectState;
         assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        ObjectState valueState = state.getObjectState(value);
-        ValueNode newValue = value;
+        ObjectState valueState = closure.getObjectState(state, value);
+        ValueNode newValue;
         if (valueState == null) {
             newValue = getReplacedValue(value);
             assert obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
@@ -106,12 +106,12 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public ValueNode getReplacedValue(ValueNode original) {
-        return state.getScalarAlias(original);
+        return closure.getScalarAlias(original);
     }
 
     @Override
     public void replaceWithVirtual(VirtualObjectNode virtual) {
-        state.addAndMarkAlias(virtual, current, usages);
+        closure.addAndMarkAlias(virtual, current);
         if (current instanceof FixedWithNextNode) {
             effects.deleteFixedNode((FixedWithNextNode) current);
         }
@@ -120,8 +120,8 @@ class VirtualizerToolImpl implements VirtualizerTool {
 
     @Override
     public void replaceWithValue(ValueNode replacement) {
-        effects.replaceAtUsages(current, state.getScalarAlias(replacement));
-        state.addScalarAlias(current, replacement);
+        effects.replaceAtUsages(current, closure.getScalarAlias(replacement));
+        closure.addScalarAlias(current, replacement);
         deleted = true;
     }
 
@@ -148,16 +148,21 @@ class VirtualizerToolImpl implements VirtualizerTool {
     @Override
     public void createVirtualObject(VirtualObjectNode virtualObject, ValueNode[] entryState, int[] locks) {
         VirtualUtil.trace("{{%s}} ", current);
-        if (virtualObject.isAlive()) {
-            state.addAndMarkAlias(virtualObject, virtualObject, usages);
-        } else {
+        if (!virtualObject.isAlive()) {
             effects.addFloatingNode(virtualObject, "newVirtualObject");
         }
         for (int i = 0; i < entryState.length; i++) {
-            entryState[i] = state.getScalarAlias(entryState[i]);
+            if (!(entryState[i] instanceof VirtualObjectNode)) {
+                ObjectState v = closure.getObjectState(state, entryState[i]);
+                if (v != null) {
+                    entryState[i] = v.isVirtual() ? v.getVirtualObject() : v.getMaterializedValue();
+                } else {
+                    entryState[i] = closure.getScalarAlias(entryState[i]);
+                }
+            }
         }
         state.addObject(virtualObject, new ObjectState(virtualObject, entryState, EscapeState.Virtual, locks));
-        state.addAndMarkAlias(virtualObject, virtualObject, usages);
+        closure.addAndMarkAlias(virtualObject, virtualObject);
         PartialEscapeClosure.METRIC_ALLOCATION_REMOVED.increment();
     }
 

@@ -92,9 +92,9 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         return super.equivalentTo(other);
     }
 
-    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value) {
+    public void addReadCache(ValueNode object, ResolvedJavaField identity, ValueNode value, PartialEscapeClosure<?> closure) {
         ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
+        ObjectState obj = closure.getObjectState(this, object);
         if (obj != null) {
             assert !obj.isVirtual();
             cacheObject = obj.getMaterializedValue();
@@ -104,9 +104,9 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
         readCache.put(new ReadCacheEntry(identity, cacheObject), value);
     }
 
-    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity) {
+    public ValueNode getReadCache(ValueNode object, ResolvedJavaField identity, PartialEscapeClosure<?> closure) {
         ValueNode cacheObject;
-        ObjectState obj = getObjectState(object);
+        ObjectState obj = closure.getObjectState(this, object);
         if (obj != null) {
             assert !obj.isVirtual();
             cacheObject = obj.getMaterializedValue();
@@ -114,13 +114,13 @@ public class PEReadEliminationBlockState extends PartialEscapeBlockState<PEReadE
             cacheObject = object;
         }
         ValueNode cacheValue = readCache.get(new ReadCacheEntry(identity, cacheObject));
-        obj = getObjectState(cacheValue);
+        obj = closure.getObjectState(this, cacheValue);
         if (obj != null) {
             assert !obj.isVirtual();
             cacheValue = obj.getMaterializedValue();
         } else {
             // assert !scalarAliases.containsKey(cacheValue);
-            cacheValue = getScalarAlias(cacheValue);
+            cacheValue = closure.getScalarAlias(cacheValue);
         }
         return cacheValue;
     }

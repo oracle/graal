@@ -61,7 +61,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (cachedValue != null) {
                     effects.replaceAtUsages(load, cachedValue);
-                    state.addScalarAlias(load, cachedValue);
+                    addScalarAlias(load, cachedValue);
                     deleted = true;
                 } else {
                     state.addCacheEntry(identifier, load);
@@ -76,7 +76,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 LoadCacheEntry identifier = new LoadCacheEntry(object, store.field());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
 
-                ValueNode value = state.getScalarAlias(store.value());
+                ValueNode value = getScalarAlias(store.value());
                 if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
                     effects.deleteFixedNode(store);
                     deleted = true;
@@ -94,7 +94,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ValueNode cachedValue = state.getCacheEntry(identifier);
                 if (cachedValue != null) {
                     effects.replaceAtUsages(read, cachedValue);
-                    state.addScalarAlias(read, cachedValue);
+                    addScalarAlias(read, cachedValue);
                     deleted = true;
                 } else {
                     state.addCacheEntry(identifier, read);
@@ -107,7 +107,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 ReadCacheEntry identifier = new ReadCacheEntry(object, write.location());
                 ValueNode cachedValue = state.getCacheEntry(identifier);
 
-                ValueNode value = state.getScalarAlias(write.value());
+                ValueNode value = getScalarAlias(write.value());
                 if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
                     effects.deleteFixedNode(write);
                     deleted = true;
