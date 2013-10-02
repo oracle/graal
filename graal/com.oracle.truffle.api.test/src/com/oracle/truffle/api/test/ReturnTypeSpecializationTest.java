@@ -120,11 +120,11 @@ public class ReturnTypeSpecializationTest {
                 try {
                     frame.setInt(slot, result);
                 } catch (FrameSlotTypeException e) {
-                    FrameUtil.setObjectSafe(frame, slot, result);
+                    frame.setObject(slot, result);
                     replace(new ObjectAssignLocal(slot, value));
                 }
             } catch (UnexpectedResultException e) {
-                FrameUtil.setObjectSafe(frame, slot, e.getResult());
+                frame.setObject(slot, e.getResult());
                 replace(new ObjectAssignLocal(slot, value));
             }
             return null;
@@ -143,11 +143,7 @@ public class ReturnTypeSpecializationTest {
         @Override
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
-            try {
-                frame.setObject(slot, o);
-            } catch (FrameSlotTypeException e) {
-                FrameUtil.setObjectSafe(frame, slot, o);
-            }
+            frame.setObject(slot, o);
             return null;
         }
     }

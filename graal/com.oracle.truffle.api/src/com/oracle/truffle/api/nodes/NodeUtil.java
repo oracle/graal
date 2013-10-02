@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,13 +31,14 @@ import java.util.*;
 
 import sun.misc.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 
 /**
  * Utility class that manages the special access methods for node instances.
  */
-public class NodeUtil {
+public final class NodeUtil {
 
     /**
      * Interface that allows the customization of field offsets used for {@link Unsafe} field
@@ -274,7 +275,7 @@ public class NodeUtil {
         return array;
     }
 
-    protected static final Unsafe unsafe = getUnsafe();
+    private static final Unsafe unsafe = getUnsafe();
 
     private static Unsafe getUnsafe() {
         try {
@@ -292,12 +293,8 @@ public class NodeUtil {
 
     @SuppressWarnings("unchecked")
     public static <T extends Node> T cloneNode(T orig) {
-        Class<? extends Node> clazz = orig.getClass();
-        NodeClass nodeClass = NodeClass.get(clazz);
-        Node clone = orig.copy();
-        if (clone == null) {
-            return null;
-        }
+        final Node clone = orig.copy();
+        NodeClass nodeClass = NodeClass.get(clone.getClass());
 
         unsafe.putObject(clone, nodeClass.parentOffset, null);
 
@@ -305,10 +302,6 @@ public class NodeUtil {
             Node child = (Node) unsafe.getObject(orig, fieldOffset);
             if (child != null) {
                 Node clonedChild = cloneNode(child);
-                if (clonedChild == null) {
-                    return null;
-                }
-
                 unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                 unsafe.putObject(clone, fieldOffset, clonedChild);
             }
@@ -316,16 +309,13 @@ public class NodeUtil {
         for (long fieldOffset : nodeClass.childrenOffsets) {
             Node[] children = (Node[]) unsafe.getObject(orig, fieldOffset);
             if (children != null) {
-                Node[] clonedChildren = children.clone();
-                Arrays.fill(clonedChildren, null);
+                Node[] clonedChildren = (Node[]) Array.newInstance(children.getClass().getComponentType(), children.length);
                 for (int i = 0; i < children.length; i++) {
-                    Node clonedChild = cloneNode(children[i]);
-                    if (clonedChild == null) {
-                        return null;
+                    if (children[i] != null) {
+                        Node clonedChild = cloneNode(children[i]);
+                        clonedChildren[i] = clonedChild;
+                        unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                     }
-
-                    clonedChildren[i] = clonedChild;
-                    unsafe.putObject(clonedChild, nodeClass.parentOffset, clone);
                 }
                 unsafe.putObject(clone, fieldOffset, clonedChildren);
             }
@@ -364,6 +354,7 @@ public class NodeUtil {
             if (unsafe.getObject(parent, fieldOffset) == oldChild) {
                 assert assertAssignable(nodeClass, fieldOffset, newChild);
                 unsafe.putObject(parent, fieldOffset, newChild);
+                return;
             }
         }
 
@@ -376,6 +367,7 @@ public class NodeUtil {
                     if (array[i] == oldChild) {
                         assert assertAssignable(nodeClass, fieldOffset, newChild);
                         array[i] = newChild;
+                        return;
                     }
                 }
             }
@@ -421,6 +413,24 @@ public class NodeUtil {
         T[] result = Arrays.copyOf(first, first.length + second.length);
         System.arraycopy(second, 0, result, first.length, second.length);
         return result;
+    }
+
+    /**
+     * Get the nth parent of a node, where the 0th parent is the node itself. Returns null if there
+     * are less than n ancestors.
+     */
+    public static Node getNthParent(Node node, int n) {
+        Node parent = node;
+
+        for (int i = 0; i < n; i++) {
+            parent = parent.getParent();
+
+            if (parent == null) {
+                return null;
+            }
+        }
+
+        return parent;
     }
 
     /** find annotation in class/interface hierarchy. */
@@ -628,6 +638,66 @@ public class NodeUtil {
         p.flush();
     }
 
+    public static String printSourceAttributionTree(Node node) {
+        StringWriter out = new StringWriter();
+        printSourceAttributionTree(new PrintWriter(out), null, node, 1);
+        return out.toString();
+    }
+
+    public static void printSourceAttributionTree(OutputStream out, Node node) {
+        printSourceAttributionTree(new PrintWriter(out), null, node, 1);
+    }
+
+    private static void printSourceAttributionTree(PrintWriter p, Node parent, Node node, int level) {
+        if (node == null) {
+            return;
+        }
+        if (parent == null) {
+            // Add some preliminary information before starting with the root node
+            final SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection != null) {
+                final String txt = sourceSection.getSource().getCode();
+                p.println("Full source len=(" + txt.length() + ")  txt=___" + txt + "___");
+                p.println("AST source attribution:");
+            }
+        }
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < level; i++) {
+            sb.append("| ");
+        }
+
+        if (parent != null) {
+            String childName = "";
+            NodeField[] fields = NodeClass.get(parent.getClass()).fields;
+            for (NodeField field : fields) {
+                Object value = field.loadValue(parent);
+                if (value == node) {
+                    childName = field.getName();
+                    break;
+                } else if (value instanceof Node[]) {
+                    int index = 0;
+                    for (Node arrayNode : (Node[]) value) {
+                        if (arrayNode == node) {
+                            childName = field.getName() + "[" + index + "]";
+                            break;
+                        }
+                        index++;
+                    }
+                }
+            }
+            sb.append(childName);
+        }
+
+        sb.append("  (" + node.getClass().getSimpleName() + ")  ");
+        sb.append(displaySourceAttribution(node));
+        p.println(sb.toString());
+
+        for (Node child : node.getChildren()) {
+            printSourceAttributionTree(p, node, child, level + 1);
+        }
+        p.flush();
+    }
+
     /**
      * Prints a human readable form of a {@link Node} AST to the given {@link PrintStream}. This
      * print method does not check for cycles in the node structure.
@@ -714,5 +784,18 @@ public class NodeUtil {
 
     private static String nodeName(Node node) {
         return node.getClass().getSimpleName();
+    }
+
+    private static String displaySourceAttribution(Node node) {
+        final SourceSection section = node.getSourceSection();
+        if (section != null) {
+            final String srcText = section.getCode();
+            final StringBuilder sb = new StringBuilder();
+            sb.append("source:  len=" + srcText.length());
+            sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
+            sb.append(" txt=___" + srcText + "___");
+            return sb.toString();
+        }
+        return "";
     }
 }

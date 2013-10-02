@@ -43,6 +43,6 @@ public abstract class AbstractAssumption implements Assumption {
 
     @Override
     public String toString() {
-        return "Assumption: " + name;
+        return "Assumption(valid=" + isValid + "): " + name;
     }
 }

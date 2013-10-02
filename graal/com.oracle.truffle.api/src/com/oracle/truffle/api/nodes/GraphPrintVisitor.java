@@ -218,8 +218,10 @@ public class GraphPrintVisitor {
                 }
             }
             setNodeProperty(node, "class", node.getClass().getSimpleName());
-            readNodeProperties((Node) node);
-            copyDebugProperties(node);
+            if (node instanceof Node) {
+                readNodeProperties((Node) node);
+                copyDebugProperties((Node) node);
+            }
         }
     }
 
@@ -252,12 +254,10 @@ public class GraphPrintVisitor {
         propElem.setTextContent(String.valueOf(value));
     }
 
-    private void copyDebugProperties(Object node) {
-        if (node instanceof Node) {
-            Map<String, Object> debugProperties = ((Node) node).getDebugProperties();
-            for (Map.Entry<String, Object> property : debugProperties.entrySet()) {
-                setNodeProperty(node, property.getKey(), property.getValue());
-            }
+    private void copyDebugProperties(Node node) {
+        Map<String, Object> debugProperties = node.getDebugProperties();
+        for (Map.Entry<String, Object> property : debugProperties.entrySet()) {
+            setNodeProperty(node, property.getKey(), property.getValue());
         }
     }
 
@@ -274,7 +274,7 @@ public class GraphPrintVisitor {
         }
     }
 
-    protected void connectNodes(Object a, Object b) {
+    protected void connectNodes(Object a, Object b, String label) {
         if (nodeMap.get(a) == null || nodeMap.get(b) == null) {
             return;
         }
@@ -294,6 +294,9 @@ public class GraphPrintVisitor {
         edgeElem.setAttribute("from", fromId);
         edgeElem.setAttribute("to", toId);
         edgeElem.setAttribute("index", String.valueOf(count));
+        if (label != null) {
+            edgeElem.setAttribute("label", label);
+        }
         edgesElement.appendChild(edgeElem);
         edgeList.add(edgeElem);
     }
@@ -304,45 +307,60 @@ public class GraphPrintVisitor {
         }
 
         // if node is visited once again, skip
-        if (getElementByObject(node) == null || NodeUtil.findAnnotation(node.getClass(), GraphDuplicate.class) != null) {
-            visitAny(node);
+        if (getElementByObject(node) != null && NodeUtil.findAnnotation(node.getClass(), GraphDuplicate.class) == null) {
+            return this;
+        }
+
+        // respect node's custom handler
+        if (NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class) != null) {
+            Class<? extends GraphPrintHandler> customHandlerClass = NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class).handler();
+            try {
+                GraphPrintHandler customHandler = customHandlerClass.newInstance();
+                customHandler.visit(node, new GraphPrintAdapter());
+            } catch (InstantiationException | IllegalAccessException e) {
+                assert false : e;
+            }
+        } else if (NodeUtil.findAnnotation(node.getClass(), NullGraphPrintHandler.class) != null) {
+            // ignore
+        } else {
+            // default handler
+            createElementForNode(node);
+
+            if (node instanceof Node) {
+                for (Map.Entry<String, Node> child : findNamedNodeChildren((Node) node).entrySet()) {
+                    visit(child.getValue());
+                    connectNodes(node, child.getValue(), child.getKey());
+                }
+            }
         }
 
         return this;
     }
 
-    private void visitAny(Object node) {
-        // respect node's custom handler
-        if (NodeUtil.findAnnotation(node.getClass(), NullGraphPrintHandler.class) != null) {
-            return;
-        }
-        if (NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class) != null) {
-            Class<? extends GraphPrintHandler> gpHandlerClass = NodeUtil.findAnnotation(node.getClass(), CustomGraphPrintHandler.class).handler();
-            try {
-                GraphPrintHandler gpHandler = gpHandlerClass.newInstance();
-                gpHandler.visit(node, new GraphPrintAdapter());
-            } catch (InstantiationException e) {
-                assert false;
-            } catch (IllegalAccessException e) {
-                assert false;
+    private static LinkedHashMap<String, Node> findNamedNodeChildren(Node node) {
+        LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
+        NodeClass nodeClass = NodeClass.get(node.getClass());
+
+        for (NodeField field : nodeClass.getFields()) {
+            NodeFieldKind kind = field.getKind();
+            if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
+                Object value = field.loadValue(node);
+                if (value != null) {
+                    if (kind == NodeFieldKind.CHILD) {
+                        nodes.put(field.getName(), (Node) value);
+                    } else if (kind == NodeFieldKind.CHILDREN) {
+                        Object[] children = (Object[]) value;
+                        for (int i = 0; i < children.length; i++) {
+                            if (children[i] != null) {
+                                nodes.put(field.getName() + "[" + i + "]", (Node) children[i]);
+                            }
+                        }
+                    }
+                }
             }
-            return;
         }
 
-        // default handler
-        createElementForNode(node);
-
-        List<Node> children = NodeUtil.findNodeChildren((Node) node);
-        for (Object child : children) {
-            if (child == null) {
-                continue;
-            } else if (child instanceof Node) {
-                visit(child);
-            } else {
-                continue;
-            }
-            connectNodes(node, child);
-        }
+        return nodes;
     }
 
     public class GraphPrintAdapter {
@@ -356,7 +374,7 @@ public class GraphPrintVisitor {
         }
 
         public void connectNodes(Object node, Object child) {
-            GraphPrintVisitor.this.connectNodes(node, child);
+            GraphPrintVisitor.this.connectNodes(node, child, null);
         }
 
         public void setNodeProperty(Object node, String propertyName, Object value) {

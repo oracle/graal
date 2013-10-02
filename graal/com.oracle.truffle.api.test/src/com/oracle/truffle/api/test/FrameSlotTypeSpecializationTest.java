@@ -116,7 +116,7 @@ public class FrameSlotTypeSpecializationTest {
                     // fall through
                 }
             }
-            FrameUtil.setObjectSafe(frame, slot, o);
+            frame.setObject(slot, o);
             this.replace(new ObjectAssignLocal(slot, value));
             return null;
         }
@@ -134,11 +134,7 @@ public class FrameSlotTypeSpecializationTest {
         @Override
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
-            try {
-                frame.setObject(slot, o);
-            } catch (FrameSlotTypeException e) {
-                FrameUtil.setObjectSafe(frame, slot, o);
-            }
+            frame.setObject(slot, o);
             return null;
         }
     }

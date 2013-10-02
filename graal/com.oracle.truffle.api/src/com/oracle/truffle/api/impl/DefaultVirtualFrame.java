@@ -42,6 +42,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         this.caller = caller;
         this.arguments = arguments;
         this.locals = new Object[descriptor.getSize()];
+        Arrays.fill(locals, descriptor.getTypeConversion().getDefaultValue());
         this.tags = new byte[descriptor.getSize()];
     }
 
@@ -73,8 +74,8 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setObject(FrameSlot slot, Object value) throws FrameSlotTypeException {
-        verifySet(slot, FrameSlotKind.Object);
+    public void setObject(FrameSlot slot, Object value) {
+        verifySetObject(slot);
         locals[slot.getIndex()] = value;
     }
 
@@ -157,17 +158,11 @@ public final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public Object getValue(FrameSlot slot) {
-        int index = slot.getIndex();
-        if (index >= tags.length) {
-            assert index >= 0 && index < descriptor.getSize();
-            return descriptor.getTypeConversion().getDefaultValue();
+        int slotIndex = slot.getIndex();
+        if (slotIndex >= tags.length) {
+            resize();
         }
-        byte tag = tags[index];
-        if (tag == FrameSlotKind.Illegal.ordinal()) {
-            return descriptor.getTypeConversion().getDefaultValue();
-        } else {
-            return locals[index];
-        }
+        return locals[slotIndex];
     }
 
     private void verifySet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
@@ -186,45 +181,50 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         tags[slotIndex] = (byte) accessKind.ordinal();
     }
 
-    private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
-        FrameSlotKind slotKind = slot.getKind();
-        if (slotKind != accessKind) {
-            if (slotKind == FrameSlotKind.Illegal && accessKind == FrameSlotKind.Object) {
-                slot.setKind(FrameSlotKind.Object);
-                this.setObject(slot, descriptor.getTypeConversion().getDefaultValue());
-            } else {
-                throw new FrameSlotTypeException();
-            }
+    private void verifySetObject(FrameSlot slot) {
+        if (slot.getKind() != FrameSlotKind.Object) {
+            slot.setKind(FrameSlotKind.Object);
         }
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
             resize();
         }
-        if (tags[slotIndex] != accessKind.ordinal()) {
-            descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
-            if (tags[slotIndex] != accessKind.ordinal()) {
-                throw new FrameSlotTypeException();
+        tags[slotIndex] = (byte) FrameSlotKind.Object.ordinal();
+    }
+
+    private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
+        int slotIndex = slot.getIndex();
+        if (slotIndex >= tags.length) {
+            resize();
+        }
+        byte tag = tags[slotIndex];
+        if (accessKind == FrameSlotKind.Object ? (tag & 0xfe) != 0 : tag != accessKind.ordinal()) {
+            if (slot.getKind() == accessKind || tag == 0) {
+                descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
+                if (tags[slotIndex] == accessKind.ordinal()) {
+                    return;
+                }
             }
+            throw new FrameSlotTypeException();
         }
     }
 
     private void resize() {
+        int oldSize = tags.length;
         int newSize = descriptor.getSize();
-        if (newSize > tags.length) {
+        if (newSize > oldSize) {
             locals = Arrays.copyOf(locals, newSize);
+            Arrays.fill(locals, oldSize, newSize, descriptor.getTypeConversion().getDefaultValue());
             tags = Arrays.copyOf(tags, newSize);
         }
     }
 
     @Override
     public boolean isInitialized(FrameSlot slot) {
-        try {
-            return tags[slot.getIndex()] != 0;
-        } catch (ArrayIndexOutOfBoundsException ex) {
-            if (slot.getIndex() >= 0 && slot.getIndex() < descriptor.getSize()) {
-                return false;
-            }
-            throw ex;
+        int slotIndex = slot.getIndex();
+        if (slotIndex >= tags.length) {
+            resize();
         }
+        return tags[slotIndex] != 0;
     }
 }

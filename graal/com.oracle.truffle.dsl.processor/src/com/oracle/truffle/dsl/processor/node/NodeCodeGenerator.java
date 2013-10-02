@@ -1102,15 +1102,19 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private void createConstructors(NodeData node, CodeTypeElement clazz) {
             List<ExecutableElement> constructors = findUserConstructors(node.getNodeType());
+            ExecutableElement sourceSectionConstructor = null;
             if (constructors.isEmpty()) {
                 clazz.add(createUserConstructor(clazz, null));
             } else {
                 for (ExecutableElement constructor : constructors) {
                     clazz.add(createUserConstructor(clazz, constructor));
+                    if (NodeParser.isSourceSectionConstructor(context, constructor)) {
+                        sourceSectionConstructor = constructor;
+                    }
                 }
             }
             if (node.needsRewrites(getContext())) {
-                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType())));
+                clazz.add(createCopyConstructor(clazz, findCopyConstructor(node.getNodeType()), sourceSectionConstructor));
             }
         }
 
@@ -1181,31 +1185,15 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createCopyArray(CodeTreeBuilder parent, NodeChildData child, TypeMirror arrayType, CodeBlock<String> accessElement) {
-            CodeTreeBuilder builder = parent.create();
-            NodeData node = getModel().getNode();
-            builder.string("new ").type(arrayType).string(" {");
-            builder.startCommaGroup();
-            for (ActualParameter parameter : getModel().getParameters()) {
-                NodeChildData foundChild = node.findChild(parameter.getSpecification().getName());
-                if (foundChild == child) {
-                    builder.startGroup();
-                    builder.tree(accessElement.create(builder, String.valueOf(parameter.getIndex())));
-                    builder.end();
-                }
-            }
-            builder.end();
-            builder.end().string("}");
-            return builder.getRoot();
-        }
-
-        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor) {
+        private CodeExecutableElement createCopyConstructor(CodeTypeElement type, ExecutableElement superConstructor, ExecutableElement sourceSectionConstructor) {
             CodeExecutableElement method = new CodeExecutableElement(null, type.getSimpleName().toString());
             CodeTreeBuilder builder = method.createBuilder();
             method.getParameters().add(new CodeVariableElement(type.asType(), "copy"));
 
             if (superConstructor != null) {
                 builder.startStatement().startSuperCall().string("copy").end().end();
+            } else if (sourceSectionConstructor != null) {
+                builder.startStatement().startSuperCall().string("copy.getSourceSection()").end().end();
             }
 
             for (VariableElement var : type.getFields()) {
@@ -1213,18 +1201,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 final String varName = var.getSimpleName().toString();
                 final TypeMirror varType = var.asType();
 
-                final String copyAccess = "copy." + varName;
-                CodeTree init = CodeTreeBuilder.singleString(copyAccess);
-                if (Utils.isAssignable(getContext(), var.asType(), getContext().getTruffleTypes().getNodeArray())) {
-                    NodeChildData child = getModel().getNode().findChild(varName);
-                    init = createCopyArray(builder, child, varType, new CodeBlock<String>() {
-
-                        public CodeTree create(CodeTreeBuilder parent, String index) {
-                            return CodeTreeBuilder.singleString(copyAccess + "[" + index + "]");
-                        }
-                    });
+                String copyAccess = "copy." + varName;
+                if (Utils.isAssignable(getContext(), varType, getContext().getTruffleTypes().getNodeArray())) {
+                    copyAccess += ".clone()";
                 }
-                init = createAdoptChild(builder, varType, init);
+                CodeTree init = createAdoptChild(builder, varType, CodeTreeBuilder.singleString(copyAccess));
                 builder.startStatement().string("this.").string(varName).string(" = ").tree(init).end();
             }
             if (getModel().getNode().isPolymorphic()) {
@@ -1492,7 +1473,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     guardsAnd = " && ";
                 }
 
-                CodeTree cast = createCast(castBuilder, child, valueParam, typeGuard.getType(), minimumState);
+                CodeTree cast = createCast(castBuilder, child, valueParam, typeGuard.getType(), checkMinimumState);
                 if (cast != null) {
                     castBuilder.tree(cast);
                 }
@@ -1605,7 +1586,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        private CodeTree createCast(CodeTreeBuilder parent, NodeChildData field, ActualParameter source, TypeData targetType, boolean minimumState) {
+        private CodeTree createCast(CodeTreeBuilder parent, NodeChildData field, ActualParameter source, TypeData targetType, boolean checkMinimumState) {
             NodeData node = field.getNodeData();
             TypeData sourceType = source.getTypeSystemType();
 
@@ -1632,7 +1613,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTreeBuilder builder = parent.create();
             builder.tree(createLazyAssignment(parent, castValueName(source), targetType.getPrimitiveType(), condition, value));
-            if (minimumState && types.size() > 1) {
+            if (checkMinimumState && types.size() > 1) {
                 CodeTree castType = createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.getImplicitClass(targetType), CodeTreeBuilder.singleString(valueName(source)));
                 builder.tree(createLazyAssignment(builder, typeName(source), getContext().getType(Class.class), condition, castType));
             }
