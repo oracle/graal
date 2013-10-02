@@ -179,13 +179,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (node.isAlive()) {
                 METRIC_PROCESSED_NODES.increment();
 
-                if (tryGlobalValueNumbering(node)) {
+                NodeClass nodeClass = node.getNodeClass();
+                if (tryGlobalValueNumbering(node, nodeClass)) {
                     return;
                 }
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 int mark = graph.getMark();
                 if (!tryKillUnused(node)) {
-                    if (!tryCanonicalize(node)) {
+                    if (!tryCanonicalize(node, nodeClass)) {
                         if (node instanceof ValueNode) {
                             ValueNode valueNode = (ValueNode) node;
                             boolean improvedStamp = tryInferStamp(valueNode);
@@ -194,7 +195,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                                 performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization
-                                tryCanonicalize(valueNode);
+                                tryCanonicalize(valueNode, nodeClass);
                             }
                         }
                     }
@@ -214,8 +215,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public static boolean tryGlobalValueNumbering(Node node) {
-            NodeClass nodeClass = node.getNodeClass();
+        public static boolean tryGlobalValueNumbering(Node node, NodeClass nodeClass) {
             if (nodeClass.valueNumberable() && !nodeClass.isLeafNode()) {
                 Node newNode = node.graph().findDuplicate(node);
                 if (newNode != null) {
@@ -230,8 +230,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return false;
         }
 
-        public boolean tryCanonicalize(final Node node) {
-            boolean result = baseTryCanonicalize(node);
+        public boolean tryCanonicalize(final Node node, NodeClass nodeClass) {
+            boolean result = baseTryCanonicalize(node, nodeClass);
             if (!result && customCanonicalizer != null && node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
                 ValueNode canonical = customCanonicalizer.canonicalize(valueNode);
@@ -240,24 +240,24 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             return result;
         }
 
-        public boolean baseTryCanonicalize(final Node node) {
-            if (node instanceof Canonicalizable) {
-                assert !(node instanceof Simplifiable);
+        public boolean baseTryCanonicalize(final Node node, NodeClass nodeClass) {
+            if (nodeClass.isCanonicalizable()) {
+                assert !nodeClass.isSimplifiable();
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
                 return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>() {
 
                     public Boolean call() {
-                        Node canonical = ((Canonicalizable) node).canonical(tool);
+                        Node canonical = node.canonical(tool);
                         return performReplacement(node, canonical);
                     }
                 });
-            } else if (node instanceof Simplifiable) {
+            } else if (nodeClass.isSimplifiable()) {
                 Debug.log("Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
                 Debug.scope("SimplifyNode", node, new Runnable() {
 
                     public void run() {
-                        ((Simplifiable) node).simplify(tool);
+                        node.simplify(tool);
                     }
                 });
             }

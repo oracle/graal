@@ -33,6 +33,7 @@ import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.Input;
 import com.oracle.graal.graph.Node.Successor;
 import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.graph.spi.*;
 
 /**
  * Lazily associated metadata for every {@link Node} type. The metadata includes:
@@ -148,9 +149,21 @@ public final class NodeClass extends FieldIntrospection {
     private static final DebugMetric ITERABLE_NODE_TYPES = Debug.metric("IterableNodeTypes");
     private final DebugMetric nodeIterableCount;
 
+    /**
+     * Determines if this node type implements {@link Canonicalizable}.
+     */
+    private final boolean isCanonicalizable;
+
+    /**
+     * Determines if this node type implements {@link Simplifiable}.
+     */
+    private final boolean isSimplifiable;
+
     private NodeClass(Class<?> clazz) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
+        this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
+        this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
         FieldScanner scanner = new FieldScanner(new DefaultCalcOffset());
         scanner.scan(clazz);
@@ -257,6 +270,20 @@ public final class NodeClass extends FieldIntrospection {
 
     public boolean isLeafNode() {
         return isLeafNode;
+    }
+
+    /**
+     * Determines if this node type implements {@link Canonicalizable}.
+     */
+    public boolean isCanonicalizable() {
+        return isCanonicalizable;
+    }
+
+    /**
+     * Determines if this node type implements {@link Simplifiable}.
+     */
+    public boolean isSimplifiable() {
+        return isSimplifiable;
     }
 
     public static int cacheSize() {

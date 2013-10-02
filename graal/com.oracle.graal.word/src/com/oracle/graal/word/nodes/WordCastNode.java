@@ -57,6 +57,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         return input;
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (usages().count() == 0) {
             /* If the cast is unused, it can be eliminated. */

@@ -43,6 +43,7 @@ public abstract class PureFunctionMacroNode extends MacroNode implements Canonic
      */
     protected abstract Constant evaluate(Constant param, MetaAccessProvider metaAccess);
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (usages().isEmpty()) {
             return null;

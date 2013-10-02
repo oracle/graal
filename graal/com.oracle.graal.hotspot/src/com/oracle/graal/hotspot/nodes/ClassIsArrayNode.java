@@ -43,6 +43,7 @@ public class ClassIsArrayNode extends MacroNode implements Canonicalizable {
         return arguments.get(0);
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         ValueNode javaClass = getJavaClass();
         if (javaClass.isConstant()) {

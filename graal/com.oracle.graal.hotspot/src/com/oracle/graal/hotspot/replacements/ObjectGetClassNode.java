@@ -59,6 +59,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
         }
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (AOTCompilation.getValue()) {
             return this;

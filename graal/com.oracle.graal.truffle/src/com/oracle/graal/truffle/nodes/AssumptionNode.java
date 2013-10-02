@@ -39,6 +39,7 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
         return arguments.first();
     }
 
+    @Override
     public void simplify(SimplifierTool tool) {
         ValueNode assumption = getAssumption();
         if (tool.assumptions() != null && assumption.isConstant()) {

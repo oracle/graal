@@ -31,6 +31,7 @@ import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.graph.spi.*;
 
 /**
  * This class is the base class for all nodes, it represent a node which can be inserted in a
@@ -598,6 +599,28 @@ public abstract class Node implements Cloneable, Formattable {
 
     public final Node clone(Graph into) {
         return clone(into, true);
+    }
+
+    /**
+     * Must be overridden buy subclasses that implement {@link Canonicalizable}. The implementation
+     * in {@link Node} exists to obviate the need to cast a node before invoking
+     * {@link Canonicalizable#canonical(CanonicalizerTool)}.
+     * 
+     * @param tool
+     */
+    public Node canonical(CanonicalizerTool tool) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Must be overridden buy subclasses that implement {@link Simplifiable}. The implementation in
+     * {@link Node} exists to obviate the need to cast a node before invoking
+     * {@link Simplifiable#simplify(SimplifierTool)}.
+     * 
+     * @param tool
+     */
+    public void simplify(SimplifierTool tool) {
+        throw new UnsupportedOperationException();
     }
 
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {

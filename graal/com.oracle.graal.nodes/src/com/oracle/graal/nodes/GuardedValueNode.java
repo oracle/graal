@@ -75,6 +75,7 @@ public class GuardedValueNode extends FloatingGuardedNode implements LIRLowerabl
         }
     }
 
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (getGuard() == graph().start()) {
             if (stamp().equals(object().stamp())) {
