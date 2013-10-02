@@ -70,8 +70,6 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> PartialEscapeAnalysis = new OptionValue<>(true);
     @Option(help = "")
-    public static final OptionValue<Boolean> EscapeAnalysisHistogram = new OptionValue<>(false);
-    @Option(help = "")
     public static final OptionValue<Integer> EscapeAnalysisIterations = new OptionValue<>(2);
     @Option(help = "")
     public static final OptionValue<String> EscapeAnalyzeOnly = new OptionValue<>(null);
