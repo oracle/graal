@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.extended.*;
@@ -135,10 +134,5 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
     @Override
     public boolean canDeoptimize() {
         return true;
-    }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return reason;
     }
 }

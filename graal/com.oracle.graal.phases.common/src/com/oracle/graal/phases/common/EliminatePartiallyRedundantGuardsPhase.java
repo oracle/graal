@@ -25,7 +25,6 @@ package com.oracle.graal.phases.common;
 import java.util.*;
 import java.util.Map.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;

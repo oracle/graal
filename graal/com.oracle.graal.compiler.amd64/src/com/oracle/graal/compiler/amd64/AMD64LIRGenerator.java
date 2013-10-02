@@ -890,6 +890,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        append(new InfopointOp(stateFor(i.getState(), DeoptimizationReason.None), i.reason));
+        append(new InfopointOp(stateFor(i.getState()), i.reason));
     }
 }

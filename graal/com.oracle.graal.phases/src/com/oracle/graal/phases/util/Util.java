@@ -26,9 +26,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 
 /**
  * The {@code Util} class contains a motley collection of utility methods used throughout the
@@ -317,14 +314,6 @@ public class Util {
     public static short safeToShort(int v) {
         assert isShort(v);
         return (short) v;
-    }
-
-    public static boolean isFixed(Node n) {
-        return n instanceof FixedNode;
-    }
-
-    public static boolean isFloating(Node n) {
-        return n instanceof FloatingNode;
     }
 
     /**

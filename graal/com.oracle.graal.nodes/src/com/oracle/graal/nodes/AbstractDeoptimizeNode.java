@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,46 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class ReturnNode extends ControlSinkNode implements LIRLowerable {
+/**
+ * This node represents an unconditional explicit request for immediate deoptimization.
+ * 
+ * After this node, execution will continue using a fallback execution engine (such as an
+ * interpreter) at the position described by the {@link #getDeoptimizationState() deoptimization
+ * state}.
+ * 
+ */
+@NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
+public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode {
 
-    @Input private ValueNode result;
-    @Input private MemoryMapNode memoryMap;
+    @Input private FrameState deoptState;
 
-    public ValueNode result() {
-        return result;
-    }
-
-    /**
-     * Constructs a new Return instruction.
-     * 
-     * @param result the instruction producing the result for this return; {@code null} if this is a
-     *            void return
-     */
-    public ReturnNode(ValueNode result) {
-        this(result, null);
-    }
-
-    public ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
+    public AbstractDeoptimizeNode() {
         super(StampFactory.forVoid());
-        this.result = result;
-        this.memoryMap = memoryMap;
     }
 
     @Override
-    public boolean verify() {
-        return super.verify();
+    public boolean canDeoptimize() {
+        return true;
     }
 
     @Override
-    public void generate(LIRGeneratorTool gen) {
-        gen.visitReturn(this);
+    public FrameState getDeoptimizationState() {
+        return deoptState;
     }
 
-    public void setMemoryMap(MemoryMapNode memoryMap) {
-        updateUsages(this.memoryMap, memoryMap);
-        this.memoryMap = memoryMap;
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
+        deoptState = f;
     }
 
-    public MemoryMapNode getMemoryMap() {
-        return memoryMap;
+    public FrameState getState() {
+        return deoptState;
     }
+
+    public abstract ValueNode getActionAndReason(MetaAccessProvider runtime);
 }

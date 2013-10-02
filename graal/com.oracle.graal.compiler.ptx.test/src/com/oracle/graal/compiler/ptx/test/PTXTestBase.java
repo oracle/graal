@@ -30,6 +30,7 @@ import com.oracle.graal.api.code.CallingConvention.*;
 import com.oracle.graal.api.runtime.Graal;
 import com.oracle.graal.compiler.GraalCompiler;
 import com.oracle.graal.compiler.ptx.PTXBackend;
+import com.oracle.graal.compiler.ptx.PTXTargetMethodAssembler;
 import com.oracle.graal.compiler.test.GraalCompilerTest;
 import com.oracle.graal.debug.Debug;
 import com.oracle.graal.hotspot.meta.HotSpotNmethod;
@@ -138,6 +139,11 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             }
             Object r;
             if (dimensionX != 1 || dimensionY != 1 || dimensionZ != 1) {
+                /*
+                 * for now assert that the warp array block is no larger than the number of physical gpu cores.
+                 */
+                assert dimensionX * dimensionY * dimensionZ < PTXTargetMethodAssembler.getAvailableProcessors();
+
                 r = ((HotSpotNmethod) installedCode).executeParallel(dimensionX, dimensionY, dimensionZ, executeArgs);
             } else {
                 r = installedCode.executeVarargs(executeArgs);

@@ -100,9 +100,4 @@ public final class NewInstanceNode extends DeoptimizingFixedWithNextNode impleme
     public boolean canDeoptimize() {
         return true;
     }
-
-    @Override
-    public DeoptimizationReason getDeoptimizationReason() {
-        return DeoptimizationReason.RuntimeConstraint;
-    }
 }

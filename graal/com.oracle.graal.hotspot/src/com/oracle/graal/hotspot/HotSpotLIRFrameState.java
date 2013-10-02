@@ -34,8 +34,8 @@ import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
  */
 class HotSpotLIRFrameState extends LIRFrameState {
 
-    public HotSpotLIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge, short deoptimizationReason) {
-        super(topFrame, virtualObjects, exceptionEdge, deoptimizationReason);
+    public HotSpotLIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
+        super(topFrame, virtualObjects, exceptionEdge);
     }
 
     @Override

@@ -41,6 +41,12 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
     }
 
     @Override
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 2;
+        return Constant.forIntegerKind(kind(), inputs[0].asLong() ^ inputs[1].asLong(), null);
+    }
+
+    @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forIntegerKind(kind(), 0, graph());
@@ -49,12 +55,7 @@ public final class XorNode extends BitLogicNode implements Canonicalizable {
             return graph().unique(new XorNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == Kind.Int) {
-                return ConstantNode.forInt(x().asConstant().asInt() ^ y().asConstant().asInt(), graph());
-            } else {
-                assert kind() == Kind.Long;
-                return ConstantNode.forLong(x().asConstant().asLong() ^ y().asConstant().asLong(), graph());
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         } else if (y().isConstant()) {
             if (kind() == Kind.Int) {
                 int c = y().asConstant().asInt();

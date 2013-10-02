@@ -24,7 +24,6 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
@@ -71,22 +70,15 @@ public class LIR {
 
     private boolean hasArgInCallerFrame;
 
-    private final SpeculationLog speculationLog;
-
     /**
      * Creates a new LIR instance for the specified compilation.
      */
-    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder, SpeculationLog speculationLog) {
+    public LIR(ControlFlowGraph cfg, BlockMap<List<ScheduledNode>> blockToNodesMap, List<Block> linearScanOrder, List<Block> codeEmittingOrder) {
         this.cfg = cfg;
         this.blockToNodesMap = blockToNodesMap;
         this.codeEmittingOrder = codeEmittingOrder;
         this.linearScanOrder = linearScanOrder;
         this.lirInstructions = new BlockMap<>(cfg);
-        this.speculationLog = speculationLog;
-    }
-
-    public SpeculationLog getDeoptimizationReasons() {
-        return speculationLog;
     }
 
     /**

@@ -20,9 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.nodes;
 
-public interface MemoryMap<T> {
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.type.*;
 
-    T getLastLocationAccess(LocationIdentity locationIdentity);
+public abstract class MemoryMapNode extends FloatingNode {
+
+    public MemoryMapNode() {
+        super(StampFactory.forVoid());
+    }
+
+    public abstract Node getLastLocationAccess(LocationIdentity locationIdentity);
 }

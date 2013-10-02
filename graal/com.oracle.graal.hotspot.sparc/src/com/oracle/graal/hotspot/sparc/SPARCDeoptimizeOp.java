@@ -22,39 +22,24 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.sparc.SPARC.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 @Opcode("DEOPT")
 final class SPARCDeoptimizeOp extends SPARCLIRInstruction {
 
-    private DeoptimizationAction action;
-    private DeoptimizationReason reason;
     @State private LIRFrameState info;
 
-    SPARCDeoptimizeOp(DeoptimizationAction action, DeoptimizationReason reason, LIRFrameState info) {
-        this.action = action;
-        this.reason = reason;
+    SPARCDeoptimizeOp(LIRFrameState info) {
         this.info = info;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        HotSpotGraalRuntime runtime = graalRuntime();
-        Register thread = runtime.getRuntime().threadRegister();
-        Register scratch = g3;
-        new Mov(tasm.runtime.encodeDeoptActionAndReason(action, reason), scratch).emit(masm);
-        new Stw(scratch, new SPARCAddress(thread, runtime.getConfig().pendingDeoptimizationOffset)).emit(masm);
         // TODO the patched call address looks odd (and is invalid) compared to other runtime calls:
 // 0xffffffff749bb5fc: call 0xffffffff415a720c ; {runtime_call}
 // [Exception Handler]

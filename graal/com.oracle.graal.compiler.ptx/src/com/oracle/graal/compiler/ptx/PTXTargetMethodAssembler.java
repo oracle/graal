@@ -36,6 +36,12 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
     private static CompilerToGPU toGPU = HotSpotGraalRuntime.graalRuntime().getCompilerToGPU();
     private static boolean validDevice = toGPU.deviceInit();
 
+    private static final int totalProcessors = (validDevice ? toGPU.availableProcessors() : 0);
+
+    public static int getAvailableProcessors() {
+        return totalProcessors;
+    }
+
     // detach ??
 
     public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap,

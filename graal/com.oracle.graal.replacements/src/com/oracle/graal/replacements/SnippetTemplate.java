@@ -34,6 +34,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -540,7 +541,6 @@ public class SnippetTemplate {
         }
 
         new DeadCodeEliminationPhase().apply(snippetCopy);
-        new CanonicalizerPhase(true).apply(snippetCopy, context);
 
         assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
@@ -552,7 +552,7 @@ public class SnippetTemplate {
         StartNode entryPointNode = snippet.start();
         nodes = new ArrayList<>(snippet.getNodeCount());
         boolean seenReturn = false;
-        boolean containsMemoryState = false;
+        boolean containsMemoryMap = false;
         for (Node node : snippet.getNodes()) {
             if (node == entryPointNode || node == entryPointNode.stateAfter()) {
                 // Do nothing.
@@ -560,18 +560,20 @@ public class SnippetTemplate {
                 nodes.add(node);
                 if (node instanceof ReturnNode) {
                     retNode = (ReturnNode) node;
-                    for (MemoryState memstate : retNode.usages().filter(MemoryState.class).snapshot()) {
-                        this.memoryMap = memstate.getMemoryMap();
-                        memstate.safeDelete();
-                    }
+                    NodeIterable<MemoryMapNode> memstates = retNode.inputs().filter(MemoryMapNode.class);
+                    assert memstates.count() == 1;
+                    memoryMap = memstates.first();
+                    retNode.replaceFirstInput(memoryMap, null);
+                    memoryMap.safeDelete();
+
                     assert !seenReturn : "can handle only one ReturnNode";
                     seenReturn = true;
-                } else if (node instanceof MemoryState) {
-                    containsMemoryState = true;
+                } else if (node instanceof MemoryMapNode) {
+                    containsMemoryMap = true;
                 }
             }
         }
-        assert !containsMemoryState;
+        assert !containsMemoryMap;
 
         this.sideEffectNodes = curSideEffectNodes;
         this.deoptNodes = curDeoptNodes;
@@ -657,7 +659,7 @@ public class SnippetTemplate {
     /**
      * map of killing locations to memory checkpoints (nodes).
      */
-    private MemoryMap<Node> memoryMap;
+    private MemoryMapNode memoryMap;
 
     /**
      * Gets the instantiation-time bindings to this template's parameters.
@@ -751,7 +753,7 @@ public class SnippetTemplate {
         /**
          * Replaces all usages of {@code oldNode} with direct or indirect usages of {@code newNode}.
          */
-        void replace(ValueNode oldNode, ValueNode newNode, MemoryMap<Node> mmap);
+        void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap);
     }
 
     /**
@@ -761,7 +763,7 @@ public class SnippetTemplate {
     public static final UsageReplacer DEFAULT_REPLACER = new UsageReplacer() {
 
         @Override
-        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMap<Node> mmap) {
+        public void replace(ValueNode oldNode, ValueNode newNode, MemoryMapNode mmap) {
             oldNode.replaceAtUsages(newNode);
             if (mmap == null || newNode == null) {
                 return;
@@ -792,7 +794,7 @@ public class SnippetTemplate {
             return true;
         }
 
-        Set<LocationIdentity> kills = ((MemoryMapImpl) memoryMap).getLocations();
+        Set<LocationIdentity> kills = new HashSet<>(((MemoryMapImpl) memoryMap).getLocations());
 
         if (replacee instanceof MemoryCheckpoint.Single) {
             // check if some node in snippet graph also kills the same location
@@ -828,7 +830,7 @@ public class SnippetTemplate {
         return true;
     }
 
-    private class DuplicateMapper implements MemoryMap<Node> {
+    private class DuplicateMapper extends MemoryMapNode {
 
         Map<Node, Node> duplicates;
         StartNode replaceeStart;
@@ -915,7 +917,7 @@ public class SnippetTemplate {
                     returnValue = (ValueNode) duplicates.get(returnNode.result());
                 }
                 Node returnDuplicate = duplicates.get(returnNode);
-                MemoryMap<Node> mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
+                MemoryMapNode mmap = new DuplicateMapper(duplicates, replaceeGraph.start());
                 if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryCheckpoint) {
                     replacer.replace(replacee, (ValueNode) returnDuplicate.predecessor(), mmap);
                 } else {

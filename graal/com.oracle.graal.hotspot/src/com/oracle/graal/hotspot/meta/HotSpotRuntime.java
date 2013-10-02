@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
-import static com.oracle.graal.api.code.DeoptimizationAction.*;
 import static com.oracle.graal.api.code.MemoryBarriers.*;
+import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
@@ -1082,13 +1082,13 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     @Override
-    public int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
+    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
         final int actionShift = 0;
         final int reasonShift = 3;
 
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
-        return (~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
+        return Constant.forInt(~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
     }
 
     public int convertDeoptAction(DeoptimizationAction action) {

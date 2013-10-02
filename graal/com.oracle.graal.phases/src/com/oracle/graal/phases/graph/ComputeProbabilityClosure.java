@@ -77,8 +77,8 @@ public class ComputeProbabilityClosure {
     private void adjustControlSplitProbabilities() {
         HashSet<ControlSplitNode> result = new HashSet<>();
         NodeBitMap visitedNodes = new NodeBitMap(graph);
-        for (DeoptimizeNode n : graph.getNodes(DeoptimizeNode.class)) {
-            if (n.action().doesInvalidateCompilation()) {
+        for (AbstractDeoptimizeNode n : graph.getNodes(AbstractDeoptimizeNode.class)) {
+            if (!(n instanceof DeoptimizeNode) || ((DeoptimizeNode) n).action().doesInvalidateCompilation()) {
                 findParentControlSplitNodes(result, n, visitedNodes);
             }
         }
@@ -90,7 +90,7 @@ public class ComputeProbabilityClosure {
         }
     }
 
-    private static void findParentControlSplitNodes(HashSet<ControlSplitNode> result, DeoptimizeNode n, NodeBitMap visitedNodes) {
+    private static void findParentControlSplitNodes(HashSet<ControlSplitNode> result, AbstractDeoptimizeNode n, NodeBitMap visitedNodes) {
         ArrayDeque<FixedNode> nodes = new ArrayDeque<>();
         nodes.push(n);
 
@@ -142,9 +142,9 @@ public class ComputeProbabilityClosure {
 
     private boolean verifyProbabilities() {
         if (doesNotAlwaysDeopt(graph)) {
-            for (DeoptimizeNode n : graph.getNodes(DeoptimizeNode.class)) {
-                if (n.action().doesInvalidateCompilation() && nodeProbabilities.get(n) > 0.01) {
-                    throw new AssertionError(String.format("%s with reason %s and probability %f in graph %s", n, n.reason(), nodeProbabilities.get(n), graph));
+            for (AbstractDeoptimizeNode n : graph.getNodes(AbstractDeoptimizeNode.class)) {
+                if (nodeProbabilities.get(n) > 0.01 && (!(n instanceof DeoptimizeNode) || ((DeoptimizeNode) n).action().doesInvalidateCompilation())) {
+                    throw new AssertionError(String.format("%s with probability %f in graph %s", n, nodeProbabilities.get(n), graph));
                 }
             }
         }

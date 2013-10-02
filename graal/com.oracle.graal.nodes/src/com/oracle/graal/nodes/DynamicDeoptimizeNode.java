@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,43 +23,25 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.nodes.spi.*;
 
-public class MemoryState extends VirtualState {
+public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
+    @Input private ValueNode actionAndReason;
 
-    private MemoryMap<Node> memoryMap;
-    @Input private Node object;
-
-    public MemoryState(MemoryMap<Node> memoryMap, FixedNode object) {
-        this.memoryMap = memoryMap;
-        this.object = object;
+    public DynamicDeoptimizeNode(ValueNode actionAndReason) {
+        this.actionAndReason = actionAndReason;
     }
 
-    public Node object() {
-        return object;
-    }
-
-    public MemoryMap<Node> getMemoryMap() {
-        return memoryMap;
+    public ValueNode getActionAndReason() {
+        return actionAndReason;
     }
 
     @Override
-    public VirtualState duplicateWithVirtualState() {
-        throw new GraalInternalError("should not reach here");
+    public ValueNode getActionAndReason(MetaAccessProvider runtime) {
+        return getActionAndReason();
     }
 
-    @Override
-    public void applyToNonVirtual(NodeClosure<? super ValueNode> closure) {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    @Override
-    public void applyToVirtual(VirtualClosure closure) {
-        throw new GraalInternalError("should not reach here");
-    }
-
-    @Override
-    public boolean isPartOfThisState(VirtualState state) {
-        throw new GraalInternalError("should not reach here");
+    public void generate(LIRGeneratorTool generator) {
+        generator.emitDeoptimize(generator.operand(actionAndReason), this);
     }
 }

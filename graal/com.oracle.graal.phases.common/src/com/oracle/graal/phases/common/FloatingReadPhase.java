@@ -27,7 +27,6 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
@@ -42,7 +41,7 @@ public class FloatingReadPhase extends Phase {
         ANALYSIS_ONLY, CREATE_FLOATING_READS
     }
 
-    public static class MemoryMapImpl implements MemoryMap<Node> {
+    public static class MemoryMapImpl extends MemoryMapNode {
 
         private IdentityHashMap<LocationIdentity, ValueNode> lastMemorySnapshot;
 
@@ -74,11 +73,6 @@ public class FloatingReadPhase extends Phase {
             }
         }
 
-        @Override
-        public String toString() {
-            return "Map=" + lastMemorySnapshot.toString();
-        }
-
         public boolean isEmpty() {
             if (lastMemorySnapshot.size() == 0) {
                 return true;
@@ -92,7 +86,7 @@ public class FloatingReadPhase extends Phase {
         }
 
         public Set<LocationIdentity> getLocations() {
-            return new HashSet<>(lastMemorySnapshot.keySet());
+            return lastMemorySnapshot.keySet();
         }
 
     }
@@ -192,7 +186,7 @@ public class FloatingReadPhase extends Phase {
             assert MemoryCheckpoint.TypeAssertion.correctType(node) : node;
 
             if (execmode == ExecutionMode.ANALYSIS_ONLY && node instanceof ReturnNode) {
-                node.graph().add(new MemoryState(new MemoryMapImpl(state), node));
+                ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapImpl(state)));
             }
             return state;
         }
