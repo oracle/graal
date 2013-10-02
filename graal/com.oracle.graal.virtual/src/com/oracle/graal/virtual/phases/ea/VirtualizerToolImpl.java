@@ -105,12 +105,6 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     @Override
-    public ValueNode getMaterializedValue(ValueNode value) {
-        ObjectState obj = state.getObjectState(value);
-        return obj != null && !obj.isVirtual() ? obj.getMaterializedValue() : null;
-    }
-
-    @Override
     public ValueNode getReplacedValue(ValueNode original) {
         return state.getScalarAlias(original);
     }
