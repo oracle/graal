@@ -234,7 +234,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             boolean result = baseTryCanonicalize(node, nodeClass);
             if (!result && customCanonicalizer != null && node instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) node;
-                ValueNode canonical = customCanonicalizer.canonicalize(valueNode);
+                Node canonical = customCanonicalizer.canonicalize(valueNode);
                 result = performReplacement(node, canonical);
             }
             return result;

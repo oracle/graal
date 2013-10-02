@@ -246,6 +246,16 @@ public final class HotSpotVMConfig extends CompilerObject {
     public final int osThreadOffset = getUninitializedInt();
 
     /**
+     * The value of JavaThread::graal_counters_offset().
+     */
+    public final int graalCountersThreadOffset = getUninitializedInt();
+
+    /**
+     * The length of the JavaThread::_graal_counters array.
+     */
+    public final int graalCountersSize = getUninitializedInt();
+
+    /**
      * The value of OSThread::interrupted_offset().
      */
     public final int osThreadInterruptedOffset = getUninitializedInt();

@@ -37,17 +37,18 @@ public class IntegerMulNode extends IntegerArithmeticNode implements Canonicaliz
     }
 
     @Override
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 2;
+        return Constant.forIntegerKind(kind(), inputs[0].asLong() * inputs[1].asLong(), null);
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && !y().isConstant()) {
             return graph().unique(new IntegerMulNode(kind(), y(), x()));
         }
         if (x().isConstant()) {
-            if (kind() == Kind.Int) {
-                return ConstantNode.forInt(x().asConstant().asInt() * y().asConstant().asInt(), graph());
-            } else {
-                assert kind() == Kind.Long;
-                return ConstantNode.forLong(x().asConstant().asLong() * y().asConstant().asLong(), graph());
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         } else if (y().isConstant()) {
             long c = y().asConstant().asLong();
             if (c == 1) {

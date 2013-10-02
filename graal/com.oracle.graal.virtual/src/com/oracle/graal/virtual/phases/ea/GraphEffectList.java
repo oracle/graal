@@ -24,7 +24,6 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -35,9 +34,6 @@ import com.oracle.graal.phases.common.*;
 public class GraphEffectList extends EffectList {
 
     public void addCounterBefore(final String group, final String name, final int increment, final boolean addContext, final FixedNode position) {
-        if (!DynamicCounterNode.enabled) {
-            return;
-        }
         add(new Effect() {
 
             @Override
@@ -48,16 +44,12 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert position.isAlive();
-                DynamicCounterNode node = graph.add(new DynamicCounterNode(group, name, increment, addContext));
-                graph.addBeforeFixed(position, node);
+                DynamicCounterNode.addCounterBefore(group, name, increment, addContext, position);
             }
         });
     }
 
     public void addSurvivingCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
-        if (!DynamicCounterNode.enabled) {
-            return;
-        }
         add(new Effect() {
 
             @Override
@@ -68,8 +60,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert position.isAlive();
-                DynamicCounterNode node = graph.add(new SurvivingCounterNode(group, name, increment, addContext, checkedValue));
-                graph.addBeforeFixed(position, node);
+                SurvivingCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position);
             }
         });
     }
@@ -360,26 +351,6 @@ public class GraphEffectList extends EffectList {
                     }
 
                 }
-            }
-
-            @Override
-            public boolean isVisible() {
-                return true;
-            }
-        });
-    }
-
-    public void addLowLevelCounterBefore(final String group, final String name, final int increment, final boolean addContext, final FixedNode position, final MetaAccessProvider runtime) {
-        add(new Effect() {
-
-            @Override
-            public String name() {
-                return "addLowLevelCounterBefore";
-            }
-
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                DynamicCounterNode.addLowLevel(group, name, increment, addContext, position, runtime);
             }
 
             @Override

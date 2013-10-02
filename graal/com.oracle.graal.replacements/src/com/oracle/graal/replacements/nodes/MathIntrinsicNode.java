@@ -86,28 +86,15 @@ public class MathIntrinsicNode extends FloatingNode implements Canonicalizable, 
         gen.setResult(this, result);
     }
 
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        return Constant.forDouble(compute(inputs[0].asDouble(), operation()));
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant()) {
-            double value = x().asConstant().asDouble();
-            switch (operation()) {
-                case ABS:
-                    return ConstantNode.forDouble(Math.abs(value), graph());
-                case SQRT:
-                    return ConstantNode.forDouble(Math.sqrt(value), graph());
-                case LOG:
-                    return ConstantNode.forDouble(Math.log(value), graph());
-                case LOG10:
-                    return ConstantNode.forDouble(Math.log10(value), graph());
-                case SIN:
-                    return ConstantNode.forDouble(Math.sin(value), graph());
-                case COS:
-                    return ConstantNode.forDouble(Math.cos(value), graph());
-                case TAN:
-                    return ConstantNode.forDouble(Math.tan(value), graph());
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant()), graph());
         }
         return this;
     }

@@ -20,15 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.extended.*;
 
-/**
- * An {@code ArithmeticOperation} is an operation that does primitive value arithmetic without side
- * effect.
- */
-public interface ArithmeticOperation {
+public class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
 
-    Constant evalConst(Constant... inputs);
+    private LocationIdentity locationIdentity;
+
+    public KillingBeginNode(LocationIdentity locationIdentity) {
+        this.locationIdentity = locationIdentity;
+    }
+
+    public static KillingBeginNode begin(FixedNode with, LocationIdentity locationIdentity) {
+        if (with instanceof KillingBeginNode) {
+            return (KillingBeginNode) with;
+        }
+        KillingBeginNode begin = with.graph().add(new KillingBeginNode(locationIdentity));
+        begin.setNext(with);
+        return begin;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
 }

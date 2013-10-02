@@ -42,8 +42,21 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
     }
 
     @Override
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 2;
+        if (kind() == Kind.Int) {
+            return Constant.forInt(inputs[0].asInt() >>> inputs[1].asInt());
+        } else {
+            assert kind() == Kind.Long;
+            return Constant.forLong(inputs[0].asLong() >>> inputs[1].asLong());
+        }
+    }
+
+    @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (y().isConstant()) {
+        if (x().isConstant() && y().isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
+        } else if (y().isConstant()) {
             int amount = y().asConstant().asInt();
             int originalAmout = amount;
             int mask;
@@ -54,14 +67,6 @@ public final class UnsignedRightShiftNode extends ShiftNode implements Canonical
                 mask = 0x3f;
             }
             amount &= mask;
-            if (x().isConstant()) {
-                if (kind() == Kind.Int) {
-                    return ConstantNode.forInt(x().asConstant().asInt() >>> amount, graph());
-                } else {
-                    assert kind() == Kind.Long;
-                    return ConstantNode.forLong(x().asConstant().asLong() >>> amount, graph());
-                }
-            }
             if (amount == 0) {
                 return x();
             }

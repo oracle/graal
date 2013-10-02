@@ -57,13 +57,13 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 LoadFieldNode load = (LoadFieldNode) node;
                 if (!load.isVolatile()) {
                     ValueNode object = GraphUtil.unproxify(load.object());
-                    ValueNode cachedValue = state.getReadCache(object, load.field());
+                    ValueNode cachedValue = state.getReadCache(object, load.field(), this);
                     if (cachedValue != null) {
                         effects.replaceAtUsages(load, cachedValue);
-                        state.addScalarAlias(load, cachedValue);
+                        addScalarAlias(load, cachedValue);
                         deleted = true;
                     } else {
-                        state.addReadCache(object, load.field(), load);
+                        state.addReadCache(object, load.field(), load, this);
                     }
                 } else {
                     processIdentity(state, ANY_LOCATION);
@@ -72,15 +72,15 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                 StoreFieldNode store = (StoreFieldNode) node;
                 if (!store.isVolatile()) {
                     ValueNode object = GraphUtil.unproxify(store.object());
-                    ValueNode cachedValue = state.getReadCache(object, store.field());
+                    ValueNode cachedValue = state.getReadCache(object, store.field(), this);
 
-                    ValueNode value = state.getScalarAlias(store.value());
+                    ValueNode value = getScalarAlias(store.value());
                     if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
                         effects.deleteFixedNode(store);
                         deleted = true;
                     }
                     state.killReadCache(store.field());
-                    state.addReadCache(object, store.field(), value);
+                    state.addReadCache(object, store.field(), value, this);
                 } else {
                     processIdentity(state, ANY_LOCATION);
                 }
@@ -112,7 +112,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
 
         for (Map.Entry<ReadCacheEntry, ValueNode> entry : exitState.getReadCache().entrySet()) {
             if (initialState.getReadCache().get(entry.getKey()) != entry.getValue()) {
-                ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity);
+                ValueNode value = exitState.getReadCache(entry.getKey().object, entry.getKey().identity, this);
                 if (!(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint() != exitNode) {
                     ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value, null);
                     effects.addFloatingNode(proxy, "readCacheProxy");
@@ -165,7 +165,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     PhiNode phiNode = getCachedPhi(entry, value.kind());
                     mergeEffects.addFloatingNode(phiNode, "mergeReadCache");
                     for (int i = 0; i < states.size(); i++) {
-                        afterMergeEffects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity));
+                        afterMergeEffects.addPhiInput(phiNode, states.get(i).getReadCache(key.object, key.identity, PEReadEliminationClosure.this));
                     }
                     newState.readCache.put(key, phiNode);
                 } else if (value != null) {
@@ -187,7 +187,7 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
         private void mergeReadCachePhi(PhiNode phi, ResolvedJavaField identity, List<PEReadEliminationBlockState> states) {
             ValueNode[] values = new ValueNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {
-                ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity);
+                ValueNode value = states.get(i).getReadCache(phi.valueAt(i), identity, PEReadEliminationClosure.this);
                 if (value == null) {
                     return;
                 }

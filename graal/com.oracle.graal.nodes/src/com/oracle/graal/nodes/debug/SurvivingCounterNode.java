@@ -36,7 +36,7 @@ public class SurvivingCounterNode extends DynamicCounterNode implements Simplifi
 
     @Input private ValueNode checkedValue;
 
-    public SurvivingCounterNode(String group, String name, long increment, boolean addContext, ValueNode checkedValue) {
+    public SurvivingCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
         super(group, name, increment, addContext);
         this.checkedValue = checkedValue;
     }
@@ -55,5 +55,11 @@ public class SurvivingCounterNode extends DynamicCounterNode implements Simplifi
         if (state != null && state.getState() == EscapeState.Virtual) {
             tool.delete();
         }
+    }
+
+    public static void addCounterBefore(String group, String name, long increment, boolean addContext, ValueNode checkedValue, FixedNode position) {
+        StructuredGraph graph = position.graph();
+        SurvivingCounterNode counter = graph.add(new SurvivingCounterNode(name, group, ConstantNode.forLong(increment, graph), addContext, checkedValue));
+        graph.addBeforeFixed(position, counter);
     }
 }

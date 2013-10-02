@@ -24,48 +24,14 @@ package com.oracle.graal.virtual.phases.ea;
 
 import java.util.*;
 
-import com.oracle.graal.nodes.*;
-
 public abstract class EffectsBlockState<T extends EffectsBlockState<T>> {
-
-    protected final IdentityHashMap<ValueNode, ValueNode> scalarAliases;
-
-    protected EffectsBlockState() {
-        scalarAliases = new IdentityHashMap<>();
-    }
-
-    protected EffectsBlockState(EffectsBlockState<T> other) {
-        scalarAliases = new IdentityHashMap<>(other.scalarAliases);
-    }
-
-    public void addScalarAlias(ValueNode alias, ValueNode value) {
-        scalarAliases.put(alias, value);
-    }
-
-    public ValueNode getScalarAlias(ValueNode alias) {
-        ValueNode result = scalarAliases.get(alias);
-        return result == null ? alias : result;
-    }
 
     @Override
     public String toString() {
-        return "Scalar Aliases: " + scalarAliases.toString();
+        return "";
     }
 
-    public void meetAliases(List<T> states) {
-        scalarAliases.putAll(states.get(0).scalarAliases);
-        for (int i = 1; i < states.size(); i++) {
-            EffectsBlockState<T> state = states.get(i);
-            meetMaps(scalarAliases, state.scalarAliases);
-        }
-    }
-
-    public boolean equivalentTo(T other) {
-        if (this == other) {
-            return true;
-        }
-        return scalarAliases.equals(other.scalarAliases);
-    }
+    protected abstract boolean equivalentTo(T other);
 
     protected static <K, V> boolean compareMaps(Map<K, V> left, Map<K, V> right) {
         if (left.size() != right.size()) {
