@@ -30,8 +30,7 @@ import com.oracle.graal.nodes.*;
 
 /**
  * An {@link EffectList} can be used to maintain a list of {@link Effect}s and backtrack to a
- * previous state by truncating the list. It can also maintain a level for each effect, which helps
- * in creating a string representation for the list.
+ * previous state by truncating the list.
  */
 public class EffectList implements Iterable<EffectList.Effect> {
 
