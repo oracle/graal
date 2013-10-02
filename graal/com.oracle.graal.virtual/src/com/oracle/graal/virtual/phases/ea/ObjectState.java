@@ -137,7 +137,7 @@ public class ObjectState extends Virtualizable.State {
     }
 
     public void escape(ValueNode materialized, EscapeState newState) {
-        assert state == EscapeState.Virtual || (state == EscapeState.ThreadLocal && newState == EscapeState.Global);
+        assert state == EscapeState.Virtual && newState == EscapeState.Materialized;
         state = newState;
         materializedValue = materialized;
         entries = null;
@@ -146,7 +146,7 @@ public class ObjectState extends Virtualizable.State {
 
     @Override
     public ValueNode getMaterializedValue() {
-        assert state == EscapeState.ThreadLocal || state == EscapeState.Global;
+        assert state == EscapeState.Materialized;
         return materializedValue;
     }
 
