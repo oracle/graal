@@ -663,7 +663,7 @@ public final class NodeUtil {
         }
         final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < level; i++) {
-            sb.append("  ");
+            sb.append("| ");
         }
 
         if (parent != null) {
