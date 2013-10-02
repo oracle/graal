@@ -250,18 +250,16 @@ public final class SchedulePhase extends Phase {
 
         @Override
         protected List<Map<LocationIdentity, Node>> processLoop(Loop loop, Map<LocationIdentity, Node> state) {
-            LoopInfo<Map<LocationIdentity, Node>> info = ReentrantBlockIterator.processLoop(this, loop, new HashMap<>(state));
+            LoopInfo<Map<LocationIdentity, Node>> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
             assert loop.header.getBeginNode() instanceof LoopBeginNode;
             Map<LocationIdentity, Node> headerState = merge(loop.header, info.endStates);
-            // getBlockToKillMap().put(loop.header, headerState);
+            // second iteration, for computing information at loop exits
+            info = ReentrantBlockIterator.processLoop(this, loop, cloneState(headerState));
 
             int i = 0;
             for (Block exit : loop.exits) {
                 Map<LocationIdentity, Node> exitState = info.exitStates.get(i++);
-                for (LocationIdentity key : headerState.keySet()) {
-                    exitState.put(key, headerState.get(key));
-                }
 
                 Node begin = exit.getBeginNode();
                 assert begin instanceof LoopExitNode;
