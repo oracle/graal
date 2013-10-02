@@ -24,9 +24,10 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-public abstract class BigIntegerLiteralNode extends TypedNode {
+public final class BigIntegerLiteralNode extends TypedNode {
 
     private final BigInteger value;
 
@@ -34,8 +35,14 @@ public abstract class BigIntegerLiteralNode extends TypedNode {
         this.value = value;
     }
 
-    @Specialization
-    public BigInteger doBigInteger() {
+    @Override
+    public BigInteger executeBigInteger(VirtualFrame frame) throws UnexpectedResultException {
         return value;
     }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
+    }
+
 }

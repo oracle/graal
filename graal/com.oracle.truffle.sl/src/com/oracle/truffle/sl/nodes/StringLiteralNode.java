@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
 
-public abstract class StringLiteralNode extends TypedNode {
+public final class StringLiteralNode extends TypedNode {
 
     private final String value;
 
@@ -32,8 +32,14 @@ public abstract class StringLiteralNode extends TypedNode {
         this.value = value;
     }
 
-    @Specialization
-    protected String doString() {
+    @Override
+    public String executeString(VirtualFrame frame) {
         return value;
     }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
+    }
+
 }

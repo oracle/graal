@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-public abstract class IntegerLiteralNode extends TypedNode {
+public final class IntegerLiteralNode extends TypedNode {
 
     private final int value;
 
@@ -32,8 +33,13 @@ public abstract class IntegerLiteralNode extends TypedNode {
         this.value = value;
     }
 
-    @Specialization
-    protected int doInteger() {
-        return this.value;
+    @Override
+    public int executeInteger(VirtualFrame frame) throws UnexpectedResultException {
+        return value;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
     }
 }
