@@ -1363,6 +1363,13 @@ public class InliningUtil {
             } else {
                 invokeWithException.killExceptionEdge();
             }
+
+            // get rid of memory kill
+            AbstractBeginNode begin = invokeWithException.next();
+            if (begin instanceof KillingBeginNode) {
+                graph.addAfterFixed(begin, graph.add(new BeginNode()));
+                graph.removeFixed(begin);
+            }
         } else {
             if (unwindNode != null) {
                 UnwindNode unwindDuplicate = (UnwindNode) duplicates.get(unwindNode);
