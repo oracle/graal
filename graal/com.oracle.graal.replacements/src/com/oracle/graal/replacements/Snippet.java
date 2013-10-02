@@ -45,6 +45,13 @@ public @interface Snippet {
     Class<? extends SnippetInliningPolicy> inlining() default SnippetInliningPolicy.class;
 
     /**
+     * Specifies whether all FrameStates within this snippet should always be removed. If this is
+     * false, FrameStates are only removed if there are no side-effecting instructions in the
+     * snippet.
+     */
+    boolean removeAllFrameStates() default false;
+
+    /**
      * Guides inlining decisions used when installing a snippet.
      */
     public interface SnippetInliningPolicy {
