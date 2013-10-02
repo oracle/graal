@@ -44,6 +44,19 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.replacements.nodes.*;
 
+/**
+ * This class contains infrastructure to maintain counters based on {@link DynamicCounterNode}s. The
+ * infrastructure is enabled by specifying either the GenericDynamicCounters or
+ * BenchmarkDynamicCounters option.<br/>
+ * 
+ * The counters are kept in a special area in the native JavaThread object, and the number of
+ * counters is configured in {@code thread.hpp (GRAAL_COUNTERS_SIZE)}. This file also contains an
+ * option to exclude compiler threads ({@code GRAAL_COUNTERS_EXCLUDE_COMPILER_THREADS}, which
+ * defaults to true).
+ * 
+ * The subsystems that use the logging need to have their own options to turn on the counters, and
+ * insert DynamicCounterNodes when they're enabled.
+ */
 public class BenchmarkCounters {
 
     static class Options {
