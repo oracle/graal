@@ -34,18 +34,23 @@ public final class FloatSubNode extends FloatArithmeticNode implements Canonical
         super(kind, x, y, isStrictFP);
     }
 
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 2;
+        if (kind() == Kind.Float) {
+            return Constant.forFloat(x().asConstant().asFloat() - y().asConstant().asFloat());
+        } else {
+            assert kind() == Kind.Double;
+            return Constant.forDouble(x().asConstant().asDouble() - y().asConstant().asDouble());
+        }
+    }
+
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (x() == y()) {
             return ConstantNode.forFloatingKind(kind(), 0.0f, graph());
         }
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == Kind.Float) {
-                return ConstantNode.forFloat(x().asConstant().asFloat() - y().asConstant().asFloat(), graph());
-            } else {
-                assert kind() == Kind.Double;
-                return ConstantNode.forDouble(x().asConstant().asDouble() - y().asConstant().asDouble(), graph());
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         } else if (y().isConstant()) {
             if (kind() == Kind.Float) {
                 float c = y().asConstant().asFloat();
