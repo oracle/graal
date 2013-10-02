@@ -486,10 +486,11 @@ public final class SchedulePhase extends Phase {
             throw new SchedulingError("%s should already have been placed in a block", node);
         }
 
+        Block earliestBlock = earliestBlock(node);
         Block block;
         switch (strategy) {
             case EARLIEST:
-                block = earliestBlock(node);
+                block = earliestBlock;
                 break;
             case LATEST:
             case LATEST_OUT_OF_LOOPS:
@@ -498,23 +499,19 @@ public final class SchedulePhase extends Phase {
                 } else {
                     block = latestBlock(node, strategy);
                     if (block == null) {
-                        block = earliestBlock(node);
+                        block = earliestBlock;
                     } else if (strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS && !(node instanceof VirtualObjectNode)) {
                         // schedule at the latest position possible in the outermost loop possible
-                        Block earliestBlock = earliestBlock(node);
-                        Block before = block;
                         block = scheduleOutOfLoops(node, block, earliestBlock);
-                        if (!earliestBlock.dominates(block)) {
-                            throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s (before %s))", node.graph(), node,
-                                            node.usages().count(), earliestBlock, block, before);
-                        }
                     }
                 }
                 break;
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
         }
-        assert earliestBlock(node).dominates(block) : "node " + node + " in block " + block + " is not dominated by earliest " + earliestBlock(node);
+        if (!earliestBlock.dominates(block)) {
+            throw new SchedulingError("%s: Graph cannot be scheduled : inconsistent for %s, %d usages, (%s needs to dominate %s)", node.graph(), node, node.usages().count(), earliestBlock, block);
+        }
         cfg.getNodeToBlock().set(node, block);
         blockToNodesMap.get(block).add(node);
     }
