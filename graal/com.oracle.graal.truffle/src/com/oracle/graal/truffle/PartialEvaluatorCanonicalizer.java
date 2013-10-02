@@ -27,6 +27,7 @@ import java.lang.reflect.*;
 import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.Node;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.common.*;
@@ -42,7 +43,7 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
     }
 
     @Override
-    public ValueNode canonicalize(ValueNode node) {
+    public Node canonicalize(Node node) {
         if (node instanceof LoadFieldNode) {
             LoadFieldNode loadFieldNode = (LoadFieldNode) node;
             if (!loadFieldNode.isStatic() && loadFieldNode.object().isConstant() && !loadFieldNode.object().isNullConstant()) {
