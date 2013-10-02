@@ -121,7 +121,7 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Iterabl
     @Override
     public void setNext(FixedNode x) {
         if (x != null) {
-            this.setNext(AbstractBeginNode.begin(x));
+            this.setNext(KillingBeginNode.begin(x, getLocationIdentity()));
         } else {
             this.setNext(null);
         }
