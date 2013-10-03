@@ -149,11 +149,11 @@ public class ImplicitCastTest {
     public void testImplicitCast2() {
         ImplicitCast2Node node = ImplicitCast2NodeFactory.create(null, null);
         TestRootNode<ImplicitCast2Node> root = new TestRootNode<>(node);
-        Assert.assertEquals("2", root.getNode().executeEvaluated(null, "2"));
-        Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1));
-        Assert.assertEquals("1", root.getNode().executeEvaluated(null, "1"));
-        Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1));
-        Assert.assertEquals(true, root.getNode().executeEvaluated(null, true));
+        Assert.assertEquals("42", root.getNode().executeEvaluated(null, "4", "2"));
+        Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1, 1));
+        Assert.assertEquals("42", root.getNode().executeEvaluated(null, "4", "2"));
+        Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1, 1));
+        Assert.assertEquals(true, root.getNode().executeEvaluated(null, true, true));
     }
 
 }
