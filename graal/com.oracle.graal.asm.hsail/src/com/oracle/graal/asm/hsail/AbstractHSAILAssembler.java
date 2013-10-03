@@ -57,6 +57,7 @@ public abstract class AbstractHSAILAssembler extends AbstractAssembler {
 
     @Override
     protected String createLabelName(Label l, int id) {
-        return "@L" + id;
+        int blockId = l.getBlockId();
+        return "@L" + (blockId == -1 ? id : blockId);
     }
 }

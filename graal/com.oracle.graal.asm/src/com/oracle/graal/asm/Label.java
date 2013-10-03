@@ -30,6 +30,7 @@ import java.util.*;
 public final class Label {
 
     private int position = -1;
+    private int blockId = -1;
 
     /**
      * References to instructions that jump to this unresolved label. These instructions need to be
@@ -49,6 +50,14 @@ public final class Label {
     }
 
     public Label() {
+    }
+
+    public Label(int id) {
+        blockId = id;
+    }
+
+    public int getBlockId() {
+        return blockId;
     }
 
     /**
