@@ -210,7 +210,7 @@ public class HotSpotOptions {
                 if (line.length() != 0) {
                     line.append(' ');
                 }
-                String[] embeddedLines = chunk.split("%n");
+                String[] embeddedLines = chunk.split("%n", -2);
                 if (embeddedLines.length == 1) {
                     line.append(chunk);
                 } else {
