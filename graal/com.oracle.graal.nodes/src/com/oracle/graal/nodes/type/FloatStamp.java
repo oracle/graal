@@ -184,7 +184,7 @@ public class FloatStamp extends Stamp {
                 case Float:
                     return Constant.forFloat((float) lowerBound);
                 case Double:
-                    return Constant.forDouble((float) lowerBound);
+                    return Constant.forDouble(lowerBound);
             }
         }
         return null;
