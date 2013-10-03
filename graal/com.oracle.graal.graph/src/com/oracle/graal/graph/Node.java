@@ -595,8 +595,6 @@ public abstract class Node implements Cloneable, Formattable {
         return newNode;
     }
 
-    static int count = 0;
-
     public final Node clone(Graph into) {
         return clone(into, true);
     }
