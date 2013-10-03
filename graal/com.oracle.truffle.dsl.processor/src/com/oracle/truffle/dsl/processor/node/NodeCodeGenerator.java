@@ -42,7 +42,6 @@ import com.oracle.truffle.dsl.processor.node.SpecializationGroup.TypeGuard;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
-import com.sun.org.apache.xml.internal.dtm.ref.DTMDefaultBaseIterators.*;
 
 public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
@@ -954,7 +953,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     }
                 }
 
-                for (CodeExecutableElement method : createImplicitChildrenAccessors(node, clazz)) {
+                for (CodeExecutableElement method : createImplicitChildrenAccessors()) {
                     clazz.add(method);
                 }
 
@@ -967,7 +966,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
         }
 
-        private List<CodeExecutableElement> createImplicitChildrenAccessors(NodeData node, CodeTypeElement clazz) {
+        private List<CodeExecutableElement> createImplicitChildrenAccessors() {
+            NodeData node = getModel().getNode();
             List<CodeExecutableElement> methods = new ArrayList<>();
             Map<NodeChildData, Set<TypeData>> expectTypes = new HashMap<>();
             for (ExecutableTypeData executableType : node.getExecutableTypes()) {
@@ -2018,14 +2018,22 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
                 builder.end();
             } else {
+                List<TypeData> sourceTypes = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
                 TypeData expectType = sourceParameter != null ? sourceParameter.getTypeSystemType() : null;
-                builder.tree(createExecuteExpression(parent, child, expectType, targetExecutable, param, unexpectedParameter, null));
+                if (sourceTypes.size() > 1) {
+                    builder.tree(createExecuteExpressions(parent, param, expectType));
+                } else {
+                    builder.tree(createExecuteExpression(parent, child, expectType, targetExecutable, param, unexpectedParameter, null));
+                }
             }
             return builder.getRoot();
         }
 
         private String createExecuteChildMethodName(ActualParameter param, boolean expect) {
             NodeChildData child = getModel().getNode().findChild(param.getSpecification().getName());
+            if (child.getExecuteWith().size() > 0) {
+                return null;
+            }
             List<TypeData> sourceTypes = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
             if (sourceTypes.size() <= 1) {
                 return null;
@@ -2057,53 +2065,56 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 return null;
             }
 
-            NodeData node = getModel().getNode();
-            NodeChildData child = node.findChild(param.getSpecification().getName());
-            List<TypeData> sourceTypes = node.getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
-            assert sourceTypes.size() >= 1;
-
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, expectType != null ? STATIC : FINAL), param.getType(), childExecuteName);
-
+            method.getThrownTypes().add(getContext().getTruffleTypes().getUnexpectedValueException());
             method.addParameter(new CodeVariableElement(getContext().getTruffleTypes().getFrame(), "frameValue"));
             if (expectType != null) {
                 method.addParameter(new CodeVariableElement(expectType.getPrimitiveType(), valueNameEvaluated(param)));
             }
             method.addParameter(new CodeVariableElement(getContext().getType(Class.class), typeName(param)));
+
             CodeTreeBuilder builder = method.createBuilder();
-
             builder.declaration(param.getType(), valueName(param));
+            builder.tree(createExecuteExpressions(builder, param, expectType));
+            builder.startReturn().string(valueName(param)).end();
 
-            boolean unexpected = false;
+            return method;
+        }
+
+        private CodeTree createExecuteExpressions(CodeTreeBuilder parent, ActualParameter param, TypeData expectType) {
+            CodeTreeBuilder builder = parent.create();
+            NodeData node = getModel().getNode();
+            NodeChildData child = node.findChild(param.getSpecification().getName());
+            List<TypeData> sourceTypes = node.getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
             boolean elseIf = false;
             int index = 0;
-            for (TypeData typeData : sourceTypes) {
+            for (TypeData sourceType : sourceTypes) {
                 if (index < sourceTypes.size() - 1) {
                     elseIf = builder.startIf(elseIf);
-                    builder.string(typeName(param)).string(" == ").typeLiteral(typeData.getPrimitiveType());
+                    builder.string(typeName(param)).string(" == ").typeLiteral(sourceType.getPrimitiveType());
                     builder.end();
                     builder.startBlock();
                 } else {
                     builder.startElseBlock();
                 }
 
-                ExecutableTypeData implictExecutableTypeData = child.getNodeData().findExecutableType(typeData, child.getExecuteWith().size());
-                if (!unexpected && implictExecutableTypeData.hasUnexpectedValue(getContext())) {
-                    unexpected = true;
+                ExecutableTypeData implictExecutableTypeData = child.getNodeData().findExecutableType(sourceType, child.getExecuteWith().size());
+                if (implictExecutableTypeData == null) {
+                    /*
+                     * For children with executeWith.size() > 0 an executable type may not exist so
+                     * use the generic executable type which is guaranteed to exist. An expect call
+                     * is inserted automatically by #createExecuteExpression.
+                     */
+                    implictExecutableTypeData = child.getNodeData().findExecutableType(node.getTypeSystem().getGenericTypeData(), child.getExecuteWith().size());
                 }
-                ImplicitCastData cast = child.getNodeData().getTypeSystem().lookupCast(typeData, param.getTypeSystemType());
+
+                ImplicitCastData cast = child.getNodeData().getTypeSystem().lookupCast(sourceType, param.getTypeSystemType());
                 CodeTree execute = createExecuteExpression(builder, child, expectType, implictExecutableTypeData, param, null, cast);
                 builder.statement(execute);
                 builder.end();
                 index++;
             }
-
-            builder.startReturn().string(valueName(param)).end();
-
-            if (unexpected) {
-                method.getThrownTypes().add(getContext().getTruffleTypes().getUnexpectedValueException());
-            }
-
-            return method;
+            return builder.getRoot();
         }
 
         private CodeTree createExecuteExpression(CodeTreeBuilder parent, NodeChildData child, TypeData expectType, ExecutableTypeData targetExecutable, ActualParameter targetParameter,
@@ -2115,8 +2126,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 startCallTypeSystemMethod(getContext(), builder, child.getNodeData(), cast.getMethodName());
             }
 
-            if (targetExecutable.getType().needsCastTo(context, targetParameter.getTypeSystemType()) && cast == null) {
-                startCallTypeSystemMethod(getContext(), builder, child.getNodeData(), TypeSystemCodeGenerator.expectTypeMethodName(targetParameter.getTypeSystemType()));
+            TypeData expectTarget = targetParameter.getTypeSystemType();
+            if (cast != null) {
+                expectTarget = cast.getSourceType();
+            }
+
+            if (targetExecutable.getType().needsCastTo(context, expectTarget)) {
+                startCallTypeSystemMethod(getContext(), builder, child.getNodeData(), TypeSystemCodeGenerator.expectTypeMethodName(expectTarget));
             }
 
             NodeData node = getModel().getNode();
