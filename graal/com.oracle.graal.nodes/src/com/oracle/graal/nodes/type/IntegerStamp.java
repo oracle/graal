@@ -145,21 +145,6 @@ public class IntegerStamp extends Stamp {
         return str.toString();
     }
 
-    @Override
-    public boolean alwaysDistinct(Stamp otherStamp) {
-        IntegerStamp other = (IntegerStamp) otherStamp;
-        if (lowerBound > other.upperBound || upperBound < other.lowerBound) {
-            return true;
-        } else if ((upMask & other.upMask) == 0 && (lowerBound > 0 || upperBound < 0 || other.lowerBound > 0 || other.upperBound < 0)) {
-            /*
-             * Zero is the only common value if the masks don't overlap. If one of the two values is
-             * less than or greater than zero, they are always distinct.
-             */
-            return true;
-        }
-        return false;
-    }
-
     private Stamp createStamp(IntegerStamp other, long newUpperBound, long newLowerBound, long newDownMask, long newUpMask) {
         assert kind() == other.kind();
         if (newLowerBound > newUpperBound || (newDownMask & (~newUpMask)) != 0) {

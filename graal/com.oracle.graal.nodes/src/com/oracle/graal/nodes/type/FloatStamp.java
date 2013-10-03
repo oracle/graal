@@ -92,12 +92,6 @@ public class FloatStamp extends Stamp {
     }
 
     @Override
-    public boolean alwaysDistinct(Stamp otherStamp) {
-        FloatStamp other = (FloatStamp) otherStamp;
-        return (nonNaN || other.nonNaN) && (lowerBound > other.upperBound || upperBound < other.lowerBound);
-    }
-
-    @Override
     public Stamp meet(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;

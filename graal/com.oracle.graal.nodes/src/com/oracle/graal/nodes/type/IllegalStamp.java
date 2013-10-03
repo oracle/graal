@@ -40,11 +40,6 @@ public final class IllegalStamp extends Stamp {
     }
 
     @Override
-    public boolean alwaysDistinct(Stamp other) {
-        return true;
-    }
-
-    @Override
     public Stamp meet(Stamp other) {
         return other;
     }
