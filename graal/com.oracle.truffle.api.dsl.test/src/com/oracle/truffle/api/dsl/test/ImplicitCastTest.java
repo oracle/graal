@@ -54,13 +54,13 @@ public class ImplicitCastTest {
 
         public abstract Object executeEvaluated(VirtualFrame frame, Object value2);
 
-        @Specialization(order = 1)
-        public String op1(String value) throws RuntimeException {
+        @Specialization
+        public String op1(String value) {
             return value;
         }
 
-        @Specialization(order = 2)
-        public boolean op1(boolean value) throws RuntimeException {
+        @Specialization
+        public boolean op1(boolean value) {
             return value;
         }
 
@@ -76,6 +76,38 @@ public class ImplicitCastTest {
         Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1));
         Assert.assertEquals(true, root.getNode().executeEvaluated(null, true));
     }
+
+// @TypeSystemReference(ImplicitCast0Types.class)
+// @NodeChild(value = "operand", type = ImplicitCast0Node.class)
+// abstract static class ImplicitCast1Node extends ValueNode {
+//
+// @Specialization
+// public String op0(String value) {
+// return value;
+// }
+//
+// @Specialization(order = 1, rewriteOn = RuntimeException.class)
+// public boolean op1(@SuppressWarnings("unused") boolean value) throws RuntimeException {
+// throw new RuntimeException();
+// }
+//
+// @Specialization(order = 2)
+// public boolean op2(boolean value) {
+// return value;
+// }
+//
+// }
+//
+// @Test
+// public void testImplicitCast1() {
+// ImplicitCast0Node node = ImplicitCast0NodeFactory.create(null);
+// TestRootNode<ImplicitCast0Node> root = new TestRootNode<>(node);
+// Assert.assertEquals("2", root.getNode().executeEvaluated(null, "2"));
+// Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1));
+// Assert.assertEquals("1", root.getNode().executeEvaluated(null, "1"));
+// Assert.assertEquals(true, root.getNode().executeEvaluated(null, 1));
+// Assert.assertEquals(true, root.getNode().executeEvaluated(null, true));
+// }
 
     // TODO assert implicit casts only in one direction
 

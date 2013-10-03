@@ -42,6 +42,7 @@ import com.oracle.truffle.dsl.processor.node.SpecializationGroup.TypeGuard;
 import com.oracle.truffle.dsl.processor.template.*;
 import com.oracle.truffle.dsl.processor.template.TemplateMethod.Signature;
 import com.oracle.truffle.dsl.processor.typesystem.*;
+import com.sun.org.apache.xml.internal.dtm.ref.DTMDefaultBaseIterators.*;
 
 public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
@@ -953,6 +954,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     }
                 }
 
+                for (CodeExecutableElement method : createImplicitChildrenAccessors(node, clazz)) {
+                    clazz.add(method);
+                }
+
                 clazz.add(createGenericExecuteAndSpecialize(node, rootGroup));
                 clazz.add(createInfoMessage(node));
             }
@@ -960,6 +965,50 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (node.getGenericSpecialization() != null && node.getGenericSpecialization().isReachable()) {
                 clazz.add(createGenericExecute(node, rootGroup));
             }
+        }
+
+        private List<CodeExecutableElement> createImplicitChildrenAccessors(NodeData node, CodeTypeElement clazz) {
+            List<CodeExecutableElement> methods = new ArrayList<>();
+            Map<NodeChildData, Set<TypeData>> expectTypes = new HashMap<>();
+            for (ExecutableTypeData executableType : node.getExecutableTypes()) {
+                for (int i = 0; i < executableType.getEvaluatedCount(); i++) {
+                    ActualParameter parameter = executableType.getSignatureParameter(i);
+                    NodeChildData child = node.findChild(parameter.getSpecification().getName());
+                    Set<TypeData> types = expectTypes.get(child);
+                    if (types == null) {
+                        types = new TreeSet<>();
+                        expectTypes.put(child, types);
+                    }
+                    types.add(parameter.getTypeSystemType());
+                }
+            }
+
+            Map<NodeChildData, Set<TypeData>> visitedMap = new HashMap<>();
+            for (SpecializationData spec : node.getSpecializations()) {
+                for (ActualParameter param : spec.getParameters()) {
+                    if (!param.getSpecification().isSignature()) {
+                        continue;
+                    }
+                    NodeChildData child = node.findChild(param.getSpecification().getName());
+                    Set<TypeData> visitedTypeData = visitedMap.get(child);
+                    if (visitedTypeData == null) {
+                        visitedTypeData = new TreeSet<>();
+                        visitedMap.put(child, visitedTypeData);
+                    }
+                    if (visitedTypeData.contains(param.getTypeSystemType())) {
+                        continue;
+                    }
+                    visitedTypeData.add(param.getTypeSystemType());
+
+                    Set<TypeData> expect = expectTypes.get(child);
+                    if (expect == null) {
+                        expect = Collections.emptySet();
+                    }
+
+                    methods.addAll(createExecuteChilds(param, expect));
+                }
+            }
+            return methods;
         }
 
         private CodeTree truffleBooleanOption(CodeTreeBuilder parent, String name) {
@@ -1946,37 +1995,119 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         ActualParameter unexpectedParameter) {
             CodeTreeBuilder builder = parent.create();
 
-            TypeData type = param.getTypeSystemType();
-            List<TypeData> targetTypes = child.getNodeData().getTypeSystem().lookupSourceTypes(type);
+            ActualParameter sourceParameter = sourceExecutable.findParameter(param.getLocalName());
 
-            if (targetTypes.size() > 1) {
-                boolean elseIf = false;
-                int index = 0;
-                for (TypeData typeData : targetTypes) {
-                    if (index < targetTypes.size() - 1) {
-                        elseIf = builder.startIf(elseIf);
-                        builder.string(typeName(param)).string(" == ").typeLiteral(typeData.getPrimitiveType());
-                        builder.end();
-                        builder.startBlock();
-                    } else {
-                        builder.startElseBlock();
+            String childExecuteName = createExecuteChildMethodName(param, sourceParameter != null);
+            if (childExecuteName != null) {
+                builder.string(valueName(param));
+                builder.string(" = ");
+                builder.startCall(childExecuteName);
+
+                for (ActualParameter parameters : sourceExecutable.getParameters()) {
+                    if (parameters.getSpecification().isSignature()) {
+                        continue;
                     }
-
-                    ExecutableTypeData implictExecutableTypeData = child.getNodeData().findExecutableType(typeData, targetExecutable.getEvaluatedCount());
-                    ImplicitCastData cast = child.getNodeData().getTypeSystem().lookupCast(typeData, param.getTypeSystemType());
-                    CodeTree execute = createExecuteExpression(parent, child, sourceExecutable, implictExecutableTypeData, param, unexpectedParameter, cast);
-                    builder.statement(execute);
-                    builder.end();
-                    index++;
+                    builder.string(parameters.getLocalName());
                 }
+
+                if (sourceParameter != null) {
+                    builder.string(valueNameEvaluated(sourceParameter));
+                }
+
+                builder.string(typeName(param));
+
+                builder.end();
             } else {
-                builder.tree(createExecuteExpression(parent, child, sourceExecutable, targetExecutable, param, unexpectedParameter, null));
+                TypeData expectType = sourceParameter != null ? sourceParameter.getTypeSystemType() : null;
+                builder.tree(createExecuteExpression(parent, child, expectType, targetExecutable, param, unexpectedParameter, null));
             }
             return builder.getRoot();
         }
 
-        private CodeTree createExecuteExpression(CodeTreeBuilder parent, NodeChildData child, ExecutableTypeData sourceExecutable, ExecutableTypeData targetExecutable,
-                        ActualParameter targetParameter, ActualParameter unexpectedParameter, ImplicitCastData cast) {
+        private String createExecuteChildMethodName(ActualParameter param, boolean expect) {
+            NodeChildData child = getModel().getNode().findChild(param.getSpecification().getName());
+            List<TypeData> sourceTypes = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
+            if (sourceTypes.size() <= 1) {
+                return null;
+            }
+            String prefix = expect ? "expect" : "execute";
+            return prefix + Utils.firstLetterUpperCase(child.getName()) + Utils.firstLetterUpperCase(Utils.getSimpleName(param.getType())) + param.getIndex();
+        }
+
+        private List<CodeExecutableElement> createExecuteChilds(ActualParameter param, Set<TypeData> expectTypes) {
+            CodeExecutableElement executeMethod = createExecuteChild(param, null);
+            if (executeMethod == null) {
+                return Collections.emptyList();
+            }
+            List<CodeExecutableElement> childs = new ArrayList<>();
+            childs.add(executeMethod);
+
+            for (TypeData expectType : expectTypes) {
+                CodeExecutableElement method = createExecuteChild(param, expectType);
+                if (method != null) {
+                    childs.add(method);
+                }
+            }
+            return childs;
+        }
+
+        private CodeExecutableElement createExecuteChild(ActualParameter param, TypeData expectType) {
+            String childExecuteName = createExecuteChildMethodName(param, expectType != null);
+            if (childExecuteName == null) {
+                return null;
+            }
+
+            NodeData node = getModel().getNode();
+            NodeChildData child = node.findChild(param.getSpecification().getName());
+            List<TypeData> sourceTypes = node.getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
+            assert sourceTypes.size() >= 1;
+
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, expectType != null ? STATIC : FINAL), param.getType(), childExecuteName);
+
+            method.addParameter(new CodeVariableElement(getContext().getTruffleTypes().getFrame(), "frameValue"));
+            if (expectType != null) {
+                method.addParameter(new CodeVariableElement(expectType.getPrimitiveType(), valueNameEvaluated(param)));
+            }
+            method.addParameter(new CodeVariableElement(getContext().getType(Class.class), typeName(param)));
+            CodeTreeBuilder builder = method.createBuilder();
+
+            builder.declaration(param.getType(), valueName(param));
+
+            boolean unexpected = false;
+            boolean elseIf = false;
+            int index = 0;
+            for (TypeData typeData : sourceTypes) {
+                if (index < sourceTypes.size() - 1) {
+                    elseIf = builder.startIf(elseIf);
+                    builder.string(typeName(param)).string(" == ").typeLiteral(typeData.getPrimitiveType());
+                    builder.end();
+                    builder.startBlock();
+                } else {
+                    builder.startElseBlock();
+                }
+
+                ExecutableTypeData implictExecutableTypeData = child.getNodeData().findExecutableType(typeData, child.getExecuteWith().size());
+                if (!unexpected && implictExecutableTypeData.hasUnexpectedValue(getContext())) {
+                    unexpected = true;
+                }
+                ImplicitCastData cast = child.getNodeData().getTypeSystem().lookupCast(typeData, param.getTypeSystemType());
+                CodeTree execute = createExecuteExpression(builder, child, expectType, implictExecutableTypeData, param, null, cast);
+                builder.statement(execute);
+                builder.end();
+                index++;
+            }
+
+            builder.startReturn().string(valueName(param)).end();
+
+            if (unexpected) {
+                method.getThrownTypes().add(getContext().getTruffleTypes().getUnexpectedValueException());
+            }
+
+            return method;
+        }
+
+        private CodeTree createExecuteExpression(CodeTreeBuilder parent, NodeChildData child, TypeData expectType, ExecutableTypeData targetExecutable, ActualParameter targetParameter,
+                        ActualParameter unexpectedParameter, ImplicitCastData cast) {
             CodeTreeBuilder builder = parent.create();
             builder.string(valueName(targetParameter));
             builder.string(" = ");
@@ -1989,12 +2120,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             NodeData node = getModel().getNode();
-            ActualParameter sourceParameter = sourceExecutable.findParameter(targetParameter.getLocalName());
-            if (sourceParameter == null) {
+            if (expectType == null) {
                 builder.tree(createExecuteChildExpression(builder, child, targetParameter, targetExecutable, unexpectedParameter));
             } else {
                 CodeTree var = CodeTreeBuilder.singleString(valueNameEvaluated(targetParameter));
-                builder.tree(createExpectExecutableType(node, sourceParameter.getTypeSystemType(), targetExecutable, var));
+                builder.tree(createExpectExecutableType(node, expectType, targetExecutable, var));
             }
 
             if (targetExecutable.getType().needsCastTo(context, targetParameter.getTypeSystemType())) {
