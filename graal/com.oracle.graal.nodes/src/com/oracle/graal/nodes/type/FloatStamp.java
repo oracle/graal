@@ -177,4 +177,16 @@ public class FloatStamp extends Stamp {
         return true;
     }
 
+    @Override
+    public Constant asConstant() {
+        if (nonNaN && lowerBound == upperBound) {
+            switch (kind()) {
+                case Float:
+                    return Constant.forFloat((float) lowerBound);
+                case Double:
+                    return Constant.forDouble((float) lowerBound);
+            }
+        }
+        return null;
+    }
 }
