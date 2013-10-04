@@ -49,18 +49,18 @@ public class GraphEffectList extends EffectList {
         });
     }
 
-    public void addSurvivingCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
+    public void addWeakCounterCounterBefore(final String group, final String name, final int increment, final boolean addContext, final ValueNode checkedValue, final FixedNode position) {
         add(new Effect() {
 
             @Override
             public String name() {
-                return "addSurvivingCounterBefore";
+                return "addWeakCounterBefore";
             }
 
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert position.isAlive();
-                SurvivingCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position);
+                WeakCounterNode.addCounterBefore(group, name, increment, addContext, checkedValue, position);
             }
         });
     }

@@ -32,11 +32,11 @@ import com.oracle.graal.nodes.spi.*;
  * only usage of the associated node. This way it only increments the counter if the node is
  * actually executed.
  */
-public class SurvivingCounterNode extends DynamicCounterNode implements Simplifiable, Virtualizable {
+public class WeakCounterNode extends DynamicCounterNode implements Simplifiable, Virtualizable {
 
     @Input private ValueNode checkedValue;
 
-    public SurvivingCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
+    public WeakCounterNode(String group, String name, ValueNode increment, boolean addContext, ValueNode checkedValue) {
         super(group, name, increment, addContext);
         this.checkedValue = checkedValue;
     }
@@ -59,7 +59,7 @@ public class SurvivingCounterNode extends DynamicCounterNode implements Simplifi
 
     public static void addCounterBefore(String group, String name, long increment, boolean addContext, ValueNode checkedValue, FixedNode position) {
         StructuredGraph graph = position.graph();
-        SurvivingCounterNode counter = graph.add(new SurvivingCounterNode(name, group, ConstantNode.forLong(increment, graph), addContext, checkedValue));
+        WeakCounterNode counter = graph.add(new WeakCounterNode(name, group, ConstantNode.forLong(increment, graph), addContext, checkedValue));
         graph.addBeforeFixed(position, counter);
     }
 }

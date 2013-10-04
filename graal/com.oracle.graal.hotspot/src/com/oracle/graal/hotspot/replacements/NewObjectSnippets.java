@@ -122,8 +122,8 @@ public class NewObjectSnippets implements Snippets {
             String name = createName(path, typeContext);
 
             boolean context = PROFILE_MODE == ProfileMode.AllocatingMethods || PROFILE_MODE == ProfileMode.AllocatedTypesInMethods;
-            DynamicCounterNode.counter(name, "~bytes", size, context);
-            DynamicCounterNode.counter(name, "~sites", 1, context);
+            DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
+            DynamicCounterNode.counter(name, "number of allocations", 1, context);
         }
     }
 

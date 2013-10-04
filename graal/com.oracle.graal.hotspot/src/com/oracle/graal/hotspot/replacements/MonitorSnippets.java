@@ -347,7 +347,7 @@ public class MonitorSnippets implements Snippets {
 
     private static void traceObject(boolean enabled, String action, Object object, boolean enter) {
         if (doProfile(action)) {
-            DynamicCounterNode.counter(action, enter ? "~monitorenter" : "~monitorexit", 1, PROFILE_CONTEXT);
+            DynamicCounterNode.counter(action, enter ? "number of monitor enters" : "number of monitor exits", 1, PROFILE_CONTEXT);
         }
         if (enabled) {
             Log.print(action);
