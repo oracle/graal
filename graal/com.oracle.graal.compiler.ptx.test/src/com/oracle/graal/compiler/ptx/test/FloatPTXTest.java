@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.code.CompilationResult;
 
 /* PTX ISA 3.1 - 8.7.3 Floating-Point Instructions */
-@Ignore
 public class FloatPTXTest extends PTXTestBase {
 
     @Ignore

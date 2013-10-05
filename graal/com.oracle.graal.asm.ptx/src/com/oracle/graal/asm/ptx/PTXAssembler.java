@@ -185,7 +185,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
             assert v != null;
 
             if (isConstant(v)) {
-                return (emitConstant(v));
+                return (emitConstant(v, comma));
             } else {
                 return (emitRegister((Variable) v, comma));
             }
@@ -195,20 +195,30 @@ public class PTXAssembler extends AbstractPTXAssembler {
             return (" %r" + v.index + (comma ? "," : ""));
         }
 
-        public String emitConstant(Value v) {
+        public String emitConstant(Value v, boolean comma) {
             Constant constant = (Constant) v;
+            String str = null;
 
             switch (v.getKind().getTypeChar()) {
                 case 'i':
-                    return (String.valueOf((int) constant.asLong()));
+                    str = String.valueOf((int) constant.asLong());
+                    break;
                 case 'f':
-                    return (String.valueOf(constant.asFloat()));
+                    str = String.valueOf(constant.asFloat());
+                    break;
                 case 'j':
-                    return (String.valueOf(constant.asLong()));
+                    str = String.valueOf(constant.asLong());
+                    break;
                 case 'd':
-                    return (String.valueOf(constant.asDouble()));
+                    str = String.valueOf(constant.asDouble());
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
+            }
+            if (comma) {
+                return (str + ",");
+            } else {
+                return str;
             }
         }
     }
@@ -581,8 +591,33 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public void emit(PTXAssembler asm) {
-            asm.emitString(".param ." + typeForKind(dest.getKind()) + emitParameter(dest)  + (lastParameter ? "" : ","));
+            asm.emitString(".param ." + paramForKind(dest.getKind()) + emitParameter(dest)  + (lastParameter ? "" : ","));
         }
+
+        public String paramForKind(Kind k) {
+            switch (k.getTypeChar()) {
+                case 'z':
+                case 'f':
+                    return "s32";
+                case 'b':
+                    return "s8";
+                case 's':
+                    return "s16";
+                case 'c':
+                    return "u16";
+                case 'i':
+                    return "s32";
+                case 'j':
+                    return "s64";
+                case 'd':
+                    return "f64";
+                case 'a':
+                    return "u64";
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
     }
 
     public final void popc_b32(Register d, Register a) {
