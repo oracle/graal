@@ -29,7 +29,7 @@ import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#unsafeCustomization(Object, Object, Object)}.
+ * Macro node for method {@link CompilerDirectives#unsafeCustomization(Object, boolean, Object)}.
  */
 public class UnsafeCustomizationMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 

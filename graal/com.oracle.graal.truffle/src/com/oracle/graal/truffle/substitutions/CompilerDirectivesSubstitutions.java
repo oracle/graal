@@ -68,7 +68,4 @@ public class CompilerDirectivesSubstitutions {
 
     @MacroSubstitution(macro = CustomTypeCheckMacroNode.class, isStatic = true)
     public static native boolean customTypeCheck(boolean condition, Object value, Object customType);
-
-    @MacroSubstitution(macro = UnsafeCustomizationMacroNode.class, isStatic = true)
-    public static native Object unsafeCustomization(Object receiver, Object customType, Object locationIdentity);
 }
