@@ -188,13 +188,13 @@ public class CompilerDirectives {
      * anywhere.
      * 
      * @param receiver the object that is accessed via sun.misc.Unsafe
-     * @param customType the expected type of the receiver object of follow-up unsafe accesses
+     * @param condition the condition that ifTrue allows this unsafe access to be floating
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      * @return the accessed value
      */
     @Unsafe
-    public static Object unsafeCustomization(Object receiver, Object customType, Object locationIdentity) {
+    public static Object unsafeCustomization(Object receiver, boolean condition, Object locationIdentity) {
         return receiver;
     }
 
