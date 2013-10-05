@@ -308,6 +308,27 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
     }
 
+    public static class BinarySingleOperandFormat extends SingleOperandFormat {
+
+        public BinarySingleOperandFormat(Variable dst, Value src) {
+            super(dst, src);
+        }
+
+        @Override
+        public String typeForKind(Kind k) {
+            switch (k.getTypeChar()) {
+                case 's':
+                    return "b16";
+                case 'i':
+                    return "b32";
+                case 'j':
+                    return "b64";
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+    }
+
     public static class ConversionFormat extends SingleOperandFormat {
 
         public ConversionFormat(Variable dst, Value src) {
@@ -490,7 +511,10 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     // Checkstyle: stop method name check
     public final void bra(String tgt, int pred) {
-        emitString((pred >= 0) ? "" : ("@%p" + pred + "  ") + "bra" + " " + tgt + ";" + "");
+        System.err.println("BRA: " + tgt + " pred: " + pred);
+        assert pred >= 0;
+
+        emitString("@%p" + pred + " " + "bra" + " " + tgt + ";");
     }
 
     public final void bra_uni(String tgt) {
@@ -536,7 +560,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
     }
     
-    public static class Not extends SingleOperandFormat {
+    public static class Not extends BinarySingleOperandFormat {
 
         public Not(Variable dst, Variable src) {
             super(dst, src);

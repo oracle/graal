@@ -55,6 +55,13 @@ public abstract class PTXTestBase extends GraalCompilerTest {
 
     private StructuredGraph sg;
 
+    public void printReport(String message) {
+        // CheckStyle: stop system..print check
+        System.out.println(message);
+        // CheckStyle: resume system..print check
+
+    }
+
     protected CompilationResult compile(String test) {
         if (runtime instanceof PTXHotSpotRuntime) {
             StructuredGraph graph = parse(test);

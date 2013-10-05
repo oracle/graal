@@ -358,13 +358,6 @@ public class FloatPTXTest extends PTXTestBase {
         return (float) a;
     }
 
-    public static void printReport(String message) {
-        // CheckStyle: stop system..print check
-        System.out.println(message);
-        // CheckStyle: resume system..print check
-
-    }
-
     public static void main(String[] args) {
         FloatPTXTest test = new FloatPTXTest();
         for (Method m : FloatPTXTest.class.getMethods()) {
