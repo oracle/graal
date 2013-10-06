@@ -25,19 +25,38 @@
 package com.oracle.truffle.api;
 
 import java.lang.annotation.*;
+import java.lang.reflect.*;
 import java.util.concurrent.*;
+
+import sun.misc.*;
 
 /**
  * Directives that influence the optimizations of the Truffle compiler. All of the operations have
  * no effect when executed in the Truffle interpreter.
  */
-public class CompilerDirectives {
+public final class CompilerDirectives {
 
     public static final double LIKELY_PROBABILITY = 0.75;
     public static final double UNLIKELY_PROBABILITY = 1.0 - LIKELY_PROBABILITY;
 
     public static final double SLOWPATH_PROBABILITY = 0.0001;
     public static final double FASTPATH_PROBABILITY = 1.0 - SLOWPATH_PROBABILITY;
+
+    private static final Unsafe UNSAFE = getUnsafe();
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
 
     /**
      * Directive for the compiler to discontinue compilation at this code position and instead
@@ -130,72 +149,275 @@ public class CompilerDirectives {
     }
 
     /**
-     * Marks methods that are considered unsafe. Wrong usage of those methods can lead to unexpected
-     * behavior including a crash of the runtime. Therefore, special care should be taken.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.METHOD})
-    public @interface Unsafe {
-    }
-
-    /**
-     * Treats the given value as a value of the given class. The class must evaluate to a constant.
+     * Casts the given value to the value of the given type without any checks. The class must
+     * evaluate to a constant. The condition parameter gives a hint to the compiler under which
+     * circumstances this cast can be moved to an earlier location in the program.
      * 
      * @param value the value that is known to have the specified type
-     * @param clazz the specified type of the value
-     * @return the value
-     */
-    @Unsafe
-    public static <T> T unsafeCast(Object value, Class<T> clazz) {
-        return unsafeCast(value, clazz, null, null);
-    }
-
-    /**
-     * Associates the given type token with the given value for the case that condition is true.
-     * 
-     * @param condition the custom type check
-     * @param value the value that is of the given custom type after the check
-     * @param customType the custom type that should be associated with the value
-     * @return the type check condition
-     */
-    public static boolean customTypeCheck(boolean condition, Object value, Object customType) {
-        return condition;
-    }
-
-    /**
-     * Treats the given value as a value of the given class. The class must evaluate to a constant.
-     * If the compiler can prove that the given value is of the given custom type, the cast is safe.
-     * 
-     * @param value the value that is known to have the specified type
-     * @param clazz the specified type of the value
-     * @param receiver the receiver on which the custom type is tested
-     * @param customType the custom type that if present on a value makes this unsafe cast safe
-     * @return the value
+     * @param type the specified new type of the value
+     * @param condition the condition that makes this cast safe also at an earlier location of the
+     *            program
+     * @return the value to be casted to the new type
      */
     @SuppressWarnings("unchecked")
-    @Unsafe
-    public static <T> T unsafeCast(Object value, Class<T> clazz, Object receiver, Object customType) {
+    public static <T> T unsafeCast(Object value, Class<T> type, boolean condition) {
         return (T) value;
     }
 
     /**
-     * Proxies an object instance into an instance that adds a custom location identity on its
-     * accesses via sun.misc.Unsafe. This means that the accesses on these kind of location
-     * identities can only alias among themselves. It also allows to specify a custom type for the
-     * receiver values of follow-up unsafe accesses. Both the custom type and the location identity
-     * must evaluate to a constant. Furthermore, you should use the proxied receiver object
-     * immediately for one read or write access via a sun.misc.Unsafe method and not store it
-     * anywhere.
+     * Unsafe access to a boolean value within an object. The condition parameter gives a hint to
+     * the compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
      * 
-     * @param receiver the object that is accessed via sun.misc.Unsafe
-     * @param condition the condition that ifTrue allows this unsafe access to be floating
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
      * @param locationIdentity the location identity token that can be used for improved global
      *            value numbering or null
      * @return the accessed value
      */
-    @Unsafe
-    public static Object unsafeCustomization(Object receiver, boolean condition, Object locationIdentity) {
-        return receiver;
+    public static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getBoolean(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a byte value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getByte(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a short value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getShort(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a int value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getInt(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a long value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static long unsafeGetLong(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getLong(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a float value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getFloat(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a double value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getDouble(receiver, offset);
+    }
+
+    /**
+     * Unsafe access to a Object value within an object. The condition parameter gives a hint to the
+     * compiler under which circumstances this access can be moved to an earlier location in the
+     * program. The location identity gives a hint to the compiler for improved global value
+     * numbering.
+     * 
+     * @param receiver the object that is accessed
+     * @param offset the offset at which to access the object in bytes
+     * @param condition the condition that makes this access safe also at an earlier location in the
+     *            program
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     * @return the accessed value
+     */
+    public static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return UNSAFE.getObject(receiver, offset);
+    }
+
+    /**
+     * Write a boolean value within an object. The location identity gives a hint to the compiler
+     * for improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
+        UNSAFE.putBoolean(receiver, offset, value);
+    }
+
+    /**
+     * Write a byte value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
+        UNSAFE.putByte(receiver, offset, value);
+    }
+
+    /**
+     * Write a short value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity) {
+        UNSAFE.putShort(receiver, offset, value);
+    }
+
+    /**
+     * Write a int value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
+        UNSAFE.putInt(receiver, offset, value);
+    }
+
+    /**
+     * Write a long value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+        UNSAFE.putLong(receiver, offset, value);
+    }
+
+    /**
+     * Write a float value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
+        UNSAFE.putFloat(receiver, offset, value);
+    }
+
+    /**
+     * Write a double value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
+        UNSAFE.putDouble(receiver, offset, value);
+    }
+
+    /**
+     * Write a Object value within an object. The location identity gives a hint to the compiler for
+     * improved global value numbering.
+     * 
+     * @param receiver the object that is written to
+     * @param offset the offset at which to write to the object in bytes
+     * @param value the value to be written
+     * @param locationIdentity the location identity token that can be used for improved global
+     *            value numbering or null
+     */
+    public static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
+        UNSAFE.putObject(receiver, offset, value);
     }
 
     /**

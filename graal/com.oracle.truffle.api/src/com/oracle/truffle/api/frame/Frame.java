@@ -47,7 +47,6 @@ public interface Frame {
      * @param clazz the known type of the arguments object as a compile time constant
      * @return the arguments used when calling this method
      */
-    @CompilerDirectives.Unsafe
     <T extends Arguments> T getArguments(Class<T> clazz);
 
     /**
