@@ -654,7 +654,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                 if (addReadBarrier(load)) {
                     unsafeLoadSnippets.lower(load, tool);
                 } else {
-                    IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, load.accessKind(), load.displacement(), load.offset(), graph, 1);
+                    LocationNode location = createLocation(load);
                     ReadNode memoryRead = graph.add(new ReadNode(load.object(), location, load.stamp(), BarrierType.NONE, compressible));
                     // An unsafe read must not float outside its block otherwise
                     // it may float above an explicit null check on its object.
@@ -664,7 +664,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             }
         } else if (n instanceof UnsafeStoreNode) {
             UnsafeStoreNode store = (UnsafeStoreNode) n;
-            IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, store.accessKind(), store.displacement(), store.offset(), graph, 1);
+            LocationNode location = createLocation(store);
             ValueNode object = store.object();
             BarrierType barrierType = getUnsafeStoreBarrierType(store);
             WriteNode write = graph.add(new WriteNode(object, store.value(), location, barrierType, store.value().kind() == Kind.Object));
@@ -855,6 +855,43 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
         }
+    }
+
+    private static LocationNode createLocation(UnsafeAccessNode access) {
+        ValueNode offset = access.offset();
+        if (offset.isConstant()) {
+            long offsetValue = offset.asConstant().asLong();
+            return ConstantLocationNode.create(access.getLocationIdentity(), access.accessKind(), offsetValue, access.graph());
+        }
+
+        long displacement = 0;
+        int indexScaling = 1;
+        if (offset instanceof IntegerAddNode) {
+            IntegerAddNode integerAddNode = (IntegerAddNode) offset;
+            if (integerAddNode.y() instanceof ConstantNode) {
+                displacement = integerAddNode.y().asConstant().asLong();
+                offset = integerAddNode.x();
+            }
+        }
+
+        if (offset instanceof LeftShiftNode) {
+            LeftShiftNode leftShiftNode = (LeftShiftNode) offset;
+            if (leftShiftNode.y() instanceof ConstantNode) {
+                long shift = leftShiftNode.y().asConstant().asLong();
+                if (shift >= 1 && shift <= 3) {
+                    if (shift == 1) {
+                        indexScaling = 2;
+                    } else if (shift == 2) {
+                        indexScaling = 4;
+                    } else {
+                        indexScaling = 8;
+                    }
+                    offset = leftShiftNode.x();
+                }
+            }
+        }
+
+        return IndexedLocationNode.create(access.getLocationIdentity(), access.accessKind(), displacement, offset, access.graph(), indexScaling);
     }
 
     private static boolean addReadBarrier(UnsafeLoadNode load) {

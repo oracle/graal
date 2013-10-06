@@ -61,7 +61,6 @@ public class UnsafeLoadSnippets implements Snippets {
             Arguments args = new Arguments(unsafeLoad, load.graph().getGuardsStage());
             args.add("object", load.object());
             args.add("offset", load.offset());
-            args.add("disp", load.displacement());
             template(args).instantiate(runtime, load, DEFAULT_REPLACER, args);
         }
     }

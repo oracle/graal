@@ -157,7 +157,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     }
 
     public static Object test5Snippet() throws Exception {
-        return UnsafeLoadNode.load(wr, 0, useCompressedOops() ? 12 : 16, Kind.Object);
+        return UnsafeLoadNode.load(wr, useCompressedOops() ? 12 : 16, Kind.Object);
     }
 
     /**
@@ -232,7 +232,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     public static Object testUnsafeLoad(Object a, Object b, Object c) throws Exception {
         final int offset = (c == null ? 0 : ((Integer) c).intValue());
         final long displacement = (b == null ? 0 : ((Long) b).longValue());
-        return UnsafeLoadNode.load(a, offset, displacement, Kind.Object);
+        return UnsafeLoadNode.load(a, offset + displacement, Kind.Object);
     }
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {

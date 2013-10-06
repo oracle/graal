@@ -34,7 +34,7 @@ public final class CustomizedUnsafeStoreNode extends UnsafeStoreNode {
     @Input private ValueNode customLocationIdentity;
 
     public CustomizedUnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, ValueNode customLocationIdentity) {
-        super(object, 0, offset, value, accessKind);
+        super(object, offset, value, accessKind);
         this.customLocationIdentity = customLocationIdentity;
     }
 
@@ -55,54 +55,54 @@ public final class CustomizedUnsafeStoreNode extends UnsafeStoreNode {
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, Object value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, boolean value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, byte value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, char value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, double value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, float value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, int value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, long value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static void store(Object object, long offset, short value, @ConstantNodeParameter Kind kind, Object customLocationIdentity) {
-        UnsafeStoreNode.store(object, 0, offset, value, kind);
+        UnsafeStoreNode.store(object, offset, value, kind);
     }
 }

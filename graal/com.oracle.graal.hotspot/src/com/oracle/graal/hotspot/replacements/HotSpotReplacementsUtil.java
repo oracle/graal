@@ -481,7 +481,7 @@ public class HotSpotReplacementsUtil {
 
     public static Word loadWordFromObject(Object object, int offset) {
         assert offset != hubOffset() : "Use loadHubIntrinsic instead";
-        return loadWordFromObjectIntrinsic(object, 0, offset, getWordKind());
+        return loadWordFromObjectIntrinsic(object, offset, getWordKind());
     }
 
     @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)
@@ -489,8 +489,8 @@ public class HotSpotReplacementsUtil {
 
     @SuppressWarnings("unused")
     @NodeIntrinsic(value = UnsafeLoadNode.class, setStampFromReturnType = true)
-    private static Word loadWordFromObjectIntrinsic(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind wordKind) {
-        return Word.unsigned(unsafeReadWord(object, offset + displacement));
+    private static Word loadWordFromObjectIntrinsic(Object object, long offset, @ConstantNodeParameter Kind wordKind) {
+        return Word.unsigned(unsafeReadWord(object, offset));
     }
 
     @SuppressWarnings("unused")

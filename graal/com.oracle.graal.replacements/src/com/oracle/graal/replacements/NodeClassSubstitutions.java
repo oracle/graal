@@ -64,22 +64,22 @@ public class NodeClassSubstitutions {
 
     @MethodSubstitution
     private static Node getNode(Node node, long offset) {
-        return PiNode.piCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), Node.class, false, false);
+        return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object), Node.class, false, false);
     }
 
     @MethodSubstitution
     private static NodeList getNodeList(Node node, long offset) {
-        return PiNode.piCast(UnsafeLoadNode.load(node, 0, offset, Kind.Object), NodeList.class, false, false);
+        return PiNode.piCast(UnsafeLoadNode.load(node, offset, Kind.Object), NodeList.class, false, false);
     }
 
     @MethodSubstitution
     private static void putNode(Node node, long offset, Node value) {
-        UnsafeStoreNode.store(node, 0, offset, value, Kind.Object);
+        UnsafeStoreNode.store(node, offset, value, Kind.Object);
     }
 
     @MethodSubstitution
     private static void putNodeList(Node node, long offset, NodeList value) {
-        UnsafeStoreNode.store(node, 0, offset, value, Kind.Object);
+        UnsafeStoreNode.store(node, offset, value, Kind.Object);
     }
 
 }

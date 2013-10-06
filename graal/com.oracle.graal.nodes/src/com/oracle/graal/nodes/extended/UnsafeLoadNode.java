@@ -36,16 +36,12 @@ import com.oracle.graal.nodes.type.*;
  */
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
 
-    public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, boolean nonNull) {
-        this(nonNull ? StampFactory.objectNonNull() : StampFactory.object(), object, displacement, offset, Kind.Object);
+    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind) {
+        this(object, offset, accessKind, LocationIdentity.ANY_LOCATION);
     }
 
-    public UnsafeLoadNode(ValueNode object, int displacement, ValueNode offset, Kind accessKind) {
-        this(StampFactory.forKind(accessKind.getStackKind()), object, displacement, offset, accessKind);
-    }
-
-    public UnsafeLoadNode(Stamp stamp, ValueNode object, int displacement, ValueNode offset, Kind accessKind) {
-        super(stamp, object, displacement, offset, accessKind);
+    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+        super(StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
     }
 
     @Override
@@ -57,9 +53,9 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object());
         if (state != null && state.getState() == EscapeState.Virtual) {
-            ValueNode indexValue = tool.getReplacedValue(offset());
-            if (indexValue.isConstant()) {
-                long offset = indexValue.asConstant().asLong() + displacement();
+            ValueNode offsetValue = tool.getReplacedValue(offset());
+            if (offsetValue.isConstant()) {
+                long offset = offsetValue.asConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
                 if (entryIndex != -1 && state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
                     tool.replaceWith(state.getEntry(entryIndex));
@@ -73,39 +69,34 @@ public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtu
         return this.graph().add(new LoadFieldNode(object(), field));
     }
 
-    @Override
-    protected ValueNode cloneWithZeroOffset(int intDisplacement) {
-        return graph().add(new UnsafeLoadNode(this.stamp(), object(), intDisplacement, graph().unique(ConstantNode.forInt(0, graph())), accessKind()));
-    }
-
     @SuppressWarnings("unchecked")
     @NodeIntrinsic
-    public static <T> T load(Object object, @ConstantNodeParameter int displacement, long offset, @ConstantNodeParameter Kind kind) {
+    public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind) {
         if (kind == Kind.Boolean) {
-            return (T) (Boolean) unsafe.getBoolean(object, displacement + offset);
+            return (T) (Boolean) unsafe.getBoolean(object, offset);
         }
         if (kind == Kind.Byte) {
-            return (T) (Byte) unsafe.getByte(object, displacement + offset);
+            return (T) (Byte) unsafe.getByte(object, offset);
         }
         if (kind == Kind.Short) {
-            return (T) (Short) unsafe.getShort(object, displacement + offset);
+            return (T) (Short) unsafe.getShort(object, offset);
         }
         if (kind == Kind.Char) {
-            return (T) (Character) unsafe.getChar(object, displacement + offset);
+            return (T) (Character) unsafe.getChar(object, offset);
         }
         if (kind == Kind.Int) {
-            return (T) (Integer) unsafe.getInt(object, displacement + offset);
+            return (T) (Integer) unsafe.getInt(object, offset);
         }
         if (kind == Kind.Float) {
-            return (T) (Float) unsafe.getFloat(object, displacement + offset);
+            return (T) (Float) unsafe.getFloat(object, offset);
         }
         if (kind == Kind.Long) {
-            return (T) (Long) unsafe.getLong(object, displacement + offset);
+            return (T) (Long) unsafe.getLong(object, offset);
         }
         if (kind == Kind.Double) {
-            return (T) (Double) unsafe.getDouble(object, displacement + offset);
+            return (T) (Double) unsafe.getDouble(object, offset);
         }
         assert kind == Kind.Object;
-        return (T) unsafe.getObject(object, displacement + offset);
+        return (T) unsafe.getObject(object, offset);
     }
 }

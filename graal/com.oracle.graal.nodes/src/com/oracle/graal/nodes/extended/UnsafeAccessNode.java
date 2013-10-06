@@ -32,24 +32,24 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
-    private final int displacement;
     private final Kind accessKind;
+    private final LocationIdentity locationIdentity;
 
-    public UnsafeAccessNode(Stamp stamp, ValueNode object, int displacement, ValueNode offset, Kind accessKind) {
+    public UnsafeAccessNode(Stamp stamp, ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
         super(stamp);
         assert accessKind != null;
         this.object = object;
-        this.displacement = displacement;
         this.offset = offset;
         this.accessKind = accessKind;
+        this.locationIdentity = locationIdentity;
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
     }
 
     public ValueNode object() {
         return object;
-    }
-
-    public int displacement() {
-        return displacement;
     }
 
     public ValueNode offset() {
@@ -62,13 +62,13 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (offset().isConstant()) {
+        if (this.getLocationIdentity() == LocationIdentity.ANY_LOCATION && offset().isConstant()) {
             long constantOffset = offset().asConstant().asLong();
 
             // Try to canonicalize to a field access.
             ResolvedJavaType receiverType = ObjectStamp.typeOrNull(object());
             if (receiverType != null) {
-                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(displacement() + constantOffset);
+                ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantOffset);
                 // No need for checking that the receiver is non-null. The field access includes
                 // the null check and if a field is found, the offset is so small that this is
                 // never a valid access of an arbitrary address.
@@ -76,18 +76,9 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     return cloneAsFieldAccess(field);
                 }
             }
-
-            if (constantOffset != 0 && Integer.MAX_VALUE - displacement() >= constantOffset) {
-                int intDisplacement = (int) (constantOffset + displacement());
-                if (constantOffset == intDisplacement) {
-                    return cloneWithZeroOffset(intDisplacement);
-                }
-            }
         }
         return this;
     }
 
     protected abstract ValueNode cloneAsFieldAccess(ResolvedJavaField field);
-
-    protected abstract ValueNode cloneWithZeroOffset(int intDisplacement);
 }

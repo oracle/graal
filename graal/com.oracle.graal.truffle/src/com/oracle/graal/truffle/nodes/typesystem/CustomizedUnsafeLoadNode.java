@@ -32,20 +32,20 @@ import com.oracle.graal.nodes.spi.*;
 public final class CustomizedUnsafeLoadNode extends UnsafeLoadNode {
 
     @Input private ValueNode condition;
-    @Input private ValueNode locationIdentity;
+    @Input private ValueNode customLocationIdentity;
 
-    public CustomizedUnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, ValueNode condition, ValueNode locationIdentity) {
-        super(object, 0, offset, accessKind);
+    public CustomizedUnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, ValueNode condition, ValueNode customLocationIdentity) {
+        super(object, offset, accessKind);
         this.condition = condition;
-        this.locationIdentity = locationIdentity;
+        this.customLocationIdentity = customLocationIdentity;
     }
 
     public ValueNode getCondition() {
         return condition;
     }
 
-    public ValueNode getLocationIdentity() {
-        return locationIdentity;
+    public ValueNode getCustomLocationIdentity() {
+        return customLocationIdentity;
     }
 
     @Override
@@ -61,6 +61,6 @@ public final class CustomizedUnsafeLoadNode extends UnsafeLoadNode {
     @SuppressWarnings("unused")
     @NodeIntrinsic
     public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind, boolean condition, Object locationIdentity) {
-        return UnsafeLoadNode.load(object, 0, offset, kind);
+        return UnsafeLoadNode.load(object, offset, kind);
     }
 }
