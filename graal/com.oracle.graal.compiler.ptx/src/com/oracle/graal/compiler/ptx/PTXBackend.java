@@ -231,6 +231,7 @@ public class PTXBackend extends Backend {
         if (maxPredRegNum > 0) {
             codeBuffer.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
+        codeBuffer.emitString(".reg .pred %r;");  // used for setp bool
     }
 
     @Override
