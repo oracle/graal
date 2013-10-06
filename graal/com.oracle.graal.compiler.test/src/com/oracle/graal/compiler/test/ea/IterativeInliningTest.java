@@ -76,7 +76,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
     @Test
     public void testSimple() {
         ValueNode result = getReturn("testSimpleSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(0), result);
     }
 
