@@ -46,6 +46,8 @@ import com.oracle.graal.lir.ptx.PTXArithmetic.Unary1Op;
 import com.oracle.graal.lir.ptx.PTXArithmetic.Unary2Op;
 import com.oracle.graal.lir.ptx.PTXCompare.CompareOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.BranchOp;
+import com.oracle.graal.lir.ptx.PTXControlFlow.CondMoveOp;
+import com.oracle.graal.lir.ptx.PTXControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnNoValOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.SequentialSwitchOp;
@@ -86,7 +88,9 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime,
+                           TargetDescription target, FrameMap frameMap,
+                           CallingConvention cc, LIR lir) {
         super(graph, runtime, target, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
         int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
@@ -333,11 +337,79 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConditionalMove(Value left, Value right, Condition cond, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
-        // TODO: There is no conventional conditional move instruction in PTX.
-        // So, this method is changed to throw NYI exception.
-        // To be revisited if this needs to be really implemented.
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitConditionalMove()");
+    public Variable emitConditionalMove(Value left, Value right,
+                                        Condition cond, boolean unorderedIsTrue,
+                                        Value trueValue, Value falseValue) {
+
+        Condition finalCondition = LIRValueUtil.isVariable(right) ? cond.mirror() : cond;
+
+        boolean mirrored;
+        mirrored = emitCompare(finalCondition, left, right);
+
+        Variable result = newVariable(trueValue.getKind());
+        switch (left.getKind().getStackKind()) {
+            case Int:
+            case Long:
+            case Object:
+                append(new CondMoveOp(result, finalCondition,
+                                      load(trueValue), loadNonConst(falseValue),
+                                      nextPredRegNum));
+                nextPredRegNum++;
+                break;
+            case Float:
+            case Double:
+                append(new FloatCondMoveOp(result, finalCondition, unorderedIsTrue,
+                                           load(trueValue), load(falseValue),
+                                           nextPredRegNum));
+                nextPredRegNum++;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("" + left.getKind());
+        }
+        return result;
+    }
+
+    /**
+     * This method emits the compare instruction, and may reorder the operands. 
+     * It returns true if it did so.
+     *
+     * @param a the left operand of the comparison
+     * @param b the right operand of the comparison
+     * @return true if the left and right operands were switched, false otherwise
+     */
+    private boolean emitCompare(Condition cond, Value a, Value b) {
+        Variable left;
+        Value right;
+        boolean mirrored;
+        if (LIRValueUtil.isVariable(b)) {
+            left = load(b);
+            right = loadNonConst(a);
+            mirrored = true;
+        } else {
+            left = load(a);
+            right = loadNonConst(b);
+            mirrored = false;
+        }
+        switch (left.getKind().getStackKind()) {
+            case Int:
+                append(new CompareOp(ICMP, cond, left, right, nextPredRegNum));
+                break;
+            case Long:
+                append(new CompareOp(LCMP, cond, left, right, nextPredRegNum));
+                break;
+            case Object:
+                append(new CompareOp(ACMP, cond, left, right, nextPredRegNum));
+                break;
+            case Float:
+                append(new CompareOp(FCMP, cond, left, right, nextPredRegNum));
+                break;
+            case Double:
+                append(new CompareOp(DCMP, cond, left, right, nextPredRegNum));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return mirrored;
     }
 
 

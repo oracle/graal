@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.lir.ptx;
 
+import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
 
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
@@ -97,30 +99,31 @@ public class PTXControlFlow {
         }
     }
 
-    @SuppressWarnings("unused")
     public static class CondMoveOp extends PTXLIRInstruction {
 
         @Def({REG, HINT}) protected Value result;
         @Alive({REG}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
         private final Condition condition;
+        private final int predicate;
 
-        public CondMoveOp(Variable result, Condition condition, Variable trueValue, Value falseValue) {
+        public CondMoveOp(Variable result, Condition condition,
+                          Variable trueValue, Value falseValue,
+                          int predicateRegister) {
             this.result = result;
             this.condition = condition;
             this.trueValue = trueValue;
             this.falseValue = falseValue;
+            this.predicate = predicateRegister;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            // cmove(tasm, masm, result, false, condition, false, trueValue, falseValue);
-            // see 8.3 Predicated Execution p. 61 of PTX ISA 3.1
-            throw new InternalError("NYI");
+            cmove(tasm, masm, result, false, condition, false,
+                  trueValue, falseValue, predicate);
         }
     }
 
-    @SuppressWarnings("unused")
     public static class FloatCondMoveOp extends PTXLIRInstruction {
 
         @Def({REG}) protected Value result;
@@ -128,20 +131,81 @@ public class PTXControlFlow {
         @Alive({REG}) protected Value falseValue;
         private final Condition condition;
         private final boolean unorderedIsTrue;
+        private final int predicate;
 
-        public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue) {
+        public FloatCondMoveOp(Variable result, Condition condition,
+                               boolean unorderedIsTrue,
+                               Variable trueValue, Variable falseValue,
+                               int predicateRegister) {
             this.result = result;
             this.condition = condition;
             this.unorderedIsTrue = unorderedIsTrue;
             this.trueValue = trueValue;
             this.falseValue = falseValue;
+            this.predicate = predicateRegister;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            // cmove(tasm, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
-            // see 8.3 Predicated Execution p. 61 of PTX ISA 3.1
-            throw new InternalError("NYI");
+            cmove(tasm, masm, result, true, condition, unorderedIsTrue,
+                  trueValue, falseValue, predicate);
+        }
+    }
+
+    private static void cmove(TargetMethodAssembler tasm, PTXAssembler asm,
+                              Value result, boolean isFloat, Condition condition,
+                              boolean unorderedIsTrue,
+                              Value trueValue, Value falseValue,
+                              int predicateRegister) {
+        // check that we don't overwrite an input operand before it is used.
+        assert !result.equals(trueValue);
+
+        PTXMove.move(tasm, asm, result, falseValue);
+        cmove(tasm, asm, result, condition, trueValue, predicateRegister);
+
+        if (isFloat) {
+            if (unorderedIsTrue && !trueOnUnordered(condition)) {
+                // cmove(tasm, masm, result, ConditionFlag.Parity, trueValue);
+                throw GraalInternalError.unimplemented();
+            } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
+                // cmove(tasm, masm, result, ConditionFlag.Parity, falseValue);
+                throw GraalInternalError.unimplemented();
+            }
+        }
+    }
+
+    private static boolean trueOnUnordered(Condition condition) {
+        switch (condition) {
+            case NE:
+            case EQ:
+                return false;
+            case LT:
+            case GE:
+                return true;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    private static void cmove(TargetMethodAssembler tasm, PTXAssembler asm,
+                              Value result, Condition cond, Value other,
+                              int predicateRegister) {
+        if (isVariable(other)) {
+            assert !asVariable(other).equals(asVariable(result)) :
+                "other already overwritten by previous move";
+
+            switch (other.getKind()) {
+                case Int:
+                    new Mov(asVariable(result), other, predicateRegister).emit(asm);
+                    break;
+                case Long:
+                    new Mov(asVariable(result), other, predicateRegister).emit(asm);
+                    break;
+                default:
+                    throw new InternalError("unhandled: " + other.getKind());
+            }
+        } else {
+            throw GraalInternalError.shouldNotReachHere("cmove: not register");
         }
     }
 
@@ -155,7 +219,9 @@ public class PTXControlFlow {
         // Number of predicate register that would be set by this instruction.
         protected int predRegNum;
 
-        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch, int predReg) {
+        public SequentialSwitchOp(Constant[] keyConstants,
+                                  LabelRef[] keyTargets, LabelRef defaultTarget,
+                                  Value key, Value scratch, int predReg) {
             assert keyConstants.length == keyTargets.length;
             this.keyConstants = keyConstants;
             this.keyTargets = keyTargets;
@@ -214,7 +280,9 @@ public class PTXControlFlow {
         // Number of predicate register that would be set by this instruction.
         protected int predRegNum;
 
-        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Variable index, Variable scratch, int predReg) {
+        public TableSwitchOp(final int lowKey, final LabelRef defaultTarget,
+                             final LabelRef[] targets,
+                             Variable index, Variable scratch, int predReg) {
             this.lowKey = lowKey;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
@@ -225,7 +293,8 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            tableswitch(tasm, masm, lowKey, defaultTarget, targets, index, scratch, predRegNum);
+            tableswitch(tasm, masm, lowKey, defaultTarget, targets,
+                        index, scratch, predRegNum);
         }
     }
 
@@ -234,7 +303,9 @@ public class PTXControlFlow {
                                     LabelRef defaultTarget, LabelRef[] targets,
                                     Value value, Value scratch, int predNum) {
         Buffer buf = masm.codeBuffer;
+
         // Compare index against jump table bounds
+
         int highKey = lowKey + targets.length - 1;
         if (lowKey != 0) {
             // subtract the low value from the switch value
@@ -246,15 +317,21 @@ public class PTXControlFlow {
 
         // Jump to default target if index is not within the jump table
         if (defaultTarget != null) {
-            masm.bra(defaultTarget.label().toString(), predNum);
+            masm.bra(masm.nameOf(defaultTarget.label()), predNum);
         }
 
         // address of jump table
         int tablePos = buf.position();
 
+
         JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
+        String name = "jumptable" + jt.position;
+
+        new Global(value, name, targets).emit(masm);
+
+        // bra(Value, name);
+
         tasm.compilationResult.addAnnotation(jt);
 
-        // PTX: unimp: tableswitch extract
     }
 }

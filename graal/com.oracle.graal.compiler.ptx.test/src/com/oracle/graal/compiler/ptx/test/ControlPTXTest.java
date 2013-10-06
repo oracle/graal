@@ -42,10 +42,27 @@ public class ControlPTXTest extends PTXTestBase {
         } else {
             printReport("testSwitchDefault1I: no VALUE");
         }
+        ret = (Integer) invoke(compile("testSwitch1I"), 2);
+        if (ret != null) {
+            printReport("testSwitch1I: " + ret);
+        } else {
+            printReport("testSwitch1I: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testIfElse1I"), 222);
+        if (ret != null) {
+            printReport("testIfElse1I: " + ret);
+        } else {
+            printReport("testIfElse1I: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testIfElse2I"), 19, 64);
+        if (ret != null) {
+            printReport("testIfElse2I: " + (char) ret.intValue());
+        } else {
+            printReport("testIfElse2I: no VALUE");
+        }
         compile("testStatic");
         compile("testCall");
-        // compile("testSwitch1I");
-        // compile("testLookupSwitch1I");
+        compile("testLookupSwitch1I");
     }
 
     public static int testLoop(int n) {
@@ -55,6 +72,24 @@ public class ControlPTXTest extends PTXTestBase {
             sum++;
         }
         return sum;
+    }
+
+    public static int testIfElse1I(int n) {
+        if (n > 22) {
+            return 42;
+        } else {
+            return -42;
+        }
+    }
+
+    public static int testIfElse2I(int c, int y) {
+        if  (c > 19) {
+            return (int) 'M';    // millenial
+        } else if (y > 84) {
+            return (int) 'Y';    // young
+        } else {
+            return (int) 'O';    // old
+        }
     }
 
     public static int testSwitchDefault1I(int a) {
@@ -78,31 +113,31 @@ public class ControlPTXTest extends PTXTestBase {
     public static int testLookupSwitch1I(int a) {
         switch (a) {
             case 0:
-                return 1;
+                return 10;
             case 1:
-                return 2;
+                return 11;
             case 2:
-                return 3;
+                return 12;
             case 3:
-                return 1;
+                return 13;
             case 4:
-                return 2;
+                return 14;
             case 5:
-                return 3;
+                return 15;
             case 6:
-                return 1;
+                return 16;
             case 7:
-                return 2;
+                return 17;
             case 8:
-                return 3;
+                return 18;
             case 9:
-                return 1;
+                return 19;
             case 10:
-                return 2;
+                return 20;
             case 11:
-                return 3;
+                return 21;
             default:
-                return -1;
+                return 42;
         }
     }
 

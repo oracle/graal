@@ -24,6 +24,7 @@ package com.oracle.graal.asm.ptx;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
 
+import com.oracle.graal.asm.Label;
 import com.oracle.graal.api.code.Register;
 import com.oracle.graal.api.code.RegisterConfig;
 import com.oracle.graal.api.code.TargetDescription;
@@ -32,6 +33,7 @@ import com.oracle.graal.api.meta.Kind;
 import com.oracle.graal.api.meta.Value;
 import com.oracle.graal.nodes.calc.Condition;
 import com.oracle.graal.graph.GraalInternalError;
+import com.oracle.graal.lir.LabelRef;
 import com.oracle.graal.lir.Variable;
 
 public class PTXAssembler extends AbstractPTXAssembler {
@@ -511,10 +513,16 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     // Checkstyle: stop method name check
     public final void bra(String tgt, int pred) {
-        System.err.println("BRA: " + tgt + " pred: " + pred);
         assert pred >= 0;
 
+        if (tgt.equals("?")) {
+            Thread.dumpStack();
+        }
         emitString("@%p" + pred + " " + "bra" + " " + tgt + ";");
+    }
+
+    public final void bra(String target) {
+        emitString("bra " + target + ";");
     }
 
     public final void bra_uni(String tgt) {
@@ -534,10 +542,16 @@ public class PTXAssembler extends AbstractPTXAssembler {
     
     public static class Mov extends SingleOperandFormat {
 
+        private int predicateRegisterNumber = -1;
+
         public Mov(Variable dst, Value src) {
             super(dst, src);
         }
 
+        public Mov(Variable dst, Value src, int predicate) {
+            super(dst, src);
+            this.predicateRegisterNumber = predicate;
+        }
         /*
         public Mov(Variable dst, AbstractAddress src) {
             throw GraalInternalError.unimplemented("AbstractAddress Mov");
@@ -545,10 +559,15 @@ public class PTXAssembler extends AbstractPTXAssembler {
         */
         
         public void emit(PTXAssembler asm) {
-            asm.emitString("mov." + super.emit());
+            if (predicateRegisterNumber >= 0) {
+                asm.emitString("@%p" + String.valueOf(predicateRegisterNumber)
+                               + " mov." + super.emit());
+            } else {
+                asm.emitString("mov." + super.emit());
+            }
         }
     }
-    
+
     public static class Neg extends SingleOperandFormat {
 
         public Neg(Variable dst, Variable src) {
@@ -595,6 +614,49 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void exit() {
         emitString("exit;" + " " + "");
+    }
+
+    public static class Global {
+
+        private Kind kind;
+        private String name;
+        private LabelRef[] targets;
+
+        public Global(Value val, String name, LabelRef[] targets) {
+            this.kind = val.getKind();
+            this.name = name;
+            this.targets = targets;
+        }
+
+        private String valueForKind(Kind k) {
+            switch (k.getTypeChar()) {
+                case 'i':
+                    return "s32";
+                case 'j':
+                    return "s64";
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+        }
+
+        private String emitTargets(PTXAssembler asm, LabelRef[] refs) {
+            StringBuffer sb = new StringBuffer();
+
+            for (int i = 0; i < refs.length; i++) {
+                sb.append(asm.nameOf(refs[i].label()));
+                if (i < (refs.length -1)) {
+                    sb.append(", ");
+                }
+            }
+
+            return sb.toString();
+        }
+
+        public void emit(PTXAssembler asm) {
+            asm.emitString(".global ." + valueForKind(kind) +
+                           " " + name + "[" + targets.length + "] = " +
+                           "{ " + emitTargets(asm, targets) + " };");
+        }
     }
 
     public static class Param extends SingleOperandFormat {
@@ -824,4 +886,15 @@ public class PTXAssembler extends AbstractPTXAssembler {
     public PTXAddress getPlaceholder() {
         return null;
     }
+
+    @Override
+    public void jmp(Label l) {
+        String str = nameOf(l);
+        if (l.equals("?")) {
+            Thread.dumpStack();
+        }
+        bra(str);
+    }
+
+
 }

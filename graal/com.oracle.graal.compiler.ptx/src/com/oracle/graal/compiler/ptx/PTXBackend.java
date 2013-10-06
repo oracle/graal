@@ -109,8 +109,8 @@ public class PTXBackend extends Backend {
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
         // Emit initial boiler-plate directives.
-        codeBuffer.emitString(".version 1.4");
-        codeBuffer.emitString(".target sm_10");
+        codeBuffer.emitString(".version 2.1");
+        codeBuffer.emitString(".target sm_20");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 
