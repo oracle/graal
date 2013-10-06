@@ -24,6 +24,7 @@ package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -59,6 +60,7 @@ public final class CustomizedUnsafeLoadNode extends UnsafeLoadNode {
     }
 
     @SuppressWarnings("unused")
+    @NodeIntrinsic
     public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind, boolean condition, Object locationIdentity) {
         return UnsafeLoadNode.load(object, 0, offset, kind);
     }
