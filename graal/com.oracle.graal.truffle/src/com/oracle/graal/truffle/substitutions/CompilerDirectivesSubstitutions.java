@@ -63,9 +63,81 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = TypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz, Object receiver, Object customType);
+    @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
+    public static native Object unsafeCast(Object value, Class clazz, boolean condition);
 
-    @MacroSubstitution(macro = CustomTypeCheckMacroNode.class, isStatic = true)
-    public static native boolean customTypeCheck(boolean condition, Object value, Object customType);
+    @MethodSubstitution
+    public static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Boolean, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Byte, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Short, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Int, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Float, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Double, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
+        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Object, condition, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Boolean, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Byte, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Short, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Int, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Long, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Float, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Double, locationIdentity);
+    }
+
+    @MethodSubstitution
+    public static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
+        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Object, locationIdentity);
+    }
 }

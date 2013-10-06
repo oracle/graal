@@ -57,7 +57,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public <T extends Arguments> T getArguments(Class<T> clazz) {
-        return CompilerDirectives.unsafeCast(arguments, clazz);
+        return CompilerDirectives.unsafeCast(arguments, clazz, true);
     }
 
     @Override

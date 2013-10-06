@@ -1016,6 +1016,9 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
+        if (clazz == null) {
+            throw new IllegalArgumentException("Class parameter was null");
+        }
         return HotSpotResolvedObjectType.fromClass(clazz);
     }
 

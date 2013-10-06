@@ -28,18 +28,16 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
-public final class TypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.IterableNodeType, ValueProxy, Virtualizable {
+public final class UnsafeTypeCastNode extends FixedWithNextNode implements Lowerable, com.oracle.graal.graph.IterableNodeType, ValueProxy, Virtualizable {
 
-    @Input private ValueNode receiver;
     @Input private ValueNode object;
-    private final Object customType;
+    @Input private ValueNode condition;
     private final ResolvedJavaType castTarget;
 
-    public TypeCastNode(ValueNode object, ResolvedJavaType castTarget, ValueNode receiver, Object customType) {
+    public UnsafeTypeCastNode(ValueNode object, ResolvedJavaType castTarget, ValueNode condition) {
         super(StampFactory.declaredNonNull(castTarget));
-        this.receiver = receiver;
+        this.condition = condition;
         this.object = object;
-        this.customType = customType;
         this.castTarget = castTarget;
     }
 
@@ -47,16 +45,12 @@ public final class TypeCastNode extends FixedWithNextNode implements Lowerable, 
         return object;
     }
 
-    public ValueNode getReceiver() {
-        return receiver;
+    public ValueNode getCondition() {
+        return condition;
     }
 
     public ResolvedJavaType getCastTarget() {
         return castTarget;
-    }
-
-    public Object getCustomType() {
-        return customType;
     }
 
     public void lower(LoweringTool tool) {
@@ -69,7 +63,7 @@ public final class TypeCastNode extends FixedWithNextNode implements Lowerable, 
     }
 
     public ValueNode getOriginalValue() {
-        return object;
+        return getObject();
     }
 
     @Override

@@ -22,36 +22,40 @@
  */
 package com.oracle.graal.truffle.nodes.typesystem;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#customTypeCheck(boolean, Object, Object)}.
+ * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
  */
-public class CustomTypeCheckMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
     private static final int ARGUMENT_COUNT = 3;
-    private static final int CONDITION_ARGUMENT_INDEX = 0;
-    private static final int OBJECT_ARGUMENT_INDEX = 1;
-    private static final int CUSTOM_TYPE_ARGUMENT_INDEX = 2;
+    private static final int OBJECT_ARGUMENT_INDEX = 0;
+    private static final int CLASS_ARGUMENT_INDEX = 1;
+    private static final int CONDITION_ARGUMENT_INDEX = 2;
 
-    public CustomTypeCheckMacroNode(Invoke invoke) {
-        super(invoke, "The custom type parameter could not be reduced to a compile time constant.");
+    public UnsafeTypeCastMacroNode(Invoke invoke) {
+        super(invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode customTypeArgument = arguments.get(CUSTOM_TYPE_ARGUMENT_INDEX);
-        if (customTypeArgument.isConstant()) {
-            Object typeToken = customTypeArgument.asConstant().asObject();
-            ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
+        ValueNode classArgument = arguments.get(CLASS_ARGUMENT_INDEX);
+        if (classArgument.isConstant()) {
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
-            return graph().unique(new ConditionalNode(graph().unique(new CustomTypeCheckNode(conditionArgument, objectArgument, typeToken))));
+            ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
+            Class c = (Class) classArgument.asConstant().asObject();
+            if (c == null) {
+                return objectArgument;
+            }
+            ResolvedJavaType lookupJavaType = tool.runtime().lookupJavaType(c);
+            return graph().add(new UnsafeTypeCastNode(objectArgument, lookupJavaType, conditionArgument));
         }
         return this;
     }

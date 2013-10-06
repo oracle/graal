@@ -22,37 +22,44 @@
  */
 package com.oracle.graal.truffle.nodes.typesystem;
 
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public final class UnsafeCustomizationNode extends FloatingNode implements LIRLowerable, com.oracle.graal.graph.IterableNodeType {
+public final class CustomizedUnsafeLoadNode extends UnsafeLoadNode {
 
-    @Input private ValueNode receiver;
-    private final Object customType;
-    private final Object locationIdentity;
+    @Input private ValueNode condition;
+    @Input private ValueNode locationIdentity;
 
-    public UnsafeCustomizationNode(ValueNode receiver, Object customType, Object locationIdentity) {
-        super(StampFactory.object());
-        this.receiver = receiver;
-        this.customType = customType;
+    public CustomizedUnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, ValueNode condition, ValueNode locationIdentity) {
+        super(object, 0, offset, accessKind);
+        this.condition = condition;
         this.locationIdentity = locationIdentity;
     }
 
-    public ValueNode getReceiver() {
-        return receiver;
+    public ValueNode getCondition() {
+        return condition;
     }
 
-    public Object getCustomType() {
-        return customType;
-    }
-
-    public Object getLocationIdentity() {
+    public ValueNode getLocationIdentity() {
         return locationIdentity;
     }
 
-    public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(receiver));
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        return this;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        super.virtualize(tool);
+    }
+
+    @SuppressWarnings("unused")
+    public static <T> T load(Object object, long offset, @ConstantNodeParameter Kind kind, boolean condition, Object locationIdentity) {
+        return UnsafeLoadNode.load(object, 0, offset, kind);
     }
 }
