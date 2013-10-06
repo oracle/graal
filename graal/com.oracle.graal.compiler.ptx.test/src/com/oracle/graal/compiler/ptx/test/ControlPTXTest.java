@@ -28,13 +28,23 @@ import java.lang.reflect.Method;
 
 public class ControlPTXTest extends PTXTestBase {
 
-    @Ignore
     @Test
     public void testControl() {
-        compile("testLoop");
+        Integer ret = (Integer) invoke(compile("testLoop"), 42);
+        if (ret != null) {
+            printReport("testLoop: " + ret);
+        } else {
+            printReport("testLoop: no VALUE");
+        }
+        ret =  (Integer) invoke(compile("testSwitchDefault1I"), 3);
+        if (ret != null) {
+            printReport("testSwitchDefault1I: " + ret);
+        } else {
+            printReport("testSwitchDefault1I: no VALUE");
+        }
+        compile("testStatic");
+        compile("testCall");
         // compile("testSwitch1I");
-        // compile("testStatic");
-        // compile("testCall");
         // compile("testLookupSwitch1I");
     }
 
@@ -45,6 +55,13 @@ public class ControlPTXTest extends PTXTestBase {
             sum++;
         }
         return sum;
+    }
+
+    public static int testSwitchDefault1I(int a) {
+        switch (a) {
+            default:
+                return 4;
+        }
     }
 
     public static int testSwitch1I(int a) {
@@ -100,7 +117,7 @@ public class ControlPTXTest extends PTXTestBase {
         return a + b;
     }
 
-    public static int testCall(@SuppressWarnings("unused") Object o, int a, int b) {
+    public static int testCall(int a, int b) {
         return method(a, b);
     }
 

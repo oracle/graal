@@ -230,7 +230,9 @@ public class PTXControlFlow {
     }
 
     @SuppressWarnings("unused")
-    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value value, Value scratch, int predNum) {
+    private static void tableswitch(TargetMethodAssembler tasm, PTXAssembler masm, int lowKey,
+                                    LabelRef defaultTarget, LabelRef[] targets,
+                                    Value value, Value scratch, int predNum) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;

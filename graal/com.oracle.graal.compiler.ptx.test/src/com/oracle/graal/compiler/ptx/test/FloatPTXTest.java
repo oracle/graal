@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.code.CompilationResult;
 
 /* PTX ISA 3.1 - 8.7.3 Floating-Point Instructions */
-@Ignore
 public class FloatPTXTest extends PTXTestBase {
 
     @Ignore
@@ -357,13 +356,6 @@ public class FloatPTXTest extends PTXTestBase {
 
     public static float testD2F(double a) {
         return (float) a;
-    }
-
-    public static void printReport(String message) {
-        // CheckStyle: stop system..print check
-        System.out.println(message);
-        // CheckStyle: resume system..print check
-
     }
 
     public static void main(String[] args) {
