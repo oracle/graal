@@ -27,5 +27,9 @@ import com.oracle.truffle.api.nodes.*;
 
 public abstract class AbstractTestNode extends Node {
 
+    protected AbstractTestNode() {
+        super(null);
+    }
+
     public abstract int execute(VirtualFrame frame);
 }
