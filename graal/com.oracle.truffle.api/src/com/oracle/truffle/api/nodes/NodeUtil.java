@@ -657,7 +657,7 @@ public final class NodeUtil {
             final SourceSection sourceSection = node.getSourceSection();
             if (sourceSection != null) {
                 final String txt = sourceSection.getSource().getCode();
-                p.println("Full source len=(" + txt.length() + ")  txt=___" + txt + "___");
+                p.println("Full source len=(" + txt.length() + ")  ___" + txt + "___");
                 p.println("AST source attribution:");
             }
         }
@@ -793,7 +793,7 @@ public final class NodeUtil {
             final StringBuilder sb = new StringBuilder();
             sb.append("source:  len=" + srcText.length());
             sb.append(" (" + section.getCharIndex() + "," + (section.getCharEndIndex() - 1) + ")");
-            sb.append(" txt=___" + srcText + "___");
+            sb.append(" ___" + srcText + "___");
             return sb.toString();
         }
         return "";
