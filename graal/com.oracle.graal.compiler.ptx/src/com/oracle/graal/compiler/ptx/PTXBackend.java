@@ -85,7 +85,8 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen,
+                                              CompilationResult compilationResult) {
         // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
@@ -99,7 +100,9 @@ public class PTXBackend extends Backend {
         return tasm;
     }
 
-    private static void emitKernelEntry(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
+    private static void emitKernelEntry(TargetMethodAssembler tasm,
+                                        LIRGenerator lirGen,
+                                        ResolvedJavaMethod codeCacheOwner) {
         // Emit PTX kernel entry text based on PTXParameterOp
         // instructions in the start block. Remove the instructions
         // once kernel entry text and directives are emitted to
@@ -109,8 +112,8 @@ public class PTXBackend extends Backend {
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
         // Emit initial boiler-plate directives.
-        codeBuffer.emitString(".version 2.1");
-        codeBuffer.emitString(".target sm_20");
+        codeBuffer.emitString(".version 3.0");
+        codeBuffer.emitString(".target sm_30");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 
@@ -140,9 +143,13 @@ public class PTXBackend extends Backend {
     }
 
     // Emit .reg space declarations
-    private static void emitRegisterDecl(TargetMethodAssembler tasm, LIRGenerator lirGen,
+    private static void emitRegisterDecl(TargetMethodAssembler tasm,
+                                         LIRGenerator lirGen,
                                          ResolvedJavaMethod codeCacheOwner) {
-        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+
+        assert codeCacheOwner != null :
+               lirGen.getGraph() + " is not associated with a method";
+
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
         final SortedSet<Integer> signed32 = new TreeSet<>();
