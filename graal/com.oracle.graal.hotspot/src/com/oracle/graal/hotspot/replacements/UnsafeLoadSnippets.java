@@ -39,9 +39,8 @@ import com.oracle.graal.word.*;
 public class UnsafeLoadSnippets implements Snippets {
 
     @Snippet
-    public static Object lowerUnsafeLoad(Object object, long offset, int disp) {
+    public static Object lowerUnsafeLoad(Object object, long displacement) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        long displacement = disp + offset;
         if (object instanceof java.lang.ref.Reference && referentOffset() == displacement) {
             return Word.fromObject(fixedObject).readObject((int) displacement, BarrierType.PRECISE, true);
         } else {
