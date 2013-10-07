@@ -31,41 +31,44 @@ import com.oracle.graal.api.code.CompilationResult;
 /* PTX ISA 3.1 - 8.7.3 Floating-Point Instructions */
 public class FloatPTXTest extends PTXTestBase {
 
-    @Ignore
     @Test
     public void testAdd() {
-        CompilationResult r = compile("testAdd2F");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2F FAILED");
+        Float ret = (Float) invoke(compile("testAdd2I"), 42, 43);
+        if (ret != null) {
+            printReport("testAdd2I: " + ret);
+        } else {
+            printReport("testAdd2I: no VALUE");
         }
 
-        /*
-        r = compile("testAdd2D");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAdd2D FAILED");
+        ret = (Float) invoke(compile("testAdd2F"), 42.1F, 43.5F);
+        if (ret != null) {
+            printReport("testAdd2F: " + ret);
+        } else {
+            printReport("testAdd2F: no VALUE");
         }
 
-        r = compile("testAddFConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAddFConst FAILED");
+        ret = (Float) invoke(compile("testAddFConst"), 42.1F);
+        if (ret != null) {
+            printReport("testAddFConst: " + ret);
+        } else {
+            printReport("testAddFConst: no VALUE");
         }
-        r = compile("testAddConstF");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testConstF FAILED");
+
+        Double dret = (Double) invoke(compile("testAdd2D"), 42.1, 43.5);
+        if (dret != null) {
+            printReport("testAdd2D: " + dret);
+        } else {
+            printReport("testAdd2D: no VALUE");
         }
-        r = compile("testAddDConst");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testAddDConst FAILED");
-        }
-        r = compile("testAddConstD");
-        if (r.getTargetCode() == null) {
-            printReport("Compilation of testConstD FAILED");
-        }
-        */
+
+    }
+
+    public static float testAdd2I(int a, int b) {
+        return (float) (a + b);
     }
 
     public static float testAdd2F(float a, float b) {
-        return a + b;
+        return (a + b);
     }
 
     public static double testAdd2D(double a, double b) {

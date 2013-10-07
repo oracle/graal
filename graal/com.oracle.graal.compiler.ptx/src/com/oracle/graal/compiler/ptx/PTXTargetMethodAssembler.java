@@ -33,10 +33,13 @@ import com.oracle.graal.nodes.*;
 
 public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
-    private static CompilerToGPU toGPU = HotSpotGraalRuntime.graalRuntime().getCompilerToGPU();
+    private static CompilerToGPU toGPU =
+                    HotSpotGraalRuntime.graalRuntime().getCompilerToGPU();
+
     private static boolean validDevice = toGPU.deviceInit();
 
-    private static final int totalProcessors = (validDevice ? toGPU.availableProcessors() : 0);
+    private static final int totalProcessors =
+                            (validDevice ? toGPU.availableProcessors() : 0);
 
     public static int getAvailableProcessors() {
         return totalProcessors;
@@ -44,8 +47,12 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
     // detach ??
 
-    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider runtime, FrameMap frameMap,
-                                    AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
+    public PTXTargetMethodAssembler(TargetDescription target,
+                                    CodeCacheProvider runtime,
+                                    FrameMap frameMap,
+                                    AbstractAssembler asm,
+                                    FrameContext frameContext,
+                                    CompilationResult compilationResult) {
         super(target, runtime, frameMap, asm, frameContext, compilationResult);
     }
 
@@ -53,11 +60,14 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
     public CompilationResult finishTargetMethod(StructuredGraph graph) {
         ResolvedJavaMethod method = graph.method();
         assert method != null : graph + " is not associated wth a method";
-        ExternalCompilationResult graalCompile = (ExternalCompilationResult) super.finishTargetMethod(graph);
+
+        ExternalCompilationResult graalCompile =
+            (ExternalCompilationResult) super.finishTargetMethod(graph);
 
         try {
             if ((validDevice) && (graalCompile.getTargetCode() != null)) {
-                long kernel = toGPU.generateKernel(graalCompile.getTargetCode(), method.getName());
+                long kernel = toGPU.generateKernel(graalCompile.getTargetCode(),
+                                                   method.getName());
                 graalCompile.setEntryPoint(kernel);
             }
         } catch (Throwable th) {

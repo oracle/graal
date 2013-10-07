@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
@@ -161,7 +160,7 @@ public class PTXControlFlow {
         assert !result.equals(trueValue);
 
         PTXMove.move(tasm, asm, result, falseValue);
-        cmove(tasm, asm, result, condition, trueValue, predicateRegister);
+        cmove(asm, result, trueValue, predicateRegister);
 
         if (isFloat) {
             if (unorderedIsTrue && !trueOnUnordered(condition)) {
@@ -187,8 +186,8 @@ public class PTXControlFlow {
         }
     }
 
-    private static void cmove(TargetMethodAssembler tasm, PTXAssembler asm,
-                              Value result, Condition cond, Value other,
+    private static void cmove(PTXAssembler asm,
+                              Value result, Value other,
                               int predicateRegister) {
         if (isVariable(other)) {
             assert !asVariable(other).equals(asVariable(result)) :
