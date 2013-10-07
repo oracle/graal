@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code LoadFieldNode} represents a read of a static or instance field.
  */
 @NodeInfo(nameTemplate = "LoadField#{p#field/s}")
-public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, IterableNodeType, VirtualizableRoot {
+public final class LoadFieldNode extends AccessFieldNode implements Canonicalizable, VirtualizableRoot {
 
     /**
      * Creates a new LoadFieldNode instance.

@@ -28,7 +28,7 @@ import com.oracle.graal.graph.spi.*;
 /**
  * Logic node that negates its argument.
  */
-public class LogicNegationNode extends LogicNode implements Canonicalizable, IterableNodeType {
+public class LogicNegationNode extends LogicNode implements Canonicalizable {
 
     @Input private LogicNode input;
 

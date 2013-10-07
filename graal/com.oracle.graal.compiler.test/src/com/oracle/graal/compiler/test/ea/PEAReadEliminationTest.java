@@ -83,7 +83,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testSimple() {
         ValueNode result = getReturn("testSimpleSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertTrue(result.isConstant());
         assertEquals(2, result.asConstant().asInt());
     }
@@ -112,7 +112,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testParam() {
         ValueNode result = getReturn("testParamSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(1), result);
     }
 
@@ -126,7 +126,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testMaterialized() {
         ValueNode result = getReturn("testMaterializedSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(0), result);
     }
 
@@ -142,7 +142,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testSimpleLoop() {
         ValueNode result = getReturn("testSimpleLoopSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(1), result);
     }
 
@@ -160,7 +160,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testBadLoop() {
         ValueNode result = getReturn("testBadLoopSnippet").result();
-        assertEquals(0, graph.getNodes(LoadFieldNode.class).count());
+        assertEquals(0, graph.getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof ProxyNode);
         assertTrue(((ProxyNode) result).value() instanceof PhiNode);
     }
@@ -178,7 +178,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testBadLoop2() {
         ValueNode result = getReturn("testBadLoop2Snippet").result();
-        assertEquals(1, graph.getNodes(LoadFieldNode.class).count());
+        assertEquals(1, graph.getNodes().filter(LoadFieldNode.class).count());
         assertTrue(result instanceof LoadFieldNode);
     }
 
@@ -195,7 +195,7 @@ public class PEAReadEliminationTest extends GraalCompilerTest {
     @Test
     public void testPhi() {
         ValueNode result = getReturn("testPhiSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertTrue(result instanceof PhiNode);
         PhiNode phi = (PhiNode) result;
         assertTrue(phi.valueAt(0).isConstant());

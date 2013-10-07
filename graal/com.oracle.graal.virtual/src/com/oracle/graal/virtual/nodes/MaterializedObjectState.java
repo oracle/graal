@@ -29,7 +29,7 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * This class encapsulated the materialized state of an escape analyzed object.
  */
-public final class MaterializedObjectState extends EscapeObjectState implements IterableNodeType, Node.ValueNumberable {
+public final class MaterializedObjectState extends EscapeObjectState implements Node.ValueNumberable {
 
     @Input private ValueNode materializedValue;
 

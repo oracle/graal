@@ -647,11 +647,11 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 int barriers = 0;
                 // First, the total number of expected barriers is checked.
                 if (((HotSpotRuntime) runtime()).config.useG1GC) {
-                    barriers = graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count() + graph.getNodes(G1ArrayRangePreWriteBarrier.class).count() +
-                                    graph.getNodes(G1ArrayRangePostWriteBarrier.class).count();
+                    barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
+                                    graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers * 2 == barriers);
                 } else {
-                    barriers = graph.getNodes(SerialWriteBarrier.class).count() + graph.getNodes(SerialArrayRangeWriteBarrier.class).count();
+                    barriers = graph.getNodes().filter(SerialWriteBarrier.class).count() + graph.getNodes().filter(SerialArrayRangeWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers == barriers);
                 }
                 // Iterate over all write nodes and remove barriers according to input indices.

@@ -258,9 +258,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
                 int barriers = 0;
                 if (useG1GC()) {
-                    barriers = graph.getNodes(G1ReferentFieldReadBarrier.class).count() + graph.getNodes(G1PreWriteBarrier.class).count() + graph.getNodes(G1PostWriteBarrier.class).count();
+                    barriers = graph.getNodes().filter(G1ReferentFieldReadBarrier.class).count() + graph.getNodes().filter(G1PreWriteBarrier.class).count() +
+                                    graph.getNodes().filter(G1PostWriteBarrier.class).count();
                 } else {
-                    barriers = graph.getNodes(SerialWriteBarrier.class).count();
+                    barriers = graph.getNodes().filter(SerialWriteBarrier.class).count();
                 }
                 Assert.assertEquals(expectedBarriers, barriers);
                 for (WriteNode write : graph.getNodes().filter(WriteNode.class)) {
