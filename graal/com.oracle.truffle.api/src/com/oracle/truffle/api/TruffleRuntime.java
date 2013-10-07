@@ -77,6 +77,14 @@ public interface TruffleRuntime {
     Assumption createAssumption(String name);
 
     /**
+     * Creates a new virtual frame object that can be used to store values and is potentially
+     * optimizable by the runtime.
+     * 
+     * @return the newly created virtual frame object
+     */
+    VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor);
+
+    /**
      * Creates a new materialized frame object that can be used to store values.
      * 
      * @return the newly created materialized frame object
