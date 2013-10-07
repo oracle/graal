@@ -716,9 +716,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     public enum BooleanOperator {
-        AND("and"),
-        OR("or"),
-        XOR("xor");
+        AND("and"), OR("or"), XOR("xor");
 
         private final String output;
 
@@ -731,18 +729,15 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
     }
 
-    public static class Setp  {
+    public static class Setp {
 
-
-        private BooleanOperator    booleanOperator;
-        private ConditionOperator  operator;
+        private BooleanOperator booleanOperator;
+        private ConditionOperator operator;
         private Value first, second;
         private Kind kind;
         private int predicate;
 
-        public Setp(Condition condition,
-                    Value first, Value second,
-                    int predicateRegisterNumber) {
+        public Setp(Condition condition, Value first, Value second, int predicateRegisterNumber) {
             setFirst(first);
             setSecond(second);
             setPredicate(predicateRegisterNumber);
@@ -750,9 +745,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
             setConditionOperator(operatorForConditon(condition));
         }
 
-        public Setp(Condition condition, BooleanOperator operator,
-                    Value first, Value second,
-                    int predicateRegisterNumber) {
+        public Setp(Condition condition, BooleanOperator operator, Value first, Value second, int predicateRegisterNumber) {
             setFirst(first);
             setSecond(second);
             setPredicate(predicateRegisterNumber);
@@ -920,18 +913,11 @@ public class PTXAssembler extends AbstractPTXAssembler {
         public void emit(PTXAssembler asm) {
 
             if (booleanOperator != null) {
-                asm.emitString("setp." +
-                               operator.getOperator() + "." +
-                               booleanOperator.getOperator() +
-                               typeForKind(kind) + " %p" + predicate +
-                               emitValue(first) + emitValue(second) +
-                               ", %r;"); // Predicates need to be objects
+                asm.emitString("setp." + operator.getOperator() + "." + booleanOperator.getOperator() + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ", %r;"); // Predicates
+// need to be objects
 
             } else {
-                asm.emitString("setp." +
-                               operator.getOperator() + "." +
-                               typeForKind(kind) + " %p" + predicate +
-                               emitValue(first) + emitValue(second) + ";");
+                asm.emitString("setp." + operator.getOperator() + "." + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ";");
             }
         }
     }

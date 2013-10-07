@@ -24,12 +24,10 @@ package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.BooleanOperator.*;
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
-import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.ptx.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.Condition;
 
@@ -47,20 +45,16 @@ public class PTXTestOp extends PTXLIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-        emit(tasm, masm, x, y, predicate);
+        emit(masm, x, y, predicate);
     }
 
     @Override
     protected void verify() {
         super.verify();
-        assert (x.getKind() == Kind.Int &&
-                y.getKind().getStackKind() == Kind.Int) ||
-                (x.getKind() == Kind.Long && y.getKind() == Kind.Long) :
-                x + " " + y;
+        assert (x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (x.getKind() == Kind.Long && y.getKind() == Kind.Long) : x + " " + y;
     }
 
-    public static void emit(TargetMethodAssembler tasm, PTXAssembler masm,
-                            Value x, Value y, int predicate) {
+    public static void emit(PTXAssembler masm, Value x, Value y, int predicate) {
         /*
          * This is not yet quite right - as the result for the equivalent in
          * ControlPTXText.testIntegerTestBranch2I is wrong.
