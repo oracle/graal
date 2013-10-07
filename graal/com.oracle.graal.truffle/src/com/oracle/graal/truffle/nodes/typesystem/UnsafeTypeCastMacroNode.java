@@ -26,6 +26,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
@@ -55,7 +58,10 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
                 return objectArgument;
             }
             ResolvedJavaType lookupJavaType = tool.runtime().lookupJavaType(c);
-            return graph().add(new UnsafeTypeCastNode(objectArgument, lookupJavaType, conditionArgument));
+            ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
+            UnsafeCastNode piCast = graph().unique(new UnsafeCastNode(objectArgument, StampFactory.declaredNonNull(lookupJavaType), valueAnchorNode));
+            this.replaceAtUsages(piCast);
+            return valueAnchorNode;
         }
         return this;
     }
