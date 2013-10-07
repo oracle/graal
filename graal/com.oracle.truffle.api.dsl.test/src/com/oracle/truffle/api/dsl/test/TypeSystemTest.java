@@ -109,6 +109,7 @@ public class TypeSystemTest {
         @Child private E node;
 
         public TestRootNode(E node) {
+            super(null);
             this.node = adoptChild(node);
         }
 
