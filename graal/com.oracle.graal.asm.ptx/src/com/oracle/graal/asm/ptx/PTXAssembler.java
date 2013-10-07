@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.asm.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXStateSpace.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.asm.Label;
@@ -533,8 +532,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public void emit(PTXAssembler asm) {
-            if (dest.getKind() == Kind.Float ||
-                dest.getKind() == Kind.Double) {
+            if (dest.getKind() == Kind.Float || dest.getKind() == Kind.Double) {
                 // round-to-zero - might not be right
                 asm.emitString("cvt.rz." + super.emit());
             } else {

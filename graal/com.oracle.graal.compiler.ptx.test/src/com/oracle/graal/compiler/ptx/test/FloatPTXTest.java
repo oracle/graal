@@ -64,7 +64,7 @@ public class FloatPTXTest extends PTXTestBase {
     }
 
     public static float testAdd2I(int a, int b) {
-        return (float) (a + b);
+        return a + b;
     }
 
     public static float testAdd2F(float a, float b) {
