@@ -66,78 +66,48 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
     public static native Object unsafeCast(Object value, Class clazz, boolean condition);
 
-    @MethodSubstitution
-    public static boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Boolean, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Byte, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Short, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Int, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Float, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Double, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity) {
-        return CustomizedUnsafeLoadNode.load(receiver, offset, Kind.Object, condition, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Boolean, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Byte, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Short, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Int, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Long, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Float, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Double, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity);
 
-    @MethodSubstitution
-    public static void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity) {
-        CustomizedUnsafeStoreNode.store(receiver, offset, value, Kind.Object, locationIdentity);
-    }
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity);
 }

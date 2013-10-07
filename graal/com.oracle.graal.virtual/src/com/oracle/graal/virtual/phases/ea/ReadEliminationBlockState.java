@@ -64,14 +64,14 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         public abstract boolean conflicts(LocationIdentity other);
     }
 
-    static class LoadCacheEntry extends CacheEntry<ResolvedJavaField> {
+    static class LoadCacheEntry extends CacheEntry<LocationIdentity> {
 
-        public LoadCacheEntry(ValueNode object, ResolvedJavaField identity) {
+        public LoadCacheEntry(ValueNode object, LocationIdentity identity) {
             super(object, identity);
         }
 
         @Override
-        public CacheEntry<ResolvedJavaField> duplicateWithObject(ValueNode newObject) {
+        public CacheEntry<LocationIdentity> duplicateWithObject(ValueNode newObject) {
             return new LoadCacheEntry(newObject, identity);
         }
 

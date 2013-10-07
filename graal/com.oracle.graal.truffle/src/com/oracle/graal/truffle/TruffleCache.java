@@ -173,6 +173,8 @@ public final class TruffleCache {
                     // Convert deopt to guards.
                     new ConvertDeoptimizeToGuardPhase().apply(graph);
 
+                    new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, context);
+
                     if (!inliningProgress) {
                         break;
                     }

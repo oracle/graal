@@ -81,7 +81,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     effects.deleteFixedNode(store);
                     deleted = true;
                 }
-                state.killReadCache((LocationIdentity) store.field());
+                state.killReadCache(store.field());
                 state.addCacheEntry(identifier, value);
             } else {
                 processIdentity(state, ANY_LOCATION);
@@ -100,6 +100,20 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     state.addCacheEntry(identifier, read);
                 }
             }
+        } else if (node instanceof UnsafeLoadNode) {
+            UnsafeLoadNode load = (UnsafeLoadNode) node;
+            if (load.offset().isConstant() && load.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
+                ValueNode object = GraphUtil.unproxify(load.object());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, load.getLocationIdentity());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
+                if (cachedValue != null) {
+                    effects.replaceAtUsages(load, cachedValue);
+                    addScalarAlias(load, cachedValue);
+                    deleted = true;
+                } else {
+                    state.addCacheEntry(identifier, load);
+                }
+            }
         } else if (node instanceof WriteNode) {
             WriteNode write = (WriteNode) node;
             if (write.location() instanceof ConstantLocationNode) {
@@ -116,6 +130,23 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                 state.addCacheEntry(identifier, value);
             } else {
                 processIdentity(state, write.location().getLocationIdentity());
+            }
+        } else if (node instanceof UnsafeStoreNode) {
+            UnsafeStoreNode write = (UnsafeStoreNode) node;
+            if (write.offset().isConstant() && write.getLocationIdentity() != LocationIdentity.ANY_LOCATION) {
+                ValueNode object = GraphUtil.unproxify(write.object());
+                LoadCacheEntry identifier = new LoadCacheEntry(object, write.getLocationIdentity());
+                ValueNode cachedValue = state.getCacheEntry(identifier);
+
+                ValueNode value = getScalarAlias(write.value());
+                if (GraphUtil.unproxify(value) == GraphUtil.unproxify(cachedValue)) {
+                    effects.deleteFixedNode(write);
+                    deleted = true;
+                }
+                processIdentity(state, write.getLocationIdentity());
+                state.addCacheEntry(identifier, value);
+            } else {
+                processIdentity(state, write.getLocationIdentity());
             }
         } else if (node instanceof MemoryCheckpoint.Single) {
             LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();

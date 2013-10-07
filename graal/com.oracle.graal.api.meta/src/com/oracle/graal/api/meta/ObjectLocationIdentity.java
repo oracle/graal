@@ -22,31 +22,31 @@
  */
 package com.oracle.graal.api.meta;
 
+import java.util.*;
+
 /**
  * A {@link LocationIdentity} warpping an object.
  */
-public class ObjectLocationIdentity implements LocationIdentity {
+public final class ObjectLocationIdentity implements LocationIdentity {
+
+    private static IdentityHashMap<Object, LocationIdentity> map = new IdentityHashMap<>();
 
     private Object object;
 
-    public ObjectLocationIdentity(Object object) {
-        this.object = object;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-        if (other == this) {
-            return true;
-        } else if (other instanceof ObjectLocationIdentity) {
-            ObjectLocationIdentity objectLocationIdentity = (ObjectLocationIdentity) other;
-            return objectLocationIdentity.object == object;
+    public static LocationIdentity create(Object object) {
+        synchronized (map) {
+            if (map.containsKey(object)) {
+                return map.get(object);
+            } else {
+                ObjectLocationIdentity locationIdentity = new ObjectLocationIdentity(object);
+                map.put(object, locationIdentity);
+                return locationIdentity;
+            }
         }
-        return false;
     }
 
-    @Override
-    public int hashCode() {
-        return object.hashCode();
+    private ObjectLocationIdentity(Object object) {
+        this.object = object;
     }
 
     @Override
