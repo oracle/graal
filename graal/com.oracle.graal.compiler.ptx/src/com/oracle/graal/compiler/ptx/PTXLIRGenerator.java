@@ -328,7 +328,9 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
-        throw GraalInternalError.unimplemented("PTXLIRGenerator.emitIntegerTestBranch()");
+        /// emitIntegerTest(left, right);
+       //  append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
+        throw GraalInternalError.unimplemented("emitIntegerTestBranch()");
     }
 
     @Override
@@ -401,8 +403,30 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-        throw new InternalError("NYI");
+    public Variable emitIntegerTestMove(Value left, Value right,
+                                        Value trueValue, Value falseValue) {
+
+        emitIntegerTest(left, right);
+        Variable result = newVariable(trueValue.getKind());
+        append(new CondMoveOp(result, Condition.EQ,
+                              load(trueValue), loadNonConst(falseValue),
+                              nextPredRegNum));
+        nextPredRegNum++;
+
+        return result;
+    }
+
+
+    private void emitIntegerTest(Value a, Value b) {
+
+        assert a.getKind().getStackKind() == Kind.Int ||
+               a.getKind() == Kind.Long;
+
+        if (LIRValueUtil.isVariable(b)) {
+            append(new PTXTestOp(load(b), loadNonConst(a), nextPredRegNum));
+        } else {
+            append(new PTXTestOp(load(a), loadNonConst(b), nextPredRegNum));
+        }
     }
 
     @Override
