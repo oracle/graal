@@ -104,7 +104,14 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
         int currentStackOffset = 0;
 
         Kind returnKind = returnType == null ? Kind.Void : returnType.getKind();
-        AllocatableValue returnLocation = returnKind == Kind.Void ? Value.ILLEGAL : new Variable(returnKind, currentGeneral++);
+
+        AllocatableValue returnLocation;
+        if (returnKind == Kind.Void) {
+            returnLocation = Value.ILLEGAL;
+        } else {
+            returnLocation = new Variable(returnKind, currentGeneral++);
+        }
+
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
 
         for (int i = 0; i < parameterTypes.length; i++) {

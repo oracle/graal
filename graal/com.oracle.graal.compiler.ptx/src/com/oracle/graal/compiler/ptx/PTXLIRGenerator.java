@@ -900,24 +900,46 @@ public class PTXLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
     }
 
-    public Variable emitLoadParam(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoadParam(Kind kind, Value address,
+                                  DeoptimizingNode deopting) {
+
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        append(new LoadParamOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        append(new LoadParamOp(kind, result, loadAddress,
+                               deopting != null ? state(deopting) : null));
+
         return result;
     }
 
-    public Variable emitLoadReturnAddress(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoadReturnAddress(Kind kind, Value address,
+                                          DeoptimizingNode deopting) {
+
         PTXAddressValue loadAddress = asAddress(address);
-        Variable result = newVariable(kind);
-        append(new LoadReturnAddrOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        Variable result;
+        switch (kind) {
+            case Float:
+                result = newVariable(Kind.Int);
+                break;
+            case Double:
+                result = newVariable(Kind.Long);
+                break;
+            default:
+                result = newVariable(kind);
+
+        }
+        append(new LoadReturnAddrOp(kind, result, loadAddress,
+                                    deopting != null ? state(deopting) : null));
+
         return result;
     }
 
-    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal,
+                                     DeoptimizingNode deopting) {
+
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        append(new StoreReturnValOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
+        append(new StoreReturnValOp(kind, storeAddress, input,
+                                    deopting != null ? state(deopting) : null));
     }
 
     @Override
