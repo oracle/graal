@@ -26,6 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
@@ -46,7 +47,6 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
         assert arguments.size() == ARGUMENT_COUNT;
     }
 
-    @SuppressWarnings("unused")
     @Override
     public Node canonical(CanonicalizerTool tool) {
         ValueNode locationArgument = arguments.get(LOCATION_ARGUMENT_INDEX);
@@ -61,7 +61,9 @@ public class CustomizedUnsafeLoadMacroNode extends NeverPartOfCompilationNode im
             } else {
                 locationIdentity = ObjectLocationIdentity.create(locationIdentityObject);
             }
-            return graph().add(new UnsafeLoadNode(objectArgument, offsetArgument, this.stamp().kind(), locationIdentity));
+            return graph().add(
+                            new UnsafeLoadNode(objectArgument, offsetArgument, this.stamp().kind(), locationIdentity, CompareNode.createCompareNode(Condition.EQ, conditionArgument,
+                                            ConstantNode.forBoolean(true, graph()))));
         }
         return this;
     }

@@ -523,6 +523,23 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                     metricCheckCastRemoved.increment();
                 }
+            } else if (node instanceof ConditionAnchorNode) {
+                ConditionAnchorNode conditionAnchorNode = (ConditionAnchorNode) node;
+                LogicNode condition = conditionAnchorNode.condition();
+                ValueNode replacementAnchor = null;
+                if (conditionAnchorNode.isNegated()) {
+                    if (state.falseConditions.containsKey(condition)) {
+                        replacementAnchor = state.falseConditions.get(condition);
+                    }
+                } else {
+                    if (state.trueConditions.containsKey(condition)) {
+                        replacementAnchor = state.trueConditions.get(condition);
+                    }
+                }
+                if (replacementAnchor != null) {
+                    conditionAnchorNode.replaceAtUsages(replacementAnchor);
+                    conditionAnchorNode.graph().removeFixed(conditionAnchorNode);
+                }
             } else if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;
                 LogicNode compare = ifNode.condition();

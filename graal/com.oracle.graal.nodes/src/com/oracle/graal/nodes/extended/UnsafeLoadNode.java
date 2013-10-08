@@ -35,13 +35,19 @@ import com.oracle.graal.nodes.type.*;
  * performed before the load.
  */
 public class UnsafeLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable {
+    @Input private LogicNode guardingCondition;
 
     public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind) {
-        this(object, offset, accessKind, LocationIdentity.ANY_LOCATION);
+        this(object, offset, accessKind, LocationIdentity.ANY_LOCATION, null);
     }
 
-    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity) {
+    public UnsafeLoadNode(ValueNode object, ValueNode offset, Kind accessKind, LocationIdentity locationIdentity, LogicNode condition) {
         super(StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity);
+        this.guardingCondition = condition;
+    }
+
+    public LogicNode getGuardingCondition() {
+        return guardingCondition;
     }
 
     @Override
