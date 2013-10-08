@@ -166,7 +166,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         return rootNode.execute(frame);
     }
 
-    private static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
+    protected static FrameWithoutBoxing createFrame(FrameDescriptor descriptor, PackedFrame caller, Arguments args) {
         return new FrameWithoutBoxing(descriptor, caller, args);
     }
 
