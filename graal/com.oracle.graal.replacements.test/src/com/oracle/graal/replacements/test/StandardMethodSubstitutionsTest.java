@@ -350,7 +350,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         // Math.pow(value, 13);
     }
 
-    @Ignore
     @Test
     public void testIntegerSubstitutions() {
         assertInGraph(test("integerReverseBytes"), ReverseBytesNode.class);              // Java
@@ -386,7 +385,6 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         return Integer.bitCount(value);
     }
 
-    @Ignore
     @Test
     public void testLongSubstitutions() {
         assertInGraph(test("longReverseBytes"), ReverseBytesNode.class);              // Java
