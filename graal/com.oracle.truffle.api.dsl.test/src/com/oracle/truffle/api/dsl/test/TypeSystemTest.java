@@ -58,6 +58,10 @@ public class TypeSystemTest {
     @TypeSystemReference(SimpleTypes.class)
     public abstract static class ValueNode extends Node {
 
+        public ValueNode() {
+            super(null);
+        }
+
         public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
             return SimpleTypesGen.SIMPLETYPES.expectInteger(execute(frame));
         }
@@ -105,6 +109,7 @@ public class TypeSystemTest {
         @Child private E node;
 
         public TestRootNode(E node) {
+            super(null);
             this.node = adoptChild(node);
         }
 

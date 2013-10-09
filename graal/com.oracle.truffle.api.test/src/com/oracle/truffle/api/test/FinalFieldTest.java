@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ public class FinalFieldTest {
         @Children TestChildNode[] children;
 
         public TestRootNode(TestChildNode[] children) {
+            super(null);
             this.children = adoptChildren(children);
         }
 
@@ -83,6 +84,7 @@ public class FinalFieldTest {
         private final int value;
 
         public TestChildNode(int value) {
+            super(null);
             this.value = value;
         }
 

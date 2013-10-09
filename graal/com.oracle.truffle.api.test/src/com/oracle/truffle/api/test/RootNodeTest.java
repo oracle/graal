@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,10 @@ public class RootNodeTest {
     }
 
     class TestRootNode extends RootNode {
+
+        public TestRootNode() {
+            super(null);
+        }
 
         @Override
         public Object execute(VirtualFrame frame) {
