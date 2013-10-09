@@ -26,10 +26,10 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code ConstantNode} represents a constant such as an integer value, long, float, object
@@ -57,15 +57,24 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        if (gen.canInlineConstant(value) || onlyUsedInFrameState()) {
+        if (gen.canInlineConstant(value) || onlyUsedInVirtualState()) {
             gen.setResult(this, value);
         } else {
             gen.setResult(this, gen.emitMove(value));
         }
     }
 
-    private boolean onlyUsedInFrameState() {
-        return usages().filter(NodePredicates.isNotA(FrameState.class)).isEmpty();
+    private boolean onlyUsedInVirtualState() {
+        for (Node n : this.usages()) {
+            if (n instanceof FrameState) {
+                // Only frame state usages.
+            } else if (n instanceof VirtualState) {
+                // Only virtual usage.
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static ConstantNode forConstant(Constant constant, MetaAccessProvider runtime, Graph graph) {
