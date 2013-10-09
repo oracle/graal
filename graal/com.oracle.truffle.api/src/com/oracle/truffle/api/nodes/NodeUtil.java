@@ -347,14 +347,14 @@ public final class NodeUtil {
         return nodes;
     }
 
-    public static void replaceChild(Node parent, Node oldChild, Node newChild) {
+    public static boolean replaceChild(Node parent, Node oldChild, Node newChild) {
         NodeClass nodeClass = NodeClass.get(parent.getClass());
 
         for (long fieldOffset : nodeClass.getChildOffsets()) {
             if (unsafe.getObject(parent, fieldOffset) == oldChild) {
                 assert assertAssignable(nodeClass, fieldOffset, newChild);
                 unsafe.putObject(parent, fieldOffset, newChild);
-                return;
+                return true;
             }
         }
 
@@ -367,11 +367,12 @@ public final class NodeUtil {
                     if (array[i] == oldChild) {
                         assert assertAssignable(nodeClass, fieldOffset, newChild);
                         array[i] = newChild;
-                        return;
+                        return true;
                     }
                 }
             }
         }
+        return false;
     }
 
     private static boolean assertAssignable(NodeClass clazz, long fieldOffset, Object newValue) {
@@ -797,5 +798,22 @@ public final class NodeUtil {
             return sb.toString();
         }
         return "";
+    }
+
+    public static boolean verify(Node root) {
+        Iterable<Node> children = root.getChildren();
+        for (Node child : children) {
+            if (child != null) {
+                if (child.getParent() != root) {
+                    throw new AssertionError(toStringWithClass(child) + ": actual parent=" + toStringWithClass(child.getParent()) + " expected parent=" + toStringWithClass(root));
+                }
+                verify(child);
+            }
+        }
+        return true;
+    }
+
+    private static String toStringWithClass(Object obj) {
+        return obj == null ? "null" : obj + "(" + obj.getClass().getName() + ")";
     }
 }

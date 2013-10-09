@@ -39,6 +39,8 @@ public abstract class Node implements Cloneable {
 
     private SourceSection sourceSection;
 
+    private Node replacedWith;
+
     /**
      * Marks array fields that are children of this node.
      */
@@ -170,8 +172,8 @@ public abstract class Node implements Cloneable {
      * @param reason a description of the reason for the replacement
      * @return the new node
      */
-    @SuppressWarnings({"unchecked"})
     public final <T extends Node> T replace(T newNode, String reason) {
+        CompilerDirectives.transferToInterpreter();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
@@ -180,13 +182,31 @@ public abstract class Node implements Cloneable {
             newNode.assignSourceSection(sourceSection);
         }
         onReplace(newNode, reason);
-        return (T) this.getParent().replaceChild(this, newNode);
+        if (NodeUtil.replaceChild(parent, this, newNode)) {
+            parent.adoptChild(newNode);
+            this.replacedWith = newNode;
+        } else if (replacedWith != null) {
+            replaceFailedHelper(newNode);
+        } else {
+            throw new IllegalStateException("Child not found in parent.");
+        }
+        return newNode;
     }
 
-    private <T extends Node> T replaceChild(T oldChild, T newChild) {
-        NodeUtil.replaceChild(this, oldChild, newChild);
-        adoptChild(newChild);
-        return newChild;
+    private void replaceFailedHelper(Node newNode) {
+        Node lastReplacedWith = replacedWith;
+        assert lastReplacedWith != this;
+        while (lastReplacedWith.replacedWith != null) {
+            lastReplacedWith = lastReplacedWith.replacedWith;
+            assert lastReplacedWith != this;
+        }
+        newNode.parent = parent;
+        newNode.replacedWith = lastReplacedWith;
+        for (Node child : newNode.getChildren()) {
+            if (child != null) {
+                child.parent = lastReplacedWith;
+            }
+        }
     }
 
     /**
