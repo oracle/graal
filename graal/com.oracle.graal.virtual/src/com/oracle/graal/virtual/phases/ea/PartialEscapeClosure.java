@@ -49,7 +49,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     public static final DebugMetric METRIC_MATERIALIZATIONS_LOOP_END = Debug.metric("MaterializationsLoopEnd");
     public static final DebugMetric METRIC_ALLOCATION_REMOVED = Debug.metric("AllocationsRemoved");
 
-    public static final DebugMetric METRIC_MEMORYCHECKOINT = Debug.metric("MemoryCheckpoint");
+    public static final DebugMetric METRIC_MEMORYCHECKPOINT = Debug.metric("MemoryCheckpoint");
 
     private final NodeBitMap usages;
     private final VirtualizerToolImpl tool;

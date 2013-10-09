@@ -85,11 +85,11 @@ public class PEReadEliminationClosure extends PartialEscapeClosure<PEReadElimina
                     processIdentity(state, ANY_LOCATION);
                 }
             } else if (node instanceof MemoryCheckpoint.Single) {
-                METRIC_MEMORYCHECKOINT.increment();
+                METRIC_MEMORYCHECKPOINT.increment();
                 LocationIdentity identity = ((MemoryCheckpoint.Single) node).getLocationIdentity();
                 processIdentity(state, identity);
             } else if (node instanceof MemoryCheckpoint.Multi) {
-                METRIC_MEMORYCHECKOINT.increment();
+                METRIC_MEMORYCHECKPOINT.increment();
                 for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
                     processIdentity(state, identity);
                 }
