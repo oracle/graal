@@ -600,7 +600,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Must be overridden buy subclasses that implement {@link Canonicalizable}. The implementation
+     * Must be overridden by subclasses that implement {@link Canonicalizable}. The implementation
      * in {@link Node} exists to obviate the need to cast a node before invoking
      * {@link Canonicalizable#canonical(CanonicalizerTool)}.
      * 
@@ -611,7 +611,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Must be overridden buy subclasses that implement {@link Simplifiable}. The implementation in
+     * Must be overridden by subclasses that implement {@link Simplifiable}. The implementation in
      * {@link Node} exists to obviate the need to cast a node before invoking
      * {@link Simplifiable#simplify(SimplifierTool)}.
      * 
