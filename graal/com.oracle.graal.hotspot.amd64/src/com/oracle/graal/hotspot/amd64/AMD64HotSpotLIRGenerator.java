@@ -444,11 +444,11 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          */
         if (isCompressCandidate(access)) {
             if (runtime().useCompressedOops() && kind == Kind.Object) {
-                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowOopBase(), getNarrowOopShift(),
-                                getLogMinObjectAlignment()));
+                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowKlassBase(), getNarrowOopBase(),
+                                getNarrowOopShift(), getLogMinObjectAlignment()));
             } else if (runtime().useCompressedKlassPointers() && kind == Kind.Long) {
-                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowKlassBase(), getNarrowKlassShift(),
-                                getLogKlassAlignment()));
+                append(new LoadCompressedPointer(kind, result, runtime().heapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowKlassBase(), getNarrowOopBase(),
+                                getNarrowKlassShift(), getLogKlassAlignment()));
             } else {
                 append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
             }
@@ -480,14 +480,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             if (runtime().useCompressedOops() && kind == Kind.Object) {
                 if (input.getKind() == Kind.Object) {
                     Variable scratch = newVariable(Kind.Long);
-                    append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
+                    append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
                 } else {
                     // the input oop is already compressed
                     append(new StoreOp(input.getKind(), storeAddress, input, state));
                 }
             } else if (runtime().useCompressedKlassPointers() && kind == Kind.Long) {
                 Variable scratch = newVariable(Kind.Long);
-                append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
+                append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowOopBase(), getNarrowKlassShift(), getLogKlassAlignment()));
             } else {
                 append(new StoreOp(kind, storeAddress, input, state));
             }
