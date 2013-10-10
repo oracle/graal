@@ -53,13 +53,12 @@ import com.oracle.graal.phases.tiers.*;
  * offsets) passed as input parameters can be checked against printed output from the G1 write
  * barrier snippets. The runtime checks have been validated offline.
  */
-
 public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
 
     public WriteBarrierAdditionTest() {
-        this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
     }
 
     public static class Container {
@@ -237,7 +236,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
         final Method method = WriteBarrierAdditionTest.class.getMethod(name, Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(method);
+        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
         final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parse(method));
         return installedBenchmarkCode;
     }
@@ -247,8 +246,10 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
 
             public void run() {
                 StructuredGraph graph = parse(snippet);
-                HighTierContext highContext = new HighTierContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                MidTierContext midContext = new MidTierContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements, getCodeCache().getTarget(), OptimisticOptimizations.ALL);
+                HighTierContext highContext = new HighTierContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements, null, getDefaultPhasePlan(),
+                                OptimisticOptimizations.ALL);
+                MidTierContext midContext = new MidTierContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements, getCodeCache().getTarget(),
+                                OptimisticOptimizations.ALL);
                 new InliningPhase(new InliningPhase.InlineEverythingPolicy(), new CanonicalizerPhase(true)).apply(graph, highContext);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highContext);
                 new GuardLoweringPhase().apply(graph, midContext);

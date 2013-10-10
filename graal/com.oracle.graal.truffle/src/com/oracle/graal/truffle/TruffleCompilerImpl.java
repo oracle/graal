@@ -90,10 +90,10 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccessProvider) {
+    static ResolvedJavaType[] getSkippedExceptionTypes(MetaAccessProvider metaAccess) {
         ResolvedJavaType[] skippedExceptionTypes = new ResolvedJavaType[SKIPPED_EXCEPTION_CLASSES.length];
         for (int i = 0; i < SKIPPED_EXCEPTION_CLASSES.length; i++) {
-            skippedExceptionTypes[i] = metaAccessProvider.lookupJavaType(SKIPPED_EXCEPTION_CLASSES[i]);
+            skippedExceptionTypes[i] = metaAccess.lookupJavaType(SKIPPED_EXCEPTION_CLASSES[i]);
         }
         return skippedExceptionTypes;
     }

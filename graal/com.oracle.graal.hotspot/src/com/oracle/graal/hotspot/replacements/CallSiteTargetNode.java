@@ -42,7 +42,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
         return arguments.get(0);
     }
 
-    private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccessProvider, Assumptions assumptions) {
+    private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccess, Assumptions assumptions) {
         if (getCallSite().isConstant() && !getCallSite().isNullConstant()) {
             CallSite callSite = (CallSite) getCallSite().asConstant().asObject();
             MethodHandle target = callSite.getTarget();
@@ -52,7 +52,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
                 }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
             }
-            return ConstantNode.forObject(target, metaAccessProvider, graph());
+            return ConstantNode.forObject(target, metaAccess, graph());
         }
         return null;
     }

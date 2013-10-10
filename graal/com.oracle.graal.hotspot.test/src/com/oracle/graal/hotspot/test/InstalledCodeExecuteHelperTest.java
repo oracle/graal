@@ -39,23 +39,23 @@ import com.oracle.graal.nodes.*;
 public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
 
     private static final int ITERATIONS = 100000;
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
     Object[] argsToBind;
 
     public InstalledCodeExecuteHelperTest() {
-        this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
     }
 
     @Test
     public void test1() throws NoSuchMethodException, SecurityException, InvalidInstalledCodeException {
         final Method fooMethod = InstalledCodeExecuteHelperTest.class.getMethod("foo", Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(fooMethod);
+        final HotSpotResolvedJavaMethod fooJavaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(fooMethod);
         final HotSpotInstalledCode fooCode = (HotSpotInstalledCode) getCode(fooJavaMethod, parse(fooMethod));
 
         argsToBind = new Object[]{fooCode};
 
         final Method benchmarkMethod = InstalledCodeExecuteHelperTest.class.getMethod("benchmark", HotSpotInstalledCode.class);
-        final ResolvedJavaMethod benchmarkJavaMethod = metaAccessProvider.lookupJavaMethod(benchmarkMethod);
+        final ResolvedJavaMethod benchmarkJavaMethod = metaAccess.lookupJavaMethod(benchmarkMethod);
         final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(benchmarkJavaMethod, parse(benchmarkMethod));
 
         Assert.assertEquals(Integer.valueOf(42), benchmark(fooCode));
