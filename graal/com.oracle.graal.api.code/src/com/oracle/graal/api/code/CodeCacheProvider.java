@@ -56,7 +56,7 @@ public interface CodeCacheProvider {
     /**
      * Gets the register configuration to use when compiling a given method.
      */
-    RegisterConfig lookupRegisterConfig();
+    RegisterConfig getRegisterConfig();
 
     /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all

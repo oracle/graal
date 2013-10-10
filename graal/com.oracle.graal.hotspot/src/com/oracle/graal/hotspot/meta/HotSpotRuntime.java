@@ -469,7 +469,7 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, CodeCachePro
     }
 
     @Override
-    public RegisterConfig lookupRegisterConfig() {
+    public RegisterConfig getRegisterConfig() {
         return regConfig;
     }
 
