@@ -548,6 +548,49 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     @Test
+    public void getDeclaredMethodsTest() {
+        for (Class c : classes) {
+            ResolvedJavaType type = runtime.lookupJavaType(c);
+            Method[] raw = c.getDeclaredMethods();
+            Set<ResolvedJavaMethod> expected = new HashSet<>();
+            for (Method m : raw) {
+                ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
+                assertNotNull(resolvedMethod);
+                expected.add(resolvedMethod);
+            }
+            Set<ResolvedJavaMethod> actual = new HashSet<>(Arrays.asList(type.getDeclaredMethods()));
+            assertEquals(expected, actual);
+        }
+    }
+
+    static class A {
+        static String name = "foo";
+    }
+
+    static class B extends A {
+    }
+
+    static class C {
+    }
+
+    static class D {
+        void foo() {
+            // use of assertions causes the class to have a <clinit>
+            assert getClass() != null;
+        }
+    }
+
+    @Test
+    public void getClassInitializerTest() {
+        assertNotNull(runtime.lookupJavaType(A.class).getClassInitializer());
+        assertNotNull(runtime.lookupJavaType(D.class).getClassInitializer());
+        assertNull(runtime.lookupJavaType(B.class).getClassInitializer());
+        assertNull(runtime.lookupJavaType(C.class).getClassInitializer());
+        assertNull(runtime.lookupJavaType(int.class).getClassInitializer());
+        assertNull(runtime.lookupJavaType(void.class).getClassInitializer());
+    }
+
+    @Test
     public void getAnnotationTest() {
         for (Class c : classes) {
             ResolvedJavaType type = runtime.lookupJavaType(c);
@@ -604,7 +647,6 @@ public class TestResolvedJavaType extends TypeUniverse {
         "initialize",
         "isPrimitive",
         "newArray",
-        "getDeclaredMethods",
         "getDeclaredConstructors",
         "isInitialized",
         "isLinked",
