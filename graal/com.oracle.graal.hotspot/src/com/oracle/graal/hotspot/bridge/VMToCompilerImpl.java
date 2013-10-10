@@ -179,10 +179,10 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        assert VerifyHotSpotOptionsPhase.checkOptions();
+        final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
+        assert VerifyOptionsPhase.checkOptions(runtime);
 
         // Install intrinsics.
-        final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
         final Replacements replacements = graalRuntime.getCapability(Replacements.class);
         if (Intrinsify.getValue()) {
             Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
