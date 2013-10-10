@@ -29,7 +29,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.nodes.virtual.*;
 
 /**
  * The {@code ConstantNode} represents a constant such as an integer value, long, float, object
