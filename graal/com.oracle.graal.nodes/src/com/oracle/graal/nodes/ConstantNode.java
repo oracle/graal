@@ -65,9 +65,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
 
     private boolean onlyUsedInVirtualState() {
         for (Node n : this.usages()) {
-            if (n instanceof FrameState) {
-                // Only frame state usages.
-            } else if (n instanceof VirtualState) {
+            if (n instanceof VirtualState) {
                 // Only virtual usage.
             } else {
                 return false;
