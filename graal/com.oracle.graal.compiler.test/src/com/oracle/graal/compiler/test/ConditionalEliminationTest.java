@@ -142,7 +142,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
 
         StructuredGraph graph = parse("testNullnessSnippet");
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
             assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
         }
@@ -164,7 +164,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testDisjunction() {
         StructuredGraph graph = parse("testDisjunctionSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         IfNode ifNode = (IfNode) graph.start().next();
         InstanceOfNode instanceOf = (InstanceOfNode) ifNode.condition();
         IsNullNode x = graph.unique(new IsNullNode(graph.getLocal(0)));
@@ -172,9 +172,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         ShortCircuitOrNode disjunction = graph.unique(new ShortCircuitOrNode(x, false, y, false, NOT_FREQUENT_PROBABILITY));
         LogicNegationNode negation = graph.unique(new LogicNegationNode(disjunction));
         ifNode.setCondition(negation);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
             assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
         }
@@ -192,7 +192,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     public void testInvoke() {
         test("testInvokeSnippet", new Integer(16));
         StructuredGraph graph = parse("testInvokeSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
 
         InvokeNode invoke = graph.getNodes().filter(InvokeNode.class).first();
@@ -222,9 +222,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testTypeMerging() {
         StructuredGraph graph = parse("testTypeMergingSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
 
         assertEquals(0, graph.getNodes().filter(StoreFieldNode.class).count());
     }
@@ -239,9 +239,9 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
     @Test
     public void testInstanceOfCheckCast() {
         StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements));
 
         assertEquals(0, graph.getNodes().filter(CheckCastNode.class).count());
     }
@@ -252,7 +252,7 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         StructuredGraph graph = parse("testInstanceOfCheckCastSnippet");
 
         CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-        PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), null, replacements);
+        PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), null, replacements);
 
         new LoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);

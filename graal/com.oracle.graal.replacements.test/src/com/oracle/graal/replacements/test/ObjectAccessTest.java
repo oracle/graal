@@ -49,7 +49,7 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
     public ObjectAccessTest() {
         target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getCodeCache(), new Assumptions(false), target);
+        installer = new ReplacementsImpl(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

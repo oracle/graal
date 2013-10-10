@@ -237,7 +237,7 @@ public class InliningTest extends GraalCompilerTest {
                 StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
                 PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
                 Assumptions assumptions = new Assumptions(true);
-                HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
                 Debug.dump(graph, "Graph");
                 new CanonicalizerPhase(true).apply(graph, context);
                 new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);

@@ -33,7 +33,9 @@ public interface LoweringTool {
 
     MetaAccessProvider getMetaAccess();
 
-    GraalCodeCacheProvider getCodeCache();
+    CodeCacheProvider getCodeCache();
+
+    LoweringProvider getLowerer();
 
     Replacements getReplacements();
 

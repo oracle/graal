@@ -22,23 +22,23 @@
  */
 package com.oracle.graal.nodes.spi;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 
 /**
- * A {@link GraalCodeCacheProvider} that delegates to another {@link GraalCodeCacheProvider}.
+ * A {@link LoweringProvider} that delegates to another {@link LoweringProvider}.
  */
-public class DelegatingGraalCodeCacheProvider extends DelegatingCodeCacheProvider implements GraalCodeCacheProvider {
+public class DelegatingLoweringProvider implements LoweringProvider {
 
-    public DelegatingGraalCodeCacheProvider(CodeCacheProvider delegate) {
-        super(delegate);
+    private final LoweringProvider delegate;
+
+    public DelegatingLoweringProvider(LoweringProvider delegate) {
+        this.delegate = delegate;
     }
 
-    @Override
-    protected GraalCodeCacheProvider delegate() {
-        return (GraalCodeCacheProvider) super.delegate();
+    protected LoweringProvider delegate() {
+        return delegate;
     }
 
     public void lower(Node n, LoweringTool tool) {

@@ -415,8 +415,8 @@ public class MonitorSnippets implements Snippets {
 
         private final boolean useFastLocking;
 
-        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target, boolean useFastLocking) {
-            super(metaAccess, codeCache, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target, boolean useFastLocking) {
+            super(metaAccess, codeCache, lowerer, replacements, target);
             this.useFastLocking = useFastLocking;
         }
 

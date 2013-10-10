@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.type.*;
 public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
-    private final MetaAccessProvider runtime;
+    private final MetaAccessProvider metaAccess;
 
     private final ForeignCallDescriptor descriptor;
 
@@ -45,7 +45,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.runtime = metaAccess;
+        this.metaAccess = metaAccess;
     }
 
     public ForeignCallDescriptor getDescriptor() {
@@ -54,7 +54,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return runtime.getKilledLocations(descriptor);
+        return metaAccess.getKilledLocations(descriptor);
     }
 
     protected Value[] operands(LIRGeneratorTool gen) {

@@ -205,7 +205,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         // create suites everytime, as we modify options for the compiler
         final Suites suitesLocal = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
-        final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getMetaAccess(), getCodeCache(), replacements, backend, getCodeCache().getTarget(), null, phasePlan,
+        final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getMetaAccess(), getCodeCache(), getLowerer(), replacements, backend, getCodeCache().getTarget(), null, phasePlan,
                         OptimisticOptimizations.ALL, new SpeculationLog(), suitesLocal, new CompilationResult());
         addMethod(method, compResult);
 

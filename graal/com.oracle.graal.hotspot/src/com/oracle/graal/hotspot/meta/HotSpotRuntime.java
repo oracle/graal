@@ -96,9 +96,9 @@ import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
 
 /**
- * HotSpot implementation of {@link GraalCodeCacheProvider}.
+ * HotSpot implementation of {@link LoweringProvider}.
  */
-public abstract class HotSpotRuntime implements MetaAccessProvider, GraalCodeCacheProvider, DisassemblerProvider, BytecodeDisassemblerProvider, SuitesProvider {
+public abstract class HotSpotRuntime implements MetaAccessProvider, CodeCacheProvider, LoweringProvider, DisassemblerProvider, BytecodeDisassemblerProvider, SuitesProvider {
 
     public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
     public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
@@ -325,16 +325,16 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, GraalCodeCac
         r.registerSubstitutions(CRC32Substitutions.class);
         r.registerSubstitutions(ReflectionSubstitutions.class);
 
-        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        monitorSnippets = new MonitorSnippets.Templates(this, this, r, graalRuntime.getTarget(), c.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        boxingSnippets = new BoxingSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, this, r, graalRuntime.getTarget());
-        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(this, this, r, graalRuntime.getTarget());
+        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        instanceofSnippets = new InstanceOfSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        newObjectSnippets = new NewObjectSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        monitorSnippets = new MonitorSnippets.Templates(this, this, this, r, graalRuntime.getTarget(), c.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        boxingSnippets = new BoxingSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
+        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(this, this, this, r, graalRuntime.getTarget());
 
-        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(this, this, r, graalRuntime.getTarget()));
+        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(this, this, this, r, graalRuntime.getTarget()));
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

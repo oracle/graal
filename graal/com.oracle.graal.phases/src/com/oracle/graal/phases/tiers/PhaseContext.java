@@ -29,13 +29,15 @@ import com.oracle.graal.nodes.spi.*;
 public class PhaseContext {
 
     private final MetaAccessProvider metaAccess;
-    private final GraalCodeCacheProvider codeCache;
+    private final CodeCacheProvider codeCache;
+    private final LoweringProvider lowerer;
     private final Assumptions assumptions;
     private final Replacements replacements;
 
-    public PhaseContext(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+    public PhaseContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions, Replacements replacements) {
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
+        this.lowerer = lowerer;
         this.assumptions = assumptions;
         this.replacements = replacements;
     }
@@ -44,8 +46,12 @@ public class PhaseContext {
         return metaAccess;
     }
 
-    public GraalCodeCacheProvider getCodeCache() {
+    public CodeCacheProvider getCodeCache() {
         return codeCache;
+    }
+
+    public LoweringProvider getLowerer() {
+        return lowerer;
     }
 
     public Assumptions getAssumptions() {

@@ -185,13 +185,13 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         // a second canonicalizer is needed to process nested MaterializeNodes
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         StructuredGraph referenceGraph = parse(referenceSnippet);
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         assertEquals(referenceGraph, graph);
     }
 
@@ -241,9 +241,9 @@ public class TypeSystemTest extends GraalCompilerTest {
         StructuredGraph graph = parse(snippet);
         Debug.dump(graph, "Graph");
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements));
         Debug.dump(graph, "Graph");
         Assert.assertFalse("shouldn't have nodes of type " + clazz, graph.getNodes().filter(clazz).iterator().hasNext());
     }

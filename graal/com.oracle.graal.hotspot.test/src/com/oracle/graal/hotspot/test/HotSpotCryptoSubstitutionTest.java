@@ -53,7 +53,7 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
         CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(compiledNmethod, installedCode, null);
         Assert.assertEquals("Error installing method " + method + ": " + result, result, CodeInstallResult.OK);
 
-        // HotSpotRuntime hsRuntime = (HotSpotRuntime) runtime;
+        // HotSpotRuntime hsRuntime = (HotSpotRuntime) getCodeCache();
         // TTY.println(hsMethod.toString());
         // TTY.println(hsRuntime.disassemble(installedCode));
         return installedCode;

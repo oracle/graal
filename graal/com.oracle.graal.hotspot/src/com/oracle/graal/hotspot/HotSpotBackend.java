@@ -72,8 +72,7 @@ public abstract class HotSpotBackend extends Backend {
         super(runtime, runtime, target);
     }
 
-    @Override
-    public HotSpotRuntime runtime() {
-        return (HotSpotRuntime) super.runtime();
+    public HotSpotRuntime getRuntime() {
+        return (HotSpotRuntime) getCodeCache();
     }
 }

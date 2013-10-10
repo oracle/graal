@@ -73,14 +73,14 @@ public class VerifyOptionsPhase extends Phase {
         }
     }
 
-    private final MetaAccessProvider runtime;
+    private final MetaAccessProvider metaAccess;
     private final ResolvedJavaType declaringClass;
     private final ResolvedJavaType optionValueType;
     private final Set<ResolvedJavaType> boxingTypes;
     private final OptionDescriptor option;
 
     public VerifyOptionsPhase(ResolvedJavaType declaringClass, MetaAccessProvider metaAccess, OptionDescriptor option) {
-        this.runtime = metaAccess;
+        this.metaAccess = metaAccess;
         this.declaringClass = declaringClass;
         this.optionValueType = metaAccess.lookupJavaType(OptionValue.class);
         this.option = option;
@@ -101,7 +101,7 @@ public class VerifyOptionsPhase extends Phase {
             }
         } else if (boxingTypes.contains(holder)) {
             return method.getName().equals("valueOf");
-        } else if (method.getDeclaringClass() == runtime.lookupJavaType(Class.class)) {
+        } else if (method.getDeclaringClass() == metaAccess.lookupJavaType(Class.class)) {
             return method.getName().equals("desiredAssertionStatus");
         } else if (method.getDeclaringClass().equals(declaringClass)) {
             return (method.getName().equals("$jacocoInit"));

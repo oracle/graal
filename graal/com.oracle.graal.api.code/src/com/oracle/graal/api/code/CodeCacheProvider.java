@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Encapsulates the main functionality of the runtime for the compiler.
+ * Access to code cache related details and requirements.
  */
 public interface CodeCacheProvider {
 

@@ -69,7 +69,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override

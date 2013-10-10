@@ -76,8 +76,9 @@ import com.oracle.graal.test.*;
  */
 public abstract class GraalCompilerTest extends GraalTest {
 
-    private final GraalCodeCacheProvider codeCache;
+    private final CodeCacheProvider codeCache;
     private final MetaAccessProvider metaAccess;
+    private final LoweringProvider lowerer;
     protected final Replacements replacements;
     protected final Backend backend;
     protected final Suites suites;
@@ -85,7 +86,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     public GraalCompilerTest() {
         this.replacements = Graal.getRequiredCapability(Replacements.class);
         this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        this.codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        this.lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
     }
@@ -160,12 +162,16 @@ public abstract class GraalCompilerTest extends GraalTest {
         return result.toString();
     }
 
-    protected GraalCodeCacheProvider getCodeCache() {
+    protected CodeCacheProvider getCodeCache() {
         return codeCache;
     }
 
     protected MetaAccessProvider getMetaAccess() {
         return metaAccess;
+    }
+
+    protected LoweringProvider getLowerer() {
+        return lowerer;
     }
 
     /**
@@ -462,7 +468,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         final int id = compilationId.incrementAndGet();
 
-        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{getCodeCache(), new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
+        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
@@ -474,8 +480,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getCodeCache(), replacements, backend, getCodeCache().getTarget(), null, phasePlan,
-                                OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getCodeCache(), getLowerer(), replacements, backend, getCodeCache().getTarget(), null,
+                                phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

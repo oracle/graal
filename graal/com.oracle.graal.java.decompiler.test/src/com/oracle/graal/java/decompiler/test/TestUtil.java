@@ -41,7 +41,8 @@ public class TestUtil {
 
     public static void compileMethod(ResolvedJavaMethod method) {
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        GraalCodeCacheProvider codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         Replacements replacements = Graal.getRequiredCapability(Replacements.class);
         Suites suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         StructuredGraph graph = new StructuredGraph(method);
@@ -51,7 +52,7 @@ public class TestUtil {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(Backend.class);
-        GraalCompiler.compileGraph(graph, cc, method, metaAccess, codeCache, replacements, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(),
+        GraalCompiler.compileGraph(graph, cc, method, metaAccess, codeCache, lowerer, replacements, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(),
                         suites, new CompilationResult());
     }
 }

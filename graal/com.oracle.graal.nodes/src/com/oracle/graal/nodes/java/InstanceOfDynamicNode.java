@@ -53,7 +53,7 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override

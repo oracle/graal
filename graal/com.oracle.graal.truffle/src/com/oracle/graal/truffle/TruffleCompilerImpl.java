@@ -54,7 +54,8 @@ import com.oracle.truffle.api.nodes.*;
 public class TruffleCompilerImpl implements TruffleCompiler {
 
     private final MetaAccessProvider metaAccess;
-    private final GraalCodeCacheProvider codeCache;
+    private final CodeCacheProvider codeCache;
+    private final LoweringProvider lowerer;
     private final Suites suites;
     private final PartialEvaluator partialEvaluator;
     private final Replacements replacements;
@@ -70,7 +71,8 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
     public TruffleCompilerImpl() {
         this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        this.codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        this.lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.replacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
@@ -79,9 +81,9 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
-        this.truffleCache = new TruffleCache(this.metaAccess, codeCache, config, TruffleCompilerImpl.Optimizations, this.replacements);
+        this.truffleCache = new TruffleCache(this.metaAccess, codeCache, lowerer, config, TruffleCompilerImpl.Optimizations, this.replacements);
 
-        this.partialEvaluator = new PartialEvaluator(metaAccess, codeCache, replacements, truffleCache);
+        this.partialEvaluator = new PartialEvaluator(metaAccess, codeCache, lowerer, replacements, truffleCache);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
@@ -151,7 +153,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             public CompilationResult call() {
                 try (TimerCloseable a = CompilationTime.start()) {
                     CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
-                    return GraalCompiler.compileGraph(graph, cc, graph.method(), metaAccess, codeCache, replacements, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL,
+                    return GraalCompiler.compileGraph(graph, cc, graph.method(), metaAccess, codeCache, lowerer, replacements, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL,
                                     new SpeculationLog(), suites, new CompilationResult());
                 }
             }

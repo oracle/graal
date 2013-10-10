@@ -145,7 +145,7 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
             n.replaceFirstInput(local, constant);
         }
         Debug.dump(graph, "Graph");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements));
         for (FrameState fs : local.usages().filter(FrameState.class).snapshot()) {
             fs.replaceFirstInput(local, null);
         }

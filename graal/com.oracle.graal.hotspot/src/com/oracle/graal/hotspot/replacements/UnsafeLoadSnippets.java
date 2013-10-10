@@ -53,8 +53,8 @@ public class UnsafeLoadSnippets implements Snippets {
 
         private final SnippetInfo unsafeLoad = snippet(UnsafeLoadSnippets.class, "lowerUnsafeLoad");
 
-        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, lowerer, replacements, target);
         }
 
         public void lower(UnsafeLoadNode load, @SuppressWarnings("unused") LoweringTool tool) {

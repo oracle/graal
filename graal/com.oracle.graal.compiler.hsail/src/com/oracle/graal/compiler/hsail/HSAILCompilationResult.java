@@ -116,7 +116,8 @@ public class HSAILCompilationResult {
         Debug.dump(graph, "Graph");
         TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        GraalCodeCacheProvider codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         HSAILBackend hsailBackend = new HSAILBackend(metaAccess, codeCache, target);
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
@@ -127,7 +128,7 @@ public class HSAILCompilationResult {
         Replacements replacements = Graal.getRequiredCapability(Replacements.class);
         SuitesProvider suitesProvider = Graal.getRequiredCapability(SuitesProvider.class);
         try {
-            CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), metaAccess, codeCache, replacements, hsailBackend, target, null, phasePlan,
+            CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), metaAccess, codeCache, lowerer, replacements, hsailBackend, target, null, phasePlan,
                             OptimisticOptimizations.NONE, new SpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
             return new HSAILCompilationResult(compResult);
         } catch (GraalInternalError e) {

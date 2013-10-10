@@ -63,13 +63,18 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public GraalCodeCacheProvider getCodeCache() {
+        public CodeCacheProvider getCodeCache() {
             return context.getCodeCache();
         }
 
         @Override
         public MetaAccessProvider getMetaAccess() {
             return context.getMetaAccess();
+        }
+
+        @Override
+        public LoweringProvider getLowerer() {
+            return context.getLowerer();
         }
 
         @Override

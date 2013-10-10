@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 import java.lang.reflect.*;
 
 /**
- * Interface implemented by the runtime to allow access to its metadata.
+ * Provides access to the metadata of a class typically provided in a class file.
  */
 public interface MetaAccessProvider {
 

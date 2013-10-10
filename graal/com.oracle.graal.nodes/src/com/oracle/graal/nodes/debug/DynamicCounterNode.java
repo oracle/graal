@@ -68,7 +68,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements Lowerable {
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     public static void addCounterBefore(String group, String name, long increment, boolean withContext, FixedNode position) {

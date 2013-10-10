@@ -79,7 +79,7 @@ public class CompareAndSwapNode extends AbstractStateSplit implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification

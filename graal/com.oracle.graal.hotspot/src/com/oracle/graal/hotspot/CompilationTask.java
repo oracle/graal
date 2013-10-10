@@ -154,8 +154,8 @@ public final class CompilationTask implements Runnable {
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
                         HotSpotRuntime runtime = graalRuntime.getRuntime();
                         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                        return GraalCompiler.compileGraph(graph, cc, method, runtime, runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan,
-                                        optimisticOpts, method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
+                        return GraalCompiler.compileGraph(graph, cc, method, runtime, runtime, runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(),
+                                        plan, optimisticOpts, method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }
                 });
             } finally {

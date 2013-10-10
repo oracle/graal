@@ -34,9 +34,9 @@ public class HighTierContext extends PhaseContext {
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
 
-    public HighTierContext(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements, GraphCache cache, PhasePlan plan,
+    public HighTierContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions, Replacements replacements, GraphCache cache, PhasePlan plan,
                     OptimisticOptimizations optimisticOpts) {
-        super(metaAccess, codeCache, assumptions, replacements);
+        super(metaAccess, codeCache, lowerer, assumptions, replacements);
         this.plan = plan;
         this.cache = cache;
         this.optimisticOpts = optimisticOpts;
@@ -55,6 +55,6 @@ public class HighTierContext extends PhaseContext {
     }
 
     public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
-        return new HighTierContext(getMetaAccess(), getCodeCache(), newAssumptions, getReplacements(), getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
+        return new HighTierContext(getMetaAccess(), getCodeCache(), getLowerer(), newAssumptions, getReplacements(), getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
     }
 }
