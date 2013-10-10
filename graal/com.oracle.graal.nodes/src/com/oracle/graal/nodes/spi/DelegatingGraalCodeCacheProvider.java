@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -40,10 +39,6 @@ public class DelegatingGraalCodeCacheProvider extends DelegatingCodeCacheProvide
     @Override
     protected GraalCodeCacheProvider delegate() {
         return (GraalCodeCacheProvider) super.delegate();
-    }
-
-    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph) {
-        return delegate().addMethod(method, compResult, graph);
     }
 
     public void lower(Node n, LoweringTool tool) {

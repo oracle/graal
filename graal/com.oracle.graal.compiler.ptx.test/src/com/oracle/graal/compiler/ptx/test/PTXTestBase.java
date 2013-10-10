@@ -104,7 +104,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             boolean isStatic = Modifier.isStatic(compiledMethod.getModifiers());
             Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
             HotSpotRuntime hsr = (HotSpotRuntime) getCodeCache();
-            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result, sg);
+            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result);
             Annotation[][] params = compiledMethod.getParameterAnnotations();
 
             int dimensionX = 1;

@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.spi;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -33,23 +32,11 @@ import com.oracle.graal.nodes.extended.*;
  */
 public interface GraalCodeCacheProvider extends CodeCacheProvider {
 
-    /**
-     * Adds the given compilation result as an implementation of the given method without making it
-     * the default implementation. The graph might be inlined later on.
-     * 
-     * @param method a method to which the executable code is begin added
-     * @param compResult the compilation result to be added
-     * @param graph the graph that represents the method
-     * @return a reference to the compiled and ready-to-run code or null if the code installation
-     *         failed
-     */
-    InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph);
-
     void lower(Node n, LoweringTool tool);
 
     /**
-     * Reconstructs the array index from a location node that was created as a lowering of an indexed
-     * access to an array.
+     * Reconstructs the array index from a location node that was created as a lowering of an
+     * indexed access to an array.
      * 
      * @param location a location pointing to an element in an array
      * @return a node that gives the index of the element

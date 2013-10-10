@@ -28,7 +28,6 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 
 /**
@@ -47,20 +46,17 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
     private final boolean isExternal;
-    private final Graph graph;
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, Graph graph) {
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault) {
         this.method = method;
         this.isDefault = isDefault;
         this.isExternal = false;
-        this.graph = graph;
     }
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, boolean isExternal, Graph graph) {
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, boolean isExternal) {
         this.method = method;
         this.isDefault = isDefault;
         this.isExternal = isExternal;
-        this.graph = graph;
     }
 
     public boolean isDefault() {
@@ -69,10 +65,6 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     public boolean isExternal() {
         return isExternal;
-    }
-
-    public Graph getGraph() {
-        return graph;
     }
 
     @Override
