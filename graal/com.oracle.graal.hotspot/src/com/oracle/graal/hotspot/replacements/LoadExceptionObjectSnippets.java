@@ -28,6 +28,7 @@ import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -64,22 +65,22 @@ public class LoadExceptionObjectSnippets implements Snippets {
 
         private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject) {
             if (USE_C_RUNTIME) {
                 StructuredGraph graph = loadExceptionObject.graph();
-                HotSpotRuntime hsRuntime = (HotSpotRuntime) runtime;
+                HotSpotRuntime hsRuntime = (HotSpotRuntime) metaAccess;
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(hsRuntime.threadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
-                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(runtime, LOAD_AND_CLEAR_EXCEPTION, thread));
+                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(metaAccess, LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage());
-                template(args).instantiate(runtime, loadExceptionObject, DEFAULT_REPLACER, args);
+                template(args).instantiate(metaAccess, loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
     }

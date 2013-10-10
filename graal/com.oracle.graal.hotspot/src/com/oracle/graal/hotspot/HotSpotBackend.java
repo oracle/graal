@@ -69,7 +69,7 @@ public abstract class HotSpotBackend extends Backend {
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
     public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
-        super(runtime, target);
+        super(runtime, runtime, target);
     }
 
     @Override

@@ -413,7 +413,7 @@ public class SPARCMove {
     private static void const2reg(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Constant input) {
         switch (input.getKind().getStackKind()) {
             case Int:
-                if (tasm.runtime.needsDataPatch(input)) {
+                if (tasm.codeCache.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
                     new Setuw(input.asInt(), asRegister(result)).emit(masm);
                 } else {
@@ -425,7 +425,7 @@ public class SPARCMove {
                 }
                 break;
             case Long: {
-                if (tasm.runtime.needsDataPatch(input)) {
+                if (tasm.codeCache.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
                     new Setx(input.asLong(), asRegister(result), true).emit(masm);
                 } else {

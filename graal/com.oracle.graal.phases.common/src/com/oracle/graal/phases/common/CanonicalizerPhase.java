@@ -67,7 +67,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer).run(graph);
+        new Instance(context.getMetaAccess(), context.getAssumptions(), canonicalizeReads, customCanonicalizer).run(graph);
     }
 
     /**
@@ -79,7 +79,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark, boolean dumpGraph) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+        new Instance(context.getMetaAccess(), context.getAssumptions(), canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
     /**
@@ -91,7 +91,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, boolean dumpGraph) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
+        new Instance(context.getMetaAccess(), context.getAssumptions(), canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
     }
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark) {
@@ -99,19 +99,19 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark, boolean dumpGraph) {
-        new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
+        new Instance(context.getMetaAccess(), context.getAssumptions(), canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
     @Deprecated
     public void addToPhasePlan(PhasePlan plan, PhaseContext context) {
-        plan.addPhase(PhasePosition.AFTER_PARSING, new Instance(context.getRuntime(), context.getAssumptions(), canonicalizeReads, customCanonicalizer));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new Instance(context.getMetaAccess(), context.getAssumptions(), canonicalizeReads, customCanonicalizer));
     }
 
     private static final class Instance extends Phase {
 
         private final int newNodesMark;
         private final Assumptions assumptions;
-        private final MetaAccessProvider runtime;
+        private final MetaAccessProvider metaAccess;
         private final CustomCanonicalizer customCanonicalizer;
         private final Iterable<Node> initWorkingSet;
         private final boolean canonicalizeReads;
@@ -119,23 +119,23 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private NodeWorkList workList;
         private Tool tool;
 
-        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
-            this(runtime, assumptions, canonicalizeReads, null, 0, customCanonicalizer);
+        private Instance(MetaAccessProvider metaAccess, Assumptions assumptions, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
+            this(metaAccess, assumptions, canonicalizeReads, null, 0, customCanonicalizer);
         }
 
-        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
-            this(runtime, assumptions, canonicalizeReads, workingSet, 0, customCanonicalizer);
+        private Instance(MetaAccessProvider metaAccess, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
+            this(metaAccess, assumptions, canonicalizeReads, workingSet, 0, customCanonicalizer);
         }
 
-        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
-            this(runtime, assumptions, canonicalizeReads, null, newNodesMark, customCanonicalizer);
+        private Instance(MetaAccessProvider metaAccess, Assumptions assumptions, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+            this(metaAccess, assumptions, canonicalizeReads, null, newNodesMark, customCanonicalizer);
         }
 
-        private Instance(MetaAccessProvider runtime, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(MetaAccessProvider metaAccess, Assumptions assumptions, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
             super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.assumptions = assumptions;
-            this.runtime = runtime;
+            this.metaAccess = metaAccess;
             this.canonicalizeReads = canonicalizeReads;
             this.customCanonicalizer = customCanonicalizer;
             this.initWorkingSet = workingSet;
@@ -192,7 +192,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                             boolean improvedStamp = tryInferStamp(valueNode);
                             Constant constant = valueNode.stamp().asConstant();
                             if (constant != null && !(node instanceof ConstantNode)) {
-                                performReplacement(valueNode, ConstantNode.forConstant(constant, runtime, valueNode.graph()));
+                                performReplacement(valueNode, ConstantNode.forConstant(constant, metaAccess, valueNode.graph()));
                             } else if (improvedStamp) {
                                 // the improved stamp may enable additional canonicalization
                                 tryCanonicalize(valueNode, nodeClass);
@@ -376,8 +376,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             }
 
             @Override
-            public MetaAccessProvider runtime() {
-                return runtime;
+            public MetaAccessProvider getMetaAccess() {
+                return metaAccess;
             }
 
             @Override

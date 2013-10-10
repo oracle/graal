@@ -44,14 +44,14 @@ import com.oracle.graal.phases.tiers.*;
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
-        return Debug.scope("MethodSubstitutionTest", runtime.lookupJavaMethod(getMethod(snippet)), new Callable<StructuredGraph>() {
+        return Debug.scope("MethodSubstitutionTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)), new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() {
                 StructuredGraph graph = parse(snippet);
                 PhasePlan phasePlan = getDefaultPhasePlan();
                 Assumptions assumptions = new Assumptions(true);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
                 Debug.dump(graph, "Graph");
                 new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 Debug.dump(graph, "Graph");

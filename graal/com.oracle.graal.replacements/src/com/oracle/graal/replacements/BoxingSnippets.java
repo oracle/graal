@@ -172,27 +172,27 @@ public class BoxingSnippets implements Snippets {
         return value.shortValue();
     }
 
-    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider runtime) {
+    public static FloatingNode canonicalizeBoxing(BoxNode box, MetaAccessProvider metaAccess) {
         ValueNode value = box.getValue();
         if (value.isConstant()) {
             Constant sourceConstant = value.asConstant();
             switch (box.getBoxingKind()) {
                 case Boolean:
-                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asInt() != 0), runtime, box.graph());
+                    return ConstantNode.forObject(Boolean.valueOf(sourceConstant.asInt() != 0), metaAccess, box.graph());
                 case Byte:
-                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), runtime, box.graph());
+                    return ConstantNode.forObject(Byte.valueOf((byte) sourceConstant.asInt()), metaAccess, box.graph());
                 case Char:
-                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), runtime, box.graph());
+                    return ConstantNode.forObject(Character.valueOf((char) sourceConstant.asInt()), metaAccess, box.graph());
                 case Short:
-                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), runtime, box.graph());
+                    return ConstantNode.forObject(Short.valueOf((short) sourceConstant.asInt()), metaAccess, box.graph());
                 case Int:
-                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), runtime, box.graph());
+                    return ConstantNode.forObject(Integer.valueOf(sourceConstant.asInt()), metaAccess, box.graph());
                 case Long:
-                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), runtime, box.graph());
+                    return ConstantNode.forObject(Long.valueOf(sourceConstant.asLong()), metaAccess, box.graph());
                 case Float:
-                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), runtime, box.graph());
+                    return ConstantNode.forObject(Float.valueOf(sourceConstant.asFloat()), metaAccess, box.graph());
                 case Double:
-                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), runtime, box.graph());
+                    return ConstantNode.forObject(Double.valueOf(sourceConstant.asDouble()), metaAccess, box.graph());
                 default:
                     assert false : "Unexpected source kind for boxing";
                     break;
@@ -206,8 +206,8 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
         private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
 
-        public Templates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
             for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));
@@ -215,7 +215,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
-            FloatingNode canonical = canonicalizeBoxing(box, runtime);
+            FloatingNode canonical = canonicalizeBoxing(box, metaAccess);
             // if in AOT mode, we don't want to embed boxed constants.
             if (canonical != null && !AOTCompilation.getValue()) {
                 box.graph().replaceFloating(box, canonical);
@@ -225,7 +225,7 @@ public class BoxingSnippets implements Snippets {
 
                 SnippetTemplate template = template(args);
                 Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-                template.instantiate(runtime, box, DEFAULT_REPLACER, tool, args);
+                template.instantiate(metaAccess, box, DEFAULT_REPLACER, tool, args);
                 GraphUtil.killWithUnusedFloatingInputs(box);
             }
         }
@@ -236,7 +236,7 @@ public class BoxingSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
-            template.instantiate(runtime, unbox, DEFAULT_REPLACER, tool, args);
+            template.instantiate(metaAccess, unbox, DEFAULT_REPLACER, tool, args);
             GraphUtil.killWithUnusedFloatingInputs(unbox);
         }
     }

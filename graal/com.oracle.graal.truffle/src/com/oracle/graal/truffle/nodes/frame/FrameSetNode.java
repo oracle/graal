@@ -77,7 +77,7 @@ public class FrameSetNode extends FrameAccessNode implements IterableNodeType, V
         LoadFieldNode loadFieldNode = graph().add(new LoadFieldNode(getFrame(), field));
         structuredGraph.addBeforeFixed(this, loadFieldNode);
         FixedWithNextNode storeNode;
-        ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+        ValueNode slotIndex = getSlotOffset(1, tool.getMetaAccess());
         if (isTagAccess()) {
             storeNode = graph().add(new StoreIndexedNode(loadFieldNode, slotIndex, getSlotKind(), value));
         } else if (!getSlotKind().isPrimitive()) {

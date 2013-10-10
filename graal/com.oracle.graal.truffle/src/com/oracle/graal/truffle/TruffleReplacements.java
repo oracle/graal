@@ -41,16 +41,17 @@ public final class TruffleReplacements extends ReplacementsImpl {
 
     private final Replacements graalReplacements;
 
-    private TruffleReplacements(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
-        super(runtime, assumptions, target);
+    private TruffleReplacements(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
+        super(metaAccess, codeCache, assumptions, target);
         this.graalReplacements = graalReplacements;
     }
 
     static Replacements makeInstance() {
-        MetaAccessProvider metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        GraalCodeCacheProvider codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         TargetDescription targetDescription = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
         Replacements graalReplacements = Graal.getRequiredCapability(Replacements.class);
-        Replacements truffleReplacements = new TruffleReplacements(metaAccessProvider, graalReplacements.getAssumptions(), targetDescription, graalReplacements);
+        Replacements truffleReplacements = new TruffleReplacements(metaAccess, codeCache, graalReplacements.getAssumptions(), targetDescription, graalReplacements);
 
         truffleReplacements.registerSubstitutions(CompilerAssertsSubstitutions.class);
         truffleReplacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);

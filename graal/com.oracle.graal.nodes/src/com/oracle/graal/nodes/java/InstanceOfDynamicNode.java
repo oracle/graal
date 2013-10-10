@@ -53,7 +53,7 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getCodeCache().lower(this, tool);
     }
 
     @Override
@@ -61,7 +61,7 @@ public final class InstanceOfDynamicNode extends LogicNode implements Canonicali
         assert object() != null : this;
         if (mirror().isConstant()) {
             Class clazz = (Class) mirror().asConstant().asObject();
-            ResolvedJavaType t = tool.runtime().lookupJavaType(clazz);
+            ResolvedJavaType t = tool.getMetaAccess().lookupJavaType(clazz);
             return graph().unique(new InstanceOfNode(t, object(), null));
         }
         return this;

@@ -54,7 +54,8 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class TruffleCache {
 
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
+    private final GraalCodeCacheProvider codeCache;
     private final GraphBuilderConfiguration config;
     private final OptimisticOptimizations optimisticOptimizations;
     private final Replacements replacements;
@@ -63,12 +64,13 @@ public final class TruffleCache {
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
 
-    public TruffleCache(MetaAccessProvider metaAccessProvider, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
-        this.metaAccessProvider = metaAccessProvider;
+    public TruffleCache(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
+        this.metaAccess = metaAccess;
+        this.codeCache = codeCache;
         this.config = config;
         this.optimisticOptimizations = optimisticOptimizations;
         this.replacements = replacements;
-        this.stringBuilderClass = metaAccessProvider.lookupJavaType(StringBuilder.class);
+        this.stringBuilderClass = metaAccess.lookupJavaType(StringBuilder.class);
     }
 
     @SuppressWarnings("unused")
@@ -92,13 +94,13 @@ public final class TruffleCache {
         }
 
         cache.put(key, markerGraph);
-        resultGraph = Debug.scope("TruffleCache", new Object[]{metaAccessProvider, method}, new Callable<StructuredGraph>() {
+        resultGraph = Debug.scope("TruffleCache", new Object[]{metaAccess, method}, new Callable<StructuredGraph>() {
 
             public StructuredGraph call() {
 
                 final StructuredGraph graph = new StructuredGraph(method);
-                PhaseContext context = new PhaseContext(metaAccessProvider, new Assumptions(false), replacements);
-                new GraphBuilderPhase(metaAccessProvider, config, optimisticOptimizations).apply(graph);
+                PhaseContext context = new PhaseContext(metaAccess, codeCache, new Assumptions(false), replacements);
+                new GraphBuilderPhase(metaAccess, config, optimisticOptimizations).apply(graph);
 
                 for (LocalNode l : graph.getNodes(LocalNode.class)) {
                     if (l.kind() == Kind.Object) {
@@ -122,7 +124,7 @@ public final class TruffleCache {
                     partialEscapePhase.apply(graph, context);
 
                     // Conditional elimination.
-                    ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccessProvider);
+                    ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccess);
                     conditionalEliminationPhase.apply(graph);
 
                     // Canonicalize / constant propagate.
@@ -206,8 +208,8 @@ public final class TruffleCache {
 
     private boolean tryCutOffRuntimeExceptions(MethodCallTargetNode methodCallTargetNode) {
         if (methodCallTargetNode.targetMethod().isConstructor()) {
-            ResolvedJavaType runtimeException = metaAccessProvider.lookupJavaType(RuntimeException.class);
-            ResolvedJavaType controlFlowException = metaAccessProvider.lookupJavaType(ControlFlowException.class);
+            ResolvedJavaType runtimeException = metaAccess.lookupJavaType(RuntimeException.class);
+            ResolvedJavaType controlFlowException = metaAccess.lookupJavaType(ControlFlowException.class);
             ResolvedJavaType exceptionType = Objects.requireNonNull(ObjectStamp.typeOrNull(methodCallTargetNode.receiver().stamp()));
             if (runtimeException.isAssignableFrom(methodCallTargetNode.targetMethod().getDeclaringClass()) && !controlFlowException.isAssignableFrom(exceptionType)) {
                 DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));

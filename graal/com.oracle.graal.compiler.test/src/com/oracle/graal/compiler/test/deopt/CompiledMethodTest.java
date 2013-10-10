@@ -56,19 +56,19 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test1() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements));
         new DeadCodeEliminationPhase().apply(graph);
 
         for (Node node : graph.getNodes()) {
             if (node instanceof ConstantNode) {
                 ConstantNode constant = (ConstantNode) node;
                 if (constant.kind() == Kind.Object && " ".equals(constant.value.asObject())) {
-                    graph.replaceFloating(constant, ConstantNode.forObject("-", runtime, graph));
+                    graph.replaceFloating(constant, ConstantNode.forObject("-", getMetaAccess(), graph));
                 }
             }
         }
 
-        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.execute("1", "2", "3");
@@ -82,7 +82,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test3() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs("1", "2", "3");
@@ -96,7 +96,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test4() {
         Method method = getMethod("testMethodVirtual");
         final StructuredGraph graph = parse(method);
-        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             f1 = "0";

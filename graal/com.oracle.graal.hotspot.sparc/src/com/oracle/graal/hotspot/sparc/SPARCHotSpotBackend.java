@@ -71,7 +71,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
+        return new SPARCHotSpotLIRGenerator(graph, runtime(), runtime(), target, frameMap, cc, lir);
     }
 
     /**

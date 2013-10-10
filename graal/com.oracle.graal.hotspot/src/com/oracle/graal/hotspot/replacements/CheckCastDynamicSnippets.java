@@ -31,6 +31,7 @@ import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -66,8 +67,8 @@ public class CheckCastDynamicSnippets implements Snippets {
 
         private final SnippetInfo dynamic = snippet(CheckCastDynamicSnippets.class, "checkcastDynamic");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
         }
 
         public void lower(CheckCastDynamicNode checkcast) {
@@ -80,7 +81,7 @@ public class CheckCastDynamicSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering dynamic checkcast in %s: node=%s, template=%s, arguments=%s", graph, checkcast, template, args);
-            template.instantiate(runtime, checkcast, DEFAULT_REPLACER, args);
+            template.instantiate(metaAccess, checkcast, DEFAULT_REPLACER, args);
         }
     }
 }

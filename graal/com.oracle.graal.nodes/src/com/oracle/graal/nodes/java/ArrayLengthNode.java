@@ -47,7 +47,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode length = readArrayLength(array(), tool.runtime());
+        ValueNode length = readArrayLength(array(), tool.getMetaAccess());
         if (length != null) {
             return length;
         }
@@ -60,17 +60,17 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
      * @param array an array
      * @return a node representing the length of {@code array} or null if it is not available
      */
-    public static ValueNode readArrayLength(ValueNode array, MetaAccessProvider runtime) {
+    public static ValueNode readArrayLength(ValueNode array, MetaAccessProvider metaAccess) {
         if (array instanceof ArrayLengthProvider) {
             ValueNode length = ((ArrayLengthProvider) array).length();
             if (length != null) {
                 return length;
             }
         }
-        if (runtime != null && array.isConstant() && !array.isNullConstant()) {
+        if (metaAccess != null && array.isConstant() && !array.isNullConstant()) {
             Constant constantValue = array.asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
-                Integer constantLength = runtime.lookupArrayLength(constantValue);
+                Integer constantLength = metaAccess.lookupArrayLength(constantValue);
                 if (constantLength != null) {
                     return ConstantNode.forInt(constantLength, array.graph());
                 }
@@ -81,7 +81,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getCodeCache().lower(this, tool);
     }
 
     @NodeIntrinsic

@@ -40,7 +40,7 @@ import com.oracle.graal.api.runtime.*;
 public class TypeUniverse {
 
     public final Unsafe unsafe;
-    public final MetaAccessProvider runtime = Graal.getRequiredCapability(MetaAccessProvider.class);
+    public final MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
     public final Collection<Class<?>> classes = new HashSet<>();
     public final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
     public final List<Constant> constants = new ArrayList<>();

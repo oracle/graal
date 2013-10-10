@@ -222,7 +222,7 @@ public class PTXControlFlow {
 
             if (keyKind == Kind.Int || keyKind == Kind.Long) {
                 for (int i = 0; i < keyConstants.length; i++) {
-                    if (tasm.runtime.needsDataPatch(keyConstants[i])) {
+                    if (tasm.codeCache.needsDataPatch(keyConstants[i])) {
                         tasm.recordDataReferenceInCode(keyConstants[i], 0, true);
                     }
                     new Setp(EQ, keyConstants[i], key, predRegNum).emit(masm);

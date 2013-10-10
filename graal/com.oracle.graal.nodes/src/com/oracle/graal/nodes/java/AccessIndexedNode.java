@@ -65,6 +65,6 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getCodeCache().lower(this, tool);
     }
 }

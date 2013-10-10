@@ -49,8 +49,8 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * 
      * @param value the constant
      */
-    protected ConstantNode(Constant value, MetaAccessProvider runtime) {
-        super(StampFactory.forConstant(value, runtime));
+    protected ConstantNode(Constant value, MetaAccessProvider metaAccess) {
+        super(StampFactory.forConstant(value, metaAccess));
         this.value = value;
     }
 
@@ -74,9 +74,9 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         return true;
     }
 
-    public static ConstantNode forConstant(Constant constant, MetaAccessProvider runtime, Graph graph) {
+    public static ConstantNode forConstant(Constant constant, MetaAccessProvider metaAccess, Graph graph) {
         if (constant.getKind() == Kind.Object) {
-            return graph.unique(new ConstantNode(constant, runtime));
+            return graph.unique(new ConstantNode(constant, metaAccess));
         } else {
             return graph.unique(new ConstantNode(constant));
         }
@@ -185,9 +185,9 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * @param graph
      * @return a node representing the object
      */
-    public static ConstantNode forObject(Object o, MetaAccessProvider runtime, Graph graph) {
+    public static ConstantNode forObject(Object o, MetaAccessProvider metaAccess, Graph graph) {
         assert !(o instanceof Constant) : "wrapping a Constant into a Constant";
-        return graph.unique(new ConstantNode(Constant.forObject(o), runtime));
+        return graph.unique(new ConstantNode(Constant.forObject(o), metaAccess));
     }
 
     public static ConstantNode forIntegerKind(Kind kind, long value, Graph graph) {

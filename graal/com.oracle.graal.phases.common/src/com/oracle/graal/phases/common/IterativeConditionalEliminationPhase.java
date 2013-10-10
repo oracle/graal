@@ -42,7 +42,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<PhaseContext
 
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(context.getRuntime());
+        ConditionalEliminationPhase eliminate = new ConditionalEliminationPhase(context.getMetaAccess());
         HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
         int count = 0;
         while (true) {

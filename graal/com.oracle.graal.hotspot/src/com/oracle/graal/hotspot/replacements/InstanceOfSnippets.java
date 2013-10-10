@@ -200,8 +200,8 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
         }
 
         @Override
@@ -211,13 +211,13 @@ public class InstanceOfSnippets implements Snippets {
                 ValueNode object = instanceOf.object();
                 TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), InstanceOfMinHintHitProbability.getValue(), InstanceOfMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
-                ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, instanceOf.graph());
+                ConstantNode hub = ConstantNode.forConstant(type.klass(), metaAccess, instanceOf.graph());
 
                 Arguments args;
 
                 StructuredGraph graph = hub.graph();
                 if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet()) {
-                    Hints hints = createHints(hintInfo, runtime, false, graph);
+                    Hints hints = createHints(hintInfo, metaAccess, false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage());
                     args.add("object", object);
                     args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind()), hints.hubs);
@@ -225,14 +225,14 @@ public class InstanceOfSnippets implements Snippets {
                 } else if (hintInfo.exact != null) {
                     args = new Arguments(instanceofExact, graph.getGuardsStage());
                     args.add("object", object);
-                    args.add("exactHub", ConstantNode.forConstant(((HotSpotResolvedObjectType) hintInfo.exact).klass(), runtime, graph));
+                    args.add("exactHub", ConstantNode.forConstant(((HotSpotResolvedObjectType) hintInfo.exact).klass(), metaAccess, graph));
                 } else if (type.isPrimaryType()) {
                     args = new Arguments(instanceofPrimary, graph.getGuardsStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
-                    Hints hints = createHints(hintInfo, runtime, false, graph);
+                    Hints hints = createHints(hintInfo, metaAccess, false, graph);
                     args = new Arguments(instanceofSecondary, graph.getGuardsStage());
                     args.add("hub", hub);
                     args.add("object", object);

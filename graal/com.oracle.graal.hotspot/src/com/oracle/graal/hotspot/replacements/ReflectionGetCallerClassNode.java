@@ -40,7 +40,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.runtime());
+        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess());
         if (callerClassNode != null) {
             return callerClassNode;
         }
@@ -49,7 +49,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
 
     @Override
     public void lower(LoweringTool tool) {
-        ConstantNode callerClassNode = getCallerClassNode(tool.getRuntime());
+        ConstantNode callerClassNode = getCallerClassNode(tool.getMetaAccess());
 
         if (callerClassNode != null) {
             graph().replaceFixedWithFloating(this, callerClassNode);
@@ -64,10 +64,10 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
      * If inlining is deep enough this method returns a {@link ConstantNode} of the caller class by
      * walking the the stack.
      * 
-     * @param runtime
+     * @param metaAccess
      * @return ConstantNode of the caller class, or null
      */
-    private ConstantNode getCallerClassNode(MetaAccessProvider runtime) {
+    private ConstantNode getCallerClassNode(MetaAccessProvider metaAccess) {
         if (!shouldIntrinsify(getTargetMethod())) {
             return null;
         }
@@ -93,7 +93,7 @@ public class ReflectionGetCallerClassNode extends MacroNode implements Canonical
                     if (!method.ignoredBySecurityStackWalk()) {
                         // We have reached the desired frame; return the holder class.
                         HotSpotResolvedObjectType callerClass = (HotSpotResolvedObjectType) method.getDeclaringClass();
-                        return ConstantNode.forObject(callerClass.mirror(), runtime, graph());
+                        return ConstantNode.forObject(callerClass.mirror(), metaAccess, graph());
                     }
                     break;
             }

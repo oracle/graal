@@ -60,29 +60,29 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
-        MetaAccessProvider runtime = tool.runtime();
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (read.usages().isEmpty()) {
             // Read without usages can be savely removed.
             return null;
         }
-        if (tool.canonicalizeReads() && runtime != null && object != null && object.isConstant()) {
+        if (tool.canonicalizeReads() && metaAccess != null && object != null && object.isConstant()) {
             if (location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION && location instanceof ConstantLocationNode) {
                 long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
                     if (base != null) {
-                        Constant constant = tool.runtime().readUnsafeConstant(kind, base, displacement, compressible);
+                        Constant constant = tool.getMetaAccess().readUnsafeConstant(kind, base, displacement, compressible);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.graph());
+                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
                 } else if (object.kind() == Kind.Long || object.kind().getStackKind() == Kind.Int) {
                     long base = object.asConstant().asLong();
                     if (base != 0L) {
-                        Constant constant = tool.runtime().readUnsafeConstant(kind, null, base + displacement, compressible);
+                        Constant constant = tool.getMetaAccess().readUnsafeConstant(kind, null, base + displacement, compressible);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.graph());
+                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
                 }

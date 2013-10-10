@@ -51,8 +51,8 @@ public class HSAILBackend extends Backend {
     private Map<String, String> paramTypeMap = new HashMap<>();
     private Buffer codeBuffer;
 
-    public HSAILBackend(CodeCacheProvider runtime, TargetDescription target) {
-        super(runtime, target);
+    public HSAILBackend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+        super(metaAccess, codeCache, target);
         paramTypeMap.put("HotSpotResolvedPrimitiveType<int>", "s32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
@@ -74,7 +74,7 @@ public class HSAILBackend extends Backend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new HSAILLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
+        return new HSAILLIRGenerator(graph, metaAccess(), runtime(), target, frameMap, cc, lir);
     }
 
     public String getPartialCodeString() {
@@ -142,12 +142,12 @@ public class HSAILBackend extends Backend {
         int pidx = 0;
         for (int i = 0; i < totalParamCount; i++) {
             if (i == 0 && !isStatic) {
-                paramtypes[i] = runtime().lookupJavaType(Object.class);
+                paramtypes[i] = metaAccess().lookupJavaType(Object.class);
                 paramNames[i] = "%_this";
             } else if (i < nonConstantParamCount) {
                 if (isObjectLambda && (i == (nonConstantParamCount))) {
                     // Set up the gid register mapping.
-                    paramtypes[i] = runtime().lookupJavaType(int.class);
+                    paramtypes[i] = metaAccess().lookupJavaType(int.class);
                     paramNames[i] = "%_gid";
                 } else {
                     paramtypes[i] = signature.getParameterType(pidx++, null);

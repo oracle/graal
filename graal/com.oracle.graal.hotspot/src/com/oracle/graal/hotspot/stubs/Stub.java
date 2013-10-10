@@ -156,8 +156,8 @@ public abstract class Stub {
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     // The stub itself needs the incoming calling convention.
                     CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
-                                    OptimisticOptimizations.ALL, new SpeculationLog(), runtime.getDefaultSuites(), new CompilationResult());
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), runtime, runtime, replacements, backend, runtime.getTarget(), null,
+                                    phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), runtime.getDefaultSuites(), new CompilationResult());
 
                     assert destroyedRegisters != null;
                     code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {

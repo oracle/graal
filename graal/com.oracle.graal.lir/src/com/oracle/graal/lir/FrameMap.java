@@ -40,7 +40,6 @@ import com.oracle.graal.asm.*;
  */
 public abstract class FrameMap {
 
-    public final CodeCacheProvider runtime;
     public final TargetDescription target;
     public final RegisterConfig registerConfig;
 
@@ -87,12 +86,11 @@ public abstract class FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
-    public FrameMap(CodeCacheProvider runtime, TargetDescription target, RegisterConfig registerConfig) {
-        this.runtime = runtime;
+    public FrameMap(CodeCacheProvider codeCache, TargetDescription target, RegisterConfig registerConfig) {
         this.target = target;
         this.registerConfig = registerConfig;
         this.frameSize = -1;
-        this.outgoingSize = runtime.getMinimumOutgoingSize();
+        this.outgoingSize = codeCache.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();
     }
 
@@ -116,7 +114,7 @@ public abstract class FrameMap {
     /**
      * Gets the frame size of the compiled frame, not including the size of the
      * {@link Architecture#getReturnAddressSize() return address slot}.
-     *
+     * 
      * @return The size of the frame (in bytes).
      */
     public int frameSize() {
@@ -136,7 +134,7 @@ public abstract class FrameMap {
     /**
      * Gets the total frame size of the compiled frame, including the size of the
      * {@link Architecture#getReturnAddressSize() return address slot}.
-     *
+     * 
      * @return The total size of the frame (in bytes).
      */
     public abstract int totalFrameSize();
@@ -149,7 +147,7 @@ public abstract class FrameMap {
 
     /**
      * Aligns the given frame size to the stack alignment size and return the aligned size.
-     *
+     * 
      * @param size the initial frame size to be aligned
      * @return the aligned frame size
      */
@@ -181,7 +179,7 @@ public abstract class FrameMap {
 
     /**
      * Computes the offset of a stack slot relative to the frame register.
-     *
+     * 
      * @param slot a stack slot
      * @return the offset of the stack slot
      */
@@ -197,7 +195,7 @@ public abstract class FrameMap {
     /**
      * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
      * slots in the reference map.
-     *
+     * 
      * @param slot a stack slot
      * @return the index of the stack slot
      */
@@ -209,7 +207,7 @@ public abstract class FrameMap {
     /**
      * Gets the offset from the stack pointer to the stack area where callee-saved registers are
      * stored.
-     *
+     * 
      * @return The offset to the callee save area (in bytes).
      */
     public abstract int offsetToCalleeSaveArea();
@@ -217,7 +215,7 @@ public abstract class FrameMap {
     /**
      * Informs the frame map that the compiled code calls a particular method, which may need stack
      * space for outgoing arguments.
-     *
+     * 
      * @param cc The calling convention for the called method.
      */
     public void callsMethod(CallingConvention cc) {
@@ -226,7 +224,7 @@ public abstract class FrameMap {
 
     /**
      * Reserves space for stack-based outgoing arguments.
-     *
+     * 
      * @param argsSize The amount of space (in bytes) to reserve for stack-based outgoing arguments.
      */
     public void reserveOutgoing(int argsSize) {
@@ -239,7 +237,7 @@ public abstract class FrameMap {
      * Reserves a new spill slot in the frame of the method being compiled. The returned slot is
      * aligned on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte
      * boundary.
-     *
+     * 
      * @param kind The kind of the spill slot to be reserved.
      * @param additionalOffset
      * @return A spill slot denoting the reserved memory area.
@@ -247,8 +245,9 @@ public abstract class FrameMap {
     protected abstract StackSlot allocateNewSpillSlot(PlatformKind kind, int additionalOffset);
 
     /**
-     * Returns the spill slot size for the given {@link PlatformKind}.
-     * The default value is the size in bytes for the target architecture.
+     * Returns the spill slot size for the given {@link PlatformKind}. The default value is the size
+     * in bytes for the target architecture.
+     * 
      * @param kind the {@link PlatformKind} to be stored in the spill slot.
      * @return the size in bytes
      */
@@ -258,9 +257,9 @@ public abstract class FrameMap {
 
     /**
      * Reserves a spill slot in the frame of the method being compiled. The returned slot is aligned
-     * on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte boundary,
-     * unless overridden by a subclass.
-     *
+     * on its natural alignment, i.e., an 8-byte spill slot is aligned at an 8-byte boundary, unless
+     * overridden by a subclass.
+     * 
      * @param kind The kind of the spill slot to be reserved.
      * @return A spill slot denoting the reserved memory area.
      */
@@ -299,7 +298,7 @@ public abstract class FrameMap {
     /**
      * Reserves a block of memory in the frame of the method being compiled. The returned block is
      * aligned on a word boundary. If the requested size is 0, the method returns {@code null}.
-     *
+     * 
      * @param size The size to reserve (in bytes).
      * @param refs Specifies if the block is all references. If true, the block will be in all
      *            reference maps for this method. The caller is responsible to initialize the memory
@@ -351,7 +350,7 @@ public abstract class FrameMap {
      * Marks the specified location as a reference in the reference map of the debug information.
      * The tracked location can be a {@link RegisterValue} or a {@link StackSlot}. Note that a
      * {@link Constant} is automatically tracked.
-     *
+     * 
      * @param location The location to be added to the reference map.
      * @param registerRefMap A register reference map, as created by {@link #initRegisterRefMap()}.
      * @param frameRefMap A frame reference map, as created by {@link #initFrameRefMap()}.

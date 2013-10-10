@@ -28,7 +28,7 @@ import com.oracle.graal.api.meta.*;
 /**
  * Encapsulates the main functionality of the runtime for the compiler.
  */
-public interface CodeCacheProvider extends MetaAccessProvider {
+public interface CodeCacheProvider {
 
     /**
      * Adds the given compilation result as an implementation of the given method without making it

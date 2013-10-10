@@ -75,7 +75,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
             return null;
         }
         Kind componentKind = srcType.getComponentType().getKind();
-        final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
+        final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.getSnippetForKind(componentKind));
         return Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
 
             @Override
@@ -93,7 +93,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
-        PhaseContext context = new PhaseContext(tool.getRuntime(), tool.assumptions(), tool.getReplacements());
+        PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.assumptions(), tool.getReplacements());
         new CanonicalizerPhase(true).apply(snippetGraph, context);
         new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(snippetGraph, context);
         new CanonicalizerPhase(true).apply(snippetGraph, context);
@@ -108,7 +108,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
         final Replacements replacements = tool.getReplacements();
         StructuredGraph snippetGraph = selectSnippet(tool, replacements);
         if (snippetGraph == null) {
-            final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
+            final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(ArrayCopySnippets.genericArraycopySnippet);
             snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
 
                 @Override

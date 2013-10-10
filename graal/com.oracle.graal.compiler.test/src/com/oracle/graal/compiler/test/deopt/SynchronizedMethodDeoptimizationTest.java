@@ -53,7 +53,7 @@ public class SynchronizedMethodDeoptimizationTest extends GraalCompilerTest {
             Assert.assertEquals(testString, testMethodSynchronized(testString));
         }
         final StructuredGraph graph = parseProfiled(method);
-        final ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        final ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         InstalledCode compiledMethod = getCode(javaMethod, graph);
         try {
             Object result = compiledMethod.executeVarargs(testString);

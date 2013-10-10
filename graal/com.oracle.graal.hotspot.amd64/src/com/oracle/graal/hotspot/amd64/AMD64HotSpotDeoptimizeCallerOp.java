@@ -38,6 +38,6 @@ final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupForeignCall(UNCOMMON_TRAP));
+        AMD64Call.directJmp(tasm, masm, tasm.codeCache.lookupForeignCall(UNCOMMON_TRAP));
     }
 }

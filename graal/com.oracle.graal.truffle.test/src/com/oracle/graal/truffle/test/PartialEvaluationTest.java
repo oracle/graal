@@ -56,8 +56,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     public PartialEvaluationTest() {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
-        this.partialEvaluator = new PartialEvaluator(runtime, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements(), new TruffleCache(runtime, GraphBuilderConfiguration.getDefault(),
-                        TruffleCompilerImpl.Optimizations, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements()));
+        this.partialEvaluator = new PartialEvaluator(getMetaAccess(), getCodeCache(), ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements(), new TruffleCache(getMetaAccess(), getCodeCache(),
+                        GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements()));
 
         DebugEnvironment.initialize(System.out);
     }
@@ -105,7 +105,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 StructuredGraph resultGraph = partialEvaluator.createGraph(compilable, assumptions);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(canonicalizeReads);
-                PhaseContext context = new PhaseContext(runtime, assumptions, replacements);
+                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements);
 
                 if (resultGraph.hasLoops()) {
                     boolean unrolled;
@@ -160,7 +160,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime, new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements));
         new DeadCodeEliminationPhase().apply(graph);
     }
 
@@ -172,13 +172,13 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 Assumptions assumptions = new Assumptions(false);
                 StructuredGraph graph = parse(methodName);
-                PhaseContext context = new PhaseContext(runtime, assumptions, replacements);
+                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
 
                 // Additional inlining.
                 final PhasePlan plan = new PhasePlan();
-                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), TruffleCompilerImpl.Optimizations);
+                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), TruffleCompilerImpl.Optimizations);
                 plan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 canonicalizer.addToPhasePlan(plan, context);
                 plan.addPhase(PhasePosition.AFTER_PARSING, new DeadCodeEliminationPhase());
@@ -187,7 +187,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizer.apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                HighTierContext highTierContext = new HighTierContext(runtime, assumptions, replacements, null, plan, OptimisticOptimizations.NONE);
+                HighTierContext highTierContext = new HighTierContext(getMetaAccess(), getCodeCache(), assumptions, replacements, null, plan, OptimisticOptimizations.NONE);
                 InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, highTierContext);
                 removeFrameStates(graph);

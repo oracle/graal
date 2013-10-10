@@ -296,8 +296,8 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic");
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
         }
 
         /**
@@ -307,7 +307,7 @@ public class NewObjectSnippets implements Snippets {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), metaAccess, graph);
             int size = instanceSize(type);
 
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage());
@@ -319,7 +319,7 @@ public class NewObjectSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
-            template.instantiate(runtime, newInstanceNode, DEFAULT_REPLACER, args);
+            template.instantiate(metaAccess, newInstanceNode, DEFAULT_REPLACER, args);
         }
 
         /**
@@ -330,9 +330,9 @@ public class NewObjectSnippets implements Snippets {
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
-            ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), metaAccess, graph);
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
-            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) runtime).getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) metaAccess).getScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage());
             args.add("hub", hub);
@@ -345,7 +345,7 @@ public class NewObjectSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
-            template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
+            template.instantiate(metaAccess, newArrayNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(DynamicNewArrayNode newArrayNode) {
@@ -355,7 +355,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newArrayNode.fillContents());
 
             SnippetTemplate template = template(args);
-            template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
+            template.instantiate(metaAccess, newArrayNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(NewMultiArrayNode newmultiarrayNode) {
@@ -366,13 +366,13 @@ public class NewObjectSnippets implements Snippets {
                 dims[i] = newmultiarrayNode.dimension(i);
             }
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), metaAccess, graph);
 
             Arguments args = new Arguments(newmultiarray, graph.getGuardsStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(Kind.Int), dims);
-            template(args).instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, newmultiarrayNode, DEFAULT_REPLACER, args);
         }
 
         private static int instanceSize(HotSpotResolvedObjectType type) {

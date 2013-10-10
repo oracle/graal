@@ -292,13 +292,13 @@ public class InliningUtil {
          * Performs the inlining described by this object and returns the node that represents the
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
-         **/
-        void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements);
+         */
+        void inline(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
          */
-        void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions);
+        void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions);
     }
 
     public abstract static class AbstractInlineInfo implements InlineInfo {
@@ -367,12 +367,12 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
             // nothing todo, can already be bound statically
         }
 
@@ -470,20 +470,20 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-            createGuard(graph(), runtime);
+        public void inline(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+            createGuard(graph(), metaAccess);
             inline(invoke, concrete, inlineableElement, assumptions, false);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
-            createGuard(graph(), runtime);
+        public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
+            createGuard(graph(), metaAccess);
             replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
         }
 
-        private void createGuard(StructuredGraph graph, MetaAccessProvider runtime) {
+        private void createGuard(StructuredGraph graph, MetaAccessProvider metaAccess) {
             ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-            ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), runtime, graph);
+            ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), metaAccess, graph);
             LoadHubNode receiverHub = graph.unique(new LoadHubNode(nonNullReceiver, typeHub.kind(), null));
 
             CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
@@ -587,11 +587,11 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph(), runtime, assumptions);
+                inlineSingleMethod(graph(), metaAccess, assumptions);
             } else {
-                inlineMultipleMethods(graph(), runtime, assumptions, replacements);
+                inlineMultipleMethods(graph(), metaAccess, assumptions, replacements, codeCache);
             }
         }
 
@@ -603,7 +603,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
+        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions, Replacements replacements, GraalCodeCacheProvider codeCache) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -658,7 +658,7 @@ public class InliningUtil {
             assert invoke.asNode().isAlive();
 
             // replace the invoke with a switch on the type of the actual receiver
-            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
+            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess);
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -713,8 +713,8 @@ public class InliningUtil {
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new PhaseContext(runtime, assumptions, replacements), new CanonicalizerPhase(
-                                    !AOTCompilation.getValue()));
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new PhaseContext(metaAccess, codeCache, assumptions, replacements),
+                                    new CanonicalizerPhase(!AOTCompilation.getValue()));
                 }
             }
         }
@@ -752,21 +752,21 @@ public class InliningUtil {
             return result;
         }
 
-        private void inlineSingleMethod(StructuredGraph graph, MetaAccessProvider runtime, Assumptions assumptions) {
+        private void inlineSingleMethod(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions) {
             assert concretes.size() == 1 && inlineableElements.length == 1 && ptypes.size() > 1 && !shouldFallbackToInvoke() && notRecordedTypeProbability == 0;
 
             AbstractBeginNode calleeEntryNode = graph.add(new BeginNode());
 
             AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             AbstractBeginNode[] successors = new AbstractBeginNode[]{calleeEntryNode, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, false, runtime);
+            createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess);
 
             calleeEntryNode.setNext(invoke.asNode());
 
             inline(invoke, methodAt(0), inlineableElementAt(0), assumptions, false);
         }
 
-        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider runtime) {
+        private boolean createDispatchOnTypeBeforeInvoke(StructuredGraph graph, AbstractBeginNode[] successors, boolean invokeIsOnlySuccessor, MetaAccessProvider metaAccess) {
             assert ptypes.size() >= 1;
             ValueNode nonNullReceiver = nonNullReceiver(invoke);
             Kind hubKind = ((MethodCallTargetNode) invoke.callTarget()).targetMethod().getDeclaringClass().getEncoding(Representation.ObjectHub).getKind();
@@ -783,7 +783,7 @@ public class InliningUtil {
                     ResolvedJavaMethod firstMethod = concretes.get(i);
                     Constant firstMethodConstant = firstMethod.getEncoding();
 
-                    ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, runtime, graph);
+                    ValueNode firstMethodConstantNode = ConstantNode.forConstant(firstMethodConstant, metaAccess, graph);
                     constantMethods[i] = firstMethodConstantNode;
                     double concretesProbability = concretesProbabilities.get(i);
                     assert concretesProbability >= 0.0;
@@ -928,15 +928,15 @@ public class InliningUtil {
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), runtime);
+                devirtualizeWithTypeSwitch(graph(), InvokeKind.Special, concretes.get(0), metaAccess);
             } else {
-                tryToDevirtualizeMultipleMethods(graph(), runtime);
+                tryToDevirtualizeMultipleMethods(graph(), metaAccess);
             }
         }
 
-        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider runtime) {
+        private void tryToDevirtualizeMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess) {
             MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) invoke.callTarget();
             if (methodCallTarget.invokeKind() == InvokeKind.Interface) {
                 ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
@@ -947,17 +947,17 @@ public class InliningUtil {
                 if (!leastCommonType.isInterface() && targetMethod.getDeclaringClass().isAssignableFrom(leastCommonType)) {
                     ResolvedJavaMethod baseClassTargetMethod = leastCommonType.resolveMethod(targetMethod);
                     if (baseClassTargetMethod != null) {
-                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod), runtime);
+                        devirtualizeWithTypeSwitch(graph, InvokeKind.Virtual, leastCommonType.resolveMethod(targetMethod), metaAccess);
                     }
                 }
             }
         }
 
-        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider runtime) {
+        private void devirtualizeWithTypeSwitch(StructuredGraph graph, InvokeKind kind, ResolvedJavaMethod target, MetaAccessProvider metaAccess) {
             AbstractBeginNode invocationEntry = graph.add(new BeginNode());
             AbstractBeginNode unknownTypeSux = createUnknownTypeSuccessor(graph);
             AbstractBeginNode[] successors = new AbstractBeginNode[]{invocationEntry, unknownTypeSux};
-            createDispatchOnTypeBeforeInvoke(graph, successors, true, runtime);
+            createDispatchOnTypeBeforeInvoke(graph, successors, true, metaAccess);
 
             invocationEntry.setNext(invoke.asNode());
             ValueNode receiver = ((MethodCallTargetNode) invoke.callTarget()).receiver();
@@ -1006,13 +1006,13 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             assumptions.record(takenAssumption);
-            super.inline(runtime, assumptions, replacements);
+            super.inline(metaAccess, codeCache, assumptions, replacements);
         }
 
         @Override
-        public void tryToDevirtualizeInvoke(MetaAccessProvider runtime, Assumptions assumptions) {
+        public void tryToDevirtualizeInvoke(MetaAccessProvider metaAccess, Assumptions assumptions) {
             assumptions.record(takenAssumption);
             replaceInvokeCallTarget(invoke, graph(), InvokeKind.Special, concrete);
         }

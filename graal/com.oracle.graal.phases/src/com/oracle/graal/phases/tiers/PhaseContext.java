@@ -28,18 +28,24 @@ import com.oracle.graal.nodes.spi.*;
 
 public class PhaseContext {
 
-    private final MetaAccessProvider runtime;
+    private final MetaAccessProvider metaAccess;
+    private final GraalCodeCacheProvider codeCache;
     private final Assumptions assumptions;
     private final Replacements replacements;
 
-    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-        this.runtime = runtime;
+    public PhaseContext(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        this.metaAccess = metaAccess;
+        this.codeCache = codeCache;
         this.assumptions = assumptions;
         this.replacements = replacements;
     }
 
-    public MetaAccessProvider getRuntime() {
-        return runtime;
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
+    public GraalCodeCacheProvider getCodeCache() {
+        return codeCache;
     }
 
     public Assumptions getAssumptions() {

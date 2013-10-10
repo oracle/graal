@@ -60,7 +60,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        MetaAccessProvider runtime = tool.runtime();
+        MetaAccessProvider runtime = tool.getMetaAccess();
         if (tool.canonicalizeReads() && runtime != null) {
             ConstantNode constant = asConstant(runtime);
             if (constant != null) {
@@ -77,7 +77,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     /**
      * Gets a constant value for this load if possible.
      */
-    public ConstantNode asConstant(MetaAccessProvider runtime) {
+    public ConstantNode asConstant(MetaAccessProvider metaAccess) {
         Constant constant = null;
         if (isStatic()) {
             constant = field().readConstantValue(null);
@@ -85,12 +85,12 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             constant = field().readConstantValue(object().asConstant());
         }
         if (constant != null) {
-            return ConstantNode.forConstant(constant, runtime, graph());
+            return ConstantNode.forConstant(constant, metaAccess, graph());
         }
         return null;
     }
 
-    private PhiNode asPhi(MetaAccessProvider runtime) {
+    private PhiNode asPhi(MetaAccessProvider metaAccess) {
         if (!isStatic() && Modifier.isFinal(field.getModifiers()) && object() instanceof PhiNode && ((PhiNode) object()).values().filter(NodePredicates.isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) object();
             Constant[] constants = new Constant[phi.valueCount()];
@@ -103,7 +103,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
             }
             PhiNode newPhi = graph().addWithoutUnique(new PhiNode(stamp(), phi.merge()));
             for (int i = 0; i < phi.valueCount(); i++) {
-                newPhi.addInput(ConstantNode.forConstant(constants[i], runtime, graph()));
+                newPhi.addInput(ConstantNode.forConstant(constants[i], metaAccess, graph()));
             }
             return newPhi;
         }

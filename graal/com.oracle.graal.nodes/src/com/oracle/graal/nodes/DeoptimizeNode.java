@@ -47,12 +47,12 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerab
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(gen.getRuntime().encodeDeoptActionAndReason(action, reason), this);
+        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason), this);
     }
 
     @Override
-    public ValueNode getActionAndReason(MetaAccessProvider runtime) {
-        return ConstantNode.forConstant(runtime.encodeDeoptActionAndReason(action, reason), runtime, graph());
+    public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
+        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason), metaAccess, graph());
     }
 
     @NodeIntrinsic

@@ -67,11 +67,11 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSpotLIRGenerator {
 
     private HotSpotRuntime runtime() {
-        return (HotSpotRuntime) runtime;
+        return (HotSpotRuntime) codeCache;
     }
 
-    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, cc, lir);
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
     }
 
     /**
@@ -305,7 +305,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         AMD64AddressValue address;
         Value index = operand(x.offset());
         if (ValueUtil.isConstant(index) && NumUtil.isInt(ValueUtil.asConstant(index).asLong() + disp)) {
-            assert !runtime.needsDataPatch(asConstant(index));
+            assert !codeCache.needsDataPatch(asConstant(index));
             disp += (int) ValueUtil.asConstant(index).asLong();
             address = new AMD64AddressValue(kind, load(operand(x.object())), disp);
         } else {
@@ -355,7 +355,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitUnwind(Value exception) {
-        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = getCodeCache().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;
         RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
@@ -367,9 +367,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         int pendingDeoptimizationOffset = graalRuntime().getConfig().pendingDeoptimizationOffset;
         RegisterValue thread = runtime().threadRegister().asValue(HotSpotGraalRuntime.wordKind());
         AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(actionAndReason.getKind(), thread, pendingDeoptimizationOffset);
-        if (actionAndReason instanceof Constant && !runtime.needsDataPatch((Constant) actionAndReason)) {
+        if (actionAndReason instanceof Constant && !codeCache.needsDataPatch((Constant) actionAndReason)) {
             Constant constantActionAndReason = (Constant) actionAndReason;
-            assert !runtime.needsDataPatch(constantActionAndReason);
+            assert !codeCache.needsDataPatch(constantActionAndReason);
             append(new StoreConstantOp(constantActionAndReason.getKind(), pendingDeoptAddress, constantActionAndReason, null));
         } else {
             append(new StoreOp(actionAndReason.getKind(), pendingDeoptAddress, load(actionAndReason), null));
@@ -384,7 +384,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptimizationActionAndReasonToThread(runtime.encodeDeoptActionAndReason(action, reason));
+        moveDeoptimizationActionAndReasonToThread(metaAccess.encodeDeoptActionAndReason(action, reason));
         append(new AMD64HotSpotDeoptimizeCallerOp());
     }
 
@@ -396,7 +396,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
-        ForeignCallLinkage linkage = getRuntime().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
+        ForeignCallLinkage linkage = getCodeCache().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;
         RegisterValue exceptionFixed = (RegisterValue) outgoingCc.getArgument(0);

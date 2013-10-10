@@ -35,12 +35,18 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class Backend {
 
+    private final MetaAccessProvider metaAccess;
     private final CodeCacheProvider runtime;
     public final TargetDescription target;
 
-    protected Backend(CodeCacheProvider runtime, TargetDescription target) {
-        this.runtime = runtime;
+    protected Backend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+        this.metaAccess = metaAccess;
+        this.runtime = codeCache;
         this.target = target;
+    }
+
+    public MetaAccessProvider metaAccess() {
+        return metaAccess;
     }
 
     public CodeCacheProvider runtime() {

@@ -59,7 +59,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ConstantNode target = getConstantCallTarget(tool.runtime(), tool.assumptions());
+        ConstantNode target = getConstantCallTarget(tool.getMetaAccess(), tool.assumptions());
         if (target != null) {
             return target;
         }
@@ -69,7 +69,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        ConstantNode target = getConstantCallTarget(tool.getRuntime(), tool.assumptions());
+        ConstantNode target = getConstantCallTarget(tool.getMetaAccess(), tool.assumptions());
 
         if (target != null) {
             graph().replaceFixedWithFloating(this, target);

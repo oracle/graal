@@ -42,9 +42,9 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         this.klass = klass;
     }
 
-    private boolean isAssignableType(ValueNode node, MetaAccessProvider runtime) {
+    private boolean isAssignableType(ValueNode node, MetaAccessProvider metaAccess) {
         if (node.stamp() instanceof ObjectStamp) {
-            ResolvedJavaType valueType = runtime.lookupJavaType(klass);
+            ResolvedJavaType valueType = metaAccess.lookupJavaType(klass);
             ResolvedJavaType nodeType = ObjectStamp.typeOrNull(node);
 
             if (nodeType != null && valueType.isAssignableFrom(nodeType)) {
@@ -58,8 +58,8 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         return node.isConstant() && node.asConstant().isNull();
     }
 
-    private boolean checkUsage(ValueNode x, ValueNode y, MetaAccessProvider runtime) {
-        return isAssignableType(x, runtime) && !isNullConstant(y);
+    private boolean checkUsage(ValueNode x, ValueNode y, MetaAccessProvider metaAccess) {
+        return isAssignableType(x, metaAccess) && !isNullConstant(y);
     }
 
     private static boolean isEqualsMethod(StructuredGraph graph) {
@@ -72,8 +72,8 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
             if (!isEqualsMethod(graph)) {
                 // bail out if we compare an object of type klass with == or != (except null checks)
-                assert !(checkUsage(cn.x(), cn.y(), context.getRuntime()) && checkUsage(cn.y(), cn.x(), context.getRuntime())) : "Verifcation of " + klass.getName() + " usage failed: Comparing " +
-                                cn.x() + " and " + cn.y() + " in " + graph.method() + " must use .equals() for object equality, not '==' or '!='";
+                assert !(checkUsage(cn.x(), cn.y(), context.getMetaAccess()) && checkUsage(cn.y(), cn.x(), context.getMetaAccess())) : "Verifcation of " + klass.getName() +
+                                " usage failed: Comparing " + cn.x() + " and " + cn.y() + " in " + graph.method() + " must use .equals() for object equality, not '==' or '!='";
             }
         }
         return true;

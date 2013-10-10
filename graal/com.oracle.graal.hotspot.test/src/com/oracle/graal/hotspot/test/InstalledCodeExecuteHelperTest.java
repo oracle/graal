@@ -84,12 +84,12 @@ public class InstalledCodeExecuteHelperTest extends GraalCompilerTest {
         if (argsToBind != null) {
             Object receiver = isStatic(m.getModifiers()) ? null : this;
             Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = signatureToTypes(runtime.lookupJavaMethod(m));
+            JavaType[] parameterTypes = signatureToTypes(getMetaAccess().lookupJavaMethod(m));
             assert parameterTypes.length == args.length;
             for (int i = 0; i < argsToBind.length; i++) {
                 LocalNode local = graph.getLocal(i);
                 Constant c = Constant.forBoxed(parameterTypes[i].getKind(), argsToBind[i]);
-                ConstantNode replacement = ConstantNode.forConstant(c, runtime, graph);
+                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
                 local.replaceAtUsages(replacement);
             }
         }

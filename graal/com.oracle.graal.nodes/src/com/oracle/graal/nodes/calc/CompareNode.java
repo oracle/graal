@@ -77,13 +77,13 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
     public void generate(LIRGeneratorTool gen) {
     }
 
-    private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, MetaAccessProvider runtime, Condition cond) {
+    private LogicNode optimizeConditional(Constant constant, ConditionalNode conditionalNode, MetaAccessProvider metaAccess, Condition cond) {
         Constant trueConstant = conditionalNode.trueValue().asConstant();
         Constant falseConstant = conditionalNode.falseValue().asConstant();
 
-        if (falseConstant != null && trueConstant != null && runtime != null) {
-            boolean trueResult = cond.foldCondition(trueConstant, constant, runtime, unorderedIsTrue());
-            boolean falseResult = cond.foldCondition(falseConstant, constant, runtime, unorderedIsTrue());
+        if (falseConstant != null && trueConstant != null && metaAccess != null) {
+            boolean trueResult = cond.foldCondition(trueConstant, constant, metaAccess, unorderedIsTrue());
+            boolean falseResult = cond.foldCondition(falseConstant, constant, metaAccess, unorderedIsTrue());
 
             if (trueResult == falseResult) {
                 return LogicConstantNode.forBoolean(trueResult, graph());
@@ -117,18 +117,18 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (x().isConstant() && y().isConstant() && tool.runtime() != null) {
-            return LogicConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.runtime(), unorderedIsTrue()), graph());
+        if (x().isConstant() && y().isConstant() && tool.getMetaAccess() != null) {
+            return LogicConstantNode.forBoolean(condition().foldCondition(x().asConstant(), y().asConstant(), tool.getMetaAccess(), unorderedIsTrue()), graph());
         }
         if (x().isConstant()) {
             if (y() instanceof ConditionalNode) {
-                return optimizeConditional(x().asConstant(), (ConditionalNode) y(), tool.runtime(), condition().mirror());
+                return optimizeConditional(x().asConstant(), (ConditionalNode) y(), tool.getMetaAccess(), condition().mirror());
             } else if (y() instanceof NormalizeCompareNode) {
                 return optimizeNormalizeCmp(x().asConstant(), (NormalizeCompareNode) y(), true);
             }
         } else if (y().isConstant()) {
             if (x() instanceof ConditionalNode) {
-                return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.runtime(), condition());
+                return optimizeConditional(y().asConstant(), (ConditionalNode) x(), tool.getMetaAccess(), condition());
             } else if (x() instanceof NormalizeCompareNode) {
                 return optimizeNormalizeCmp(y().asConstant(), (NormalizeCompareNode) x(), false);
             }

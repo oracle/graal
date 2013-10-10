@@ -39,7 +39,7 @@ public class TestJavaType extends TypeUniverse {
     @Test
     public void getKindTest() {
         for (Class c : classes) {
-            JavaType type = runtime.lookupJavaType(c);
+            JavaType type = metaAccess.lookupJavaType(c);
             Kind expected = Kind.fromJavaClass(c);
             Kind actual = type.getKind();
             assertEquals(expected, actual);

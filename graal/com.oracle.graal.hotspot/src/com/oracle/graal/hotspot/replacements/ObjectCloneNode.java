@@ -63,7 +63,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
             if (type.isArray()) {
                 Method method = ObjectCloneSnippets.arrayCloneMethods.get(type.getComponentType().getKind());
                 if (method != null) {
-                    final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(method);
+                    final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
                     final Replacements replacements = tool.getReplacements();
                     StructuredGraph snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
 
@@ -77,7 +77,7 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                     return lowerReplacement(snippetGraph.copy(), tool);
                 }
             } else {
-                type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getRuntime());
+                type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph();
                     LocalNode local = newGraph.add(new LocalNode(0, getObject().stamp()));

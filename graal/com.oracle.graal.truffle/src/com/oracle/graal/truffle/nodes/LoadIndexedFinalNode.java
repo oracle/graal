@@ -58,8 +58,8 @@ public final class LoadIndexedFinalNode extends AccessIndexedNode implements Can
             if (index >= 0 && index < Array.getLength(array)) {
                 int arrayBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(array.getClass());
                 int arrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
-                Constant constant = tool.runtime().readUnsafeConstant(elementKind(), array, arrayBaseOffset + index * arrayIndexScale, elementKind() == Kind.Object);
-                return ConstantNode.forConstant(constant, tool.runtime(), graph());
+                Constant constant = tool.getMetaAccess().readUnsafeConstant(elementKind(), array, arrayBaseOffset + index * arrayIndexScale, elementKind() == Kind.Object);
+                return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
             }
         }
         return this;

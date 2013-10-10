@@ -62,5 +62,5 @@ public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements 
         return deoptState;
     }
 
-    public abstract ValueNode getActionAndReason(MetaAccessProvider runtime);
+    public abstract ValueNode getActionAndReason(MetaAccessProvider metaAccess);
 }

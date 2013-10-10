@@ -72,7 +72,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
                 ObjectStamp objectStamp = (ObjectStamp) stamp;
                 if (objectStamp.isExactType()) {
                     Constant clazz = objectStamp.type().getEncoding(Representation.JavaClass);
-                    return ConstantNode.forConstant(clazz, tool.runtime(), graph());
+                    return ConstantNode.forConstant(clazz, tool.getMetaAccess(), graph());
                 }
             }
             return this;

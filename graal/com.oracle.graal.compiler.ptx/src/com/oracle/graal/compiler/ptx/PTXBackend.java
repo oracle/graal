@@ -48,8 +48,8 @@ import com.oracle.graal.graph.GraalInternalError;
  */
 public class PTXBackend extends Backend {
 
-    public PTXBackend(CodeCacheProvider runtime, TargetDescription target) {
-        super(runtime, target);
+    public PTXBackend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+        super(metaAccess, codeCache, target);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class PTXBackend extends Backend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
+        return new PTXLIRGenerator(graph, metaAccess(), runtime(), target, frameMap, cc, lir);
     }
 
     class HotSpotFrameContext implements FrameContext {
@@ -85,8 +85,7 @@ public class PTXBackend extends Backend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(LIRGenerator lirGen,
-                                              CompilationResult compilationResult) {
+    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
@@ -100,9 +99,7 @@ public class PTXBackend extends Backend {
         return tasm;
     }
 
-    private static void emitKernelEntry(TargetMethodAssembler tasm,
-                                        LIRGenerator lirGen,
-                                        ResolvedJavaMethod codeCacheOwner) {
+    private static void emitKernelEntry(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
         // Emit PTX kernel entry text based on PTXParameterOp
         // instructions in the start block. Remove the instructions
         // once kernel entry text and directives are emitted to
@@ -143,12 +140,9 @@ public class PTXBackend extends Backend {
     }
 
     // Emit .reg space declarations
-    private static void emitRegisterDecl(TargetMethodAssembler tasm,
-                                         LIRGenerator lirGen,
-                                         ResolvedJavaMethod codeCacheOwner) {
+    private static void emitRegisterDecl(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
 
-        assert codeCacheOwner != null :
-               lirGen.getGraph() + " is not associated with a method";
+        assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
 
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
@@ -254,7 +248,7 @@ public class PTXBackend extends Backend {
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
-            //        all types of parameters are handled.
+            // all types of parameters are handled.
             codeBuffer.setPosition(0);
             codeBuffer.close(false);
             return;
@@ -265,7 +259,7 @@ public class PTXBackend extends Backend {
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
-            //        all types of parameters are handled.
+            // all types of parameters are handled.
             codeBuffer.setPosition(0);
             codeBuffer.close(false);
             return;

@@ -87,8 +87,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, cc, lir);
+    public PTXLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
         int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);
@@ -109,7 +109,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !runtime.needsDataPatch(c);
+                return NumUtil.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
             case Object:
                 return c.isNull();
             default:
@@ -216,7 +216,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
                 baseRegister = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object && !runtime.needsDataPatch(asConstant(base))) {
+            } else if (asConstant(base).getKind() != Kind.Object && !codeCache.needsDataPatch(asConstant(base))) {
                 finalDisp += asConstant(base).asLong();
                 baseRegister = Value.ILLEGAL;
             } else {
@@ -328,8 +328,8 @@ public class PTXLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
-        /// emitIntegerTest(left, right);
-       //  append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
+        // / emitIntegerTest(left, right);
+        // append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
         throw GraalInternalError.unimplemented("emitIntegerTestBranch()");
     }
 
@@ -403,24 +403,19 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitIntegerTestMove(Value left, Value right,
-                                        Value trueValue, Value falseValue) {
+    public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
 
         emitIntegerTest(left, right);
         Variable result = newVariable(trueValue.getKind());
-        append(new CondMoveOp(result, Condition.EQ,
-                              load(trueValue), loadNonConst(falseValue),
-                              nextPredRegNum));
+        append(new CondMoveOp(result, Condition.EQ, load(trueValue), loadNonConst(falseValue), nextPredRegNum));
         nextPredRegNum++;
 
         return result;
     }
 
-
     private void emitIntegerTest(Value a, Value b) {
 
-        assert a.getKind().getStackKind() == Kind.Int ||
-               a.getKind() == Kind.Long;
+        assert a.getKind().getStackKind() == Kind.Int || a.getKind() == Kind.Long;
 
         if (LIRValueUtil.isVariable(b)) {
             append(new PTXTestOp(load(b), loadNonConst(a), nextPredRegNum));
@@ -900,19 +895,16 @@ public class PTXLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.visitInfopointNode()");
     }
 
-    public Variable emitLoadParam(Kind kind, Value address,
-                                  DeoptimizingNode deopting) {
+    public Variable emitLoadParam(Kind kind, Value address, DeoptimizingNode deopting) {
 
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        append(new LoadParamOp(kind, result, loadAddress,
-                               deopting != null ? state(deopting) : null));
+        append(new LoadParamOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
 
         return result;
     }
 
-    public Variable emitLoadReturnAddress(Kind kind, Value address,
-                                          DeoptimizingNode deopting) {
+    public Variable emitLoadReturnAddress(Kind kind, Value address, DeoptimizingNode deopting) {
 
         PTXAddressValue loadAddress = asAddress(address);
         Variable result;
@@ -927,19 +919,16 @@ public class PTXLIRGenerator extends LIRGenerator {
                 result = newVariable(kind);
 
         }
-        append(new LoadReturnAddrOp(kind, result, loadAddress,
-                                    deopting != null ? state(deopting) : null));
+        append(new LoadReturnAddrOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
 
         return result;
     }
 
-    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal,
-                                     DeoptimizingNode deopting) {
+    public void emitStoreReturnValue(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
 
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        append(new StoreReturnValOp(kind, storeAddress, input,
-                                    deopting != null ? state(deopting) : null));
+        append(new StoreReturnValOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
     }
 
     @Override

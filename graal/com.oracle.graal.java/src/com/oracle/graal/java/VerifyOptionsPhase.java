@@ -44,30 +44,30 @@ import com.oracle.graal.phases.*;
  */
 public class VerifyOptionsPhase extends Phase {
 
-    public static boolean checkOptions(MetaAccessProvider runtime) {
+    public static boolean checkOptions(MetaAccessProvider metaAccess) {
         ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
         Set<ResolvedJavaType> checked = new HashSet<>();
         for (Options opts : sl) {
             for (OptionDescriptor desc : opts) {
-                ResolvedJavaType holder = runtime.lookupJavaType(desc.getDeclaringClass());
-                checkType(holder, desc, runtime, checked);
+                ResolvedJavaType holder = metaAccess.lookupJavaType(desc.getDeclaringClass());
+                checkType(holder, desc, metaAccess, checked);
             }
         }
         return true;
     }
 
-    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider runtime, Set<ResolvedJavaType> checked) {
+    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, Set<ResolvedJavaType> checked) {
         if (!checked.contains(type)) {
             checked.add(type);
             ResolvedJavaType superType = type.getSuperclass();
             if (superType != null && !MetaUtil.isJavaLangObject(superType)) {
-                checkType(superType, option, runtime, checked);
+                checkType(superType, option, metaAccess, checked);
             }
             for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 if (method.isClassInitializer()) {
                     StructuredGraph graph = new StructuredGraph(method);
-                    new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                    new VerifyOptionsPhase(type, runtime, option).apply(graph);
+                    new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                    new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
                 }
             }
         }
@@ -79,14 +79,14 @@ public class VerifyOptionsPhase extends Phase {
     private final Set<ResolvedJavaType> boxingTypes;
     private final OptionDescriptor option;
 
-    public VerifyOptionsPhase(ResolvedJavaType declaringClass, MetaAccessProvider runtime, OptionDescriptor option) {
-        this.runtime = runtime;
+    public VerifyOptionsPhase(ResolvedJavaType declaringClass, MetaAccessProvider metaAccess, OptionDescriptor option) {
+        this.runtime = metaAccess;
         this.declaringClass = declaringClass;
-        this.optionValueType = runtime.lookupJavaType(OptionValue.class);
+        this.optionValueType = metaAccess.lookupJavaType(OptionValue.class);
         this.option = option;
         this.boxingTypes = new HashSet<>();
         for (Class c : new Class[]{Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Float.class, Long.class, Double.class}) {
-            this.boxingTypes.add(runtime.lookupJavaType(c));
+            this.boxingTypes.add(metaAccess.lookupJavaType(c));
         }
     }
 

@@ -76,14 +76,16 @@ import com.oracle.graal.test.*;
  */
 public abstract class GraalCompilerTest extends GraalTest {
 
-    protected final GraalCodeCacheProvider runtime;
+    private final GraalCodeCacheProvider codeCache;
+    private final MetaAccessProvider metaAccess;
     protected final Replacements replacements;
     protected final Backend backend;
     protected final Suites suites;
 
     public GraalCompilerTest() {
         this.replacements = Graal.getRequiredCapability(Replacements.class);
-        this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
     }
@@ -158,8 +160,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         return result.toString();
     }
 
-    protected GraalCodeCacheProvider runtime() {
-        return runtime;
+    protected GraalCodeCacheProvider getCodeCache() {
+        return codeCache;
+    }
+
+    protected MetaAccessProvider getMetaAccess() {
+        return metaAccess;
     }
 
     /**
@@ -324,7 +330,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         before(method);
         Object[] executeArgs = argsWithReceiver(receiver, args);
 
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(method);
         checkArgs(javaMethod, executeArgs);
 
         InstalledCode compiledMethod = getCode(javaMethod, parse(method));
@@ -347,7 +353,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             if (kind == Kind.Object) {
                 if (arg != null && javaType instanceof ResolvedJavaType) {
                     ResolvedJavaType resolvedJavaType = (ResolvedJavaType) javaType;
-                    Assert.assertTrue(resolvedJavaType + " from " + runtime.lookupJavaType(arg.getClass()), resolvedJavaType.isAssignableFrom(runtime.lookupJavaType(arg.getClass())));
+                    Assert.assertTrue(resolvedJavaType + " from " + metaAccess.lookupJavaType(arg.getClass()), resolvedJavaType.isAssignableFrom(metaAccess.lookupJavaType(arg.getClass())));
                 }
             } else {
                 Assert.assertNotNull(arg);
@@ -384,7 +390,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected void test(Method method, Object receiver, Object... args) {
         Result expect = executeExpected(method, receiver, args);
-        if (runtime == null) {
+        if (getCodeCache() == null) {
             return;
         }
         testAgainstExpected(method, expect, receiver, args);
@@ -396,7 +402,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected Result executeActualCheckDeopt(Method method, Set<DeoptimizationReason> shouldNotDeopt, Object receiver, Object... args) {
         Map<DeoptimizationReason, Integer> deoptCounts = new EnumMap<>(DeoptimizationReason.class);
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(method);
         ProfilingInfo profile = javaMethod.getProfilingInfo();
         for (DeoptimizationReason reason : shouldNotDeopt) {
             deoptCounts.put(reason, profile.getDeoptimizationCount(reason));
@@ -456,7 +462,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         final int id = compilationId.incrementAndGet();
 
-        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{runtime, new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
+        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{getCodeCache(), new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
@@ -465,15 +471,15 @@ public abstract class GraalCompilerTest extends GraalTest {
                 }
                 long start = System.currentTimeMillis();
                 PhasePlan phasePlan = new PhasePlan();
-                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                                new SpeculationLog(), suites, new CompilationResult());
+                CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getCodeCache(), replacements, backend, getCodeCache().getTarget(), null, phasePlan,
+                                OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }
-                return Debug.scope("CodeInstall", new Object[]{runtime, method}, new Callable<InstalledCode>() {
+                return Debug.scope("CodeInstall", new Object[]{getCodeCache(), method}, new Callable<InstalledCode>() {
 
                     @Override
                     public InstalledCode call() throws Exception {
@@ -507,7 +513,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected InstalledCode addMethod(final ResolvedJavaMethod method, final CompilationResult compResult) {
-        return runtime.addMethod(method, compResult);
+        return getCodeCache().addMethod(method, compResult);
     }
 
     /**
@@ -544,9 +550,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private StructuredGraph parse0(Method m, GraphBuilderConfiguration conf) {
         assert m.getAnnotation(Test.class) == null : "shouldn't parse method with @Test annotation: " + m;
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(m);
+        ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(m);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(runtime, conf, OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, conf, OptimisticOptimizations.ALL).apply(graph);
         return graph;
     }
 
@@ -558,7 +564,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         PhasePlan plan = new PhasePlan();
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getEagerDefault();
         gbConf.setEagerInfopointMode(eagerInfopointMode);
-        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(runtime, gbConf, OptimisticOptimizations.ALL));
+        plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, gbConf, OptimisticOptimizations.ALL));
         return plan;
     }
 }

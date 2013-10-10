@@ -49,14 +49,14 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
     public ObjectAccessTest() {
         target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(runtime, new Assumptions(false), target);
+        installer = new ReplacementsImpl(getMetaAccess(), getCodeCache(), new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
+        ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
         return installer.makeGraph(resolvedMethod, null, inliningPolicy.get(), false);
     }
 

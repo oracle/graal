@@ -53,8 +53,8 @@ import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
  */
 public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-        super(runtime, replacements, target);
+    public InstanceOfSnippetsTemplates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+        super(metaAccess, codeCache, replacements, target);
     }
 
     /**
@@ -77,7 +77,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 replacer.replaceUsingInstantiation();
             } else {
                 Arguments args = makeArguments(replacer, tool);
-                template(args).instantiate(runtime, instanceOf, replacer, tool, args);
+                template(args).instantiate(metaAccess, instanceOf, replacer, tool, args);
             }
         }
 

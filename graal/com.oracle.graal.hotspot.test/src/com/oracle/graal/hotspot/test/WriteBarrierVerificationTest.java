@@ -632,10 +632,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
             public AssertionError call() {
                 final StructuredGraph graph = parse(snippet);
-                HighTierContext highTierContext = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                HighTierContext highTierContext = new HighTierContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
 
-                MidTierContext midTierContext = new MidTierContext(runtime(), new Assumptions(false), replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
+                MidTierContext midTierContext = new MidTierContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements, getCodeCache().getTarget(), OptimisticOptimizations.ALL);
 
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
                 new GuardLoweringPhase().apply(graph, midTierContext);
@@ -646,7 +646,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 int barriers = 0;
                 // First, the total number of expected barriers is checked.
-                if (((HotSpotRuntime) runtime()).config.useG1GC) {
+                if (((HotSpotRuntime) getMetaAccess()).config.useG1GC) {
                     barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
                                     graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers * 2 == barriers);

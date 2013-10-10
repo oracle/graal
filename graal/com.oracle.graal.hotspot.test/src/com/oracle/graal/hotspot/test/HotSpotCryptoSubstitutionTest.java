@@ -112,7 +112,7 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
         for (String methodName : methodNames) {
             Method method = lookup(className, methodName);
             if (method != null) {
-                ResolvedJavaMethod installedCodeOwner = runtime.lookupJavaMethod(method);
+                ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
                 StructuredGraph graph = replacements.getMethodSubstitution(installedCodeOwner);
                 if (graph != null) {
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));

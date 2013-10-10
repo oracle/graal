@@ -40,16 +40,18 @@ import com.oracle.graal.phases.tiers.*;
 public class TestUtil {
 
     public static void compileMethod(ResolvedJavaMethod method) {
-        GraalCodeCacheProvider runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        GraalCodeCacheProvider codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
         Replacements replacements = Graal.getRequiredCapability(Replacements.class);
         Suites suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         StructuredGraph graph = new StructuredGraph(method);
-        new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+        CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(Backend.class);
-        GraalCompiler.compileGraph(graph, cc, method, runtime, replacements, backend, runtime.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+        GraalCompiler.compileGraph(graph, cc, method, metaAccess, codeCache, replacements, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(),
+                        suites, new CompilationResult());
     }
 }

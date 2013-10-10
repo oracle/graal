@@ -48,12 +48,12 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
     // detach ??
 
     public PTXTargetMethodAssembler(TargetDescription target,
-                                    CodeCacheProvider runtime,
+                                    CodeCacheProvider codeCache,
                                     FrameMap frameMap,
                                     AbstractAssembler asm,
                                     FrameContext frameContext,
                                     CompilationResult compilationResult) {
-        super(target, runtime, frameMap, asm, frameContext, compilationResult);
+        super(target, codeCache, frameMap, asm, frameContext, compilationResult);
     }
 
     @Override

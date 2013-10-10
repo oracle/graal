@@ -61,7 +61,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getCodeCache().lower(this, tool);
     }
 
     @Override
@@ -78,7 +78,7 @@ public final class CheckCastDynamicNode extends FixedWithNextNode implements Can
         }
         if (hub.isConstant() && hub.kind() == Kind.Object && hub.asConstant().asObject() instanceof Class) {
             Class clazz = (Class) hub.asConstant().asObject();
-            ResolvedJavaType t = tool.runtime().lookupJavaType(clazz);
+            ResolvedJavaType t = tool.getMetaAccess().lookupJavaType(clazz);
             return graph().add(new CheckCastNode(t, object(), null, forStoreCheck));
         }
         return this;

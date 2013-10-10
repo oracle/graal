@@ -256,8 +256,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
         private final SnippetInfo[] arraycopySnippets;
         private final SnippetInfo genericPrimitiveSnippet;
 
-        public Templates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
 
             arraycopySnippets = new SnippetInfo[Kind.values().length];
             arraycopySnippets[Kind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");
@@ -288,7 +288,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
             node.addSnippetArguments(args);
 
             SnippetTemplate template = template(args);
-            template.instantiate(runtime, node, DEFAULT_REPLACER, args);
+            template.instantiate(metaAccess, node, DEFAULT_REPLACER, args);
         }
     }
 }

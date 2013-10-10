@@ -27,15 +27,16 @@ import com.oracle.graal.api.meta.*;
 /**
  * A {@link CodeCacheProvider} that delegates to another {@link CodeCacheProvider}.
  */
-public class DelegatingCodeCacheProvider extends DelegatingMetaAccessProvider implements CodeCacheProvider {
+public class DelegatingCodeCacheProvider implements CodeCacheProvider {
+
+    private final CodeCacheProvider delegate;
 
     public DelegatingCodeCacheProvider(CodeCacheProvider delegate) {
-        super(delegate);
+        this.delegate = delegate;
     }
 
-    @Override
     protected CodeCacheProvider delegate() {
-        return (CodeCacheProvider) super.delegate();
+        return delegate;
     }
 
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {

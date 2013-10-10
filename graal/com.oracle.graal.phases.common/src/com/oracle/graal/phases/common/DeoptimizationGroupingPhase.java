@@ -56,7 +56,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                         EndNode firstEnd = graph.add(new EndNode());
                         phi = graph.addWithoutUnique(new PhiNode(Kind.Int, merge));
                         merge.addForwardEnd(firstEnd);
-                        phi.addInput(((AbstractDeoptimizeNode) target).getActionAndReason(context.getRuntime()));
+                        phi.addInput(((AbstractDeoptimizeNode) target).getActionAndReason(context.getMetaAccess()));
                         target.predecessor().replaceFirstSuccessor(target, firstEnd);
 
                         exitLoops((AbstractDeoptimizeNode) target, firstEnd, cfg);
@@ -70,7 +70,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
                     }
                     EndNode newEnd = graph.add(new EndNode());
                     merge.addForwardEnd(newEnd);
-                    phi.addInput(deopt.getActionAndReason(context.getRuntime()));
+                    phi.addInput(deopt.getActionAndReason(context.getMetaAccess()));
                     deopt.predecessor().replaceFirstSuccessor(deopt, newEnd);
                     exitLoops(deopt, newEnd, cfg);
                     obsoletes.add(deopt);

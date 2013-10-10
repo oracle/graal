@@ -336,8 +336,8 @@ public class WriteBarrierSnippets implements Snippets {
         private final SnippetInfo g1ArrayRangePreWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePreWriteBarrier");
         private final SnippetInfo g1ArrayRangePostWriteBarrier = snippet(WriteBarrierSnippets.class, "g1ArrayRangePostWriteBarrier");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
         }
 
         public void lower(SerialWriteBarrier writeBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -346,7 +346,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("location", writeBarrier.getLocation());
             args.addConst("usePrecise", writeBarrier.usePrecise());
             args.addConst("alwaysNull", ObjectStamp.isObjectAlwaysNull(writeBarrier.getValue()));
-            template(args).instantiate(runtime, writeBarrier, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, writeBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(SerialArrayRangeWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -354,7 +354,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
-            template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1PreWriteBarrier writeBarrierPre, @SuppressWarnings("unused") LoweringTool tool) {
@@ -365,7 +365,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("doLoad", writeBarrierPre.doLoad());
             args.addConst("nullCheck", writeBarrierPre.getNullCheck());
             args.addConst("trace", traceBarrier());
-            template(args).instantiate(runtime, writeBarrierPre, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, writeBarrierPre, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ReferentFieldReadBarrier readBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -376,7 +376,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("doLoad", readBarrier.doLoad());
             args.addConst("nullCheck", false);
             args.addConst("trace", traceBarrier());
-            template(args).instantiate(runtime, readBarrier, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, readBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
@@ -387,7 +387,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
             args.addConst("alwaysNull", ObjectStamp.isObjectAlwaysNull(writeBarrierPost.getValue()));
             args.addConst("trace", traceBarrier());
-            template(args).instantiate(runtime, writeBarrierPost, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, writeBarrierPost, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ArrayRangePreWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -395,7 +395,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
-            template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
 
         public void lower(G1ArrayRangePostWriteBarrier arrayRangeWriteBarrier, @SuppressWarnings("unused") LoweringTool tool) {
@@ -403,7 +403,7 @@ public class WriteBarrierSnippets implements Snippets {
             args.add("object", arrayRangeWriteBarrier.getObject());
             args.add("startIndex", arrayRangeWriteBarrier.getStartIndex());
             args.add("length", arrayRangeWriteBarrier.getLength());
-            template(args).instantiate(runtime, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
+            template(args).instantiate(metaAccess, arrayRangeWriteBarrier, DEFAULT_REPLACER, args);
         }
     }
 

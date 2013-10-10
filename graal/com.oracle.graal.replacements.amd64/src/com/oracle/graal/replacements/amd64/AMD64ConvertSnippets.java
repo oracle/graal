@@ -149,8 +149,8 @@ public class AMD64ConvertSnippets implements Snippets {
 
         private final EnumMap<Op, SnippetInfo> snippets;
 
-        public Templates(MetaAccessProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
+            super(metaAccess, codeCache, replacements, target);
 
             snippets = new EnumMap<>(Op.class);
             snippets.put(Op.F2I, snippet(AMD64ConvertSnippets.class, "f2i"));
@@ -180,7 +180,7 @@ public class AMD64ConvertSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
-            template.instantiate(runtime, replacee, DEFAULT_REPLACER, tool, args);
+            template.instantiate(metaAccess, replacee, DEFAULT_REPLACER, tool, args);
             graph.removeFloating(convert);
         }
     }

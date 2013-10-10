@@ -89,7 +89,7 @@ public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implemen
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getCodeCache().lower(this, tool);
     }
 
     @Override

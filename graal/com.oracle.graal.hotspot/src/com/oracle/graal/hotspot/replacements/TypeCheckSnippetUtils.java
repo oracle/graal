@@ -122,13 +122,13 @@ public class TypeCheckSnippetUtils {
         }
     }
 
-    static Hints createHints(TypeCheckHints hints, MetaAccessProvider runtime, boolean positiveOnly, Graph graph) {
+    static Hints createHints(TypeCheckHints hints, MetaAccessProvider metaAccess, boolean positiveOnly, Graph graph) {
         ConstantNode[] hubs = new ConstantNode[hints.hints.length];
         boolean[] isPositive = new boolean[hints.hints.length];
         int index = 0;
         for (int i = 0; i < hubs.length; i++) {
             if (!positiveOnly || hints.hints[i].positive) {
-                hubs[index] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.hints[i].type).klass(), runtime, graph);
+                hubs[index] = ConstantNode.forConstant(((HotSpotResolvedObjectType) hints.hints[i].type).klass(), metaAccess, graph);
                 isPositive[index] = hints.hints[i].positive;
                 index++;
             }

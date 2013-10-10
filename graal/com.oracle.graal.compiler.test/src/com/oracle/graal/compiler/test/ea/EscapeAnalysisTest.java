@@ -224,16 +224,16 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
     }
 
     private ReturnNode testEscapeAnalysis(String snippet, final Constant expectedConstantResult, final boolean iterativeEscapeAnalysis) {
-        ResolvedJavaMethod method = runtime.lookupJavaMethod(getMethod(snippet));
+        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(snippet));
         final StructuredGraph graph = new StructuredGraph(method);
 
-        return Debug.scope("GraalCompiler", new Object[]{graph, method, runtime}, new Callable<ReturnNode>() {
+        return Debug.scope("GraalCompiler", new Object[]{graph, method, getCodeCache()}, new Callable<ReturnNode>() {
 
             public ReturnNode call() {
-                new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
 
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
                 new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
                 new CanonicalizerPhase(true).apply(graph, context);

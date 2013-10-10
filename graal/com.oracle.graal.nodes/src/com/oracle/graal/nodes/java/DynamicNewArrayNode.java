@@ -56,7 +56,7 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
         if (elementType.isConstant()) {
             Class<?> elementClass = (Class<?>) elementType.asConstant().asObject();
             if (elementClass != null && !(elementClass.equals(void.class))) {
-                ResolvedJavaType javaType = tool.runtime().lookupJavaType(elementClass);
+                ResolvedJavaType javaType = tool.getMetaAccess().lookupJavaType(elementClass);
                 return graph().add(new NewArrayNode(javaType, length(), fillContents()));
             }
         }

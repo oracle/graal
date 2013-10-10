@@ -74,7 +74,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new AMD64HotSpotLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
+        return new AMD64HotSpotLIRGenerator(graph, runtime(), runtime(), target, frameMap, cc, lir);
     }
 
     /**
@@ -248,7 +248,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64Address src = new AMD64Address(receiver, config.hubOffset);
 
             AMD64HotSpotLIRGenerator gen = (AMD64HotSpotLIRGenerator) lirGen;
-            AMD64HotSpotRuntime hr = ((AMD64HotSpotRuntime) gen.getRuntime());
+            AMD64HotSpotRuntime hr = ((AMD64HotSpotRuntime) gen.getCodeCache());
             if (hr.useCompressedKlassPointers()) {
                 Register register = r10;
                 AMD64HotSpotMove.decodeKlassPointer(asm, register, hr.heapBaseRegister(), src, config.narrowKlassBase, config.narrowKlassShift, config.logKlassAlignment);

@@ -120,7 +120,7 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            Register heapBase = ((HotSpotRuntime) tasm.runtime).heapBaseRegister();
+            Register heapBase = ((HotSpotRuntime) tasm.codeCache).heapBaseRegister();
             masm.movq(asRegister(scratch), asRegister(input));
             if (kind == Kind.Object) {
                 encodePointer(masm, asRegister(scratch), heapBase, base, shift, alignment);
@@ -172,7 +172,7 @@ public class AMD64HotSpotMove {
         final Register scratchRegister = asRegister(scratch);
         final Register cmpRegister = asRegister(cmpValue);
         final Register newRegister = asRegister(newValue);
-        Register heapBase = ((HotSpotRuntime) tasm.runtime).heapBaseRegister();
+        Register heapBase = ((HotSpotRuntime) tasm.codeCache).heapBaseRegister();
         encodePointer(masm, cmpRegister, heapBase, base, shift, alignment);
         masm.movq(scratchRegister, newRegister);
         encodePointer(masm, scratchRegister, heapBase, base, shift, alignment);

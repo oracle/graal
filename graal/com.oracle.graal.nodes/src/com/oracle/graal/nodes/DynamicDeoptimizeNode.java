@@ -37,7 +37,7 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
     }
 
     @Override
-    public ValueNode getActionAndReason(MetaAccessProvider runtime) {
+    public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
         return getActionAndReason();
     }
 
