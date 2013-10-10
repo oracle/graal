@@ -457,8 +457,7 @@ public final class NodeClass extends FieldIntrospection {
     public abstract static class NodeClassIterator implements Iterator<Node> {
 
         private final NodeClass nodeClass;
-        private final Node node;
-        private final int modCount;
+        protected final Node node;
         private int index;
         private int subIndex;
 
@@ -467,16 +466,14 @@ public final class NodeClass extends FieldIntrospection {
          * 
          * @param node the node which contains the fields.
          */
-        protected NodeClassIterator(Node node) {
+        NodeClassIterator(Node node) {
             this.node = node;
             this.nodeClass = node.getNodeClass();
-            this.modCount = MODIFICATION_COUNTS_ENABLED ? node.modCount() : 0;
             index = NOT_ITERABLE;
             subIndex = 0;
-            forward();
         }
 
-        private void forward() {
+        void forward() {
             if (index < getDirectCount()) {
                 index++;
                 while (index < getDirectCount()) {
@@ -514,11 +511,7 @@ public final class NodeClass extends FieldIntrospection {
 
         @Override
         public boolean hasNext() {
-            try {
-                return index < getOffsets().length;
-            } finally {
-                assert modCount == node.modCount() : "must not be modified";
-            }
+            return index < getOffsets().length;
         }
 
         @Override
@@ -527,7 +520,6 @@ public final class NodeClass extends FieldIntrospection {
                 return nextElement();
             } finally {
                 forward();
-                assert modCount == node.modCount();
             }
         }
 
@@ -540,7 +532,6 @@ public final class NodeClass extends FieldIntrospection {
                 }
             } finally {
                 forward();
-                assert modCount == node.modCount();
             }
         }
 
@@ -554,9 +545,16 @@ public final class NodeClass extends FieldIntrospection {
         protected abstract long[] getOffsets();
     }
 
-    private final class NodeClassInputsIterator extends NodeClassIterator {
-        private NodeClassInputsIterator(Node node) {
+    private class NodeClassInputsIterator extends NodeClassIterator {
+        NodeClassInputsIterator(Node node) {
+            this(node, true);
+        }
+
+        NodeClassInputsIterator(Node node, boolean forward) {
             super(node);
+            if (forward) {
+                forward();
+            }
         }
 
         @Override
@@ -570,9 +568,54 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
-    private final class NodeClassSuccessorsIterator extends NodeClassIterator {
-        private NodeClassSuccessorsIterator(Node node) {
+    private final class NodeClassInputsWithModCountIterator extends NodeClassInputsIterator {
+        private final int modCount;
+
+        private NodeClassInputsWithModCountIterator(Node node) {
+            super(node, false);
+            assert MODIFICATION_COUNTS_ENABLED;
+            this.modCount = node.modCount();
+            forward();
+        }
+
+        @Override
+        public boolean hasNext() {
+            try {
+                return super.hasNext();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Node next() {
+            try {
+                return super.next();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Position nextPosition() {
+            try {
+                return super.nextPosition();
+            } finally {
+                assert modCount == node.modCount();
+            }
+        }
+    }
+
+    private class NodeClassSuccessorsIterator extends NodeClassIterator {
+        NodeClassSuccessorsIterator(Node node) {
+            this(node, true);
+        }
+
+        NodeClassSuccessorsIterator(Node node, boolean forward) {
             super(node);
+            if (forward) {
+                forward();
+            }
         }
 
         @Override
@@ -583,6 +626,44 @@ public final class NodeClass extends FieldIntrospection {
         @Override
         protected long[] getOffsets() {
             return successorOffsets;
+        }
+    }
+
+    private final class NodeClassSuccessorsWithModCountIterator extends NodeClassSuccessorsIterator {
+        private final int modCount;
+
+        private NodeClassSuccessorsWithModCountIterator(Node node) {
+            super(node, false);
+            assert MODIFICATION_COUNTS_ENABLED;
+            this.modCount = node.modCount();
+            forward();
+        }
+
+        @Override
+        public boolean hasNext() {
+            try {
+                return super.hasNext();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Node next() {
+            try {
+                return super.next();
+            } finally {
+                assert modCount == node.modCount() : "must not be modified";
+            }
+        }
+
+        @Override
+        public Position nextPosition() {
+            try {
+                return super.nextPosition();
+            } finally {
+                assert modCount == node.modCount();
+            }
         }
     }
 
@@ -837,7 +918,11 @@ public final class NodeClass extends FieldIntrospection {
 
             @Override
             public NodeClassIterator iterator() {
-                return new NodeClassInputsIterator(node);
+                if (MODIFICATION_COUNTS_ENABLED) {
+                    return new NodeClassInputsWithModCountIterator(node);
+                } else {
+                    return new NodeClassInputsIterator(node);
+                }
             }
 
             @Override
@@ -853,7 +938,11 @@ public final class NodeClass extends FieldIntrospection {
 
             @Override
             public NodeClassIterator iterator() {
-                return new NodeClassSuccessorsIterator(node);
+                if (MODIFICATION_COUNTS_ENABLED) {
+                    return new NodeClassSuccessorsWithModCountIterator(node);
+                } else {
+                    return new NodeClassSuccessorsIterator(node);
+                }
             }
 
             @Override
