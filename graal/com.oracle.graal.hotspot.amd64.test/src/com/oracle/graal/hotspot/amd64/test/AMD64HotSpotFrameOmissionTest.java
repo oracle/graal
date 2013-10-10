@@ -101,7 +101,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
         InstalledCode installedCode = getCode(javaMethod, parse(method));
 
         TargetDescription target = getCodeCache().getTarget();
-        RegisterConfig registerConfig = getCodeCache().lookupRegisterConfig();
+        RegisterConfig registerConfig = getCodeCache().getRegisterConfig();
         AMD64Assembler asm = new AMD64Assembler(target, registerConfig);
 
         gen.generateCode(asm);
@@ -115,7 +115,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
     }
 
     private Register getArgumentRegister(int index, Kind kind) {
-        Register[] regs = getCodeCache().lookupRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, kind);
+        Register[] regs = getCodeCache().getRegisterConfig().getCallingConventionRegisters(CallingConvention.Type.JavaCall, kind);
         return regs[index];
     }
 }

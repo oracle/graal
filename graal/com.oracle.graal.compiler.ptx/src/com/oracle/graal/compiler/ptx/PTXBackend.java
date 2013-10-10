@@ -59,7 +59,7 @@ public class PTXBackend extends Backend {
 
     @Override
     public FrameMap newFrameMap() {
-        return new PTXFrameMap(getCodeCache(), target, getCodeCache().lookupRegisterConfig());
+        return new PTXFrameMap(getCodeCache(), target, getCodeCache().getRegisterConfig());
     }
 
     @Override
