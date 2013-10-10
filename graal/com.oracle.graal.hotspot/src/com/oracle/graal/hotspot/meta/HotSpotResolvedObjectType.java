@@ -561,13 +561,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return result;
     }
 
-    /**
-     * Gets all methods and constructors declared by this class, including the {@code <clinit>}
-     * method if there is one. The latter is not made accessible via standard Java reflection.
-     */
-    public ResolvedJavaMethod[] getMethods() {
-        HotSpotResolvedJavaMethod[] methods = graalRuntime().getCompilerToVM().getMethods(this);
-        return methods;
+    public ResolvedJavaMethod getClassInitializer() {
+        ResolvedJavaMethod[] methods = graalRuntime().getCompilerToVM().getMethods(this);
+        for (ResolvedJavaMethod m : methods) {
+            if (m.isClassInitializer()) {
+                return m;
+            }
+        }
+        return null;
     }
 
     @Override

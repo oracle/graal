@@ -301,6 +301,11 @@ public interface ResolvedJavaType extends JavaType {
     ResolvedJavaMethod[] getDeclaredMethods();
 
     /**
+     * Returns the {@code <clinit>} method for this class if there is one.
+     */
+    ResolvedJavaMethod getClassInitializer();
+
+    /**
      * Creates a new array with this type as the component type and the specified length. This
      * method is similar to {@link Array#newInstance(Class, int)}.
      */
