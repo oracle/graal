@@ -718,8 +718,8 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             }
                             if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                                 WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i)),
-                                                virtualInstance.field(i).getKind() == Kind.Object ? BarrierType.IMPRECISE : BarrierType.NONE, virtualInstance.field(i).getKind() == Kind.Object);
-
+                                                (virtualInstance.field(i).getKind() == Kind.Object && !deferInitBarrier(newObject)) ? BarrierType.IMPRECISE : BarrierType.NONE,
+                                                virtualInstance.field(i).getKind() == Kind.Object);
                                 graph.addBeforeFixed(commit, graph.add(write));
                             }
                         }
@@ -736,7 +736,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
                             }
                             if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                                 WriteNode write = new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph)),
-                                                value.kind() == Kind.Object ? BarrierType.PRECISE : BarrierType.NONE, value.kind() == Kind.Object);
+                                                (value.kind() == Kind.Object && !deferInitBarrier(newObject)) ? BarrierType.PRECISE : BarrierType.NONE, value.kind() == Kind.Object);
                                 graph.addBeforeFixed(commit, graph.add(write));
                             }
                         }
@@ -897,7 +897,7 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     private static BarrierType getFieldStoreBarrierType(StoreFieldNode storeField) {
         BarrierType barrierType = BarrierType.NONE;
-        if (storeField.field().getKind() == Kind.Object) {
+        if (storeField.field().getKind() == Kind.Object && !deferInitBarrier(storeField.object())) {
             barrierType = BarrierType.IMPRECISE;
         }
         return barrierType;
@@ -905,10 +905,14 @@ public abstract class HotSpotRuntime implements GraalCodeCacheProvider, Disassem
 
     private static BarrierType getArrayStoreBarrierType(StoreIndexedNode store) {
         BarrierType barrierType = BarrierType.NONE;
-        if (store.elementKind() == Kind.Object) {
+        if (store.elementKind() == Kind.Object && !deferInitBarrier(store.array())) {
             barrierType = BarrierType.PRECISE;
         }
         return barrierType;
+    }
+
+    private static boolean deferInitBarrier(ValueNode object) {
+        return useDeferredInitBarriers() && (object instanceof NewInstanceNode || object instanceof NewArrayNode);
     }
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
