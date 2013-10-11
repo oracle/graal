@@ -429,6 +429,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean useDeferredInitBarriers() {
+        return config().useDeferredInitBarriers;
+    }
+
+    @Fold
     public static boolean useG1GC() {
         return config().useG1GC;
     }

@@ -137,6 +137,7 @@ public final class HotSpotVMConfig extends CompilerObject {
     public final boolean useCRC32Intrinsics = getVMOption("UseCRC32Intrinsics");
     public final boolean useG1GC = getVMOption("UseG1GC");
     public final long gcTotalCollectionsAddress = getUninitializedLong();
+    public final boolean useDeferredInitBarriers = getVMOption("GraalDeferredInitBarriers");
 
     // Compressed Oops related values.
     public final boolean useCompressedOops = getVMOption("UseCompressedOops");
