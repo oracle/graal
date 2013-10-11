@@ -40,9 +40,9 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.phases.util.*;
 
 //JaCoCo Exclude
 
@@ -93,17 +93,17 @@ public abstract class Stub {
 
     protected final HotSpotRuntime runtime;
 
-    protected final Replacements replacements;
+    protected final Providers providers;
 
     /**
      * Creates a new stub.
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public Stub(HotSpotRuntime runtime, Replacements replacements, HotSpotForeignCallLinkage linkage) {
+    public Stub(Providers providers, HotSpotForeignCallLinkage linkage) {
         this.linkage = linkage;
-        this.runtime = runtime;
-        this.replacements = replacements;
+        this.runtime = (HotSpotRuntime) providers.getMetaAccess();
+        this.providers = providers;
     }
 
     /**
@@ -156,7 +156,7 @@ public abstract class Stub {
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     // The stub itself needs the incoming calling convention.
                     CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), runtime, replacements, backend, runtime.getTarget(), null, phasePlan,
+                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, runtime.getTarget(), null, phasePlan,
                                     OptimisticOptimizations.ALL, new SpeculationLog(), runtime.getDefaultSuites(), new CompilationResult());
 
                     assert destroyedRegisters != null;

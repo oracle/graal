@@ -30,13 +30,14 @@ import java.util.*;
 public final class Label {
 
     private int position = -1;
+    private int blockId = -1;
 
     /**
      * References to instructions that jump to this unresolved label. These instructions need to be
      * patched when the label is bound using the {@link #patchInstructions(AbstractAssembler)}
      * method.
      */
-    private ArrayList<Integer> patchPositions = new ArrayList<>(4);
+    private ArrayList<Integer> patchPositions = null;
 
     /**
      * Returns the position of this label in the code buffer.
@@ -49,6 +50,14 @@ public final class Label {
     }
 
     public Label() {
+    }
+
+    public Label(int id) {
+        blockId = id;
+    }
+
+    public int getBlockId() {
+        return blockId;
     }
 
     /**
@@ -67,15 +76,20 @@ public final class Label {
 
     public void addPatchAt(int branchLocation) {
         assert !isBound() : "Label is already bound " + this + " " + branchLocation + " at position " + position;
+        if (patchPositions == null) {
+            patchPositions = new ArrayList<>(2);
+        }
         patchPositions.add(branchLocation);
     }
 
     protected void patchInstructions(AbstractAssembler masm) {
         assert isBound() : "Label should be bound";
-        int target = position;
-        for (int i = 0; i < patchPositions.size(); ++i) {
-            int pos = patchPositions.get(i);
-            masm.patchJumpTarget(pos, target);
+        if (patchPositions != null) {
+            int target = position;
+            for (int i = 0; i < patchPositions.size(); ++i) {
+                int pos = patchPositions.get(i);
+                masm.patchJumpTarget(pos, target);
+            }
         }
     }
 

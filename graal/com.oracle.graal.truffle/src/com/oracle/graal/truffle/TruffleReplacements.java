@@ -41,16 +41,20 @@ public final class TruffleReplacements extends ReplacementsImpl {
 
     private final Replacements graalReplacements;
 
-    private TruffleReplacements(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
-        super(runtime, assumptions, target);
+    private TruffleReplacements(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions,
+                    TargetDescription target, Replacements graalReplacements) {
+        super(metaAccess, constantReflection, codeCache, lowerer, assumptions, target);
         this.graalReplacements = graalReplacements;
     }
 
     static Replacements makeInstance() {
-        MetaAccessProvider metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
+        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         TargetDescription targetDescription = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
         Replacements graalReplacements = Graal.getRequiredCapability(Replacements.class);
-        Replacements truffleReplacements = new TruffleReplacements(metaAccessProvider, graalReplacements.getAssumptions(), targetDescription, graalReplacements);
+        Replacements truffleReplacements = new TruffleReplacements(metaAccess, constantReflection, codeCache, lowerer, graalReplacements.getAssumptions(), targetDescription, graalReplacements);
 
         truffleReplacements.registerSubstitutions(CompilerAssertsSubstitutions.class);
         truffleReplacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);

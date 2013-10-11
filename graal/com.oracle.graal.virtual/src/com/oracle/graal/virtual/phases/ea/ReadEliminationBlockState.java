@@ -64,14 +64,14 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         public abstract boolean conflicts(LocationIdentity other);
     }
 
-    static class LoadCacheEntry extends CacheEntry<ResolvedJavaField> {
+    static class LoadCacheEntry extends CacheEntry<LocationIdentity> {
 
-        public LoadCacheEntry(ValueNode object, ResolvedJavaField identity) {
+        public LoadCacheEntry(ValueNode object, LocationIdentity identity) {
             super(object, identity);
         }
 
         @Override
-        public CacheEntry<ResolvedJavaField> duplicateWithObject(ValueNode newObject) {
+        public CacheEntry<LocationIdentity> duplicateWithObject(ValueNode newObject) {
             return new LoadCacheEntry(newObject, identity);
         }
 
@@ -103,7 +103,6 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
     }
 
     public ReadEliminationBlockState(ReadEliminationBlockState other) {
-        super(other);
         readCache = new HashMap<>(other.readCache);
     }
 
@@ -114,10 +113,7 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     @Override
     public boolean equivalentTo(ReadEliminationBlockState other) {
-        if (!compareMapsNoSize(readCache, other.readCache)) {
-            return false;
-        }
-        return super.equivalentTo(other);
+        return compareMapsNoSize(readCache, other.readCache);
     }
 
     public void addCacheEntry(CacheEntry<?> identifier, ValueNode value) {

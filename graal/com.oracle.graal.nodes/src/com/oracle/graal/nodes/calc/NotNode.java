@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -43,6 +45,12 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
         return updateStamp(StampTool.not(x().stamp()));
     }
 
+    @Override
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        return Constant.forIntegerKind(kind(), ~inputs[0].asLong(), null);
+    }
+
     /**
      * Creates new NegateNode instance.
      * 
@@ -55,14 +63,9 @@ public final class NotNode extends FloatingNode implements Canonicalizable, Arit
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant()) {
-            switch (x().kind()) {
-                case Int:
-                    return ConstantNode.forInt(~x().asConstant().asInt(), graph());
-                case Long:
-                    return ConstantNode.forLong(~x().asConstant().asLong(), graph());
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant()), graph());
         }
         if (x() instanceof NotNode) {
             return ((NotNode) x()).x();

@@ -51,10 +51,10 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
         for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
             Constant constant = node.asConstant();
             if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
-                ResolvedJavaType type = context.getRuntime().lookupJavaType((Class<?>) constant.asObject());
+                ResolvedJavaType type = context.getMetaAccess().lookupJavaType((Class<?>) constant.asObject());
                 assert type instanceof HotSpotResolvedObjectType;
 
-                HotSpotRuntime runtime = (HotSpotRuntime) context.getRuntime();
+                HotSpotRuntime runtime = (HotSpotRuntime) context.getMetaAccess();
 
                 Constant klass = ((HotSpotResolvedObjectType) type).klass();
                 ConstantNode klassNode = ConstantNode.forConstant(klass, runtime, graph);

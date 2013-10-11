@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.virtual.*;
 public interface Virtualizable {
 
     public static enum EscapeState {
-        Virtual, ThreadLocal, Global
+        Virtual, Materialized
     }
 
     public abstract static class State {

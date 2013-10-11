@@ -82,7 +82,7 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
     @Override
     protected Value[] getNativeABICallerSaveRegisters() {
         if (nativeABICallerSaveRegisters == null) {
-            List<Register> callerSave = new ArrayList<>(Arrays.asList(getRuntime().lookupRegisterConfig().getAllocatableRegisters()));
+            List<Register> callerSave = new ArrayList<>(Arrays.asList(getRuntime().getRegisterConfig().getAllocatableRegisters()));
             if (getConfig().windowsOs) {
                 // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
                 callerSave.remove(AMD64.rdi);

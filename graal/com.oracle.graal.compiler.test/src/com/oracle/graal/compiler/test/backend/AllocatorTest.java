@@ -47,7 +47,7 @@ public class AllocatorTest extends GraalCompilerTest {
 
     protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parse(snippet);
-        Debug.scope("AllocatorTest", new Object[]{graph, graph.method(), runtime}, new Runnable() {
+        Debug.scope("AllocatorTest", new Object[]{graph, graph.method(), getCodeCache()}, new Runnable() {
 
             @Override
             public void run() {
@@ -119,7 +119,7 @@ public class AllocatorTest extends GraalCompilerTest {
 
             @Override
             public LIR call() {
-                return GraalCompiler.emitHIR(runtime, backend.target, graph, replacements, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), suites);
+                return GraalCompiler.emitHIR(getProviders(), backend.target, graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), suites);
             }
         });
 
@@ -127,7 +127,7 @@ public class AllocatorTest extends GraalCompilerTest {
 
             @Override
             public RegisterStats call() {
-                CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
+                CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
                 GraalCompiler.emitLIR(backend, backend.target, lir, graph, cc);
                 return new RegisterStats(lir);
             }

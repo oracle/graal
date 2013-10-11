@@ -49,10 +49,10 @@ import com.oracle.graal.replacements.Snippet.Fold;
  */
 public class NodeIntrinsificationPhase extends Phase {
 
-    private final MetaAccessProvider runtime;
+    private final MetaAccessProvider metaAccess;
 
-    public NodeIntrinsificationPhase(MetaAccessProvider runtime) {
-        this.runtime = runtime;
+    public NodeIntrinsificationPhase(MetaAccessProvider metaAccess) {
+        this.metaAccess = metaAccess;
     }
 
     @Override
@@ -113,7 +113,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forConstant(constant, runtime, methodCallTargetNode.graph());
+                ConstantNode node = ConstantNode.forConstant(constant, metaAccess, methodCallTargetNode.graph());
                 methodCallTargetNode.invoke().intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -158,8 +158,8 @@ public class NodeIntrinsificationPhase extends Phase {
                 Constant constant = constantNode.asConstant();
                 Object o = constant.asBoxedValue();
                 if (o instanceof Class<?>) {
-                    reflectionCallArguments[i] = Constant.forObject(runtime.lookupJavaType((Class<?>) o));
-                    parameterTypes[i] = runtime.lookupJavaType(ResolvedJavaType.class);
+                    reflectionCallArguments[i] = Constant.forObject(metaAccess.lookupJavaType((Class<?>) o));
+                    parameterTypes[i] = metaAccess.lookupJavaType(ResolvedJavaType.class);
                 } else {
                     if (parameterTypes[i].getKind() == Kind.Boolean) {
                         reflectionCallArguments[i] = Constant.forObject(Boolean.valueOf(constant.asInt() != 0));
@@ -175,7 +175,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 }
             } else {
                 reflectionCallArguments[i] = Constant.forObject(argument);
-                parameterTypes[i] = runtime.lookupJavaType(ValueNode.class);
+                parameterTypes[i] = metaAccess.lookupJavaType(ValueNode.class);
             }
         }
         return reflectionCallArguments;
@@ -186,9 +186,9 @@ public class NodeIntrinsificationPhase extends Phase {
         if (intrinsic.value() == NodeIntrinsic.class) {
             result = target.getDeclaringClass();
         } else {
-            result = runtime.lookupJavaType(intrinsic.value());
+            result = metaAccess.lookupJavaType(intrinsic.value());
         }
-        assert runtime.lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" + NodeIntrinsic.class.getSimpleName() +
+        assert metaAccess.lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" + NodeIntrinsic.class.getSimpleName() +
                         " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
         return result;
     }
@@ -230,7 +230,7 @@ public class NodeIntrinsificationPhase extends Phase {
         boolean needsMetaAccessProviderArgument = false;
 
         ResolvedJavaType[] signature = MetaUtil.resolveJavaTypes(MetaUtil.signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
-        if (signature.length != 0 && signature[0].equals(runtime.lookupJavaType(MetaAccessProvider.class))) {
+        if (signature.length != 0 && signature[0].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
             // Chop off the MetaAccessProvider first parameter
             signature = Arrays.copyOfRange(signature, 1, signature.length);
             needsMetaAccessProviderArgument = true;
@@ -273,7 +273,7 @@ public class NodeIntrinsificationPhase extends Phase {
         if (needsMetaAccessProviderArgument) {
             Constant[] copy = new Constant[arguments.length + 1];
             System.arraycopy(arguments, 0, copy, 1, arguments.length);
-            copy[0] = Constant.forObject(runtime);
+            copy[0] = Constant.forObject(metaAccess);
             arguments = copy;
         }
         return arguments;

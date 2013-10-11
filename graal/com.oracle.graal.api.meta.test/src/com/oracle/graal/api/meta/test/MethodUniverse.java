@@ -38,11 +38,11 @@ public class MethodUniverse extends TypeUniverse {
     public MethodUniverse() {
         for (Class c : classes) {
             for (Method m : c.getDeclaredMethods()) {
-                ResolvedJavaMethod method = runtime.lookupJavaMethod(m);
+                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);
                 methods.put(m, method);
             }
             for (Constructor m : c.getDeclaredConstructors()) {
-                constructors.put(m, runtime.lookupJavaConstructor(m));
+                constructors.put(m, metaAccess.lookupJavaConstructor(m));
             }
         }
     }

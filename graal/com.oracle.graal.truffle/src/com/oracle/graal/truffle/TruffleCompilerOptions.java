@@ -34,7 +34,7 @@ public class TruffleCompilerOptions {
     /**
      * Instructs the Truffle Compiler to compile call targets only if their name contains at least one element of a comma-separated list of includes.
      * Excludes are prefixed with a tilde (~).
-     * 
+     *
      * The format in EBNF:
      * <pre>
      * CompileOnly = Element, { ',', Element } ;
@@ -55,10 +55,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Integer> TruffleInliningReprofileCount = new OptionValue<>(100);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleFunctionInlining = new OptionValue<>(true);
-    @Option(help = "")
-    public static final OptionValue<Integer> TruffleConstantUnrollLimit = new OptionValue<>(32);
-    @Option(help = "")
-    public static final OptionValue<Integer> TruffleOperationCacheMaxNodes = new OptionValue<>(350);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleGraphMaxNodes = new OptionValue<>(20000);
     @Option(help = "")
@@ -82,8 +78,6 @@ public class TruffleCompilerOptions {
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCacheDetails = new OptionValue<>(false);
-    @Option(help = "")
-    public static final OptionValue<Boolean> TraceTrufflePerformanceWarnings = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleInlinePrinter = new OptionValue<>(false);
     @Option(help = "")

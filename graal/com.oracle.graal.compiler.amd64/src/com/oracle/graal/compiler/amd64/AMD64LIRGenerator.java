@@ -86,8 +86,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    public AMD64LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, cc, lir);
+    public AMD64LIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
         lir.spillMoveFactory = new AMD64SpillMoveFactory();
     }
 
@@ -96,7 +96,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         // there is no immediate move of 64-bit constants on Intel
         switch (c.getKind()) {
             case Long:
-                return Util.isInt(c.asLong()) && !runtime.needsDataPatch(c);
+                return Util.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
             case Double:
                 return false;
             case Object:
@@ -110,7 +110,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !runtime.needsDataPatch(c);
+                return NumUtil.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
             case Object:
                 return c.isNull();
             default:
@@ -147,7 +147,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
                 baseRegister = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object && !runtime.needsDataPatch(asConstant(base))) {
+            } else if (asConstant(base).getKind() != Kind.Object && !codeCache.needsDataPatch(asConstant(base))) {
                 finalDisp += asConstant(base).asLong();
                 baseRegister = Value.ILLEGAL;
             } else {
@@ -881,7 +881,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public void visitBreakpointNode(BreakpointNode node) {
         JavaType[] sig = new JavaType[node.arguments().size()];
         for (int i = 0; i < sig.length; i++) {
-            sig[i] = node.arguments().get(i).stamp().javaType(runtime);
+            sig[i] = node.arguments().get(i).stamp().javaType(metaAccess);
         }
 
         Value[] parameters = visitInvokeArguments(frameMap.registerConfig.getCallingConvention(CallingConvention.Type.JavaCall, null, sig, target(), false), node.arguments());
@@ -890,6 +890,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        append(new InfopointOp(stateFor(i.getState(), DeoptimizationReason.None), i.reason));
+        append(new InfopointOp(stateFor(i.getState()), i.reason));
     }
 }

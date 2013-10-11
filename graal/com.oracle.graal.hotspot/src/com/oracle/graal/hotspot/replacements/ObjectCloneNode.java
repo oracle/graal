@@ -59,49 +59,72 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
         }
 
         ResolvedJavaType type = ObjectStamp.typeOrNull(getObject());
-        Method method;
-        /*
-         * The first condition tests if the parameter is an array, the second condition tests if the
-         * parameter can be an array. Otherwise, the parameter is known to be a non-array object.
-         */
-        if (type.isArray()) {
-            method = ObjectCloneSnippets.arrayCloneMethod;
-        } else if (type == null || type.isAssignableFrom(tool.getRuntime().lookupJavaType(Object[].class))) {
-            method = ObjectCloneSnippets.genericCloneMethod;
-        } else {
-            method = ObjectCloneSnippets.instanceCloneMethod;
-        }
-        final ResolvedJavaMethod snippetMethod = tool.getRuntime().lookupJavaMethod(method);
-        final Replacements replacements = tool.getReplacements();
-        StructuredGraph snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
+        if (type != null) {
+            if (type.isArray()) {
+                Method method = ObjectCloneSnippets.arrayCloneMethods.get(type.getComponentType().getKind());
+                if (method != null) {
+                    final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
+                    final Replacements replacements = tool.getReplacements();
+                    StructuredGraph snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
 
-            @Override
-            public StructuredGraph call() throws Exception {
-                return replacements.getSnippet(snippetMethod);
+                        @Override
+                        public StructuredGraph call() throws Exception {
+                            return replacements.getSnippet(snippetMethod);
+                        }
+                    });
+
+                    assert snippetGraph != null : "ObjectCloneSnippets should be installed";
+                    return lowerReplacement(snippetGraph.copy(), tool);
+                }
+            } else {
+                type = getConcreteType(getObject().stamp(), tool.assumptions(), tool.getMetaAccess());
+                if (type != null) {
+                    StructuredGraph newGraph = new StructuredGraph();
+                    LocalNode local = newGraph.add(new LocalNode(0, getObject().stamp()));
+                    NewInstanceNode newInstance = newGraph.add(new NewInstanceNode(type, true));
+                    newGraph.addAfterFixed(newGraph.start(), newInstance);
+                    ReturnNode returnNode = newGraph.add(new ReturnNode(newInstance));
+                    newGraph.addAfterFixed(newInstance, returnNode);
+
+                    for (ResolvedJavaField field : type.getInstanceFields(true)) {
+                        LoadFieldNode load = newGraph.add(new LoadFieldNode(local, field));
+                        newGraph.addBeforeFixed(returnNode, load);
+                        newGraph.addBeforeFixed(returnNode, newGraph.add(new StoreFieldNode(newInstance, field, load)));
+                    }
+                    return lowerReplacement(newGraph, tool);
+                }
             }
-        });
-
-        assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-        return lowerReplacement(snippetGraph.copy(), tool);
+        }
+        return null;
     }
 
     private static boolean isCloneableType(ResolvedJavaType type, MetaAccessProvider metaAccess) {
-        return type != null && metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
+        return metaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(type);
     }
 
-    private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions) {
+    /*
+     * Looks at the given stamp and determines if it is an exact type (or can be assumed to be an
+     * exact type) and if it is a cloneable type.
+     * 
+     * If yes, then the exact type is returned, otherwise it returns null.
+     */
+    private static ResolvedJavaType getConcreteType(Stamp stamp, Assumptions assumptions, MetaAccessProvider metaAccess) {
         if (!(stamp instanceof ObjectStamp)) {
             return null;
         }
         ObjectStamp objectStamp = (ObjectStamp) stamp;
-        if (objectStamp.isExactType() || objectStamp.type() == null) {
-            return objectStamp.type();
+        if (objectStamp.type() == null) {
+            return null;
+        } else if (objectStamp.isExactType()) {
+            return isCloneableType(objectStamp.type(), metaAccess) ? objectStamp.type() : null;
         } else {
             ResolvedJavaType type = objectStamp.type().findUniqueConcreteSubtype();
-            if (type != null) {
+            if (type != null && isCloneableType(type, metaAccess)) {
                 assumptions.recordConcreteSubtype(objectStamp.type(), type);
+                return type;
+            } else {
+                return null;
             }
-            return type;
         }
     }
 
@@ -126,21 +149,19 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
             } else {
                 obj = tool.getReplacedValue(getObject());
             }
-            ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions());
-            if (isCloneableType(type, tool.getMetaAccessProvider())) {
-                if (!type.isArray()) {
-                    VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
-                    ResolvedJavaField[] fields = newVirtual.getFields();
+            ResolvedJavaType type = getConcreteType(obj.stamp(), tool.getAssumptions(), tool.getMetaAccessProvider());
+            if (type != null && !type.isArray()) {
+                VirtualInstanceNode newVirtual = new VirtualInstanceNode(type, true);
+                ResolvedJavaField[] fields = newVirtual.getFields();
 
-                    ValueNode[] state = new ValueNode[fields.length];
-                    final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
-                    for (int i = 0; i < fields.length; i++) {
-                        state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
-                        tool.addNode(loads[i]);
-                    }
-                    tool.createVirtualObject(newVirtual, state, null);
-                    tool.replaceWithVirtual(newVirtual);
+                ValueNode[] state = new ValueNode[fields.length];
+                final LoadFieldNode[] loads = new LoadFieldNode[fields.length];
+                for (int i = 0; i < fields.length; i++) {
+                    state[i] = loads[i] = new LoadFieldNode(obj, fields[i]);
+                    tool.addNode(loads[i]);
                 }
+                tool.createVirtualObject(newVirtual, state, null);
+                tool.replaceWithVirtual(newVirtual);
             }
         }
     }

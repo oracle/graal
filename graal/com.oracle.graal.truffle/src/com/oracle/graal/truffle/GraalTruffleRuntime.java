@@ -69,6 +69,11 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
+    public VirtualFrame createVirtualFrame(PackedFrame caller, Arguments arguments, FrameDescriptor frameDescriptor) {
+        return OptimizedCallTarget.createFrame(frameDescriptor, caller, arguments);
+    }
+
+    @Override
     public MaterializedFrame createMaterializedFrame(Arguments arguments) {
         return createMaterializedFrame(arguments);
     }

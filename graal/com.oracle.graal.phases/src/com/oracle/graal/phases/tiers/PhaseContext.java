@@ -25,28 +25,24 @@ package com.oracle.graal.phases.tiers;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 
-public class PhaseContext {
+public class PhaseContext extends Providers {
 
-    private final MetaAccessProvider runtime;
     private final Assumptions assumptions;
-    private final Replacements replacements;
 
-    public PhaseContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements) {
-        this.runtime = runtime;
+    public PhaseContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Assumptions assumptions,
+                    Replacements replacements) {
+        super(metaAccess, codeCache, constantReflection, lowerer, replacements);
         this.assumptions = assumptions;
-        this.replacements = replacements;
     }
 
-    public MetaAccessProvider getRuntime() {
-        return runtime;
+    public PhaseContext(Providers copyFrom, Assumptions assumptions) {
+        super(copyFrom);
+        this.assumptions = assumptions;
     }
 
     public Assumptions getAssumptions() {
         return assumptions;
-    }
-
-    public Replacements getReplacements() {
-        return replacements;
     }
 }

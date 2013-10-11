@@ -23,7 +23,7 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.spi.*;
 
 public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable {
 
@@ -88,7 +88,7 @@ public class ShortCircuitOrNode extends LogicNode implements IterableNodeType, C
     }
 
     @Override
-    public LogicNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ShortCircuitOrNode ret = canonicalizeNegation();
         if (ret != null) {
             return ret;

@@ -30,6 +30,7 @@ import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -39,9 +40,8 @@ import com.oracle.graal.word.*;
 public class UnsafeLoadSnippets implements Snippets {
 
     @Snippet
-    public static Object lowerUnsafeLoad(Object object, long offset, int disp) {
+    public static Object lowerUnsafeLoad(Object object, long displacement) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        long displacement = disp + offset;
         if (object instanceof java.lang.ref.Reference && referentOffset() == displacement) {
             return Word.fromObject(fixedObject).readObject((int) displacement, BarrierType.PRECISE, true);
         } else {
@@ -53,16 +53,15 @@ public class UnsafeLoadSnippets implements Snippets {
 
         private final SnippetInfo unsafeLoad = snippet(UnsafeLoadSnippets.class, "lowerUnsafeLoad");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
         }
 
         public void lower(UnsafeLoadNode load, @SuppressWarnings("unused") LoweringTool tool) {
             Arguments args = new Arguments(unsafeLoad, load.graph().getGuardsStage());
             args.add("object", load.object());
             args.add("offset", load.offset());
-            args.add("disp", load.displacement());
-            template(args).instantiate(runtime, load, DEFAULT_REPLACER, args);
+            template(args).instantiate(providers.getMetaAccess(), load, DEFAULT_REPLACER, args);
         }
     }
 }

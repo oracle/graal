@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,20 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
+import java.util.*;
 
 /**
- * @see Simplifiable
+ * A {@link LocationIdentity} warpping an object.
  */
-public interface SimplifierTool extends CanonicalizerTool {
+public final class ObjectLocationIdentity implements LocationIdentity {
 
-    void deleteBranch(FixedNode branch);
+    private static IdentityHashMap<Object, LocationIdentity> map = new IdentityHashMap<>();
 
-    /**
-     * Adds a node to the worklist independent of whether it has already been on the worklist.
-     */
-    void addToWorkList(Node node);
+    private Object object;
+
+    public static LocationIdentity create(Object object) {
+        synchronized (map) {
+            if (map.containsKey(object)) {
+                return map.get(object);
+            } else {
+                ObjectLocationIdentity locationIdentity = new ObjectLocationIdentity(object);
+                map.put(object, locationIdentity);
+                return locationIdentity;
+            }
+        }
+    }
+
+    private ObjectLocationIdentity(Object object) {
+        this.object = object;
+    }
+
+    @Override
+    public String toString() {
+        return "Identity(" + object + ")";
+    }
 }

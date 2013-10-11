@@ -34,17 +34,21 @@ import static com.oracle.graal.replacements.nodes.ExplodeLoopNode.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.options.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.Snippet.VarargsParameter;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -58,7 +62,20 @@ import com.oracle.graal.word.*;
 public class NewObjectSnippets implements Snippets {
 
     public static final LocationIdentity INIT_LOCATION = new NamedLocationIdentity("Initialization");
-    public static final LocationIdentity ARRAY_LENGTH_LOCATION = new NamedLocationIdentity("ArrayLength");
+
+    public static class Options {
+
+        //@formatter:off
+        @Option(help = "")
+        private static final OptionValue<Boolean> ProfileAllocations = new OptionValue<>(false);
+        //@formatter:on
+    }
+
+    static enum ProfileMode {
+        AllocatingMethods, InstanceOrArray, AllocatedTypes, AllocatedTypesInMethods, Total
+    }
+
+    public static final ProfileMode PROFILE_MODE = ProfileMode.Total;
 
     @Snippet
     public static Word allocate(int size) {
@@ -77,8 +94,41 @@ public class NewObjectSnippets implements Snippets {
         return Word.zero();
     }
 
+    @Fold
+    private static String createName(String path, String typeContext) {
+        switch (PROFILE_MODE) {
+            case AllocatingMethods:
+                return "";
+            case InstanceOrArray:
+                return path;
+            case AllocatedTypes:
+            case AllocatedTypesInMethods:
+                return typeContext;
+            case Total:
+                return "bytes";
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    @Fold
+    @SuppressWarnings("unused")
+    private static boolean doProfile(String path, String typeContext) {
+        return Options.ProfileAllocations.getValue();
+    }
+
+    private static void profileAllocation(String path, long size, String typeContext) {
+        if (doProfile(path, typeContext)) {
+            String name = createName(path, typeContext);
+
+            boolean context = PROFILE_MODE == ProfileMode.AllocatingMethods || PROFILE_MODE == ProfileMode.AllocatedTypesInMethods;
+            DynamicCounterNode.counter(name, "number of bytes allocated", size, context);
+            DynamicCounterNode.counter(name, "number of allocations", 1, context);
+        }
+    }
+
     @Snippet
-    public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents) {
+    public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
         Object result;
         Word thread = thread();
         Word top = readTlabTop(thread);
@@ -91,6 +141,7 @@ public class NewObjectSnippets implements Snippets {
             new_stub.inc();
             result = NewInstanceStubCall.call(hub);
         }
+        profileAllocation("instance", size, typeContext);
         return piCast(verifyOop(result), StampFactory.forNodeIntrinsic());
     }
 
@@ -100,15 +151,16 @@ public class NewObjectSnippets implements Snippets {
     public static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
 
     @Snippet
-    public static Object allocateArray(Word hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize, @ConstantParameter boolean fillContents) {
+    public static Object allocateArray(Word hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
+                    @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, typeContext);
     }
 
-    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents) {
+    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, String typeContext) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
@@ -124,6 +176,7 @@ public class NewObjectSnippets implements Snippets {
             newarray_stub.inc();
             result = NewArrayStubCall.call(hub, length);
         }
+        profileAllocation("array", allocationSize, typeContext);
         return piArrayCast(verifyOop(result), length, StampFactory.forNodeIntrinsic());
     }
 
@@ -157,7 +210,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents);
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, "dynamic type");
     }
 
     /**
@@ -222,7 +275,7 @@ public class NewObjectSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     public static Object formatArray(Word hub, int allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents) {
-        memory.writeInt(arrayLengthOffset(), length, ARRAY_LENGTH_LOCATION);
+        memory.writeInt(arrayLengthOffset(), length, INIT_LOCATION);
         /*
          * store hub last as the concurrent garbage collectors assume length is valid if hub field
          * is not null
@@ -243,8 +296,8 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic");
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray");
 
-        public Templates(CodeCacheProvider runtime, Replacements replacements, TargetDescription target) {
-            super(runtime, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
         }
 
         /**
@@ -254,7 +307,7 @@ public class NewObjectSnippets implements Snippets {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
             int size = instanceSize(type);
 
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage());
@@ -262,10 +315,11 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("fillContents", newInstanceNode.fillContents());
+            args.addConst("typeContext", MetaUtil.toJavaName(type, false));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateInstance in %s: node=%s, template=%s, arguments=%s", graph, newInstanceNode, template, args);
-            template.instantiate(runtime, newInstanceNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), newInstanceNode, DEFAULT_REPLACER, args);
         }
 
         /**
@@ -276,9 +330,9 @@ public class NewObjectSnippets implements Snippets {
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
-            ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
-            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) runtime).getScalingFactor(elementKind));
+            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) providers.getMetaAccess()).getScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage());
             args.add("hub", hub);
@@ -287,10 +341,11 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
+            args.addConst("typeContext", MetaUtil.toJavaName(arrayType, false));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
-            template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(DynamicNewArrayNode newArrayNode) {
@@ -300,7 +355,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("fillContents", newArrayNode.fillContents());
 
             SnippetTemplate template = template(args);
-            template.instantiate(runtime, newArrayNode, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
         public void lower(NewMultiArrayNode newmultiarrayNode) {
@@ -311,13 +366,13 @@ public class NewObjectSnippets implements Snippets {
                 dims[i] = newmultiarrayNode.dimension(i);
             }
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
-            ConstantNode hub = ConstantNode.forConstant(type.klass(), runtime, graph);
+            ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
 
             Arguments args = new Arguments(newmultiarray, graph.getGuardsStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(Kind.Int), dims);
-            template(args).instantiate(runtime, newmultiarrayNode, DEFAULT_REPLACER, args);
+            template(args).instantiate(providers.getMetaAccess(), newmultiarrayNode, DEFAULT_REPLACER, args);
         }
 
         private static int instanceSize(HotSpotResolvedObjectType type) {

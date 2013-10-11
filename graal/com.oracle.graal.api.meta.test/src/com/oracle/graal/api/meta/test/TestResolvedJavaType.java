@@ -48,7 +48,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void findInstanceFieldWithOffsetTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Set<Field> reflectionFields = getInstanceFields(c, true);
             for (Field f : reflectionFields) {
                 ResolvedJavaField rf = lookupField(type.getInstanceFields(true), f);
@@ -64,7 +64,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void isInterfaceTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = c.isInterface();
             boolean actual = type.isInterface();
             assertEquals(expected, actual);
@@ -74,7 +74,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void isInstanceClassTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = !c.isArray() && !c.isPrimitive() && !c.isInterface();
             boolean actual = type.isInstanceClass();
             assertEquals(expected, actual);
@@ -84,7 +84,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void isArrayTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             boolean expected = c.isArray();
             boolean actual = type.isArray();
             assertEquals(expected, actual);
@@ -94,7 +94,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void getModifiersTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             int expected = c.getModifiers();
             int actual = type.getModifiers();
             assertEquals(expected, actual);
@@ -108,8 +108,8 @@ public class TestResolvedJavaType extends TypeUniverse {
             Class<?> c1 = all[i];
             for (int j = i; j < all.length; j++) {
                 Class<?> c2 = all[j];
-                ResolvedJavaType t1 = runtime.lookupJavaType(c1);
-                ResolvedJavaType t2 = runtime.lookupJavaType(c2);
+                ResolvedJavaType t1 = metaAccess.lookupJavaType(c1);
+                ResolvedJavaType t2 = metaAccess.lookupJavaType(c2);
                 boolean expected = c1.isAssignableFrom(c2);
                 boolean actual = t1.isAssignableFrom(t2);
                 assertEquals(expected, actual);
@@ -127,7 +127,7 @@ public class TestResolvedJavaType extends TypeUniverse {
                 Object o = c.asObject();
                 Class<? extends Object> cls = o.getClass();
                 while (cls != null) {
-                    ResolvedJavaType type = runtime.lookupJavaType(cls);
+                    ResolvedJavaType type = metaAccess.lookupJavaType(cls);
                     boolean expected = cls.isInstance(o);
                     boolean actual = type.isInstance(c);
                     assertEquals(expected, actual);
@@ -153,14 +153,14 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void asExactTypeTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             ResolvedJavaType exactType = type.asExactType();
             Class expected = asExactClass(c);
             if (expected == null) {
                 assertTrue("exact(" + c.getName() + ") != null", exactType == null);
             } else {
                 assertNotNull(exactType);
-                assertTrue(exactType.equals(runtime.lookupJavaType(expected)));
+                assertTrue(exactType.equals(metaAccess.lookupJavaType(expected)));
             }
         }
     }
@@ -168,14 +168,14 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void getSuperclassTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Class expected = c.getSuperclass();
             ResolvedJavaType actual = type.getSuperclass();
             if (expected == null) {
                 assertTrue(actual == null);
             } else {
                 assertNotNull(actual);
-                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
+                assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
             }
         }
     }
@@ -183,12 +183,12 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void getInterfacesTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Class[] expected = c.getInterfaces();
             ResolvedJavaType[] actual = type.getInterfaces();
             assertEquals(expected.length, actual.length);
             for (int i = 0; i < expected.length; i++) {
-                assertTrue(actual[i].equals(runtime.lookupJavaType(expected[i])));
+                assertTrue(actual[i].equals(metaAccess.lookupJavaType(expected[i])));
             }
         }
     }
@@ -234,15 +234,15 @@ public class TestResolvedJavaType extends TypeUniverse {
             Class<?> c1 = all[i];
             for (int j = i; j < all.length; j++) {
                 Class<?> c2 = all[j];
-                ResolvedJavaType t1 = runtime.lookupJavaType(c1);
-                ResolvedJavaType t2 = runtime.lookupJavaType(c2);
+                ResolvedJavaType t1 = metaAccess.lookupJavaType(c1);
+                ResolvedJavaType t2 = metaAccess.lookupJavaType(c2);
                 Class expected = findLeastCommonAncestor(c1, c2);
                 ResolvedJavaType actual = t1.findLeastCommonAncestor(t2);
                 if (expected == null) {
                     assertTrue(actual == null);
                 } else {
                     assertNotNull(actual);
-                    assertTrue(actual.equals(runtime.lookupJavaType(expected)));
+                    assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
                 }
             }
         }
@@ -277,7 +277,7 @@ public class TestResolvedJavaType extends TypeUniverse {
             if (expected == null) {
                 assertNull(subtype);
             } else {
-                assertTrue(subtype.equals(runtime.lookupJavaType(expected)));
+                assertTrue(subtype.equals(metaAccess.lookupJavaType(expected)));
             }
         }
 
@@ -294,18 +294,18 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void findUniqueConcreteSubtypeTest() {
-        ResolvedJavaType base = runtime.lookupJavaType(Base.class);
+        ResolvedJavaType base = metaAccess.lookupJavaType(Base.class);
         checkConcreteSubtype(base, Base.class);
 
-        ResolvedJavaType a1 = runtime.lookupJavaType(Abstract1.class);
-        ResolvedJavaType c1 = runtime.lookupJavaType(Concrete1.class);
+        ResolvedJavaType a1 = metaAccess.lookupJavaType(Abstract1.class);
+        ResolvedJavaType c1 = metaAccess.lookupJavaType(Concrete1.class);
 
         checkConcreteSubtype(base, null);
         checkConcreteSubtype(a1, Concrete1.class);
         checkConcreteSubtype(c1, Concrete1.class);
 
-        ResolvedJavaType i1 = runtime.lookupJavaType(Interface1.class);
-        ResolvedJavaType c2 = runtime.lookupJavaType(Concrete2.class);
+        ResolvedJavaType i1 = metaAccess.lookupJavaType(Interface1.class);
+        ResolvedJavaType c2 = metaAccess.lookupJavaType(Concrete2.class);
 
         checkConcreteSubtype(base, null);
         checkConcreteSubtype(a1, null);
@@ -313,11 +313,11 @@ public class TestResolvedJavaType extends TypeUniverse {
         checkConcreteSubtype(i1, Concrete2.class);
         checkConcreteSubtype(c2, Concrete2.class);
 
-        ResolvedJavaType c3 = runtime.lookupJavaType(Concrete3.class);
+        ResolvedJavaType c3 = metaAccess.lookupJavaType(Concrete3.class);
         checkConcreteSubtype(c2, null);
         checkConcreteSubtype(c3, Concrete3.class);
 
-        ResolvedJavaType a4 = runtime.lookupJavaType(Abstract4.class);
+        ResolvedJavaType a4 = metaAccess.lookupJavaType(Abstract4.class);
         checkConcreteSubtype(c3, null);
         checkConcreteSubtype(a4, null);
     }
@@ -325,13 +325,13 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void getComponentTypeTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             Class expected = c.getComponentType();
             ResolvedJavaType actual = type.getComponentType();
             if (expected == null) {
                 assertNull(actual);
             } else {
-                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
+                assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
             }
         }
     }
@@ -340,10 +340,10 @@ public class TestResolvedJavaType extends TypeUniverse {
     public void getArrayClassTest() {
         for (Class c : classes) {
             if (c != void.class) {
-                ResolvedJavaType type = runtime.lookupJavaType(c);
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 Class expected = getArrayClass(c);
                 ResolvedJavaType actual = type.getArrayClass();
-                assertTrue(actual.equals(runtime.lookupJavaType(expected)));
+                assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
             }
         }
     }
@@ -399,9 +399,11 @@ public class TestResolvedJavaType extends TypeUniverse {
             }
             for (Method m : c.getDeclaredMethods()) {
                 if (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers())) {
-                    Method overridden = vtable.methods.put(new NameAndSignature(m), m);
-                    if (overridden != null) {
-                        // println(m + " overrides " + overridden);
+                    if (isAbstract(m.getModifiers())) {
+                        // A subclass makes a concrete method in a superclass abstract
+                        vtable.methods.remove(new NameAndSignature(m));
+                    } else {
+                        vtable.methods.put(new NameAndSignature(m), m);
                     }
                 }
             }
@@ -438,16 +440,27 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void resolveMethodTest() {
         for (Class c : classes) {
-            if (!c.isPrimitive() && !c.isInterface()) {
-                ResolvedJavaType type = runtime.lookupJavaType(c);
+            if (c.isInterface() || c.isPrimitive()) {
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                for (Method m : c.getDeclaredMethods()) {
+                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m));
+                    assertEquals(m.toString(), null, impl);
+                }
+            } else {
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 VTable vtable = getVTable(c);
                 for (Method impl : vtable.methods.values()) {
                     Set<Method> decls = findDeclarations(impl, c);
                     for (Method decl : decls) {
-                        ResolvedJavaMethod m = runtime.lookupJavaMethod(decl);
-                        ResolvedJavaMethod i = runtime.lookupJavaMethod(impl);
+                        ResolvedJavaMethod m = metaAccess.lookupJavaMethod(decl);
+                        ResolvedJavaMethod i = metaAccess.lookupJavaMethod(impl);
                         checkResolveMethod(type, m, i);
                     }
+                }
+                for (Method m : c.getDeclaredMethods()) {
+                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m));
+                    ResolvedJavaMethod expected = isAbstract(m.getModifiers()) ? null : impl;
+                    assertEquals(type + " " + m.toString(), expected, impl);
                 }
             }
         }
@@ -455,8 +468,8 @@ public class TestResolvedJavaType extends TypeUniverse {
 
     @Test
     public void findUniqueConcreteMethodTest() throws NoSuchMethodException {
-        ResolvedJavaMethod thisMethod = runtime.lookupJavaMethod(getClass().getDeclaredMethod("findUniqueConcreteMethodTest"));
-        ResolvedJavaMethod ucm = runtime.lookupJavaType(getClass()).findUniqueConcreteMethod(thisMethod);
+        ResolvedJavaMethod thisMethod = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("findUniqueConcreteMethodTest"));
+        ResolvedJavaMethod ucm = metaAccess.lookupJavaType(getClass()).findUniqueConcreteMethod(thisMethod);
         assertEquals(thisMethod, ucm);
     }
 
@@ -477,8 +490,8 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     public boolean fieldsEqual(Field f, ResolvedJavaField rjf) {
-        return rjf.getDeclaringClass().equals(runtime.lookupJavaType(f.getDeclaringClass())) && rjf.getName().equals(f.getName()) &&
-                        rjf.getType().resolve(rjf.getDeclaringClass()).equals(runtime.lookupJavaType(f.getType()));
+        return rjf.getDeclaringClass().equals(metaAccess.lookupJavaType(f.getDeclaringClass())) && rjf.getName().equals(f.getName()) &&
+                        rjf.getType().resolve(rjf.getDeclaringClass()).equals(metaAccess.lookupJavaType(f.getType()));
     }
 
     public ResolvedJavaField lookupField(ResolvedJavaField[] fields, Field key) {
@@ -502,10 +515,10 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     private boolean isHiddenFromReflection(ResolvedJavaField f) {
-        if (f.getDeclaringClass().equals(runtime.lookupJavaType(Throwable.class)) && f.getName().equals("backtrace")) {
+        if (f.getDeclaringClass().equals(metaAccess.lookupJavaType(Throwable.class)) && f.getName().equals("backtrace")) {
             return true;
         }
-        if (f.getDeclaringClass().equals(runtime.lookupJavaType(ConstantPool.class)) && f.getName().equals("constantPoolOop")) {
+        if (f.getDeclaringClass().equals(metaAccess.lookupJavaType(ConstantPool.class)) && f.getName().equals("constantPoolOop")) {
             return true;
         }
         return false;
@@ -514,7 +527,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void getInstanceFieldsTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             for (boolean includeSuperclasses : new boolean[]{true, false}) {
                 Set<Field> expected = getInstanceFields(c, includeSuperclasses);
                 ResolvedJavaField[] actual = type.getInstanceFields(includeSuperclasses);
@@ -535,9 +548,52 @@ public class TestResolvedJavaType extends TypeUniverse {
     }
 
     @Test
+    public void getDeclaredMethodsTest() {
+        for (Class c : classes) {
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
+            Method[] raw = c.getDeclaredMethods();
+            Set<ResolvedJavaMethod> expected = new HashSet<>();
+            for (Method m : raw) {
+                ResolvedJavaMethod resolvedMethod = metaAccess.lookupJavaMethod(m);
+                assertNotNull(resolvedMethod);
+                expected.add(resolvedMethod);
+            }
+            Set<ResolvedJavaMethod> actual = new HashSet<>(Arrays.asList(type.getDeclaredMethods()));
+            assertEquals(expected, actual);
+        }
+    }
+
+    static class A {
+        static String name = "foo";
+    }
+
+    static class B extends A {
+    }
+
+    static class C {
+    }
+
+    static class D {
+        void foo() {
+            // use of assertions causes the class to have a <clinit>
+            assert getClass() != null;
+        }
+    }
+
+    @Test
+    public void getClassInitializerTest() {
+        assertNotNull(metaAccess.lookupJavaType(A.class).getClassInitializer());
+        assertNotNull(metaAccess.lookupJavaType(D.class).getClassInitializer());
+        assertNull(metaAccess.lookupJavaType(B.class).getClassInitializer());
+        assertNull(metaAccess.lookupJavaType(C.class).getClassInitializer());
+        assertNull(metaAccess.lookupJavaType(int.class).getClassInitializer());
+        assertNull(metaAccess.lookupJavaType(void.class).getClassInitializer());
+    }
+
+    @Test
     public void getAnnotationTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             for (Annotation a : c.getAnnotations()) {
                 assertEquals(a, type.getAnnotation(a.annotationType()));
             }
@@ -547,14 +603,14 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void memberClassesTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             assertEquals(c.isLocalClass(), type.isLocal());
             assertEquals(c.isMemberClass(), type.isMember());
             Class enclc = c.getEnclosingClass();
             ResolvedJavaType enclt = type.getEnclosingType();
             assertFalse(enclc == null ^ enclt == null);
             if (enclc != null) {
-                assertEquals(enclt, runtime.lookupJavaType(enclc));
+                assertEquals(enclt, metaAccess.lookupJavaType(enclc));
             }
         }
     }
@@ -562,7 +618,7 @@ public class TestResolvedJavaType extends TypeUniverse {
     @Test
     public void classFilePathTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             URL path = type.getClassFilePath();
             if (type.isPrimitive() || type.isArray()) {
                 assertEquals(null, path);
@@ -591,7 +647,6 @@ public class TestResolvedJavaType extends TypeUniverse {
         "initialize",
         "isPrimitive",
         "newArray",
-        "getDeclaredMethods",
         "getDeclaredConstructors",
         "isInitialized",
         "isLinked",

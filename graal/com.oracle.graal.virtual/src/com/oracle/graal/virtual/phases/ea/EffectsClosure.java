@@ -30,6 +30,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
@@ -40,6 +41,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     private final SchedulePhase schedule;
 
+    protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
     private final IdentityHashMap<Loop, GraphEffectList> loopMergeEffects = new IdentityHashMap<>();
 
@@ -47,6 +49,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     public EffectsClosure(SchedulePhase schedule) {
         this.schedule = schedule;
+        this.aliases = schedule.getCFG().graph.createNodeMap();
         this.blockEffects = new BlockMap<>(schedule.getCFG());
         for (Block block : schedule.getCFG().getBlocks()) {
             blockEffects.put(block, new GraphEffectList());
@@ -118,6 +121,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         GraphEffectList effects = blockEffects.get(block);
         FixedWithNextNode lastFixedNode = null;
         for (Node node : schedule.getBlockToNodesMap().get(block)) {
+            aliases.set(node, null);
             changed |= processNode(node, state, effects, lastFixedNode);
             if (node instanceof FixedWithNextNode) {
                 lastFixedNode = (FixedWithNextNode) node;
@@ -202,9 +206,11 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
             this.afterMergeEffects = new GraphEffectList();
         }
 
+        /**
+         * @param states the states that should be merged.
+         */
         protected void merge(List<BlockT> states) {
             newState = getInitialState();
-            newState.meetAliases(states);
             mergeEffects.clear();
             afterMergeEffects.clear();
         }
@@ -212,5 +218,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         @SuppressWarnings("unused")
         protected void commitEnds(List<BlockT> states) {
         }
+    }
+
+    public void addScalarAlias(ValueNode node, ValueNode alias) {
+        assert !(alias instanceof VirtualObjectNode);
+        aliases.set(node, alias);
+    }
+
+    public ValueNode getScalarAlias(ValueNode node) {
+        assert !(node instanceof VirtualObjectNode);
+        if (node == null || !node.isAlive() || aliases.isNew(node)) {
+            return node;
+        }
+        ValueNode result = aliases.get(node);
+        return (result == null || result instanceof VirtualObjectNode) ? node : result;
     }
 }

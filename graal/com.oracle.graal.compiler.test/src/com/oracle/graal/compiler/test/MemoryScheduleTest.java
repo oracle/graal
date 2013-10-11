@@ -94,7 +94,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     /**
      * In this case the read should be scheduled in the first block.
      */
-    public static int testSplitSnippet1(int a) {
+    public static int testSplit1Snippet(int a) {
         try {
             return container.a;
         } finally {
@@ -109,7 +109,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     @Test
     public void testSplit1() {
         for (TestMode mode : TestMode.values()) {
-            SchedulePhase schedule = getFinalSchedule("testSplitSnippet1", mode, MemoryScheduling.OPTIMAL);
+            SchedulePhase schedule = getFinalSchedule("testSplit1Snippet", mode, MemoryScheduling.OPTIMAL);
             assertReadWithinStartBlock(schedule, true);
             assertReadWithinReturnBlock(schedule, false);
         }
@@ -206,6 +206,42 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         SchedulePhase schedule = getFinalSchedule("testLoop3Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL);
         assertEquals(7, schedule.getCFG().getBlocks().length);
         assertReadWithinStartBlock(schedule, true);
+        assertReadWithinReturnBlock(schedule, false);
+    }
+
+    public String testStringReplaceSnippet(String input) {
+        return input.replace('a', 'b');
+    }
+
+    @Test
+    public void testStringReplace() {
+        getFinalSchedule("testStringReplaceSnippet", TestMode.INLINED_WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL);
+        test("testStringReplaceSnippet", "acbaaa");
+    }
+
+    /**
+     * Here the read should float out of the loop.
+     */
+    public static int testLoop5Snippet(int a, int b, MemoryScheduleTest obj) {
+        int ret = 0;
+        int bb = b;
+        for (int i = 0; i < a; i++) {
+            ret = obj.hash;
+            if (a > 10) {
+                bb++;
+            } else {
+                bb--;
+            }
+            ret = ret / 10;
+        }
+        return ret + bb;
+    }
+
+    @Test
+    public void testLoop5() {
+        SchedulePhase schedule = getFinalSchedule("testLoop5Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL);
+        assertEquals(7, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, false);
         assertReadWithinReturnBlock(schedule, false);
     }
 
@@ -309,6 +345,25 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         assertReadWithinStartBlock(schedule, false);
         assertReadWithinReturnBlock(schedule, false);
         assertReadAndWriteInSameBlock(schedule, true);
+    }
+
+    /**
+     * Here the read should float to the end.
+     */
+    public static int testIfRead5Snippet(int a) {
+        if (a < 0) {
+            container.a = 10;
+        }
+        return container.a;
+    }
+
+    @Test
+    public void testIfRead5() {
+        SchedulePhase schedule = getFinalSchedule("testIfRead5Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL);
+        assertEquals(4, schedule.getCFG().getBlocks().length);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, true);
+        assertReadAndWriteInSameBlock(schedule, false);
     }
 
     /**
@@ -498,7 +553,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             @Override
             public SchedulePhase call() throws Exception {
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(),
+                                OptimisticOptimizations.ALL);
                 new CanonicalizerPhase(true).apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
@@ -520,7 +576,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
-                MidTierContext midContext = new MidTierContext(runtime(), assumptions, replacements, runtime().getTarget(), OptimisticOptimizations.ALL);
+                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(),
+                                OptimisticOptimizations.ALL);
                 new GuardLoweringPhase().apply(graph, midContext);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);

@@ -90,7 +90,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
     public void test1() {
         for (Class clazz : new Class[]{byte.class, char.class, short.class, int.class, float.class, long.class, double.class, String.class}) {
             bottomClass = clazz;
-            bottomType = runtime.lookupJavaType(clazz);
+            bottomType = getMetaAccess().lookupJavaType(clazz);
             arrayType = bottomType;
             for (int rank : new int[]{1, 2, 10, 50, 100, 200, 254, 255}) {
                 while (rank(arrayType) != rank) {

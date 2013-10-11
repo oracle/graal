@@ -153,7 +153,7 @@ public class AMD64ControlFlow {
             if (key.getKind() == Kind.Int) {
                 Register intKey = asIntReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    if (tasm.runtime.needsDataPatch(keyConstants[i])) {
+                    if (tasm.codeCache.needsDataPatch(keyConstants[i])) {
                         tasm.recordDataReferenceInCode(keyConstants[i], 0, true);
                     }
                     long lc = keyConstants[i].asLong();

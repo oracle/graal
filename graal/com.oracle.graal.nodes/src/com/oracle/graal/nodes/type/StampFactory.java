@@ -168,10 +168,10 @@ public class StampFactory {
         }
     }
 
-    public static Stamp forConstant(Constant value, MetaAccessProvider runtime) {
+    public static Stamp forConstant(Constant value, MetaAccessProvider metaAccess) {
         assert value.getKind() == Kind.Object;
         if (value.getKind() == Kind.Object) {
-            ResolvedJavaType type = value.isNull() ? null : runtime.lookupJavaType(value);
+            ResolvedJavaType type = value.isNull() ? null : metaAccess.lookupJavaType(value);
             return new ObjectStamp(type, value.isNonNull(), value.isNonNull(), value.isNull());
         } else {
             throw new GraalInternalError(Kind.Object + " expected, actual kind: %s", value.getKind());

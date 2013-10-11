@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,39 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes.typesystem;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.nodes.type.*;
 
-public final class UnsafeCustomizationNode extends FloatingNode implements LIRLowerable, com.oracle.graal.graph.IterableNodeType {
+public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
+    @Input private ValueNode actionAndReason;
 
-    @Input private ValueNode receiver;
-    private final Object customType;
-    private final Object locationIdentity;
-
-    public UnsafeCustomizationNode(ValueNode receiver, Object customType, Object locationIdentity) {
-        super(StampFactory.object());
-        this.receiver = receiver;
-        this.customType = customType;
-        this.locationIdentity = locationIdentity;
+    public DynamicDeoptimizeNode(ValueNode actionAndReason) {
+        this.actionAndReason = actionAndReason;
     }
 
-    public ValueNode getReceiver() {
-        return receiver;
+    public ValueNode getActionAndReason() {
+        return actionAndReason;
     }
 
-    public Object getCustomType() {
-        return customType;
-    }
-
-    public Object getLocationIdentity() {
-        return locationIdentity;
+    @Override
+    public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
+        return getActionAndReason();
     }
 
     public void generate(LIRGeneratorTool generator) {
-        generator.setResult(this, generator.operand(receiver));
+        generator.emitDeoptimize(generator.operand(actionAndReason), this);
     }
 }

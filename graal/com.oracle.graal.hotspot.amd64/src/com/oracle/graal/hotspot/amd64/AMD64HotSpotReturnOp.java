@@ -50,7 +50,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
     }
 
     private static Register findPollOnReturnScratchRegister() {
-        RegisterConfig config = HotSpotGraalRuntime.graalRuntime().getRuntime().lookupRegisterConfig();
+        RegisterConfig config = HotSpotGraalRuntime.graalRuntime().getRuntime().getRegisterConfig();
         for (Register r : config.getAllocatableRegisters(Kind.Long)) {
             if (r != config.getReturnRegister(Kind.Long) && r != AMD64.rbp) {
                 return r;

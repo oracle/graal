@@ -23,8 +23,9 @@
 package com.oracle.graal.replacements.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 /**
  * This node class can be used to create {@link MacroNode}s for simple pure functions like
@@ -42,15 +43,16 @@ public abstract class PureFunctionMacroNode extends MacroNode implements Canonic
      */
     protected abstract Constant evaluate(Constant param, MetaAccessProvider metaAccess);
 
-    public ValueNode canonical(CanonicalizerTool tool) {
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
         if (usages().isEmpty()) {
             return null;
         } else {
             ValueNode param = arguments.get(0);
             if (param.isConstant()) {
-                Constant constant = evaluate(param.asConstant(), tool.runtime());
+                Constant constant = evaluate(param.asConstant(), tool.getMetaAccess());
                 if (constant != null) {
-                    return ConstantNode.forConstant(constant, tool.runtime(), graph());
+                    return ConstantNode.forConstant(constant, tool.getMetaAccess(), graph());
                 }
             }
         }

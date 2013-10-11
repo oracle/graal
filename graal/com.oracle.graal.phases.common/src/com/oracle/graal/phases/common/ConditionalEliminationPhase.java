@@ -52,12 +52,12 @@ public class ConditionalEliminationPhase extends Phase {
     private static final DebugMetric metricObjectEqualsRemoved = Debug.metric("ObjectEqualsRemoved");
     private static final DebugMetric metricGuardsRemoved = Debug.metric("GuardsRemoved");
 
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
 
     private StructuredGraph graph;
 
-    public ConditionalEliminationPhase(MetaAccessProvider metaAccessProvider) {
-        this.metaAccessProvider = metaAccessProvider;
+    public ConditionalEliminationPhase(MetaAccessProvider metaAccess) {
+        this.metaAccess = metaAccess;
     }
 
     @Override
@@ -510,8 +510,8 @@ public class ConditionalEliminationPhase extends Phase {
                     }
                     PiNode piNode;
                     if (isNull) {
-                        ConstantNode nullObject = ConstantNode.forObject(null, metaAccessProvider, graph);
-                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccessProvider), replacementAnchor.asNode()));
+                        ConstantNode nullObject = ConstantNode.forObject(null, metaAccess, graph);
+                        piNode = graph.unique(new PiNode(nullObject, StampFactory.forConstant(nullObject.value, metaAccess), replacementAnchor.asNode()));
                     } else {
                         piNode = graph.unique(new PiNode(object, StampFactory.declared(type, nonNull), replacementAnchor.asNode()));
                     }
@@ -522,6 +522,23 @@ public class ConditionalEliminationPhase extends Phase {
                         graph.removeFixed(checkCast);
                     }
                     metricCheckCastRemoved.increment();
+                }
+            } else if (node instanceof ConditionAnchorNode) {
+                ConditionAnchorNode conditionAnchorNode = (ConditionAnchorNode) node;
+                LogicNode condition = conditionAnchorNode.condition();
+                ValueNode replacementAnchor = null;
+                if (conditionAnchorNode.isNegated()) {
+                    if (state.falseConditions.containsKey(condition)) {
+                        replacementAnchor = state.falseConditions.get(condition);
+                    }
+                } else {
+                    if (state.trueConditions.containsKey(condition)) {
+                        replacementAnchor = state.trueConditions.get(condition);
+                    }
+                }
+                if (replacementAnchor != null) {
+                    conditionAnchorNode.replaceAtUsages(replacementAnchor);
+                    conditionAnchorNode.graph().removeFixed(conditionAnchorNode);
                 }
             } else if (node instanceof IfNode) {
                 IfNode ifNode = (IfNode) node;

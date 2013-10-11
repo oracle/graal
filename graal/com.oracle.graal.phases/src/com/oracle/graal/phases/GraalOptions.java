@@ -70,8 +70,6 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> PartialEscapeAnalysis = new OptionValue<>(true);
     @Option(help = "")
-    public static final OptionValue<Boolean> EscapeAnalysisHistogram = new OptionValue<>(false);
-    @Option(help = "")
     public static final OptionValue<Integer> EscapeAnalysisIterations = new OptionValue<>(2);
     @Option(help = "")
     public static final OptionValue<String> EscapeAnalyzeOnly = new OptionValue<>(null);
@@ -166,6 +164,8 @@ public final class GraalOptions {
     // Other printing settings
     @Option(help = "")
     public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintProfilingInformation = new OptionValue<>(false);
     @Option(help = "")

@@ -151,6 +151,6 @@ public class ObjectStampJoinTest extends GraalCompilerTest {
     }
 
     private ResolvedJavaType getType(Class<?> clazz) {
-        return runtime().lookupJavaType(clazz);
+        return getMetaAccess().lookupJavaType(clazz);
     }
 }

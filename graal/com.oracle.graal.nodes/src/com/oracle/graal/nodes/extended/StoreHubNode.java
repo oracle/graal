@@ -47,7 +47,7 @@ public final class StoreHubNode extends FixedWithNextNode implements Lowerable {
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @NodeIntrinsic

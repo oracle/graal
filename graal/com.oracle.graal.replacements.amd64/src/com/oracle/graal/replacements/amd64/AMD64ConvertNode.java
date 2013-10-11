@@ -22,9 +22,10 @@
  */
 package com.oracle.graal.replacements.amd64;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -42,6 +43,12 @@ public class AMD64ConvertNode extends FloatingNode implements ArithmeticLIRLower
         super(StampFactory.forKind(opcode.to.getStackKind()));
         this.opcode = opcode;
         this.value = value;
+    }
+
+    public Constant evalConst(Constant... inputs) {
+        // this node should never have been created if its input is constant
+        assert false;
+        return null;
     }
 
     public void generate(ArithmeticLIRGenerator gen) {

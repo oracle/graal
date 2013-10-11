@@ -48,42 +48,54 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
     @Override
     protected InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
         HotSpotResolvedJavaMethod hsMethod = (HotSpotResolvedJavaMethod) method;
-        HotSpotNmethod installedCode = new HotSpotNmethod(hsMethod, true, null);
+        HotSpotNmethod installedCode = new HotSpotNmethod(hsMethod, true);
         HotSpotCompiledNmethod compiledNmethod = new HotSpotCompiledNmethod(hsMethod, StructuredGraph.INVOCATION_ENTRY_BCI, compResult);
         CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(compiledNmethod, installedCode, null);
         Assert.assertEquals("Error installing method " + method + ": " + result, result, CodeInstallResult.OK);
 
-        // HotSpotRuntime hsRuntime = (HotSpotRuntime) runtime;
+        // HotSpotRuntime hsRuntime = (HotSpotRuntime) getCodeCache();
         // TTY.println(hsMethod.toString());
         // TTY.println(hsRuntime.disassemble(installedCode));
         return installedCode;
     }
 
     @Test
-    public void testAESEncryptSubstitution() throws Exception {
+    public void testEncryptSubstitution() throws Exception {
         byte[] seed = {0x4, 0x7, 0x1, 0x1};
         SecureRandom random = new SecureRandom(seed);
         KeyGenerator aesKeyGen = KeyGenerator.getInstance("AES");
+        KeyGenerator desKeyGen = KeyGenerator.getInstance("DESede");
         aesKeyGen.init(128, random);
+        desKeyGen.init(168, random);
         SecretKey aesKey = aesKeyGen.generateKey();
+        SecretKey desKey = desKeyGen.generateKey();
         byte[] input = readClassfile16(getClass());
 
-        ByteArrayOutputStream expected = new ByteArrayOutputStream();
-        expected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
-        expected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
+        ByteArrayOutputStream aesExpected = new ByteArrayOutputStream();
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
+        aesExpected.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
 
         if (compiledAndInstall("com.sun.crypto.provider.AESCrypt", "encryptBlock", "decryptBlock")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
-            Assert.assertArrayEquals(expected.toByteArray(), actual.toByteArray());
+            Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
         }
+
+        ByteArrayOutputStream desExpected = new ByteArrayOutputStream();
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
+        desExpected.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
 
         if (compiledAndInstall("com.sun.crypto.provider.CipherBlockChaining", "encrypt", "decrypt")) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding", input));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding", input));
-            Assert.assertArrayEquals(expected.toByteArray(), actual.toByteArray());
+            Assert.assertArrayEquals(aesExpected.toByteArray(), actual.toByteArray());
+
+            actual.reset();
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/NoPadding", input));
+            actual.write(runEncryptDecrypt(desKey, "DESede/CBC/PKCS5Padding", input));
+            Assert.assertArrayEquals(desExpected.toByteArray(), actual.toByteArray());
         }
     }
 
@@ -100,8 +112,8 @@ public class HotSpotCryptoSubstitutionTest extends GraalCompilerTest {
         for (String methodName : methodNames) {
             Method method = lookup(className, methodName);
             if (method != null) {
-                ResolvedJavaMethod installedCodeOwner = runtime.lookupJavaMethod(method);
-                StructuredGraph graph = replacements.getMethodSubstitution(installedCodeOwner);
+                ResolvedJavaMethod installedCodeOwner = getMetaAccess().lookupJavaMethod(method);
+                StructuredGraph graph = getReplacements().getMethodSubstitution(installedCodeOwner);
                 if (graph != null) {
                     Assert.assertNotNull(getCode(installedCodeOwner, graph, true));
                     atLeastOneCompiled = true;

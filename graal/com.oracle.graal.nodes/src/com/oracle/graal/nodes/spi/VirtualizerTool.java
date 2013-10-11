@@ -87,15 +87,6 @@ public interface VirtualizerTool {
      */
     void setVirtualEntry(State state, int index, ValueNode value);
 
-    /**
-     * Queries the current state of the given value: if it was materialized or not.
-     * 
-     * @param value the value whose state should be queried.
-     * @return the materialized value (usually a MaterializeObjectNode or a {@link PhiNode}) if it
-     *         was materialized, null otherwise.
-     */
-    ValueNode getMaterializedValue(ValueNode value);
-
     // scalar replacement
 
     /**

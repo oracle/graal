@@ -43,7 +43,7 @@ public class GraphUtil {
         }
     };
 
-    public static void killCFG(FixedNode node) {
+    public static void killCFG(Node node) {
         assert node.isAlive();
         if (node instanceof AbstractEndNode) {
             // We reached a control flow end.
@@ -58,7 +58,7 @@ public class GraphUtil {
              * while processing one branch.
              */
             for (Node successor : node.successors()) {
-                killCFG((FixedNode) successor);
+                killCFG(successor);
             }
         }
         propagateKill(node);

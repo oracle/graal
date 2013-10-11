@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.java;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -44,8 +46,8 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        ValueNode length = readArrayLength(array(), tool.runtime());
+    public Node canonical(CanonicalizerTool tool) {
+        ValueNode length = readArrayLength(array(), tool.getConstantReflection());
         if (length != null) {
             return length;
         }
@@ -58,17 +60,17 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
      * @param array an array
      * @return a node representing the length of {@code array} or null if it is not available
      */
-    public static ValueNode readArrayLength(ValueNode array, MetaAccessProvider runtime) {
+    public static ValueNode readArrayLength(ValueNode array, ConstantReflectionProvider constantReflection) {
         if (array instanceof ArrayLengthProvider) {
             ValueNode length = ((ArrayLengthProvider) array).length();
             if (length != null) {
                 return length;
             }
         }
-        if (runtime != null && array.isConstant() && !array.isNullConstant()) {
+        if (constantReflection != null && array.isConstant() && !array.isNullConstant()) {
             Constant constantValue = array.asConstant();
             if (constantValue != null && constantValue.isNonNull()) {
-                Integer constantLength = runtime.lookupArrayLength(constantValue);
+                Integer constantLength = constantReflection.lookupArrayLength(constantValue);
                 if (constantLength != null) {
                     return ConstantNode.forInt(constantLength, array.graph());
                 }
@@ -79,7 +81,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @NodeIntrinsic

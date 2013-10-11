@@ -37,15 +37,15 @@ import com.oracle.graal.nodes.type.*;
 public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerable, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
-    private final MetaAccessProvider runtime;
+    private final MetaAccessProvider metaAccess;
 
     private final ForeignCallDescriptor descriptor;
 
-    public StubForeignCallNode(MetaAccessProvider runtime, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public StubForeignCallNode(MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
-        this.runtime = runtime;
+        this.metaAccess = metaAccess;
     }
 
     public ForeignCallDescriptor getDescriptor() {
@@ -54,7 +54,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
 
     @Override
     public LocationIdentity[] getLocationIdentities() {
-        return runtime.getKilledLocations(descriptor);
+        return metaAccess.getKilledLocations(descriptor);
     }
 
     protected Value[] operands(LIRGeneratorTool gen) {
@@ -68,7 +68,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
     @Override
     public void generate(LIRGeneratorTool gen) {
         assert graph().start() instanceof StubStartNode;
-        ForeignCallLinkage linkage = gen.getRuntime().lookupForeignCall(descriptor);
+        ForeignCallLinkage linkage = gen.getCodeCache().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.emitForeignCall(linkage, null, operands);
         if (result != null) {

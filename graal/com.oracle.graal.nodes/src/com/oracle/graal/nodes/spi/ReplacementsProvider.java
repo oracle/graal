@@ -30,5 +30,5 @@ import com.oracle.graal.api.meta.*;
  */
 public interface ReplacementsProvider {
 
-    void registerReplacements(MetaAccessProvider runtime, Replacements replacements, TargetDescription target);
+    void registerReplacements(MetaAccessProvider metaAccess, Replacements replacements, TargetDescription target);
 }

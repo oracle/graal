@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.code;
+package com.oracle.graal.api.meta;
 
 /**
  * Specifies the action that should be taken by the runtime in case a certain deoptimization is

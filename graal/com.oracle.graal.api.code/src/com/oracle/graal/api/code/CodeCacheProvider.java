@@ -26,9 +26,9 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Encapsulates the main functionality of the runtime for the compiler.
+ * Access to code cache related details and requirements.
  */
-public interface CodeCacheProvider extends MetaAccessProvider {
+public interface CodeCacheProvider {
 
     /**
      * Adds the given compilation result as an implementation of the given method without making it
@@ -56,7 +56,7 @@ public interface CodeCacheProvider extends MetaAccessProvider {
     /**
      * Gets the register configuration to use when compiling a given method.
      */
-    RegisterConfig lookupRegisterConfig();
+    RegisterConfig getRegisterConfig();
 
     /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all
@@ -70,13 +70,6 @@ public interface CodeCacheProvider extends MetaAccessProvider {
      * Gets the linkage for a foreign call.
      */
     ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
-
-    /**
-     * Encodes a deoptimization action and a deoptimization reason in an integer value.
-     * 
-     * @return the encoded value as an integer
-     */
-    int encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
 
     /**
      * Determines if a {@link DataPatch} should be created for a given

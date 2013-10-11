@@ -131,6 +131,14 @@ public class HotSpotOptions {
         OptionDescriptor desc = options.get(optionName);
         if (desc == null) {
             Logger.info("Could not find option " + optionName + " (use -G:+PrintFlags to see Graal options)");
+            List<OptionDescriptor> matches = fuzzyMatch(optionName);
+            if (!matches.isEmpty()) {
+                Logger.info("Did you mean one of the following?");
+                for (OptionDescriptor match : matches) {
+                    boolean isBoolean = match.getType() == boolean.class;
+                    Logger.info(String.format("    %s%s%s", isBoolean ? "(+/-)" : "", match.getName(), isBoolean ? "" : "=<value>"));
+                }
+            }
             return false;
         }
 
@@ -210,7 +218,7 @@ public class HotSpotOptions {
                 if (line.length() != 0) {
                     line.append(' ');
                 }
-                String[] embeddedLines = chunk.split("%n");
+                String[] embeddedLines = chunk.split("%n", -2);
                 if (embeddedLines.length == 1) {
                     line.append(chunk);
                 } else {
@@ -245,5 +253,39 @@ public class HotSpotOptions {
         }
 
         System.exit(0);
+    }
+
+    /**
+     * Compute string similarity based on Dice's coefficient.
+     * 
+     * Ported from str_similar() in globals.cpp.
+     */
+    static float stringSimiliarity(String str1, String str2) {
+        int hit = 0;
+        for (int i = 0; i < str1.length() - 1; ++i) {
+            for (int j = 0; j < str2.length() - 1; ++j) {
+                if ((str1.charAt(i) == str2.charAt(j)) && (str1.charAt(i + 1) == str2.charAt(j + 1))) {
+                    ++hit;
+                    break;
+                }
+            }
+        }
+        return 2.0f * hit / (str1.length() + str2.length());
+    }
+
+    private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
+
+    /**
+     * Returns the set of options that fuzzy match a given option name.
+     */
+    private static List<OptionDescriptor> fuzzyMatch(String optionName) {
+        List<OptionDescriptor> matches = new ArrayList<>();
+        for (Map.Entry<String, OptionDescriptor> e : options.entrySet()) {
+            float score = stringSimiliarity(e.getKey(), optionName);
+            if (score >= FUZZY_MATCH_THRESHOLD) {
+                matches.add(e.getValue());
+            }
+        }
+        return matches;
     }
 }

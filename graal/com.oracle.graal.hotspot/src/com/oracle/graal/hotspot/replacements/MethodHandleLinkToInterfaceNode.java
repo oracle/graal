@@ -24,10 +24,9 @@ package com.oracle.graal.hotspot.replacements;
 
 import java.lang.invoke.MethodHandle;
 
-import com.oracle.graal.nodes.Invoke;
-import com.oracle.graal.nodes.InvokeNode;
-import com.oracle.graal.nodes.ValueNode;
-import com.oracle.graal.nodes.spi.CanonicalizerTool;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.*;
 
 /**
  * Macro node for {@link MethodHandle}{@code .linkToInterface(Object...)}.
@@ -39,7 +38,7 @@ public class MethodHandleLinkToInterfaceNode extends AbstractMethodHandleNode {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         InvokeNode invoke = getLinkToTarget();
         if (invoke != null) {
             return invoke;

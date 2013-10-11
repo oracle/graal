@@ -23,43 +23,26 @@
 
 package com.oracle.graal.compiler.hsail;
 
-import com.oracle.graal.api.code.CompilationResult;
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 
-import com.amd.okra.OkraContext;
-import com.amd.okra.OkraKernel;
-import com.oracle.graal.hotspot.HotSpotGraalRuntime;
-import com.oracle.graal.hotspot.HotSpotVMConfig;
-import com.oracle.graal.hotspot.amd64.AMD64HotSpotRuntime;
+import com.amd.okra.*;
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.Graal;
-import com.oracle.graal.java.GraphBuilderConfiguration;
-import com.oracle.graal.java.GraphBuilderPhase;
-import com.oracle.graal.nodes.StructuredGraph;
-import com.oracle.graal.nodes.java.MethodCallTargetNode;
-import com.oracle.graal.nodes.spi.Replacements;
-import com.oracle.graal.phases.OptimisticOptimizations;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.compiler.target.Backend;
-import com.oracle.graal.nodes.spi.GraalCodeCacheProvider;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.amd64.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
  * JDK interception code that offloads to the GPU.
  */
 public class ForEachToGraal implements CompileAndDispatch {
-
-    protected final GraalCodeCacheProvider runtime;
-    protected final Replacements replacements;
-    protected final Backend backend;
-
-    public ForEachToGraal() {
-        this.runtime = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
-        this.replacements = Graal.getRequiredCapability(Replacements.class);
-        this.backend = Graal.getRequiredCapability(Backend.class);
-    }
 
     private static CompilationResult getCompiledLambda(Class consumerClass) {
         /**

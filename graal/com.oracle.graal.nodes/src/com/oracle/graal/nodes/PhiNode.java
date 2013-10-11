@@ -24,9 +24,9 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * variable.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Phi({i#values})")
-public class PhiNode extends FloatingNode implements Canonicalizable, IterableNodeType, GuardingNode {
+public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNode {
 
     public static enum PhiType {
         Value(null), // normal value phis
@@ -231,7 +231,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, IterableNo
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode singleValue = singleValue();
 
         if (singleValue != null) {

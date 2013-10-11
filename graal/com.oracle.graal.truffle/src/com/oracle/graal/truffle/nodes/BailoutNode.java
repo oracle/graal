@@ -23,8 +23,9 @@
 package com.oracle.graal.truffle.nodes;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 
 public class BailoutNode extends MacroNode implements Canonicalizable {
@@ -35,7 +36,7 @@ public class BailoutNode extends MacroNode implements Canonicalizable {
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode arg = arguments.get(0);
         String message = "";
         if (arg.isConstant()) {

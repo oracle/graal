@@ -48,8 +48,8 @@ import com.oracle.graal.graph.GraalInternalError;
  */
 public class PTXBackend extends Backend {
 
-    public PTXBackend(CodeCacheProvider runtime, TargetDescription target) {
-        super(runtime, target);
+    public PTXBackend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+        super(metaAccess, codeCache, target);
     }
 
     @Override
@@ -59,12 +59,12 @@ public class PTXBackend extends Backend {
 
     @Override
     public FrameMap newFrameMap() {
-        return new PTXFrameMap(runtime(), target, runtime().lookupRegisterConfig());
+        return new PTXFrameMap(getCodeCache(), target, getCodeCache().getRegisterConfig());
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXLIRGenerator(graph, runtime(), target, frameMap, cc, lir);
+        return new PTXLIRGenerator(graph, getMetaAccess(), getCodeCache(), target, frameMap, cc, lir);
     }
 
     class HotSpotFrameContext implements FrameContext {
@@ -94,7 +94,7 @@ public class PTXBackend extends Backend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, getCodeCache(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(0);
         return tasm;
     }
@@ -109,8 +109,8 @@ public class PTXBackend extends Backend {
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
         // Emit initial boiler-plate directives.
-        codeBuffer.emitString(".version 1.4");
-        codeBuffer.emitString(".target sm_10");
+        codeBuffer.emitString(".version 3.0");
+        codeBuffer.emitString(".target sm_30");
         codeBuffer.emitString0(".entry " + name + " (");
         codeBuffer.emitString("");
 
@@ -140,9 +140,10 @@ public class PTXBackend extends Backend {
     }
 
     // Emit .reg space declarations
-    private static void emitRegisterDecl(TargetMethodAssembler tasm, LIRGenerator lirGen,
-                                         ResolvedJavaMethod codeCacheOwner) {
+    private static void emitRegisterDecl(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod codeCacheOwner) {
+
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
+
         Buffer codeBuffer = tasm.asm.codeBuffer;
 
         final SortedSet<Integer> signed32 = new TreeSet<>();
@@ -231,6 +232,7 @@ public class PTXBackend extends Backend {
         if (maxPredRegNum > 0) {
             codeBuffer.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
+        codeBuffer.emitString(".reg .pred %r;");  // used for setp bool
     }
 
     @Override
@@ -246,7 +248,7 @@ public class PTXBackend extends Backend {
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
-            //        all types of parameters are handled.
+            // all types of parameters are handled.
             codeBuffer.setPosition(0);
             codeBuffer.close(false);
             return;
@@ -257,7 +259,7 @@ public class PTXBackend extends Backend {
         } catch (GraalInternalError e) {
             e.printStackTrace();
             // TODO : Better error handling needs to be done once
-            //        all types of parameters are handled.
+            // all types of parameters are handled.
             codeBuffer.setPosition(0);
             codeBuffer.close(false);
             return;

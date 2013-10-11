@@ -24,6 +24,7 @@ package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -34,15 +35,20 @@ public final class FloatRemNode extends FloatArithmeticNode implements Canonical
         super(kind, x, y, isStrictFP);
     }
 
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 2;
+        if (kind() == Kind.Float) {
+            return Constant.forFloat(inputs[0].asFloat() % inputs[1].asFloat());
+        } else {
+            assert kind() == Kind.Double;
+            return Constant.forDouble(inputs[0].asDouble() % inputs[1].asDouble());
+        }
+    }
+
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (x().isConstant() && y().isConstant()) {
-            if (kind() == Kind.Float) {
-                return ConstantNode.forFloat(x().asConstant().asFloat() % y().asConstant().asFloat(), graph());
-            } else {
-                assert kind() == Kind.Double;
-                return ConstantNode.forDouble(x().asConstant().asDouble() % y().asConstant().asDouble(), graph());
-            }
+            return ConstantNode.forPrimitive(evalConst(x().asConstant(), y().asConstant()), graph());
         }
         return this;
     }

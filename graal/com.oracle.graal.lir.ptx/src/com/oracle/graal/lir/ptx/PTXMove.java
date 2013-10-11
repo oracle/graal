@@ -215,7 +215,7 @@ public class PTXMove {
         switch (input.getKind().getStackKind()) {
             case Int:
             case Long:
-                if (tasm.runtime.needsDataPatch(input)) {
+                if (tasm.codeCache.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
                 }
                 new Mov(dest, input).emit(masm);

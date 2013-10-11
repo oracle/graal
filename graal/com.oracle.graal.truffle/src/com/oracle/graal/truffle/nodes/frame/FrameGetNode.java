@@ -27,6 +27,7 @@ import sun.misc.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -78,14 +79,15 @@ public class FrameGetNode extends FrameAccessNode implements IterableNodeType, V
         structuredGraph.addBeforeFixed(this, loadFieldNode);
         FixedWithNextNode loadNode;
         if (isTagAccess()) {
-            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+            ValueNode slotIndex = getSlotOffset(1, tool.getMetaAccess());
             loadNode = graph().add(new LoadIndexedNode(loadFieldNode, slotIndex, getSlotKind()));
         } else if (!getSlotKind().isPrimitive()) {
-            ValueNode slotIndex = getSlotOffset(1, tool.getRuntime());
+            ValueNode slotIndex = getSlotOffset(1, tool.getMetaAccess());
             loadNode = graph().add(new LoadIndexedNode(loadFieldNode, slotIndex, Kind.Object));
         } else {
-            ValueNode slotOffset = getSlotOffset(Unsafe.ARRAY_LONG_INDEX_SCALE, tool.getRuntime());
-            loadNode = graph().add(new UnsafeLoadNode(loadFieldNode, Unsafe.ARRAY_LONG_BASE_OFFSET, slotOffset, getSlotKind()));
+            ValueNode slotOffset = graph().unique(
+                            new IntegerAddNode(Kind.Long, getSlotOffset(Unsafe.ARRAY_LONG_INDEX_SCALE, tool.getMetaAccess()), ConstantNode.forLong(Unsafe.ARRAY_LONG_BASE_OFFSET, graph())));
+            loadNode = graph().add(new UnsafeLoadNode(loadFieldNode, slotOffset, getSlotKind()));
         }
         structuredGraph.replaceFixedWithFixed(this, loadNode);
         loadFieldNode.lower(tool);

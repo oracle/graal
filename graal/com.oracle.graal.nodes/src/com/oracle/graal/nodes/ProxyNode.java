@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -87,7 +88,7 @@ public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNu
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (type == PhiType.Value && value.isConstant()) {
             return value;
         }

@@ -76,7 +76,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
     @Test
     public void testSimple() {
         ValueNode result = getReturn("testSimpleSnippet").result();
-        assertTrue(graph.getNodes(LoadFieldNode.class).isEmpty());
+        assertTrue(graph.getNodes().filter(LoadFieldNode.class).isEmpty());
         assertEquals(graph.getLocal(0), result);
     }
 
@@ -88,7 +88,7 @@ public class IterativeInliningTest extends GraalCompilerTest {
 
     private void processMethod(final String snippet) {
         graph = parse(snippet);
-        HighTierContext context = new HighTierContext(runtime(), new Assumptions(false), replacements, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
         new IterativeInliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
     }
 }

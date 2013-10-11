@@ -58,7 +58,7 @@ public abstract class TypeCheckTest extends GraalCompilerTest {
         }
         ProfiledType[] ptypes = new ProfiledType[types.length];
         for (int i = 0; i < types.length; i++) {
-            ptypes[i] = new ProfiledType(runtime.lookupJavaType(types[i]), 1.0D / types.length);
+            ptypes[i] = new ProfiledType(getMetaAccess().lookupJavaType(types[i]), 1.0D / types.length);
         }
         return new JavaTypeProfile(nullSeen, 0.0D, ptypes);
     }

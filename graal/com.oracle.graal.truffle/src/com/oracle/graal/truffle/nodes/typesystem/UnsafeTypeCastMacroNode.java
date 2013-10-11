@@ -23,39 +23,45 @@
 package com.oracle.graal.truffle.nodes.typesystem;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.truffle.nodes.asserts.*;
 import com.oracle.truffle.api.*;
 
 /**
- * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class)} and
- * {@link CompilerDirectives#unsafeCast(Object, Class, Object, Object)}.
+ * Macro node for method {@link CompilerDirectives#unsafeCast(Object, Class, boolean)}.
  */
-public class TypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
+public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
-    private static final int ARGUMENT_COUNT = 4;
+    private static final int ARGUMENT_COUNT = 3;
     private static final int OBJECT_ARGUMENT_INDEX = 0;
     private static final int CLASS_ARGUMENT_INDEX = 1;
-    private static final int RECEIVER_ARGUMENT_INDEX = 2;
-    private static final int CUSTOM_TYPE_ARGUMENT_INDEX = 3;
+    private static final int CONDITION_ARGUMENT_INDEX = 2;
 
-    public TypeCastMacroNode(Invoke invoke) {
+    public UnsafeTypeCastMacroNode(Invoke invoke) {
         super(invoke, "The class of the unsafe cast could not be reduced to a compile time constant.");
         assert arguments.size() == ARGUMENT_COUNT;
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         ValueNode classArgument = arguments.get(CLASS_ARGUMENT_INDEX);
-        ValueNode customTypeArgument = arguments.get(CUSTOM_TYPE_ARGUMENT_INDEX);
-        if (classArgument.isConstant() && customTypeArgument.isConstant()) {
-            Class c = (Class) classArgument.asConstant().asObject();
-            ResolvedJavaType lookupJavaType = tool.runtime().lookupJavaType(c);
+        if (classArgument.isConstant()) {
             ValueNode objectArgument = arguments.get(OBJECT_ARGUMENT_INDEX);
-            ValueNode receiverArgument = arguments.get(RECEIVER_ARGUMENT_INDEX);
-            Object customType = customTypeArgument.asConstant().asObject();
-            return graph().add(new TypeCastNode(objectArgument, lookupJavaType, receiverArgument, customType));
+            ValueNode conditionArgument = arguments.get(CONDITION_ARGUMENT_INDEX);
+            Class c = (Class) classArgument.asConstant().asObject();
+            if (c == null) {
+                return objectArgument;
+            }
+            ResolvedJavaType lookupJavaType = tool.getMetaAccess().lookupJavaType(c);
+            ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
+            UnsafeCastNode piCast = graph().unique(new UnsafeCastNode(objectArgument, StampFactory.declaredNonNull(lookupJavaType), valueAnchorNode));
+            this.replaceAtUsages(piCast);
+            return valueAnchorNode;
         }
         return this;
     }

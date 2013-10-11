@@ -66,7 +66,7 @@ import com.oracle.graal.nodes.java.*;
 public class HSAILLIRGenerator extends LIRGenerator {
 
     private HotSpotRuntime runtime() {
-        return (HotSpotRuntime) runtime;
+        return (HotSpotRuntime) codeCache;
     }
 
     public static class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
@@ -83,8 +83,8 @@ public class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    public HSAILLIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, runtime, target, frameMap, cc, lir);
+    public HSAILLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
         lir.spillMoveFactory = new HSAILSpillMoveFactory();
     }
 
@@ -98,7 +98,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !runtime.needsDataPatch(c);
+                return NumUtil.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
             case Object:
                 return c.isNull();
             default:
@@ -579,7 +579,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 

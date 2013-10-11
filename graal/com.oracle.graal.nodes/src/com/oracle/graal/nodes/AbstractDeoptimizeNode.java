@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,37 +20,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.spi;
+package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.type.*;
 
 /**
- * A {@link GraalCodeCacheProvider} that delegates to another {@link GraalCodeCacheProvider}.
+ * This node represents an unconditional explicit request for immediate deoptimization.
+ * 
+ * After this node, execution will continue using a fallback execution engine (such as an
+ * interpreter) at the position described by the {@link #getDeoptimizationState() deoptimization
+ * state}.
+ * 
  */
-public class DelegatingGraalCodeCacheProvider extends DelegatingCodeCacheProvider implements GraalCodeCacheProvider {
+public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements IterableNodeType, DeoptimizingNode {
 
-    public DelegatingGraalCodeCacheProvider(CodeCacheProvider delegate) {
-        super(delegate);
+    @Input private FrameState deoptState;
+
+    public AbstractDeoptimizeNode() {
+        super(StampFactory.forVoid());
     }
 
     @Override
-    protected GraalCodeCacheProvider delegate() {
-        return (GraalCodeCacheProvider) super.delegate();
+    public boolean canDeoptimize() {
+        return true;
     }
 
-    public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult, Graph graph) {
-        return delegate().addMethod(method, compResult, graph);
+    @Override
+    public FrameState getDeoptimizationState() {
+        return deoptState;
     }
 
-    public void lower(Node n, LoweringTool tool) {
-        delegate().lower(n, tool);
+    @Override
+    public void setDeoptimizationState(FrameState f) {
+        updateUsages(deoptState, f);
+        deoptState = f;
     }
 
-    public ValueNode reconstructArrayIndex(LocationNode location) {
-        return delegate().reconstructArrayIndex(location);
+    public FrameState getState() {
+        return deoptState;
     }
+
+    public abstract ValueNode getActionAndReason(MetaAccessProvider metaAccess);
 }

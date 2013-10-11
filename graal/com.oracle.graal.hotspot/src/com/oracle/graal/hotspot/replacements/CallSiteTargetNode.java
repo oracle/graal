@@ -26,6 +26,8 @@ import java.lang.invoke.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
@@ -40,7 +42,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
         return arguments.get(0);
     }
 
-    private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccessProvider, Assumptions assumptions) {
+    private ConstantNode getConstantCallTarget(MetaAccessProvider metaAccess, Assumptions assumptions) {
         if (getCallSite().isConstant() && !getCallSite().isNullConstant()) {
             CallSite callSite = (CallSite) getCallSite().asConstant().asObject();
             MethodHandle target = callSite.getTarget();
@@ -50,14 +52,14 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
                 }
                 assumptions.record(new Assumptions.CallSiteTargetValue(callSite, target));
             }
-            return ConstantNode.forObject(target, metaAccessProvider, graph());
+            return ConstantNode.forObject(target, metaAccess, graph());
         }
         return null;
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        ConstantNode target = getConstantCallTarget(tool.runtime(), tool.assumptions());
+    public Node canonical(CanonicalizerTool tool) {
+        ConstantNode target = getConstantCallTarget(tool.getMetaAccess(), tool.assumptions());
         if (target != null) {
             return target;
         }
@@ -67,7 +69,7 @@ public class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        ConstantNode target = getConstantCallTarget(tool.getRuntime(), tool.assumptions());
+        ConstantNode target = getConstantCallTarget(tool.getMetaAccess(), tool.assumptions());
 
         if (target != null) {
             graph().replaceFixedWithFloating(this, target);

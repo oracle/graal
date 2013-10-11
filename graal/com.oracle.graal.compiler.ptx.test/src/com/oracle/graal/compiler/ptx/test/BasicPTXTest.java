@@ -24,13 +24,11 @@ package com.oracle.graal.compiler.ptx.test;
 
 import java.lang.reflect.Method;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  * Test class for small Java methods compiled to PTX kernels.
  */
-@Ignore
 public class BasicPTXTest extends PTXTestBase {
 
     @Test

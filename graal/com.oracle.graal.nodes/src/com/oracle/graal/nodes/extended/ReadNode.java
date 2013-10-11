@@ -23,6 +23,8 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -41,18 +43,6 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         super(object, location, stamp, guard, barrierType, compressible);
     }
 
-    public ReadNode(ValueNode object, int displacement, LocationIdentity locationIdentity, Kind kind) {
-        super(object, ConstantLocationNode.create(locationIdentity, kind, displacement, object.graph()), StampFactory.forKind(kind));
-    }
-
-    private ReadNode(ValueNode object, ValueNode location, ValueNode guard) {
-        /*
-         * Used by node intrinsics. Since the initial value for location is a parameter, i.e., a
-         * LocalNode, the constructor cannot use the declared type LocationNode.
-         */
-        super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, BarrierType.NONE, false);
-    }
-
     @Override
     public void generate(LIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
@@ -60,7 +50,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         return canonicalizeRead(this, location(), object(), tool, isCompressible());
     }
 
@@ -70,29 +60,29 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     }
 
     public static ValueNode canonicalizeRead(ValueNode read, LocationNode location, ValueNode object, CanonicalizerTool tool, boolean compressible) {
-        MetaAccessProvider runtime = tool.runtime();
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
         if (read.usages().isEmpty()) {
             // Read without usages can be savely removed.
             return null;
         }
-        if (tool.canonicalizeReads() && runtime != null && object != null && object.isConstant()) {
+        if (tool.canonicalizeReads() && metaAccess != null && object != null && object.isConstant()) {
             if (location.getLocationIdentity() == LocationIdentity.FINAL_LOCATION && location instanceof ConstantLocationNode) {
                 long displacement = ((ConstantLocationNode) location).getDisplacement();
                 Kind kind = location.getValueKind();
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
                     if (base != null) {
-                        Constant constant = tool.runtime().readUnsafeConstant(kind, base, displacement, compressible);
+                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.graph());
+                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
                 } else if (object.kind() == Kind.Long || object.kind().getStackKind() == Kind.Int) {
                     long base = object.asConstant().asLong();
                     if (base != 0L) {
-                        Constant constant = tool.runtime().readUnsafeConstant(kind, null, base + displacement, compressible);
+                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, null, base + displacement, compressible);
                         if (constant != null) {
-                            return ConstantNode.forConstant(constant, runtime, read.graph());
+                            return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
                 }

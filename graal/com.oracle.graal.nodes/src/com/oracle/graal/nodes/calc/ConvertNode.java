@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.Kind.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -150,52 +151,59 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         this.value = value;
     }
 
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        Constant c = inputs[0];
+        switch (opcode) {
+            case I2L:
+                return Constant.forLong(c.asInt());
+            case L2I:
+                return Constant.forInt((int) c.asLong());
+            case I2B:
+                return Constant.forByte((byte) c.asInt());
+            case I2C:
+                return Constant.forChar((char) c.asInt());
+            case I2S:
+                return Constant.forShort((short) c.asInt());
+            case F2D:
+                return Constant.forDouble(c.asFloat());
+            case D2F:
+                return Constant.forFloat((float) c.asDouble());
+            case I2F:
+                return Constant.forFloat(c.asInt());
+            case I2D:
+                return Constant.forDouble(c.asInt());
+            case F2I:
+                return Constant.forInt((int) c.asFloat());
+            case D2I:
+                return Constant.forInt((int) c.asDouble());
+            case L2F:
+                return Constant.forFloat(c.asLong());
+            case L2D:
+                return Constant.forDouble(c.asLong());
+            case F2L:
+                return Constant.forLong((long) c.asFloat());
+            case D2L:
+                return Constant.forLong((long) c.asDouble());
+            case UNSIGNED_I2L:
+                return Constant.forLong(c.asInt() & 0xffffffffL);
+            case MOV_I2F:
+                return Constant.forFloat(java.lang.Float.intBitsToFloat(c.asInt()));
+            case MOV_L2D:
+                return Constant.forDouble(java.lang.Double.longBitsToDouble(c.asLong()));
+            case MOV_F2I:
+                return Constant.forInt(java.lang.Float.floatToRawIntBits(c.asFloat()));
+            case MOV_D2L:
+                return Constant.forLong(java.lang.Double.doubleToRawLongBits(c.asDouble()));
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        if (value instanceof ConstantNode) {
-            Constant c = ((ConstantNode) value).asConstant();
-            switch (opcode) {
-                case I2L:
-                    return ConstantNode.forLong(c.asInt(), graph());
-                case L2I:
-                    return ConstantNode.forInt((int) c.asLong(), graph());
-                case I2B:
-                    return ConstantNode.forByte((byte) c.asInt(), graph());
-                case I2C:
-                    return ConstantNode.forChar((char) c.asInt(), graph());
-                case I2S:
-                    return ConstantNode.forShort((short) c.asInt(), graph());
-                case F2D:
-                    return ConstantNode.forDouble(c.asFloat(), graph());
-                case D2F:
-                    return ConstantNode.forFloat((float) c.asDouble(), graph());
-                case I2F:
-                    return ConstantNode.forFloat(c.asInt(), graph());
-                case I2D:
-                    return ConstantNode.forDouble(c.asInt(), graph());
-                case F2I:
-                    return ConstantNode.forInt((int) c.asFloat(), graph());
-                case D2I:
-                    return ConstantNode.forInt((int) c.asDouble(), graph());
-                case L2F:
-                    return ConstantNode.forFloat(c.asLong(), graph());
-                case L2D:
-                    return ConstantNode.forDouble(c.asLong(), graph());
-                case F2L:
-                    return ConstantNode.forLong((long) c.asFloat(), graph());
-                case D2L:
-                    return ConstantNode.forLong((long) c.asDouble(), graph());
-                case UNSIGNED_I2L:
-                    return ConstantNode.forLong(c.asInt() & 0xffffffffL, graph());
-                case MOV_I2F:
-                    return ConstantNode.forFloat(java.lang.Float.intBitsToFloat(c.asInt()), graph());
-                case MOV_L2D:
-                    return ConstantNode.forDouble(java.lang.Double.longBitsToDouble(c.asLong()), graph());
-                case MOV_F2I:
-                    return ConstantNode.forInt(java.lang.Float.floatToRawIntBits(c.asFloat()), graph());
-                case MOV_D2L:
-                    return ConstantNode.forLong(java.lang.Double.doubleToRawLongBits(c.asDouble()), graph());
-            }
+    public Node canonical(CanonicalizerTool tool) {
+        if (value.isConstant()) {
+            return ConstantNode.forPrimitive(evalConst(value.asConstant()), graph());
         }
         return this;
     }
@@ -236,7 +244,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override

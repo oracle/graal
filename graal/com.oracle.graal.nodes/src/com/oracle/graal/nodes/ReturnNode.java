@@ -28,6 +28,7 @@ import com.oracle.graal.nodes.type.*;
 public final class ReturnNode extends ControlSinkNode implements LIRLowerable {
 
     @Input private ValueNode result;
+    @Input private MemoryMapNode memoryMap;
 
     public ValueNode result() {
         return result;
@@ -40,8 +41,13 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable {
      *            void return
      */
     public ReturnNode(ValueNode result) {
+        this(result, null);
+    }
+
+    public ReturnNode(ValueNode result, MemoryMapNode memoryMap) {
         super(StampFactory.forVoid());
         this.result = result;
+        this.memoryMap = memoryMap;
     }
 
     @Override
@@ -52,5 +58,14 @@ public final class ReturnNode extends ControlSinkNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool gen) {
         gen.visitReturn(this);
+    }
+
+    public void setMemoryMap(MemoryMapNode memoryMap) {
+        updateUsages(this.memoryMap, memoryMap);
+        this.memoryMap = memoryMap;
+    }
+
+    public MemoryMapNode getMemoryMap() {
+        return memoryMap;
     }
 }

@@ -22,32 +22,20 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 /**
  * Removes the current frame and tail calls the uncommon trap routine.
  */
 @Opcode("DEOPT_CALLER")
 final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
-
-    private final DeoptimizationAction action;
-    private final DeoptimizationReason reason;
-
-    SPARCHotSpotDeoptimizeCallerOp(DeoptimizationAction action, DeoptimizationReason reason) {
-        this.action = action;
-        this.reason = reason;
-    }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
@@ -58,15 +46,8 @@ final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
 // final boolean isStub = true;
 // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
 // frameContext.enter(tasm);
-
-        HotSpotGraalRuntime runtime = graalRuntime();
-        Register thread = runtime.getRuntime().threadRegister();
-
-        Register scratch = g5;
-        new Mov(tasm.runtime.encodeDeoptActionAndReason(action, reason), scratch).emit(masm);
-        new Stw(scratch, new SPARCAddress(thread, runtime.getConfig().pendingDeoptimizationOffset)).emit(masm);
-
-        SPARCCall.indirectJmp(tasm, masm, scratch, tasm.runtime.lookupForeignCall(UNCOMMON_TRAP));
+        Register scratch = g3;
+        SPARCCall.indirectJmp(tasm, masm, scratch, tasm.codeCache.lookupForeignCall(UNCOMMON_TRAP));
 
 // frameContext.leave(tasm);
     }

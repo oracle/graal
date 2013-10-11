@@ -23,12 +23,8 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
@@ -39,21 +35,9 @@ import com.oracle.graal.lir.asm.*;
 @Opcode("DEOPT_CALLER")
 final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
 
-    private final DeoptimizationAction action;
-    private final DeoptimizationReason reason;
-
-    AMD64HotSpotDeoptimizeCallerOp(DeoptimizationAction action, DeoptimizationReason reason) {
-        this.action = action;
-        this.reason = reason;
-    }
-
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
-
-        HotSpotGraalRuntime runtime = graalRuntime();
-        Register thread = runtime.getRuntime().threadRegister();
-        masm.movl(new AMD64Address(thread, runtime.getConfig().pendingDeoptimizationOffset), tasm.runtime.encodeDeoptActionAndReason(action, reason));
-        AMD64Call.directJmp(tasm, masm, tasm.runtime.lookupForeignCall(UNCOMMON_TRAP));
+        AMD64Call.directJmp(tasm, masm, tasm.codeCache.lookupForeignCall(UNCOMMON_TRAP));
     }
 }

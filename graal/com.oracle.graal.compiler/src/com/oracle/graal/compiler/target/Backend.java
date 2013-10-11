@@ -35,16 +35,22 @@ import com.oracle.graal.nodes.*;
  */
 public abstract class Backend {
 
-    private final CodeCacheProvider runtime;
+    private final MetaAccessProvider metaAccess;
+    private final CodeCacheProvider codeCache;
     public final TargetDescription target;
 
-    protected Backend(CodeCacheProvider runtime, TargetDescription target) {
-        this.runtime = runtime;
+    protected Backend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+        this.metaAccess = metaAccess;
+        this.codeCache = codeCache;
         this.target = target;
     }
 
-    public CodeCacheProvider runtime() {
-        return runtime;
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
+    public CodeCacheProvider getCodeCache() {
+        return codeCache;
     }
 
     public abstract FrameMap newFrameMap();

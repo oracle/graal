@@ -45,13 +45,14 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.Snippet.DefaultSnippetInliningPolicy;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.word.phases.*;
 
 public class ReplacementsImpl implements Replacements {
 
-    protected final MetaAccessProvider runtime;
+    protected final Providers providers;
     protected final TargetDescription target;
     protected final Assumptions assumptions;
 
@@ -67,8 +68,9 @@ public class ReplacementsImpl implements Replacements {
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(MetaAccessProvider runtime, Assumptions assumptions, TargetDescription target) {
-        this.runtime = runtime;
+    public ReplacementsImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions,
+                    TargetDescription target) {
+        this.providers = new Providers(metaAccess, codeCache, constantReflection, lowerer, this);
         this.target = target;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
@@ -84,7 +86,7 @@ public class ReplacementsImpl implements Replacements {
 
         StructuredGraph graph = graphs.get(method);
         if (graph == null) {
-            graphs.putIfAbsent(method, makeGraph(method, null, inliningPolicy(method)));
+            graphs.putIfAbsent(method, makeGraph(method, null, inliningPolicy(method), method.getAnnotation(Snippet.class).removeAllFrameStates()));
             graph = graphs.get(method);
         }
         return graph;
@@ -97,7 +99,7 @@ public class ReplacementsImpl implements Replacements {
         }
         StructuredGraph graph = graphs.get(substitute);
         if (graph == null) {
-            graphs.putIfAbsent(substitute, makeGraph(substitute, original, inliningPolicy(substitute)));
+            graphs.putIfAbsent(substitute, makeGraph(substitute, original, inliningPolicy(substitute), false));
             graph = graphs.get(substitute);
         }
         return graph;
@@ -167,12 +169,13 @@ public class ReplacementsImpl implements Replacements {
      * @return the original method
      */
     protected ResolvedJavaMethod registerMethodSubstitution(Member originalMember, Method substituteMethod) {
-        ResolvedJavaMethod substitute = runtime.lookupJavaMethod(substituteMethod);
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ResolvedJavaMethod substitute = metaAccess.lookupJavaMethod(substituteMethod);
         ResolvedJavaMethod original;
         if (originalMember instanceof Method) {
-            original = runtime.lookupJavaMethod((Method) originalMember);
+            original = metaAccess.lookupJavaMethod((Method) originalMember);
         } else {
-            original = runtime.lookupJavaConstructor((Constructor) originalMember);
+            original = metaAccess.lookupJavaConstructor((Constructor) originalMember);
         }
         Debug.log("substitution: " + MetaUtil.format("%H.%n(%p)", original) + " --> " + MetaUtil.format("%H.%n(%p)", substitute));
 
@@ -189,10 +192,11 @@ public class ReplacementsImpl implements Replacements {
      */
     protected ResolvedJavaMethod registerMacroSubstitution(Member originalMethod, Class<? extends FixedWithNextNode> macro) {
         ResolvedJavaMethod originalJavaMethod;
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
         if (originalMethod instanceof Method) {
-            originalJavaMethod = runtime.lookupJavaMethod((Method) originalMethod);
+            originalJavaMethod = metaAccess.lookupJavaMethod((Method) originalMethod);
         } else {
-            originalJavaMethod = runtime.lookupJavaConstructor((Constructor) originalMethod);
+            originalJavaMethod = metaAccess.lookupJavaConstructor((Constructor) originalMethod);
         }
         registeredMacroSubstitutions.put(originalJavaMethod, macro);
         return originalJavaMethod;
@@ -205,7 +209,7 @@ public class ReplacementsImpl implements Replacements {
             policyClass = snippet.inlining();
         }
         if (policyClass == SnippetInliningPolicy.class) {
-            return new DefaultSnippetInliningPolicy(runtime);
+            return new DefaultSnippetInliningPolicy(providers.getMetaAccess());
         }
         try {
             return policyClass.getConstructor().newInstance();
@@ -221,9 +225,10 @@ public class ReplacementsImpl implements Replacements {
      * @param original the original method if {@code method} is a {@linkplain MethodSubstitution
      *            substitution} otherwise null
      * @param policy the inlining policy to use during preprocessing
+     * @param removeAllFrameStates removes all frame states from side effecting instructions
      */
-    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, SnippetInliningPolicy policy) {
-        return createGraphMaker(method, original).makeGraph(policy);
+    public StructuredGraph makeGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, SnippetInliningPolicy policy, boolean removeAllFrameStates) {
+        return createGraphMaker(method, original).makeGraph(policy, removeAllFrameStates);
     }
 
     /**
@@ -261,7 +266,7 @@ public class ReplacementsImpl implements Replacements {
             this.original = original;
         }
 
-        public StructuredGraph makeGraph(final SnippetInliningPolicy policy) {
+        public StructuredGraph makeGraph(final SnippetInliningPolicy policy, final boolean removeAllFrameStates) {
             return Debug.scope("BuildSnippetGraph", new Object[]{method}, new Callable<StructuredGraph>() {
 
                 @Override
@@ -271,7 +276,7 @@ public class ReplacementsImpl implements Replacements {
                     // Cannot have a finalized version of a graph in the cache
                     graph = graph.copy();
 
-                    finalizeGraph(graph);
+                    finalizeGraph(graph, removeAllFrameStates);
 
                     Debug.dump(graph, "%s: Final", method.getName());
 
@@ -283,15 +288,23 @@ public class ReplacementsImpl implements Replacements {
         /**
          * Does final processing of a snippet graph.
          */
-        protected void finalizeGraph(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime).apply(graph);
+        protected void finalizeGraph(StructuredGraph graph, boolean removeAllFrameStates) {
+            new NodeIntrinsificationPhase(providers.getMetaAccess()).apply(graph);
             if (!SnippetTemplate.hasConstantParameter(method)) {
                 NodeIntrinsificationVerificationPhase.verify(graph);
             }
             new ConvertDeoptimizeToGuardPhase().apply(graph);
 
             if (original == null) {
-                new SnippetFrameStateCleanupPhase().apply(graph);
+                if (removeAllFrameStates) {
+                    for (Node node : graph.getNodes()) {
+                        if (node instanceof StateSplit) {
+                            ((StateSplit) node).setStateAfter(null);
+                        }
+                    }
+                } else {
+                    new SnippetFrameStateCleanupPhase().apply(graph);
+                }
             }
             new DeadCodeEliminationPhase().apply(graph);
         }
@@ -322,12 +335,13 @@ public class ReplacementsImpl implements Replacements {
 
                 @Override
                 public void run() {
-                    new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
-                    new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-                    new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
+                    MetaAccessProvider metaAccess = providers.getMetaAccess();
+                    new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
+                    new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
+                    new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
-                        new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
+                        new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
                     }
                 }
             });
@@ -347,7 +361,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInline(StructuredGraph caller, StructuredGraph callee, Object beforeInlineData) {
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(caller, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
+                new CanonicalizerPhase(true).apply(caller, new PhaseContext(providers, assumptions));
             }
         }
 
@@ -355,10 +369,10 @@ public class ReplacementsImpl implements Replacements {
          * Called after all inlining for a given graph is complete.
          */
         protected void afterInlining(StructuredGraph graph) {
-            new NodeIntrinsificationPhase(runtime).apply(graph);
+            new NodeIntrinsificationPhase(providers.getMetaAccess()).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(graph, new PhaseContext(runtime, assumptions, ReplacementsImpl.this));
+                new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
             }
         }
 
@@ -373,9 +387,10 @@ public class ReplacementsImpl implements Replacements {
                         ResolvedJavaMethod callee = callTarget.targetMethod();
                         if (callee == method) {
                             final StructuredGraph originalGraph = new StructuredGraph(original);
-                            new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
-                            new WordTypeVerificationPhase(runtime, target.wordKind).apply(graph);
-                            new WordTypeRewriterPhase(runtime, target.wordKind).apply(graph);
+                            MetaAccessProvider metaAccess = providers.getMetaAccess();
+                            new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
+                            new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
+                            new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
 
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true);
 
@@ -468,7 +483,7 @@ public class ReplacementsImpl implements Replacements {
                 parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
             }
         } else {
-            Signature signature = runtime.parseMethodDescriptor(methodSubstitution);
+            Signature signature = providers.getMetaAccess().parseMethodDescriptor(methodSubstitution);
             parameters = new Class[signature.getParameterCount(false)];
             for (int i = 0; i < parameters.length; i++) {
                 parameters[i] = resolveType(signature.getParameterType(i, null));

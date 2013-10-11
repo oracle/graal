@@ -22,8 +22,9 @@
  */
 package com.oracle.graal.truffle.nodes.asserts;
 
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 
 public class CompilationConstantNode extends NeverPartOfCompilationNode implements Canonicalizable {
 
@@ -33,7 +34,7 @@ public class CompilationConstantNode extends NeverPartOfCompilationNode implemen
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (arguments.get(0).isConstant()) {
             return arguments.get(0);
         }

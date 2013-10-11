@@ -33,7 +33,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     TargetDescription target();
 
-    CodeCacheProvider getRuntime();
+    MetaAccessProvider getMetaAccess();
+
+    CodeCacheProvider getCodeCache();
 
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
@@ -63,7 +65,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitMembar(int barriers);
 
-    void emitDeoptimize(DeoptimizationAction action, DeoptimizingNode deopting);
+    void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting);
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 

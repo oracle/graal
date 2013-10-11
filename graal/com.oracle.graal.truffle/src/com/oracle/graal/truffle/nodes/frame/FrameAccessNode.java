@@ -25,8 +25,8 @@ package com.oracle.graal.truffle.nodes.frame;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -95,11 +95,11 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
         }
     }
 
-    protected final ValueNode getSlotOffset(int scale, MetaAccessProvider metaAccessProvider) {
+    protected final ValueNode getSlotOffset(int scale, MetaAccessProvider metaAccess) {
         if (isConstantFrameSlot()) {
             return ConstantNode.forInt(getSlotIndex() * scale, graph());
         } else {
-            LoadFieldNode loadFrameSlotIndex = graph().add(new LoadFieldNode(getSlot(), metaAccessProvider.lookupJavaField(getFrameSlotIndexField())));
+            LoadFieldNode loadFrameSlotIndex = graph().add(new LoadFieldNode(getSlot(), metaAccess.lookupJavaField(getFrameSlotIndexField())));
             graph().addBeforeFixed(this, loadFrameSlotIndex);
             return scale == 1 ? loadFrameSlotIndex : IntegerArithmeticNode.mul(loadFrameSlotIndex, ConstantNode.forInt(scale, graph()));
         }

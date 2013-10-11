@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -93,7 +93,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
+    public Node canonical(CanonicalizerTool tool) {
         if (stamp() == StampFactory.illegal(object.kind())) {
             // The guard always fails
             return graph().add(new DeoptimizeNode(action, reason));

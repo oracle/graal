@@ -174,13 +174,13 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test
     public void getExceptionHandlersTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithExceptionHandlers", String.class, Object.class));
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("methodWithExceptionHandlers", String.class, Object.class));
         ExceptionHandler[] handlers = method.getExceptionHandlers();
         assertNotNull(handlers);
         assertEquals(handlers.length, 3);
-        handlers[0].getCatchType().equals(runtime.lookupJavaType(IndexOutOfBoundsException.class));
-        handlers[1].getCatchType().equals(runtime.lookupJavaType(NullPointerException.class));
-        handlers[2].getCatchType().equals(runtime.lookupJavaType(RuntimeException.class));
+        handlers[0].getCatchType().equals(metaAccess.lookupJavaType(IndexOutOfBoundsException.class));
+        handlers[1].getCatchType().equals(metaAccess.lookupJavaType(NullPointerException.class));
+        handlers[2].getCatchType().equals(metaAccess.lookupJavaType(RuntimeException.class));
     }
 
     private static String nullPointerExceptionOnFirstLine(Object o, String ignored) {
@@ -194,7 +194,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             Assert.fail("should not reach here");
         } catch (NullPointerException e) {
             StackTraceElement expected = e.getStackTrace()[0];
-            ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+            ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
             StackTraceElement actual = method.asStackTraceElement(0);
             assertEquals(expected, actual);
         }
@@ -211,7 +211,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test(timeout = 1000L)
     public void getAnnotationTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("getAnnotationTest"));
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("getAnnotationTest"));
         Test annotation = method.getAnnotation(Test.class);
         assertNotNull(annotation);
         assertEquals(1000L, annotation.timeout());
@@ -231,7 +231,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test
     public void getParameterAnnotationsTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
         Annotation[][] annotations = method.getParameterAnnotations();
         assertEquals(2, annotations.length);
         assertEquals(1, annotations[0].length);
@@ -243,7 +243,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test
     public void getGenericParameterTypesTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
         Type[] genericParameterTypes = method.getGenericParameterTypes();
         assertEquals(2, genericParameterTypes.length);
         assertEquals("java.util.HashMap<java.lang.String, java.lang.String>", genericParameterTypes[0].toString());
@@ -252,8 +252,8 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test
     public void getMaxLocalsTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method1 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
-        ResolvedJavaMethod method2 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+        ResolvedJavaMethod method1 = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method2 = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
         assertEquals(0, method1.getMaxLocals());
         assertEquals(2, method2.getMaxLocals());
 
@@ -261,8 +261,8 @@ public class TestResolvedJavaMethod extends MethodUniverse {
 
     @Test
     public void getMaxStackSizeTest() throws NoSuchMethodException {
-        ResolvedJavaMethod method1 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
-        ResolvedJavaMethod method2 = runtime.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
+        ResolvedJavaMethod method1 = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("methodWithAnnotatedParameters", HashMap.class, Class.class));
+        ResolvedJavaMethod method2 = metaAccess.lookupJavaMethod(getClass().getDeclaredMethod("nullPointerExceptionOnFirstLine", Object.class, String.class));
         assertEquals(0, method1.getMaxStackSize());
         // some versions of javac produce bytecode with a stacksize of 2 for this method
         // JSR 292 also sometimes need one more stack slot

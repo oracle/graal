@@ -22,10 +22,9 @@
  */
 package com.oracle.graal.truffle.nodes;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.truffle.*;
 
@@ -40,6 +39,7 @@ public class AssumptionNode extends MacroNode implements com.oracle.graal.graph.
         return arguments.first();
     }
 
+    @Override
     public void simplify(SimplifierTool tool) {
         ValueNode assumption = getAssumption();
         if (tool.assumptions() != null && assumption.isConstant()) {

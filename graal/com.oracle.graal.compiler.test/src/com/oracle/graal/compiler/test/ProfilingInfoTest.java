@@ -145,8 +145,8 @@ public class ProfilingInfoTest extends GraalCompilerTest {
     }
 
     private void testTypeProfile(String testSnippet, int bci) {
-        ResolvedJavaType stringType = runtime.lookupJavaType(String.class);
-        ResolvedJavaType stringBuilderType = runtime.lookupJavaType(StringBuilder.class);
+        ResolvedJavaType stringType = getMetaAccess().lookupJavaType(String.class);
+        ResolvedJavaType stringBuilderType = getMetaAccess().lookupJavaType(StringBuilder.class);
 
         ProfilingInfo info = profile(testSnippet, "ABC");
         JavaTypeProfile typeProfile = info.getTypeProfile(bci);
@@ -297,7 +297,7 @@ public class ProfilingInfoTest extends GraalCompilerTest {
         Method method = getMethod(methodName);
         Assert.assertTrue(Modifier.isStatic(method.getModifiers()));
 
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(method);
+        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(method);
         if (resetProfile) {
             javaMethod.reprofile();
         }
@@ -314,7 +314,7 @@ public class ProfilingInfoTest extends GraalCompilerTest {
     }
 
     private void resetProfile(String methodName) {
-        ResolvedJavaMethod javaMethod = runtime.lookupJavaMethod(getMethod(methodName));
+        ResolvedJavaMethod javaMethod = getMetaAccess().lookupJavaMethod(getMethod(methodName));
         javaMethod.reprofile();
     }
 }

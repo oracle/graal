@@ -24,6 +24,8 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -60,14 +62,14 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-            tool.getRuntime().lower(this, tool);
+            tool.getLowerer().lower(this, tool);
         }
     }
 
     @Override
-    public ValueNode canonical(CanonicalizerTool tool) {
-        MetaAccessProvider runtime = tool.runtime();
-        if (runtime != null && object.stamp() instanceof ObjectStamp) {
+    public Node canonical(CanonicalizerTool tool) {
+        MetaAccessProvider metaAccess = tool.getMetaAccess();
+        if (metaAccess != null && object.stamp() instanceof ObjectStamp) {
             ObjectStamp stamp = (ObjectStamp) object.stamp();
 
             ResolvedJavaType exactType;
@@ -83,7 +85,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
             }
 
             if (exactType != null) {
-                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), runtime, graph());
+                return ConstantNode.forConstant(exactType.getEncoding(Representation.ObjectHub), metaAccess, graph());
             }
         }
         return this;

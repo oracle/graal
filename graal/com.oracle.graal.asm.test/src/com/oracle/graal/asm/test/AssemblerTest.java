@@ -34,6 +34,7 @@ import com.oracle.graal.test.*;
 
 public abstract class AssemblerTest extends GraalTest {
 
+    private final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
 
     public interface CodeGenTest {
@@ -42,12 +43,17 @@ public abstract class AssemblerTest extends GraalTest {
     }
 
     public AssemblerTest() {
+        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
         this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
     }
 
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
     protected InstalledCode assembleMethod(Method m, CodeGenTest test) {
-        ResolvedJavaMethod method = codeCache.lookupJavaMethod(m);
-        RegisterConfig registerConfig = codeCache.lookupRegisterConfig();
+        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(m);
+        RegisterConfig registerConfig = codeCache.getRegisterConfig();
         CallingConvention cc = CodeUtil.getCallingConvention(codeCache, CallingConvention.Type.JavaCallee, method, false);
 
         CompilationResult compResult = new CompilationResult();

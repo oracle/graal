@@ -29,7 +29,7 @@ import java.lang.reflect.*;
  * Represents a reference to a resolved Java field. Fields, like methods and types, are resolved
  * through {@link ConstantPool constant pools}.
  */
-public interface ResolvedJavaField extends JavaField {
+public interface ResolvedJavaField extends JavaField, LocationIdentity {
 
     /**
      * Returns the Java language modifiers for this field, as an integer. The {@link Modifier} class
@@ -50,17 +50,21 @@ public interface ResolvedJavaField extends JavaField {
     boolean isSynthetic();
 
     /**
-     * Gets the constant value of this field for a given object, if available.
+     * Gets the constant value of this field. Note that a {@code static final} field may not be
+     * considered constant if its declaring class is not yet initialized or if it is a well known
+     * field that can be updated via other means (e.g., {@link System#setOut(java.io.PrintStream)}).
      * 
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.
-     * @return the constant value of this field or {@code null} if the constant value is not
-     *         available
+     * @return the constant value of this field or {@code null} if this field is not considered
+     *         constant by the runtime
      */
     Constant readConstantValue(Constant receiver);
 
     /**
-     * Gets the current value of this field for a given object, if available.
+     * Gets the current value of this field for a given object, if available. There is no guarantee
+     * that the same value will be returned by this method for a field unless the field is
+     * considered to be {@link #readConstantValue(Constant)} by the runtime.
      * 
      * @param receiver object from which this field's value is to be read. This value is ignored if
      *            this field is static.

@@ -23,17 +23,16 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.util.*;
 
 public class MidTierContext extends PhaseContext {
 
     private final TargetDescription target;
     private final OptimisticOptimizations optimisticOpts;
 
-    public MidTierContext(MetaAccessProvider runtime, Assumptions assumptions, Replacements replacements, TargetDescription target, OptimisticOptimizations optimisticOpts) {
-        super(runtime, assumptions, replacements);
+    public MidTierContext(Providers copyFrom, Assumptions assumptions, TargetDescription target, OptimisticOptimizations optimisticOpts) {
+        super(copyFrom, assumptions);
         this.target = target;
         this.optimisticOpts = optimisticOpts;
     }

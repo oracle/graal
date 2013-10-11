@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.truffle.nodes.arithmetic;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;

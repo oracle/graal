@@ -39,12 +39,12 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
 
-    public UnsafeStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, Kind accessKind) {
-        this(StampFactory.forVoid(), object, displacement, offset, value, accessKind);
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind) {
+        this(object, offset, value, accessKind, LocationIdentity.ANY_LOCATION);
     }
 
-    public UnsafeStoreNode(Stamp stamp, ValueNode object, int displacement, ValueNode offset, ValueNode value, Kind accessKind) {
-        super(stamp, object, displacement, offset, accessKind);
+    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
+        super(StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
         assert accessKind != Kind.Void && accessKind != Kind.Illegal;
         this.value = value;
     }
@@ -69,12 +69,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -83,7 +78,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         if (state != null && state.getState() == EscapeState.Virtual) {
             ValueNode indexValue = tool.getReplacedValue(offset());
             if (indexValue.isConstant()) {
-                long offset = indexValue.asConstant().asLong() + displacement();
+                long offset = indexValue.asConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
                 if (entryIndex != -1 && state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
                     tool.setVirtualEntry(state, entryIndex, value());
@@ -100,13 +95,6 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
         return storeFieldNode;
     }
 
-    @Override
-    protected ValueNode cloneWithZeroOffset(int intDisplacement) {
-        UnsafeStoreNode unsafeStoreNode = graph().add(new UnsafeStoreNode(stamp(), object(), intDisplacement, ConstantNode.forInt(0, graph()), value(), accessKind()));
-        unsafeStoreNode.setStateAfter(stateAfter());
-        return unsafeStoreNode;
-    }
-
     public FrameState getState() {
         return stateAfter;
     }
@@ -115,55 +103,55 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, Object value, @ConstantNodeParameter Kind kind) {
-        unsafe.putObject(object, offset + displacement, value);
+    public static void store(Object object, long offset, Object value, @ConstantNodeParameter Kind kind) {
+        unsafe.putObject(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, boolean value, @ConstantNodeParameter Kind kind) {
-        unsafe.putBoolean(object, offset + displacement, value);
+    public static void store(Object object, long offset, boolean value, @ConstantNodeParameter Kind kind) {
+        unsafe.putBoolean(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, byte value, @ConstantNodeParameter Kind kind) {
-        unsafe.putByte(object, offset + displacement, value);
+    public static void store(Object object, long offset, byte value, @ConstantNodeParameter Kind kind) {
+        unsafe.putByte(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, char value, @ConstantNodeParameter Kind kind) {
-        unsafe.putChar(object, offset + displacement, value);
+    public static void store(Object object, long offset, char value, @ConstantNodeParameter Kind kind) {
+        unsafe.putChar(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, double value, @ConstantNodeParameter Kind kind) {
-        unsafe.putDouble(object, offset + displacement, value);
+    public static void store(Object object, long offset, double value, @ConstantNodeParameter Kind kind) {
+        unsafe.putDouble(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, float value, @ConstantNodeParameter Kind kind) {
-        unsafe.putFloat(object, offset + displacement, value);
+    public static void store(Object object, long offset, float value, @ConstantNodeParameter Kind kind) {
+        unsafe.putFloat(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, int value, @ConstantNodeParameter Kind kind) {
-        unsafe.putInt(object, offset + displacement, value);
+    public static void store(Object object, long offset, int value, @ConstantNodeParameter Kind kind) {
+        unsafe.putInt(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter Kind kind) {
-        unsafe.putLong(object, offset + displacement, value);
+    public static void store(Object object, long offset, long value, @ConstantNodeParameter Kind kind) {
+        unsafe.putLong(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, @ConstantNodeParameter int displacement, long offset, short value, @ConstantNodeParameter Kind kind) {
-        unsafe.putShort(object, offset + displacement, value);
+    public static void store(Object object, long offset, short value, @ConstantNodeParameter Kind kind) {
+        unsafe.putShort(object, offset, value);
     }
 }

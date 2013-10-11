@@ -52,7 +52,7 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getRuntime().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     public int getLockDepth() {

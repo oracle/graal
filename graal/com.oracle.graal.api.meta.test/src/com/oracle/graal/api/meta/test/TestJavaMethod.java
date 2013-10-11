@@ -50,7 +50,7 @@ public class TestJavaMethod extends MethodUniverse {
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             Class expected = e.getKey().getDeclaringClass();
             ResolvedJavaType actual = e.getValue().getDeclaringClass();
-            assertTrue(actual.equals(runtime.lookupJavaType(expected)));
+            assertTrue(actual.equals(metaAccess.lookupJavaType(expected)));
         }
     }
 

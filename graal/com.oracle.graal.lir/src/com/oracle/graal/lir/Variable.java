@@ -38,6 +38,8 @@ public final class Variable extends AllocatableValue {
      */
     public final int index;
 
+    private String name;
+
     /**
      * Creates a new variable.
      * 
@@ -50,9 +52,21 @@ public final class Variable extends AllocatableValue {
         this.index = index;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public String toString() {
-        return "v" + index + getKindSuffix();
+        if (name != null) {
+            return name;
+        } else {
+            return "v" + index + getKindSuffix();
+        }
     }
 
     @Override

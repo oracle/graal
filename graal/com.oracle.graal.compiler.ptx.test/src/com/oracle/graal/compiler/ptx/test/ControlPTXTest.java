@@ -28,14 +28,54 @@ import java.lang.reflect.Method;
 
 public class ControlPTXTest extends PTXTestBase {
 
-    @Ignore
     @Test
     public void testControl() {
-        compile("testLoop");
-        // compile("testSwitch1I");
-        // compile("testStatic");
-        // compile("testCall");
-        // compile("testLookupSwitch1I");
+        Integer ret = (Integer) invoke(compile("testLoop"), 42);
+        if (ret != null) {
+            printReport("testLoop: " + ret);
+        } else {
+            printReport("testLoop: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testSwitchDefault1I"), 3);
+        if (ret != null) {
+            printReport("testSwitchDefault1I: " + ret);
+        } else {
+            printReport("testSwitchDefault1I: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testSwitch1I"), 2);
+        if (ret != null) {
+            printReport("testSwitch1I: " + ret);
+        } else {
+            printReport("testSwitch1I: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testIfElse1I"), 222);
+        if (ret != null) {
+            printReport("testIfElse1I: " + ret);
+        } else {
+            printReport("testIfElse1I: no VALUE");
+        }
+        ret = (Integer) invoke(compile("testIfElse2I"), 19, 64);
+        if (ret != null) {
+            printReport("testIfElse2I: " + (char) ret.intValue());
+        } else {
+            printReport("testIfElse2I: no VALUE");
+        }
+        Boolean bret = (Boolean) invoke(compile("testIntegerTestBranch2I"),
+                                        0xff00, 0x00ff);
+        if (bret != null) {
+            printReport("testIntegerTestBranch2I: " + bret);
+            printReport("testIntegerTestBranch2I: actual: " +
+                                testIntegerTestBranch2I(0xff00, 0x00ff));
+        } else {
+            printReport("testIntegerTestBranch2I: no VALUE");
+        }
+        compile("testStatic");
+        compile("testCall");
+        compile("testLookupSwitch1I");
+    }
+
+    public static boolean testIntegerTestBranch2I(int x, int y) {
+        return (x & y) == 0;
     }
 
     public static int testLoop(int n) {
@@ -45,6 +85,31 @@ public class ControlPTXTest extends PTXTestBase {
             sum++;
         }
         return sum;
+    }
+
+    public static int testIfElse1I(int n) {
+        if (n > 22) {
+            return 42;
+        } else {
+            return -42;
+        }
+    }
+
+    public static int testIfElse2I(int c, int y) {
+        if (c > 19) {
+            return 'M';    // millenial
+        } else if (y > 84) {
+            return 'Y';    // young
+        } else {
+            return 'O';    // old
+        }
+    }
+
+    public static int testSwitchDefault1I(int a) {
+        switch (a) {
+            default:
+                return 4;
+        }
     }
 
     public static int testSwitch1I(int a) {
@@ -61,31 +126,31 @@ public class ControlPTXTest extends PTXTestBase {
     public static int testLookupSwitch1I(int a) {
         switch (a) {
             case 0:
-                return 1;
+                return 10;
             case 1:
-                return 2;
+                return 11;
             case 2:
-                return 3;
+                return 12;
             case 3:
-                return 1;
+                return 13;
             case 4:
-                return 2;
+                return 14;
             case 5:
-                return 3;
+                return 15;
             case 6:
-                return 1;
+                return 16;
             case 7:
-                return 2;
+                return 17;
             case 8:
-                return 3;
+                return 18;
             case 9:
-                return 1;
+                return 19;
             case 10:
-                return 2;
+                return 20;
             case 11:
-                return 3;
+                return 21;
             default:
-                return -1;
+                return 42;
         }
     }
 
@@ -100,7 +165,7 @@ public class ControlPTXTest extends PTXTestBase {
         return a + b;
     }
 
-    public static int testCall(@SuppressWarnings("unused") Object o, int a, int b) {
+    public static int testCall(int a, int b) {
         return method(a, b);
     }
 

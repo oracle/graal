@@ -22,97 +22,54 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
+import static com.oracle.graal.lir.ptx.ThreadDimension.*;
 
-import org.junit.*;
+import com.oracle.graal.lir.ptx.ParallelOver;
+import com.oracle.graal.lir.ptx.Warp;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import org.junit.Test;
 
 public class ArrayPTXTest extends PTXTestBase {
 
-    @Ignore
     @Test
     public void testArray() {
-        int[] arrayI = {
-            1, 2, 3, 4, 5
+        int[] array1 = {
+            1, 2, 3, 4, 5, 6, 7, 8, 9
         };
-        Integer resI = (Integer) invoke(compile("testArray1I"), arrayI, 3);
-        printReport("testArray1I: " + resI);
-        // compile("testArray1J");
-        // compile("testArray1B");
-        // compile("testArray1S");
-        // compile("testArray1C");
-        // compile("testArray1F");
-        // compile("testArray1D");
-        // compile("testArray1L");
-        // compile("testStoreArray1I");
-        // compile("testStoreArray1J");
-        // compile("testStoreArray1B");
-        // compile("testStoreArray1S");
-        // compile("testStoreArray1F");
-        // compile("testStoreArray1D");
-    }
+        int[] array2 = {
+            1, 2, 3, 4, 5, 6, 7, 8, 9
+        };
+        int[] array3 = {
+            1, 2, 3, 4, 5, 6, 7, 8, 9
+        };
 
-    public static int testArray1I(int[] array, int i) {
-        return array[i];
-    }
+        invoke(compile("testStoreArray1I"), array1, 2);
+        printReport("testStoreArray1I: " + Arrays.toString(array1));
 
-    public static long testArray1J(long[] array, int i) {
-        return array[i];
-    }
+        invoke(compile("testStoreArrayWarp0"), array2, 2);
+        printReport("testStoreArrayWarp0: " + Arrays.toString(array2));
 
-    public static byte testArray1B(byte[] array, int i) {
-        return array[i];
-    }
-
-    public static short testArray1S(short[] array, int i) {
-        return array[i];
-    }
-
-    public static char testArray1C(char[] array, int i) {
-        return array[i];
-    }
-
-    public static float testArray1F(float[] array, int i) {
-        return array[i];
-    }
-
-    public static double testArray1D(double[] array, int i) {
-        return array[i];
-    }
-
-    public static Object testArray1L(Object[] array, int i) {
-        return array[i];
-    }
-
-    public static void testStoreArray1I(int[] array, int i, int val) {
-        array[i] = val;
-    }
-
-    public static void testStoreArray1B(byte[] array, int i, byte val) {
-        array[i] = val;
-    }
-
-    public static void testStoreArray1S(short[] array, int i, short val) {
-        array[i] = val;
-    }
-
-    public static void testStoreArray1J(long[] array, int i, long val) {
-        array[i] = val;
-    }
-
-    public static void testStoreArray1F(float[] array, int i, float val) {
-        array[i] = val;
-    }
-
-    public static void testStoreArray1D(double[] array, int i, double val) {
-        array[i] = val;
-    }
-
-    public static void printReport(String message) {
-        // CheckStyle: stop system..print check
-        System.out.println(message);
-        // CheckStyle: resume system..print check
+        invoke(compile("testStoreArrayWarp1I"), array3, 2);
+        printReport("testStoreArrayWarp1I: " + Arrays.toString(array3));
 
     }
+
+    public static void testStoreArray1I(int[] array, int i) {
+        array[i] = 42;
+    }
+
+    public static void testStoreArrayWarp0(int[] array,
+                                           @Warp(dimension = X) int i) {
+        array[i] = 42;
+    }
+
+    public static void testStoreArrayWarp1I(@ParallelOver(dimension = X) int[] array,
+                                            @Warp(dimension = X) int i) {
+        array[i] = 42;
+    }
+
 
     public static void main(String[] args) {
         ArrayPTXTest test = new ArrayPTXTest();

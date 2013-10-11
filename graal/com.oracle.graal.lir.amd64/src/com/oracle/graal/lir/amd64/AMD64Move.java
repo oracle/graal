@@ -441,7 +441,7 @@ public class AMD64Move {
          */
         switch (input.getKind().getStackKind()) {
             case Int:
-                if (tasm.runtime.needsDataPatch(input)) {
+                if (tasm.codeCache.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
                 }
                 // Do not optimize with an XOR as this instruction may be between
@@ -451,7 +451,7 @@ public class AMD64Move {
 
                 break;
             case Long:
-                if (tasm.runtime.needsDataPatch(input)) {
+                if (tasm.codeCache.needsDataPatch(input)) {
                     tasm.recordDataReferenceInCode(input, 0, true);
                 }
                 // Do not optimize with an XOR as this instruction may be between
@@ -462,7 +462,7 @@ public class AMD64Move {
             case Float:
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
-                    assert !tasm.runtime.needsDataPatch(input);
+                    assert !tasm.codeCache.needsDataPatch(input);
                     masm.xorps(asFloatReg(result), asFloatReg(result));
                 } else {
                     masm.movflt(asFloatReg(result), (AMD64Address) tasm.asFloatConstRef(input));
@@ -471,7 +471,7 @@ public class AMD64Move {
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
-                    assert !tasm.runtime.needsDataPatch(input);
+                    assert !tasm.codeCache.needsDataPatch(input);
                     masm.xorpd(asDoubleReg(result), asDoubleReg(result));
                 } else {
                     masm.movdbl(asDoubleReg(result), (AMD64Address) tasm.asDoubleConstRef(input));
@@ -496,7 +496,7 @@ public class AMD64Move {
     }
 
     private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
-        assert !tasm.runtime.needsDataPatch(input);
+        assert !tasm.codeCache.needsDataPatch(input);
         AMD64Address dest = (AMD64Address) tasm.asAddress(result);
         switch (input.getKind().getStackKind()) {
             case Int:

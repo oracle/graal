@@ -26,6 +26,9 @@ import java.util.*;
 
 import com.oracle.graal.nodes.*;
 
+/**
+ * A compiler phase that can apply an ordered collection of phases to a graph.
+ */
 public class PhaseSuite<C> extends BasePhase<C> {
 
     private final List<BasePhase<? super C>> phases;

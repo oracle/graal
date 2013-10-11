@@ -39,7 +39,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
     @Test
     public void lookupJavaTypeTest() {
         for (Class c : classes) {
-            ResolvedJavaType type = runtime.lookupJavaType(c);
+            ResolvedJavaType type = metaAccess.lookupJavaType(c);
             assertNotNull(type);
             assertEquals(c.getModifiers(), type.getModifiers());
             if (!type.isArray()) {
@@ -53,12 +53,12 @@ public class TestMetaAccessProvider extends TypeUniverse {
     public void lookupJavaMethodTest() {
         for (Class c : classes) {
             for (Method reflect : c.getDeclaredMethods()) {
-                ResolvedJavaMethod method = runtime.lookupJavaMethod(reflect);
+                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(reflect);
                 assertNotNull(method);
                 int expected = reflect.getModifiers() & Modifier.methodModifiers();
                 int actual = method.getModifiers();
                 assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
-                assertTrue(method.getDeclaringClass().equals(runtime.lookupJavaType(reflect.getDeclaringClass())));
+                assertTrue(method.getDeclaringClass().equals(metaAccess.lookupJavaType(reflect.getDeclaringClass())));
             }
         }
     }
@@ -67,12 +67,12 @@ public class TestMetaAccessProvider extends TypeUniverse {
     public void lookupJavaFieldTest() {
         for (Class c : classes) {
             for (Field reflect : c.getDeclaredFields()) {
-                ResolvedJavaField field = runtime.lookupJavaField(reflect);
+                ResolvedJavaField field = metaAccess.lookupJavaField(reflect);
                 assertNotNull(field);
                 int expected = reflect.getModifiers() & Modifier.fieldModifiers();
                 int actual = field.getModifiers();
                 assertEquals(String.format("%s: 0x%x != 0x%x", reflect, expected, actual), expected, actual);
-                assertTrue(field.getDeclaringClass().equals(runtime.lookupJavaType(reflect.getDeclaringClass())));
+                assertTrue(field.getDeclaringClass().equals(metaAccess.lookupJavaType(reflect.getDeclaringClass())));
             }
         }
     }
@@ -82,11 +82,11 @@ public class TestMetaAccessProvider extends TypeUniverse {
         for (Constant c : constants) {
             if (c.getKind() == Kind.Object && !c.isNull()) {
                 Object o = c.asObject();
-                ResolvedJavaType type = runtime.lookupJavaType(c);
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 assertNotNull(type);
-                assertTrue(type.equals(runtime.lookupJavaType(o.getClass())));
+                assertTrue(type.equals(metaAccess.lookupJavaType(o.getClass())));
             } else {
-                assertEquals(runtime.lookupJavaType(c), null);
+                assertEquals(metaAccess.lookupJavaType(c), null);
             }
         }
     }
@@ -96,9 +96,9 @@ public class TestMetaAccessProvider extends TypeUniverse {
         for (Constant c1 : constants) {
             for (Constant c2 : constants) {
                 // test symmetry
-                assertEquals(runtime.constantEquals(c1, c2), runtime.constantEquals(c2, c1));
+                assertEquals(constantReflection.constantEquals(c1, c2), constantReflection.constantEquals(c2, c1));
                 if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
-                    assertEquals(c1.equals(c2), runtime.constantEquals(c2, c1));
+                    assertEquals(c1.equals(c2), constantReflection.constantEquals(c2, c1));
                 }
             }
         }
@@ -107,7 +107,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
     @Test
     public void lookupArrayLengthTest() {
         for (Constant c : constants) {
-            Integer actual = runtime.lookupArrayLength(c);
+            Integer actual = constantReflection.lookupArrayLength(c);
             if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
                 assertNull(actual);
             } else {

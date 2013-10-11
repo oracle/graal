@@ -21,19 +21,15 @@
  * questions.
  */
 
-package com.oracle.graal.hotspot.phases;
+package com.oracle.graal.java;
 
 import static com.oracle.graal.api.meta.MetaUtil.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
@@ -41,60 +37,56 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
 /**
- * Verifies that a class that declares one or more HotSpot {@linkplain OptionValue options} has a
- * class initializer that only initializes the option(s). This sanity check prevents an option being
- * read to initialize some global state before it is parsed on the command line. The latter occurs
- * if an option declaring class has a class initializer that reads options or triggers other class
- * initializers that read options.
+ * Verifies that a class declaring one or more {@linkplain OptionValue options} has a class
+ * initializer that only initializes the option(s). This sanity check mitigates the possibility of
+ * an option value being used before the code that sets the value (e.g., from the command line) has
+ * been executed.
  */
-public class VerifyHotSpotOptionsPhase extends Phase {
+public class VerifyOptionsPhase extends Phase {
 
-    public static boolean checkOptions() {
-        HotSpotRuntime runtime = graalRuntime().getRuntime();
+    public static boolean checkOptions(MetaAccessProvider metaAccess) {
         ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
-        Set<HotSpotResolvedObjectType> checked = new HashSet<>();
+        Set<ResolvedJavaType> checked = new HashSet<>();
         for (Options opts : sl) {
             for (OptionDescriptor desc : opts) {
-                if (HotSpotOptions.isHotSpotOption(desc)) {
-                    HotSpotResolvedObjectType holder = (HotSpotResolvedObjectType) runtime.lookupJavaType(desc.getDeclaringClass());
-                    checkType(holder, desc, runtime, checked);
-                }
+                ResolvedJavaType holder = metaAccess.lookupJavaType(desc.getDeclaringClass());
+                checkType(holder, desc, metaAccess, checked);
             }
         }
         return true;
     }
 
-    private static void checkType(HotSpotResolvedObjectType type, OptionDescriptor option, HotSpotRuntime runtime, Set<HotSpotResolvedObjectType> checked) {
+    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, Set<ResolvedJavaType> checked) {
         if (!checked.contains(type)) {
             checked.add(type);
-            HotSpotResolvedObjectType superType = type.getSupertype();
+            ResolvedJavaType superType = type.getSuperclass();
             if (superType != null && !MetaUtil.isJavaLangObject(superType)) {
-                checkType(superType, option, runtime, checked);
+                checkType(superType, option, metaAccess, checked);
             }
-            for (ResolvedJavaMethod method : type.getMethods()) {
+            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 if (method.isClassInitializer()) {
                     StructuredGraph graph = new StructuredGraph(method);
-                    new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                    new VerifyHotSpotOptionsPhase(type, runtime, option).apply(graph);
+                    new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                    new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
                 }
             }
         }
     }
 
-    private final HotSpotRuntime runtime;
+    private final MetaAccessProvider metaAccess;
     private final ResolvedJavaType declaringClass;
     private final ResolvedJavaType optionValueType;
     private final Set<ResolvedJavaType> boxingTypes;
     private final OptionDescriptor option;
 
-    public VerifyHotSpotOptionsPhase(ResolvedJavaType declaringClass, HotSpotRuntime runtime, OptionDescriptor option) {
-        this.runtime = runtime;
+    public VerifyOptionsPhase(ResolvedJavaType declaringClass, MetaAccessProvider metaAccess, OptionDescriptor option) {
+        this.metaAccess = metaAccess;
         this.declaringClass = declaringClass;
-        this.optionValueType = runtime.lookupJavaType(OptionValue.class);
+        this.optionValueType = metaAccess.lookupJavaType(OptionValue.class);
         this.option = option;
         this.boxingTypes = new HashSet<>();
         for (Class c : new Class[]{Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Float.class, Long.class, Double.class}) {
-            this.boxingTypes.add(runtime.lookupJavaType(c));
+            this.boxingTypes.add(metaAccess.lookupJavaType(c));
         }
     }
 
@@ -109,7 +101,7 @@ public class VerifyHotSpotOptionsPhase extends Phase {
             }
         } else if (boxingTypes.contains(holder)) {
             return method.getName().equals("valueOf");
-        } else if (method.getDeclaringClass() == runtime.lookupJavaType(Class.class)) {
+        } else if (method.getDeclaringClass() == metaAccess.lookupJavaType(Class.class)) {
             return method.getName().equals("desiredAssertionStatus");
         } else if (method.getDeclaringClass().equals(declaringClass)) {
             return (method.getName().equals("$jacocoInit"));
@@ -121,7 +113,7 @@ public class VerifyHotSpotOptionsPhase extends Phase {
     protected void run(StructuredGraph graph) {
         for (ValueNode node : graph.getNodes().filter(ValueNode.class)) {
             if (node instanceof StoreFieldNode) {
-                HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) ((StoreFieldNode) node).field();
+                ResolvedJavaField field = ((StoreFieldNode) node).field();
                 verify(field.getDeclaringClass() == declaringClass, node, "store to field " + format("%H.%n", field));
                 verify(isStatic(field.getModifiers()), node, "store to field " + format("%H.%n", field));
                 if (optionValueType.isAssignableFrom((ResolvedJavaType) field.getType())) {

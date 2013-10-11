@@ -24,7 +24,6 @@ package com.oracle.graal.truffle.substitutions;
 
 import java.util.concurrent.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.*;
@@ -64,12 +63,51 @@ public class CompilerDirectivesSubstitutions {
     @MacroSubstitution(macro = BailoutNode.class, isStatic = true)
     public static native void bailout(String reason);
 
-    @MacroSubstitution(macro = TypeCastMacroNode.class, isStatic = true)
-    public static native Object unsafeCast(Object value, Class clazz, Object receiver, Object customType);
+    @MacroSubstitution(macro = UnsafeTypeCastMacroNode.class, isStatic = true)
+    public static native Object unsafeCast(Object value, Class clazz, boolean condition);
 
-    @MacroSubstitution(macro = CustomTypeCheckMacroNode.class, isStatic = true)
-    public static native boolean customTypeCheck(boolean condition, Object value, Object customType);
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native boolean unsafeGetBoolean(Object receiver, long offset, boolean condition, Object locationIdentity);
 
-    @MacroSubstitution(macro = UnsafeCustomizationMacroNode.class, isStatic = true)
-    public static native Object unsafeCustomization(Object receiver, Object customType, Object locationIdentity);
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native byte unsafeGetByte(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native short unsafeGetShort(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native int unsafeGetInt(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native float unsafeGetFloat(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native double unsafeGetDouble(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
+    public static native Object unsafeGetObject(Object receiver, long offset, boolean condition, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutBoolean(Object receiver, long offset, boolean value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutByte(Object receiver, long offset, byte value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutShort(Object receiver, long offset, short value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutInt(Object receiver, long offset, int value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutLong(Object receiver, long offset, long value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutFloat(Object receiver, long offset, float value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutDouble(Object receiver, long offset, double value, Object locationIdentity);
+
+    @MacroSubstitution(macro = CustomizedUnsafeStoreMacroNode.class, isStatic = true)
+    public static native void unsafePutObject(Object receiver, long offset, Object value, Object locationIdentity);
 }

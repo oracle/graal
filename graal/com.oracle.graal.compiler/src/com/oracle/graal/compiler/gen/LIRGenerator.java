@@ -60,7 +60,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public final LIR lir;
 
     protected final StructuredGraph graph;
-    protected final CodeCacheProvider runtime;
+    protected final MetaAccessProvider metaAccess;
+    protected final CodeCacheProvider codeCache;
     protected final TargetDescription target;
     protected final CallingConvention cc;
 
@@ -85,16 +86,17 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(Constant c);
 
-    public LIRGenerator(StructuredGraph graph, CodeCacheProvider runtime, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public LIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         this.graph = graph;
-        this.runtime = runtime;
+        this.metaAccess = metaAccess;
+        this.codeCache = codeCache;
         this.target = target;
         this.frameMap = frameMap;
         if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
             this.cc = cc;
         } else {
-            JavaType[] parameterTypes = new JavaType[]{runtime.lookupJavaType(long.class)};
-            CallingConvention tmp = frameMap.registerConfig.getCallingConvention(JavaCallee, runtime.lookupJavaType(void.class), parameterTypes, target, false);
+            JavaType[] parameterTypes = new JavaType[]{metaAccess.lookupJavaType(long.class)};
+            CallingConvention tmp = frameMap.registerConfig.getCallingConvention(JavaCallee, metaAccess.lookupJavaType(void.class), parameterTypes, target, false);
             this.cc = new CallingConvention(cc.getStackSize(), cc.getReturn(), tmp.getArgument(0));
         }
         this.nodeOperands = graph.createNodeMap();
@@ -113,8 +115,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public CodeCacheProvider getRuntime() {
-        return runtime;
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
+    @Override
+    public CodeCacheProvider getCodeCache() {
+        return codeCache;
     }
 
     public StructuredGraph getGraph() {
@@ -228,26 +235,26 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateFor(deopt.getDeoptimizationState(), deopt.getDeoptimizationReason());
+        return stateFor(deopt.getDeoptimizationState());
     }
 
     public LIRFrameState stateWithExceptionEdge(DeoptimizingNode deopt, LabelRef exceptionEdge) {
         if (!deopt.canDeoptimize()) {
             return null;
         }
-        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), deopt.getDeoptimizationReason(), exceptionEdge);
+        return stateForWithExceptionEdge(deopt.getDeoptimizationState(), exceptionEdge);
     }
 
-    public LIRFrameState stateFor(FrameState state, DeoptimizationReason reason) {
-        return stateForWithExceptionEdge(state, reason, null);
+    public LIRFrameState stateFor(FrameState state) {
+        return stateForWithExceptionEdge(state, null);
     }
 
-    public LIRFrameState stateForWithExceptionEdge(FrameState state, DeoptimizationReason reason, LabelRef exceptionEdge) {
+    public LIRFrameState stateForWithExceptionEdge(FrameState state, LabelRef exceptionEdge) {
         if (needOnlyOopMaps()) {
-            return new LIRFrameState(null, null, null, (short) -1);
+            return new LIRFrameState(null, null, null);
         }
         assert state != null;
-        return debugInfoBuilder.build(state, lir.getDeoptimizationReasons().addSpeculation(reason), exceptionEdge);
+        return debugInfoBuilder.build(state, exceptionEdge);
     }
 
     /**
@@ -288,7 +295,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         assert lir.lir(block) == null : "LIR list already computed for this block";
         lir.setLir(block, new ArrayList<LIRInstruction>());
 
-        append(new LabelOp(new Label(), block.isAligned()));
+        append(new LabelOp(new Label(block.getId()), block.isAligned()));
 
         if (TraceLIRGeneratorLevel.getValue() >= 1) {
             TTY.println("BEGIN Generating LIR for block B" + block.getId());
@@ -551,7 +558,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public void emitInvoke(Invoke x) {
         LoweredCallTargetNode callTarget = (LoweredCallTargetNode) x.callTarget();
-        CallingConvention invokeCc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(runtime), callTarget.signature(), target(), false);
+        CallingConvention invokeCc = frameMap.registerConfig.getCallingConvention(callTarget.callType(), x.asNode().stamp().javaType(metaAccess), callTarget.signature(), target(), false);
         frameMap.callsMethod(invokeCc);
 
         Value[] parameters = visitInvokeArguments(invokeCc, callTarget.arguments());
@@ -619,10 +626,10 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         LIRFrameState state = null;
         if (linkage.canDeoptimize()) {
             if (info != null) {
-                state = stateFor(info.getDeoptimizationState(), info.getDeoptimizationReason());
+                state = stateFor(info.getDeoptimizationState());
             } else {
                 assert needOnlyOopMaps();
-                state = new LIRFrameState(null, null, null, (short) -1);
+                state = new LIRFrameState(null, null, null);
             }
         }
 

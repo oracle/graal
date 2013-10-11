@@ -53,15 +53,15 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     public PointerTest() {
         target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(runtime, new Assumptions(false), target);
+        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getLowerer(), new Assumptions(false), target);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
 
     @Override
     protected StructuredGraph parse(Method m) {
-        ResolvedJavaMethod resolvedMethod = runtime.lookupJavaMethod(m);
-        return installer.makeGraph(resolvedMethod, null, inliningPolicy.get());
+        ResolvedJavaMethod resolvedMethod = getMetaAccess().lookupJavaMethod(m);
+        return installer.makeGraph(resolvedMethod, null, inliningPolicy.get(), false);
     }
 
     @Test
@@ -404,7 +404,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     private void assertNumWordCasts(String snippetName, int expectedWordCasts) {
         Assumptions assumptions = new Assumptions(true);
-        HighTierContext context = new HighTierContext(runtime(), assumptions, replacements, null, null, OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, null, OptimisticOptimizations.ALL);
 
         StructuredGraph graph = parse(snippetName);
         new CanonicalizerPhase(false).apply(graph, context);

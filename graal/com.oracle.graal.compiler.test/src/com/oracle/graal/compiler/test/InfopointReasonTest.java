@@ -58,8 +58,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
     public void callInfopoints() {
         final Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, getDefaultPhasePlan(),
+        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), backend, getCodeCache().getTarget(), null, getDefaultPhasePlan(),
                         OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
@@ -80,8 +80,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
             }
         }
         assertTrue(graphLineSPs > 0);
-        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), runtime, replacements, backend, runtime.getTarget(), null, getDefaultPhasePlan(true),
+        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), backend, getCodeCache().getTarget(), null, getDefaultPhasePlan(true),
                         OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {

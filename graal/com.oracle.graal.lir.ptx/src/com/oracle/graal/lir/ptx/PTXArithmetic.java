@@ -75,7 +75,7 @@ public enum PTXArithmetic {
                 case D2I:
                 case D2L:
                 case D2F:
-                    break;  // cvt handles the move 
+                    break;  // cvt handles the move
                 default:
                     PTXMove.move(tasm, masm, result, x);
             }
@@ -422,11 +422,73 @@ public enum PTXArithmetic {
     }
 
     private static void verifyKind(PTXArithmetic opcode, Value result, Value x, Value y) {
-        if (((opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
-            || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
-            || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
-            || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double)) == false) {
-                throw GraalInternalError.shouldNotReachHere("opcode: "  + opcode.name() + " x: " + x.getKind() + " y: " + y.getKind());
+        Kind rk;
+        Kind xk;
+        Kind yk;
+        Kind xsk;
+        Kind ysk;
+
+        switch (opcode) {
+            case IADD:
+            case ISUB:
+            case IMUL:
+            case IDIV:
+            case IREM:
+            case IAND:
+            case IOR:
+            case IXOR:
+            case ISHL:
+            case ISHR:
+            case IUSHR:
+                rk = result.getKind();
+                xsk = x.getKind().getStackKind();
+                ysk = y.getKind().getStackKind();
+                assert rk == Kind.Int && xsk == Kind.Int && ysk == Kind.Int;
+                break;
+            case LADD:
+            case LSUB:
+            case LMUL:
+            case LDIV:
+            case LREM:
+            case LAND:
+            case LOR:
+            case LXOR:
+                rk = result.getKind();
+                xk = x.getKind();
+                yk = y.getKind();
+                assert rk == Kind.Long && xk == Kind.Long && yk == Kind.Long;
+                break;
+            case LSHL:
+            case LSHR:
+            case LUSHR:
+                rk = result.getKind();
+                xk = x.getKind();
+                yk = y.getKind();
+                assert rk == Kind.Long && xk == Kind.Long && (yk == Kind.Int || yk == Kind.Long);
+                break;
+            case FADD:
+            case FSUB:
+            case FMUL:
+            case FDIV:
+            case FREM:
+                rk = result.getKind();
+                xk = x.getKind();
+                yk = y.getKind();
+                assert rk == Kind.Float && xk == Kind.Float && yk == Kind.Float;
+                break;
+            case DADD:
+            case DSUB:
+            case DMUL:
+            case DDIV:
+            case DREM:
+                rk = result.getKind();
+                xk = x.getKind();
+                yk = y.getKind();
+                assert rk == Kind.Double && xk == Kind.Double && yk == Kind.Double :
+                    "opcode=" + opcode + ", result kind=" + rk + ", x kind=" + xk + ", y kind=" + yk;
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
         }
     }
 }
