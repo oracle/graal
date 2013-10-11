@@ -132,8 +132,9 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final MetaAccessProvider metaAccess,
-                    final CodeCacheProvider codeCache, final LoweringProvider lowerer, final Replacements replacements, final Backend backend, final TargetDescription target, final GraphCache cache,
-                    final PhasePlan plan, final OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog, final Suites suites, final CompilationResult compilationResult) {
+                    final ConstantReflectionProvider constantReflection, final CodeCacheProvider codeCache, final LoweringProvider lowerer, final Replacements replacements, final Backend backend,
+                    final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog,
+                    final Suites suites, final CompilationResult compilationResult) {
         Debug.scope("GraalCompiler", new Object[]{graph, codeCache}, new Runnable() {
 
             public void run() {
@@ -142,7 +143,7 @@ public class GraalCompiler {
 
                     public LIR call() {
                         try (TimerCloseable a = FrontEnd.start()) {
-                            return emitHIR(metaAccess, codeCache, lowerer, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+                            return emitHIR(metaAccess, codeCache, constantReflection, lowerer, target, graph, replacements, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
                         }
                     }
                 });
@@ -184,8 +185,9 @@ public class GraalCompiler {
      * @param codeCache
      * @param target
      */
-    public static LIR emitHIR(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, TargetDescription target, final StructuredGraph graph, Replacements replacements,
-                    Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog, final Suites suites) {
+    public static LIR emitHIR(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, TargetDescription target,
+                    final StructuredGraph graph, Replacements replacements, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog, final Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -198,13 +200,13 @@ public class GraalCompiler {
             Debug.dump(graph, "initial state");
         }
 
-        HighTierContext highTierContext = new HighTierContext(metaAccess, codeCache, lowerer, assumptions, replacements, cache, plan, optimisticOpts);
+        HighTierContext highTierContext = new HighTierContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements, cache, plan, optimisticOpts);
         suites.getHighTier().apply(graph, highTierContext);
 
-        MidTierContext midTierContext = new MidTierContext(metaAccess, codeCache, lowerer, assumptions, replacements, target, optimisticOpts);
+        MidTierContext midTierContext = new MidTierContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements, target, optimisticOpts);
         suites.getMidTier().apply(graph, midTierContext);
 
-        LowTierContext lowTierContext = new LowTierContext(metaAccess, codeCache, lowerer, assumptions, replacements, target);
+        LowTierContext lowTierContext = new LowTierContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements, target);
         suites.getLowTier().apply(graph, lowTierContext);
 
         // we do not want to store statistics about OSR compilations because it may prevent inlining

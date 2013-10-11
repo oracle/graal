@@ -322,15 +322,18 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements SnippetTemplateCache {
 
         protected final MetaAccessProvider metaAccess;
+        protected final ConstantReflectionProvider constantReflection;
         protected final CodeCacheProvider codeCache;
         protected final LoweringProvider lowerer;
         protected final Replacements replacements;
         protected final TargetDescription target;
         private final ConcurrentHashMap<CacheKey, SnippetTemplate> templates;
 
-        protected AbstractTemplates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
+        protected AbstractTemplates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
+                        TargetDescription target) {
             this.metaAccess = metaAccess;
             this.codeCache = codeCache;
+            this.constantReflection = constantReflection;
             this.lowerer = lowerer;
             this.replacements = replacements;
             this.target = target;
@@ -365,7 +368,7 @@ public class SnippetTemplate {
 
                         @Override
                         public SnippetTemplate call() throws Exception {
-                            return new SnippetTemplate(metaAccess, codeCache, lowerer, replacements, args);
+                            return new SnippetTemplate(metaAccess, constantReflection, codeCache, lowerer, replacements, args);
                         }
                     });
                     templates.put(args.cacheKey, template);
@@ -396,13 +399,14 @@ public class SnippetTemplate {
     /**
      * Creates a snippet template.
      */
-    protected SnippetTemplate(final MetaAccessProvider metaAccess, final CodeCacheProvider codeCache, final LoweringProvider lowerer, final Replacements replacements, Arguments args) {
+    protected SnippetTemplate(final MetaAccessProvider metaAccess, final ConstantReflectionProvider constantReflection, final CodeCacheProvider codeCache, final LoweringProvider lowerer,
+                    final Replacements replacements, Arguments args) {
         StructuredGraph snippetGraph = replacements.getSnippet(args.info.method);
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
-        PhaseContext context = new PhaseContext(metaAccess, codeCache, lowerer, replacements.getAssumptions(), replacements);
+        PhaseContext context = new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, replacements.getAssumptions(), replacements);
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
@@ -512,7 +516,7 @@ public class SnippetTemplate {
         Debug.scope("LoweringSnippetTemplate", snippetCopy, new Runnable() {
 
             public void run() {
-                PhaseContext c = new PhaseContext(metaAccess, codeCache, lowerer, new Assumptions(false), replacements);
+                PhaseContext c = new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, new Assumptions(false), replacements);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
             }
         });

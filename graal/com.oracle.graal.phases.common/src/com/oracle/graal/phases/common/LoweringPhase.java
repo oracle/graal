@@ -68,6 +68,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public ConstantReflectionProvider getConstantReflection() {
+            return context.getConstantReflection();
+        }
+
+        @Override
         public MetaAccessProvider getMetaAccess() {
             return context.getMetaAccess();
         }

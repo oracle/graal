@@ -78,6 +78,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     private final CodeCacheProvider codeCache;
     private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
     private final LoweringProvider lowerer;
     protected final Replacements replacements;
     protected final Backend backend;
@@ -86,6 +87,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     public GraalCompilerTest() {
         this.replacements = Graal.getRequiredCapability(Replacements.class);
         this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
         this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
         this.lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
@@ -164,6 +166,10 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected CodeCacheProvider getCodeCache() {
         return codeCache;
+    }
+
+    protected ConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
     }
 
     protected MetaAccessProvider getMetaAccess() {
@@ -480,8 +486,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getCodeCache(), getLowerer(), replacements, backend, getCodeCache().getTarget(), null,
-                                phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getConstantReflection(), getCodeCache(), getLowerer(), replacements, backend,
+                                getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }

@@ -110,7 +110,7 @@ public class StampCanonicalizerTest extends GraalCompilerTest {
 
     private void testZeroReturn(String methodName) {
         StructuredGraph graph = parse(methodName);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), new Assumptions(false), replacements));
         new DeadCodeEliminationPhase().apply(graph);
         assertConstantReturn(graph, 0);
     }

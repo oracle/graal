@@ -44,7 +44,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
     static class Template extends AbstractTemplates {
 
         Template(HotSpotRuntime runtime, Replacements replacements, TargetDescription target, Class<? extends Snippets> declaringClass) {
-            super(runtime, runtime, runtime, replacements, target);
+            super(runtime, runtime, runtime, runtime, replacements, target);
             this.info = snippet(declaringClass, null);
         }
 

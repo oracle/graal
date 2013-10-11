@@ -96,9 +96,9 @@ public class TestMetaAccessProvider extends TypeUniverse {
         for (Constant c1 : constants) {
             for (Constant c2 : constants) {
                 // test symmetry
-                assertEquals(metaAccess.constantEquals(c1, c2), metaAccess.constantEquals(c2, c1));
+                assertEquals(constantReflection.constantEquals(c1, c2), constantReflection.constantEquals(c2, c1));
                 if (c1.getKind() != Kind.Object && c2.getKind() != Kind.Object) {
-                    assertEquals(c1.equals(c2), metaAccess.constantEquals(c2, c1));
+                    assertEquals(c1.equals(c2), constantReflection.constantEquals(c2, c1));
                 }
             }
         }
@@ -107,7 +107,7 @@ public class TestMetaAccessProvider extends TypeUniverse {
     @Test
     public void lookupArrayLengthTest() {
         for (Constant c : constants) {
-            Integer actual = metaAccess.lookupArrayLength(c);
+            Integer actual = constantReflection.lookupArrayLength(c);
             if (c.getKind() != Kind.Object || c.isNull() || !c.asObject().getClass().isArray()) {
                 assertNull(actual);
             } else {

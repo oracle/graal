@@ -200,8 +200,9 @@ public class InstanceOfSnippets implements Snippets {
         private final SnippetInfo instanceofSecondary = snippet(InstanceOfSnippets.class, "instanceofSecondary");
         private final SnippetInfo instanceofDynamic = snippet(InstanceOfSnippets.class, "instanceofDynamic");
 
-        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, lowerer, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
+                        TargetDescription target) {
+            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
         }
 
         @Override

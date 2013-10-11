@@ -206,8 +206,9 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
         private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
 
-        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, lowerer, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
+                        TargetDescription target) {
+            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
             for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));

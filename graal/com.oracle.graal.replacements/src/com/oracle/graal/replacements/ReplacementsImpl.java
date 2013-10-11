@@ -53,6 +53,7 @@ public class ReplacementsImpl implements Replacements {
 
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
+    protected final ConstantReflectionProvider constantReflection;
     protected final LoweringProvider lowerer;
     protected final TargetDescription target;
     protected final Assumptions assumptions;
@@ -69,8 +70,10 @@ public class ReplacementsImpl implements Replacements {
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions, TargetDescription target) {
+    public ReplacementsImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions,
+                    TargetDescription target) {
         this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
         this.codeCache = codeCache;
         this.lowerer = lowerer;
         this.target = target;
@@ -340,7 +343,7 @@ public class ReplacementsImpl implements Replacements {
                     new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
-                        new CanonicalizerPhase(true).apply(graph, new PhaseContext(metaAccess, codeCache, lowerer, assumptions, ReplacementsImpl.this));
+                        new CanonicalizerPhase(true).apply(graph, new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, ReplacementsImpl.this));
                     }
                 }
             });
@@ -360,7 +363,7 @@ public class ReplacementsImpl implements Replacements {
          */
         protected void afterInline(StructuredGraph caller, StructuredGraph callee, Object beforeInlineData) {
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(caller, new PhaseContext(metaAccess, codeCache, lowerer, assumptions, ReplacementsImpl.this));
+                new CanonicalizerPhase(true).apply(caller, new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, ReplacementsImpl.this));
             }
         }
 
@@ -371,7 +374,7 @@ public class ReplacementsImpl implements Replacements {
             new NodeIntrinsificationPhase(metaAccess).apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             if (OptCanonicalizer.getValue()) {
-                new CanonicalizerPhase(true).apply(graph, new PhaseContext(metaAccess, codeCache, lowerer, assumptions, ReplacementsImpl.this));
+                new CanonicalizerPhase(true).apply(graph, new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, ReplacementsImpl.this));
             }
         }
 

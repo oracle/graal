@@ -86,7 +86,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
             for (int i = 0; i < keyCount(); i++) {
                 Constant typeHub = keyAt(i);
                 assert constant.getKind() == typeHub.getKind();
-                if (tool.getMetaAccess().constantEquals(constant, typeHub)) {
+                if (tool.getConstantReflection().constantEquals(constant, typeHub)) {
                     survivingEdge = keySuccessorIndex(i);
                 }
             }

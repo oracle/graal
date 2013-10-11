@@ -67,6 +67,7 @@ import com.oracle.truffle.api.nodes.*;
 public class PartialEvaluator {
 
     private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
     private final CodeCacheProvider codeCache;
     private final LoweringProvider lowerer;
     private final ResolvedJavaMethod executeHelperMethod;
@@ -77,11 +78,13 @@ public class PartialEvaluator {
     private final HotSpotGraphCache cache;
     private final TruffleCache truffleCache;
 
-    public PartialEvaluator(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TruffleCache truffleCache) {
+    public PartialEvaluator(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements,
+                    TruffleCache truffleCache) {
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
+        this.constantReflection = constantReflection;
         this.lowerer = lowerer;
-        CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccess);
+        CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(metaAccess, constantReflection);
         this.canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue(), customCanonicalizer);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(metaAccess);
         this.replacements = replacements;
@@ -127,7 +130,7 @@ public class PartialEvaluator {
                 thisNode.replaceAndDelete(ConstantNode.forObject(node, metaAccess, graph));
 
                 // Canonicalize / constant propagate.
-                PhaseContext baseContext = new PhaseContext(metaAccess, codeCache, lowerer, assumptions, replacements);
+                PhaseContext baseContext = new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements);
                 canonicalizer.apply(graph, baseContext);
 
                 // Intrinsify methods.
@@ -161,7 +164,7 @@ public class PartialEvaluator {
                 // Additional inlining.
                 final PhasePlan plan = new PhasePlan();
                 canonicalizer.apply(graph, baseContext);
-                HighTierContext context = new HighTierContext(metaAccess, codeCache, lowerer, assumptions, replacements, cache, plan, OptimisticOptimizations.NONE);
+                HighTierContext context = new HighTierContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements, cache, plan, OptimisticOptimizations.NONE);
 
                 for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.class)) {
                     Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
@@ -194,7 +197,7 @@ public class PartialEvaluator {
     }
 
     private void expandTree(StructuredGraph graph, Assumptions assumptions) {
-        PhaseContext context = new PhaseContext(metaAccess, codeCache, lowerer, assumptions, replacements);
+        PhaseContext context = new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements);
         boolean changed;
         do {
             changed = false;

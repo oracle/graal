@@ -149,8 +149,9 @@ public class AMD64ConvertSnippets implements Snippets {
 
         private final EnumMap<Op, SnippetInfo> snippets;
 
-        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, lowerer, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
+                        TargetDescription target) {
+            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
 
             snippets = new EnumMap<>(Op.class);
             snippets.put(Op.F2I, snippet(AMD64ConvertSnippets.class, "f2i"));

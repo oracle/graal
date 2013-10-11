@@ -296,8 +296,9 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic");
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray");
 
-        public Templates(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, lowerer, replacements, target);
+        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
+                        TargetDescription target) {
+            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
         }
 
         /**

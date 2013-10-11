@@ -72,7 +72,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                 if (object.kind() == Kind.Object) {
                     Object base = object.asConstant().asObject();
                     if (base != null) {
-                        Constant constant = tool.getMetaAccess().readUnsafeConstant(kind, base, displacement, compressible);
+                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, base, displacement, compressible);
                         if (constant != null) {
                             return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
@@ -80,7 +80,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                 } else if (object.kind() == Kind.Long || object.kind().getStackKind() == Kind.Int) {
                     long base = object.asConstant().asLong();
                     if (base != 0L) {
-                        Constant constant = tool.getMetaAccess().readUnsafeConstant(kind, null, base + displacement, compressible);
+                        Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, null, base + displacement, compressible);
                         if (constant != null) {
                             return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }

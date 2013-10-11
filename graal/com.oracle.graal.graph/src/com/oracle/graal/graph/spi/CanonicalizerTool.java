@@ -32,6 +32,8 @@ public interface CanonicalizerTool {
 
     MetaAccessProvider getMetaAccess();
 
+    ConstantReflectionProvider getConstantReflection();
+
     boolean canonicalizeReads();
 
     void removeIfUnused(Node node);

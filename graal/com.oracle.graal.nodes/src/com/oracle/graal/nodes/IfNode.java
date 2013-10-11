@@ -183,7 +183,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (this.trueSuccessorProbability < probabilityB) {
                 // Reordering of those two if statements is beneficial from the point of view of
                 // their probabilities.
-                if (prepareForSwap(tool.getMetaAccess(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
+                if (prepareForSwap(tool.getConstantReflection(), condition(), nextIf.condition(), this.trueSuccessorProbability, probabilityB)) {
                     // Reording is allowed from (if1 => begin => if2) to (if2 => begin => if1).
                     assert intermediateBegin.next() == nextIf;
                     AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
@@ -208,7 +208,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private static boolean prepareForSwap(MetaAccessProvider metaAccess, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
+    private static boolean prepareForSwap(ConstantReflectionProvider constantReflection, LogicNode a, LogicNode b, double probabilityA, double probabilityB) {
         if (a instanceof InstanceOfNode) {
             InstanceOfNode instanceOfA = (InstanceOfNode) a;
             if (b instanceof IsNullNode) {
@@ -297,13 +297,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     }
                 } else if (conditionA == Condition.EQ && conditionB == Condition.EQ) {
                     boolean canSwap = false;
-                    if ((compareA.x() == compareB.x() && valuesDistinct(metaAccess, compareA.y(), compareB.y()))) {
+                    if ((compareA.x() == compareB.x() && valuesDistinct(constantReflection, compareA.y(), compareB.y()))) {
                         canSwap = true;
-                    } else if ((compareA.x() == compareB.y() && valuesDistinct(metaAccess, compareA.y(), compareB.x()))) {
+                    } else if ((compareA.x() == compareB.y() && valuesDistinct(constantReflection, compareA.y(), compareB.x()))) {
                         canSwap = true;
-                    } else if ((compareA.y() == compareB.x() && valuesDistinct(metaAccess, compareA.x(), compareB.y()))) {
+                    } else if ((compareA.y() == compareB.x() && valuesDistinct(constantReflection, compareA.x(), compareB.y()))) {
                         canSwap = true;
-                    } else if ((compareA.y() == compareB.y() && valuesDistinct(metaAccess, compareA.x(), compareB.x()))) {
+                    } else if ((compareA.y() == compareB.y() && valuesDistinct(constantReflection, compareA.x(), compareB.x()))) {
                         canSwap = true;
                     }
 
@@ -318,9 +318,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return false;
     }
 
-    private static boolean valuesDistinct(MetaAccessProvider metaAccess, ValueNode a, ValueNode b) {
+    private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
         if (a.isConstant() && b.isConstant()) {
-            return !metaAccess.constantEquals(a.asConstant(), b.asConstant());
+            return !constantReflection.constantEquals(a.asConstant(), b.asConstant());
         }
 
         Stamp stampA = a.stamp();
@@ -487,7 +487,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         for (int i = 0; i < xs.length; i++) {
             AbstractEndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
-            if (compare.condition().foldCondition(xs[i], ys[i], tool.getMetaAccess(), compare.unorderedIsTrue())) {
+            if (compare.condition().foldCondition(xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue())) {
                 trueEnds.add(end);
             } else {
                 falseEnds.add(end);

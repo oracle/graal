@@ -55,6 +55,7 @@ import com.oracle.truffle.api.nodes.*;
 public final class TruffleCache {
 
     private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
     private final CodeCacheProvider codeCache;
     private final LoweringProvider lowerer;
     private final GraphBuilderConfiguration config;
@@ -65,10 +66,11 @@ public final class TruffleCache {
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
 
-    public TruffleCache(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, LoweringProvider lowerer, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations,
-                    Replacements replacements) {
+    public TruffleCache(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, GraphBuilderConfiguration config,
+                    OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
+        this.constantReflection = constantReflection;
         this.lowerer = lowerer;
         this.config = config;
         this.optimisticOptimizations = optimisticOptimizations;
@@ -102,7 +104,7 @@ public final class TruffleCache {
             public StructuredGraph call() {
 
                 final StructuredGraph graph = new StructuredGraph(method);
-                PhaseContext context = new PhaseContext(metaAccess, codeCache, lowerer, new Assumptions(false), replacements);
+                PhaseContext context = new PhaseContext(metaAccess, codeCache, constantReflection, lowerer, new Assumptions(false), replacements);
                 new GraphBuilderPhase(metaAccess, config, optimisticOptimizations).apply(graph);
 
                 for (LocalNode l : graph.getNodes(LocalNode.class)) {

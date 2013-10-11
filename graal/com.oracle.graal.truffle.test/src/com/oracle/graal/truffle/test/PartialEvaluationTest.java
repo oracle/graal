@@ -58,8 +58,9 @@ public class PartialEvaluationTest extends GraalCompilerTest {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
         Replacements truffleReplacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
-        TruffleCache truffleCache = new TruffleCache(getMetaAccess(), getCodeCache(), getLowerer(), GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations, truffleReplacements);
-        this.partialEvaluator = new PartialEvaluator(getMetaAccess(), getCodeCache(), getLowerer(), truffleReplacements, truffleCache);
+        TruffleCache truffleCache = new TruffleCache(getMetaAccess(), getConstantReflection(), getCodeCache(), getLowerer(), GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations,
+                        truffleReplacements);
+        this.partialEvaluator = new PartialEvaluator(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), truffleReplacements, truffleCache);
 
         DebugEnvironment.initialize(System.out);
     }
@@ -107,7 +108,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 StructuredGraph resultGraph = partialEvaluator.createGraph(compilable, assumptions);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(canonicalizeReads);
-                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements);
+                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements);
 
                 if (resultGraph.hasLoops()) {
                     boolean unrolled;
@@ -162,7 +163,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), new Assumptions(false), replacements));
         new DeadCodeEliminationPhase().apply(graph);
     }
 
@@ -174,7 +175,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 Assumptions assumptions = new Assumptions(false);
                 StructuredGraph graph = parse(methodName);
-                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements);
+                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
 
@@ -189,7 +190,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizer.apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                HighTierContext highTierContext = new HighTierContext(getMetaAccess(), getCodeCache(), getLowerer(), assumptions, replacements, null, plan, OptimisticOptimizations.NONE);
+                HighTierContext highTierContext = new HighTierContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements, null, plan,
+                                OptimisticOptimizations.NONE);
                 InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, highTierContext);
                 removeFrameStates(graph);

@@ -292,8 +292,10 @@ public class InliningUtil {
          * Performs the inlining described by this object and returns the node that represents the
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
+         * 
+         * @param constantReflection TODO
          */
-        void inline(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements);
+        void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
@@ -367,7 +369,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
         }
 
@@ -470,7 +472,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             createGuard(graph(), metaAccess);
             inline(invoke, concrete, inlineableElement, assumptions, false);
         }
@@ -587,11 +589,11 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             if (hasSingleMethod()) {
                 inlineSingleMethod(graph(), metaAccess, assumptions);
             } else {
-                inlineMultipleMethods(graph(), metaAccess, assumptions, replacements, codeCache);
+                inlineMultipleMethods(graph(), metaAccess, constantReflection, assumptions, replacements, codeCache);
             }
         }
 
@@ -603,7 +605,8 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess, Assumptions assumptions, Replacements replacements, CodeCacheProvider codeCache) {
+        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions, Replacements replacements,
+                        CodeCacheProvider codeCache) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -713,8 +716,8 @@ public class InliningUtil {
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new PhaseContext(metaAccess, codeCache, null, assumptions, replacements),
-                                    new CanonicalizerPhase(!AOTCompilation.getValue()));
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new PhaseContext(metaAccess, codeCache, constantReflection, null,
+                                    assumptions, replacements), new CanonicalizerPhase(!AOTCompilation.getValue()));
                 }
             }
         }
@@ -1006,9 +1009,9 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
             assumptions.record(takenAssumption);
-            super.inline(metaAccess, codeCache, assumptions, replacements);
+            super.inline(metaAccess, constantReflection, codeCache, assumptions, replacements);
         }
 
         @Override

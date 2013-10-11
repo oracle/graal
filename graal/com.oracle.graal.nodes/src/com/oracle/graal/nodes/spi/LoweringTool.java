@@ -37,6 +37,8 @@ public interface LoweringTool {
 
     LoweringProvider getLowerer();
 
+    ConstantReflectionProvider getConstantReflection();
+
     Replacements getReplacements();
 
     GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object);
