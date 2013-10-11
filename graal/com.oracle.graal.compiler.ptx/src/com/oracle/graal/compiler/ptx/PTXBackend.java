@@ -37,6 +37,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.Block;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
 import com.oracle.graal.lir.LIRInstruction.OperandMode;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
@@ -48,8 +49,8 @@ import com.oracle.graal.graph.GraalInternalError;
  */
 public class PTXBackend extends Backend {
 
-    public PTXBackend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
-        super(metaAccess, codeCache, target);
+    public PTXBackend(Providers providers, TargetDescription target) {
+        super(providers, target);
     }
 
     @Override
@@ -64,7 +65,7 @@ public class PTXBackend extends Backend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXLIRGenerator(graph, getMetaAccess(), getCodeCache(), target, frameMap, cc, lir);
+        return new PTXLIRGenerator(graph, getProviders(), target, frameMap, cc, lir);
     }
 
     class HotSpotFrameContext implements FrameContext {
@@ -94,7 +95,7 @@ public class PTXBackend extends Backend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, getCodeCache(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(0);
         return tasm;
     }

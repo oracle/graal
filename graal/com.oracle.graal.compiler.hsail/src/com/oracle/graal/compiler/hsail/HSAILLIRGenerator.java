@@ -59,6 +59,7 @@ import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * This class implements the HSAIL specific portion of the LIR generator.
@@ -83,8 +84,8 @@ public class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    public HSAILLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
+    public HSAILLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, target, frameMap, cc, lir);
         lir.spillMoveFactory = new HSAILSpillMoveFactory();
     }
 

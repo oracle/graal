@@ -60,6 +60,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
+import com.oracle.graal.phases.util.*;
 
 /**
  * LIR generator specialized for AMD64 HotSpot.
@@ -70,8 +71,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         return (HotSpotRuntime) codeCache;
     }
 
-    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
+    protected AMD64HotSpotLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, target, frameMap, cc, lir);
     }
 
     /**
@@ -355,7 +356,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void emitUnwind(Value exception) {
-        ForeignCallLinkage linkage = getCodeCache().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;
         RegisterValue exceptionParameter = (RegisterValue) outgoingCc.getArgument(0);
@@ -396,7 +397,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
         Variable handler = load(operand(handlerInCallerPc));
-        ForeignCallLinkage linkage = getCodeCache().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
+        ForeignCallLinkage linkage = getForeignCalls().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;
         RegisterValue exceptionFixed = (RegisterValue) outgoingCc.getArgument(0);

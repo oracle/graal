@@ -79,7 +79,7 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        ForeignCallLinkage linkage = gen.getCodeCache().lookupForeignCall(descriptor);
+        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(descriptor);
         Value[] operands = operands(gen);
         Value result = gen.emitForeignCall(linkage, this, operands);
         if (result != null) {

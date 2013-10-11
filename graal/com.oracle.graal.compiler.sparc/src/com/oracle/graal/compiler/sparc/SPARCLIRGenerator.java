@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * This class implements the SPARC specific portion of the LIR generator.
@@ -77,8 +78,8 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    public SPARCLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
+    public SPARCLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, target, frameMap, cc, lir);
         lir.spillMoveFactory = new SPARCSpillMoveFactory();
     }
 

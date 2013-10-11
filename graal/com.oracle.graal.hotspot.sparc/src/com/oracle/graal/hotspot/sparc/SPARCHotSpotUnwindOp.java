@@ -51,7 +51,7 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         leaveFrame(tasm);
 
-        ForeignCallLinkage linkage = tasm.codeCache.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = tasm.foreignCalls.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = linkage.getOutgoingCallingConvention();
         assert cc.getArgumentCount() == 2;
         assert exception.equals(cc.getArgument(0));

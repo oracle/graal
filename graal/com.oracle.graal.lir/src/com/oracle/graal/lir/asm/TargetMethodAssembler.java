@@ -52,6 +52,7 @@ public class TargetMethodAssembler {
     public final CompilationResult compilationResult;
     public final TargetDescription target;
     public final CodeCacheProvider codeCache;
+    public final ForeignCallsProvider foreignCalls;
     public final FrameMap frameMap;
 
     /**
@@ -62,9 +63,11 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider codeCache, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
+    public TargetMethodAssembler(TargetDescription target, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+                    CompilationResult compilationResult) {
         this.target = target;
         this.codeCache = codeCache;
+        this.foreignCalls = foreignCalls;
         this.frameMap = frameMap;
         this.asm = asm;
         this.compilationResult = compilationResult;

@@ -67,11 +67,6 @@ public interface CodeCacheProvider {
     int getMinimumOutgoingSize();
 
     /**
-     * Gets the linkage for a foreign call.
-     */
-    ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
-
-    /**
      * Determines if a {@link DataPatch} should be created for a given
      * {@linkplain Constant#getPrimitiveAnnotation() annotated} primitive constant that part of a
      * {@link CompilationResult}. A data patch is always created for an object constant.
