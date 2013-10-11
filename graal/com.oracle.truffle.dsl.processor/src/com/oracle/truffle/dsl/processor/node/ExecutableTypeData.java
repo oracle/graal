@@ -37,6 +37,9 @@ public class ExecutableTypeData extends TemplateMethod {
         super(method, executable);
         this.typeSystem = typeSystem;
         this.type = type;
+        if (executable.getParameters().size() < method.getMethod().getParameters().size()) {
+            throw new IllegalArgumentException(String.format("Method parameter count mismatch %s != %s.", executable.getParameters(), method.getMethod().getParameters()));
+        }
     }
 
     public TypeData getType() {

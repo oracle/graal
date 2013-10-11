@@ -58,6 +58,7 @@ public final class TruffleTypes {
     private final DeclaredType slowPath;
     private final DeclaredType sourceSection;
     private final DeclaredType truffleOptions;
+    private final DeclaredType compilationFinal;
     private final TypeElement expectError;
 
     private final List<String> errors = new ArrayList<>();
@@ -78,7 +79,12 @@ public final class TruffleTypes {
         slowPath = getRequired(context, SlowPath.class);
         sourceSection = getRequired(context, SourceSection.class);
         truffleOptions = getRequired(context, TruffleOptions.class);
+        compilationFinal = getRequired(context, CompilationFinal.class);
         expectError = (TypeElement) getRequired(context, ExpectError.class).asElement();
+    }
+
+    public DeclaredType getCompilationFinal() {
+        return compilationFinal;
     }
 
     public TypeElement getExpectError() {

@@ -97,35 +97,18 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
 
             for (TypeData type : typeSystem.getTypes()) {
                 if (!type.isGeneric()) {
-                    CodeExecutableElement isType = createIsTypeMethod(type);
-                    if (isType != null) {
-                        clazz.add(isType);
-                    }
-                    CodeExecutableElement asType = createAsTypeMethod(type);
-                    if (asType != null) {
-                        clazz.add(asType);
-                    }
+                    clazz.addOptional(createIsTypeMethod(type));
+                    clazz.addOptional(createAsTypeMethod(type));
 
                     for (TypeData sourceType : collectExpectSourceTypes(type)) {
-                        CodeExecutableElement expect = createExpectTypeMethod(type, sourceType);
-                        if (expect != null) {
-                            clazz.add(expect);
-                        }
+                        clazz.addOptional(createExpectTypeMethod(type, sourceType));
                     }
 
-                    CodeExecutableElement asImplicit = createAsImplicitTypeMethod(type);
-                    if (asImplicit != null) {
-                        clazz.add(asImplicit);
-                    }
-                    CodeExecutableElement isImplicit = createIsImplicitTypeMethod(type);
-                    if (isImplicit != null) {
-                        clazz.add(isImplicit);
-                    }
-
-                    CodeExecutableElement typeIndex = createGetTypeIndex(type);
-                    if (typeIndex != null) {
-                        clazz.add(typeIndex);
-                    }
+                    clazz.addOptional(createAsImplicitTypeMethod(type, true));
+                    clazz.addOptional(createAsImplicitTypeMethod(type, false));
+                    clazz.addOptional(createIsImplicitTypeMethod(type, true));
+                    clazz.addOptional(createIsImplicitTypeMethod(type, false));
+                    clazz.addOptional(createGetTypeIndex(type));
                 }
             }
 
@@ -159,7 +142,7 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             return field;
         }
 
-        private CodeExecutableElement createIsImplicitTypeMethod(TypeData type) {
+        private CodeExecutableElement createIsImplicitTypeMethod(TypeData type, boolean typed) {
             TypeSystemData typeSystem = getModel();
             List<ImplicitCastData> casts = typeSystem.lookupByTargetType(type);
             if (casts.isEmpty()) {
@@ -167,6 +150,9 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             }
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), getContext().getType(boolean.class), TypeSystemCodeGenerator.isImplicitTypeMethodName(type));
             method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
+            if (typed) {
+                method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "typeHint"));
+            }
             CodeTreeBuilder builder = method.createBuilder();
 
             List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
@@ -175,14 +161,27 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             String sep = "";
             for (TypeData sourceType : sourceTypes) {
                 builder.string(sep);
+                if (typed) {
+                    builder.string("(typeHint == ").typeLiteral(sourceType.getPrimitiveType()).string(" && ");
+                }
                 builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                if (typed) {
+                    builder.string(")");
+                }
+                if (sourceTypes.lastIndexOf(sourceType) != sourceTypes.size() - 1) {
+                    builder.newLine();
+                }
+                if (sep.equals("")) {
+                    builder.startIndention();
+                }
                 sep = " || ";
             }
+            builder.end();
             builder.end();
             return method;
         }
 
-        private CodeExecutableElement createAsImplicitTypeMethod(TypeData type) {
+        private CodeExecutableElement createAsImplicitTypeMethod(TypeData type, boolean typed) {
             TypeSystemData typeSystem = getModel();
             List<ImplicitCastData> casts = typeSystem.lookupByTargetType(type);
             if (casts.isEmpty()) {
@@ -190,6 +189,9 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             }
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), type.getPrimitiveType(), TypeSystemCodeGenerator.asImplicitTypeMethodName(type));
             method.addParameter(new CodeVariableElement(getContext().getType(Object.class), LOCAL_VALUE));
+            if (typed) {
+                method.addParameter(new CodeVariableElement(getContext().getType(Class.class), "typeHint"));
+            }
 
             List<TypeData> sourceTypes = typeSystem.lookupSourceTypes(type);
 
@@ -197,7 +199,12 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             boolean elseIf = false;
             for (TypeData sourceType : sourceTypes) {
                 elseIf = builder.startIf(elseIf);
-                builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                if (typed) {
+                    builder.string("typeHint == ").typeLiteral(sourceType.getPrimitiveType());
+                } else {
+                    builder.startCall(isTypeMethodName(sourceType)).string(LOCAL_VALUE).end();
+                }
+
                 builder.end().startBlock();
 
                 builder.startReturn();

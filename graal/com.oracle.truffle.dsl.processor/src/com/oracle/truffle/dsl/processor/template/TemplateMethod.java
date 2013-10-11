@@ -237,6 +237,9 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
             if (!parameter.getSpecification().isSignature()) {
                 continue;
             }
+            if (signatureIndex >= signature.size()) {
+                break;
+            }
             TypeData newType = signature.get(signatureIndex++);
             if (!parameter.getTypeSystemType().equals(newType)) {
                 replaceParameter(parameter.getLocalName(), new ActualParameter(parameter, newType));

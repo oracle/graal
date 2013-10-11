@@ -78,6 +78,13 @@ public abstract class CodeElement<E extends Element> implements WritableElement,
         return element;
     }
 
+    public E addOptional(E element) {
+        if (element != null) {
+            add(element);
+        }
+        return element;
+    }
+
     public void remove(E element) {
         getEnclosedElements().remove(element);
     }

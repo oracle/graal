@@ -82,7 +82,6 @@ public class ImplicitCastTest {
     @TypeSystemReference(ImplicitCast0Types.class)
     @NodeChild(value = "operand", type = ImplicitCast1Node.class)
     // TODO temporary workaround
-    @PolymorphicLimit(1)
     abstract static class ImplicitCast1Node extends ValueNode {
 
         public abstract Object executeEvaluated(VirtualFrame frame, Object operand);
@@ -118,7 +117,6 @@ public class ImplicitCastTest {
     @TypeSystemReference(ImplicitCast0Types.class)
     @NodeChildren({@NodeChild(value = "operand0", type = ImplicitCast2Node.class), @NodeChild(value = "operand1", type = ImplicitCast2Node.class, executeWith = "operand0")})
     // TODO temporary workaround
-    @PolymorphicLimit(1)
     abstract static class ImplicitCast2Node extends ValueNode {
 
         @Specialization(order = 0)
