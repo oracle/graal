@@ -73,7 +73,7 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
 
-        Providers providers = new Providers(this, this, this, this, replacements);
+        Providers providers = new Providers(this, this, this, this, this, replacements);
         convertSnippets = new AMD64ConvertSnippets.Templates(providers, graalRuntime.getTarget());
         super.registerReplacements(replacements);
     }

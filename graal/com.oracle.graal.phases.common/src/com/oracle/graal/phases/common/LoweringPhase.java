@@ -78,6 +78,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public ForeignCallsProvider getForeignCalls() {
+            return context.getForeignCalls();
+        }
+
+        @Override
         public LoweringProvider getLowerer() {
             return context.getLowerer();
         }

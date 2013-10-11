@@ -85,8 +85,7 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(Providers providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
-                    LocationIdentity... killedLocations) {
+    public ForeignCallStub(Providers providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
         super(providers, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
@@ -304,7 +303,7 @@ public class ForeignCallStub extends Stub {
 
     private void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget());
+        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget());
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null, false);
         InliningUtil.inline(invoke, calleeGraph, false);
     }

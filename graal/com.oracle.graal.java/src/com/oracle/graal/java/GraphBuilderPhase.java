@@ -86,6 +86,7 @@ public class GraphBuilderPhase extends Phase {
     protected BlockPlaceholderNode placeholders;
 
     private final MetaAccessProvider metaAccess;
+    private final ForeignCallsProvider foreignCalls;
     private ConstantPool constantPool;
     private ResolvedJavaMethod method;
     private int entryBCI;
@@ -150,10 +151,11 @@ public class GraphBuilderPhase extends Phase {
         return currentGraph;
     }
 
-    public GraphBuilderPhase(MetaAccessProvider metaAccess, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+    public GraphBuilderPhase(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.metaAccess = metaAccess;
+        this.foreignCalls = foreignCalls;
         assert metaAccess != null;
     }
 
@@ -959,7 +961,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedNullPointerException, metaAccess, currentGraph);
             trueSucc.setNext(handleException(exception, bci()));
         } else {
-            ForeignCallNode call = currentGraph.add(new ForeignCallNode(metaAccess, CREATE_NULL_POINTER_EXCEPTION));
+            ForeignCallNode call = currentGraph.add(new ForeignCallNode(foreignCalls, CREATE_NULL_POINTER_EXCEPTION));
             call.setStateAfter(frameState.create(bci()));
             trueSucc.setNext(call);
             call.setNext(handleException(call, bci()));
@@ -983,7 +985,7 @@ public class GraphBuilderPhase extends Phase {
             ValueNode exception = ConstantNode.forObject(cachedArrayIndexOutOfBoundsException, metaAccess, currentGraph);
             falseSucc.setNext(handleException(exception, bci()));
         } else {
-            ForeignCallNode call = currentGraph.add(new ForeignCallNode(metaAccess, CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
+            ForeignCallNode call = currentGraph.add(new ForeignCallNode(foreignCalls, CREATE_OUT_OF_BOUNDS_EXCEPTION, index));
             call.setStateAfter(frameState.create(bci()));
             falseSucc.setNext(call);
             call.setNext(handleException(call, bci()));

@@ -43,9 +43,11 @@ public class TestUtil {
         Providers providers = GraalCompiler.getGraalProviders();
         Suites suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         StructuredGraph graph = new StructuredGraph(method);
-        new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(Backend.class);

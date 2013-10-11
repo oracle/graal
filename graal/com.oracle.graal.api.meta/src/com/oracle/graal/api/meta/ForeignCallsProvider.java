@@ -20,29 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.phases.tiers;
+package com.oracle.graal.api.meta;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
+/**
+ * Capability to query attributes of the supported {@link ForeignCallDescriptor foreign calls}.
+ */
+public interface ForeignCallsProvider {
 
-public class PhaseContext extends Providers {
+    /**
+     * Determines if a given foreign call is side-effect free. Deoptimization cannot return
+     * execution to a point before a foreign call that has a side effect.
+     */
+    boolean isReexecutable(ForeignCallDescriptor descriptor);
 
-    private final Assumptions assumptions;
+    /**
+     * Gets the set of memory locations killed by a given foreign call. Returning the special value
+     * {@link LocationIdentity#ANY_LOCATION} denotes that the call kills all memory locations.
+     * Returning any empty array denotes that the call does not kill any memory locations.
+     */
+    LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor);
 
-    public PhaseContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
-                    Assumptions assumptions, Replacements replacements) {
-        super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
-        this.assumptions = assumptions;
-    }
-
-    public PhaseContext(Providers copyFrom, Assumptions assumptions) {
-        super(copyFrom);
-        this.assumptions = assumptions;
-    }
-
-    public Assumptions getAssumptions() {
-        return assumptions;
-    }
+    /**
+     * Determines if deoptimization can occur during a given foreign call.
+     */
+    boolean canDeoptimize(ForeignCallDescriptor descriptor);
 }

@@ -57,10 +57,10 @@ public class ForEachToGraal implements CompileAndDispatch {
             }
         }
         HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
-        AMD64HotSpotRuntime hsruntime = new AMD64HotSpotRuntime(config, HotSpotGraalRuntime.graalRuntime());
-        ResolvedJavaMethod rm = hsruntime.lookupJavaMethod(acceptMethod);
+        AMD64HotSpotRuntime runtime = new AMD64HotSpotRuntime(config, HotSpotGraalRuntime.graalRuntime());
+        ResolvedJavaMethod rm = runtime.lookupJavaMethod(acceptMethod);
         StructuredGraph graph = new StructuredGraph(rm);
-        new GraphBuilderPhase(hsruntime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(runtime, runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         NodeIterable<Node> nin = graph.getNodes();
         ResolvedJavaMethod lambdaMethod = null;
         for (Node n : nin) {

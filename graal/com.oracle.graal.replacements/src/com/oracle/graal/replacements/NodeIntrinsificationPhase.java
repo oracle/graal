@@ -40,6 +40,7 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 
 /**
@@ -48,10 +49,10 @@ import com.oracle.graal.replacements.Snippet.Fold;
  */
 public class NodeIntrinsificationPhase extends Phase {
 
-    private final MetaAccessProvider metaAccess;
+    private final Providers providers;
 
-    public NodeIntrinsificationPhase(MetaAccessProvider metaAccess) {
-        this.metaAccess = metaAccess;
+    public NodeIntrinsificationPhase(Providers providers) {
+        this.providers = providers;
     }
 
     @Override
@@ -112,7 +113,7 @@ public class NodeIntrinsificationPhase extends Phase {
 
             if (constant != null) {
                 // Replace the invoke with the result of the call
-                ConstantNode node = ConstantNode.forConstant(constant, metaAccess, methodCallTargetNode.graph());
+                ConstantNode node = ConstantNode.forConstant(constant, providers.getMetaAccess(), methodCallTargetNode.graph());
                 methodCallTargetNode.invoke().intrinsify(node);
 
                 // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -157,8 +158,8 @@ public class NodeIntrinsificationPhase extends Phase {
                 Constant constant = constantNode.asConstant();
                 Object o = constant.asBoxedValue();
                 if (o instanceof Class<?>) {
-                    reflectionCallArguments[i] = Constant.forObject(metaAccess.lookupJavaType((Class<?>) o));
-                    parameterTypes[i] = metaAccess.lookupJavaType(ResolvedJavaType.class);
+                    reflectionCallArguments[i] = Constant.forObject(providers.getMetaAccess().lookupJavaType((Class<?>) o));
+                    parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ResolvedJavaType.class);
                 } else {
                     if (parameterTypes[i].getKind() == Kind.Boolean) {
                         reflectionCallArguments[i] = Constant.forObject(Boolean.valueOf(constant.asInt() != 0));
@@ -174,7 +175,7 @@ public class NodeIntrinsificationPhase extends Phase {
                 }
             } else {
                 reflectionCallArguments[i] = Constant.forObject(argument);
-                parameterTypes[i] = metaAccess.lookupJavaType(ValueNode.class);
+                parameterTypes[i] = providers.getMetaAccess().lookupJavaType(ValueNode.class);
             }
         }
         return reflectionCallArguments;
@@ -185,10 +186,10 @@ public class NodeIntrinsificationPhase extends Phase {
         if (intrinsic.value() == NodeIntrinsic.class) {
             result = target.getDeclaringClass();
         } else {
-            result = metaAccess.lookupJavaType(intrinsic.value());
+            result = providers.getMetaAccess().lookupJavaType(intrinsic.value());
         }
-        assert metaAccess.lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" + NodeIntrinsic.class.getSimpleName() +
-                        " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
+        assert providers.getMetaAccess().lookupJavaType(ValueNode.class).isAssignableFrom(result) : "Node intrinsic class " + toJavaName(result, false) + " derived from @" +
+                        NodeIntrinsic.class.getSimpleName() + " annotation on " + format("%H.%n(%p)", target) + " is not a subclass of " + ValueNode.class;
         return result;
     }
 
@@ -249,11 +250,14 @@ public class NodeIntrinsificationPhase extends Phase {
         Constant[] injected = null;
 
         ResolvedJavaType[] signature = resolveJavaTypes(signatureToTypes(c.getSignature(), null), c.getDeclaringClass());
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < signature.length; i++) {
             if (getParameterAnnotation(InjectedNodeParameter.class, i, c) != null) {
                 injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = Constant.forObject(metaAccess);
+                } else if (signature[i].equals(metaAccess.lookupJavaType(ForeignCallsProvider.class))) {
+                    injected[injected.length - 1] = Constant.forObject(providers.getForeignCalls());
                 } else {
                     throw new GraalInternalError("Cannot handle injected argument of type %s in %s", toJavaName(signature[i]), format("%H.%n(%p)", c));
                 }

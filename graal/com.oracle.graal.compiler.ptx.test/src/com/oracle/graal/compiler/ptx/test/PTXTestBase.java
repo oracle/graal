@@ -62,7 +62,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
             PTXBackend ptxBackend = new PTXBackend(getMetaAccess(), getCodeCache(), target);
             PhasePlan phasePlan = new PhasePlan();
-            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new PTXPhase());
             new PTXPhase().apply(graph);

@@ -35,12 +35,15 @@ public class Providers {
     private final CodeCacheProvider codeCache;
     private final LoweringProvider lowerer;
     private final ConstantReflectionProvider constantReflection;
+    private final ForeignCallsProvider foreignCalls;
     private final Replacements replacements;
 
-    public Providers(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements) {
+    public Providers(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
+                    Replacements replacements) {
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
         this.constantReflection = constantReflection;
+        this.foreignCalls = foreignCalls;
         this.lowerer = lowerer;
         this.replacements = replacements;
     }
@@ -49,6 +52,7 @@ public class Providers {
         this.metaAccess = copyFrom.metaAccess;
         this.codeCache = copyFrom.codeCache;
         this.constantReflection = copyFrom.constantReflection;
+        this.foreignCalls = copyFrom.foreignCalls;
         this.lowerer = copyFrom.lowerer;
         this.replacements = copyFrom.replacements;
     }
@@ -61,6 +65,10 @@ public class Providers {
         return codeCache;
     }
 
+    public ForeignCallsProvider getForeignCalls() {
+        return foreignCalls;
+    }
+
     public LoweringProvider getLowerer() {
         return lowerer;
     }
@@ -71,5 +79,29 @@ public class Providers {
 
     public Replacements getReplacements() {
         return replacements;
+    }
+
+    public Providers copyWith(MetaAccessProvider substitution) {
+        return new Providers(substitution, codeCache, constantReflection, foreignCalls, lowerer, replacements);
+    }
+
+    public Providers copyWith(CodeCacheProvider substitution) {
+        return new Providers(metaAccess, substitution, constantReflection, foreignCalls, lowerer, replacements);
+    }
+
+    public Providers copyWith(ConstantReflectionProvider substitution) {
+        return new Providers(metaAccess, codeCache, substitution, foreignCalls, lowerer, replacements);
+    }
+
+    public Providers copyWith(ForeignCallsProvider substitution) {
+        return new Providers(metaAccess, codeCache, constantReflection, substitution, lowerer, replacements);
+    }
+
+    public Providers copyWith(LoweringProvider substitution) {
+        return new Providers(metaAccess, codeCache, constantReflection, foreignCalls, substitution, replacements);
+    }
+
+    public Providers copyWith(Replacements substitution) {
+        return new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, substitution);
     }
 }
