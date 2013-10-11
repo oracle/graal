@@ -36,10 +36,12 @@ import com.oracle.truffle.api.nodes.Node.Child;
 
 final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCanonicalizer {
 
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
+    private final ConstantReflectionProvider constantReflection;
 
-    PartialEvaluatorCanonicalizer(MetaAccessProvider metaAccessProvider) {
-        this.metaAccessProvider = metaAccessProvider;
+    PartialEvaluatorCanonicalizer(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
     }
 
     @Override
@@ -51,7 +53,7 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                                 loadFieldNode.field().getAnnotation(CompilerDirectives.CompilationFinal.class) != null) {
                     Constant constant = loadFieldNode.field().readValue(loadFieldNode.object().asConstant());
                     assert verifyFieldValue(loadFieldNode.field(), constant);
-                    return ConstantNode.forConstant(constant, metaAccessProvider, node.graph());
+                    return ConstantNode.forConstant(constant, metaAccess, node.graph());
                 }
             }
         } else if (node instanceof LoadIndexedNode) {
@@ -62,9 +64,9 @@ final class PartialEvaluatorCanonicalizer implements CanonicalizerPhase.CustomCa
                 if (index >= 0 && index < Array.getLength(array)) {
                     int arrayBaseOffset = Unsafe.getUnsafe().arrayBaseOffset(array.getClass());
                     int arrayIndexScale = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
-                    Constant constant = metaAccessProvider.readUnsafeConstant(loadIndexedNode.elementKind(), array, arrayBaseOffset + index * arrayIndexScale,
+                    Constant constant = constantReflection.readUnsafeConstant(loadIndexedNode.elementKind(), array, arrayBaseOffset + index * arrayIndexScale,
                                     loadIndexedNode.elementKind() == Kind.Object);
-                    return ConstantNode.forConstant(constant, metaAccessProvider, loadIndexedNode.graph());
+                    return ConstantNode.forConstant(constant, metaAccess, loadIndexedNode.graph());
                 }
             }
         }

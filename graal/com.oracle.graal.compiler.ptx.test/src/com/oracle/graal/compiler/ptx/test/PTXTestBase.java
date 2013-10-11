@@ -23,7 +23,6 @@
 package com.oracle.graal.compiler.ptx.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -77,8 +76,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              * Ultimately we might want to have both the kernel and the code natively compiled for
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
-            CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getMetaAccess(), getCodeCache(), graalRuntime().getReplacements(), ptxBackend, target, null, phasePlan,
-                            OptimisticOptimizations.NONE, new SpeculationLog(), Suites.createDefaultSuites(), new ExternalCompilationResult());
+            CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
+                            new SpeculationLog(), Suites.createDefaultSuites(), new ExternalCompilationResult());
             return result;
         } else {
             return null;
@@ -104,7 +103,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             boolean isStatic = Modifier.isStatic(compiledMethod.getModifiers());
             Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
             HotSpotRuntime hsr = (HotSpotRuntime) getCodeCache();
-            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result, sg);
+            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result);
             Annotation[][] params = compiledMethod.getParameterAnnotations();
 
             int dimensionX = 1;

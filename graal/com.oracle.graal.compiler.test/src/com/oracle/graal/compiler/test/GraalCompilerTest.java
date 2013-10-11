@@ -52,6 +52,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.test.*;
 
@@ -76,16 +77,20 @@ import com.oracle.graal.test.*;
  */
 public abstract class GraalCompilerTest extends GraalTest {
 
-    private final GraalCodeCacheProvider codeCache;
+    private final CodeCacheProvider codeCache;
     private final MetaAccessProvider metaAccess;
-    protected final Replacements replacements;
+    private final ConstantReflectionProvider constantReflection;
+    private final LoweringProvider lowerer;
+    private final Replacements replacements;
     protected final Backend backend;
     protected final Suites suites;
 
     public GraalCompilerTest() {
         this.replacements = Graal.getRequiredCapability(Replacements.class);
         this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        this.codeCache = Graal.getRequiredCapability(GraalCodeCacheProvider.class);
+        this.constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
+        this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        this.lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
     }
@@ -160,12 +165,24 @@ public abstract class GraalCompilerTest extends GraalTest {
         return result.toString();
     }
 
-    protected GraalCodeCacheProvider getCodeCache() {
+    protected Providers getProviders() {
+        return new Providers(metaAccess, codeCache, constantReflection, lowerer, getReplacements());
+    }
+
+    protected CodeCacheProvider getCodeCache() {
         return codeCache;
+    }
+
+    protected ConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
     }
 
     protected MetaAccessProvider getMetaAccess() {
         return metaAccess;
+    }
+
+    protected LoweringProvider getLowerer() {
+        return lowerer;
     }
 
     /**
@@ -462,7 +479,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
         final int id = compilationId.incrementAndGet();
 
-        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{getCodeCache(), new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
+        InstalledCode installedCode = Debug.scope("Compiling", new Object[]{new DebugDumpScope(String.valueOf(id), true)}, new Callable<InstalledCode>() {
 
             public InstalledCode call() throws Exception {
                 final boolean printCompilation = PrintCompilation.getValue() && !TTY.isSuppressed();
@@ -474,7 +491,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getCodeCache(), replacements, backend, getCodeCache().getTarget(), null, phasePlan,
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), backend, getCodeCache().getTarget(), null, phasePlan,
                                 OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
@@ -566,5 +583,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         gbConf.setEagerInfopointMode(eagerInfopointMode);
         plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, gbConf, OptimisticOptimizations.ALL));
         return plan;
+    }
+
+    protected Replacements getReplacements() {
+        return replacements;
     }
 }

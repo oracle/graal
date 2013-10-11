@@ -184,7 +184,7 @@ public class InliningPhase extends AbstractInliningPhase {
         InlineInfo callee = calleeInfo.callee();
         try {
             List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-            callee.inline(context.getMetaAccess(), context.getCodeCache(), callerAssumptions, context.getReplacements());
+            callee.inline(context, callerAssumptions);
             callerAssumptions.record(calleeInfo.assumptions());
             metricInliningRuns.increment();
             Debug.dump(callerGraph, "after %s", callee);

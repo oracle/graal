@@ -43,9 +43,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -85,9 +85,9 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(HotSpotRuntime runtime, Replacements replacements, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
+    public ForeignCallStub(Providers providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        super(runtime, replacements, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        super(providers, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
         ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
@@ -304,7 +304,7 @@ public class ForeignCallStub extends Stub {
 
     private void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, new Assumptions(false), runtime.getTarget());
+        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget());
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null, false);
         InliningUtil.inline(invoke, calleeGraph, false);
     }

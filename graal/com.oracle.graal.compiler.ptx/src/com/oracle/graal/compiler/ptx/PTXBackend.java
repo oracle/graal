@@ -59,12 +59,12 @@ public class PTXBackend extends Backend {
 
     @Override
     public FrameMap newFrameMap() {
-        return new PTXFrameMap(runtime(), target, runtime().lookupRegisterConfig());
+        return new PTXFrameMap(getCodeCache(), target, getCodeCache().getRegisterConfig());
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new PTXLIRGenerator(graph, metaAccess(), runtime(), target, frameMap, cc, lir);
+        return new PTXLIRGenerator(graph, getMetaAccess(), getCodeCache(), target, frameMap, cc, lir);
     }
 
     class HotSpotFrameContext implements FrameContext {
@@ -94,7 +94,7 @@ public class PTXBackend extends Backend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(target, getCodeCache(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(0);
         return tasm;
     }

@@ -96,7 +96,7 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         replacementGraph.setGuardsStage(graph().getGuardsStage());
-        final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.assumptions(), tool.getReplacements());
+        final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.getConstantReflection(), tool.getLowerer(), tool.assumptions(), tool.getReplacements());
         Debug.scope("LoweringReplacement", replacementGraph, new Runnable() {
 
             public void run() {

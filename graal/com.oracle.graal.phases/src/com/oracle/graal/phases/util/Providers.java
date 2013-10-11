@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,29 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.target;
+package com.oracle.graal.phases.util;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.asm.*;
-import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 
 /**
- * The {@code Backend} class represents a compiler backend for Graal.
+ * A set of providers, some of which may not be present (i.e., null).
  */
-public abstract class Backend {
+public class Providers {
 
     private final MetaAccessProvider metaAccess;
     private final CodeCacheProvider codeCache;
-    public final TargetDescription target;
+    private final LoweringProvider lowerer;
+    private final ConstantReflectionProvider constantReflection;
+    private final Replacements replacements;
 
-    protected Backend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
+    public Providers(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements) {
         this.metaAccess = metaAccess;
         this.codeCache = codeCache;
-        this.target = target;
+        this.constantReflection = constantReflection;
+        this.lowerer = lowerer;
+        this.replacements = replacements;
+    }
+
+    public Providers(Providers copyFrom) {
+        this.metaAccess = copyFrom.metaAccess;
+        this.codeCache = copyFrom.codeCache;
+        this.constantReflection = copyFrom.constantReflection;
+        this.lowerer = copyFrom.lowerer;
+        this.replacements = copyFrom.replacements;
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -53,22 +61,15 @@ public abstract class Backend {
         return codeCache;
     }
 
-    public abstract FrameMap newFrameMap();
+    public LoweringProvider getLowerer() {
+        return lowerer;
+    }
 
-    public abstract LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir);
+    public ConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
+    }
 
-    protected abstract AbstractAssembler createAssembler(FrameMap frameMap);
-
-    public abstract TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult);
-
-    public abstract boolean shouldAllocateRegisters();
-
-    /**
-     * Emits the code for a given graph.
-     * 
-     * @param installedCodeOwner the method the compiled code will be
-     *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
-     *            argument can be null.
-     */
-    public abstract void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner);
+    public Replacements getReplacements() {
+        return replacements;
+    }
 }

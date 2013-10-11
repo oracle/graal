@@ -38,12 +38,12 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.truffle.phases.*;
 import com.oracle.graal.virtual.phases.ea.*;
 import com.oracle.truffle.api.*;
@@ -54,23 +54,19 @@ import com.oracle.truffle.api.nodes.*;
  */
 public final class TruffleCache {
 
-    private final MetaAccessProvider metaAccess;
-    private final GraalCodeCacheProvider codeCache;
+    private final Providers providers;
     private final GraphBuilderConfiguration config;
     private final OptimisticOptimizations optimisticOptimizations;
-    private final Replacements replacements;
 
     private final HashMap<List<Object>, StructuredGraph> cache = new HashMap<>();
     private final StructuredGraph markerGraph = new StructuredGraph();
     private final ResolvedJavaType stringBuilderClass;
 
-    public TruffleCache(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations, Replacements replacements) {
-        this.metaAccess = metaAccess;
-        this.codeCache = codeCache;
+    public TruffleCache(Providers providers, GraphBuilderConfiguration config, OptimisticOptimizations optimisticOptimizations) {
+        this.providers = providers;
         this.config = config;
         this.optimisticOptimizations = optimisticOptimizations;
-        this.replacements = replacements;
-        this.stringBuilderClass = metaAccess.lookupJavaType(StringBuilder.class);
+        this.stringBuilderClass = providers.getMetaAccess().lookupJavaType(StringBuilder.class);
     }
 
     @SuppressWarnings("unused")
@@ -94,13 +90,13 @@ public final class TruffleCache {
         }
 
         cache.put(key, markerGraph);
-        resultGraph = Debug.scope("TruffleCache", new Object[]{metaAccess, method}, new Callable<StructuredGraph>() {
+        resultGraph = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method}, new Callable<StructuredGraph>() {
 
             public StructuredGraph call() {
 
                 final StructuredGraph graph = new StructuredGraph(method);
-                PhaseContext context = new PhaseContext(metaAccess, codeCache, new Assumptions(false), replacements);
-                new GraphBuilderPhase(metaAccess, config, optimisticOptimizations).apply(graph);
+                PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
+                new GraphBuilderPhase(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
 
                 for (LocalNode l : graph.getNodes(LocalNode.class)) {
                     if (l.kind() == Kind.Object) {
@@ -110,7 +106,7 @@ public final class TruffleCache {
                 }
 
                 // Intrinsify methods.
-                new ReplaceIntrinsicsPhase(replacements).apply(graph);
+                new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
 
                 // Convert deopt to guards.
                 new ConvertDeoptimizeToGuardPhase().apply(graph);
@@ -121,14 +117,14 @@ public final class TruffleCache {
                 int mark = 0;
                 while (true) {
 
-                    partialEscapePhase.apply(graph, context);
+                    partialEscapePhase.apply(graph, phaseContext);
 
                     // Conditional elimination.
-                    ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(metaAccess);
+                    ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(phaseContext.getMetaAccess());
                     conditionalEliminationPhase.apply(graph);
 
                     // Canonicalize / constant propagate.
-                    canonicalizerPhase.apply(graph, context);
+                    canonicalizerPhase.apply(graph, phaseContext);
 
                     boolean inliningProgress = false;
                     for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
@@ -138,7 +134,7 @@ public final class TruffleCache {
                             for (Node newNode : graph.getNewNodes(mark)) {
                                 if (newNode instanceof MethodCallTargetNode) {
                                     MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
-                                    Class<? extends FixedWithNextNode> macroSubstitution = replacements.getMacroSubstitution(methodCallTargetNode.targetMethod());
+                                    Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
                                     if (macroSubstitution != null) {
                                         InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
                                     } else {
@@ -168,14 +164,14 @@ public final class TruffleCache {
                                     }
                                 }
                             }
-                            canonicalizerPhase.applyIncremental(graph, context, canonicalizerUsages);
+                            canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
                         }
                     }
 
                     // Convert deopt to guards.
                     new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-                    new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, context);
+                    new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, phaseContext);
 
                     if (!inliningProgress) {
                         break;
@@ -193,7 +189,7 @@ public final class TruffleCache {
     }
 
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {
-        StructuredGraph inlineGraph = replacements.getMethodSubstitution(methodCallTargetNode.targetMethod());
+        StructuredGraph inlineGraph = providers.getReplacements().getMethodSubstitution(methodCallTargetNode.targetMethod());
         if (inlineGraph == null) {
             inlineGraph = TruffleCache.this.lookup(methodCallTargetNode.targetMethod(), methodCallTargetNode.arguments(), null, null);
         }
@@ -208,8 +204,8 @@ public final class TruffleCache {
 
     private boolean tryCutOffRuntimeExceptions(MethodCallTargetNode methodCallTargetNode) {
         if (methodCallTargetNode.targetMethod().isConstructor()) {
-            ResolvedJavaType runtimeException = metaAccess.lookupJavaType(RuntimeException.class);
-            ResolvedJavaType controlFlowException = metaAccess.lookupJavaType(ControlFlowException.class);
+            ResolvedJavaType runtimeException = providers.getMetaAccess().lookupJavaType(RuntimeException.class);
+            ResolvedJavaType controlFlowException = providers.getMetaAccess().lookupJavaType(ControlFlowException.class);
             ResolvedJavaType exceptionType = Objects.requireNonNull(ObjectStamp.typeOrNull(methodCallTargetNode.receiver().stamp()));
             if (runtimeException.isAssignableFrom(methodCallTargetNode.targetMethod().getDeclaringClass()) && !controlFlowException.isAssignableFrom(exceptionType)) {
                 DeoptimizeNode deoptNode = methodCallTargetNode.graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.UnreachedCode));

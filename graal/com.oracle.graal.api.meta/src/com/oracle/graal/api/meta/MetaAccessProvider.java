@@ -25,7 +25,7 @@ package com.oracle.graal.api.meta;
 import java.lang.reflect.*;
 
 /**
- * Interface implemented by the runtime to allow access to its metadata.
+ * Provides access to the metadata of a class typically provided in a class file.
  */
 public interface MetaAccessProvider {
 
@@ -66,35 +66,6 @@ public interface MetaAccessProvider {
      * method descriptor is not well formed.
      */
     Signature parseMethodDescriptor(String methodDescriptor);
-
-    /**
-     * Compares two constants for equality. This is used instead of {@link Constant#equals(Object)}
-     * in case the runtime has an interpretation for object equality other than
-     * {@code x.asObject() == y.asObject()}. For primitive constants, this is equivalent to calling
-     * {@code x.equals(y)}. The equality relationship is symmetric.
-     * 
-     * @return {@code true} if the two parameters represent the same runtime object, {@code false}
-     *         otherwise
-     */
-    boolean constantEquals(Constant x, Constant y);
-
-    /**
-     * Returns the length of an array that is wrapped in a {@link Constant} object. If {@code array}
-     * is not an array, or the array length is not available at this point, the return value is
-     * {@code null}.
-     */
-    Integer lookupArrayLength(Constant array);
-
-    /**
-     * Reads a value of this kind using a base address and a displacement.
-     * 
-     * @param base the base address from which the value is read
-     * @param displacement the displacement within the object in bytes
-     * @param compressible whether this is a read of a compressed or an uncompressed pointer
-     * @return the read value encapsulated in a {@link Constant} object, or {@code null} if the
-     *         value cannot be read.
-     */
-    Constant readUnsafeConstant(Kind kind, Object base, long displacement, boolean compressible);
 
     /**
      * Determines if a given foreign call is side-effect free. Deoptimization cannot return

@@ -28,12 +28,12 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -149,8 +149,8 @@ public class AMD64ConvertSnippets implements Snippets {
 
         private final EnumMap<Op, SnippetInfo> snippets;
 
-        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target) {
-            super(metaAccess, codeCache, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
 
             snippets = new EnumMap<>(Op.class);
             snippets.put(Op.F2I, snippet(AMD64ConvertSnippets.class, "f2i"));
@@ -180,7 +180,7 @@ public class AMD64ConvertSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
-            template.instantiate(metaAccess, replacee, DEFAULT_REPLACER, tool, args);
+            template.instantiate(providers.getMetaAccess(), replacee, DEFAULT_REPLACER, tool, args);
             graph.removeFloating(convert);
         }
     }

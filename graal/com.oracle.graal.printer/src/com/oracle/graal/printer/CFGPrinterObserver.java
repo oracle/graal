@@ -144,9 +144,9 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             cfgPrinter.cfg = cfgPrinter.lir.cfg;
         }
 
-        CodeCacheProvider runtime = Debug.contextLookup(CodeCacheProvider.class);
-        if (runtime != null) {
-            cfgPrinter.target = runtime.getTarget();
+        CodeCacheProvider codeCache = Debug.contextLookup(CodeCacheProvider.class);
+        if (codeCache != null) {
+            cfgPrinter.target = codeCache.getTarget();
         }
 
         if (object instanceof BciBlockMapping) {
@@ -171,10 +171,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         } else if (object instanceof CompilationResult) {
             final CompilationResult compResult = (CompilationResult) object;
-            cfgPrinter.printMachineCode(runtime.disassemble(compResult, null), message);
+            cfgPrinter.printMachineCode(codeCache.disassemble(compResult, null), message);
         } else if (isCompilationResultAndInstalledCode(object)) {
             Object[] tuple = (Object[]) object;
-            cfgPrinter.printMachineCode(runtime.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
+            cfgPrinter.printMachineCode(codeCache.disassemble((CompilationResult) tuple[0], (InstalledCode) tuple[1]), message);
         } else if (object instanceof Interval[]) {
             cfgPrinter.printIntervals(message, (Interval[]) object);
 

@@ -42,6 +42,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public final class CompilationTask implements Runnable {
 
@@ -154,8 +155,9 @@ public final class CompilationTask implements Runnable {
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
                         HotSpotRuntime runtime = graalRuntime.getRuntime();
                         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                        return GraalCompiler.compileGraph(graph, cc, method, runtime, runtime, replacements, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan,
-                                        optimisticOpts, method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
+                        Providers providers = new Providers(runtime, runtime, runtime, runtime, replacements);
+                        return GraalCompiler.compileGraph(graph, cc, method, providers, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
+                                        method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }
                 });
             } finally {

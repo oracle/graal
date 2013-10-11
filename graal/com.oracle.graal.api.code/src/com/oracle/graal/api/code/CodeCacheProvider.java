@@ -26,7 +26,7 @@ import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 
 /**
- * Encapsulates the main functionality of the runtime for the compiler.
+ * Access to code cache related details and requirements.
  */
 public interface CodeCacheProvider {
 
@@ -56,7 +56,7 @@ public interface CodeCacheProvider {
     /**
      * Gets the register configuration to use when compiling a given method.
      */
-    RegisterConfig lookupRegisterConfig();
+    RegisterConfig getRegisterConfig();
 
     /**
      * Minimum size of the stack area reserved for outgoing parameters. This area is reserved in all

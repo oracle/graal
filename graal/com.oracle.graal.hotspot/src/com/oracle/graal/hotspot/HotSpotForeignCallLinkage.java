@@ -144,7 +144,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         }
         TargetDescription target = graalRuntime().getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), runtime);
-        return runtime.lookupRegisterConfig().getCallingConvention(ccType, returnType, parameterTypes, target, false);
+        return runtime.getRegisterConfig().getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
     private static JavaType asJavaType(Class type, HotSpotRuntime runtime) {

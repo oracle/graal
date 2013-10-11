@@ -30,7 +30,7 @@ public class OSRStartNode extends StartNode implements Lowerable {
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     public NodeIterable<OSRLocalNode> getOSRLocals() {

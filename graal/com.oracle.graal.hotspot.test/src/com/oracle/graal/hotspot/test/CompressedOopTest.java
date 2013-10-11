@@ -40,15 +40,15 @@ import com.oracle.graal.hotspot.meta.*;
  */
 public class CompressedOopTest extends GraalCompilerTest {
 
-    private final MetaAccessProvider metaAccessProvider;
+    private final MetaAccessProvider metaAccess;
 
     public CompressedOopTest() {
-        this.metaAccessProvider = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
     }
 
     private HotSpotInstalledCode getInstalledCode(String name) throws Exception {
         final Method method = CompressedOopTest.class.getMethod(name, Object.class, Object.class, Object.class);
-        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccessProvider.lookupJavaMethod(method);
+        final HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(method);
         final HotSpotInstalledCode installedBenchmarkCode = (HotSpotInstalledCode) getCode(javaMethod, parse(method));
         return installedBenchmarkCode;
     }

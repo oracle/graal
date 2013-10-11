@@ -36,10 +36,12 @@ import com.oracle.graal.java.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.printer.*;
@@ -56,8 +58,10 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     public PartialEvaluationTest() {
         // Make sure Truffle runtime is initialized.
         Assert.assertTrue(Truffle.getRuntime() instanceof GraalTruffleRuntime);
-        this.partialEvaluator = new PartialEvaluator(getMetaAccess(), getCodeCache(), ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements(), new TruffleCache(getMetaAccess(), getCodeCache(),
-                        GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations, ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements()));
+        Replacements truffleReplacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
+        Providers providers = new Providers(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), truffleReplacements);
+        TruffleCache truffleCache = new TruffleCache(providers, GraphBuilderConfiguration.getDefault(), TruffleCompilerImpl.Optimizations);
+        this.partialEvaluator = new PartialEvaluator(providers, truffleCache);
 
         DebugEnvironment.initialize(System.out);
     }
@@ -105,7 +109,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 StructuredGraph resultGraph = partialEvaluator.createGraph(compilable, assumptions);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(canonicalizeReads);
-                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements);
+                PhaseContext context = new PhaseContext(getProviders(), assumptions);
 
                 if (resultGraph.hasLoops()) {
                     boolean unrolled;
@@ -160,7 +164,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new DeadCodeEliminationPhase().apply(graph);
     }
 
@@ -172,7 +176,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             public StructuredGraph call() {
                 Assumptions assumptions = new Assumptions(false);
                 StructuredGraph graph = parse(methodName);
-                PhaseContext context = new PhaseContext(getMetaAccess(), getCodeCache(), assumptions, replacements);
+                PhaseContext context = new PhaseContext(getProviders(), assumptions);
                 CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
                 canonicalizer.apply(graph, context);
 
@@ -187,7 +191,8 @@ public class PartialEvaluationTest extends GraalCompilerTest {
                 canonicalizer.apply(graph, context);
                 new DeadCodeEliminationPhase().apply(graph);
 
-                HighTierContext highTierContext = new HighTierContext(getMetaAccess(), getCodeCache(), assumptions, replacements, null, plan, OptimisticOptimizations.NONE);
+                HighTierContext highTierContext = new HighTierContext(getProviders(), assumptions, null, plan,
+                                OptimisticOptimizations.NONE);
                 InliningPhase inliningPhase = new InliningPhase(canonicalizer);
                 inliningPhase.apply(graph, highTierContext);
                 removeFrameStates(graph);

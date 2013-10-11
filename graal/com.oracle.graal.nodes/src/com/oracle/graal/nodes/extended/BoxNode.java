@@ -56,7 +56,7 @@ public class BoxNode extends FloatingNode implements VirtualizableAllocation, Lo
 
     @Override
     public void lower(LoweringTool tool) {
-        tool.getCodeCache().lower(this, tool);
+        tool.getLowerer().lower(this, tool);
     }
 
     @Override

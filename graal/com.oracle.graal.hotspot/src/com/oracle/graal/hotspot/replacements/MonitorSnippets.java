@@ -48,6 +48,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -415,8 +416,8 @@ public class MonitorSnippets implements Snippets {
 
         private final boolean useFastLocking;
 
-        public Templates(MetaAccessProvider metaAccess, GraalCodeCacheProvider codeCache, Replacements replacements, TargetDescription target, boolean useFastLocking) {
-            super(metaAccess, codeCache, replacements, target);
+        public Templates(Providers providers, TargetDescription target, boolean useFastLocking) {
+            super(providers, target);
             this.useFastLocking = useFastLocking;
         }
 
@@ -436,7 +437,7 @@ public class MonitorSnippets implements Snippets {
             boolean tracingEnabledForMethod = stateAfter != null && (isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
             args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || tracingEnabledForMethod);
 
-            Map<Node, Node> nodes = template(args).instantiate(metaAccess, monitorenterNode, DEFAULT_REPLACER, args);
+            Map<Node, Node> nodes = template(args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
 
             for (Node n : nodes.values()) {
                 if (n instanceof BeginLockScopeNode) {
@@ -460,7 +461,7 @@ public class MonitorSnippets implements Snippets {
             args.addConst("lockDepth", monitorexitNode.getLockDepth());
             args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
 
-            Map<Node, Node> nodes = template(args).instantiate(metaAccess, monitorexitNode, DEFAULT_REPLACER, args);
+            Map<Node, Node> nodes = template(args).instantiate(providers.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
 
             for (Node n : nodes.values()) {
                 if (n instanceof EndLockScopeNode) {
@@ -514,14 +515,14 @@ public class MonitorSnippets implements Snippets {
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = replacements.getSnippet(initCounter.getMethod());
+                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod());
                     InliningUtil.inline(invoke, inlineeGraph, false);
 
                     List<ReturnNode> rets = graph.getNodes().filter(ReturnNode.class).snapshot();
                     for (ReturnNode ret : rets) {
                         returnType = checkCounter.getMethod().getSignature().getReturnType(checkCounter.getMethod().getDeclaringClass());
                         String msg = "unbalanced monitors in " + MetaUtil.format("%H.%n(%p)", graph.method()) + ", count = %d";
-                        ConstantNode errMsg = ConstantNode.forObject(msg, metaAccess, graph);
+                        ConstantNode errMsg = ConstantNode.forObject(msg, providers.getMetaAccess(), graph);
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnType));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         List<ValueNode> stack = Collections.emptyList();

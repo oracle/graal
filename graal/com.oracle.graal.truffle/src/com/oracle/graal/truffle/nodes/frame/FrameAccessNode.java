@@ -95,11 +95,11 @@ public abstract class FrameAccessNode extends FixedWithNextNode implements Simpl
         }
     }
 
-    protected final ValueNode getSlotOffset(int scale, MetaAccessProvider metaAccessProvider) {
+    protected final ValueNode getSlotOffset(int scale, MetaAccessProvider metaAccess) {
         if (isConstantFrameSlot()) {
             return ConstantNode.forInt(getSlotIndex() * scale, graph());
         } else {
-            LoadFieldNode loadFrameSlotIndex = graph().add(new LoadFieldNode(getSlot(), metaAccessProvider.lookupJavaField(getFrameSlotIndexField())));
+            LoadFieldNode loadFrameSlotIndex = graph().add(new LoadFieldNode(getSlot(), metaAccess.lookupJavaField(getFrameSlotIndexField())));
             graph().addBeforeFixed(this, loadFrameSlotIndex);
             return scale == 1 ? loadFrameSlotIndex : IntegerArithmeticNode.mul(loadFrameSlotIndex, ConstantNode.forInt(scale, graph()));
         }

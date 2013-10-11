@@ -69,12 +69,12 @@ public class HSAILBackend extends Backend {
      */
     @Override
     public FrameMap newFrameMap() {
-        return new HSAILFrameMap(runtime(), target, new HSAILRegisterConfig());
+        return new HSAILFrameMap(getCodeCache(), target, new HSAILRegisterConfig());
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new HSAILLIRGenerator(graph, metaAccess(), runtime(), target, frameMap, cc, lir);
+        return new HSAILLIRGenerator(graph, getMetaAccess(), getCodeCache(), target, frameMap, cc, lir);
     }
 
     public String getPartialCodeString() {
@@ -104,7 +104,7 @@ public class HSAILBackend extends Backend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = new HSAILAssembler(target);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, runtime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, getCodeCache(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         return tasm;
     }
@@ -142,12 +142,12 @@ public class HSAILBackend extends Backend {
         int pidx = 0;
         for (int i = 0; i < totalParamCount; i++) {
             if (i == 0 && !isStatic) {
-                paramtypes[i] = metaAccess().lookupJavaType(Object.class);
+                paramtypes[i] = getMetaAccess().lookupJavaType(Object.class);
                 paramNames[i] = "%_this";
             } else if (i < nonConstantParamCount) {
                 if (isObjectLambda && (i == (nonConstantParamCount))) {
                     // Set up the gid register mapping.
-                    paramtypes[i] = metaAccess().lookupJavaType(int.class);
+                    paramtypes[i] = getMetaAccess().lookupJavaType(int.class);
                     paramNames[i] = "%_gid";
                 } else {
                     paramtypes[i] = signature.getParameterType(pidx++, null);

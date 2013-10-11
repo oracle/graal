@@ -56,7 +56,7 @@ public class CompiledMethodTest extends GraalCompilerTest {
     public void test1() {
         Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), new Assumptions(false), replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new DeadCodeEliminationPhase().apply(graph);
 
         for (Node node : graph.getNodes()) {
