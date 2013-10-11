@@ -41,9 +41,9 @@ public final class TruffleReplacements extends ReplacementsImpl {
 
     private final Replacements graalReplacements;
 
-    private TruffleReplacements(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Assumptions assumptions,
-                    TargetDescription target, Replacements graalReplacements) {
-        super(metaAccess, constantReflection, codeCache, lowerer, assumptions, target);
+    private TruffleReplacements(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
+                    Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
+        super(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, assumptions, target);
         this.graalReplacements = graalReplacements;
     }
 
@@ -51,10 +51,12 @@ public final class TruffleReplacements extends ReplacementsImpl {
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
         CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
         ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
+        ForeignCallsProvider foreignCalls = Graal.getRequiredCapability(ForeignCallsProvider.class);
         LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
         TargetDescription targetDescription = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
         Replacements graalReplacements = Graal.getRequiredCapability(Replacements.class);
-        Replacements truffleReplacements = new TruffleReplacements(metaAccess, constantReflection, codeCache, lowerer, graalReplacements.getAssumptions(), targetDescription, graalReplacements);
+        Replacements truffleReplacements = new TruffleReplacements(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, graalReplacements.getAssumptions(), targetDescription,
+                        graalReplacements);
 
         truffleReplacements.registerSubstitutions(CompilerAssertsSubstitutions.class);
         truffleReplacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);

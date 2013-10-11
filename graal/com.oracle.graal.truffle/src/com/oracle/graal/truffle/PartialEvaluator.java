@@ -115,7 +115,7 @@ public class PartialEvaluator {
 
             @Override
             public void run() {
-                new GraphBuilderPhase(providers.getMetaAccess(), config, TruffleCompilerImpl.Optimizations).apply(graph);
+                new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), config, TruffleCompilerImpl.Optimizations).apply(graph);
 
                 // Replace thisNode with constant.
                 LocalNode thisNode = graph.getLocal(0);

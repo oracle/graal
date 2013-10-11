@@ -99,7 +99,8 @@ import com.oracle.graal.word.*;
 /**
  * HotSpot implementation of {@link LoweringProvider}.
  */
-public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantReflectionProvider, CodeCacheProvider, LoweringProvider, DisassemblerProvider, BytecodeDisassemblerProvider, SuitesProvider {
+public abstract class HotSpotRuntime implements MetaAccessProvider, ForeignCallsProvider, ConstantReflectionProvider, CodeCacheProvider, LoweringProvider, DisassemblerProvider,
+                BytecodeDisassemblerProvider, SuitesProvider {
 
     public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
     public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
@@ -292,7 +293,7 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantRefl
         registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        Providers providers = new Providers(this, this, this, this, r);
+        Providers providers = new Providers(this, this, this, this, this, r);
 
         link(new NewInstanceStub(providers, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));
         link(new NewArrayStub(providers, target, registerStubCall(NEW_ARRAY, REEXECUTABLE, NOT_LEAF, INIT_LOCATION)));

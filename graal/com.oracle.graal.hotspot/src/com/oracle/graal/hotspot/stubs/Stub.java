@@ -152,7 +152,7 @@ public abstract class Stub {
                     }
 
                     PhasePlan phasePlan = new PhasePlan();
-                    GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                    GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(runtime, runtime, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                     phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                     // The stub itself needs the incoming calling convention.
                     CallingConvention incomingCc = linkage.getIncomingCallingConvention();

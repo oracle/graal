@@ -230,7 +230,7 @@ public class EscapeAnalysisTest extends GraalCompilerTest {
         return Debug.scope("GraalCompiler", new Object[]{graph, method, getCodeCache()}, new Callable<ReturnNode>() {
 
             public ReturnNode call() {
-                new GraphBuilderPhase(getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
 
                 Assumptions assumptions = new Assumptions(false);
                 HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);

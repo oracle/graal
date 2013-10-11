@@ -44,29 +44,29 @@ import com.oracle.graal.phases.*;
  */
 public class VerifyOptionsPhase extends Phase {
 
-    public static boolean checkOptions(MetaAccessProvider metaAccess) {
+    public static boolean checkOptions(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
         ServiceLoader<Options> sl = ServiceLoader.loadInstalled(Options.class);
         Set<ResolvedJavaType> checked = new HashSet<>();
         for (Options opts : sl) {
             for (OptionDescriptor desc : opts) {
                 ResolvedJavaType holder = metaAccess.lookupJavaType(desc.getDeclaringClass());
-                checkType(holder, desc, metaAccess, checked);
+                checkType(holder, desc, metaAccess, foreignCalls, checked);
             }
         }
         return true;
     }
 
-    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, Set<ResolvedJavaType> checked) {
+    private static void checkType(ResolvedJavaType type, OptionDescriptor option, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, Set<ResolvedJavaType> checked) {
         if (!checked.contains(type)) {
             checked.add(type);
             ResolvedJavaType superType = type.getSuperclass();
             if (superType != null && !MetaUtil.isJavaLangObject(superType)) {
-                checkType(superType, option, metaAccess, checked);
+                checkType(superType, option, metaAccess, foreignCalls, checked);
             }
             for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
                 if (method.isClassInitializer()) {
                     StructuredGraph graph = new StructuredGraph(method);
-                    new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                    new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
                     new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
                 }
             }

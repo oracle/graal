@@ -96,7 +96,7 @@ public final class TruffleCache {
 
                 final StructuredGraph graph = new StructuredGraph(method);
                 PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
-                new GraphBuilderPhase(phaseContext.getMetaAccess(), config, optimisticOptimizations).apply(graph);
+                new GraphBuilderPhase(phaseContext.getMetaAccess(), providers.getForeignCalls(), config, optimisticOptimizations).apply(graph);
 
                 for (LocalNode l : graph.getNodes(LocalNode.class)) {
                     if (l.kind() == Kind.Object) {

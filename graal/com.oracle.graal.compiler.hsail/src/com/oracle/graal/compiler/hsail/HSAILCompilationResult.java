@@ -80,8 +80,9 @@ public class HSAILCompilationResult {
 
     public static HSAILCompilationResult getHSAILCompilationResult(ResolvedJavaMethod javaMethod) {
         MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        ForeignCallsProvider foreignCalls = Graal.getRequiredCapability(ForeignCallsProvider.class);
         StructuredGraph graph = new StructuredGraph(javaMethod);
-        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         return getHSAILCompilationResult(graph);
     }
 
@@ -118,7 +119,7 @@ public class HSAILCompilationResult {
         TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
         HSAILBackend hsailBackend = new HSAILBackend(providers.getMetaAccess(), providers.getCodeCache(), target);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new HSAILPhase());
         new HSAILPhase().apply(graph);

@@ -155,7 +155,7 @@ public final class CompilationTask implements Runnable {
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
                         HotSpotRuntime runtime = graalRuntime.getRuntime();
                         CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                        Providers providers = new Providers(runtime, runtime, runtime, runtime, replacements);
+                        Providers providers = new Providers(runtime, runtime, runtime, runtime, runtime, replacements);
                         return GraalCompiler.compileGraph(graph, cc, method, providers, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
                                         method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }

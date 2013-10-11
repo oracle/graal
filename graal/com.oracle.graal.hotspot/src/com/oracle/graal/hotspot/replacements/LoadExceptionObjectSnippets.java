@@ -74,7 +74,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
                 HotSpotRuntime hsRuntime = (HotSpotRuntime) providers.getMetaAccess();
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(hsRuntime.threadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
-                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getMetaAccess(), LOAD_AND_CLEAR_EXCEPTION, thread));
+                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getForeignCalls(), LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
