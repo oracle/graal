@@ -41,14 +41,14 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
 
     private final ForeignCallDescriptor descriptor;
 
-    public ForeignCallNode(MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public ForeignCallNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;
         this.metaAccess = metaAccess;
     }
 
-    protected ForeignCallNode(MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, Stamp stamp) {
+    protected ForeignCallNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;

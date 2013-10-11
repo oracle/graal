@@ -41,7 +41,7 @@ public class StubForeignCallNode extends FixedWithNextNode implements LIRLowerab
 
     private final ForeignCallDescriptor descriptor;
 
-    public StubForeignCallNode(MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, ValueNode... arguments) {
+    public StubForeignCallNode(@InjectedNodeParameter MetaAccessProvider metaAccess, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(StampFactory.forKind(Kind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);
         this.descriptor = descriptor;

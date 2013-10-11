@@ -43,7 +43,7 @@ public class NewMultiArrayStubCall extends ForeignCallNode {
 
     public static final ForeignCallDescriptor NEW_MULTI_ARRAY = new ForeignCallDescriptor("new_multi_array", Object.class, Word.class, int.class, Word.class);
 
-    public NewMultiArrayStubCall(MetaAccessProvider metaAccess, ValueNode hub, int rank, ValueNode dims) {
+    public NewMultiArrayStubCall(@InjectedNodeParameter MetaAccessProvider metaAccess, ValueNode hub, int rank, ValueNode dims) {
         super(metaAccess, NEW_MULTI_ARRAY, defaultStamp);
         this.hub = hub;
         this.rank = rank;
