@@ -71,7 +71,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         Iterator<Node> iterator = frontier.iterator();
         while (iterator.hasNext()) {
             Node currentNode = iterator.next();
-            assert !isSafepoint(currentNode) : "Write barrier must be present";
+            assert !isSafepoint(currentNode) : "Write barrier must be present " + write;
             if (useG1GC()) {
                 if (!(currentNode instanceof G1PostWriteBarrier) || ((currentNode instanceof G1PostWriteBarrier) && !validateBarrier((AccessNode) write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
