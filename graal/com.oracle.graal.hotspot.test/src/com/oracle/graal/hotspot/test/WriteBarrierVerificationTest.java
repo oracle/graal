@@ -62,8 +62,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
     private static native void safepoint();
 
-    public static void test1Snippet() {
-        Container main = new Container();
+    public static void test1Snippet(Container main) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         barrierIndex = 0;
@@ -86,8 +85,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test1Snippet", 2, new int[]{2});
     }
 
-    public static void test2Snippet() {
-        Container main = new Container();
+    public static void test2Snippet(Container main) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         barrierIndex = 0;
@@ -109,8 +107,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test2Snippet", 2, new int[]{2});
     }
 
-    public static void test3Snippet(boolean test) {
-        Container main = new Container();
+    public static void test3Snippet(Container main, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         barrierIndex = 0;
@@ -160,8 +157,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test3Snippet", 4, new int[]{4});
     }
 
-    public static void test4Snippet(boolean test) {
-        Container main = new Container();
+    public static void test4Snippet(Container main, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -197,8 +193,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test4Snippet", 5, new int[]{1});
     }
 
-    public static void test5Snippet() {
-        Container main = new Container();
+    public static void test5Snippet(Container main) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -253,8 +248,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test5Snippet", 5, new int[]{4, 5});
     }
 
-    public static void test6Snippet(boolean test) {
-        Container main = new Container();
+    public static void test6Snippet(Container main, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -294,8 +288,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test6Snippet", 5, new int[]{4});
     }
 
-    public static void test7Snippet(boolean test) {
-        Container main = new Container();
+    public static void test7Snippet(Container main, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -330,8 +323,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test7Snippet", 3, new int[]{1});
     }
 
-    public static void test8Snippet(boolean test) {
-        Container main = new Container();
+    public static void test8Snippet(Container main, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -359,9 +351,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test8Snippet", 2, new int[]{1, 2});
     }
 
-    public static void test9Snippet(boolean test) {
-        Container main1 = new Container();
-        Container main2 = new Container();
+    public static void test9Snippet(Container main1, Container main2, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -409,9 +399,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test9Snippet", 4, new int[]{3, 4});
     }
 
-    public static void test10Snippet(boolean test) {
-        Container main1 = new Container();
-        Container main2 = new Container();
+    public static void test10Snippet(Container main1, Container main2, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -471,10 +459,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test10Snippet", 5, new int[]{3, 4});
     }
 
-    public static void test11Snippet(boolean test) {
-        Container main1 = new Container();
-        Container main2 = new Container();
-        Container main3 = new Container();
+    public static void test11Snippet(Container main1, Container main2, Container main3, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         safepoint();
@@ -561,14 +546,12 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
         test("test11Snippet", 11, new int[]{5});
     }
 
-    @Test
+    @Test(expected = AssertionError.class)
     public void test56() {
         test("test11Snippet", 11, new int[]{11});
     }
 
-    public static void test12Snippet(boolean test) {
-        Container main = new Container();
-        Container main1 = new Container();
+    public static void test12Snippet(Container main, Container main1, boolean test) {
         Container temp1 = new Container();
         Container temp2 = new Container();
         barrierIndex = 0;
@@ -718,7 +701,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                      * Catch assertion, test for expected one and re-throw in order to validate unit
                      * test.
                      */
-                    Assert.assertTrue(error.getMessage().equals("Write barrier must be present"));
+                    Assert.assertTrue(error.getMessage().contains("Write barrier must be present"));
                     return error;
                 } finally {
                     Debug.setConfig(config);

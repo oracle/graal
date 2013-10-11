@@ -73,7 +73,13 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test1() throws Exception {
-        test("test1Snippet", useG1GC() ? 4 : 2);
+        int expectedBarriers = 0;
+        if (useG1GC()) {
+            expectedBarriers = (useDeferredInitBarriers() ? 0 : 4);
+        } else {
+            expectedBarriers = (useDeferredInitBarriers() ? 0 : 2);
+        }
+        test("test1Snippet", expectedBarriers);
     }
 
     public static void test1Snippet() {
@@ -89,7 +95,13 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test2() throws Exception {
-        test("test2Snippet", useG1GC() ? 8 : 4);
+        int expectedBarriers = 0;
+        if (useG1GC()) {
+            expectedBarriers = (useDeferredInitBarriers() ? 0 : 8);
+        } else {
+            expectedBarriers = (useDeferredInitBarriers() ? 0 : 4);
+        }
+        test("test2Snippet", expectedBarriers);
     }
 
     public static void test2Snippet(boolean test) {
@@ -135,7 +147,13 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
      */
     @Test
     public void test4() throws Exception {
-        test("test4Snippet", useG1GC() ? 5 : 2);
+        int expectedBarriers = 0;
+        if (useG1GC()) {
+            expectedBarriers = (useDeferredInitBarriers() ? 1 : 5);
+        } else {
+            expectedBarriers = (useDeferredInitBarriers() ? 0 : 2);
+        }
+        test("test4Snippet", expectedBarriers);
     }
 
     public static Object test4Snippet() {
