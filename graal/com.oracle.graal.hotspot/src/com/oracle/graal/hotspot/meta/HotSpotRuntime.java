@@ -91,6 +91,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.word.*;
@@ -252,9 +253,9 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantRefl
      *            cannot be re-executed.
      * @param killedLocations the memory locations killed by the foreign call
      */
-    private void linkForeignCall(Replacements replacements, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition, boolean reexecutable,
+    private void linkForeignCall(Providers providers, ForeignCallDescriptor descriptor, long address, boolean prependThread, Transition transition, boolean reexecutable,
                     LocationIdentity... killedLocations) {
-        ForeignCallStub stub = new ForeignCallStub(this, replacements, address, descriptor, prependThread, transition, reexecutable, killedLocations);
+        ForeignCallStub stub = new ForeignCallStub(providers, address, descriptor, prependThread, transition, reexecutable, killedLocations);
         HotSpotForeignCallLinkage linkage = stub.getLinkage();
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
@@ -291,29 +292,31 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantRefl
         registerForeignCall(NEW_INSTANCE_C, c.newInstanceAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall, DESTROYS_REGISTERS, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
 
-        link(new NewInstanceStub(this, r, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));
-        link(new NewArrayStub(this, r, target, registerStubCall(NEW_ARRAY, REEXECUTABLE, NOT_LEAF, INIT_LOCATION)));
-        link(new ExceptionHandlerStub(this, r, target, foreignCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(this, r, target, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));
-        link(new VerifyOopStub(this, r, target, registerStubCall(VERIFY_OOP, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+        Providers providers = new Providers(this, this, this, this, r);
 
-        linkForeignCall(r, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
-        linkForeignCall(r, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
-        linkForeignCall(r, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
-        linkForeignCall(r, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
-        linkForeignCall(r, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, LEAF, NOT_REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
-        linkForeignCall(r, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        link(new NewInstanceStub(providers, target, registerStubCall(NEW_INSTANCE, REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));
+        link(new NewArrayStub(providers, target, registerStubCall(NEW_ARRAY, REEXECUTABLE, NOT_LEAF, INIT_LOCATION)));
+        link(new ExceptionHandlerStub(providers, target, foreignCalls.get(EXCEPTION_HANDLER)));
+        link(new UnwindExceptionToCallerStub(providers, target, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, NOT_REEXECUTABLE, NOT_LEAF, ANY_LOCATION)));
+        link(new VerifyOopStub(providers, target, registerStubCall(VERIFY_OOP, REEXECUTABLE, LEAF, NO_LOCATIONS)));
+
+        linkForeignCall(providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, MARK_WORD_LOCATION);
+        linkForeignCall(providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, CREATE_NULL_POINTER_EXCEPTION, c.createNullPointerExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, CREATE_OUT_OF_BOUNDS_EXCEPTION, c.createOutOfBoundsExceptionAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
+        linkForeignCall(providers, DYNAMIC_NEW_ARRAY, c.dynamicNewArrayAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, INIT_LOCATION);
+        linkForeignCall(providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD, NOT_LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, THREAD_IS_INTERRUPTED, c.threadIsInterruptedAddress, PREPEND_THREAD, NOT_LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
+        linkForeignCall(providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD, LEAF, NOT_REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
+        linkForeignCall(providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD, LEAF, REEXECUTABLE, NO_LOCATIONS);
 
         r.registerSubstitutions(ObjectSubstitutions.class);
         r.registerSubstitutions(SystemSubstitutions.class);
@@ -325,16 +328,16 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantRefl
         r.registerSubstitutions(CRC32Substitutions.class);
         r.registerSubstitutions(ReflectionSubstitutions.class);
 
-        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        monitorSnippets = new MonitorSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget(), c.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        boxingSnippets = new BoxingSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
-        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(this, this, this, this, r, graalRuntime.getTarget());
+        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, graalRuntime.getTarget());
+        instanceofSnippets = new InstanceOfSnippets.Templates(providers, graalRuntime.getTarget());
+        newObjectSnippets = new NewObjectSnippets.Templates(providers, graalRuntime.getTarget());
+        monitorSnippets = new MonitorSnippets.Templates(providers, graalRuntime.getTarget(), c.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, graalRuntime.getTarget());
+        boxingSnippets = new BoxingSnippets.Templates(providers, graalRuntime.getTarget());
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, graalRuntime.getTarget());
+        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, graalRuntime.getTarget());
 
-        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(this, this, this, this, r, graalRuntime.getTarget()));
+        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, graalRuntime.getTarget()));
     }
 
     public HotSpotGraalRuntime getGraalRuntime() {

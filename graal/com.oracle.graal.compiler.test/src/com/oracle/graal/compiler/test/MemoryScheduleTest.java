@@ -553,7 +553,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             @Override
             public SchedulePhase call() throws Exception {
                 Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements, null, getDefaultPhasePlan(),
+                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(),
                                 OptimisticOptimizations.ALL);
                 new CanonicalizerPhase(true).apply(graph, context);
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
@@ -576,7 +576,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
-                MidTierContext midContext = new MidTierContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements, getCodeCache().getTarget(),
+                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(),
                                 OptimisticOptimizations.ALL);
                 new GuardLoweringPhase().apply(graph, midContext);
                 new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);

@@ -28,13 +28,12 @@ import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -65,23 +64,22 @@ public class LoadExceptionObjectSnippets implements Snippets {
 
         private final SnippetInfo loadException = snippet(LoadExceptionObjectSnippets.class, "loadException");
 
-        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
-                        TargetDescription target) {
-            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
         }
 
         public void lower(LoadExceptionObjectNode loadExceptionObject) {
             if (USE_C_RUNTIME) {
                 StructuredGraph graph = loadExceptionObject.graph();
-                HotSpotRuntime hsRuntime = (HotSpotRuntime) metaAccess;
+                HotSpotRuntime hsRuntime = (HotSpotRuntime) providers.getMetaAccess();
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(hsRuntime.threadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
-                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(metaAccess, LOAD_AND_CLEAR_EXCEPTION, thread));
+                ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getMetaAccess(), LOAD_AND_CLEAR_EXCEPTION, thread));
                 loadExceptionC.setStateAfter(loadExceptionObject.stateAfter());
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage());
-                template(args).instantiate(metaAccess, loadExceptionObject, DEFAULT_REPLACER, args);
+                template(args).instantiate(providers.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }
     }

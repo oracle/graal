@@ -51,6 +51,7 @@ import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.InliningPhase.InliningData;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public class InliningUtil {
 
@@ -292,10 +293,8 @@ public class InliningUtil {
          * Performs the inlining described by this object and returns the node that represents the
          * return value of the inlined method (or null for void methods and methods that have no
          * non-exceptional exit).
-         * 
-         * @param constantReflection TODO
          */
-        void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements);
+        void inline(Providers providers, Assumptions assumptions);
 
         /**
          * Try to make the call static bindable to avoid interface and virtual method calls.
@@ -369,7 +368,7 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(Providers providers, Assumptions assumptions) {
             inline(invoke, concrete, inlineableElement, assumptions, !suppressNullCheck);
         }
 
@@ -472,8 +471,8 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
-            createGuard(graph(), metaAccess);
+        public void inline(Providers providers, Assumptions assumptions) {
+            createGuard(graph(), providers.getMetaAccess());
             inline(invoke, concrete, inlineableElement, assumptions, false);
         }
 
@@ -589,11 +588,11 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(Providers providers, Assumptions assumptions) {
             if (hasSingleMethod()) {
-                inlineSingleMethod(graph(), metaAccess, assumptions);
+                inlineSingleMethod(graph(), providers.getMetaAccess(), assumptions);
             } else {
-                inlineMultipleMethods(graph(), metaAccess, constantReflection, assumptions, replacements, codeCache);
+                inlineMultipleMethods(graph(), providers, assumptions);
             }
         }
 
@@ -605,8 +604,7 @@ public class InliningUtil {
             return notRecordedTypeProbability > 0;
         }
 
-        private void inlineMultipleMethods(StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, Assumptions assumptions, Replacements replacements,
-                        CodeCacheProvider codeCache) {
+        private void inlineMultipleMethods(StructuredGraph graph, Providers providers, Assumptions assumptions) {
             int numberOfMethods = concretes.size();
             FixedNode continuation = invoke.next();
 
@@ -661,7 +659,7 @@ public class InliningUtil {
             assert invoke.asNode().isAlive();
 
             // replace the invoke with a switch on the type of the actual receiver
-            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, metaAccess);
+            boolean methodDispatch = createDispatchOnTypeBeforeInvoke(graph, successors, false, providers.getMetaAccess());
 
             assert invoke.next() == continuation;
             invoke.setNext(null);
@@ -716,8 +714,9 @@ public class InliningUtil {
                 if (opportunities > 0) {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
-                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, new PhaseContext(metaAccess, codeCache, constantReflection, null,
-                                    assumptions, replacements), new CanonicalizerPhase(!AOTCompilation.getValue()));
+                    PhaseContext phaseContext = new PhaseContext(providers, assumptions);
+                    CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+                    TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
                 }
             }
         }
@@ -1009,9 +1008,9 @@ public class InliningUtil {
         }
 
         @Override
-        public void inline(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, Assumptions assumptions, Replacements replacements) {
+        public void inline(Providers providers, Assumptions assumptions) {
             assumptions.record(takenAssumption);
-            super.inline(metaAccess, constantReflection, codeCache, assumptions, replacements);
+            super.inline(providers, assumptions);
         }
 
         @Override

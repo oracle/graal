@@ -52,6 +52,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.test.*;
 
@@ -80,7 +81,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final MetaAccessProvider metaAccess;
     private final ConstantReflectionProvider constantReflection;
     private final LoweringProvider lowerer;
-    protected final Replacements replacements;
+    private final Replacements replacements;
     protected final Backend backend;
     protected final Suites suites;
 
@@ -162,6 +163,10 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
         }
         return result.toString();
+    }
+
+    protected Providers getProviders() {
+        return new Providers(metaAccess, codeCache, constantReflection, lowerer, getReplacements());
     }
 
     protected CodeCacheProvider getCodeCache() {
@@ -486,8 +491,8 @@ public abstract class GraalCompilerTest extends GraalTest {
                 GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, metaAccess, getConstantReflection(), getCodeCache(), getLowerer(), replacements, backend,
-                                getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), backend, getCodeCache().getTarget(), null, phasePlan,
+                                OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
                 if (printCompilation) {
                     TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
                 }
@@ -578,5 +583,9 @@ public abstract class GraalCompilerTest extends GraalTest {
         gbConf.setEagerInfopointMode(eagerInfopointMode);
         plan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, gbConf, OptimisticOptimizations.ALL));
         return plan;
+    }
+
+    protected Replacements getReplacements() {
+        return replacements;
     }
 }

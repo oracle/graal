@@ -23,9 +23,9 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.util.*;
 
 public class HighTierContext extends PhaseContext {
 
@@ -34,9 +34,8 @@ public class HighTierContext extends PhaseContext {
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
 
-    public HighTierContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Assumptions assumptions,
-                    Replacements replacements, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        super(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements);
+    public HighTierContext(Providers copyFrom, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+        super(copyFrom, assumptions);
         this.plan = plan;
         this.cache = cache;
         this.optimisticOpts = optimisticOpts;
@@ -55,7 +54,6 @@ public class HighTierContext extends PhaseContext {
     }
 
     public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
-        return new HighTierContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), newAssumptions, getReplacements(), getGraphCache(), getPhasePlan(),
-                        getOptimisticOptimizations());
+        return new HighTierContext(this, newAssumptions, getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
     }
 }

@@ -134,8 +134,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         }
 
         Assumptions assumptions = new Assumptions(false);
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements));
-        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), assumptions));
+        new CanonicalizerPhase(true).apply(referenceGraph, new PhaseContext(getProviders(), assumptions));
         Debug.scope("Test", new DebugDumpScope("Test:" + snippet), new Runnable() {
 
             @Override

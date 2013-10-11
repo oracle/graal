@@ -38,6 +38,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
@@ -206,9 +207,8 @@ public class BoxingSnippets implements Snippets {
         private final EnumMap<Kind, SnippetInfo> boxSnippets = new EnumMap<>(Kind.class);
         private final EnumMap<Kind, SnippetInfo> unboxSnippets = new EnumMap<>(Kind.class);
 
-        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
-                        TargetDescription target) {
-            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
             for (Kind kind : new Kind[]{Kind.Boolean, Kind.Byte, Kind.Char, Kind.Double, Kind.Float, Kind.Int, Kind.Long, Kind.Short}) {
                 boxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "ValueOf"));
                 unboxSnippets.put(kind, snippet(BoxingSnippets.class, kind.getJavaName() + "Value"));
@@ -216,7 +216,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(BoxNode box, LoweringTool tool) {
-            FloatingNode canonical = canonicalizeBoxing(box, metaAccess);
+            FloatingNode canonical = canonicalizeBoxing(box, providers.getMetaAccess());
             // if in AOT mode, we don't want to embed boxed constants.
             if (canonical != null && !AOTCompilation.getValue()) {
                 box.graph().replaceFloating(box, canonical);
@@ -226,7 +226,7 @@ public class BoxingSnippets implements Snippets {
 
                 SnippetTemplate template = template(args);
                 Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
-                template.instantiate(metaAccess, box, DEFAULT_REPLACER, tool, args);
+                template.instantiate(providers.getMetaAccess(), box, DEFAULT_REPLACER, tool, args);
                 GraphUtil.killWithUnusedFloatingInputs(box);
             }
         }
@@ -237,7 +237,7 @@ public class BoxingSnippets implements Snippets {
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);
-            template.instantiate(metaAccess, unbox, DEFAULT_REPLACER, tool, args);
+            template.instantiate(providers.getMetaAccess(), unbox, DEFAULT_REPLACER, tool, args);
             GraphUtil.killWithUnusedFloatingInputs(unbox);
         }
     }

@@ -38,7 +38,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.StructuredGraph.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -54,8 +54,8 @@ import com.oracle.graal.word.*;
  */
 public class NewInstanceStub extends SnippetStub {
 
-    public NewInstanceStub(final HotSpotRuntime runtime, Replacements replacements, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(runtime, replacements, target, linkage);
+    public NewInstanceStub(Providers providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+        super(providers, target, linkage);
     }
 
     @Override

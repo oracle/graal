@@ -36,11 +36,11 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * Class that represents a HSAIL compilation result. Includes the compiled HSAIL code.
@@ -114,23 +114,19 @@ public class HSAILCompilationResult {
 
     public static HSAILCompilationResult getHSAILCompilationResult(StructuredGraph graph) {
         Debug.dump(graph, "Graph");
+        Providers providers = GraalCompiler.getGraalProviders();
         TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
-        ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
-        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
-        HSAILBackend hsailBackend = new HSAILBackend(metaAccess, codeCache, target);
+        HSAILBackend hsailBackend = new HSAILBackend(providers.getMetaAccess(), providers.getCodeCache(), target);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new HSAILPhase());
         new HSAILPhase().apply(graph);
         CallingConvention cc = getHSAILCallingConvention(Type.JavaCallee, target, graph.method(), false);
-        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
         SuitesProvider suitesProvider = Graal.getRequiredCapability(SuitesProvider.class);
         try {
-            CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), metaAccess, constantReflection, codeCache, lowerer, replacements, hsailBackend, target, null,
-                            phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
+            CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, hsailBackend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
+                            suitesProvider.getDefaultSuites(), new CompilationResult());
             return new HSAILCompilationResult(compResult);
         } catch (GraalInternalError e) {
             String partialCode = hsailBackend.getPartialCodeString();

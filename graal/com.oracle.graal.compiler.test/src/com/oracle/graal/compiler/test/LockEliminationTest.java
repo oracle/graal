@@ -61,7 +61,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedSnippet", new A(), new A());
 
         StructuredGraph graph = getGraph("testSynchronizedSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -79,7 +79,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         test("testSynchronizedMethodSnippet", new A());
 
         StructuredGraph graph = getGraph("testSynchronizedMethodSnippet");
-        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), null, replacements));
+        new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
         new LockEliminationPhase().apply(graph);
         assertEquals(1, graph.getNodes().filter(MonitorEnterNode.class).count());
         assertEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());
@@ -90,7 +90,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(method);
         PhasePlan phasePlan = getDefaultPhasePlan();
         Assumptions assumptions = new Assumptions(true);
-        HighTierContext context = new HighTierContext(getMetaAccess(), getCodeCache(), getConstantReflection(), getLowerer(), assumptions, replacements, null, phasePlan, OptimisticOptimizations.ALL);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
         new CanonicalizerPhase(true).apply(graph, context);
         new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
         new CanonicalizerPhase(true).apply(graph, context);

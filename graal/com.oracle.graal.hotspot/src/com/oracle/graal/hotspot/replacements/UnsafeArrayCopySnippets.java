@@ -23,8 +23,8 @@
 package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
-import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
@@ -32,7 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.nodes.extended.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
@@ -256,9 +256,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
         private final SnippetInfo[] arraycopySnippets;
         private final SnippetInfo genericPrimitiveSnippet;
 
-        public Templates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
-                        TargetDescription target) {
-            super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
+        public Templates(Providers providers, TargetDescription target) {
+            super(providers, target);
 
             arraycopySnippets = new SnippetInfo[Kind.values().length];
             arraycopySnippets[Kind.Boolean.ordinal()] = snippet(UnsafeArrayCopySnippets.class, "arraycopyBoolean");
@@ -289,7 +288,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
             node.addSnippetArguments(args);
 
             SnippetTemplate template = template(args);
-            template.instantiate(metaAccess, node, DEFAULT_REPLACER, args);
+            template.instantiate(providers.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
     }
 }

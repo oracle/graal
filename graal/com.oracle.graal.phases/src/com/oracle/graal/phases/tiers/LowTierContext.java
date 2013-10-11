@@ -23,16 +23,14 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 
 public class LowTierContext extends PhaseContext {
 
     private final TargetDescription target;
 
-    public LowTierContext(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Assumptions assumptions,
-                    Replacements replacements, TargetDescription target) {
-        super(metaAccess, codeCache, constantReflection, lowerer, assumptions, replacements);
+    public LowTierContext(Providers copyFrom, Assumptions assumptions, TargetDescription target) {
+        super(copyFrom, assumptions);
         this.target = target;
     }
 

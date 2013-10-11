@@ -59,8 +59,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final Method method = getMethod("testMethod");
         final StructuredGraph graph = parse(method);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getMetaAccess(), getConstantReflection(), getCodeCache(), getLowerer(), replacements, backend,
-                        getCodeCache().getTarget(), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), backend, getCodeCache().getTarget(), null, getDefaultPhasePlan(),
+                        OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
             if (sp instanceof Call) {
@@ -81,8 +81,8 @@ public class InfopointReasonTest extends GraalCompilerTest {
         }
         assertTrue(graphLineSPs > 0);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getMetaAccess(), getConstantReflection(), getCodeCache(), getLowerer(), replacements, backend,
-                        getCodeCache().getTarget(), null, getDefaultPhasePlan(true), OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
+        final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), backend, getCodeCache().getTarget(), null, getDefaultPhasePlan(true),
+                        OptimisticOptimizations.ALL, new SpeculationLog(), suites, new CompilationResult());
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);

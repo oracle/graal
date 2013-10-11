@@ -27,13 +27,13 @@ import static com.oracle.graal.nodes.calc.CompareNode.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
@@ -53,9 +53,8 @@ import com.oracle.graal.replacements.SnippetTemplate.UsageReplacer;
  */
 public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
-    public InstanceOfSnippetsTemplates(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, LoweringProvider lowerer, Replacements replacements,
-                    TargetDescription target) {
-        super(metaAccess, constantReflection, codeCache, lowerer, replacements, target);
+    public InstanceOfSnippetsTemplates(Providers providers, TargetDescription target) {
+        super(providers, target);
     }
 
     /**
@@ -78,7 +77,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
                 replacer.replaceUsingInstantiation();
             } else {
                 Arguments args = makeArguments(replacer, tool);
-                template(args).instantiate(metaAccess, instanceOf, replacer, tool, args);
+                template(args).instantiate(providers.getMetaAccess(), instanceOf, replacer, tool, args);
             }
         }
 

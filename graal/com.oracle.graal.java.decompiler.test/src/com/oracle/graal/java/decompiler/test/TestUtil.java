@@ -32,28 +32,24 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public class TestUtil {
 
     public static void compileMethod(ResolvedJavaMethod method) {
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
-        ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
-        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
-        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
+        Providers providers = GraalCompiler.getGraalProviders();
         Suites suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         StructuredGraph graph = new StructuredGraph(method);
-        new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
+        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(Backend.class);
-        GraalCompiler.compileGraph(graph, cc, method, metaAccess, constantReflection, codeCache, lowerer, replacements, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog(), suites, new CompilationResult());
+        GraalCompiler.compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
+                        new CompilationResult());
     }
 }
