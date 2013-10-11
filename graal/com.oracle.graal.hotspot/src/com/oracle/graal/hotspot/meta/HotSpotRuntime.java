@@ -491,7 +491,7 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, GraalCodeCac
     }
 
     public boolean useCompressedKlassPointers() {
-        return config.useCompressedKlassPointers;
+        return config.useCompressedClassPointers;
     }
 
     @Override
