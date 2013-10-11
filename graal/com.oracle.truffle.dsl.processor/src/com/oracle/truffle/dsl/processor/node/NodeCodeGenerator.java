@@ -1966,8 +1966,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private CodeTree createExecuteChild(CodeTreeBuilder parent, NodeChildData child, ExecutableTypeData sourceExecutable, ActualParameter targetParameter, ActualParameter unexpectedParameter) {
             SpecializationData specialization = getModel();
-            if (specialization.isPolymorphic() && targetParameter.getTypeSystemType().isGeneric() && unexpectedParameter == null) {
-                TreeSet<TypeData> possiblePolymorphicTypes = lookupPolymorphicTargetTypes(targetParameter);
+            TreeSet<TypeData> possiblePolymorphicTypes = lookupPolymorphicTargetTypes(targetParameter);
+            if (specialization.isPolymorphic() && targetParameter.getTypeSystemType().isGeneric() && unexpectedParameter == null && possiblePolymorphicTypes.size() > 1) {
 
                 CodeTreeBuilder builder = parent.create();
 
@@ -2200,9 +2200,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             if (getModel().isPolymorphic() && targetParameter.getTypeSystemType().isGeneric() && unexpectedParameter == null) {
                 // check for other polymorphic types
-                for (TypeData polymorphicTargetType : lookupPolymorphicTargetTypes(targetParameter)) {
-                    if (hasUnexpectedType(child, sourceParameter, polymorphicTargetType)) {
-                        return true;
+                TreeSet<TypeData> polymorphicTargetTypes = lookupPolymorphicTargetTypes(targetParameter);
+                if (polymorphicTargetTypes.size() > 1) {
+                    for (TypeData polymorphicTargetType : polymorphicTargetTypes) {
+                        if (hasUnexpectedType(child, sourceParameter, polymorphicTargetType)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -2218,10 +2221,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             for (TypeData implicitSourceType : implicitSourceTypes) {
                 TypeData sourceType;
+                ExecutableTypeData targetExecutable = resolveExecutableType(child, implicitSourceType);
                 if (sourceParameter != null) {
                     sourceType = sourceParameter.getTypeSystemType();
                 } else {
-                    ExecutableTypeData targetExecutable = resolveExecutableType(child, implicitSourceType);
                     if (targetExecutable.hasUnexpectedValue(getContext())) {
                         return true;
                     }
