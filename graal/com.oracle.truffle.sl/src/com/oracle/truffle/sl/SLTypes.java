@@ -46,32 +46,9 @@ public class SLTypes {
         }
     }
 
-    @TypeCheck
-    public boolean isBigInteger(Object value) {
-        return value instanceof Integer || value instanceof BigInteger;
-    }
-
-    @TypeCast
-    public BigInteger asBigInteger(Object value) {
-        if (value instanceof Integer) {
-            return BigInteger.valueOf((int) value);
-        } else {
-            return (BigInteger) value;
-        }
-    }
-
-    @TypeCast
-    public BigInteger asBigInteger(int value) {
-        return BigInteger.valueOf(value);
-    }
-
-    @TypeCheck
-    public boolean isBigInteger(@SuppressWarnings("unused") int value) {
-        return true;
-    }
-
     @ImplicitCast
-    public BigInteger castBigInteger(int value) {
-        return BigInteger.valueOf(value);
+    public BigInteger castBigInteger(int integer) {
+        return BigInteger.valueOf(integer);
     }
+
 }
