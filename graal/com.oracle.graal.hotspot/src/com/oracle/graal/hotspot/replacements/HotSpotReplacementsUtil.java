@@ -354,7 +354,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int instanceHeaderSize() {
-        return config().useCompressedKlassPointers ? (2 * wordSize()) - 4 : 2 * wordSize();
+        return config().useCompressedClassPointers ? (2 * wordSize()) - 4 : 2 * wordSize();
     }
 
     @Fold

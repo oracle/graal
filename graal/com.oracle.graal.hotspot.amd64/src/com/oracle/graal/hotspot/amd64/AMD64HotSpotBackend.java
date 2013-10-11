@@ -251,7 +251,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
             AMD64HotSpotRuntime hr = ((AMD64HotSpotRuntime) gen.getCodeCache());
             if (hr.useCompressedKlassPointers()) {
                 Register register = r10;
-                AMD64HotSpotMove.decodeKlassPointer(asm, register, hr.heapBaseRegister(), src, config.narrowKlassBase, config.narrowKlassShift, config.logKlassAlignment);
+                AMD64HotSpotMove.decodeKlassPointer(asm, register, hr.heapBaseRegister(), src, config.narrowKlassBase, config.narrowOopBase, config.narrowKlassShift, config.logKlassAlignment);
                 asm.cmpq(inlineCacheKlass, register);
             } else {
                 asm.cmpq(inlineCacheKlass, src);

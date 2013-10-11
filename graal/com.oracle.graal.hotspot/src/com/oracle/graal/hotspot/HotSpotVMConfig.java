@@ -141,7 +141,7 @@ public final class HotSpotVMConfig extends CompilerObject {
 
     // Compressed Oops related values.
     public final boolean useCompressedOops = getVMOption("UseCompressedOops");
-    public final boolean useCompressedKlassPointers = getVMOption("UseCompressedKlassPointers");
+    public final boolean useCompressedClassPointers = getVMOption("UseCompressedClassPointers");
     public final long narrowOopBase = getUninitializedLong();
     public final int narrowOopShift = getUninitializedInt();
     public final int logMinObjAlignment = (int) (Math.log(getVMOptionInt("ObjectAlignmentInBytes")) / Math.log(2));

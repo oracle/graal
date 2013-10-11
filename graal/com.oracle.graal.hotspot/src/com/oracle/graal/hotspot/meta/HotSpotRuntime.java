@@ -494,7 +494,7 @@ public abstract class HotSpotRuntime implements MetaAccessProvider, ConstantRefl
     }
 
     public boolean useCompressedKlassPointers() {
-        return config.useCompressedKlassPointers;
+        return config.useCompressedClassPointers;
     }
 
     @Override
