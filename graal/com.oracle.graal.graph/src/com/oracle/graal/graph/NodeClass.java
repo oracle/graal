@@ -455,8 +455,6 @@ public final class NodeClass extends FieldIntrospection {
      * concurrently. Concurrent modifications are detected by an assertion on a best-effort basis.
      */
     public abstract static class NodeClassIterator implements Iterator<Node> {
-
-        private final NodeClass nodeClass;
         protected final Node node;
         private int index;
         private int subIndex;
@@ -468,7 +466,6 @@ public final class NodeClass extends FieldIntrospection {
          */
         NodeClassIterator(Node node) {
             this.node = node;
-            this.nodeClass = node.getNodeClass();
             index = NOT_ITERABLE;
             subIndex = 0;
         }
@@ -526,9 +523,9 @@ public final class NodeClass extends FieldIntrospection {
         public Position nextPosition() {
             try {
                 if (index < getDirectCount()) {
-                    return new Position(getOffsets() == nodeClass.inputOffsets, index, NOT_ITERABLE);
+                    return new Position(getOffsets() == getNodeClass().inputOffsets, index, NOT_ITERABLE);
                 } else {
-                    return new Position(getOffsets() == nodeClass.inputOffsets, index, subIndex);
+                    return new Position(getOffsets() == getNodeClass().inputOffsets, index, subIndex);
                 }
             } finally {
                 forward();
@@ -543,6 +540,8 @@ public final class NodeClass extends FieldIntrospection {
         protected abstract int getDirectCount();
 
         protected abstract long[] getOffsets();
+
+        protected abstract NodeClass getNodeClass();
     }
 
     private class NodeClassInputsIterator extends NodeClassIterator {
@@ -552,6 +551,7 @@ public final class NodeClass extends FieldIntrospection {
 
         NodeClassInputsIterator(Node node, boolean forward) {
             super(node);
+            assert NodeClass.this == node.getNodeClass();
             if (forward) {
                 forward();
             }
@@ -565,6 +565,11 @@ public final class NodeClass extends FieldIntrospection {
         @Override
         protected long[] getOffsets() {
             return inputOffsets;
+        }
+
+        @Override
+        protected NodeClass getNodeClass() {
+            return NodeClass.this;
         }
     }
 
@@ -613,6 +618,7 @@ public final class NodeClass extends FieldIntrospection {
 
         NodeClassSuccessorsIterator(Node node, boolean forward) {
             super(node);
+            assert NodeClass.this == node.getNodeClass();
             if (forward) {
                 forward();
             }
@@ -626,6 +632,11 @@ public final class NodeClass extends FieldIntrospection {
         @Override
         protected long[] getOffsets() {
             return successorOffsets;
+        }
+
+        @Override
+        protected NodeClass getNodeClass() {
+            return NodeClass.this;
         }
     }
 
