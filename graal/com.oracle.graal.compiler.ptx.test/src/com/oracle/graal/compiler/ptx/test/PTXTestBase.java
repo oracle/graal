@@ -60,7 +60,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             sg = graph;
             Debug.dump(graph, "Graph");
             TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
-            PTXBackend ptxBackend = new PTXBackend(getMetaAccess(), getCodeCache(), target);
+            PTXBackend ptxBackend = new PTXBackend(getProviders(), target);
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
@@ -76,8 +76,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              * Ultimately we might want to have both the kernel and the code natively compiled for
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
-            CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                            new SpeculationLog(), Suites.createDefaultSuites(), new ExternalCompilationResult());
+            CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
+                            Suites.createDefaultSuites(), new ExternalCompilationResult());
             return result;
         } else {
             return null;

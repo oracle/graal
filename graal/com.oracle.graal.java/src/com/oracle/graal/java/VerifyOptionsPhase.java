@@ -28,6 +28,7 @@ import static java.lang.reflect.Modifier.*;
 
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;

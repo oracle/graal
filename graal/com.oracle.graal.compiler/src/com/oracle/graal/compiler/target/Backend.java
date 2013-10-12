@@ -29,28 +29,31 @@ import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * The {@code Backend} class represents a compiler backend for Graal.
  */
 public abstract class Backend {
 
-    private final MetaAccessProvider metaAccess;
-    private final CodeCacheProvider codeCache;
+    private final Providers providers;
     public final TargetDescription target;
 
-    protected Backend(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target) {
-        this.metaAccess = metaAccess;
-        this.codeCache = codeCache;
+    protected Backend(Providers providers, TargetDescription target) {
+        this.providers = providers;
         this.target = target;
     }
 
-    public MetaAccessProvider getMetaAccess() {
-        return metaAccess;
+    public Providers getProviders() {
+        return providers;
     }
 
     public CodeCacheProvider getCodeCache() {
-        return codeCache;
+        return providers.getCodeCache();
+    }
+
+    public ForeignCallsProvider getForeignCalls() {
+        return providers.getForeignCalls();
     }
 
     public abstract FrameMap newFrameMap();

@@ -50,7 +50,7 @@ final class AMD64HotSpotUnwindOp extends AMD64HotSpotEpilogueOp {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
 
-        ForeignCallLinkage linkage = tasm.codeCache.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = tasm.foreignCalls.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = linkage.getOutgoingCallingConvention();
         assert cc.getArgumentCount() == 2;
         assert exception.equals(cc.getArgument(0));

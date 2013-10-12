@@ -71,7 +71,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, getRuntime(), getRuntime(), target, frameMap, cc, lir);
+        return new SPARCHotSpotLIRGenerator(graph, getProviders(), target, frameMap, cc, lir);
     }
 
     /**
@@ -155,7 +155,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         AbstractAssembler masm = createAssembler(frameMap);
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, getRuntime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(target, getRuntime(), getRuntime(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
         if (deoptimizationRescueSlot != null && stub == null) {

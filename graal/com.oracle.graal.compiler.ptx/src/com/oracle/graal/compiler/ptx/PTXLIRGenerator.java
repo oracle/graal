@@ -63,6 +63,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.phases.util.*;
 
 import java.lang.annotation.*;
 
@@ -87,8 +88,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, metaAccess, codeCache, target, frameMap, cc, lir);
+    public PTXLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, target, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
         int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);

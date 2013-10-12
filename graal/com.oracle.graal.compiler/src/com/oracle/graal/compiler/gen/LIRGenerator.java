@@ -62,6 +62,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected final StructuredGraph graph;
     protected final MetaAccessProvider metaAccess;
     protected final CodeCacheProvider codeCache;
+    protected final ForeignCallsProvider foreignCalls;
     protected final TargetDescription target;
     protected final CallingConvention cc;
 
@@ -86,10 +87,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     public abstract boolean canStoreConstant(Constant c);
 
-    public LIRGenerator(StructuredGraph graph, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
+    public LIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
         this.graph = graph;
-        this.metaAccess = metaAccess;
-        this.codeCache = codeCache;
+        this.metaAccess = providers.getMetaAccess();
+        this.codeCache = providers.getCodeCache();
+        this.foreignCalls = providers.getForeignCalls();
         this.target = target;
         this.frameMap = frameMap;
         if (graph.getEntryBCI() == StructuredGraph.INVOCATION_ENTRY_BCI) {
@@ -122,6 +124,11 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public CodeCacheProvider getCodeCache() {
         return codeCache;
+    }
+
+    @Override
+    public ForeignCallsProvider getForeignCalls() {
+        return foreignCalls;
     }
 
     public StructuredGraph getGraph() {

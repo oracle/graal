@@ -117,7 +117,7 @@ public class HSAILCompilationResult {
         Debug.dump(graph, "Graph");
         Providers providers = GraalCompiler.getGraalProviders();
         TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
-        HSAILBackend hsailBackend = new HSAILBackend(providers.getMetaAccess(), providers.getCodeCache(), target);
+        HSAILBackend hsailBackend = new HSAILBackend(providers, target);
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);

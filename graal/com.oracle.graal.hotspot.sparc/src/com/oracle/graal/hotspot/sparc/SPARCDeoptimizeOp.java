@@ -48,6 +48,6 @@ final class SPARCDeoptimizeOp extends SPARCLIRInstruction {
 // [Deopt Handler Code]
 // 0xffffffff749bb60c: call 0xffffffff748da540 ; {runtime_call}
 // 0xffffffff749bb610: nop
-        SPARCCall.directCall(tasm, masm, tasm.codeCache.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
+        SPARCCall.directCall(tasm, masm, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
     }
 }

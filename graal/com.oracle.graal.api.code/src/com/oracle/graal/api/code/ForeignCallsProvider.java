@@ -20,10 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.api.code;
+
+import com.oracle.graal.api.meta.*;
 
 /**
- * Capability to query attributes of the supported {@link ForeignCallDescriptor foreign calls}.
+ * Details about a set of supported {@link ForeignCallDescriptor foreign calls}.
  */
 public interface ForeignCallsProvider {
 
@@ -44,4 +46,9 @@ public interface ForeignCallsProvider {
      * Determines if deoptimization can occur during a given foreign call.
      */
     boolean canDeoptimize(ForeignCallDescriptor descriptor);
+
+    /**
+     * Gets the linkage for a foreign call.
+     */
+    ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor);
 }

@@ -37,6 +37,8 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     CodeCacheProvider getCodeCache();
 
+    ForeignCallsProvider getForeignCalls();
+
     /**
      * Checks whether the supplied constant can be used without loading it into a register for most
      * operations, i.e., for commonly used arithmetic, logical, and comparison operations.
