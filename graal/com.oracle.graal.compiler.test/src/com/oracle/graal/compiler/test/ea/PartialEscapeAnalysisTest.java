@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test.ea;
 
+import java.lang.ref.*;
 import java.util.concurrent.*;
 
 import org.junit.*;
@@ -161,6 +162,20 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
             value = createValue(key);
         }
         return value;
+    }
+
+    public static int testReference1Snippet(Object a) {
+        SoftReference<Object> softReference = new SoftReference<>(a);
+        if (softReference.get().hashCode() == 0) {
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
+    @Test
+    public void testReference1() {
+        assertEquals(1, processMethod("testReference1Snippet").getNodes().filter(NewInstanceNode.class).count());
     }
 
     @SafeVarargs
