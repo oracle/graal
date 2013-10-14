@@ -1391,7 +1391,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 return true;
             }
             SpecializationGroup previous = group.getPreviousGroup();
-            if (previous == null || previous.getElseConnectableGuards().isEmpty()) {
+            if (previous == null || previous.findElseConnectableGuards(checkMinimumState).isEmpty()) {
                 return true;
             }
 
@@ -1417,30 +1417,11 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             String guardsAnd = "";
             String guardsCastAnd = "";
 
-            List<GuardData> elseGuards = group.getElseConnectableGuards();
-
             boolean minimumState = checkMinimumState;
             if (minimumState) {
-                int groupMaxIndex = group.getMaxSpecializationIndex();
+                int groupMaxIndex = group.getUncheckedSpecializationIndex();
 
-                int genericIndex = node.getSpecializations().indexOf(node.getGenericSpecialization());
-                if (groupMaxIndex >= genericIndex) {
-                    // no minimum state check for an generic index
-                    minimumState = false;
-                }
-
-                if (minimumState) {
-                    // no minimum state check if alread checked by parent group
-                    int parentMaxIndex = -1;
-                    if (group.getParent() != null) {
-                        parentMaxIndex = group.getParent().getMaxSpecializationIndex();
-                    }
-                    if (groupMaxIndex == parentMaxIndex) {
-                        minimumState = false;
-                    }
-                }
-
-                if (minimumState) {
+                if (groupMaxIndex > -1) {
                     guardsBuilder.string(guardsAnd);
                     guardsBuilder.string("minimumState < " + groupMaxIndex);
                     guardsAnd = " && ";
@@ -1489,6 +1470,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     castBuilder.tree(cast);
                 }
             }
+            List<GuardData> elseGuards = group.findElseConnectableGuards(checkMinimumState);
 
             for (GuardData guard : group.getGuards()) {
                 if (elseGuards.contains(guard)) {

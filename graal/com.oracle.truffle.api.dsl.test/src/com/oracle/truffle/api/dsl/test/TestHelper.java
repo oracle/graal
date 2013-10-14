@@ -61,8 +61,16 @@ class TestHelper {
         return factory.createNode(argumentList.toArray(new Object[argumentList.size()]));
     }
 
+    static <E extends ValueNode> E createGenericNode(NodeFactory<E> factory, Object... constants) {
+        return factory.createNodeGeneric(createNode(factory, constants));
+    }
+
     static <E extends ValueNode> TestRootNode<E> createRoot(NodeFactory<E> factory, Object... constants) {
         return new TestRootNode<>(createNode(factory, constants));
+    }
+
+    static <E extends ValueNode> TestRootNode<E> createGenericRoot(NodeFactory<E> factory, Object... constants) {
+        return new TestRootNode<>(createGenericNode(factory, constants));
     }
 
     static CallTarget createCallTarget(ValueNode node) {

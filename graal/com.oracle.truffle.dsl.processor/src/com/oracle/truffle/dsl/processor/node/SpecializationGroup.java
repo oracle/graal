@@ -90,7 +90,14 @@ public final class SpecializationGroup {
         return null;
     }
 
-    public List<GuardData> getElseConnectableGuards() {
+    public List<GuardData> findElseConnectableGuards(boolean minimumStateCheck) {
+        if (minimumStateCheck) {
+            /*
+             * TODO investigate further if we really cannot else connect guards if minimum state is
+             * required
+             */
+            return Collections.emptyList();
+        }
         if (!getTypeGuards().isEmpty() || !getAssumptions().isEmpty()) {
             return Collections.emptyList();
         }
@@ -101,7 +108,7 @@ public final class SpecializationGroup {
 
         List<GuardData> elseConnectableGuards = new ArrayList<>();
         int guardIndex = 0;
-        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex)) != null) {
+        while (guardIndex < getGuards().size() && findNegatedGuardInPrevious(getGuards().get(guardIndex), minimumStateCheck) != null) {
             elseConnectableGuards.add(getGuards().get(guardIndex));
             guardIndex++;
         }
@@ -109,17 +116,18 @@ public final class SpecializationGroup {
         return elseConnectableGuards;
     }
 
-    private GuardData findNegatedGuardInPrevious(GuardData guard) {
+    private GuardData findNegatedGuardInPrevious(GuardData guard, boolean minimumStateCheck) {
         SpecializationGroup previous = this.getPreviousGroup();
         if (previous == null) {
             return null;
         }
-        List<GuardData> elseConnectedGuards = previous.getElseConnectableGuards();
+        List<GuardData> elseConnectedGuards = previous.findElseConnectableGuards(minimumStateCheck);
 
         if (previous == null || previous.getGuards().size() != elseConnectedGuards.size() + 1) {
             return null;
         }
 
+        /* Guard is else branch can be connected in previous specialization. */
         if (elseConnectedGuards.contains(guard)) {
             return guard;
         }
@@ -339,6 +347,28 @@ public final class SpecializationGroup {
             return null;
         }
         return parent.children.get(index - 1);
+    }
+
+    public int getUncheckedSpecializationIndex() {
+        int groupMaxIndex = getMaxSpecializationIndex();
+
+        int genericIndex = node.getSpecializations().indexOf(node.getGenericSpecialization());
+        if (groupMaxIndex >= genericIndex) {
+            // no minimum state check for an generic index
+            groupMaxIndex = -1;
+        }
+
+        if (groupMaxIndex > -1) {
+            // no minimum state check if already checked by parent group
+            int parentMaxIndex = -1;
+            if (getParent() != null) {
+                parentMaxIndex = getParent().getMaxSpecializationIndex();
+            }
+            if (groupMaxIndex == parentMaxIndex) {
+                groupMaxIndex = -1;
+            }
+        }
+        return groupMaxIndex;
     }
 
     public int getMaxSpecializationIndex() {

@@ -37,7 +37,8 @@ import com.oracle.truffle.api.nodes.*;
 
 /**
  * Tests execution counts of guards. While we do not make guarantees for guard invocation except for
- * their execution order our implementation reduces the calls to guards as much as possible.
+ * their execution order our implementation reduces the calls to guards as much as possible for the
+ * generic case.
  */
 public class SpecializationGroupingTest {
 
@@ -47,7 +48,7 @@ public class SpecializationGroupingTest {
         MockAssumption a2 = new MockAssumption(false);
         MockAssumption a3 = new MockAssumption(true);
 
-        TestRootNode<TestGrouping> root = TestHelper.createRoot(TestGroupingFactory.getInstance(), a1, a2, a3);
+        TestRootNode<TestGrouping> root = TestHelper.createGenericRoot(TestGroupingFactory.getInstance(), a1, a2, a3);
 
         SimpleTypes.intCast = 0;
         SimpleTypes.intCheck = 0;
@@ -71,16 +72,16 @@ public class SpecializationGroupingTest {
 
         Assert.assertEquals(42, TestHelper.executeWith(root, 21, 21));
         Assert.assertEquals(2, TestGrouping.true1);
-        Assert.assertEquals(1, TestGrouping.false1);
+        Assert.assertEquals(2, TestGrouping.false1);
         Assert.assertEquals(2, TestGrouping.true2);
         Assert.assertEquals(2, TestGrouping.false2);
         Assert.assertEquals(2, TestGrouping.true3);
 
         Assert.assertEquals(2, a1.checked);
-        Assert.assertEquals(1, a2.checked);
+        Assert.assertEquals(2, a2.checked);
         Assert.assertEquals(2, a3.checked);
-        Assert.assertEquals(2, SimpleTypes.intCheck);
-        Assert.assertEquals(2, SimpleTypes.intCast);
+        Assert.assertEquals(4, SimpleTypes.intCheck);
+        Assert.assertEquals(4, SimpleTypes.intCast);
 
     }
 
