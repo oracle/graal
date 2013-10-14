@@ -173,7 +173,11 @@ public final class CompilerDirectives {
      * @return the value to be casted to the new type
      */
     public static MaterializedFrame unsafeFrameCast(MaterializedFrame value) {
-        return value;
+        return unsafeCast(value, getUnsafeFrameType(), true);
+    }
+
+    private static Class<? extends MaterializedFrame> getUnsafeFrameType() {
+        return MaterializedFrame.class;
     }
 
     /**
