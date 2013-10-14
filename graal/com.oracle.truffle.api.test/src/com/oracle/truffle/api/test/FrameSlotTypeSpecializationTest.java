@@ -115,14 +115,11 @@ public class FrameSlotTypeSpecializationTest {
         Object execute(VirtualFrame frame) {
             Object o = value.execute(frame);
             if (o instanceof Integer) {
-                try {
-                    frame.setInt(slot, (Integer) o);
-                } catch (FrameSlotTypeException e) {
-                    // fall through
-                }
+                frame.setInt(slot, (Integer) o);
+            } else {
+                frame.setObject(slot, o);
+                this.replace(new ObjectAssignLocal(slot, value));
             }
-            frame.setObject(slot, o);
-            this.replace(new ObjectAssignLocal(slot, value));
             return null;
         }
     }

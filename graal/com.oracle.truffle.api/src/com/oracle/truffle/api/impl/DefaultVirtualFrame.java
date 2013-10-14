@@ -75,7 +75,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
-        verifySetObject(slot);
+        verifySet(slot, FrameSlotKind.Object);
         locals[slot.getIndex()] = value;
     }
 
@@ -86,7 +86,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setByte(FrameSlot slot, byte value) throws FrameSlotTypeException {
+    public void setByte(FrameSlot slot, byte value) {
         verifySet(slot, FrameSlotKind.Byte);
         locals[slot.getIndex()] = value;
     }
@@ -98,7 +98,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setBoolean(FrameSlot slot, boolean value) throws FrameSlotTypeException {
+    public void setBoolean(FrameSlot slot, boolean value) {
         verifySet(slot, FrameSlotKind.Boolean);
         locals[slot.getIndex()] = value;
     }
@@ -110,7 +110,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setInt(FrameSlot slot, int value) throws FrameSlotTypeException {
+    public void setInt(FrameSlot slot, int value) {
         verifySet(slot, FrameSlotKind.Int);
         locals[slot.getIndex()] = value;
     }
@@ -122,7 +122,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setLong(FrameSlot slot, long value) throws FrameSlotTypeException {
+    public void setLong(FrameSlot slot, long value) {
         verifySet(slot, FrameSlotKind.Long);
         locals[slot.getIndex()] = value;
     }
@@ -134,7 +134,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setFloat(FrameSlot slot, float value) throws FrameSlotTypeException {
+    public void setFloat(FrameSlot slot, float value) {
         verifySet(slot, FrameSlotKind.Float);
         locals[slot.getIndex()] = value;
     }
@@ -146,7 +146,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     }
 
     @Override
-    public void setDouble(FrameSlot slot, double value) throws FrameSlotTypeException {
+    public void setDouble(FrameSlot slot, double value) {
         verifySet(slot, FrameSlotKind.Double);
         locals[slot.getIndex()] = value;
     }
@@ -165,31 +165,12 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         return locals[slotIndex];
     }
 
-    private void verifySet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
-        FrameSlotKind slotKind = slot.getKind();
-        if (slotKind != accessKind) {
-            if (slotKind == FrameSlotKind.Illegal) {
-                slot.setKind(accessKind);
-            } else {
-                throw new FrameSlotTypeException();
-            }
-        }
+    private void verifySet(FrameSlot slot, FrameSlotKind accessKind) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
             resize();
         }
         tags[slotIndex] = (byte) accessKind.ordinal();
-    }
-
-    private void verifySetObject(FrameSlot slot) {
-        if (slot.getKind() != FrameSlotKind.Object) {
-            slot.setKind(FrameSlotKind.Object);
-        }
-        int slotIndex = slot.getIndex();
-        if (slotIndex >= tags.length) {
-            resize();
-        }
-        tags[slotIndex] = (byte) FrameSlotKind.Object.ordinal();
     }
 
     private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
@@ -198,7 +179,7 @@ public final class DefaultVirtualFrame implements VirtualFrame {
             resize();
         }
         byte tag = tags[slotIndex];
-        if (accessKind == FrameSlotKind.Object ? (tag & 0xfe) != 0 : tag != accessKind.ordinal()) {
+        if (accessKind == FrameSlotKind.Object ? tag != 0 : tag != accessKind.ordinal()) {
             if (slot.getKind() == accessKind || tag == 0) {
                 descriptor.getTypeConversion().updateFrameSlot(this, slot, getValue(slot));
                 if (tags[slotIndex] == accessKind.ordinal()) {

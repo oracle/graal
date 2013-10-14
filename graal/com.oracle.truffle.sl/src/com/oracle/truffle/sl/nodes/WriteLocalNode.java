@@ -36,14 +36,14 @@ public abstract class WriteLocalNode extends FrameSlotNode {
         this(node.slot);
     }
 
-    @Specialization(rewriteOn = FrameSlotTypeException.class)
-    public int write(VirtualFrame frame, int right) throws FrameSlotTypeException {
+    @Specialization
+    public int write(VirtualFrame frame, int right) {
         frame.setInt(slot, right);
         return right;
     }
 
-    @Specialization(rewriteOn = FrameSlotTypeException.class)
-    public boolean write(VirtualFrame frame, boolean right) throws FrameSlotTypeException {
+    @Specialization
+    public boolean write(VirtualFrame frame, boolean right) {
         frame.setBoolean(slot, right);
         return right;
     }
