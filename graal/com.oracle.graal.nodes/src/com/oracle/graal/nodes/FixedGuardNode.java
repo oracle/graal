@@ -82,7 +82,7 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
 
     @Override
     public void simplify(SimplifierTool tool) {
-        if (condition instanceof LogicNegationNode) {
+        while (condition instanceof LogicNegationNode) {
             LogicNegationNode negation = (LogicNegationNode) condition;
             setCondition(negation.getInput());
             negated = !negated;
@@ -100,7 +100,7 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
                 deopt.setDeoptimizationState(getDeoptimizationState());
                 setNext(deopt);
             }
-            this.replaceAtUsages(BeginNode.prevBegin(this));
+            this.replaceAtUsages(null);
             graph().removeFixed(this);
         }
     }
