@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.spi.*;
 @ServiceProvider(ReplacementsProvider.class)
 public class GraalMethodSubstitutions implements ReplacementsProvider {
 
-    public void registerReplacements(MetaAccessProvider metaAccess, Replacements replacements, TargetDescription target) {
+    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, Replacements replacements, TargetDescription target) {
         for (Class<?> clazz : BoxingSubstitutions.getClasses()) {
             replacements.registerSubstitutions(clazz);
         }
