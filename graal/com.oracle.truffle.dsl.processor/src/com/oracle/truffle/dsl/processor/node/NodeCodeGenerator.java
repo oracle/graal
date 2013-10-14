@@ -2134,7 +2134,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
             CodeTree expression;
             if (sourceType == null) {
-                ExecutableTypeData targetExecutable = resolveExecutableType(child, targetType);
+                ExecutableTypeData targetExecutable = resolveExecutableType(child, castSourceType);
                 expression = createExecuteChildExpression(parent, child, targetParameter, targetExecutable, unexpectedParameter);
                 sourceType = targetExecutable.getType();
             } else {
