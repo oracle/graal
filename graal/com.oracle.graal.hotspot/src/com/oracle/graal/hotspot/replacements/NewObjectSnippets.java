@@ -112,13 +112,12 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Fold
-    @SuppressWarnings("unused")
-    private static boolean doProfile(String path, String typeContext) {
+    private static boolean doProfile() {
         return Options.ProfileAllocations.getValue();
     }
 
     private static void profileAllocation(String path, long size, String typeContext) {
-        if (doProfile(path, typeContext)) {
+        if (doProfile()) {
             String name = createName(path, typeContext);
 
             boolean context = PROFILE_MODE == ProfileMode.AllocatingMethods || PROFILE_MODE == ProfileMode.AllocatedTypesInMethods;
