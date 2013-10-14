@@ -1315,8 +1315,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, EXECUTE_GENERIC_NAME);
 
-            method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
-
+            if (!node.getGenericSpecialization().hasFrame(getContext())) {
+                method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
+            }
             addInternalValueParameters(method, node.getGenericSpecialization(), node.needsFrame(), false);
             final CodeTreeBuilder builder = method.createBuilder();
 

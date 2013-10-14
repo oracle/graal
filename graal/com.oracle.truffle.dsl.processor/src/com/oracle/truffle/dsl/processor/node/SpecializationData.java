@@ -272,4 +272,13 @@ public class SpecializationData extends TemplateMethod {
         }
         return false;
     }
+
+    public boolean hasFrame(ProcessorContext context) {
+        for (ActualParameter param : getParameters()) {
+            if (Utils.typeEquals(param.getType(), context.getTruffleTypes().getFrame())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
