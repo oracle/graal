@@ -40,7 +40,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     private final HotSpotVMConfig config;
 
     public HotSpotReplacementsImpl(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
-        super(runtime, runtime, runtime, runtime, runtime, assumptions, target);
+        super(runtime, runtime, runtime, runtime, runtime, assumptions, target.wordKind);
         this.config = runtime.config;
     }
 

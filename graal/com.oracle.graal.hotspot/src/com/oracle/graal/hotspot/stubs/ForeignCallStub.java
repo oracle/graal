@@ -303,7 +303,7 @@ public class ForeignCallStub extends Stub {
 
     private void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget());
+        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget().wordKind);
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null, false);
         InliningUtil.inline(invoke, calleeGraph, false);
     }

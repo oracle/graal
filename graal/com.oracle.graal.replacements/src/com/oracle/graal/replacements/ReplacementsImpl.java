@@ -53,7 +53,7 @@ import com.oracle.graal.word.phases.*;
 public class ReplacementsImpl implements Replacements {
 
     protected final Providers providers;
-    protected final TargetDescription target;
+    protected final Kind wordKind;
     protected final Assumptions assumptions;
 
     /**
@@ -69,9 +69,9 @@ public class ReplacementsImpl implements Replacements {
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
     public ReplacementsImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
-                    Assumptions assumptions, TargetDescription target) {
+                    Assumptions assumptions, Kind wordKind) {
         this.providers = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, this);
-        this.target = target;
+        this.wordKind = wordKind;
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
         this.registeredMethodSubstitutions = new HashMap<>();
@@ -338,8 +338,8 @@ public class ReplacementsImpl implements Replacements {
                     MetaAccessProvider metaAccess = providers.getMetaAccess();
                     ForeignCallsProvider foreignCalls = providers.getForeignCalls();
                     new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(graph);
-                    new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
-                    new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
+                    new WordTypeVerificationPhase(metaAccess, wordKind).apply(graph);
+                    new WordTypeRewriterPhase(metaAccess, wordKind).apply(graph);
 
                     if (OptCanonicalizer.getValue()) {
                         new CanonicalizerPhase(true).apply(graph, new PhaseContext(providers, assumptions));
@@ -391,8 +391,8 @@ public class ReplacementsImpl implements Replacements {
                             MetaAccessProvider metaAccess = providers.getMetaAccess();
                             ForeignCallsProvider foreignCalls = providers.getForeignCalls();
                             new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
-                            new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
-                            new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
+                            new WordTypeVerificationPhase(metaAccess, wordKind).apply(graph);
+                            new WordTypeRewriterPhase(metaAccess, wordKind).apply(graph);
 
                             InliningUtil.inline(callTarget.invoke(), originalGraph, true);
 

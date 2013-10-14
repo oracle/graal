@@ -43,7 +43,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
 
     public WordTest() {
         TargetDescription target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target);
+        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target.wordKind);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

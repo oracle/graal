@@ -43,7 +43,7 @@ public final class TruffleReplacements extends ReplacementsImpl {
 
     private TruffleReplacements(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
                     Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
-        super(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, assumptions, target);
+        super(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, assumptions, target.wordKind);
         this.graalReplacements = graalReplacements;
     }
 

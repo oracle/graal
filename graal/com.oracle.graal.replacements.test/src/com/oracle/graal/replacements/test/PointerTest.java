@@ -53,7 +53,7 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
     public PointerTest() {
         target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target);
+        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target.wordKind);
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
