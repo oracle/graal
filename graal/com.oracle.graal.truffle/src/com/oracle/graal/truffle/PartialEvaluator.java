@@ -164,7 +164,7 @@ public class PartialEvaluator {
                 }
 
                 // EA frame and clean up.
-                new PartialEscapePhase(false, canonicalizer).apply(graph, tierContext);
+                new PartialEscapePhase(true, canonicalizer).apply(graph, tierContext);
                 new VerifyNoIntrinsicsLeftPhase().apply(graph, false);
                 for (MaterializeFrameNode materializeNode : graph.getNodes(MaterializeFrameNode.class).snapshot()) {
                     materializeNode.replaceAtUsages(materializeNode.getFrame());

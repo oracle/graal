@@ -60,9 +60,9 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Integer> TruffleInliningMaxRecursiveDepth = new OptionValue<>(2);
     @Option(help = "")
-    public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(600);
+    public static final OptionValue<Integer> TruffleInliningMaxCallerSize = new OptionValue<>(2500);
     @Option(help = "")
-    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(62);
+    public static final OptionValue<Integer> TruffleInliningMaxCalleeSize = new OptionValue<>(250);
     @Option(help = "")
     public static final OptionValue<Integer> TruffleInliningTrivialSize = new OptionValue<>(10);
     @Option(help = "")
