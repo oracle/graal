@@ -402,7 +402,6 @@ public class ReplacementsImpl implements Replacements {
                         } else {
                             StructuredGraph intrinsicGraph = InliningUtil.getIntrinsicGraph(ReplacementsImpl.this, callee);
                             if ((callTarget.invokeKind() == InvokeKind.Static || callTarget.invokeKind() == InvokeKind.Special) &&
-                                            InliningUtil.getMacroNodeClass(ReplacementsImpl.this, callee) == null &&
                                             (policy.shouldInline(callee, methodToParse) || (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)))) {
                                 StructuredGraph targetGraph;
                                 if (intrinsicGraph != null && policy.shouldUseReplacement(callee, methodToParse)) {

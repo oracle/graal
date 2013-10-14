@@ -69,8 +69,8 @@ public class CompilerDirectivesSubstitutions {
     public static native Object unsafeCast(Object value, Class clazz, boolean condition);
 
     @MethodSubstitution
-    public static MaterializedFrame unsafeFrameCast(MaterializedFrame value) {
-        return CompilerDirectives.unsafeCast(value, FrameWithoutBoxing.class, true);
+    private static Class<? extends MaterializedFrame> getUnsafeFrameType() {
+        return FrameWithoutBoxing.class;
     }
 
     @MacroSubstitution(macro = CustomizedUnsafeLoadMacroNode.class, isStatic = true)
