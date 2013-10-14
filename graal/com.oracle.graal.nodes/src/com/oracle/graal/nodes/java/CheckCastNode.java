@@ -91,13 +91,12 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
      * 2: B b = guardingPi(a instanceof B, a, stamp(B, non-null))
      * </pre>
      * 
-     * Note: we use {@link Graph#add} as opposed to {@link Graph#unique} for the new
+     * Note: we use {@link Graph#addWithoutUnique} as opposed to {@link Graph#unique} for the new
      * {@link InstanceOfNode} to maintain the invariant checked by
      * {@code LoweringPhase.checkUsagesAreScheduled()}.
      */
     @Override
     public void lower(LoweringTool tool) {
-        InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         Stamp stamp = StampFactory.declared(type);
         if (stamp() instanceof ObjectStamp && object().stamp() instanceof ObjectStamp) {
             stamp = ((ObjectStamp) object().stamp()).castTo((ObjectStamp) stamp);
@@ -108,17 +107,20 @@ public final class CheckCastNode extends FixedWithNextNode implements Canonicali
             condition = LogicConstantNode.contradiction(graph());
             stamp = StampFactory.declared(type);
         } else if (ObjectStamp.isObjectNonNull(object)) {
-            condition = typeTest;
+            condition = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
         } else {
             if (profile != null && profile.getNullSeen() == TriState.FALSE) {
-                FixedGuardNode nullGuard = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, DeoptimizationAction.InvalidateReprofile, true));
-                graph().addBeforeFixed(this, nullGuard);
+                FixedGuardNode nullCheck = graph().add(new FixedGuardNode(graph().unique(new IsNullNode(object)), UnreachedCode, InvalidateReprofile, true));
+                PiNode nullGuarded = graph().unique(new PiNode(object, object().stamp().join(StampFactory.objectNonNull()), nullCheck));
+                InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, nullGuarded, profile));
+                graph().addBeforeFixed(this, nullCheck);
                 condition = typeTest;
                 stamp = stamp.join(StampFactory.objectNonNull());
-                nullGuard.lower(tool);
+                nullCheck.lower(tool);
             } else {
                 // TODO (ds) replace with probability of null-seen when available
                 double shortCircuitProbability = NOT_FREQUENT_PROBABILITY;
+                InstanceOfNode typeTest = graph().addWithoutUnique(new InstanceOfNode(type, object, profile));
                 condition = LogicNode.or(graph().unique(new IsNullNode(object)), typeTest, shortCircuitProbability);
             }
         }
