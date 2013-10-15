@@ -368,7 +368,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         if (clazz == Replacements.class) {
             return (T) providers.getReplacements();
         }
-        if (clazz == HotSpotRegisters.class) {
+        if (clazz == HotSpotRegistersProvider.class) {
             return (T) providers.getRegisters();
         }
         if (clazz == Backend.class) {

@@ -322,7 +322,7 @@ public class BenchmarkCounters {
         }
     }
 
-    public static void lower(DynamicCounterNode counter, HotSpotRegisters registers, HotSpotVMConfig config, Kind wordKind) {
+    public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
         if (excludedClassPrefix == null || !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
 

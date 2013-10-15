@@ -70,7 +70,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         public void lower(LoadExceptionObjectNode loadExceptionObject) {
             if (USE_C_RUNTIME) {
                 StructuredGraph graph = loadExceptionObject.graph();
-                HotSpotRegisters registers = ((HotSpotProviders) providers).getRegisters();
+                HotSpotRegistersProvider registers = ((HotSpotProviders) providers).getRegisters();
                 ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), true, false));
                 graph.addBeforeFixed(loadExceptionObject, thread);
                 ForeignCallNode loadExceptionC = graph.add(new ForeignCallNode(providers.getForeignCalls(), LOAD_AND_CLEAR_EXCEPTION, thread));

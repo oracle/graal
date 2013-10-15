@@ -68,7 +68,7 @@ public class PTXHotSpotGraalRuntime extends HotSpotGraalRuntime {
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, getConfig(), assumptions);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(this);
         HotSpotSuitesProvider suites = new HotSpotSuitesProvider(this);
-        HotSpotRegisters registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
+        HotSpotRegistersProvider registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
         return new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
     }
 

@@ -26,6 +26,8 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
@@ -387,7 +389,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 OSRStartNode osrStart = (OSRStartNode) n;
                 StartNode newStart = graph.add(new StartNode());
                 LocalNode buffer = graph.unique(new LocalNode(0, StampFactory.forKind(wordKind)));
-                ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, HotSpotForeignCallsProvider.OSR_MIGRATION_END, buffer));
+                ForeignCallNode migrationEnd = graph.add(new ForeignCallNode(foreignCalls, OSR_MIGRATION_END, buffer));
                 migrationEnd.setStateAfter(osrStart.stateAfter());
 
                 newStart.setNext(migrationEnd);
@@ -621,7 +623,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     protected IndexedLocationNode createArrayLocation(Graph graph, Kind elementKind, ValueNode index, boolean initialization) {
         LocationIdentity loc = initialization ? INIT_LOCATION : NamedLocationIdentity.getArrayLocation(elementKind);
         int scale = getScalingFactor(elementKind);
-        return IndexedLocationNode.create(loc, elementKind, HotSpotGraalRuntime.getArrayBaseOffset(elementKind), index, graph, scale);
+        return IndexedLocationNode.create(loc, elementKind, getArrayBaseOffset(elementKind), index, graph, scale);
     }
 
     @Override
@@ -645,7 +647,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             throw GraalInternalError.shouldNotReachHere();
         }
 
-        base -= HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+        base -= getArrayBaseOffset(elementKind);
         assert base >= 0 && base % scale == 0;
 
         base /= scale;

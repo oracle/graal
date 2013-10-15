@@ -35,10 +35,10 @@ public class HotSpotProviders extends Providers {
 
     private final HotSpotDisassemblerProvider disassembler;
     private final HotSpotSuitesProvider suites;
-    private final HotSpotRegisters registers;
+    private final HotSpotRegistersProvider registers;
 
     public HotSpotProviders(HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, HotSpotForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, HotSpotSuitesProvider suites, HotSpotRegisters registers) {
+                    LoweringProvider lowerer, Replacements replacements, HotSpotDisassemblerProvider disassembler, HotSpotSuitesProvider suites, HotSpotRegistersProvider registers) {
         super(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
         this.disassembler = disassembler;
         this.suites = suites;
@@ -72,7 +72,7 @@ public class HotSpotProviders extends Providers {
         return suites;
     }
 
-    public HotSpotRegisters getRegisters() {
+    public HotSpotRegistersProvider getRegisters() {
         return registers;
     }
 
