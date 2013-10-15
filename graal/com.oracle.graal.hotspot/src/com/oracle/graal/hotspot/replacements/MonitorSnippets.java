@@ -78,8 +78,7 @@ public class MonitorSnippets implements Snippets {
     private static final boolean PROFILE_CONTEXT = false;
 
     @Fold
-    @SuppressWarnings("unused")
-    private static boolean doProfile(String path) {
+    private static boolean doProfile() {
         return Options.ProfileMonitors.getValue();
     }
 
@@ -347,7 +346,7 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static void traceObject(boolean enabled, String action, Object object, boolean enter) {
-        if (doProfile(action)) {
+        if (doProfile()) {
             DynamicCounterNode.counter(action, enter ? "number of monitor enters" : "number of monitor exits", 1, PROFILE_CONTEXT);
         }
         if (enabled) {

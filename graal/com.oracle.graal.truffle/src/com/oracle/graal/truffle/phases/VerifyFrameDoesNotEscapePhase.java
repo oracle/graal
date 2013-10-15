@@ -46,12 +46,6 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
                     throw GraphUtil.approxSourceException(callTarget, exception);
                 }
             }
-            for (FrameAccessNode frameAccess : virtualFrame.usages().filter(FrameAccessNode.class)) {
-                if (!frameAccess.isConstantFrameSlot()) {
-                    Throwable exception = new VerificationError("Frame slot must be compile-time constant in virtual frame access at: %s frameSlot=%s", frameAccess, frameAccess.getSlot());
-                    throw GraphUtil.approxSourceException(frameAccess, exception);
-                }
-            }
         }
     }
 }

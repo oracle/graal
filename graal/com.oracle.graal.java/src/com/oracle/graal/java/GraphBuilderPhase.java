@@ -1218,12 +1218,12 @@ public class GraphBuilderPhase extends Phase {
         return monitorEnter;
     }
 
-    private MonitorExitNode genMonitorExit(ValueNode x) {
+    private MonitorExitNode genMonitorExit(ValueNode x, ValueNode returnValue) {
         ValueNode lockedObject = frameState.popLock();
         if (GraphUtil.originalValue(lockedObject) != GraphUtil.originalValue(x)) {
             throw new BailoutException("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x), GraphUtil.originalValue(lockedObject));
         }
-        MonitorExitNode monitorExit = append(new MonitorExitNode(x, frameState.lockDepth()));
+        MonitorExitNode monitorExit = append(new MonitorExitNode(x, returnValue, frameState.lockDepth()));
         return monitorExit;
     }
 
@@ -1619,7 +1619,7 @@ public class GraphBuilderPhase extends Phase {
         assert frameState.stackSize() == 1 : frameState;
         ValueNode exception = frameState.apop();
         append(new FixedGuardNode(currentGraph.unique(new IsNullNode(exception)), NullCheckException, InvalidateReprofile, true));
-        synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI);
+        synchronizedEpilogue(FrameState.AFTER_EXCEPTION_BCI, null);
         append(new UnwindNode(exception));
     }
 
@@ -1628,7 +1628,7 @@ public class GraphBuilderPhase extends Phase {
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
-        synchronizedEpilogue(FrameState.AFTER_BCI);
+        synchronizedEpilogue(FrameState.AFTER_BCI, x);
         if (frameState.lockDepth() != 0) {
             throw new BailoutException("unbalanced monitors");
         }
@@ -1640,9 +1640,9 @@ public class GraphBuilderPhase extends Phase {
         append(new ReturnNode(x));
     }
 
-    private void synchronizedEpilogue(int bci) {
+    private void synchronizedEpilogue(int bci, ValueNode returnValue) {
         if (Modifier.isSynchronized(method.getModifiers())) {
-            MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject);
+            MonitorExitNode monitorExit = genMonitorExit(methodSynchronizedObject, returnValue);
             monitorExit.setStateAfter(frameState.create(bci));
             assert !frameState.rethrowException();
         }
@@ -2002,7 +2002,7 @@ public class GraphBuilderPhase extends Phase {
             case CHECKCAST      : genCheckCast(); break;
             case INSTANCEOF     : genInstanceOf(); break;
             case MONITORENTER   : genMonitorEnter(frameState.apop()); break;
-            case MONITOREXIT    : genMonitorExit(frameState.apop()); break;
+            case MONITOREXIT    : genMonitorExit(frameState.apop(), null); break;
             case MULTIANEWARRAY : genNewMultiArray(stream.readCPI()); break;
             case IFNULL         : genIfNull(Condition.EQ); break;
             case IFNONNULL      : genIfNull(Condition.NE); break;

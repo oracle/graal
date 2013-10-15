@@ -40,12 +40,12 @@ import com.oracle.graal.word.*;
 public class UnsafeLoadSnippets implements Snippets {
 
     @Snippet
-    public static Object lowerUnsafeLoad(Object object, long displacement) {
+    public static Object lowerUnsafeLoad(Object object, long offset) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        if (object instanceof java.lang.ref.Reference && referentOffset() == displacement) {
-            return Word.fromObject(fixedObject).readObject((int) displacement, BarrierType.PRECISE, true);
+        if (object instanceof java.lang.ref.Reference && referentOffset() == offset) {
+            return Word.fromObject(fixedObject).readObject((int) offset, BarrierType.PRECISE, true);
         } else {
-            return Word.fromObject(fixedObject).readObject((int) displacement, BarrierType.NONE, true);
+            return Word.fromObject(fixedObject).readObject((int) offset, BarrierType.NONE, true);
         }
     }
 

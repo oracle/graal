@@ -34,15 +34,22 @@ import com.oracle.graal.nodes.spi.*;
 public final class MonitorExitNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorExit, MemoryCheckpoint.Single, MonitorReference {
 
     private int lockDepth;
+    @Input private ValueNode escapedReturnValue;
 
     /**
      * Creates a new MonitorExitNode.
      * 
      * @param object the instruction produces the object value
      */
-    public MonitorExitNode(ValueNode object, int lockDepth) {
+    public MonitorExitNode(ValueNode object, ValueNode escapedReturnValue, int lockDepth) {
         super(object);
+        this.escapedReturnValue = escapedReturnValue;
         this.lockDepth = lockDepth;
+    }
+
+    public void setEscapedReturnValue(ValueNode x) {
+        updateUsages(escapedReturnValue, x);
+        this.escapedReturnValue = x;
     }
 
     @Override
@@ -65,11 +72,20 @@ public final class MonitorExitNode extends AccessMonitorNode implements Virtuali
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        State state = tool.getObjectState(object());
-        if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
-            int removedLock = state.removeLock();
-            assert removedLock == getLockDepth();
-            tool.delete();
+        /*
+         * The last MonitorExitNode of a synchronized method cannot be removed anyway, and we need
+         * it to materialize the return value.
+         * 
+         * TODO: replace this with correct handling of AFTER_BCI frame states in the runtime.
+         */
+        if (stateAfter().bci != FrameState.AFTER_BCI) {
+            setEscapedReturnValue(null);
+            State state = tool.getObjectState(object());
+            if (state != null && state.getState() == EscapeState.Virtual && state.getVirtualObject().hasIdentity()) {
+                int removedLock = state.removeLock();
+                assert removedLock == getLockDepth();
+                tool.delete();
+            }
         }
     }
 }

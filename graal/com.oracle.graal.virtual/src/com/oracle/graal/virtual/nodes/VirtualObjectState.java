@@ -53,7 +53,7 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
 
     @Override
     public VirtualObjectState duplicateWithVirtualState() {
-        return graph().addWithoutUnique(new VirtualObjectState(object(), fieldValues));
+        return graph().unique(new VirtualObjectState(object(), fieldValues));
     }
 
     @Override

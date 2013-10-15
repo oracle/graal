@@ -34,7 +34,7 @@ import com.oracle.graal.nodes.type.*;
  * A node that changes the stamp of its input based on some condition being true.
  */
 @NodeInfo(nameTemplate = "GuardingPi(!={p#negated}) {p#reason/s}")
-public class GuardingPiNode extends FixedWithNextNode implements Lowerable, GuardingNode, Canonicalizable, ValueProxy {
+public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virtualizable, GuardingNode, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
     @Input private LogicNode condition;
@@ -77,14 +77,19 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Guar
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-            throw new GraalInternalError("Cannot create guards in after-guard lowering");
-        }
         GuardingNode guard = tool.createGuard(condition, reason, action, negated);
         ValueAnchorNode anchor = graph().add(new ValueAnchorNode((ValueNode) guard));
         PiNode pi = graph().unique(new PiNode(object, stamp(), (ValueNode) guard));
         replaceAtUsages(pi);
         graph().replaceFixedWithFixed(this, anchor);
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+            tool.replaceWithVirtual(state.getVirtualObject());
+        }
     }
 
     @Override

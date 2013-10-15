@@ -38,11 +38,7 @@ public class StoreLocalTestNode extends AbstractTestNode {
     @Override
     public int execute(VirtualFrame frame) {
         int value = valueNode.execute(frame);
-        try {
-            frame.setInt(slot, value);
-        } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException(e);
-        }
+        frame.setInt(slot, value);
         return value;
     }
 }

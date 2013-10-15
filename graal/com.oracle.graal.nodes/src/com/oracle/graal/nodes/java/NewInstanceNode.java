@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.nodes.java;
 
+import java.lang.ref.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
@@ -48,6 +50,7 @@ public final class NewInstanceNode extends DeoptimizingFixedWithNextNode impleme
      */
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
         super(StampFactory.exactNonNull(type));
+        assert !type.isArray();
         this.instanceClass = type;
         this.fillContents = fillContents;
     }
@@ -84,8 +87,11 @@ public final class NewInstanceNode extends DeoptimizingFixedWithNextNode impleme
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (instanceClass != null) {
-            assert !instanceClass().isArray();
+        /*
+         * Reference objects can escape into their ReferenceQueue at any safepoint, therefore
+         * they're excluded from escape analysis.
+         */
+        if (!tool.getMetaAccessProvider().lookupJavaType(Reference.class).isAssignableFrom(instanceClass)) {
             VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass(), true);
             ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];

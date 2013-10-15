@@ -178,7 +178,7 @@ public class GraphEffectList extends EffectList {
                         stateAfter.virtualObjectMappings().remove(i);
                     }
                 }
-                stateAfter.addVirtualObjectMapping(graph.addWithoutUnique(state));
+                stateAfter.addVirtualObjectMapping(graph.unique(state));
             }
 
             @Override
