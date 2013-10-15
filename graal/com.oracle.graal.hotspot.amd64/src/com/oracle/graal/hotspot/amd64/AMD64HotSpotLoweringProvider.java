@@ -35,14 +35,14 @@ public class AMD64HotSpotLoweringProvider extends HotSpotLoweringProvider {
 
     private AMD64ConvertSnippets.Templates convertSnippets;
 
-    public AMD64HotSpotLoweringProvider(HotSpotGraalRuntime graalRuntime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        super(graalRuntime, metaAccess, foreignCalls);
+    public AMD64HotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+        super(runtime, metaAccess, foreignCalls);
     }
 
     @Override
     public void initialize() {
-        HotSpotProviders providers = graalRuntime.getProviders();
-        convertSnippets = new AMD64ConvertSnippets.Templates(providers, graalRuntime.getTarget());
+        HotSpotProviders providers = runtime.getProviders();
+        convertSnippets = new AMD64ConvertSnippets.Templates(providers, runtime.getTarget());
         super.initialize();
     }
 

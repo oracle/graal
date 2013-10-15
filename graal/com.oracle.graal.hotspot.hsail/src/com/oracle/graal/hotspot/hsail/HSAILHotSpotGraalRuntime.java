@@ -36,7 +36,7 @@ public class HSAILHotSpotGraalRuntime extends HotSpotGraalRuntime {
 
     @Override
     protected HotSpotProviders createProviders() {
-        HotSpotProviders host = HotSpotGraalRuntime.graalRuntime().getProviders();
+        HotSpotProviders host = HotSpotGraalRuntime.runtime().getProviders();
 
         HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
         HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(this);

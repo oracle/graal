@@ -92,7 +92,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
      * only called for snippets or replacements.
      */
     private static boolean isCalledForSnippets() {
-        MetaAccessProvider metaAccess = graalRuntime().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = runtime().getProviders().getMetaAccess();
         ResolvedJavaMethod makeGraphMethod = null;
         ResolvedJavaMethod initMethod = null;
         try {
@@ -119,7 +119,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private static final Set<ResolvedJavaField> notEmbeddable = new HashSet<>();
 
     private static void addResolvedToSet(Field field) {
-        MetaAccessProvider metaAccess = graalRuntime().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = runtime().getProviders().getMetaAccess();
         notEmbeddable.add(metaAccess.lookupJavaField(field));
     }
 
@@ -216,12 +216,12 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         if (receiver == null) {
             assert Modifier.isStatic(flags);
             if (holder.isInitialized()) {
-                return graalRuntime().getProviders().getConstantReflection().readUnsafeConstant(getKind(), holder.mirror(), offset, getKind() == Kind.Object);
+                return runtime().getProviders().getConstantReflection().readUnsafeConstant(getKind(), holder.mirror(), offset, getKind() == Kind.Object);
             }
             return null;
         } else {
             assert !Modifier.isStatic(flags);
-            return graalRuntime().getProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver.asObject(), offset, getKind() == Kind.Object);
+            return runtime().getProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver.asObject(), offset, getKind() == Kind.Object);
         }
     }
 

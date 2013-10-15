@@ -125,7 +125,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(descriptor, incomingCcType);
         HotSpotForeignCallLinkage linkage = new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == Type.NativeCall) {
-            linkage.temporaries = graalRuntime().getNativeABICallerSaveRegisters();
+            linkage.temporaries = runtime().getNativeABICallerSaveRegisters();
         }
         return linkage;
     }
@@ -135,15 +135,15 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      */
     public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
         assert ccType != null;
-        MetaAccessProvider metaAccess = graalRuntime().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = runtime().getProviders().getMetaAccess();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
             parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess);
         }
-        TargetDescription target = graalRuntime().getTarget();
+        TargetDescription target = runtime().getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess);
-        RegisterConfig regConfig = graalRuntime().getProviders().getCodeCache().getRegisterConfig();
+        RegisterConfig regConfig = runtime().getProviders().getCodeCache().getRegisterConfig();
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
@@ -206,7 +206,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     }
 
     public long getMaxCallTargetOffset() {
-        return graalRuntime().getCompilerToVM().getMaxCallTargetOffset(address);
+        return runtime().getCompilerToVM().getMaxCallTargetOffset(address);
     }
 
     public ForeignCallDescriptor getDescriptor() {

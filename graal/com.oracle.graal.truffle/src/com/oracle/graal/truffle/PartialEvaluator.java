@@ -80,7 +80,7 @@ public class PartialEvaluator {
         CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(providers.getMetaAccess(), providers.getConstantReflection());
         this.canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue(), customCanonicalizer);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(providers.getMetaAccess());
-        this.cache = HotSpotGraalRuntime.graalRuntime().getCache();
+        this.cache = HotSpotGraalRuntime.runtime().getCache();
         this.truffleCache = truffleCache;
 
         try {

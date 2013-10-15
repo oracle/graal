@@ -68,12 +68,12 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     public static final ForeignCallDescriptor VERIFY_OOP = new ForeignCallDescriptor("verify_oop", Object.class, Object.class);
     public static final ForeignCallDescriptor LOAD_AND_CLEAR_EXCEPTION = new ForeignCallDescriptor("load_and_clear_exception", Object.class, Word.class);
 
-    protected final HotSpotGraalRuntime graalRuntime;
+    protected final HotSpotGraalRuntime runtime;
 
     private final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
 
-    public HotSpotForeignCallsProvider(HotSpotGraalRuntime graalRuntime) {
-        this.graalRuntime = graalRuntime;
+    public HotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
     }
 
     /**
@@ -156,7 +156,7 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     public static final LocationIdentity[] NO_LOCATIONS = {};
 
     public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig c = graalRuntime.getConfig();
+        HotSpotVMConfig c = runtime.getConfig();
         TargetDescription target = providers.getCodeCache().getTarget();
 
         registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);
@@ -204,7 +204,7 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(descriptor);
         assert foreignCalls != null : descriptor;
-        callTarget.finalizeAddress(graalRuntime.getBackend());
+        callTarget.finalizeAddress(runtime.getBackend());
         return callTarget;
     }
 

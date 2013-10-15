@@ -43,11 +43,11 @@ import com.oracle.graal.printer.*;
  */
 public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
-    protected final HotSpotGraalRuntime graalRuntime;
+    protected final HotSpotGraalRuntime runtime;
     protected final RegisterConfig regConfig;
 
-    public HotSpotCodeCacheProvider(HotSpotGraalRuntime graalRuntime) {
-        this.graalRuntime = graalRuntime;
+    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
         regConfig = createRegisterConfig();
     }
 
@@ -57,7 +57,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public String disassemble(CompilationResult compResult, InstalledCode installedCode) {
         byte[] code = installedCode == null ? Arrays.copyOf(compResult.getTargetCode(), compResult.getTargetCodeSize()) : installedCode.getCode();
         long start = installedCode == null ? 0L : installedCode.getStart();
-        TargetDescription target = graalRuntime.getTarget();
+        TargetDescription target = runtime.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
         if (compResult != null) {
             HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
@@ -92,12 +92,12 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
      * Decodes a call target to a mnemonic if possible.
      */
     private String getTargetName(Call call) {
-        Field[] fields = graalRuntime.getConfig().getClass().getDeclaredFields();
+        Field[] fields = runtime.getConfig().getClass().getDeclaredFields();
         for (Field f : fields) {
             if (f.getName().endsWith("Stub")) {
                 f.setAccessible(true);
                 try {
-                    Object address = f.get(graalRuntime.getConfig());
+                    Object address = f.get(runtime.getConfig());
                     if (address.equals(call.target)) {
                         return f.getName() + ":0x" + Long.toHexString((Long) address);
                     }
@@ -152,12 +152,12 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     @Override
     public int getMinimumOutgoingSize() {
-        return graalRuntime.getConfig().runtimeCallStackSize;
+        return runtime.getConfig().runtimeCallStackSize;
     }
 
     public HotSpotInstalledCode installMethod(HotSpotResolvedJavaMethod method, int entryBCI, CompilationResult compResult) {
         HotSpotInstalledCode installedCode = new HotSpotNmethod(method, true);
-        graalRuntime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, entryBCI, compResult), installedCode, method.getSpeculationLog());
+        runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(method, entryBCI, compResult), installedCode, method.getSpeculationLog());
         return installedCode;
     }
 
@@ -165,7 +165,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult) {
         HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
         HotSpotInstalledCode code = new HotSpotNmethod(hotspotMethod, false);
-        CodeInstallResult result = graalRuntime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(hotspotMethod, -1, compResult), code, null);
+        CodeInstallResult result = runtime.getCompilerToVM().installCode(new HotSpotCompiledNmethod(hotspotMethod, -1, compResult), code, null);
         if (result != CodeInstallResult.OK) {
             return null;
         }
@@ -177,7 +177,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
         HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) method;
         HotSpotInstalledCode icode = new HotSpotNmethod(javaMethod, false, true);
         HotSpotCompiledNmethod compiled = new HotSpotCompiledNmethod(javaMethod, -1, compResult);
-        CompilerToVM vm = graalRuntime.getCompilerToVM();
+        CompilerToVM vm = runtime.getCompilerToVM();
         CodeInstallResult result = vm.installCode(compiled, icode, null);
         if (result != CodeInstallResult.OK) {
             return null;
@@ -191,13 +191,13 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     @Override
     public TargetDescription getTarget() {
-        return graalRuntime.getTarget();
+        return runtime.getTarget();
     }
 
     public String disassemble(InstalledCode code) {
         if (code.isValid()) {
             long codeBlob = ((HotSpotInstalledCode) code).getCodeBlob();
-            return graalRuntime.getCompilerToVM().disassembleCodeBlob(codeBlob);
+            return runtime.getCompilerToVM().disassembleCodeBlob(codeBlob);
         }
         return null;
     }

@@ -69,7 +69,7 @@ public class InstanceOfSnippets implements Snippets {
      * {@code N == } {@link GraalOptions#InstanceOfMaxHints}).
      */
     public static double hintHitProbabilityThresholdForDeoptimizingSnippet() {
-        return 1.0D - (1.0D / (graalRuntime().getConfig().compileThreshold * 10));
+        return 1.0D - (1.0D / (runtime().getConfig().compileThreshold * 10));
     }
 
     /**

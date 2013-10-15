@@ -59,7 +59,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private final PartialEvaluator partialEvaluator;
     private final Backend backend;
     private final ResolvedJavaType[] skippedExceptionTypes;
-    private final HotSpotGraalRuntime graalRuntime;
+    private final HotSpotGraalRuntime runtime;
     private final TruffleCache truffleCache;
 
     private static final Class[] SKIPPED_EXCEPTION_CLASSES = new Class[]{SlowPathException.class, UnexpectedResultException.class, ArithmeticException.class};
@@ -72,7 +72,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.providers = GraalCompiler.getGraalProviders().copyWith(truffleReplacements);
         this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
         this.backend = Graal.getRequiredCapability(Backend.class);
-        this.graalRuntime = HotSpotGraalRuntime.graalRuntime();
+        this.runtime = HotSpotGraalRuntime.runtime();
         this.skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
@@ -113,7 +113,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         final StructuredGraph graph;
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
-        graalRuntime.evictDeoptedGraphs();
+        runtime.evictDeoptedGraphs();
 
         compilable.timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);

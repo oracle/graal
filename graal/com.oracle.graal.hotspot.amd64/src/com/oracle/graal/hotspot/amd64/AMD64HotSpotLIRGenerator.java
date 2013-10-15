@@ -368,7 +368,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private void moveDeoptimizationActionAndReasonToThread(Value actionAndReason) {
-        int pendingDeoptimizationOffset = graalRuntime().getConfig().pendingDeoptimizationOffset;
+        int pendingDeoptimizationOffset = runtime().getConfig().pendingDeoptimizationOffset;
         Kind wordKind = getProviders().getCodeCache().getTarget().wordKind;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(actionAndReason.getKind(), thread, pendingDeoptimizationOffset);

@@ -37,13 +37,13 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class AMD64SPARCForeignCallsProvider extends HotSpotForeignCallsProvider {
 
-    public AMD64SPARCForeignCallsProvider(HotSpotGraalRuntime graalRuntime) {
-        super(graalRuntime);
+    public AMD64SPARCForeignCallsProvider(HotSpotGraalRuntime runtime) {
+        super(runtime);
     }
 
     @Override
     public void initialize(HotSpotProviders providers) {
-        Kind word = graalRuntime.getTarget().wordKind;
+        Kind word = runtime.getTarget().wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()

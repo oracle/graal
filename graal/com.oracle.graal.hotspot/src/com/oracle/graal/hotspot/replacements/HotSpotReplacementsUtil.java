@@ -47,7 +47,7 @@ import com.oracle.graal.word.*;
 public class HotSpotReplacementsUtil {
 
     public static HotSpotVMConfig config() {
-        return graalRuntime().getConfig();
+        return runtime().getConfig();
     }
 
     @Fold
@@ -198,22 +198,22 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static Kind getWordKind() {
-        return graalRuntime().getTarget().wordKind;
+        return runtime().getTarget().wordKind;
     }
 
     @Fold
     public static Register threadRegister() {
-        return graalRuntime().getProviders().getRegisters().getThreadRegister();
+        return runtime().getProviders().getRegisters().getThreadRegister();
     }
 
     @Fold
     public static Register stackPointerRegister() {
-        return graalRuntime().getProviders().getRegisters().getStackPointerRegister();
+        return runtime().getProviders().getRegisters().getStackPointerRegister();
     }
 
     @Fold
     public static int wordSize() {
-        return graalRuntime().getTarget().wordSize;
+        return runtime().getTarget().wordSize;
     }
 
     @Fold

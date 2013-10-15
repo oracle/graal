@@ -50,8 +50,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     private Map<String, String> paramTypeMap = new HashMap<>();
     private Buffer codeBuffer;
 
-    public HSAILHotSpotBackend(HotSpotGraalRuntime graalRuntime, HotSpotProviders providers) {
-        super(graalRuntime, providers);
+    public HSAILHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(runtime, providers);
         paramTypeMap.put("HotSpotResolvedPrimitiveType<int>", "s32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
@@ -74,7 +74,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new HSAILHotSpotLIRGenerator(graph, getProviders(), getGraalRuntime().getConfig(), frameMap, cc, lir);
+        return new HSAILHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     public String getPartialCodeString() {

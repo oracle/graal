@@ -166,7 +166,7 @@ public abstract class Stub {
                             Stub stub = Stub.this;
                             HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
                             HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
-                            CodeInstallResult result = graalRuntime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
+                            CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                             if (result != CodeInstallResult.OK) {
                                 throw new GraalInternalError("Error installing stub %s: %s", Stub.this, result);
                             }

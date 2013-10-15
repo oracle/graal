@@ -56,8 +56,8 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
         leaveFrame(tasm);
 
         // Restore SP from L7 if the exception PC is a method handle call site.
-        Register thread = graalRuntime().getProviders().getRegisters().getThreadRegister();
-        int isMethodHandleReturnOffset = graalRuntime().getConfig().threadIsMethodHandleReturnOffset;
+        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
+        int isMethodHandleReturnOffset = runtime().getConfig().threadIsMethodHandleReturnOffset;
         SPARCAddress dst = new SPARCAddress(thread, isMethodHandleReturnOffset);
         new Lduw(dst, o7).emit(masm);
         new Cmp(o7, o7).emit(masm);

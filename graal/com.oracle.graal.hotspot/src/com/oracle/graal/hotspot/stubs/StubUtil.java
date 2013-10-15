@@ -87,7 +87,7 @@ public class StubUtil {
      */
     @Fold
     public static boolean cAssertionsEnabled() {
-        return graalRuntime().getConfig().cAssertions;
+        return runtime().getConfig().cAssertions;
     }
 
     @NodeIntrinsic(StubForeignCallNode.class)

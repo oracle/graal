@@ -38,8 +38,8 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        Register thread = graalRuntime().getProviders().getRegisters().getThreadRegister();
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
+        HotSpotVMConfig config = runtime().getConfig();
 
         // Restore the thread register when coming back from the runtime.
         new Mov(l7, thread).emit(masm);

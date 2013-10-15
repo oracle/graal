@@ -58,7 +58,7 @@ public final class CompilationTask implements Runnable {
         Queued, Running
     }
 
-    private final HotSpotGraalRuntime graalRuntime;
+    private final HotSpotGraalRuntime runtime;
     private final PhasePlan plan;
     private final SuitesProvider suitesProvider;
     private final OptimisticOptimizations optimisticOpts;
@@ -69,15 +69,15 @@ public final class CompilationTask implements Runnable {
 
     private StructuredGraph graph;
 
-    public static CompilationTask create(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
-        return new CompilationTask(graalRuntime, plan, optimisticOpts, method, entryBCI, id);
+    public static CompilationTask create(HotSpotGraalRuntime runtime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+        return new CompilationTask(runtime, plan, optimisticOpts, method, entryBCI, id);
     }
 
-    private CompilationTask(HotSpotGraalRuntime graalRuntime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+    private CompilationTask(HotSpotGraalRuntime runtime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
         assert id >= 0;
-        this.graalRuntime = graalRuntime;
+        this.runtime = runtime;
         this.plan = plan;
-        this.suitesProvider = graalRuntime.getCapability(SuitesProvider.class);
+        this.suitesProvider = runtime.getCapability(SuitesProvider.class);
         this.method = method;
         this.optimisticOpts = optimisticOpts;
         this.entryBCI = entryBCI;
@@ -143,8 +143,8 @@ public final class CompilationTask implements Runnable {
 
                     @Override
                     public CompilationResult call() throws Exception {
-                        graalRuntime.evictDeoptedGraphs();
-                        Providers providers = graalRuntime.getProviders();
+                        runtime.evictDeoptedGraphs();
+                        Providers providers = runtime.getProviders();
                         Replacements replacements = providers.getReplacements();
                         graph = replacements.getMethodSubstitution(method);
                         if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
@@ -155,7 +155,7 @@ public final class CompilationTask implements Runnable {
                         }
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
                         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                        return GraalCompiler.compileGraph(graph, cc, method, providers, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
+                        return GraalCompiler.compileGraph(graph, cc, method, providers, runtime.getBackend(), runtime.getTarget(), runtime.getCache(), plan, optimisticOpts,
                                         method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }
                 });
@@ -212,7 +212,7 @@ public final class CompilationTask implements Runnable {
     }
 
     private void installMethod(final CompilationResult compResult) {
-        final HotSpotCodeCacheProvider codeCache = graalRuntime.getProviders().getCodeCache();
+        final HotSpotCodeCacheProvider codeCache = runtime.getProviders().getCodeCache();
         Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), codeCache, method}, new Runnable() {
 
             @Override
@@ -222,7 +222,7 @@ public final class CompilationTask implements Runnable {
                     Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
                 if (Debug.isLogEnabled()) {
-                    Debug.log("%s", graalRuntime.getProviders().getDisassembler().disassemble(installedCode));
+                    Debug.log("%s", runtime.getProviders().getDisassembler().disassemble(installedCode));
                 }
             }
 

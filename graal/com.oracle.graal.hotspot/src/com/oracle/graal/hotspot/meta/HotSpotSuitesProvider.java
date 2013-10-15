@@ -34,10 +34,10 @@ import com.oracle.graal.phases.tiers.*;
 public class HotSpotSuitesProvider implements SuitesProvider {
 
     protected final Suites defaultSuites;
-    private final HotSpotGraalRuntime graalRuntime;
+    private final HotSpotGraalRuntime runtime;
 
-    public HotSpotSuitesProvider(HotSpotGraalRuntime graalRuntime) {
-        this.graalRuntime = graalRuntime;
+    public HotSpotSuitesProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
         defaultSuites = createSuites();
     }
 
@@ -50,7 +50,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
 
         if (AOTCompilation.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
-            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(graalRuntime.getConfig().classMirrorOffset));
+            ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(runtime.getConfig().classMirrorOffset));
             if (VerifyPhases.getValue()) {
                 ret.getHighTier().appendPhase(new AheadOfTimeVerificationPhase());
             }

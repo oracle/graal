@@ -67,15 +67,15 @@ public abstract class HotSpotBackend extends Backend {
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
-    private final HotSpotGraalRuntime graalRuntime;
+    private final HotSpotGraalRuntime runtime;
 
-    public HotSpotBackend(HotSpotGraalRuntime graalRuntime, HotSpotProviders providers) {
+    public HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(providers);
-        this.graalRuntime = graalRuntime;
+        this.runtime = runtime;
     }
 
-    public HotSpotGraalRuntime getGraalRuntime() {
-        return graalRuntime;
+    public HotSpotGraalRuntime getRuntime() {
+        return runtime;
     }
 
     @Override

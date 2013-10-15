@@ -55,8 +55,8 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
 
-    public SPARCHotSpotBackend(HotSpotGraalRuntime graalRuntime, HotSpotProviders providers) {
-        super(graalRuntime, providers);
+    public SPARCHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(runtime, providers);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, getProviders(), getGraalRuntime().getConfig(), frameMap, cc, lir);
+        return new SPARCHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     /**
@@ -176,7 +176,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
-        HotSpotVMConfig config = getGraalRuntime().getConfig();
+        HotSpotVMConfig config = getRuntime().getConfig();
         Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
 
         // Emit the prefix

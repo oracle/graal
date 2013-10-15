@@ -40,9 +40,9 @@ public class LocalImpl implements Local {
         this.bciStart = bciStart;
         this.bciEnd = bciEnd;
         this.slot = slot;
-        JavaType t = graalRuntime().lookupType(type, holder, true);
+        JavaType t = runtime().lookupType(type, holder, true);
         if (t instanceof ResolvedJavaType) {
-            this.resolvedType = (ResolvedJavaType) graalRuntime().lookupType(type, holder, false);
+            this.resolvedType = (ResolvedJavaType) runtime().lookupType(type, holder, false);
         } else {
             throw new AssertionError(t.getClass() + " is not a ResolvedJavaType");
         }

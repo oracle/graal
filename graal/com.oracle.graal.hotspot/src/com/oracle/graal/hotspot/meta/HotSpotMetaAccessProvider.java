@@ -34,10 +34,10 @@ import com.oracle.graal.hotspot.bridge.*;
  */
 public class HotSpotMetaAccessProvider implements MetaAccessProvider {
 
-    protected final HotSpotGraalRuntime graalRuntime;
+    protected final HotSpotGraalRuntime runtime;
 
-    public HotSpotMetaAccessProvider(HotSpotGraalRuntime graalRuntime) {
-        this.graalRuntime = graalRuntime;
+    public HotSpotMetaAccessProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
     }
 
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
@@ -60,7 +60,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {
-        CompilerToVM c2vm = graalRuntime.getCompilerToVM();
+        CompilerToVM c2vm = runtime.getCompilerToVM();
         HotSpotResolvedObjectType[] resultHolder = {null};
         long metaspaceMethod = c2vm.getMetaspaceMethod(reflectionMethod, resultHolder);
         assert metaspaceMethod != 0L;
@@ -68,7 +68,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     public ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor) {
-        CompilerToVM c2vm = graalRuntime.getCompilerToVM();
+        CompilerToVM c2vm = runtime.getCompilerToVM();
         HotSpotResolvedObjectType[] resultHolder = {null};
         long metaspaceMethod = c2vm.getMetaspaceConstructor(reflectionConstructor, resultHolder);
         assert metaspaceMethod != 0L;
@@ -76,7 +76,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     }
 
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        return graalRuntime.getCompilerToVM().getJavaField(reflectionField);
+        return runtime.getCompilerToVM().getJavaField(reflectionField);
     }
 
     @Override
@@ -92,15 +92,15 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     public int convertDeoptAction(DeoptimizationAction action) {
         switch (action) {
             case None:
-                return graalRuntime.getConfig().deoptActionNone;
+                return runtime.getConfig().deoptActionNone;
             case RecompileIfTooManyDeopts:
-                return graalRuntime.getConfig().deoptActionMaybeRecompile;
+                return runtime.getConfig().deoptActionMaybeRecompile;
             case InvalidateReprofile:
-                return graalRuntime.getConfig().deoptActionReinterpret;
+                return runtime.getConfig().deoptActionReinterpret;
             case InvalidateRecompile:
-                return graalRuntime.getConfig().deoptActionMakeNotEntrant;
+                return runtime.getConfig().deoptActionMakeNotEntrant;
             case InvalidateStopCompiling:
-                return graalRuntime.getConfig().deoptActionMakeNotCompilable;
+                return runtime.getConfig().deoptActionMakeNotCompilable;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -109,33 +109,33 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     public int convertDeoptReason(DeoptimizationReason reason) {
         switch (reason) {
             case None:
-                return graalRuntime.getConfig().deoptReasonNone;
+                return runtime.getConfig().deoptReasonNone;
             case NullCheckException:
-                return graalRuntime.getConfig().deoptReasonNullCheck;
+                return runtime.getConfig().deoptReasonNullCheck;
             case BoundsCheckException:
-                return graalRuntime.getConfig().deoptReasonRangeCheck;
+                return runtime.getConfig().deoptReasonRangeCheck;
             case ClassCastException:
-                return graalRuntime.getConfig().deoptReasonClassCheck;
+                return runtime.getConfig().deoptReasonClassCheck;
             case ArrayStoreException:
-                return graalRuntime.getConfig().deoptReasonArrayCheck;
+                return runtime.getConfig().deoptReasonArrayCheck;
             case UnreachedCode:
-                return graalRuntime.getConfig().deoptReasonUnreached0;
+                return runtime.getConfig().deoptReasonUnreached0;
             case TypeCheckedInliningViolated:
-                return graalRuntime.getConfig().deoptReasonTypeCheckInlining;
+                return runtime.getConfig().deoptReasonTypeCheckInlining;
             case OptimizedTypeCheckViolated:
-                return graalRuntime.getConfig().deoptReasonOptimizedTypeCheck;
+                return runtime.getConfig().deoptReasonOptimizedTypeCheck;
             case NotCompiledExceptionHandler:
-                return graalRuntime.getConfig().deoptReasonNotCompiledExceptionHandler;
+                return runtime.getConfig().deoptReasonNotCompiledExceptionHandler;
             case Unresolved:
-                return graalRuntime.getConfig().deoptReasonUnresolved;
+                return runtime.getConfig().deoptReasonUnresolved;
             case JavaSubroutineMismatch:
-                return graalRuntime.getConfig().deoptReasonJsrMismatch;
+                return runtime.getConfig().deoptReasonJsrMismatch;
             case ArithmeticException:
-                return graalRuntime.getConfig().deoptReasonDiv0Check;
+                return runtime.getConfig().deoptReasonDiv0Check;
             case RuntimeConstraint:
-                return graalRuntime.getConfig().deoptReasonConstraint;
+                return runtime.getConfig().deoptReasonConstraint;
             case LoopLimitCheck:
-                return graalRuntime.getConfig().deoptReasonLoopLimitCheck;
+                return runtime.getConfig().deoptReasonLoopLimitCheck;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

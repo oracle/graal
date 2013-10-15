@@ -45,17 +45,17 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
      * Called from C++ code to retrieve the singleton instance, creating it first if necessary.
      */
     public static HotSpotGraalRuntime makeInstance() {
-        HotSpotGraalRuntime graalRuntime = graalRuntime();
-        if (graalRuntime == null) {
+        HotSpotGraalRuntime runtime = runtime();
+        if (runtime == null) {
             HotSpotGraalRuntimeFactory factory = findFactory("AMD64");
             if (factory != null) {
-                graalRuntime = factory.createRuntime();
+                runtime = factory.createRuntime();
             } else {
-                graalRuntime = new AMD64HotSpotGraalRuntime();
+                runtime = new AMD64HotSpotGraalRuntime();
             }
-            graalRuntime.completeInitialization();
+            runtime.completeInitialization();
         }
-        return graalRuntime;
+        return runtime;
     }
 
     protected Architecture createArchitecture() {

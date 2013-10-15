@@ -58,8 +58,8 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
 
-    public AMD64HotSpotBackend(HotSpotGraalRuntime graalRuntime, HotSpotProviders providers) {
-        super(graalRuntime, providers);
+    public AMD64HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(runtime, providers);
     }
 
     @Override
@@ -74,7 +74,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new AMD64HotSpotLIRGenerator(graph, getProviders(), getGraalRuntime().getConfig(), frameMap, cc, lir);
+        return new AMD64HotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     /**
@@ -235,7 +235,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
-        HotSpotVMConfig config = getGraalRuntime().getConfig();
+        HotSpotVMConfig config = getRuntime().getConfig();
         Label verifiedStub = new Label();
 
         // Emit the prefix

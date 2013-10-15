@@ -51,8 +51,8 @@ public final class CompileTheWorld {
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
     // Some runtime instances we need.
-    private final HotSpotGraalRuntime graalRuntime = graalRuntime();
-    private final VMToCompilerImpl vmToCompiler = (VMToCompilerImpl) graalRuntime.getVMToCompiler();
+    private final HotSpotGraalRuntime runtime = runtime();
+    private final VMToCompilerImpl vmToCompiler = (VMToCompilerImpl) runtime.getVMToCompiler();
 
     /** List of Zip/Jar files to compile (see {@link GraalOptions#CompileTheWorld}. */
     private final String files;
@@ -182,7 +182,7 @@ public final class CompileTheWorld {
                     }
 
                     // Are we compiling this class?
-                    HotSpotMetaAccessProvider metaAccess = graalRuntime.getProviders().getMetaAccess();
+                    HotSpotMetaAccessProvider metaAccess = runtime.getProviders().getMetaAccess();
                     if (classFileCounter >= startAt) {
                         TTY.println("CompileTheWorld (%d) : %s", classFileCounter, className);
 

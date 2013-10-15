@@ -52,7 +52,7 @@ public final class CompilerThread extends Thread {
     public void run() {
         GraalDebugConfig hotspotDebugConfig = null;
         if (Debug.isEnabled()) {
-            PrintStream log = graalRuntime().getVMToCompiler().log();
+            PrintStream log = runtime().getVMToCompiler().log();
             DebugEnvironment.initialize(log);
         }
         try {

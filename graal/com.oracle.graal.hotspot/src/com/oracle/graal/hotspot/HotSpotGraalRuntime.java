@@ -43,8 +43,6 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-//import static com.oracle.graal.phases.GraalOptions.*;
-
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  * 
@@ -57,7 +55,7 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     /**
      * Gets the singleton {@link HotSpotGraalRuntime} object.
      */
-    public static HotSpotGraalRuntime graalRuntime() {
+    public static HotSpotGraalRuntime runtime() {
         return instance;
     }
 

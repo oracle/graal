@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.spi.*;
 
 public class PTXHotSpotLoweringProvider extends HotSpotLoweringProvider {
 
-    public PTXHotSpotLoweringProvider(HotSpotGraalRuntime graalRuntime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        super(graalRuntime, metaAccess, foreignCalls);
+    public PTXHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+        super(runtime, metaAccess, foreignCalls);
     }
 
     @Override

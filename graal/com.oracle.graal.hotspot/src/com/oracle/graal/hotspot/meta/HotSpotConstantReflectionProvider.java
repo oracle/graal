@@ -36,10 +36,10 @@ import com.oracle.graal.hotspot.*;
  */
 public class HotSpotConstantReflectionProvider implements ConstantReflectionProvider {
 
-    protected final HotSpotGraalRuntime graalRuntime;
+    protected final HotSpotGraalRuntime runtime;
 
-    public HotSpotConstantReflectionProvider(HotSpotGraalRuntime graalRuntime) {
-        this.graalRuntime = graalRuntime;
+    public HotSpotConstantReflectionProvider(HotSpotGraalRuntime runtime) {
+        this.runtime = runtime;
     }
 
     @Override
@@ -69,11 +69,11 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
             case Int:
                 return Constant.forInt(base == null ? unsafe.getInt(displacement) : unsafe.getInt(base, displacement));
             case Long:
-                if (displacement == config().hubOffset && graalRuntime.getConfig().useCompressedClassPointers) {
+                if (displacement == config().hubOffset && runtime.getConfig().useCompressedClassPointers) {
                     if (base == null) {
                         throw new GraalInternalError("Base of object must not be null");
                     } else {
-                        return Constant.forLong(graalRuntime.getCompilerToVM().readUnsafeKlassPointer(base));
+                        return Constant.forLong(runtime.getCompilerToVM().readUnsafeKlassPointer(base));
                     }
                 } else {
                     return Constant.forLong(base == null ? unsafe.getLong(displacement) : unsafe.getLong(base, displacement));
@@ -87,7 +87,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
                 if (compressible) {
                     o = unsafe.getObject(base, displacement);
                 } else {
-                    o = graalRuntime.getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
+                    o = runtime.getCompilerToVM().readUnsafeUncompressedPointer(base, displacement);
                 }
                 return Constant.forObject(o);
             }

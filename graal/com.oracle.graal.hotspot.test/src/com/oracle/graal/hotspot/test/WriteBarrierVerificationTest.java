@@ -629,7 +629,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 int barriers = 0;
                 // First, the total number of expected barriers is checked.
-                HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
+                HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
                 if (config.useG1GC) {
                     barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
                                     graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();

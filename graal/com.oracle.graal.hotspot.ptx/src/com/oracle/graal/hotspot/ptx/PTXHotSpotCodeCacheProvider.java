@@ -28,8 +28,8 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class PTXHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
-    public PTXHotSpotCodeCacheProvider(HotSpotGraalRuntime graalRuntime) {
-        super(graalRuntime);
+    public PTXHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime) {
+        super(runtime);
 
     }
 
