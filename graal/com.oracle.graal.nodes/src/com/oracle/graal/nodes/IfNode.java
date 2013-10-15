@@ -462,8 +462,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         List<AbstractEndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         assert phi.valueCount() == merge.forwardEndCount();
 
-        Constant[] xs = constantValues(compare.x(), merge);
-        Constant[] ys = constantValues(compare.y(), merge);
+        Constant[] xs = constantValues(compare.x(), merge, false);
+        Constant[] ys = constantValues(compare.y(), merge, false);
         if (xs == null || ys == null) {
             return false;
         }
@@ -607,7 +607,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @return null if {@code node} is neither a {@link ConstantNode} nor a {@link PhiNode} whose
      *         input values are all constants
      */
-    private static Constant[] constantValues(ValueNode node, MergeNode merge) {
+    public static Constant[] constantValues(ValueNode node, MergeNode merge, boolean allowNull) {
         if (node.isConstant()) {
             Constant[] result = new Constant[merge.forwardEndCount()];
             Arrays.fill(result, node.asConstant());
@@ -620,7 +620,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 Constant[] result = new Constant[merge.forwardEndCount()];
                 int i = 0;
                 for (ValueNode n : phi.values()) {
-                    if (!n.isConstant()) {
+                    if (!allowNull && !n.isConstant()) {
                         return null;
                     }
                     result[i++] = n.asConstant();

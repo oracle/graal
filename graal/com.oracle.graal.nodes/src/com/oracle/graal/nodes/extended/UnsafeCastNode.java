@@ -35,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * information, i.e., an unsafe cast is removed if the input object has a more precise or equal type
  * than the type this nodes casts to.
  */
-public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable, GuardingNode, IterableNodeType, Canonicalizable, ValueProxy {
+public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, GuardingNode, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
 
@@ -83,6 +83,14 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
          * it must not be canonicalized in any case).
          */
         return object;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        State state = tool.getObjectState(object);
+        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+            tool.replaceWithVirtual(state.getVirtualObject());
+        }
     }
 
     @Override

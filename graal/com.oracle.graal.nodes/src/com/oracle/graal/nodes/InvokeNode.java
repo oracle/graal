@@ -185,7 +185,7 @@ public final class InvokeNode extends AbstractStateSplit implements Invoke, LIRL
 
     @Override
     public void setDeoptimizationState(FrameState f) {
-        throw new IllegalStateException();
+        throw new IllegalStateException("Cannot set deoptimization state " + f + " for invoke " + this);
     }
 
     @Override
