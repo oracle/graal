@@ -544,7 +544,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         Constructor[] constructors = javaMirror.getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
-            result[i] = graalRuntime().getRuntime().lookupJavaConstructor(constructors[i]);
+            result[i] = graalRuntime().getProviders().getMetaAccess().lookupJavaConstructor(constructors[i]);
             assert result[i].isConstructor();
         }
         return result;
@@ -555,7 +555,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         Method[] methods = javaMirror.getDeclaredMethods();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[methods.length];
         for (int i = 0; i < methods.length; i++) {
-            result[i] = graalRuntime().getRuntime().lookupJavaMethod(methods[i]);
+            result[i] = graalRuntime().getProviders().getMetaAccess().lookupJavaMethod(methods[i]);
             assert !result[i].isConstructor();
         }
         return result;

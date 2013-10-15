@@ -31,7 +31,6 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
 
@@ -136,22 +135,23 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      */
     public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
         assert ccType != null;
-        HotSpotRuntime runtime = graalRuntime().getRuntime();
+        MetaAccessProvider metaAccess = graalRuntime().getProviders().getMetaAccess();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
-            parameterTypes[i] = asJavaType(argumentTypes[i], runtime);
+            parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess);
         }
         TargetDescription target = graalRuntime().getTarget();
-        JavaType returnType = asJavaType(descriptor.getResultType(), runtime);
-        return runtime.getRegisterConfig().getCallingConvention(ccType, returnType, parameterTypes, target, false);
+        JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess);
+        RegisterConfig regConfig = graalRuntime().getProviders().getCodeCache().getRegisterConfig();
+        return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
-    private static JavaType asJavaType(Class type, HotSpotRuntime runtime) {
+    private static JavaType asJavaType(Class type, MetaAccessProvider metaAccess) {
         if (WordBase.class.isAssignableFrom(type)) {
-            return runtime.lookupJavaType(wordKind().toJavaClass());
+            return metaAccess.lookupJavaType(wordKind().toJavaClass());
         } else {
-            return runtime.lookupJavaType(type);
+            return metaAccess.lookupJavaType(type);
         }
     }
 

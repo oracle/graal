@@ -37,8 +37,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
-import com.oracle.graal.nodes.StructuredGraph.*;
-import com.oracle.graal.phases.util.*;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -54,13 +53,13 @@ import com.oracle.graal.word.*;
  */
 public class NewInstanceStub extends SnippetStub {
 
-    public NewInstanceStub(Providers providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public NewInstanceStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
     }
 
     @Override
     protected Arguments makeArguments(SnippetInfo stub) {
-        HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) runtime.lookupJavaType(int[].class);
+        HotSpotResolvedObjectType intArrayType = (HotSpotResolvedObjectType) providers.getMetaAccess().lookupJavaType(int[].class);
 
         // RuntimeStub cannot (currently) support oops or metadata embedded in the code so we
         // convert the hub (i.e., Klass*) for int[] to be a naked word. This should be safe since

@@ -39,10 +39,10 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
 
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        HotSpotRuntime runtime = graalRuntime().getRuntime();
+        HotSpotRegisters runtime = graalRuntime().getProviders().getRegisters();
         HotSpotVMConfig config = graalRuntime().getConfig();
-        Register thread = runtime.threadRegister();
-        Register stackPointer = runtime.stackPointerRegister();
+        Register thread = runtime.getThreadRegister();
+        Register stackPointer = runtime.getStackPointerRegister();
 
         // Save last Java frame.
         new Add(stackPointer, new SPARCAddress(stackPointer, 0).getDisplacement(), g4).emit(masm);

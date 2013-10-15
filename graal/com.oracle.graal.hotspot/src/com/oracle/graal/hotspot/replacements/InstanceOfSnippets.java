@@ -221,7 +221,8 @@ public class InstanceOfSnippets implements Snippets {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage());
                     args.add("object", object);
-                    args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind()), hints.hubs);
+                    Kind wordKind = providers.getCodeCache().getTarget().wordKind;
+                    args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
                     args = new Arguments(instanceofExact, graph.getGuardsStage());

@@ -343,11 +343,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         // Cannot use toJava() as it ignores the return type
         HotSpotSignature sig = getSignature();
         JavaType[] sigTypes = MetaUtil.signatureToTypes(sig, null);
-        HotSpotRuntime runtime = graalRuntime().getRuntime();
+        MetaAccessProvider metaAccess = graalRuntime().getProviders().getMetaAccess();
         for (Method method : holder.mirror().getDeclaredMethods()) {
             if (method.getName().equals(name)) {
-                if (runtime.lookupJavaType(method.getReturnType()).equals(sig.getReturnType(holder))) {
-                    if (matches(runtime, sigTypes, method.getParameterTypes())) {
+                if (metaAccess.lookupJavaType(method.getReturnType()).equals(sig.getReturnType(holder))) {
+                    if (matches(metaAccess, sigTypes, method.getParameterTypes())) {
                         return method.isSynthetic();
                     }
                 }
@@ -376,10 +376,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return result;
     }
 
-    private static boolean matches(HotSpotRuntime runtime, JavaType[] sigTypes, Class<?>[] parameterTypes) {
+    private static boolean matches(MetaAccessProvider metaAccess, JavaType[] sigTypes, Class<?>[] parameterTypes) {
         if (parameterTypes.length == sigTypes.length) {
             for (int i = 0; i < parameterTypes.length; i++) {
-                if (!runtime.lookupJavaType(parameterTypes[i]).equals(sigTypes[i])) {
+                if (!metaAccess.lookupJavaType(parameterTypes[i]).equals(sigTypes[i])) {
                     return false;
                 }
             }

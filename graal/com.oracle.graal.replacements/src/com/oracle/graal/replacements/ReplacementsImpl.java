@@ -68,10 +68,9 @@ public class ReplacementsImpl implements Replacements {
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
 
-    public ReplacementsImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
-                    Assumptions assumptions, TargetDescription target) {
-        this.providers = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, this);
-        this.target = target;
+    public ReplacementsImpl(Providers providers, Assumptions assumptions) {
+        this.providers = providers.copyWith(this);
+        this.target = providers.getCodeCache().getTarget();
         this.assumptions = assumptions;
         this.graphs = new ConcurrentHashMap<>();
         this.registeredMethodSubstitutions = new HashMap<>();

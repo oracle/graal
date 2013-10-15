@@ -29,11 +29,13 @@ import static com.oracle.graal.lir.ptx.PTXArithmetic.*;
 import static com.oracle.graal.lir.ptx.PTXBitManipulationOp.IntrinsicOpcode.*;
 import static com.oracle.graal.lir.ptx.PTXCompare.*;
 
+import java.lang.annotation.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.debug.Debug;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
@@ -48,24 +50,22 @@ import com.oracle.graal.lir.ptx.PTXCompare.CompareOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.BranchOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.CondMoveOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.FloatCondMoveOp;
-import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnNoValOp;
+import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.SequentialSwitchOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.TableSwitchOp;
-import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
-import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadOp;
-import com.oracle.graal.lir.ptx.PTXMemOp.StoreOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadParamOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
+import com.oracle.graal.lir.ptx.PTXMemOp.StoreOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.StoreReturnValOp;
+import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
+import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
-
-import java.lang.annotation.*;
 
 /**
  * This class implements the PTX specific portion of the LIR generator.
@@ -88,8 +88,8 @@ public class PTXLIRGenerator extends LIRGenerator {
         }
     }
 
-    public PTXLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, target, frameMap, cc, lir);
+    public PTXLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
         int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);
@@ -110,7 +110,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
+                return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
             case Object:
                 return c.isNull();
             default:
@@ -217,7 +217,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         if (isConstant(base)) {
             if (asConstant(base).isNull()) {
                 baseRegister = Value.ILLEGAL;
-            } else if (asConstant(base).getKind() != Kind.Object && !codeCache.needsDataPatch(asConstant(base))) {
+            } else if (asConstant(base).getKind() != Kind.Object && !getCodeCache().needsDataPatch(asConstant(base))) {
                 finalDisp += asConstant(base).asLong();
                 baseRegister = Value.ILLEGAL;
             } else {
@@ -861,7 +861,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         // Making a copy of the switch value is necessary because jump table destroys the input
         // value
         Variable tmp = emitMove(key);
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target.wordKind), nextPredRegNum++));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target().wordKind), nextPredRegNum++));
     }
 
     @Override

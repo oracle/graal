@@ -37,8 +37,8 @@ import com.oracle.graal.nodes.*;
  */
 public class PTXHotSpotBackend extends HotSpotBackend {
 
-    public PTXHotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
-        super(runtime, target);
+    public PTXHotSpotBackend(HotSpotGraalRuntime graalRuntime, HotSpotProviders providers) {
+        super(graalRuntime, providers);
     }
 
     @Override

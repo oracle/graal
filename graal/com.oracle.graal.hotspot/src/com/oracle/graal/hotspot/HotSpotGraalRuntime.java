@@ -28,6 +28,8 @@ import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import java.lang.reflect.*;
 import java.util.*;
 
+import sun.misc.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
@@ -174,9 +176,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     protected/* final */CompilerToGPU compilerToGpu;
     protected/* final */VMToCompiler vmToCompiler;
 
-    protected final HotSpotRuntime runtime;
+    protected final HotSpotProviders providers;
+
     protected final TargetDescription target;
-    protected final Replacements replacements;
 
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
@@ -214,15 +216,9 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
 
         target = createTarget();
+        providers = createProviders();
         assert wordKind == null || wordKind.equals(target.wordKind);
         wordKind = target.wordKind;
-
-        runtime = createRuntime();
-
-        // Replacements cannot have speculative optimizations since they have
-        // to be valid for the entire run of the VM.
-        Assumptions assumptions = new Assumptions(false);
-        replacements = new HotSpotReplacementsImpl(runtime, assumptions, runtime.getGraalRuntime().getTarget());
 
         backend = createBackend();
         GraalOptions.StackShadowPages.setValue(config.stackShadowPages);
@@ -246,11 +242,11 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
         }
     }
 
+    protected abstract HotSpotProviders createProviders();
+
     protected abstract TargetDescription createTarget();
 
     protected abstract HotSpotBackend createBackend();
-
-    protected abstract HotSpotRuntime createRuntime();
 
     /**
      * Gets the registers that must be saved across a foreign call into the runtime.
@@ -315,17 +311,13 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public HotSpotRuntimeInterpreterInterface getRuntimeInterpreterInterface() {
         if (runtimeInterpreterInterface == null) {
-            runtimeInterpreterInterface = new HotSpotRuntimeInterpreterInterface(getRuntime());
+            runtimeInterpreterInterface = new HotSpotRuntimeInterpreterInterface(providers.getMetaAccess());
         }
         return runtimeInterpreterInterface;
     }
 
-    public HotSpotRuntime getRuntime() {
-        return runtime;
-    }
-
-    public Replacements getReplacements() {
-        return replacements;
+    public HotSpotProviders getProviders() {
+        return providers;
     }
 
     public void evictDeoptedGraphs() {
@@ -349,18 +341,35 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T getCapability(Class<T> clazz) {
-        if (clazz == LoweringProvider.class || clazz == CodeCacheProvider.class || clazz == MetaAccessProvider.class || clazz == ConstantReflectionProvider.class ||
-                        clazz == ForeignCallsProvider.class) {
-            return (T) getRuntime();
+        if (clazz == LoweringProvider.class) {
+            return (T) providers.getLowerer();
         }
-        if (clazz == DisassemblerProvider.class || clazz == BytecodeDisassemblerProvider.class || clazz == SuitesProvider.class) {
-            return (T) getRuntime();
+        if (clazz == CodeCacheProvider.class) {
+            return (T) providers.getCodeCache();
         }
-        if (clazz == HotSpotRuntime.class) {
-            return (T) runtime;
+        if (clazz == MetaAccessProvider.class) {
+            return (T) providers.getMetaAccess();
+        }
+        if (clazz == ConstantReflectionProvider.class) {
+            return (T) providers.getConstantReflection();
+        }
+        if (clazz == ForeignCallsProvider.class) {
+            return (T) providers.getForeignCalls();
+        }
+        if (clazz == DisassemblerProvider.class) {
+            return (T) providers.getDisassembler();
+        }
+        if (clazz == BytecodeDisassemblerProvider.class) {
+            return (T) providers.getBytecodeDisassembler();
+        }
+        if (clazz == SuitesProvider.class) {
+            return (T) providers.getSuites();
         }
         if (clazz == Replacements.class) {
-            return (T) replacements;
+            return (T) providers.getReplacements();
+        }
+        if (clazz == HotSpotRegisters.class) {
+            return (T) providers.getRegisters();
         }
         if (clazz == Backend.class) {
             return (T) getBackend();
@@ -370,5 +379,65 @@ public abstract class HotSpotGraalRuntime implements GraalRuntime {
 
     public HotSpotBackend getBackend() {
         return backend;
+    }
+
+    /**
+     * The offset from the origin of an array to the first element.
+     * 
+     * @return the offset in bytes
+     */
+    public static int getArrayBaseOffset(Kind kind) {
+        switch (kind) {
+            case Boolean:
+                return Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
+            case Byte:
+                return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            case Char:
+                return Unsafe.ARRAY_CHAR_BASE_OFFSET;
+            case Short:
+                return Unsafe.ARRAY_SHORT_BASE_OFFSET;
+            case Int:
+                return Unsafe.ARRAY_INT_BASE_OFFSET;
+            case Long:
+                return Unsafe.ARRAY_LONG_BASE_OFFSET;
+            case Float:
+                return Unsafe.ARRAY_FLOAT_BASE_OFFSET;
+            case Double:
+                return Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+            case Object:
+                return Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    /**
+     * The scale used for the index when accessing elements of an array of this kind.
+     * 
+     * @return the scale in order to convert the index into a byte offset
+     */
+    public static int getArrayIndexScale(Kind kind) {
+        switch (kind) {
+            case Boolean:
+                return Unsafe.ARRAY_BOOLEAN_INDEX_SCALE;
+            case Byte:
+                return Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            case Char:
+                return Unsafe.ARRAY_CHAR_INDEX_SCALE;
+            case Short:
+                return Unsafe.ARRAY_SHORT_INDEX_SCALE;
+            case Int:
+                return Unsafe.ARRAY_INT_INDEX_SCALE;
+            case Long:
+                return Unsafe.ARRAY_LONG_INDEX_SCALE;
+            case Float:
+                return Unsafe.ARRAY_FLOAT_INDEX_SCALE;
+            case Double:
+                return Unsafe.ARRAY_DOUBLE_INDEX_SCALE;
+            case Object:
+                return Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
     }
 }

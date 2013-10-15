@@ -22,11 +22,12 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
-import com.oracle.graal.ptx.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.ptx.*;
 
 /**
  * PTX specific implementation of {@link HotSpotGraalRuntime}.
@@ -53,6 +54,24 @@ public class PTXHotSpotGraalRuntime extends HotSpotGraalRuntime {
         return graalRuntime;
     }
 
+    @Override
+    protected HotSpotProviders createProviders() {
+        HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(this);
+        PTXHotSpotCodeCacheProvider codeCache = new PTXHotSpotCodeCacheProvider(this);
+        HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(this);
+        HotSpotForeignCallsProvider foreignCalls = new HotSpotForeignCallsProvider(this);
+        HotSpotLoweringProvider lowerer = new PTXHotSpotLoweringProvider(this, metaAccess, foreignCalls);
+        // Replacements cannot have speculative optimizations since they have
+        // to be valid for the entire run of the VM.
+        Assumptions assumptions = new Assumptions(false);
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
+        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, getConfig(), assumptions);
+        HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(this);
+        HotSpotSuitesProvider suites = new HotSpotSuitesProvider(this);
+        HotSpotRegisters registers = new HotSpotRegisters(PTX.tid, Register.None, Register.None);
+        return new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
+    }
+
     protected Architecture createArchitecture() {
         return new PTX();
     }
@@ -67,12 +86,7 @@ public class PTXHotSpotGraalRuntime extends HotSpotGraalRuntime {
 
     @Override
     protected HotSpotBackend createBackend() {
-        return new PTXHotSpotBackend(getRuntime(), getTarget());
-    }
-
-    @Override
-    protected HotSpotRuntime createRuntime() {
-        return new PTXHotSpotRuntime(config, this);
+        return new PTXHotSpotBackend(this, getProviders());
     }
 
     @Override

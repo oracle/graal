@@ -45,9 +45,8 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
     // detach ??
 
-    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
-                    CompilationResult compilationResult) {
-        super(target, codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
+    public PTXTargetMethodAssembler(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext, CompilationResult compilationResult) {
+        super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
     }
 
     @Override

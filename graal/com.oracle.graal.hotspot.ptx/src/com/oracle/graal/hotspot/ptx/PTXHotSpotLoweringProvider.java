@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,18 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
-import static com.oracle.graal.ptx.PTX.*;
-
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.debug.Debug;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.graph.Node;
-import com.oracle.graal.nodes.calc.ConvertNode;
 
-public class PTXHotSpotRuntime extends HotSpotRuntime {
+public class PTXHotSpotLoweringProvider extends HotSpotLoweringProvider {
 
-    public PTXHotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
-        super(config, graalRuntime);
-
+    public PTXHotSpotLoweringProvider(HotSpotGraalRuntime graalRuntime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+        super(graalRuntime, metaAccess, foreignCalls);
     }
 
     @Override
@@ -51,33 +48,5 @@ public class PTXHotSpotRuntime extends HotSpotRuntime {
         } else {
             super.lower(n, tool);
         }
-    }
-
-    @Override
-    public void registerReplacements(Replacements replacements) {
-        Debug.log("PTXHotSpotRuntime.registerReplacements unimplemented");
-    }
-
-    // PTX code does not use stack or stack pointer
-    @Override
-    public Register stackPointerRegister() {
-        return Register.None;
-    }
-
-    // PTX code does not have heap register
-    @Override
-    public Register heapBaseRegister() {
-        return Register.None;
-    }
-
-    // Thread register is %tid.
-    @Override
-    public Register threadRegister() {
-        return tid;
-    }
-
-    @Override
-    protected RegisterConfig createRegisterConfig() {
-        return new PTXHotSpotRegisterConfig();
     }
 }

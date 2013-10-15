@@ -49,6 +49,12 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
         return graalRuntime;
     }
 
+    @Override
+    protected HotSpotProviders createProviders() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
     protected static Architecture createArchitecture() {
         return new SPARC();
     }
@@ -63,12 +69,7 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
 
     @Override
     protected HotSpotBackend createBackend() {
-        return new SPARCHotSpotBackend(getRuntime(), getTarget());
-    }
-
-    @Override
-    protected HotSpotRuntime createRuntime() {
-        return new SPARCHotSpotRuntime(config, this);
+        return new SPARCHotSpotBackend(this, getProviders());
     }
 
     @Override

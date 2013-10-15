@@ -21,18 +21,19 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail;
+package com.oracle.graal.hotspot.hsail;
 
 import java.lang.reflect.*;
 
 import com.amd.okra.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.amd64.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -56,11 +57,13 @@ public class ForEachToGraal implements CompileAndDispatch {
                 acceptMethod = m;
             }
         }
-        HotSpotVMConfig config = HotSpotGraalRuntime.graalRuntime().getConfig();
-        AMD64HotSpotRuntime runtime = new AMD64HotSpotRuntime(config, HotSpotGraalRuntime.graalRuntime());
-        ResolvedJavaMethod rm = runtime.lookupJavaMethod(acceptMethod);
-        StructuredGraph graph = new StructuredGraph(rm);
-        new GraphBuilderPhase(runtime, runtime, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        HotSpotGraalRuntime graalRuntime = HotSpotGraalRuntime.graalRuntime();
+        HotSpotProviders providers = graalRuntime.getProviders();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(acceptMethod);
+        StructuredGraph graph = new StructuredGraph(method);
+        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         NodeIterable<Node> nin = graph.getNodes();
         ResolvedJavaMethod lambdaMethod = null;
         for (Node n : nin) {

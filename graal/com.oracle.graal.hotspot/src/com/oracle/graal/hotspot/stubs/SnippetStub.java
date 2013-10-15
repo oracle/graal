@@ -27,6 +27,7 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.phases.util.*;
@@ -65,7 +66,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
      * 
      * @param linkage linkage details for a call to the stub
      */
-    public SnippetStub(Providers providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public SnippetStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, linkage);
         this.snippet = new Template(providers, target, getClass());
     }

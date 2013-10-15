@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,26 +36,19 @@ import static com.oracle.graal.hotspot.replacements.CipherBlockChainingSubstitut
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.replacements.amd64.*;
 
-public class AMD64HotSpotRuntime extends HotSpotRuntime {
+public class AMD64HotSpotForeignCallsProvider extends HotSpotForeignCallsProvider {
 
-    public AMD64HotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
-        super(config, graalRuntime);
-
+    public AMD64HotSpotForeignCallsProvider(HotSpotGraalRuntime graalRuntime) {
+        super(graalRuntime);
     }
 
-    private AMD64ConvertSnippets.Templates convertSnippets;
-
     @Override
-    public void registerReplacements(Replacements replacements) {
+    public void initialize(HotSpotProviders providers) {
         Kind word = graalRuntime.getTarget().wordKind;
+        HotSpotVMConfig config = graalRuntime.getConfig();
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -73,37 +66,6 @@ public class AMD64HotSpotRuntime extends HotSpotRuntime {
         registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
 
-        Providers providers = new Providers(this, this, this, this, this, replacements);
-        convertSnippets = new AMD64ConvertSnippets.Templates(providers, graalRuntime.getTarget());
-        super.registerReplacements(replacements);
-    }
-
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (n instanceof ConvertNode) {
-            convertSnippets.lower((ConvertNode) n, tool);
-        } else {
-            super.lower(n, tool);
-        }
-    }
-
-    @Override
-    public Register threadRegister() {
-        return r15;
-    }
-
-    @Override
-    public Register stackPointerRegister() {
-        return rsp;
-    }
-
-    @Override
-    public Register heapBaseRegister() {
-        return r12;
-    }
-
-    @Override
-    protected RegisterConfig createRegisterConfig() {
-        return new AMD64HotSpotRegisterConfig(graalRuntime.getTarget().arch, config);
+        super.initialize(providers);
     }
 }

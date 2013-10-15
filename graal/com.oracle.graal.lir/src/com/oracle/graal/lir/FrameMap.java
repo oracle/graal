@@ -86,9 +86,9 @@ public abstract class FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
-    public FrameMap(CodeCacheProvider codeCache, TargetDescription target, RegisterConfig registerConfig) {
-        this.target = target;
-        this.registerConfig = registerConfig;
+    public FrameMap(CodeCacheProvider codeCache) {
+        this.target = codeCache.getTarget();
+        this.registerConfig = codeCache.getRegisterConfig();
         this.frameSize = -1;
         this.outgoingSize = codeCache.getMinimumOutgoingSize();
         this.objectStackBlocks = new ArrayList<>();

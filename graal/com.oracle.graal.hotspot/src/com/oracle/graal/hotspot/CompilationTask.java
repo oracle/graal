@@ -144,7 +144,8 @@ public final class CompilationTask implements Runnable {
                     @Override
                     public CompilationResult call() throws Exception {
                         graalRuntime.evictDeoptedGraphs();
-                        Replacements replacements = graalRuntime.getReplacements();
+                        Providers providers = graalRuntime.getProviders();
+                        Replacements replacements = providers.getReplacements();
                         graph = replacements.getMethodSubstitution(method);
                         if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
                             graph = new StructuredGraph(method, entryBCI);
@@ -153,9 +154,7 @@ public final class CompilationTask implements Runnable {
                             graph = graph.copy();
                         }
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
-                        HotSpotRuntime runtime = graalRuntime.getRuntime();
-                        CallingConvention cc = getCallingConvention(runtime, Type.JavaCallee, graph.method(), false);
-                        Providers providers = new Providers(runtime, runtime, runtime, runtime, runtime, replacements);
+                        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
                         return GraalCompiler.compileGraph(graph, cc, method, providers, graalRuntime.getBackend(), graalRuntime.getTarget(), graalRuntime.getCache(), plan, optimisticOpts,
                                         method.getSpeculationLog(), suitesProvider.getDefaultSuites(), new CompilationResult());
                     }
@@ -213,16 +212,17 @@ public final class CompilationTask implements Runnable {
     }
 
     private void installMethod(final CompilationResult compResult) {
-        Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), graalRuntime.getRuntime(), method}, new Runnable() {
+        final HotSpotCodeCacheProvider codeCache = graalRuntime.getProviders().getCodeCache();
+        Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), codeCache, method}, new Runnable() {
 
             @Override
             public void run() {
-                HotSpotInstalledCode installedCode = graalRuntime.getRuntime().installMethod(method, entryBCI, compResult);
+                HotSpotInstalledCode installedCode = codeCache.installMethod(method, entryBCI, compResult);
                 if (Debug.isDumpEnabled()) {
                     Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
                 }
                 if (Debug.isLogEnabled()) {
-                    Debug.log("%s", graalRuntime.getRuntime().disassemble(installedCode));
+                    Debug.log("%s", graalRuntime.getProviders().getDisassembler().disassemble(installedCode));
                 }
             }
 

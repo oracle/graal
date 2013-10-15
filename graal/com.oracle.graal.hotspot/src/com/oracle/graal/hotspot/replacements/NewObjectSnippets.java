@@ -37,6 +37,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
@@ -330,8 +331,9 @@ public class NewObjectSnippets implements Snippets {
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
             Kind elementKind = elementType.getKind();
             ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), providers.getMetaAccess(), graph);
-            final int headerSize = HotSpotRuntime.getArrayBaseOffset(elementKind);
-            int log2ElementSize = CodeUtil.log2(((HotSpotRuntime) providers.getMetaAccess()).getScalingFactor(elementKind));
+            final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
+            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
+            int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage());
             args.add("hub", hub);

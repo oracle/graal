@@ -37,6 +37,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
@@ -179,21 +180,25 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        final HotSpotRuntime runtime = graalRuntime.getCapability(HotSpotRuntime.class);
-        assert VerifyOptionsPhase.checkOptions(runtime, runtime);
+        final HotSpotProviders providers = graalRuntime.getProviders();
+        final MetaAccessProvider metaAccess = providers.getMetaAccess();
+        assert VerifyOptionsPhase.checkOptions(metaAccess, providers.getForeignCalls());
 
         // Install intrinsics.
-        final Replacements replacements = graalRuntime.getCapability(Replacements.class);
         if (Intrinsify.getValue()) {
             Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
 
                 @Override
                 public void run() {
+                    final Replacements replacements = providers.getReplacements();
                     ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
+                    TargetDescription target = providers.getCodeCache().getTarget();
                     for (ReplacementsProvider provider : serviceLoader) {
-                        provider.registerReplacements(runtime, replacements, runtime.getTarget());
+                        provider.registerReplacements(metaAccess, replacements, target);
                     }
-                    runtime.registerReplacements(replacements);
+                    providers.getForeignCalls().initialize(providers);
+                    HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
+                    lowerer.initialize();
                     if (BootstrapReplacements.getValue()) {
                         for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
                             replacements.getMacroSubstitution(method);
@@ -345,7 +350,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     private MetricRateInPhase inlinedBytecodesPerSecond;
 
     private void enqueue(Method m) throws Throwable {
-        JavaMethod javaMethod = graalRuntime.getRuntime().lookupJavaMethod(m);
+        JavaMethod javaMethod = graalRuntime.getProviders().getMetaAccess().lookupJavaMethod(m);
         assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
     }
@@ -687,7 +692,9 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
         PhasePlan phasePlan = new PhasePlan();
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(graalRuntime.getRuntime(), graalRuntime.getRuntime(), GraphBuilderConfiguration.getDefault(), optimisticOpts));
+        MetaAccessProvider metaAccess = graalRuntime.getProviders().getMetaAccess();
+        ForeignCallsProvider foreignCalls = graalRuntime.getProviders().getForeignCalls();
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
         }

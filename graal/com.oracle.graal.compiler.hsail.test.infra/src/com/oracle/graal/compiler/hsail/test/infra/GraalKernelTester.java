@@ -27,9 +27,11 @@ package com.oracle.graal.compiler.hsail.test.infra;
  * This class extends KernelTester and provides a base class
  * for which the HSAIL code comes from the Graal compiler.
  */
-import com.oracle.graal.compiler.hsail.HSAILCompilationResult;
+import com.oracle.graal.hotspot.hsail.*;
+
 import java.lang.reflect.Method;
 import java.io.*;
+
 import static com.oracle.graal.phases.GraalOptions.*;
 
 public abstract class GraalKernelTester extends KernelTester {

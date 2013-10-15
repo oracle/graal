@@ -28,7 +28,6 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -44,12 +43,10 @@ public class ObjectAccessTest extends GraalCompilerTest implements Snippets {
 
     private static final LocationIdentity ID = new NamedLocationIdentity("ID");
     private static final Kind[] KINDS = new Kind[]{Kind.Byte, Kind.Char, Kind.Short, Kind.Int, Kind.Long, Kind.Float, Kind.Double, Kind.Object};
-    private final TargetDescription target;
     private final ReplacementsImpl installer;
 
     public ObjectAccessTest() {
-        target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target);
+        installer = new ReplacementsImpl(getProviders(), new Assumptions(false));
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();
