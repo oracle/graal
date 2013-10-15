@@ -199,7 +199,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
             case Long:
                 return ConstantNode.forLong(value, graph);
             default:
-                throw new InternalError("Should not reach here");
+                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 
@@ -210,7 +210,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
             case Double:
                 return ConstantNode.forDouble(value, graph);
             default:
-                throw new InternalError("Should not reach here");
+                throw GraalInternalError.shouldNotReachHere("unknown kind " + kind);
         }
     }
 
