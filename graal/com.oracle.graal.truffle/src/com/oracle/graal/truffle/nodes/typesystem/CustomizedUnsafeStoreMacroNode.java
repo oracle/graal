@@ -61,7 +61,8 @@ public class CustomizedUnsafeStoreMacroNode extends NeverPartOfCompilationNode i
                 locationIdentity = ObjectLocationIdentity.create(locationIdentityObject);
             }
 
-            UnsafeStoreNode unsafeStoreNode = graph().add(new UnsafeStoreNode(objectArgument, offsetArgument, valueArgument, valueArgument.kind(), locationIdentity));
+            UnsafeStoreNode unsafeStoreNode = graph().add(
+                            new UnsafeStoreNode(objectArgument, offsetArgument, valueArgument, this.getTargetMethod().getSignature().getParameterKind(VALUE_ARGUMENT_INDEX), locationIdentity));
             unsafeStoreNode.setStateAfter(this.stateAfter());
             return unsafeStoreNode;
         }

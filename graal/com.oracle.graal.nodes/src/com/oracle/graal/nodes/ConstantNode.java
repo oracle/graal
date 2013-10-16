@@ -75,7 +75,9 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     public static ConstantNode forConstant(Constant constant, MetaAccessProvider metaAccess, Graph graph) {
-        if (constant.getKind() == Kind.Object) {
+        if (constant.getKind().getStackKind() == Kind.Int && constant.getKind() != Kind.Int) {
+            return forInt(constant.asInt(), graph);
+        } else if (constant.getKind() == Kind.Object) {
             return graph.unique(new ConstantNode(constant, metaAccess));
         } else {
             return graph.unique(new ConstantNode(constant));
@@ -142,7 +144,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static ConstantNode forBoolean(boolean i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forBoolean(i)));
+        return graph.unique(new ConstantNode(Constant.forInt(i ? 1 : 0)));
     }
 
     /**
@@ -153,7 +155,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the byte
      */
     public static ConstantNode forByte(byte i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forByte(i)));
+        return graph.unique(new ConstantNode(Constant.forInt(i)));
     }
 
     /**
@@ -164,7 +166,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the char
      */
     public static ConstantNode forChar(char i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forChar(i)));
+        return graph.unique(new ConstantNode(Constant.forInt(i)));
     }
 
     /**
@@ -175,7 +177,7 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the short
      */
     public static ConstantNode forShort(short i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forShort(i)));
+        return graph.unique(new ConstantNode(Constant.forInt(i)));
     }
 
     /**
@@ -217,7 +219,6 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     public static ConstantNode defaultForKind(Kind kind, Graph graph) {
         switch (kind) {
             case Boolean:
-                return ConstantNode.forBoolean(false, graph);
             case Byte:
             case Char:
             case Short:

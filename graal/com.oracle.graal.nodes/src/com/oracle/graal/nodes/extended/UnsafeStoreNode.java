@@ -82,7 +82,7 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
                 if (entryIndex != -1) {
                     ValueNode entry = state.getEntry(entryIndex);
-                    if (entry.kind() == this.accessKind() || state.getVirtualObject().entryKind(entryIndex) == this.accessKind()) {
+                    if (entry.kind() == value.kind() || state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
                         tool.setVirtualEntry(state, entryIndex, value());
                         tool.delete();
                     }
