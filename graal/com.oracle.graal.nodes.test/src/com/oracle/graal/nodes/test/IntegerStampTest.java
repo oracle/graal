@@ -52,18 +52,18 @@ public class IntegerStampTest {
     public void testByteConstant() {
         assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0, 0x0), ConstantNode.forByte((byte) 0, graph).stamp());
         assertEquals(new IntegerStamp(Kind.Int, 16, 16, 0x10, 0x10), ConstantNode.forByte((byte) 16, graph).stamp());
-        assertEquals(new IntegerStamp(Kind.Int, -16, -16, 0xf0, 0xf0), ConstantNode.forByte((byte) -16, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -16, -16, 0xfffffff0L, 0xfffffff0L), ConstantNode.forByte((byte) -16, graph).stamp());
         assertEquals(new IntegerStamp(Kind.Int, 127, 127, 0x7f, 0x7f), ConstantNode.forByte((byte) 127, graph).stamp());
-        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0x80, 0x80), ConstantNode.forByte((byte) -128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xffffff80L, 0xffffff80L), ConstantNode.forByte((byte) -128, graph).stamp());
     }
 
     @Test
     public void testShortConstant() {
         assertEquals(new IntegerStamp(Kind.Int, 0, 0, 0x0, 0x0), ConstantNode.forShort((short) 0, graph).stamp());
         assertEquals(new IntegerStamp(Kind.Int, 128, 128, 0x80, 0x80), ConstantNode.forShort((short) 128, graph).stamp());
-        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xff80, 0xff80), ConstantNode.forShort((short) -128, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -128, -128, 0xffffff80L, 0xffffff80L), ConstantNode.forShort((short) -128, graph).stamp());
         assertEquals(new IntegerStamp(Kind.Int, 32767, 32767, 0x7fff, 0x7fff), ConstantNode.forShort((short) 32767, graph).stamp());
-        assertEquals(new IntegerStamp(Kind.Int, -32768, -32768, 0x8000, 0x8000), ConstantNode.forShort((short) -32768, graph).stamp());
+        assertEquals(new IntegerStamp(Kind.Int, -32768, -32768, 0xffff8000L, 0xffff8000L), ConstantNode.forShort((short) -32768, graph).stamp());
     }
 
     @Test
