@@ -114,11 +114,7 @@ public class FrameTest {
 
         @Override
         int execute(VirtualFrame frame) {
-            try {
-                frame.setInt(slot, 42);
-            } catch (FrameSlotTypeException e) {
-                throw new IllegalStateException(e);
-            }
+            frame.setInt(slot, 42);
             return 0;
         }
     }

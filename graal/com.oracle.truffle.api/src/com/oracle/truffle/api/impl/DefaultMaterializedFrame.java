@@ -56,7 +56,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setByte(FrameSlot slot, byte value) throws FrameSlotTypeException {
+    public void setByte(FrameSlot slot, byte value) {
         wrapped.setByte(slot, value);
     }
 
@@ -66,7 +66,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setBoolean(FrameSlot slot, boolean value) throws FrameSlotTypeException {
+    public void setBoolean(FrameSlot slot, boolean value) {
         wrapped.setBoolean(slot, value);
     }
 
@@ -76,7 +76,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setInt(FrameSlot slot, int value) throws FrameSlotTypeException {
+    public void setInt(FrameSlot slot, int value) {
         wrapped.setInt(slot, value);
     }
 
@@ -86,7 +86,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setLong(FrameSlot slot, long value) throws FrameSlotTypeException {
+    public void setLong(FrameSlot slot, long value) {
         wrapped.setLong(slot, value);
     }
 
@@ -96,7 +96,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setFloat(FrameSlot slot, float value) throws FrameSlotTypeException {
+    public void setFloat(FrameSlot slot, float value) {
         wrapped.setFloat(slot, value);
     }
 
@@ -106,7 +106,7 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public void setDouble(FrameSlot slot, double value) throws FrameSlotTypeException {
+    public void setDouble(FrameSlot slot, double value) {
         wrapped.setDouble(slot, value);
     }
 

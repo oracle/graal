@@ -28,6 +28,8 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.concurrent.*;
 
+import com.oracle.truffle.api.frame.*;
+
 import sun.misc.*;
 
 /**
@@ -162,6 +164,20 @@ public final class CompilerDirectives {
     @SuppressWarnings("unchecked")
     public static <T> T unsafeCast(Object value, Class<T> type, boolean condition) {
         return (T) value;
+    }
+
+    /**
+     * Asserts that this value is not null and retrieved from a call to Frame.materialize.
+     * 
+     * @param value the value that is known to have been obtained via Frame.materialize
+     * @return the value to be casted to the new type
+     */
+    public static MaterializedFrame unsafeFrameCast(MaterializedFrame value) {
+        return unsafeCast(value, getUnsafeFrameType(), true);
+    }
+
+    private static Class<? extends MaterializedFrame> getUnsafeFrameType() {
+        return MaterializedFrame.class;
     }
 
     /**
