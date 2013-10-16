@@ -193,11 +193,11 @@ public class VMToCompilerImpl implements VMToCompiler {
                     final Replacements replacements = providers.getReplacements();
                     ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
                     TargetDescription target = providers.getCodeCache().getTarget();
+                    HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
                     for (ReplacementsProvider provider : serviceLoader) {
-                        provider.registerReplacements(metaAccess, providers.getLowerer(), replacements, target);
+                        provider.registerReplacements(metaAccess, lowerer, replacements, target);
                     }
                     providers.getForeignCalls().initialize(providers);
-                    HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
                     lowerer.initialize();
                     if (BootstrapReplacements.getValue()) {
                         for (ResolvedJavaMethod method : replacements.getAllReplacements()) {

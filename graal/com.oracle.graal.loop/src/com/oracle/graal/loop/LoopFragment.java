@@ -231,6 +231,7 @@ public abstract class LoopFragment {
                 final Iterator<Block> it = blocks.iterator();
                 return new Iterator<AbstractBeginNode>() {
 
+                    @Override
                     public void remove() {
                         throw new UnsupportedOperationException();
                     }

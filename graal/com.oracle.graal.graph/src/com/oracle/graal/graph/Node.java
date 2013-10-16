@@ -220,6 +220,7 @@ public abstract class Node implements Cloneable, Formattable {
             return result;
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }

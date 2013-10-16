@@ -35,9 +35,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class AMD64SPARCForeignCallsProvider extends HotSpotForeignCallsProvider {
+public class SPARCHotSpotForeignCallsProvider extends HotSpotForeignCallsProvider {
 
-    public AMD64SPARCForeignCallsProvider(HotSpotGraalRuntime runtime) {
+    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
         super(runtime);
     }
 
