@@ -61,7 +61,7 @@ import com.oracle.graal.word.*;
 /**
  * HotSpot implementation of {@link ForeignCallsProvider}.
  */
-public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
+public abstract class HotSpotHostForeignCallsProvider implements HotSpotForeignCallsProvider {
 
     public static final ForeignCallDescriptor OSR_MIGRATION_END = new ForeignCallDescriptor("OSR_migration_end", void.class, long.class);
     public static final ForeignCallDescriptor IDENTITY_HASHCODE = new ForeignCallDescriptor("identity_hashcode", int.class, Object.class);
@@ -71,9 +71,13 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     protected final HotSpotGraalRuntime runtime;
 
     private final Map<ForeignCallDescriptor, HotSpotForeignCallLinkage> foreignCalls = new HashMap<>();
+    private final MetaAccessProvider metaAccess;
+    private final CodeCacheProvider codeCache;
 
-    public HotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
+    public HotSpotHostForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         this.runtime = runtime;
+        this.metaAccess = metaAccess;
+        this.codeCache = codeCache;
     }
 
     /**
@@ -96,7 +100,7 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
      * @param killedLocations the memory locations killed by the stub call
      */
     protected HotSpotForeignCallLinkage registerStubCall(ForeignCallDescriptor descriptor, boolean reexecutable, Transition transition, LocationIdentity... killedLocations) {
-        return register(HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkage.create(metaAccess, codeCache, this, descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
     }
 
     /**
@@ -117,7 +121,7 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
                     boolean reexecutable, LocationIdentity... killedLocations) {
         Class<?> resultType = descriptor.getResultType();
         assert transition == LEAF || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType) : "non-leaf foreign calls must return objects in thread local storage: " + descriptor;
-        return register(HotSpotForeignCallLinkage.create(descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
+        return register(HotSpotForeignCallLinkage.create(metaAccess, codeCache, this, descriptor, address, effect, outgoingCcType, null, transition, reexecutable, killedLocations));
     }
 
     private static void link(Stub stub) {
@@ -204,7 +208,7 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     public HotSpotForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(descriptor);
         assert foreignCalls != null : descriptor;
-        callTarget.finalizeAddress(runtime.getBackend());
+        callTarget.finalizeAddress(runtime.getHostBackend());
         return callTarget;
     }
 
@@ -220,4 +224,9 @@ public class HotSpotForeignCallsProvider implements ForeignCallsProvider {
     public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
         return foreignCalls.get(descriptor).getKilledLocations();
     }
+
+    /**
+     * Gets the registers that must be saved across a foreign call into the runtime.
+     */
+    public abstract Value[] getNativeABICallerSaveRegisters();
 }

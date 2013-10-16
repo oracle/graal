@@ -37,7 +37,7 @@ import com.oracle.graal.phases.common.*;
 public class CompiledExceptionHandlerTest extends GraalCompilerTest {
 
     public CompiledExceptionHandlerTest() {
-        suites.getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        getSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     @Override

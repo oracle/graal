@@ -27,7 +27,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider.*;
+import static com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
@@ -80,7 +80,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
     public void initialize() {
         HotSpotVMConfig c = runtime.getConfig();
-        HotSpotProviders providers = runtime.getProviders();
+        HotSpotProviders providers = runtime.getHostProviders();
         Replacements r = providers.getReplacements();
 
         r.registerSubstitutions(ObjectSubstitutions.class);
@@ -413,7 +413,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             }
         } else if (n instanceof DynamicCounterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                BenchmarkCounters.lower((DynamicCounterNode) n, runtime.getProviders().getRegisters(), runtime.getConfig(), wordKind);
+                BenchmarkCounters.lower((DynamicCounterNode) n, runtime.getHostProviders().getRegisters(), runtime.getConfig(), wordKind);
             }
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);

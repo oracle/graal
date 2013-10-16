@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.stubs;
-
-import static com.oracle.graal.hotspot.stubs.StubUtil.*;
+package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.replacements.*;
 
-/**
- * Stub called via {@link HotSpotHostForeignCallsProvider#VERIFY_OOP}.
- */
-public class VerifyOopStub extends SnippetStub {
+public class SPARCHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
-    public VerifyOopStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
-        super(providers, target, linkage);
+    public SPARCHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
+        super(runtime, target);
     }
 
-    @Snippet
-    private static Object verifyOop(Object object) {
-        return verifyObject(object);
+    @Override
+    protected RegisterConfig createRegisterConfig() {
+        throw GraalInternalError.unimplemented();
     }
+
 }

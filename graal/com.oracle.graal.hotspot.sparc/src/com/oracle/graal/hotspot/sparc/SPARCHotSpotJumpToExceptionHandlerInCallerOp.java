@@ -22,15 +22,19 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.CC;
+import com.oracle.graal.asm.sparc.SPARCAssembler.ConditionFlag;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Jmpl;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Lduw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Movcc;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Cmp;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
@@ -44,11 +48,15 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
     @Use(REG) AllocatableValue handlerInCallerPc;
     @Use(REG) AllocatableValue exception;
     @Use(REG) AllocatableValue exceptionPc;
+    private final Register thread;
+    private final int isMethodHandleReturnOffset;
 
-    SPARCHotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc) {
+    SPARCHotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, int isMethodHandleReturnOffset, Register thread) {
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
         this.exceptionPc = exceptionPc;
+        this.isMethodHandleReturnOffset = isMethodHandleReturnOffset;
+        this.thread = thread;
     }
 
     @Override
@@ -56,8 +64,6 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
         leaveFrame(tasm);
 
         // Restore SP from L7 if the exception PC is a method handle call site.
-        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
-        int isMethodHandleReturnOffset = runtime().getConfig().threadIsMethodHandleReturnOffset;
         SPARCAddress dst = new SPARCAddress(thread, isMethodHandleReturnOffset);
         new Lduw(dst, o7).emit(masm);
         new Cmp(o7, o7).emit(masm);

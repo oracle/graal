@@ -343,7 +343,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         // Cannot use toJava() as it ignores the return type
         HotSpotSignature sig = getSignature();
         JavaType[] sigTypes = MetaUtil.signatureToTypes(sig, null);
-        MetaAccessProvider metaAccess = runtime().getProviders().getMetaAccess();
+        MetaAccessProvider metaAccess = runtime().getHostProviders().getMetaAccess();
         for (Method method : holder.mirror().getDeclaredMethods()) {
             if (method.getName().equals(name)) {
                 if (metaAccess.lookupJavaType(method.getReturnType()).equals(sig.getReturnType(holder))) {

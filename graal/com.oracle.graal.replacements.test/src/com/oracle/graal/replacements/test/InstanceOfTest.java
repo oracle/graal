@@ -42,7 +42,7 @@ import com.oracle.graal.test.*;
 public class InstanceOfTest extends TypeCheckTest {
 
     public InstanceOfTest() {
-        suites.getHighTier().findPhase(AbstractInliningPhase.class).remove();
+        getSuites().getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }
 
     @Override

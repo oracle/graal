@@ -78,7 +78,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        int reasonIndex = runtime().getProviders().getMetaAccess().convertDeoptReason(reason);
+        int reasonIndex = runtime().getHostProviders().getMetaAccess().convertDeoptReason(reason);
         return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 

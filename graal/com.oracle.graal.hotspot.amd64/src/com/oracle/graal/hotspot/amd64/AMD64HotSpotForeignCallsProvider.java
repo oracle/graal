@@ -39,10 +39,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class AMD64HotSpotForeignCallsProvider extends HotSpotForeignCallsProvider {
+public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 
-    public AMD64HotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
-        super(runtime);
+    private final Value[] nativeABICallerSaveRegisters;
+
+    public AMD64HotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
+        super(runtime, metaAccess, codeCache);
+        this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }
 
     @Override
@@ -68,4 +71,10 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotForeignCallsProvide
 
         super.initialize(providers);
     }
+
+    @Override
+    public Value[] getNativeABICallerSaveRegisters() {
+        return nativeABICallerSaveRegisters;
+    }
+
 }

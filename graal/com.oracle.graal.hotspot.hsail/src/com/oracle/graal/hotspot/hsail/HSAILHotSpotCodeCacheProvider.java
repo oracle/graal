@@ -29,8 +29,8 @@ import com.oracle.graal.hsail.*;
 
 public class HSAILHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
-    public HSAILHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime) {
-        super(runtime);
+    public HSAILHotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
+        super(runtime, target);
 
     }
 

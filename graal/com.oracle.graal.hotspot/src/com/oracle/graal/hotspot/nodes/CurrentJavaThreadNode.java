@@ -41,7 +41,7 @@ public final class CurrentJavaThreadNode extends FloatingNode implements LIRLowe
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        Register rawThread = runtime().getProviders().getRegisters().getThreadRegister();
+        Register rawThread = runtime().getHostProviders().getRegisters().getThreadRegister();
         gen.setResult(this, rawThread.asValue(this.kind()));
     }
 

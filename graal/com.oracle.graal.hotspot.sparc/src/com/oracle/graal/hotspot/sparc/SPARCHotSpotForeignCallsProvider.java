@@ -35,10 +35,13 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class SPARCHotSpotForeignCallsProvider extends HotSpotForeignCallsProvider {
+public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 
-    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
-        super(runtime);
+    private final Value[] nativeABICallerSaveRegisters;
+
+    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
+        super(runtime, metaAccess, codeCache);
+        this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }
 
     @Override
@@ -56,5 +59,10 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotForeignCallsProvide
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+    }
+
+    @Override
+    public Value[] getNativeABICallerSaveRegisters() {
+        return nativeABICallerSaveRegisters;
     }
 }

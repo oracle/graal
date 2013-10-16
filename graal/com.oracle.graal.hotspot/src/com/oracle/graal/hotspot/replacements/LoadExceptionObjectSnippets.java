@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.hotspot.replacements;
 
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider.*;
+import static com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.PiNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;

@@ -44,10 +44,12 @@ import com.oracle.graal.printer.*;
 public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     protected final HotSpotGraalRuntime runtime;
+    protected final TargetDescription target;
     protected final RegisterConfig regConfig;
 
-    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime) {
+    public HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
         this.runtime = runtime;
+        this.target = target;
         regConfig = createRegisterConfig();
     }
 
@@ -57,7 +59,6 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
     public String disassemble(CompilationResult compResult, InstalledCode installedCode) {
         byte[] code = installedCode == null ? Arrays.copyOf(compResult.getTargetCode(), compResult.getTargetCodeSize()) : installedCode.getCode();
         long start = installedCode == null ? 0L : installedCode.getStart();
-        TargetDescription target = runtime.getTarget();
         HexCodeFile hcf = new HexCodeFile(code, start, target.arch.getName(), target.wordSize * 8);
         if (compResult != null) {
             HexCodeFile.addAnnotations(hcf, compResult.getAnnotations());
@@ -191,7 +192,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
 
     @Override
     public TargetDescription getTarget() {
-        return runtime.getTarget();
+        return target;
     }
 
     public String disassemble(InstalledCode code) {

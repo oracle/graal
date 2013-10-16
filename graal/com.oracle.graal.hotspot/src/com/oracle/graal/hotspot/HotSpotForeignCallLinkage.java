@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.word.*;
 
@@ -119,13 +120,13 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      *            re-executed.
      * @param killedLocations the memory locations killed by the call
      */
-    public static HotSpotForeignCallLinkage create(ForeignCallDescriptor descriptor, long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition,
-                    boolean reexecutable, LocationIdentity... killedLocations) {
-        CallingConvention outgoingCc = createCallingConvention(descriptor, outgoingCcType);
-        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(descriptor, incomingCcType);
+    public static HotSpotForeignCallLinkage create(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, HotSpotForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor,
+                    long address, RegisterEffect effect, Type outgoingCcType, Type incomingCcType, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
+        CallingConvention outgoingCc = createCallingConvention(metaAccess, codeCache, descriptor, outgoingCcType);
+        CallingConvention incomingCc = incomingCcType == null ? null : createCallingConvention(metaAccess, codeCache, descriptor, incomingCcType);
         HotSpotForeignCallLinkage linkage = new HotSpotForeignCallLinkage(descriptor, address, effect, transition, outgoingCc, incomingCc, reexecutable, killedLocations);
         if (outgoingCcType == Type.NativeCall) {
-            linkage.temporaries = runtime().getNativeABICallerSaveRegisters();
+            linkage.temporaries = foreignCalls.getNativeABICallerSaveRegisters();
         }
         return linkage;
     }
@@ -133,17 +134,16 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
     /**
      * Gets a calling convention for a given descriptor and call type.
      */
-    public static CallingConvention createCallingConvention(ForeignCallDescriptor descriptor, Type ccType) {
+    public static CallingConvention createCallingConvention(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ForeignCallDescriptor descriptor, Type ccType) {
         assert ccType != null;
-        MetaAccessProvider metaAccess = runtime().getProviders().getMetaAccess();
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
             parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess);
         }
-        TargetDescription target = runtime().getTarget();
+        TargetDescription target = codeCache.getTarget();
         JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess);
-        RegisterConfig regConfig = runtime().getProviders().getCodeCache().getRegisterConfig();
+        RegisterConfig regConfig = codeCache.getRegisterConfig();
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 

@@ -58,7 +58,7 @@ public class ForEachToGraal implements CompileAndDispatch {
             }
         }
         HotSpotGraalRuntime runtime = HotSpotGraalRuntime.runtime();
-        HotSpotProviders providers = runtime.getProviders();
+        HotSpotProviders providers = runtime.getHostProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(acceptMethod);
         StructuredGraph graph = new StructuredGraph(method);

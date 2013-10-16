@@ -180,7 +180,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        final HotSpotProviders providers = runtime.getProviders();
+        final HotSpotProviders providers = runtime.getHostProviders();
         final MetaAccessProvider metaAccess = providers.getMetaAccess();
         assert VerifyOptionsPhase.checkOptions(metaAccess, providers.getForeignCalls());
 
@@ -190,6 +190,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
                 @Override
                 public void run() {
+
                     final Replacements replacements = providers.getReplacements();
                     ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
                     TargetDescription target = providers.getCodeCache().getTarget();
@@ -350,7 +351,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     private MetricRateInPhase inlinedBytecodesPerSecond;
 
     private void enqueue(Method m) throws Throwable {
-        JavaMethod javaMethod = runtime.getProviders().getMetaAccess().lookupJavaMethod(m);
+        JavaMethod javaMethod = runtime.getHostProviders().getMetaAccess().lookupJavaMethod(m);
         assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
         compileMethod((HotSpotResolvedJavaMethod) javaMethod, StructuredGraph.INVOCATION_ENTRY_BCI, false);
     }
@@ -692,8 +693,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
         PhasePlan phasePlan = new PhasePlan();
-        MetaAccessProvider metaAccess = runtime.getProviders().getMetaAccess();
-        ForeignCallsProvider foreignCalls = runtime.getProviders().getForeignCalls();
+        MetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
+        ForeignCallsProvider foreignCalls = runtime.getHostProviders().getForeignCalls();
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());

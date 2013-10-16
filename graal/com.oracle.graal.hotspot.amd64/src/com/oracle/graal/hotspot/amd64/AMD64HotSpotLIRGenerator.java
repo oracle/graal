@@ -180,9 +180,24 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
     }
 
+    private Register findPollOnReturnScratchRegister() {
+        RegisterConfig regConfig = getProviders().getCodeCache().getRegisterConfig();
+        for (Register r : regConfig.getAllocatableRegisters(Kind.Long)) {
+            if (r != regConfig.getReturnRegister(Kind.Long) && r != AMD64.rbp) {
+                return r;
+            }
+        }
+        throw GraalInternalError.shouldNotReachHere();
+    }
+
+    private Register pollOnReturnScratchRegister;
+
     @Override
     protected void emitReturn(Value input) {
-        append(new AMD64HotSpotReturnOp(input, getStub() != null));
+        if (pollOnReturnScratchRegister == null) {
+            pollOnReturnScratchRegister = findPollOnReturnScratchRegister();
+        }
+        append(new AMD64HotSpotReturnOp(input, getStub() != null, pollOnReturnScratchRegister));
     }
 
     @Override
@@ -249,9 +264,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         if (linkage.canDeoptimize()) {
             assert info != null || stub != null;
-            append(new AMD64HotSpotCRuntimeCallPrologueOp());
+            Register thread = getProviders().getRegisters().getThreadRegister();
+            append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset, thread));
             result = super.emitForeignCall(linkage, info, args);
-            append(new AMD64HotSpotCRuntimeCallEpilogueOp());
+            append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset, config.threadLastJavaFpOffset, thread));
         } else {
             result = super.emitForeignCall(linkage, null, args);
         }
@@ -408,7 +424,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
-        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed, config.threadIsMethodHandleReturnOffset, thread);
         append(op);
     }
 

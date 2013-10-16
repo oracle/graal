@@ -119,7 +119,7 @@ public class AllocatorTest extends GraalCompilerTest {
 
             @Override
             public LIR call() {
-                return GraalCompiler.emitHIR(getProviders(), backend.getTarget(), graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), suites);
+                return GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), getSuites());
             }
         });
 
@@ -128,7 +128,7 @@ public class AllocatorTest extends GraalCompilerTest {
             @Override
             public RegisterStats call() {
                 CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                GraalCompiler.emitLIR(backend, backend.getTarget(), lir, graph, cc);
+                GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), lir, graph, cc);
                 return new RegisterStats(lir);
             }
         });

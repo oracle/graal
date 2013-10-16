@@ -100,9 +100,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
         if (linkage.canDeoptimize()) {
             assert info != null;
-            append(new SPARCHotSpotCRuntimeCallPrologueOp());
+            HotSpotRegistersProvider registers = getProviders().getRegisters();
+            Register thread = registers.getThreadRegister();
+            Register stackPointer = registers.getStackPointerRegister();
+            append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset, thread, stackPointer));
             result = super.emitForeignCall(linkage, info, args);
-            append(new SPARCHotSpotCRuntimeCallEpilogueOp());
+            append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset, config.threadLastJavaPcOffset, config.threadJavaFrameAnchorFlagsOffset, thread));
         } else {
             result = super.emitForeignCall(linkage, null, args);
         }
@@ -223,7 +226,8 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         RegisterValue exceptionPcFixed = (RegisterValue) linkageCc.getArgument(1);
         emitMove(exceptionFixed, operand(exception));
         emitMove(exceptionPcFixed, operand(exceptionPc));
-        SPARCHotSpotJumpToExceptionHandlerInCallerOp op = new SPARCHotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        SPARCHotSpotJumpToExceptionHandlerInCallerOp op = new SPARCHotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed, config.threadIsMethodHandleReturnOffset, thread);
         append(op);
     }
 

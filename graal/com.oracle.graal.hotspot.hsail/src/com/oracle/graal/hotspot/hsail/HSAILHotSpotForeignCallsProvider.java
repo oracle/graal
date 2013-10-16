@@ -20,20 +20,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.hotspot.hsail;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class AMD64HotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
+public class HSAILHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
 
-    public AMD64HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
-        super(runtime, target);
+    private final ForeignCallsProvider host;
+
+    public HSAILHotSpotForeignCallsProvider(ForeignCallsProvider host) {
+        this.host = host;
     }
 
-    @Override
-    protected RegisterConfig createRegisterConfig() {
-        return new AMD64HotSpotRegisterConfig(getTarget().arch, runtime.getConfig());
+    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
+        return host.isReexecutable(descriptor);
+    }
+
+    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
+        return host.getKilledLocations(descriptor);
+    }
+
+    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+        return host.canDeoptimize(descriptor);
+    }
+
+    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        return host.lookupForeignCall(descriptor);
+    }
+
+    public Value[] getNativeABICallerSaveRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void initialize(HotSpotProviders providers) {
     }
 }

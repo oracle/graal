@@ -24,7 +24,6 @@ package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.code.*;
@@ -44,11 +43,15 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
     @Use(REG) AllocatableValue handlerInCallerPc;
     @Use(REG) AllocatableValue exception;
     @Use(REG) AllocatableValue exceptionPc;
+    private final Register thread;
+    private final int isMethodHandleReturnOffset;
 
-    AMD64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc) {
+    AMD64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, int isMethodHandleReturnOffset, Register thread) {
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
         this.exceptionPc = exceptionPc;
+        this.isMethodHandleReturnOffset = isMethodHandleReturnOffset;
+        this.thread = thread;
     }
 
     @Override
@@ -59,8 +62,6 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
         masm.incrementq(rsp, 8);
 
         // Restore rsp from rbp if the exception PC is a method handle call site.
-        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
-        int isMethodHandleReturnOffset = runtime().getConfig().threadIsMethodHandleReturnOffset;
         AMD64Address dst = new AMD64Address(thread, isMethodHandleReturnOffset);
         masm.cmpl(dst, 0);
         masm.cmovq(ConditionFlag.NotEqual, rsp, rbp);

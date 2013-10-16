@@ -182,7 +182,7 @@ public final class CompileTheWorld {
                     }
 
                     // Are we compiling this class?
-                    HotSpotMetaAccessProvider metaAccess = runtime.getProviders().getMetaAccess();
+                    HotSpotMetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
                     if (classFileCounter >= startAt) {
                         TTY.println("CompileTheWorld (%d) : %s", classFileCounter, className);
 

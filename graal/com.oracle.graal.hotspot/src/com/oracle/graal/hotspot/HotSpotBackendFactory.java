@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,21 @@
  */
 package com.oracle.graal.hotspot;
 
-public interface HotSpotGraalRuntimeFactory {
+import com.oracle.graal.hotspot.HotSpotGraalRuntime.Options;
 
-    HotSpotGraalRuntime createRuntime();
+public interface HotSpotBackendFactory {
 
+    HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend host);
+
+    /**
+     * Gets the CPU architecture of this backend.
+     */
     String getArchitecture();
 
-    String getName();
+    /**
+     * Gets the name of the {@link Options#GraalRuntime GraalRuntime} in which the backend created
+     * by this factory should be used.
+     */
+    String getGraalRuntimeName();
+
 }

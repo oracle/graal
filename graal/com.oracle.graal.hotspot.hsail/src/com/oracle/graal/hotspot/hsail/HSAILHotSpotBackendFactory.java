@@ -24,33 +24,33 @@ package com.oracle.graal.hotspot.hsail;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.nodes.spi.*;
 
-/**
- * HSAIL specific implementation of {@link HotSpotGraalRuntime}.
- */
-public class HSAILHotSpotGraalRuntime extends HotSpotGraalRuntime {
+@ServiceProvider(HotSpotBackendFactory.class)
+public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
-    protected HotSpotProviders createProviders() {
-        HotSpotProviders host = HotSpotGraalRuntime.runtime().getProviders();
+    public HSAILHotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
+        HotSpotProviders host = hostBackend.getProviders();
 
         HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
-        HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(this);
+        HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(runtime, createTarget());
         ConstantReflectionProvider constantReflection = host.getConstantReflection();
-        HotSpotForeignCallsProvider foreignCalls = host.getForeignCalls();
+        HotSpotForeignCallsProvider foreignCalls = new HSAILHotSpotForeignCallsProvider(host.getForeignCalls());
         LoweringProvider lowerer = new HSAILHotSpotLoweringProvider(host.getLowerer());
         Replacements replacements = host.getReplacements();
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
         HotSpotSuitesProvider suites = host.getSuites();
         HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None);
-        return new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
+        HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
+
+        return new HSAILHotSpotBackend(runtime, providers);
     }
 
-    @Override
     protected TargetDescription createTarget() {
         final int stackFrameAlignment = 8;
         final int implicitNullCheckLimit = 0;
@@ -58,13 +58,16 @@ public class HSAILHotSpotGraalRuntime extends HotSpotGraalRuntime {
         return new TargetDescription(new HSAIL(), true, stackFrameAlignment, implicitNullCheckLimit, inlineObjects);
     }
 
-    @Override
-    protected HotSpotBackend createBackend() {
-        return new HSAILHotSpotBackend(this, getProviders());
+    public String getArchitecture() {
+        return "HSAIL";
+    }
+
+    public String getGraalRuntimeName() {
+        return "basic";
     }
 
     @Override
-    protected Value[] getNativeABICallerSaveRegisters() {
-        throw new InternalError("NYI");
+    public String toString() {
+        return getGraalRuntimeName() + ":" + getArchitecture();
     }
 }
