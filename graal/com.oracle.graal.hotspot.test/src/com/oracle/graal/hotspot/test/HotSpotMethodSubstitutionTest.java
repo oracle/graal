@@ -33,6 +33,11 @@ import com.oracle.graal.replacements.test.*;
  */
 public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
+    /*
+     * We have to ignore this test for now because currently there is no way to read uncompressed
+     * pointers in a compressed world via JNI.
+     */
+    @Ignore
     @Test
     public void testObjectSubstitutions() {
         test("getClass0");
@@ -54,6 +59,11 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         return obj.hashCode();
     }
 
+    /*
+     * We have to ignore this test for now because currently there is no way to read uncompressed
+     * pointers in a compressed world via JNI.
+     */
+    @Ignore
     @Test
     public void testClassSubstitutions() {
         test("getModifiers");
@@ -112,6 +122,11 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
         return clazz.getComponentType();
     }
 
+    /*
+     * We have to ignore this test for now because currently there is no way to read uncompressed
+     * pointers in a compressed world via JNI.
+     */
+    @Ignore
     @Test
     public void testThreadSubstitutions() {
         test("currentThread");

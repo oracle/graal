@@ -105,7 +105,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromMetaspaceKlass(long metaspaceKlass) {
         assert metaspaceKlass != 0;
-        Class javaClass = (Class) unsafe.getObject(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
+        Class javaClass = (Class) runtime().getCompilerToVM().readUnsafeUncompressedPointer(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
         assert javaClass != null;
         return fromClass(javaClass);
     }
