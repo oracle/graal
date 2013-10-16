@@ -34,7 +34,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.hsail.*;
@@ -50,12 +49,8 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadCompressedPointer;
-import com.oracle.graal.lir.hsail.HSAILMove.LoadOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveToRegOp;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreCompressedPointer;
-import com.oracle.graal.lir.hsail.HSAILMove.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
@@ -64,11 +59,7 @@ import com.oracle.graal.phases.util.*;
 /**
  * This class implements the HSAIL specific portion of the LIR generator.
  */
-public class HSAILLIRGenerator extends LIRGenerator {
-
-    private HotSpotRuntime runtime() {
-        return (HotSpotRuntime) codeCache;
-    }
+public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     public static class HSAILSpillMoveFactory implements LIR.SpillMoveFactory {
 
@@ -84,8 +75,8 @@ public class HSAILLIRGenerator extends LIRGenerator {
         }
     }
 
-    public HSAILLIRGenerator(StructuredGraph graph, Providers providers, TargetDescription target, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        super(graph, providers, target, frameMap, cc, lir);
+    public HSAILLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
+        super(graph, providers, frameMap, cc, lir);
         lir.spillMoveFactory = new HSAILSpillMoveFactory();
     }
 
@@ -99,7 +90,7 @@ public class HSAILLIRGenerator extends LIRGenerator {
     public boolean canInlineConstant(Constant c) {
         switch (c.getKind()) {
             case Long:
-                return NumUtil.isInt(c.asLong()) && !codeCache.needsDataPatch(c);
+                return NumUtil.isInt(c.asLong()) && !getCodeCache().needsDataPatch(c);
             case Object:
                 return c.isNull();
             default:
@@ -169,38 +160,6 @@ public class HSAILLIRGenerator extends LIRGenerator {
             }
         }
         return new HSAILAddressValue(target().wordKind, baseRegister, finalDisp);
-    }
-
-    private static boolean isCompressCandidate(DeoptimizingNode access) {
-        return access != null && ((HeapAccess) access).isCompressible();
-    }
-
-    @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode access) {
-        HSAILAddressValue loadAddress = asAddressValue(address);
-        Variable result = newVariable(kind);
-        LIRFrameState state = access != null ? state(access) : null;
-        assert access == null || access instanceof HeapAccess;
-        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
-        } else {
-            append(new LoadOp(kind, result, loadAddress, state));
-        }
-        return result;
-    }
-
-    @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode access) {
-        HSAILAddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = access != null ? state(access) : null;
-        Variable input = load(inputVal);
-        if (runtime().config.useCompressedOops && isCompressCandidate(access)) {
-            Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, runtime().config.narrowOopBase, runtime().config.narrowOopShift, runtime().config.logMinObjAlignment));
-        } else {
-            append(new StoreOp(kind, storeAddress, input, state));
-        }
     }
 
     @Override

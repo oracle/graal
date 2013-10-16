@@ -79,7 +79,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public void invalidate() {
-        graalRuntime().getCompilerToVM().invalidateInstalledCode(this);
+        runtime().getCompilerToVM().invalidateInstalledCode(this);
     }
 
     @Override
@@ -120,7 +120,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
         assert isExternal(); // for now
 
-        return graalRuntime().getCompilerToGPU().executeParallelMethodVarargs(dimX, dimY, dimZ, args, this);
+        return runtime().getCompilerToGPU().executeParallelMethodVarargs(dimX, dimY, dimZ, args, this);
 
     }
 
@@ -128,9 +128,9 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
         assert checkArgs(args);
         if (isExternal()) {
-            return graalRuntime().getCompilerToGPU().executeExternalMethodVarargs(args, this);
+            return runtime().getCompilerToGPU().executeExternalMethodVarargs(args, this);
         } else {
-            return graalRuntime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
+            return runtime().getCompilerToVM().executeCompiledMethodVarargs(args, this);
         }
     }
 

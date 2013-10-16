@@ -55,8 +55,8 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
 
-    public SPARCHotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
-        super(runtime, target);
+    public SPARCHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(runtime, providers);
     }
 
     @Override
@@ -66,12 +66,12 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     public FrameMap newFrameMap() {
-        return new SPARCFrameMap(getRuntime(), target, getRuntime().getRegisterConfig());
+        return new SPARCFrameMap(getProviders().getCodeCache());
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new SPARCHotSpotLIRGenerator(graph, getProviders(), target, frameMap, cc, lir);
+        return new SPARCHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     /**
@@ -142,7 +142,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
 
     @Override
     protected AbstractAssembler createAssembler(FrameMap frameMap) {
-        return new SPARCMacroAssembler(target, frameMap.registerConfig);
+        return new SPARCMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
     @Override
@@ -155,7 +155,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         AbstractAssembler masm = createAssembler(frameMap);
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, getRuntime(), getRuntime(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
         if (deoptimizationRescueSlot != null && stub == null) {
@@ -176,7 +176,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
-        HotSpotVMConfig config = getRuntime().config;
+        HotSpotVMConfig config = getRuntime().getConfig();
         Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
 
         // Emit the prefix
@@ -184,7 +184,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         if (unverifiedStub != null) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             // We need to use JavaCall here because we haven't entered the frame yet.
-            CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getRuntime().lookupJavaType(Object.class)}, target, false);
+            CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
             Register scratch = g3;
             Register receiver = asRegister(cc.getArgument(0));
@@ -204,11 +204,12 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         lirGen.lir.emitCode(tasm);
 
         HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
+        HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
         if (frameContext != null && !frameContext.isStub) {
             tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            SPARCCall.directCall(tasm, masm, getRuntime().lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
+            SPARCCall.directCall(tasm, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
             tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            SPARCCall.directCall(tasm, masm, getRuntime().lookupForeignCall(DEOPT_HANDLER), null, false, null);
+            SPARCCall.directCall(tasm, masm, foreignCalls.lookupForeignCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
@@ -218,7 +219,7 @@ public class SPARCHotSpotBackend extends HotSpotBackend {
         if (unverifiedStub != null) {
             masm.bind(unverifiedStub);
             Register scratch = g3;
-            SPARCCall.indirectJmp(tasm, masm, scratch, getRuntime().lookupForeignCall(IC_MISS_HANDLER));
+            SPARCCall.indirectJmp(tasm, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
         }
     }
 }

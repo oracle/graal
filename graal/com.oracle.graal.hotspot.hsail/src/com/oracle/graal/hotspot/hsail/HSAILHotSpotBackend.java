@@ -20,44 +20,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.compiler.hsail;
+package com.oracle.graal.hotspot.hsail;
 
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
+
+import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.compiler.gen.*;
-import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hsail.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.util.*;
-import com.oracle.graal.hsail.*;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.lang.reflect.Modifier;
-import java.util.Arrays;
 
 /**
  * HSAIL specific backend.
  */
-public class HSAILBackend extends Backend {
+public class HSAILHotSpotBackend extends HotSpotBackend {
 
     private Map<String, String> paramTypeMap = new HashMap<>();
     private Buffer codeBuffer;
 
-    public HSAILBackend(Providers providers, TargetDescription target) {
-        super(providers, target);
+    public HSAILHotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(runtime, providers);
         paramTypeMap.put("HotSpotResolvedPrimitiveType<int>", "s32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
+
     }
 
     @Override
@@ -70,12 +69,12 @@ public class HSAILBackend extends Backend {
      */
     @Override
     public FrameMap newFrameMap() {
-        return new HSAILFrameMap(getCodeCache(), target, new HSAILRegisterConfig());
+        return new HSAILFrameMap(getCodeCache());
     }
 
     @Override
     public LIRGenerator newLIRGenerator(StructuredGraph graph, FrameMap frameMap, CallingConvention cc, LIR lir) {
-        return new HSAILLIRGenerator(graph, getProviders(), target, frameMap, cc, lir);
+        return new HSAILHotSpotLIRGenerator(graph, getProviders(), getRuntime().getConfig(), frameMap, cc, lir);
     }
 
     public String getPartialCodeString() {
@@ -97,15 +96,15 @@ public class HSAILBackend extends Backend {
 
     @Override
     protected AbstractAssembler createAssembler(FrameMap frameMap) {
-        return new HSAILAssembler(target);
+        return new HSAILAssembler(getTarget());
     }
 
     @Override
     public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
         FrameMap frameMap = lirGen.frameMap;
-        AbstractAssembler masm = new HSAILAssembler(target);
+        AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(target, getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new TargetMethodAssembler(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         tasm.setFrameSize(frameMap.frameSize());
         return tasm;
     }
@@ -169,7 +168,7 @@ public class HSAILBackend extends Backend {
         System.arraycopy(paramtypes, 0, ccParamTypes, 0, nonConstantParamCount);
         // Last entry comes from the signature.
         ccParamTypes[ccParamTypes.length - 1] = signature.getParameterType(sigParamCount - 1, null);
-        CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, ccParamTypes, target, false);
+        CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, ccParamTypes, getTarget(), false);
         /**
          * Compute the hsail size mappings up to but not including the last non-constant parameter
          * (which is the gid).

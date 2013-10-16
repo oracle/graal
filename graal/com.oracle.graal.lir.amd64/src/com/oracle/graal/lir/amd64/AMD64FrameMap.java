@@ -69,8 +69,8 @@ import com.oracle.graal.lir.*;
  */
 public class AMD64FrameMap extends FrameMap {
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, TargetDescription target, RegisterConfig registerConfig) {
-        super(codeCache, target, registerConfig);
+    public AMD64FrameMap(CodeCacheProvider codeCache) {
+        super(codeCache);
         // (negative) offset relative to sp + total frame size
         initialSpillSize = returnAddressSize() + calleeSaveAreaSize();
         spillSize = initialSpillSize;

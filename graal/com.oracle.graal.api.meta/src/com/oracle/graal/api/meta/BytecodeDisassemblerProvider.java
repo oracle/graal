@@ -23,7 +23,7 @@
 package com.oracle.graal.api.meta;
 
 /**
- * Interface providing capability for disassembling bytecode.
+ * Interface for disassembling bytecode.
  */
 public interface BytecodeDisassemblerProvider {
 

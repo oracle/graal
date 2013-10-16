@@ -33,10 +33,10 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class HotSpotRuntimeInterpreterInterface {
 
-    private final MetaAccessProvider metaProvider;
+    private final MetaAccessProvider metaAccess;
 
     public HotSpotRuntimeInterpreterInterface(MetaAccessProvider metaProvider) {
-        this.metaProvider = metaProvider;
+        this.metaAccess = metaProvider;
     }
 
     public Class<?> getMirror(ResolvedJavaType type) {
@@ -287,7 +287,7 @@ public class HotSpotRuntimeInterpreterInterface {
         if (arrayType == null) {
             return;
         }
-        ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass()).getComponentType();
+        ResolvedJavaType type = metaAccess.lookupJavaType(array.getClass()).getComponentType();
         if (!getMirror(type).isAssignableFrom(arrayType)) {
             throw new ArrayStoreException(arrayType.getName());
         }
@@ -295,7 +295,7 @@ public class HotSpotRuntimeInterpreterInterface {
 
     private void checkArray(Object array, long index) {
         nullCheck(array);
-        ResolvedJavaType type = metaProvider.lookupJavaType(array.getClass());
+        ResolvedJavaType type = metaAccess.lookupJavaType(array.getClass());
         if (!type.isArray()) {
             throw new ArrayStoreException(array.getClass().getName());
         }

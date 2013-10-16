@@ -22,14 +22,12 @@
  */
 package com.oracle.graal.hotspot;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -69,11 +67,19 @@ public abstract class HotSpotBackend extends Backend {
      */
     public static final ForeignCallDescriptor EXCEPTION_HANDLER_IN_CALLER = new ForeignCallDescriptor("exceptionHandlerInCaller", void.class, Object.class, Word.class);
 
-    public HotSpotBackend(HotSpotRuntime runtime, TargetDescription target) {
-        super(new Providers(runtime, runtime, runtime, runtime, runtime, null), target);
+    private final HotSpotGraalRuntime runtime;
+
+    public HotSpotBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        super(providers);
+        this.runtime = runtime;
     }
 
-    public HotSpotRuntime getRuntime() {
-        return (HotSpotRuntime) getCodeCache();
+    public HotSpotGraalRuntime getRuntime() {
+        return runtime;
+    }
+
+    @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
     }
 }

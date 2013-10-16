@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 @Opcode("CALL_DIRECT")
 final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
 
-    private static final long nonOopBits = HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits;
+    private static final long nonOopBits = HotSpotGraalRuntime.runtime().getConfig().nonOopBits;
     private final Constant metaspaceMethod;
     private final InvokeKind invokeKind;
 

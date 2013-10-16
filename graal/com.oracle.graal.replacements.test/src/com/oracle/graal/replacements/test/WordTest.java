@@ -26,12 +26,11 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.SnippetInliningPolicy;
+import com.oracle.graal.test.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -42,8 +41,7 @@ public class WordTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public WordTest() {
-        TargetDescription target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target);
+        installer = new ReplacementsImpl(getProviders(), new Assumptions(false));
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

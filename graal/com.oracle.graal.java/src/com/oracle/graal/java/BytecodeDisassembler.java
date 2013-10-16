@@ -30,7 +30,7 @@ import com.oracle.graal.bytecode.*;
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.
  */
-public class BytecodeDisassembler {
+public class BytecodeDisassembler implements BytecodeDisassemblerProvider {
 
     /**
      * Specifies if the disassembly for a single instruction can span multiple lines.

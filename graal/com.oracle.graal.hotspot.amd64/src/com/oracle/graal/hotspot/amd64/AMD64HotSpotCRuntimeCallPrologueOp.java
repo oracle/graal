@@ -38,7 +38,7 @@ final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
 
         // save last Java frame
-        Register thread = graalRuntime().getRuntime().threadRegister();
-        masm.movq(new AMD64Address(thread, graalRuntime().getConfig().threadLastJavaSpOffset), rsp);
+        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
+        masm.movq(new AMD64Address(thread, runtime().getConfig().threadLastJavaSpOffset), rsp);
     }
 }

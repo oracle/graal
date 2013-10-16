@@ -50,7 +50,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
     }
 
     private static Register findPollOnReturnScratchRegister() {
-        RegisterConfig config = HotSpotGraalRuntime.graalRuntime().getRuntime().getRegisterConfig();
+        RegisterConfig config = HotSpotGraalRuntime.runtime().getProviders().getCodeCache().getRegisterConfig();
         for (Register r : config.getAllocatableRegisters(Kind.Long)) {
             if (r != config.getReturnRegister(Kind.Long) && r != AMD64.rbp) {
                 return r;
@@ -65,7 +65,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueOp {
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(tasm, masm);
         if (!isStub && (tasm.frameContext != null || !OptEliminateSafepoints.getValue())) {
-            AMD64HotSpotSafepointOp.emitCode(tasm, masm, graalRuntime().getConfig(), true, null, scratchForSafepointOnReturn);
+            AMD64HotSpotSafepointOp.emitCode(tasm, masm, runtime().getConfig(), true, null, scratchForSafepointOnReturn);
         }
         masm.ret(0);
     }

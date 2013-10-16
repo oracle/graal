@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,28 @@
  */
 package com.oracle.graal.hotspot.sparc;
 
-import static com.oracle.graal.sparc.SPARC.*;
 import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.hotspot.HotSpotBackend.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
+import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 
-public class SPARCHotSpotRuntime extends HotSpotRuntime {
+public class AMD64SPARCForeignCallsProvider extends HotSpotForeignCallsProvider {
 
-    public SPARCHotSpotRuntime(HotSpotVMConfig config, HotSpotGraalRuntime graalRuntime) {
-        super(config, graalRuntime);
+    public AMD64SPARCForeignCallsProvider(HotSpotGraalRuntime runtime) {
+        super(runtime);
     }
 
     @Override
-    public void registerReplacements(Replacements replacements) {
-        Kind word = graalRuntime.getTarget().wordKind;
+    public void initialize(HotSpotProviders providers) {
+        Kind word = runtime.getTarget().wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -59,36 +56,5 @@ public class SPARCHotSpotRuntime extends HotSpotRuntime {
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
-
-        super.registerReplacements(replacements);
-    }
-
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (n instanceof ConvertNode) {
-            // ConvertNodes are handled in SPARCLIRGenerator.emitConvert
-        } else {
-            super.lower(n, tool);
-        }
-    }
-
-    @Override
-    public Register threadRegister() {
-        return g2;
-    }
-
-    @Override
-    public Register stackPointerRegister() {
-        return sp;
-    }
-
-    @Override
-    public Register heapBaseRegister() {
-        return r12;
-    }
-
-    @Override
-    protected RegisterConfig createRegisterConfig() {
-        return new SPARCHotSpotRegisterConfig(graalRuntime.getTarget().arch, config);
     }
 }

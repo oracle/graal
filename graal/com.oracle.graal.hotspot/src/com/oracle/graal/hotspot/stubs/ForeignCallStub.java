@@ -25,8 +25,6 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
 import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.RegisterEffect.*;
-import static com.oracle.graal.hotspot.HotSpotForeignCallLinkage.Transition.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -45,7 +43,6 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.common.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
@@ -85,7 +82,8 @@ public class ForeignCallStub extends Stub {
      *            be re-executed.
      * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(Providers providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable, LocationIdentity... killedLocations) {
+    public ForeignCallStub(HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread, Transition transition, boolean reexecutable,
+                    LocationIdentity... killedLocations) {
         super(providers, HotSpotForeignCallLinkage.create(descriptor, 0L, PRESERVES_REGISTERS, JavaCall, JavaCallee, transition, reexecutable, killedLocations));
         this.prependThread = prependThread;
         Class[] targetParameterTypes = createTargetParameters(descriptor);
@@ -122,12 +120,13 @@ public class ForeignCallStub extends Stub {
 
             public Signature getSignature() {
                 ForeignCallDescriptor d = linkage.getDescriptor();
+                MetaAccessProvider metaAccess = providers.getMetaAccess();
                 Class<?>[] arguments = d.getArgumentTypes();
                 JavaType[] parameters = new JavaType[arguments.length];
                 for (int i = 0; i < arguments.length; i++) {
-                    parameters[i] = runtime.lookupJavaType(arguments[i]);
+                    parameters[i] = metaAccess.lookupJavaType(arguments[i]);
                 }
-                return new HotSpotSignature(runtime.lookupJavaType(d.getResultType()), parameters);
+                return new HotSpotSignature(metaAccess.lookupJavaType(d.getResultType()), parameters);
             }
 
             public String getName() {
@@ -135,7 +134,7 @@ public class ForeignCallStub extends Stub {
             }
 
             public JavaType getDeclaringClass() {
-                return runtime.lookupJavaType(ForeignCallStub.class);
+                return providers.getMetaAccess().lookupJavaType(ForeignCallStub.class);
             }
 
             @Override
@@ -225,7 +224,7 @@ public class ForeignCallStub extends Stub {
         LocalNode[] locals = createLocals(builder, args);
         List<InvokeNode> invokes = new ArrayList<>(3);
 
-        ReadRegisterNode thread = prependThread || isObjectResult ? builder.append(new ReadRegisterNode(runtime.threadRegister(), true, false)) : null;
+        ReadRegisterNode thread = prependThread || isObjectResult ? builder.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)) : null;
         ValueNode result = createTargetCall(builder, locals, thread);
         invokes.add(createInvoke(builder, StubUtil.class, "handlePendingException", ConstantNode.forBoolean(isObjectResult, builder.graph)));
         if (isObjectResult) {
@@ -241,7 +240,7 @@ public class ForeignCallStub extends Stub {
         }
 
         /* Rewrite all word types that can come in from the method argument types. */
-        new WordTypeRewriterPhase(runtime, wordKind()).apply(builder.graph);
+        new WordTypeRewriterPhase(providers.getMetaAccess(), providers.getCodeCache().getTarget().wordKind).apply(builder.graph);
         /* Inline all method calls that are create above. */
         for (InvokeNode invoke : invokes) {
             inline(invoke);
@@ -259,9 +258,9 @@ public class ForeignCallStub extends Stub {
 
     private LocalNode[] createLocals(GraphBuilder builder, Class<?>[] args) {
         LocalNode[] locals = new LocalNode[args.length];
-        ResolvedJavaType accessingClass = runtime.lookupJavaType(getClass());
+        ResolvedJavaType accessingClass = providers.getMetaAccess().lookupJavaType(getClass());
         for (int i = 0; i < args.length; i++) {
-            ResolvedJavaType type = runtime.lookupJavaType(args[i]).resolve(accessingClass);
+            ResolvedJavaType type = providers.getMetaAccess().lookupJavaType(args[i]).resolve(accessingClass);
             Kind kind = type.getKind().getStackKind();
             Stamp stamp;
             if (kind == Kind.Object) {
@@ -280,7 +279,7 @@ public class ForeignCallStub extends Stub {
         for (Method m : declaringClass.getDeclaredMethods()) {
             if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
                 assert method == null : "found more than one method in " + declaringClass + " named " + name;
-                method = runtime.lookupJavaMethod(m);
+                method = providers.getMetaAccess().lookupJavaMethod(m);
             }
         }
         assert method != null : "did not find method in " + declaringClass + " named " + name;
@@ -295,15 +294,15 @@ public class ForeignCallStub extends Stub {
             ValueNode[] targetArguments = new ValueNode[1 + locals.length];
             targetArguments[0] = thread;
             System.arraycopy(locals, 0, targetArguments, 1, locals.length);
-            return builder.append(new StubForeignCallNode(runtime, target.getDescriptor(), targetArguments));
+            return builder.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), targetArguments));
         } else {
-            return builder.append(new StubForeignCallNode(runtime, target.getDescriptor(), locals));
+            return builder.append(new StubForeignCallNode(providers.getForeignCalls(), target.getDescriptor(), locals));
         }
     }
 
     private void inline(InvokeNode invoke) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
-        ReplacementsImpl repl = new ReplacementsImpl(runtime, runtime, runtime, runtime, runtime, new Assumptions(false), runtime.getTarget());
+        ReplacementsImpl repl = new ReplacementsImpl(providers, new Assumptions(false));
         StructuredGraph calleeGraph = repl.makeGraph(method, null, null, false);
         InliningUtil.inline(invoke, calleeGraph, false);
     }

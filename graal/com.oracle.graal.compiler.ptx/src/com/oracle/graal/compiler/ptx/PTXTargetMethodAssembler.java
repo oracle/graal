@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.*;
 
 public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
-    private static CompilerToGPU toGPU = HotSpotGraalRuntime.graalRuntime().getCompilerToGPU();
+    private static CompilerToGPU toGPU = HotSpotGraalRuntime.runtime().getCompilerToGPU();
 
     private static boolean validDevice = toGPU.deviceInit();
 
@@ -45,9 +45,9 @@ public class PTXTargetMethodAssembler extends TargetMethodAssembler {
 
     // detach ??
 
-    public PTXTargetMethodAssembler(TargetDescription target, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public PTXTargetMethodAssembler(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
-        super(target, codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
+        super(codeCache, foreignCalls, frameMap, asm, frameContext, compilationResult);
     }
 
     @Override

@@ -29,6 +29,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.phases.util.*;
 
 /**
  * AMD64 specific implementation of {@link HotSpotGraalRuntime}.
@@ -44,21 +45,39 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
      * Called from C++ code to retrieve the singleton instance, creating it first if necessary.
      */
     public static HotSpotGraalRuntime makeInstance() {
-        HotSpotGraalRuntime graalRuntime = graalRuntime();
-        if (graalRuntime == null) {
+        HotSpotGraalRuntime runtime = runtime();
+        if (runtime == null) {
             HotSpotGraalRuntimeFactory factory = findFactory("AMD64");
             if (factory != null) {
-                graalRuntime = factory.createRuntime();
+                runtime = factory.createRuntime();
             } else {
-                graalRuntime = new AMD64HotSpotGraalRuntime();
+                runtime = new AMD64HotSpotGraalRuntime();
             }
-            graalRuntime.completeInitialization();
+            runtime.completeInitialization();
         }
-        return graalRuntime;
+        return runtime;
     }
 
     protected Architecture createArchitecture() {
         return new AMD64(config.useSSE, config.useAVX);
+    }
+
+    @Override
+    protected HotSpotProviders createProviders() {
+        HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(this);
+        HotSpotCodeCacheProvider codeCache = new AMD64HotSpotCodeCacheProvider(this);
+        HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(this);
+        HotSpotForeignCallsProvider foreignCalls = new AMD64HotSpotForeignCallsProvider(this);
+        HotSpotLoweringProvider lowerer = new AMD64HotSpotLoweringProvider(this, metaAccess, foreignCalls);
+        // Replacements cannot have speculative optimizations since they have
+        // to be valid for the entire run of the VM.
+        Assumptions assumptions = new Assumptions(false);
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
+        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, getConfig(), assumptions);
+        HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(this);
+        HotSpotSuitesProvider suites = new HotSpotSuitesProvider(this);
+        HotSpotRegisters registers = new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
+        return new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
     }
 
     @Override
@@ -71,18 +90,13 @@ public class AMD64HotSpotGraalRuntime extends HotSpotGraalRuntime {
 
     @Override
     protected HotSpotBackend createBackend() {
-        return new AMD64HotSpotBackend(getRuntime(), getTarget());
-    }
-
-    @Override
-    protected HotSpotRuntime createRuntime() {
-        return new AMD64HotSpotRuntime(config, this);
+        return new AMD64HotSpotBackend(this, getProviders());
     }
 
     @Override
     protected Value[] getNativeABICallerSaveRegisters() {
         if (nativeABICallerSaveRegisters == null) {
-            List<Register> callerSave = new ArrayList<>(Arrays.asList(getRuntime().getRegisterConfig().getAllocatableRegisters()));
+            List<Register> callerSave = new ArrayList<>(Arrays.asList(getProviders().getCodeCache().getRegisterConfig().getAllocatableRegisters()));
             if (getConfig().windowsOs) {
                 // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
                 callerSave.remove(AMD64.rdi);

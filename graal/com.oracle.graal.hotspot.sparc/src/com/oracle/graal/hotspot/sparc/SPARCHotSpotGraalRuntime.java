@@ -41,12 +41,18 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
      * Called from C++ code to retrieve the singleton instance, creating it first if necessary.
      */
     public static HotSpotGraalRuntime makeInstance() {
-        HotSpotGraalRuntime graalRuntime = graalRuntime();
-        if (graalRuntime == null) {
-            graalRuntime = new SPARCHotSpotGraalRuntime();
-            graalRuntime.completeInitialization();
+        HotSpotGraalRuntime runtime = runtime();
+        if (runtime == null) {
+            runtime = new SPARCHotSpotGraalRuntime();
+            runtime.completeInitialization();
         }
-        return graalRuntime;
+        return runtime;
+    }
+
+    @Override
+    protected HotSpotProviders createProviders() {
+        // TODO Auto-generated method stub
+        return null;
     }
 
     protected static Architecture createArchitecture() {
@@ -63,12 +69,7 @@ final class SPARCHotSpotGraalRuntime extends HotSpotGraalRuntime {
 
     @Override
     protected HotSpotBackend createBackend() {
-        return new SPARCHotSpotBackend(getRuntime(), getTarget());
-    }
-
-    @Override
-    protected HotSpotRuntime createRuntime() {
-        return new SPARCHotSpotRuntime(config, this);
+        return new SPARCHotSpotBackend(this, getProviders());
     }
 
     @Override

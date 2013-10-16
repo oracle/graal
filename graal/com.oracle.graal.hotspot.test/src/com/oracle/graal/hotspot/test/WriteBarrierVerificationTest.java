@@ -32,7 +32,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.*;
@@ -629,7 +629,8 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
 
                 int barriers = 0;
                 // First, the total number of expected barriers is checked.
-                if (((HotSpotRuntime) getMetaAccess()).config.useG1GC) {
+                HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+                if (config.useG1GC) {
                     barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
                                     graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
                     Assert.assertTrue(expectedBarriers * 2 == barriers);
@@ -691,10 +692,10 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     }
                 };
 
-                DebugConfig config = DebugScope.getConfig();
+                DebugConfig debugConfig = DebugScope.getConfig();
                 try {
                     ReentrantNodeIterator.apply(closure, graph.start(), false, null);
-                    Debug.setConfig(Debug.fixedConfig(false, false, false, false, config.dumpHandlers(), config.output()));
+                    Debug.setConfig(Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output()));
                     new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {
                     /*
@@ -704,7 +705,7 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                     Assert.assertTrue(error.getMessage().contains("Write barrier must be present"));
                     return error;
                 } finally {
-                    Debug.setConfig(config);
+                    Debug.setConfig(debugConfig);
                 }
                 return null;
             }

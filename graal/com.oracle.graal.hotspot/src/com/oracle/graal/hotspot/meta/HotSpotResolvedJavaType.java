@@ -38,6 +38,6 @@ public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements
 
     @Override
     public String getSourceFileName() {
-        return graalRuntime().getCompilerToVM().getFileName(this);
+        return runtime().getCompilerToVM().getFileName(this);
     }
 }

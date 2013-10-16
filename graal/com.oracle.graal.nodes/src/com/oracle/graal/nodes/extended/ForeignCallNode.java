@@ -48,11 +48,11 @@ public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable,
         this.foreignCalls = foreignCalls;
     }
 
-    protected ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider metaAccess, ForeignCallDescriptor descriptor, Stamp stamp) {
+    protected ForeignCallNode(@InjectedNodeParameter ForeignCallsProvider foreignCalls, ForeignCallDescriptor descriptor, Stamp stamp) {
         super(stamp);
         this.arguments = new NodeInputList<>(this);
         this.descriptor = descriptor;
-        this.foreignCalls = metaAccess;
+        this.foreignCalls = foreignCalls;
     }
 
     @Override

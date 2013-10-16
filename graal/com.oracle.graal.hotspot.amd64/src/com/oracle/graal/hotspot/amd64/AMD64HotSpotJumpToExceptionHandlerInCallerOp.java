@@ -59,8 +59,8 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
         masm.incrementq(rsp, 8);
 
         // Restore rsp from rbp if the exception PC is a method handle call site.
-        Register thread = graalRuntime().getRuntime().threadRegister();
-        int isMethodHandleReturnOffset = graalRuntime().getConfig().threadIsMethodHandleReturnOffset;
+        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
+        int isMethodHandleReturnOffset = runtime().getConfig().threadIsMethodHandleReturnOffset;
         AMD64Address dst = new AMD64Address(thread, isMethodHandleReturnOffset);
         masm.cmpl(dst, 0);
         masm.cmovq(ConditionFlag.NotEqual, rsp, rbp);

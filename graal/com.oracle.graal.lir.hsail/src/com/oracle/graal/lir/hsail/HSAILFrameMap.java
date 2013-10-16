@@ -37,8 +37,8 @@ import com.oracle.graal.lir.*;
  */
 public final class HSAILFrameMap extends FrameMap {
 
-    public HSAILFrameMap(CodeCacheProvider codeCache, TargetDescription target, RegisterConfig registerConfig) {
-        super(codeCache, target, registerConfig);
+    public HSAILFrameMap(CodeCacheProvider codeCache) {
+        super(codeCache);
     }
 
     @Override

@@ -25,7 +25,7 @@ package com.oracle.graal.compiler.hsail.test;
 import org.junit.*;
 
 import com.oracle.graal.compiler.test.GraalCompilerTest;
-import com.oracle.graal.compiler.hsail.HSAILCompilationResult;
+import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.nodes.StructuredGraph;
 
 /**

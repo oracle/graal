@@ -28,7 +28,6 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -52,8 +51,8 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
     private final ReplacementsImpl installer;
 
     public PointerTest() {
-        target = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        installer = new ReplacementsImpl(getMetaAccess(), getConstantReflection(), getCodeCache(), getForeignCalls(), getLowerer(), new Assumptions(false), target);
+        target = getCodeCache().getTarget();
+        installer = new ReplacementsImpl(getProviders(), new Assumptions(false));
     }
 
     private static final ThreadLocal<SnippetInliningPolicy> inliningPolicy = new ThreadLocal<>();

@@ -55,7 +55,7 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits));
+        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
         super.emitCode(tasm, masm);
     }
 }

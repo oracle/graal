@@ -32,7 +32,6 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64Move.LoadOp;
@@ -103,6 +102,7 @@ public class AMD64HotSpotMove {
         protected final Kind kind;
         private final long klassBase;
         private final long heapBase;
+        private final Register heapBaseReg;
         private final int shift;
         private final int alignment;
         @Temp({REG}) private AllocatableValue scratch;
@@ -111,9 +111,10 @@ public class AMD64HotSpotMove {
         @State protected LIRFrameState state;
 
         public StoreCompressedPointer(Kind kind, AMD64AddressValue address, AllocatableValue input, AllocatableValue scratch, LIRFrameState state, long klassBase, long heapBase, int shift,
-                        int alignment) {
+                        int alignment, Register heapBaseReg) {
             this.klassBase = klassBase;
             this.heapBase = heapBase;
+            this.heapBaseReg = heapBaseReg;
             this.shift = shift;
             this.alignment = alignment;
             this.scratch = scratch;
@@ -126,7 +127,6 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            Register heapBaseReg = ((HotSpotRuntime) tasm.codeCache).heapBaseRegister();
             masm.movq(asRegister(scratch), asRegister(input));
             if (kind == Kind.Object) {
                 encodePointer(masm, asRegister(scratch), heapBaseReg, heapBase, shift, alignment);
@@ -152,10 +152,12 @@ public class AMD64HotSpotMove {
         private long base;
         private int shift;
         private int alignment;
+        private final Register heapBaseReg;
 
         public CompareAndSwapCompressedOp(AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue, AllocatableValue scratch, long base, int shift,
-                        int alignment) {
+                        int alignment, Register heapBaseReg) {
             this.base = base;
+            this.heapBaseReg = heapBaseReg;
             this.shift = shift;
             this.alignment = alignment;
             this.scratch = scratch;
@@ -168,17 +170,17 @@ public class AMD64HotSpotMove {
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwapCompressed(tasm, masm, result, address, cmpValue, newValue, scratch, base, shift, alignment);
+            compareAndSwapCompressed(tasm, masm, result, address, cmpValue, newValue, scratch, base, shift, alignment, heapBaseReg);
         }
     }
 
     protected static void compareAndSwapCompressed(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
-                    AllocatableValue newValue, AllocatableValue scratch, long base, int shift, int alignment) {
+                    AllocatableValue newValue, AllocatableValue scratch, long base, int shift, int alignment, Register heapBaseReg) {
         assert AMD64.rax.equals(asRegister(cmpValue)) && AMD64.rax.equals(asRegister(result));
         final Register scratchRegister = asRegister(scratch);
         final Register cmpRegister = asRegister(cmpValue);
         final Register newRegister = asRegister(newValue);
-        Register heapBase = ((HotSpotRuntime) tasm.codeCache).heapBaseRegister();
+        Register heapBase = heapBaseReg;
         encodePointer(masm, cmpRegister, heapBase, base, shift, alignment);
         masm.movq(scratchRegister, newRegister);
         encodePointer(masm, scratchRegister, heapBase, base, shift, alignment);

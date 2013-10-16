@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.graal.compiler.hsail;
+package com.oracle.graal.hotspot.hsail;
 
 import java.lang.reflect.*;
 import java.util.logging.*;
@@ -33,7 +33,8 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hsail.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
@@ -72,15 +73,17 @@ public class HSAILCompilationResult {
         consoleHandler.setLevel(logLevel);
     }
 
+    private static final HotSpotGraalRuntime runtime = new HSAILHotSpotGraalRuntime();
+
     public static HSAILCompilationResult getHSAILCompilationResult(Method meth) {
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        HotSpotMetaAccessProvider metaAccess = runtime.getProviders().getMetaAccess();
         ResolvedJavaMethod javaMethod = metaAccess.lookupJavaMethod(meth);
         return getHSAILCompilationResult(javaMethod);
     }
 
     public static HSAILCompilationResult getHSAILCompilationResult(ResolvedJavaMethod javaMethod) {
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        ForeignCallsProvider foreignCalls = Graal.getRequiredCapability(ForeignCallsProvider.class);
+        HotSpotMetaAccessProvider metaAccess = runtime.getProviders().getMetaAccess();
+        ForeignCallsProvider foreignCalls = runtime.getProviders().getForeignCalls();
         StructuredGraph graph = new StructuredGraph(javaMethod);
         new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
         return getHSAILCompilationResult(graph);
@@ -109,15 +112,15 @@ public class HSAILCompilationResult {
             argTypes[argIndex++] = sig.getParameterType(i, null);
         }
 
-        RegisterConfig registerConfig = new HSAILRegisterConfig();
+        RegisterConfig registerConfig = runtime.getProviders().getCodeCache().getRegisterConfig();
         return registerConfig.getCallingConvention(type, retType, argTypes, target, stackOnly);
     }
 
     public static HSAILCompilationResult getHSAILCompilationResult(StructuredGraph graph) {
         Debug.dump(graph, "Graph");
-        Providers providers = GraalCompiler.getGraalProviders();
-        TargetDescription target = new TargetDescription(new HSAIL(), true, 8, 0, true);
-        HSAILBackend hsailBackend = new HSAILBackend(providers, target);
+        Providers providers = runtime.getProviders();
+        TargetDescription target = providers.getCodeCache().getTarget();
+        HSAILHotSpotBackend hsailBackend = (HSAILHotSpotBackend) runtime.getBackend();
         PhasePlan phasePlan = new PhasePlan();
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);

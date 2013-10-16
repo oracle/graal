@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotRuntime.*;
+import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import sun.misc.*;
 
@@ -34,7 +34,6 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
@@ -48,7 +47,7 @@ import com.oracle.graal.word.*;
 public class HotSpotReplacementsUtil {
 
     public static HotSpotVMConfig config() {
-        return graalRuntime().getConfig();
+        return runtime().getConfig();
     }
 
     @Fold
@@ -199,22 +198,22 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static Kind getWordKind() {
-        return graalRuntime().getTarget().wordKind;
+        return runtime().getTarget().wordKind;
     }
 
     @Fold
     public static Register threadRegister() {
-        return graalRuntime().getRuntime().threadRegister();
+        return runtime().getProviders().getRegisters().getThreadRegister();
     }
 
     @Fold
     public static Register stackPointerRegister() {
-        return graalRuntime().getRuntime().stackPointerRegister();
+        return runtime().getProviders().getRegisters().getStackPointerRegister();
     }
 
     @Fold
     public static int wordSize() {
-        return graalRuntime().getTarget().wordSize;
+        return runtime().getTarget().wordSize;
     }
 
     @Fold
@@ -344,12 +343,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int arrayBaseOffset(Kind elementKind) {
-        return HotSpotRuntime.getArrayBaseOffset(elementKind);
+        return HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
     }
 
     @Fold
     public static int arrayIndexScale(Kind elementKind) {
-        return HotSpotRuntime.getArrayIndexScale(elementKind);
+        return HotSpotGraalRuntime.getArrayIndexScale(elementKind);
     }
 
     @Fold

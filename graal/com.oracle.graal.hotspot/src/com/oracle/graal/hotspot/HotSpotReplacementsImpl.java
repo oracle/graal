@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 
 /**
@@ -39,9 +40,9 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     private final HotSpotVMConfig config;
 
-    public HotSpotReplacementsImpl(HotSpotRuntime runtime, Assumptions assumptions, TargetDescription target) {
-        super(runtime, runtime, runtime, runtime, runtime, assumptions, target);
-        this.config = runtime.config;
+    public HotSpotReplacementsImpl(Providers providers, HotSpotVMConfig config, Assumptions assumptions) {
+        super(providers, assumptions);
+        this.config = config;
     }
 
     @Override

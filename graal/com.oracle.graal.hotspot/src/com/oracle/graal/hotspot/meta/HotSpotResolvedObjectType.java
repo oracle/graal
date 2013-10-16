@@ -105,7 +105,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromMetaspaceKlass(long metaspaceKlass) {
         assert metaspaceKlass != 0;
-        Class javaClass = (Class) unsafe.getObject(null, metaspaceKlass + graalRuntime().getConfig().classMirrorOffset);
+        Class javaClass = (Class) unsafe.getObject(null, metaspaceKlass + runtime().getConfig().classMirrorOffset);
         assert javaClass != null;
         return fromClass(javaClass);
     }
@@ -117,9 +117,9 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromClass(Class javaClass) {
         assert javaClass != null;
-        ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) graalRuntime().getConfig().graalMirrorInClassOffset);
+        ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) runtime().getConfig().graalMirrorInClassOffset);
         if (type == null) {
-            type = graalRuntime().getCompilerToVM().getResolvedType(javaClass);
+            type = runtime().getCompilerToVM().getResolvedType(javaClass);
             assert type != null;
         }
         return type;
@@ -147,7 +147,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     }
 
     public int getAccessFlags() {
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceKlass + config.klassAccessFlagsOffset);
     }
 
@@ -167,11 +167,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public ResolvedJavaType findUniqueConcreteSubtype() {
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
             return isFinal(getElementalType(this).getModifiers()) ? this : null;
         } else if (isInterface()) {
-            return graalRuntime().getCompilerToVM().getUniqueImplementor(this);
+            return runtime().getCompilerToVM().getUniqueImplementor(this);
         } else {
             HotSpotResolvedObjectType type = this;
             while (isAbstract(type.getModifiers())) {
@@ -265,12 +265,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean hasFinalizableSubclass() {
         assert !isArray();
-        return graalRuntime().getCompilerToVM().hasFinalizableSubclass(this);
+        return runtime().getCompilerToVM().hasFinalizableSubclass(this);
     }
 
     @Override
     public boolean hasFinalizer() {
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         return (getAccessFlags() & config.klassHasFinalizerFlag) != 0;
     }
 
@@ -287,7 +287,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean isInitialized() {
         if (!isInitialized) {
-            isInitialized = graalRuntime().getCompilerToVM().isTypeInitialized(this);
+            isInitialized = runtime().getCompilerToVM().isTypeInitialized(this);
         }
         return isInitialized;
     }
@@ -295,7 +295,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public boolean isLinked() {
         if (!isLinked) {
-            isLinked = graalRuntime().getCompilerToVM().isTypeLinked(this);
+            isLinked = runtime().getCompilerToVM().isTypeLinked(this);
         }
         return isLinked;
     }
@@ -303,8 +303,8 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public void initialize() {
         if (!isInitialized) {
-            graalRuntime().getCompilerToVM().initializeType(this);
-            assert graalRuntime().getCompilerToVM().isTypeInitialized(this);
+            runtime().getCompilerToVM().initializeType(this);
+            assert runtime().getCompilerToVM().isTypeInitialized(this);
         }
         isInitialized = true;
     }
@@ -345,7 +345,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        ResolvedJavaMethod res = (ResolvedJavaMethod) graalRuntime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        ResolvedJavaMethod res = (ResolvedJavaMethod) runtime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
         if (res == null || isAbstract(res.getModifiers())) {
             return null;
         }
@@ -432,7 +432,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             if (isArray() || isInterface()) {
                 instanceFields = new HotSpotResolvedJavaField[0];
             } else {
-                HotSpotResolvedJavaField[] myFields = graalRuntime().getCompilerToVM().getInstanceFields(this);
+                HotSpotResolvedJavaField[] myFields = runtime().getCompilerToVM().getInstanceFields(this);
                 Arrays.sort(myFields, new OffsetComparator());
                 if (javaMirror != Object.class) {
                     HotSpotResolvedJavaField[] superFields = (HotSpotResolvedJavaField[]) getSuperclass().getInstanceFields(true);
@@ -468,7 +468,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public String getSourceFileName() {
-        return graalRuntime().getCompilerToVM().getFileName(this);
+        return runtime().getCompilerToVM().getFileName(this);
     }
 
     @Override
@@ -485,20 +485,20 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * Gets the address of the C++ Klass object for this type.
      */
     public Constant klass() {
-        return Constant.forIntegerKind(graalRuntime().getTarget().wordKind, metaspaceKlass, this);
+        return Constant.forIntegerKind(runtime().getTarget().wordKind, metaspaceKlass, this);
     }
 
     public boolean isPrimaryType() {
-        return graalRuntime().getConfig().secondarySuperCacheOffset != superCheckOffset();
+        return runtime().getConfig().secondarySuperCacheOffset != superCheckOffset();
     }
 
     public int superCheckOffset() {
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceKlass + config.superCheckOffsetOffset);
     }
 
     public long prototypeMarkWord() {
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
             return config.arrayPrototypeMarkWord;
         } else {
@@ -544,7 +544,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         Constructor[] constructors = javaMirror.getDeclaredConstructors();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[constructors.length];
         for (int i = 0; i < constructors.length; i++) {
-            result[i] = graalRuntime().getRuntime().lookupJavaConstructor(constructors[i]);
+            result[i] = runtime().getProviders().getMetaAccess().lookupJavaConstructor(constructors[i]);
             assert result[i].isConstructor();
         }
         return result;
@@ -555,14 +555,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         Method[] methods = javaMirror.getDeclaredMethods();
         ResolvedJavaMethod[] result = new ResolvedJavaMethod[methods.length];
         for (int i = 0; i < methods.length; i++) {
-            result[i] = graalRuntime().getRuntime().lookupJavaMethod(methods[i]);
+            result[i] = runtime().getProviders().getMetaAccess().lookupJavaMethod(methods[i]);
             assert !result[i].isConstructor();
         }
         return result;
     }
 
     public ResolvedJavaMethod getClassInitializer() {
-        ResolvedJavaMethod[] methods = graalRuntime().getCompilerToVM().getMethods(this);
+        ResolvedJavaMethod[] methods = runtime().getCompilerToVM().getMethods(this);
         for (ResolvedJavaMethod m : methods) {
             if (m.isClassInitializer()) {
                 return m;

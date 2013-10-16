@@ -40,7 +40,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static final long serialVersionUID = -8873133496591225071L;
 
-    private static final HotSpotVMConfig config = graalRuntime().getConfig();
+    private static final HotSpotVMConfig config = runtime().getConfig();
     private static final HotSpotMethodDataAccessor NO_DATA_NO_EXCEPTION_ACCESSOR = new NoMethodData(TriState.FALSE);
     private static final HotSpotMethodDataAccessor NO_DATA_EXCEPTION_POSSIBLY_NOT_RECORDED_ACCESSOR = new NoMethodData(TriState.UNKNOWN);
 
@@ -58,7 +58,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
     HotSpotMethodData(long metaspaceMethodData) {
         this.metaspaceMethodData = metaspaceMethodData;
-        graalRuntime().getCompilerToVM().initializeMethodData(metaspaceMethodData, this);
+        runtime().getCompilerToVM().initializeMethodData(metaspaceMethodData, this);
     }
 
     public boolean hasNormalData() {
@@ -78,7 +78,7 @@ public final class HotSpotMethodData extends CompilerObject {
     }
 
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        int reasonIndex = graalRuntime().getRuntime().convertDeoptReason(reason);
+        int reasonIndex = runtime().getProviders().getMetaAccess().convertDeoptReason(reason);
         return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 

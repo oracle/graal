@@ -24,13 +24,13 @@ package com.oracle.graal.truffle;
 
 import java.util.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.truffle.substitutions.*;
 
@@ -41,22 +41,14 @@ public final class TruffleReplacements extends ReplacementsImpl {
 
     private final Replacements graalReplacements;
 
-    private TruffleReplacements(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, LoweringProvider lowerer,
-                    Assumptions assumptions, TargetDescription target, Replacements graalReplacements) {
-        super(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, assumptions, target);
-        this.graalReplacements = graalReplacements;
+    private TruffleReplacements(Providers providers) {
+        super(providers, providers.getReplacements().getAssumptions());
+        this.graalReplacements = providers.getReplacements();
     }
 
     static Replacements makeInstance() {
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
-        ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
-        ForeignCallsProvider foreignCalls = Graal.getRequiredCapability(ForeignCallsProvider.class);
-        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
-        TargetDescription targetDescription = Graal.getRequiredCapability(CodeCacheProvider.class).getTarget();
-        Replacements graalReplacements = Graal.getRequiredCapability(Replacements.class);
-        Replacements truffleReplacements = new TruffleReplacements(metaAccess, constantReflection, codeCache, foreignCalls, lowerer, graalReplacements.getAssumptions(), targetDescription,
-                        graalReplacements);
+        Providers graalProviders = GraalCompiler.getGraalProviders();
+        Replacements truffleReplacements = new TruffleReplacements(graalProviders);
 
         truffleReplacements.registerSubstitutions(CompilerAssertsSubstitutions.class);
         truffleReplacements.registerSubstitutions(CompilerDirectivesSubstitutions.class);

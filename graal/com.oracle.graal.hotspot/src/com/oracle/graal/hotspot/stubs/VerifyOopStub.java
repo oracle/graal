@@ -27,15 +27,14 @@ import static com.oracle.graal.hotspot.stubs.StubUtil.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Stub called via {@link HotSpotRuntime#VERIFY_OOP}.
+ * Stub called via {@link HotSpotForeignCallsProvider#VERIFY_OOP}.
  */
 public class VerifyOopStub extends SnippetStub {
 
-    public VerifyOopStub(Providers providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
+    public VerifyOopStub(HotSpotProviders providers, TargetDescription target, HotSpotForeignCallLinkage linkage) {
         super(providers, target, linkage);
     }
 

@@ -60,7 +60,7 @@ public class TailcallNode extends FixedWithNextNode implements LIRLowerable {
     @Override
     public void generate(LIRGeneratorTool generator) {
         LIRGenerator gen = (LIRGenerator) generator;
-        HotSpotVMConfig config = graalRuntime().getConfig();
+        HotSpotVMConfig config = runtime().getConfig();
         ResolvedJavaMethod method = frameState.method();
         boolean isStatic = Modifier.isStatic(method.getModifiers());
 

@@ -37,11 +37,9 @@ import com.oracle.graal.phases.util.*;
 public abstract class Backend {
 
     private final Providers providers;
-    public final TargetDescription target;
 
-    protected Backend(Providers providers, TargetDescription target) {
+    protected Backend(Providers providers) {
         this.providers = providers;
-        this.target = target;
     }
 
     public Providers getProviders() {
@@ -54,6 +52,10 @@ public abstract class Backend {
 
     public ForeignCallsProvider getForeignCalls() {
         return providers.getForeignCalls();
+    }
+
+    public TargetDescription getTarget() {
+        return providers.getCodeCache().getTarget();
     }
 
     public abstract FrameMap newFrameMap();

@@ -322,12 +322,11 @@ public class BenchmarkCounters {
         }
     }
 
-    public static void lower(DynamicCounterNode counter, HotSpotRuntime runtime) {
+    public static void lower(DynamicCounterNode counter, HotSpotRegistersProvider registers, HotSpotVMConfig config, Kind wordKind) {
         StructuredGraph graph = counter.graph();
         if (excludedClassPrefix == null || !counter.graph().method().getDeclaringClass().getName().startsWith(excludedClassPrefix)) {
-            HotSpotVMConfig config = runtime.config;
 
-            ReadRegisterNode thread = graph.add(new ReadRegisterNode(runtime.threadRegister(), runtime.getTarget().wordKind, true, false));
+            ReadRegisterNode thread = graph.add(new ReadRegisterNode(registers.getThreadRegister(), wordKind, true, false));
 
             int index = BenchmarkCounters.getIndex(counter);
             if (index >= config.graalCountersSize) {

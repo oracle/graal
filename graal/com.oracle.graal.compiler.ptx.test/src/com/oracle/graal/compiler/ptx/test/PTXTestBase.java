@@ -55,12 +55,12 @@ public abstract class PTXTestBase extends GraalCompilerTest {
     }
 
     protected CompilationResult compile(String test) {
-        if (getCodeCache() instanceof PTXHotSpotRuntime) {
+        if (getCodeCache() instanceof PTXHotSpotCodeCacheProvider) {
             StructuredGraph graph = parse(test);
             sg = graph;
             Debug.dump(graph, "Graph");
             TargetDescription target = new TargetDescription(new PTX(), true, 1, 0, true);
-            PTXBackend ptxBackend = new PTXBackend(getProviders(), target);
+            PTXBackend ptxBackend = new PTXBackend(getProviders());
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.NONE);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
@@ -102,8 +102,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
             HotSpotResolvedJavaMethod compiledMethod = (HotSpotResolvedJavaMethod) sg.method();
             boolean isStatic = Modifier.isStatic(compiledMethod.getModifiers());
             Object[] executeArgs = argsWithReceiver((isStatic ? null : this), args);
-            HotSpotRuntime hsr = (HotSpotRuntime) getCodeCache();
-            InstalledCode installedCode = hsr.addExternalMethod(compiledMethod, result);
+            HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) getCodeCache();
+            InstalledCode installedCode = codeCache.addExternalMethod(compiledMethod, result);
             Annotation[][] params = compiledMethod.getParameterAnnotations();
 
             int dimensionX = 1;

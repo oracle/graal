@@ -42,7 +42,7 @@ import com.oracle.graal.word.*;
 
 public class UnsafeArrayCopySnippets implements Snippets {
 
-    private static final boolean supportsUnalignedMemoryAccess = graalRuntime().getTarget().arch.supportsUnalignedMemoryAccess();
+    private static final boolean supportsUnalignedMemoryAccess = runtime().getTarget().arch.supportsUnalignedMemoryAccess();
 
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);

@@ -46,21 +46,26 @@ import com.oracle.graal.phases.tiers.*;
  */
 public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
 
+    private final int classMirrorOffset;
+
+    public LoadJavaMirrorWithKlassPhase(int classMirrorOffset) {
+        this.classMirrorOffset = classMirrorOffset;
+    }
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
         for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
             Constant constant = node.asConstant();
             if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
-                ResolvedJavaType type = context.getMetaAccess().lookupJavaType((Class<?>) constant.asObject());
+                MetaAccessProvider metaAccess = context.getMetaAccess();
+                ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) constant.asObject());
                 assert type instanceof HotSpotResolvedObjectType;
 
-                HotSpotRuntime runtime = (HotSpotRuntime) context.getMetaAccess();
-
                 Constant klass = ((HotSpotResolvedObjectType) type).klass();
-                ConstantNode klassNode = ConstantNode.forConstant(klass, runtime, graph);
+                ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
 
-                Stamp stamp = StampFactory.exactNonNull(runtime.lookupJavaType(Class.class));
-                LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), runtime.config.classMirrorOffset, graph));
+                Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
+                LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), classMirrorOffset, graph));
                 FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
 
                 graph.replaceFloating(node, freadNode);

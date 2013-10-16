@@ -55,7 +55,7 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
         tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-        new Setx(HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits, g3, true).emit(masm);
+        new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, g3, true).emit(masm);
         super.emitCode(tasm, masm);
     }
 }

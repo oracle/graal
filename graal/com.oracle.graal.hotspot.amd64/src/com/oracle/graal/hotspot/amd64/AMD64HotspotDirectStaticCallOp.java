@@ -56,7 +56,7 @@ final class AMD64HotspotDirectStaticCallOp extends DirectCallOp {
         // instruction that loads the Klass from the inline cache.
         AMD64Move.move(tasm, masm, AMD64.rbx.asValue(Kind.Long), metaspaceMethod);
         tasm.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
-        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.graalRuntime().getConfig().nonOopBits));
+        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
         super.emitCode(tasm, masm);
     }
 }

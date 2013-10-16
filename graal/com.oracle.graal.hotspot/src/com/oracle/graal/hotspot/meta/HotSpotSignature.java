@@ -134,7 +134,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
         }
         JavaType type = parameterTypes[index];
         if (type == null || !(type instanceof ResolvedJavaType)) {
-            type = graalRuntime().lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
+            type = runtime().lookupType(parameters.get(index), (HotSpotResolvedObjectType) accessingClass, false);
             parameterTypes[index] = type;
         }
         return type;
@@ -153,7 +153,7 @@ public class HotSpotSignature extends CompilerObject implements Signature {
     @Override
     public JavaType getReturnType(ResolvedJavaType accessingClass) {
         if (returnTypeCache == null || !(returnTypeCache instanceof ResolvedJavaType)) {
-            returnTypeCache = graalRuntime().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
+            returnTypeCache = runtime().lookupType(returnType, (HotSpotResolvedObjectType) accessingClass, false);
         }
         return returnTypeCache;
     }

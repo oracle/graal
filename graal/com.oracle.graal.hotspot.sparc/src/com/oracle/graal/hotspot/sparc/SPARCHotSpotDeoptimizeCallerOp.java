@@ -42,7 +42,7 @@ final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
         leaveFrame(tasm);
 
 // SPARCHotSpotBackend backend = (SPARCHotSpotBackend)
-// HotSpotGraalRuntime.graalRuntime().getBackend();
+// HotSpotGraalRuntime.runtime().getBackend();
 // final boolean isStub = true;
 // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
 // frameContext.enter(tasm);
