@@ -45,13 +45,14 @@ public class ImplicitCastData extends TemplateMethod {
 
     @Override
     public int compareTo(TemplateMethod o) {
-        if (o instanceof ImplicitCastData) {
+        if (o instanceof ImplicitCastData && sourceType != null) {
             // implicit casts are ordered by source type since
             // its also the order in which they are checked.
             TypeData otherSourceType = ((ImplicitCastData) o).getSourceType();
-            return this.sourceType.compareTo(otherSourceType);
+            if (otherSourceType != null) {
+                return this.sourceType.compareTo(otherSourceType);
+            }
         }
         return super.compareTo(o);
     }
-
 }
