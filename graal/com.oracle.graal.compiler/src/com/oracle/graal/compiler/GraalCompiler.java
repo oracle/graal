@@ -284,6 +284,10 @@ public class GraalCompiler {
         }
         result.setLeafGraphIds(leafGraphIds);
 
+        if (Debug.isLogEnabled()) {
+            Debug.log("%s", backend.getProviders().getCodeCache().disassemble(result, null));
+        }
+
         Debug.dump(result, "After code generation");
     }
 
