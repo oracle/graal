@@ -164,7 +164,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitAddress(StackSlot address) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -212,12 +212,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -243,7 +243,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -435,12 +435,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Variable emitURem(Value a, Value b, DeoptimizingNode deopting) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -461,12 +461,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Variable emitXor(Value a, Value b) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -487,7 +487,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitShr(Value a, Value b) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -545,17 +545,17 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitMembar(int barriers) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     protected void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -571,11 +571,11 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
                     append(new ForeignCall1ArgOp(callName, result, arguments[0]));
                     break;
                 default:
-                    throw new InternalError("NYI emitForeignCall");
+                    throw GraalInternalError.unimplemented();
             }
 
         } else {
-            throw new InternalError("NYI emitForeignCall");
+            throw GraalInternalError.unimplemented();
         }
     }
 
@@ -590,17 +590,17 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitBitScanForward(Variable result, Value value) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public void emitBitScanReverse(Variable result, Value value) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Value emitMathAbs(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -612,27 +612,27 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitMathLog(Value input, boolean base10) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Value emitMathCos(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Value emitMathSin(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public Value emitMathTan(Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public void emitByteSwap(Variable result, Value input) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -642,27 +642,27 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     protected void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public void visitCompareAndSwap(LoweredCompareAndSwapNode node, Value address) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
     public void visitBreakpointNode(BreakpointNode node) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -672,7 +672,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void emitUnwind(Value operand) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 
     @Override
@@ -685,6 +685,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public void visitInfopointNode(InfopointNode i) {
-        throw new InternalError("NYI");
+        throw GraalInternalError.unimplemented();
     }
 }
