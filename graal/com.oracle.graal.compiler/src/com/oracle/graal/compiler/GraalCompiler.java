@@ -133,9 +133,9 @@ public class GraalCompiler {
      *            argument can be null.
      * @return the result of the compilation
      */
-    public static CompilationResult compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
+    public static <T extends CompilationResult> T compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
                     final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog, final Suites suites, final CompilationResult compilationResult) {
+                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
         Debug.scope("GraalCompiler", new Object[]{graph, providers.getCodeCache()}, new Runnable() {
 
             public void run() {

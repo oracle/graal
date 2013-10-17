@@ -48,9 +48,10 @@ import com.oracle.graal.phases.util.*;
 /**
  * Class that represents a HSAIL compilation result. Includes the compiled HSAIL code.
  */
-public class HSAILCompilationResult {
+public class HSAILCompilationResult extends CompilationResult {
 
-    private CompilationResult compResult;
+    private static final long serialVersionUID = -4178700465275724625L;
+
     private static final String propPkgName = HSAILCompilationResult.class.getPackage().getName();
     private static Level logLevel;
     private static ConsoleHandler consoleHandler;
@@ -139,9 +140,9 @@ public class HSAILCompilationResult {
         CallingConvention cc = getHSAILCallingConvention(Type.JavaCallee, target, graph.method(), false);
         SuitesProvider suitesProvider = Graal.getRequiredCapability(SuitesProvider.class);
         try {
-            CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
-                            suitesProvider.getDefaultSuites(), new CompilationResult());
-            return new HSAILCompilationResult(compResult);
+            HSAILCompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
+                            suitesProvider.getDefaultSuites(), new HSAILCompilationResult());
+            return compResult;
         } catch (GraalInternalError e) {
             String partialCode = backend.getPartialCodeString();
             if (partialCode != null && !partialCode.equals("")) {
@@ -165,20 +166,15 @@ public class HSAILCompilationResult {
         }
     }
 
-    protected HSAILCompilationResult(CompilationResult compResultInput) {
-        compResult = compResultInput;
-    }
-
-    public CompilationResult getCompilationResult() {
-        return compResult;
+    protected HSAILCompilationResult() {
     }
 
     public String getHSAILCode() {
-        return new String(compResult.getTargetCode(), 0, compResult.getTargetCodeSize());
+        return new String(getTargetCode(), 0, getTargetCodeSize());
     }
 
     public void dumpCompilationResult() {
-        logger.fine("targetCodeSize=" + compResult.getTargetCodeSize());
+        logger.fine("targetCodeSize=" + getTargetCodeSize());
         logger.fine(getHSAILCode());
     }
 
