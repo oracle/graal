@@ -150,7 +150,6 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         if (TraceTruffleCompilation.getValue()) {
             int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode());
-            System.out.println(compiledMethod.getCode());
             OUT.printf("[truffle] optimized %-50s %d |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", compilable.getRootNode(), compilable.hashCode(), nodeCountTruffle,
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
                             (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, compiledMethod.getCode().length);
