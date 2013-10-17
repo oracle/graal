@@ -28,13 +28,12 @@ import com.oracle.graal.hotspot.meta.*;
 
 public class AMD64HotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
-    public AMD64HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime) {
-        super(runtime);
-
+    public AMD64HotSpotCodeCacheProvider(HotSpotGraalRuntime runtime, TargetDescription target) {
+        super(runtime, target);
     }
 
     @Override
     protected RegisterConfig createRegisterConfig() {
-        return new AMD64HotSpotRegisterConfig(runtime.getTarget().arch, runtime.getConfig());
+        return new AMD64HotSpotRegisterConfig(getTarget().arch, runtime.getConfig());
     }
 }

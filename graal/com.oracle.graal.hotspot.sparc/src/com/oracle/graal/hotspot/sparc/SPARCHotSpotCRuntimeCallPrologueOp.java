@@ -23,30 +23,35 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Add;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_PROLOGUE")
 final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
 
+    private final int threadLastJavaSpOffset;
+    private final Register thread;
+    private final Register stackPointer;
+
+    public SPARCHotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread, Register stackPointer) {
+        this.threadLastJavaSpOffset = threadLastJavaSpOffset;
+        this.thread = thread;
+        this.stackPointer = stackPointer;
+    }
+
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        HotSpotRegistersProvider registers = runtime().getProviders().getRegisters();
-        HotSpotVMConfig config = runtime().getConfig();
-        Register thread = registers.getThreadRegister();
-        Register stackPointer = registers.getStackPointerRegister();
 
         // Save last Java frame.
         new Add(stackPointer, new SPARCAddress(stackPointer, 0).getDisplacement(), g4).emit(masm);
-        new Stx(g4, new SPARCAddress(thread, config.threadLastJavaSpOffset)).emit(masm);
+        new Stx(g4, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
 
         // Save the thread register when calling out to the runtime.
         new Mov(thread, l7).emit(masm);

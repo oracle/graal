@@ -20,28 +20,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.sparc;
+package com.oracle.graal.hotspot.hsail;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.spi.*;
 
-public class SPARCHotSpotLoweringProvider extends HotSpotHostLoweringProvider {
+public class HSAILHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
 
-    public SPARCHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        super(runtime, metaAccess, foreignCalls);
+    private final ForeignCallsProvider host;
+
+    public HSAILHotSpotForeignCallsProvider(ForeignCallsProvider host) {
+        this.host = host;
     }
 
-    @Override
-    public void lower(Node n, LoweringTool tool) {
-        if (n instanceof ConvertNode) {
-            // ConvertNodes are handled in SPARCLIRGenerator.emitConvert
-        } else {
-            super.lower(n, tool);
-        }
+    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
+        return host.isReexecutable(descriptor);
+    }
+
+    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
+        return host.getKilledLocations(descriptor);
+    }
+
+    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+        return host.canDeoptimize(descriptor);
+    }
+
+    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value[] getNativeABICallerSaveRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
     }
 }

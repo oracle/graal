@@ -57,17 +57,18 @@ public final class NegateNode extends FloatingNode implements Canonicalizable, A
 
     public Constant evalConst(Constant... inputs) {
         assert inputs.length == 1;
-        switch (inputs[0].getKind()) {
+        Constant constant = inputs[0];
+        switch (constant.getKind()) {
             case Int:
-                return Constant.forInt(-inputs[0].asInt());
+                return Constant.forInt(-(constant.asInt()));
             case Long:
-                return Constant.forLong(-inputs[0].asLong());
+                return Constant.forLong(-(constant.asLong()));
             case Float:
-                return Constant.forFloat(-inputs[0].asFloat());
+                return Constant.forFloat(-(constant.asFloat()));
             case Double:
-                return Constant.forDouble(-inputs[0].asDouble());
+                return Constant.forDouble(-(constant.asDouble()));
             default:
-                throw GraalInternalError.shouldNotReachHere();
+                throw GraalInternalError.shouldNotReachHere("unknown kind " + constant.getKind());
         }
     }
 

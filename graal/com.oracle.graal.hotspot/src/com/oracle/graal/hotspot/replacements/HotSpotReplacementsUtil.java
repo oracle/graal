@@ -24,7 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.hotspot.meta.HotSpotForeignCallsProvider.*;
+import static com.oracle.graal.hotspot.meta.HotSpotHostForeignCallsProvider.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import sun.misc.*;
 
@@ -203,12 +203,12 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static Register threadRegister() {
-        return runtime().getProviders().getRegisters().getThreadRegister();
+        return runtime().getHostProviders().getRegisters().getThreadRegister();
     }
 
     @Fold
     public static Register stackPointerRegister() {
-        return runtime().getProviders().getRegisters().getStackPointerRegister();
+        return runtime().getHostProviders().getRegisters().getStackPointerRegister();
     }
 
     @Fold

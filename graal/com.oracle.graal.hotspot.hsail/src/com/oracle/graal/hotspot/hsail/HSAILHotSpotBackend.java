@@ -78,7 +78,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     public String getPartialCodeString() {
-        return (codeBuffer == null ? "" : new String(codeBuffer.copyData(0, codeBuffer.position())));
+        if (codeBuffer == null) {
+            return "";
+        }
+        byte[] data = codeBuffer.copyData(0, codeBuffer.position());
+        return (data == null ? "" : new String(data));
     }
 
     class HotSpotFrameContext implements FrameContext {

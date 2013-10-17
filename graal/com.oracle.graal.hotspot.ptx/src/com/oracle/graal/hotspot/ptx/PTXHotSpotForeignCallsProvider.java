@@ -20,26 +20,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.amd64;
+package com.oracle.graal.hotspot.ptx;
 
-import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.meta.*;
 
-@ServiceProvider(HotSpotGraalRuntimeFactory.class)
-public class AMD64HotSpotGraalRuntimeFactory implements HotSpotGraalRuntimeFactory {
+public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
 
-    @Override
-    public HotSpotGraalRuntime createRuntime() {
-        return new AMD64HotSpotGraalRuntime();
+    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
+        throw GraalInternalError.unimplemented();
     }
 
-    @Override
-    public String getArchitecture() {
-        return "AMD64";
+    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
+        throw GraalInternalError.unimplemented();
     }
 
-    @Override
-    public String getName() {
-        return "basic";
+    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public Value[] getNativeABICallerSaveRegisters() {
+        throw GraalInternalError.unimplemented();
+    }
+
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
     }
 }

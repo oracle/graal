@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Stub called via {@link HotSpotForeignCallsProvider#VERIFY_OOP}.
+ * Stub called via {@link HotSpotHostForeignCallsProvider#VERIFY_OOP}.
  */
 public class VerifyOopStub extends SnippetStub {
 

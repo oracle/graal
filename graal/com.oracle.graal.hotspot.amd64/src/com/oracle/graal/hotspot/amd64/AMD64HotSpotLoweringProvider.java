@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.amd64.*;
 
-public class AMD64HotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class AMD64HotSpotLoweringProvider extends HotSpotHostLoweringProvider {
 
     private AMD64ConvertSnippets.Templates convertSnippets;
 
@@ -40,10 +40,9 @@ public class AMD64HotSpotLoweringProvider extends HotSpotLoweringProvider {
     }
 
     @Override
-    public void initialize() {
-        HotSpotProviders providers = runtime.getProviders();
-        convertSnippets = new AMD64ConvertSnippets.Templates(providers, runtime.getTarget());
-        super.initialize();
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+        convertSnippets = new AMD64ConvertSnippets.Templates(providers, providers.getCodeCache().getTarget());
+        super.initialize(providers, config);
     }
 
     @Override

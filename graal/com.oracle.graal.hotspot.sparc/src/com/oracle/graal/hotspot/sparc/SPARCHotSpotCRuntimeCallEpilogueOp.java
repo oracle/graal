@@ -23,30 +23,40 @@
 package com.oracle.graal.hotspot.sparc;
 
 import static com.oracle.graal.sparc.SPARC.*;
-import static com.oracle.graal.asm.sparc.SPARCMacroAssembler.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.sparc.*;
-import com.oracle.graal.hotspot.*;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stw;
+import com.oracle.graal.asm.sparc.SPARCAssembler.Stx;
+import com.oracle.graal.asm.sparc.SPARCMacroAssembler.Mov;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.sparc.*;
 
 @Opcode("CRUNTIME_CALL_EPILOGUE")
 final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
 
+    private final int threadLastJavaSpOffset;
+    private final int threadLastJavaPcOffset;
+    private final int threadJavaFrameAnchorFlagsOffset;
+    private final Register thread;
+
+    public SPARCHotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, int threadJavaFrameAnchorFlagsOffset, Register thread) {
+        this.threadLastJavaSpOffset = threadLastJavaSpOffset;
+        this.threadLastJavaPcOffset = threadLastJavaPcOffset;
+        this.threadJavaFrameAnchorFlagsOffset = threadJavaFrameAnchorFlagsOffset;
+        this.thread = thread;
+    }
+
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
-        HotSpotVMConfig config = runtime().getConfig();
 
         // Restore the thread register when coming back from the runtime.
         new Mov(l7, thread).emit(masm);
 
         // Reset last Java frame, last Java PC and flags.
-        new Stx(g0, new SPARCAddress(thread, config.threadLastJavaSpOffset)).emit(masm);
-        new Stx(g0, new SPARCAddress(thread, config.threadLastJavaPcOffset)).emit(masm);
-        new Stw(g0, new SPARCAddress(thread, config.threadJavaFrameAnchorFlagsOffset)).emit(masm);
+        new Stx(g0, new SPARCAddress(thread, threadLastJavaSpOffset)).emit(masm);
+        new Stx(g0, new SPARCAddress(thread, threadLastJavaPcOffset)).emit(masm);
+        new Stw(g0, new SPARCAddress(thread, threadJavaFrameAnchorFlagsOffset)).emit(masm);
     }
 }

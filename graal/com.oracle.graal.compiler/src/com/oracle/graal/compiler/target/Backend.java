@@ -32,7 +32,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.util.*;
 
 /**
- * The {@code Backend} class represents a compiler backend for Graal.
+ * Represents a compiler backend for Graal.
  */
 public abstract class Backend {
 

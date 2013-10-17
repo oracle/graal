@@ -60,6 +60,9 @@ public abstract class Buffer {
     }
 
     public byte[] copyData(int start, int end) {
+        if (data == null) {
+            return null;
+        }
         return Arrays.copyOfRange(data, start, end);
     }
 

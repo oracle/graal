@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.amd64;
 
 import static com.oracle.graal.amd64.AMD64.*;
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
@@ -34,11 +33,17 @@ import com.oracle.graal.lir.asm.*;
 @Opcode
 final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {
 
+    private final int threadLastJavaSpOffset;
+    private final Register thread;
+
+    public AMD64HotSpotCRuntimeCallPrologueOp(int threadLastJavaSpOffset, Register thread) {
+        this.threadLastJavaSpOffset = threadLastJavaSpOffset;
+        this.thread = thread;
+    }
+
     @Override
     public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-
         // save last Java frame
-        Register thread = runtime().getProviders().getRegisters().getThreadRegister();
-        masm.movq(new AMD64Address(thread, runtime().getConfig().threadLastJavaSpOffset), rsp);
+        masm.movq(new AMD64Address(thread, threadLastJavaSpOffset), rsp);
     }
 }

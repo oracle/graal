@@ -32,7 +32,6 @@ import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -57,8 +56,7 @@ public class ForEachToGraal implements CompileAndDispatch {
                 acceptMethod = m;
             }
         }
-        HotSpotGraalRuntime runtime = HotSpotGraalRuntime.runtime();
-        HotSpotProviders providers = runtime.getProviders();
+        HotSpotProviders providers = HSAILCompilationResult.backend.getProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         ResolvedJavaMethod method = metaAccess.lookupJavaMethod(acceptMethod);
         StructuredGraph graph = new StructuredGraph(method);

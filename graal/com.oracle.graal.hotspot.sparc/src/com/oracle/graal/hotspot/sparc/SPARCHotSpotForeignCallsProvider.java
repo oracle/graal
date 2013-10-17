@@ -35,15 +35,18 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
-public class SPARCHotSpotForeignCallsProvider extends HotSpotForeignCallsProvider {
+public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsProvider {
 
-    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime) {
-        super(runtime);
+    private final Value[] nativeABICallerSaveRegisters;
+
+    public SPARCHotSpotForeignCallsProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, CodeCacheProvider codeCache, Value[] nativeABICallerSaveRegisters) {
+        super(runtime, metaAccess, codeCache);
+        this.nativeABICallerSaveRegisters = nativeABICallerSaveRegisters;
     }
 
     @Override
-    public void initialize(HotSpotProviders providers) {
-        Kind word = runtime.getTarget().wordKind;
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+        Kind word = providers.getCodeCache().getTarget().wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -56,5 +59,12 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotForeignCallsProvide
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+
+        super.initialize(providers, config);
+    }
+
+    @Override
+    public Value[] getNativeABICallerSaveRegisters() {
+        return nativeABICallerSaveRegisters;
     }
 }
