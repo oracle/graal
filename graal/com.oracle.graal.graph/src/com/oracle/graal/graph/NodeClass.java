@@ -125,7 +125,8 @@ public final class NodeClass extends FieldIntrospection {
         return registry.make(key);
     }
 
-    static final int NOT_ITERABLE = -1;
+    public static final int NOT_ITERABLE = -1;
+    public static final int NODE_LIST = -2;
 
     private static final Class<?> NODE_CLASS = Node.class;
     private static final Class<?> INPUT_LIST_CLASS = NodeInputList.class;
@@ -817,6 +818,12 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    public NodeList<?> getNodeList(Node node, Position pos) {
+        long offset = pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index];
+        assert pos.subIndex == NODE_LIST;
+        return getNodeList(node, offset);
+    }
+
     public String getName(Position pos) {
         return fieldNames.get(pos.input ? inputOffsets[pos.index] : successorOffsets[pos.index]);
     }
@@ -1175,20 +1182,64 @@ public final class NodeClass extends FieldIntrospection {
         return false;
     }
 
-    public List<Position> getFirstLevelInputPositions() {
-        List<Position> positions = new ArrayList<>(inputOffsets.length);
-        for (int i = 0; i < inputOffsets.length; i++) {
-            positions.add(new Position(true, i, NOT_ITERABLE));
-        }
-        return positions;
+    public Collection<Position> getFirstLevelInputPositions() {
+        return new AbstractCollection<Position>() {
+            @Override
+            public Iterator<Position> iterator() {
+                return new Iterator<NodeClass.Position>() {
+                    int i = 0;
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    public Position next() {
+                        Position pos = new Position(true, i, i >= directInputCount ? 0 : NOT_ITERABLE);
+                        i++;
+                        return pos;
+                    }
+
+                    public boolean hasNext() {
+                        return i < inputOffsets.length;
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return inputOffsets.length;
+            }
+        };
     }
 
-    public List<Position> getFirstLevelSuccessorPositions() {
-        List<Position> positions = new ArrayList<>(successorOffsets.length);
-        for (int i = 0; i < successorOffsets.length; i++) {
-            positions.add(new Position(false, i, NOT_ITERABLE));
-        }
-        return positions;
+    public Collection<Position> getFirstLevelSuccessorPositions() {
+        return new AbstractCollection<Position>() {
+            @Override
+            public Iterator<Position> iterator() {
+                return new Iterator<NodeClass.Position>() {
+                    int i = 0;
+
+                    public void remove() {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    public Position next() {
+                        Position pos = new Position(false, i, i >= directSuccessorCount ? 0 : NOT_ITERABLE);
+                        i++;
+                        return pos;
+                    }
+
+                    public boolean hasNext() {
+                        return i < successorOffsets.length;
+                    }
+                };
+            }
+
+            @Override
+            public int size() {
+                return successorOffsets.length;
+            }
+        };
     }
 
     public Class<?> getJavaClass() {

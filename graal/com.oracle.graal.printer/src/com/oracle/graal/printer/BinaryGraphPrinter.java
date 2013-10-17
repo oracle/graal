@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -42,7 +41,7 @@ import com.oracle.graal.phases.schedule.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
-    private static final int CONSTANT_POOL_MAX_SIZE = 2000;
+    private static final int CONSTANT_POOL_MAX_SIZE = 8000;
 
     private static final int BEGIN_GROUP = 0x00;
     private static final int BEGIN_GRAPH = 0x01;
@@ -294,14 +293,16 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_NODE_CLASS);
             writeString(nodeClass.getJavaClass().getSimpleName());
             writeString(nodeClass.getNameTemplate());
-            List<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
+            Collection<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
             writeShort((char) directInputPositions.size());
             for (Position pos : directInputPositions) {
+                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
-            List<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
+            Collection<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
             writeShort((char) directSuccessorPositions.size());
             for (Position pos : directSuccessorPositions) {
+                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
         } else if (object instanceof ResolvedJavaMethod) {
@@ -412,25 +413,53 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writePoolObject(key);
                 writePropertyObject(entry.getValue());
             }
-            // successors
-            NodeClassIterable successors = node.successors();
-            writeShort((char) successors.count());
-            NodeClassIterator suxIt = successors.iterator();
-            while (suxIt.hasNext()) {
-                Position pos = suxIt.nextPosition();
-                Node sux = nodeClass.get(node, pos);
-                writeInt(sux.getId());
-                writeShort((char) pos.index);
-            }
             // inputs
-            NodeClassIterable inputs = node.inputs();
-            writeShort((char) inputs.count());
-            NodeClassIterator inIt = inputs.iterator();
-            while (inIt.hasNext()) {
-                Position pos = inIt.nextPosition();
-                Node in = nodeClass.get(node, pos);
-                writeInt(in.getId());
-                writeShort((char) pos.index);
+            Collection<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
+            for (Position pos : directInputPositions) {
+                if (pos.subIndex == NodeClass.NOT_ITERABLE) {
+                    Node in = nodeClass.get(node, pos);
+                    if (in != null) {
+                        writeInt(in.getId());
+                    } else {
+                        writeInt(-1);
+                    }
+                } else {
+                    NodeList<?> list = nodeClass.getNodeList(node, pos);
+                    int listSize = list.count();
+                    assert listSize == ((char) listSize);
+                    writeShort((char) listSize);
+                    for (Node in : list) {
+                        if (in != null) {
+                            writeInt(in.getId());
+                        } else {
+                            writeInt(-1);
+                        }
+                    }
+                }
+            }
+            // successors
+            Collection<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
+            for (Position pos : directSuccessorPositions) {
+                if (pos.subIndex == NodeClass.NOT_ITERABLE) {
+                    Node sux = nodeClass.get(node, pos);
+                    if (sux != null) {
+                        writeInt(sux.getId());
+                    } else {
+                        writeInt(-1);
+                    }
+                } else {
+                    NodeList<?> list = nodeClass.getNodeList(node, pos);
+                    int listSize = list.count();
+                    assert listSize == ((char) listSize);
+                    writeShort((char) listSize);
+                    for (Node sux : list) {
+                        if (sux != null) {
+                            writeInt(sux.getId());
+                        } else {
+                            writeInt(-1);
+                        }
+                    }
+                }
             }
             props.clear();
         }
