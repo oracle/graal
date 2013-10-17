@@ -45,8 +45,8 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     }
 
     @Override
-    public void initialize(HotSpotProviders providers) {
-        Kind word = runtime.getTarget().wordKind;
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+        Kind word = providers.getCodeCache().getTarget().wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -59,6 +59,8 @@ public class SPARCHotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         CallingConvention incomingExceptionCc = new CallingConvention(0, ILLEGAL, incomingException, incomingExceptionPc);
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER, 0L, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
         register(new HotSpotForeignCallLinkage(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, PRESERVES_REGISTERS, LEAF, outgoingExceptionCc, incomingExceptionCc, NOT_REEXECUTABLE, ANY_LOCATION));
+
+        super.initialize(providers, config);
     }
 
     @Override

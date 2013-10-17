@@ -49,9 +49,8 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
     }
 
     @Override
-    public void initialize(HotSpotProviders providers) {
-        Kind word = runtime.getTarget().wordKind;
-        HotSpotVMConfig config = runtime.getConfig();
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+        Kind word = providers.getCodeCache().getTarget().wordKind;
 
         // The calling convention for the exception handler stub is (only?) defined in
         // TemplateInterpreterGenerator::generate_throw_exception()
@@ -69,7 +68,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         registerForeignCall(DECRYPT, config.cipherBlockChainingDecryptAESCryptStub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
         registerForeignCall(UPDATE_BYTES_CRC32, config.updateBytesCRC32Stub, NativeCall, PRESERVES_REGISTERS, LEAF, NOT_REEXECUTABLE, ANY_LOCATION);
 
-        super.initialize(providers);
+        super.initialize(providers, config);
     }
 
     @Override

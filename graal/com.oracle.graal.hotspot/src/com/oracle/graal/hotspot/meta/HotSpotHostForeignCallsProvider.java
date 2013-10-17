@@ -159,8 +159,7 @@ public abstract class HotSpotHostForeignCallsProvider implements HotSpotForeignC
 
     public static final LocationIdentity[] NO_LOCATIONS = {};
 
-    public void initialize(HotSpotProviders providers) {
-        HotSpotVMConfig c = runtime.getConfig();
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig c) {
         TargetDescription target = providers.getCodeCache().getTarget();
 
         registerForeignCall(UNCOMMON_TRAP, c.uncommonTrapStub, NativeCall, PRESERVES_REGISTERS, LEAF, REEXECUTABLE, NO_LOCATIONS);

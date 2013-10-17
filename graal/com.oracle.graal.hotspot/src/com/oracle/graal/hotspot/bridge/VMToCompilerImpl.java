@@ -128,7 +128,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         bootstrapRunning = bootstrapEnabled;
 
-        HotSpotVMConfig config = runtime.getConfig();
+        final HotSpotVMConfig config = runtime.getConfig();
         long offset = config.graalMirrorInClassOffset;
         initMirror(typeBoolean, offset);
         initMirror(typeChar, offset);
@@ -198,8 +198,8 @@ public class VMToCompilerImpl implements VMToCompiler {
                     for (ReplacementsProvider provider : serviceLoader) {
                         provider.registerReplacements(metaAccess, lowerer, replacements, target);
                     }
-                    providers.getForeignCalls().initialize(providers);
-                    lowerer.initialize();
+                    providers.getForeignCalls().initialize(providers, config);
+                    lowerer.initialize(providers, config);
                     if (BootstrapReplacements.getValue()) {
                         for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
                             replacements.getMacroSubstitution(method);

@@ -113,7 +113,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * Gets the address of the C++ Method object for this method.
      */
     public Constant getMetaspaceMethodConstant() {
-        return Constant.forIntegerKind(runtime().getTarget().wordKind, metaspaceMethod, this);
+        return Constant.forIntegerKind(wordKind(), metaspaceMethod, this);
     }
 
     @Override

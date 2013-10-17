@@ -78,9 +78,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         this.foreignCalls = foreignCalls;
     }
 
-    public void initialize() {
-        HotSpotVMConfig c = runtime.getConfig();
-        HotSpotProviders providers = runtime.getHostProviders();
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         Replacements r = providers.getReplacements();
 
         r.registerSubstitutions(ObjectSubstitutions.class);
@@ -93,16 +91,17 @@ public class HotSpotLoweringProvider implements LoweringProvider {
         r.registerSubstitutions(CRC32Substitutions.class);
         r.registerSubstitutions(ReflectionSubstitutions.class);
 
-        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, runtime.getTarget());
-        instanceofSnippets = new InstanceOfSnippets.Templates(providers, runtime.getTarget());
-        newObjectSnippets = new NewObjectSnippets.Templates(providers, runtime.getTarget());
-        monitorSnippets = new MonitorSnippets.Templates(providers, runtime.getTarget(), c.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, runtime.getTarget());
-        boxingSnippets = new BoxingSnippets.Templates(providers, runtime.getTarget());
-        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, runtime.getTarget());
-        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, runtime.getTarget());
+        TargetDescription target = providers.getCodeCache().getTarget();
+        checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, target);
+        instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
+        newObjectSnippets = new NewObjectSnippets.Templates(providers, target);
+        monitorSnippets = new MonitorSnippets.Templates(providers, target, config.useFastLocking);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(providers, target);
+        boxingSnippets = new BoxingSnippets.Templates(providers, target);
+        exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
+        unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
 
-        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, runtime.getTarget()));
+        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
     @Override

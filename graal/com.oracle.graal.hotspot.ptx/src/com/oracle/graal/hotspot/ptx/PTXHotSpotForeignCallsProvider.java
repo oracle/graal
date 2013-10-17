@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.ptx;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
 public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
@@ -49,7 +50,7 @@ public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvid
         throw GraalInternalError.unimplemented();
     }
 
-    public void initialize(HotSpotProviders providers) {
+    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
         throw GraalInternalError.unimplemented();
     }
 }
