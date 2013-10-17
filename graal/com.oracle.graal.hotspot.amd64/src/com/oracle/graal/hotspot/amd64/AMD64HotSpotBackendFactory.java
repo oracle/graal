@@ -30,6 +30,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
@@ -51,26 +52,67 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
         TargetDescription target = createTarget(runtime.getConfig());
 
-        HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
-        HotSpotCodeCacheProvider codeCache = new AMD64HotSpotCodeCacheProvider(runtime, target);
-        HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
+        HotSpotMetaAccessProvider metaAccess = createMetaAccess(runtime);
+        HotSpotCodeCacheProvider codeCache = createCodeCache(runtime, target);
+        HotSpotConstantReflectionProvider constantReflection = createConstantReflection(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
-        HotSpotForeignCallsProvider foreignCalls = new AMD64HotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        HotSpotLoweringProvider lowerer = new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls);
+        HotSpotForeignCallsProvider foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
+        HotSpotLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
-        HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, runtime.getConfig(), assumptions);
-        HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
-        HotSpotSuitesProvider suites = new HotSpotSuitesProvider(runtime);
-        HotSpotRegisters registers = new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
+        Replacements replacements = createReplacements(runtime, assumptions, p);
+        HotSpotDisassemblerProvider disassembler = createDisassembler(runtime);
+        HotSpotSuitesProvider suites = createSuites(runtime);
+        HotSpotRegisters registers = createRegisters();
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
 
+        return createBackend(runtime, providers);
+    }
+
+    protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         return new AMD64HotSpotBackend(runtime, providers);
     }
 
-    private static Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {
+    protected HotSpotRegisters createRegisters() {
+        return new HotSpotRegisters(AMD64.r15, AMD64.r12, AMD64.rsp);
+    }
+
+    protected HotSpotDisassemblerProvider createDisassembler(HotSpotGraalRuntime runtime) {
+        return new HotSpotDisassemblerProvider(runtime);
+    }
+
+    protected Replacements createReplacements(HotSpotGraalRuntime runtime, Assumptions assumptions, Providers p) {
+        return new HotSpotReplacementsImpl(p, runtime.getConfig(), assumptions);
+    }
+
+    protected AMD64HotSpotForeignCallsProvider createForeignCalls(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotCodeCacheProvider codeCache,
+                    Value[] nativeABICallerSaveRegisters) {
+        return new AMD64HotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
+    }
+
+    protected HotSpotConstantReflectionProvider createConstantReflection(HotSpotGraalRuntime runtime) {
+        return new HotSpotConstantReflectionProvider(runtime);
+    }
+
+    protected AMD64HotSpotCodeCacheProvider createCodeCache(HotSpotGraalRuntime runtime, TargetDescription target) {
+        return new AMD64HotSpotCodeCacheProvider(runtime, target);
+    }
+
+    protected HotSpotMetaAccessProvider createMetaAccess(HotSpotGraalRuntime runtime) {
+        return new HotSpotMetaAccessProvider(runtime);
+    }
+
+    protected HotSpotSuitesProvider createSuites(HotSpotGraalRuntime runtime) {
+        return new HotSpotSuitesProvider(runtime);
+    }
+
+    protected AMD64HotSpotLoweringProvider createLowerer(HotSpotGraalRuntime runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls) {
+        return new AMD64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls);
+    }
+
+    protected Value[] createNativeABICallerSaveRegisters(HotSpotVMConfig config, RegisterConfig regConfig) {
         List<Register> callerSave = new ArrayList<>(Arrays.asList(regConfig.getAllocatableRegisters()));
         if (config.windowsOs) {
             // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
