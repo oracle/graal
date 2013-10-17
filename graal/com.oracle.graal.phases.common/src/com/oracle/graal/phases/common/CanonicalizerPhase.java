@@ -296,39 +296,39 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                         graph.replaceFloating((FloatingNode) node, canonical);
                     }
                 } else {
-                    assert node instanceof FixedWithNextNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
-                    FixedWithNextNode fixedWithNext = (FixedWithNextNode) node;
-
+                    assert node instanceof FixedNode && node.predecessor() != null : node + " -> " + canonical + " : node should be fixed & connected (" + node.predecessor() + ")";
+                    FixedNode fixed = (FixedNode) node;
                     if (canonical instanceof ControlSinkNode) {
                         // case 7
                         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
-                        GraphUtil.killCFG(fixedWithNext);
+                        GraphUtil.killCFG(fixed);
                         pred.setNext((FixedNode) canonical);
                         return true;
-                    }
-
-                    // When removing a fixed node, new canonicalization
-                    // opportunities for its successor may arise
-                    assert fixedWithNext.next() != null;
-                    tool.addToWorkList(fixedWithNext.next());
-
-                    if (canonical == null) {
-                        // case 3
-                        graph.removeFixed(fixedWithNext);
-                    } else if (canonical instanceof FloatingNode) {
-                        // case 4
-                        graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
                     } else {
-                        assert canonical instanceof FixedNode;
-                        if (canonical.predecessor() == null) {
-                            assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
-                            // case 5
-                            graph.replaceFixedWithFixed(fixedWithNext, (FixedWithNextNode) canonical);
-                        } else {
-                            assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
-                            // case 6
-                            node.replaceAtUsages(canonical);
+                        assert fixed instanceof FixedWithNextNode;
+                        FixedWithNextNode fixedWithNext = (FixedWithNextNode) fixed;
+                        // When removing a fixed node, new canonicalization
+                        // opportunities for its successor may arise
+                        assert fixedWithNext.next() != null;
+                        tool.addToWorkList(fixedWithNext.next());
+                        if (canonical == null) {
+                            // case 3
                             graph.removeFixed(fixedWithNext);
+                        } else if (canonical instanceof FloatingNode) {
+                            // case 4
+                            graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
+                        } else {
+                            assert canonical instanceof FixedNode;
+                            if (canonical.predecessor() == null) {
+                                assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
+                                // case 5
+                                graph.replaceFixedWithFixed(fixedWithNext, (FixedWithNextNode) canonical);
+                            } else {
+                                assert canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " should have successors";
+                                // case 6
+                                node.replaceAtUsages(canonical);
+                                graph.removeFixed(fixedWithNext);
+                            }
                         }
                     }
                 }

@@ -73,4 +73,8 @@ public interface MetaAccessProvider {
      * @return the encoded value as an integer
      */
     Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason);
+
+    DeoptimizationReason decodeDeoptReason(Constant constant);
+
+    DeoptimizationAction decodeDeoptAction(Constant constant);
 }

@@ -33,6 +33,8 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerab
     private final DeoptimizationReason reason;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
+        assert action != null;
+        assert reason != null;
         this.action = action;
         this.reason = reason;
     }
