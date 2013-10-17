@@ -135,21 +135,18 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         }
     }
 
-    private static Kind wordKind;
-
     /**
-     * Gets the kind of a word value.
+     * Gets the kind of a word value on the {@linkplain #getHostBackend() host} backend.
      */
-    public static Kind wordKind() {
-        assert wordKind != null;
-        return wordKind;
+    public static Kind getHostWordKind() {
+        return instance.getHostBackend().getTarget().wordKind;
     }
 
     /**
      * Reads a word value from a given address.
      */
     public static long unsafeReadWord(long address) {
-        if (wordKind == Kind.Long) {
+        if (getHostWordKind() == Kind.Long) {
             return unsafe.getLong(address);
         }
         return unsafe.getInt(address);
@@ -166,7 +163,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
      * Reads a word value from a given object.
      */
     public static long unsafeReadWord(Object object, long offset) {
-        if (wordKind == Kind.Long) {
+        if (getHostWordKind() == Kind.Long) {
             return unsafe.getLong(object, offset);
         }
         return unsafe.getInt(object, offset);
@@ -226,9 +223,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             }
             backends.put(factory.getArchitecture(), factory.createBackend(this, hostBackend));
         }
-
-        assert wordKind == null || wordKind.equals(hostBackend.getTarget().wordKind);
-        wordKind = hostBackend.getTarget().wordKind;
 
         GraalOptions.StackShadowPages.setValue(config.stackShadowPages);
         if (GraalOptions.CacheGraphs.getValue()) {

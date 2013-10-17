@@ -22,12 +22,12 @@
  */
 package com.oracle.graal.asm.sparc;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.sparc.SPARC.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.sparc.*;
 
 /**
@@ -1269,7 +1269,7 @@ public abstract class SPARCAssembler extends AbstractAssembler {
 
         Icc(0b00, "icc"),
         Xcc(0b10, "xcc"),
-        Ptrcc(HotSpotGraalRuntime.wordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc"),
+        Ptrcc(getHostWordKind() == Kind.Long ? Xcc.getValue() : Icc.getValue(), "ptrcc"),
         Fcc0(0b00, "fcc0"),
         Fcc1(0b01, "fcc1"),
         Fcc2(0b10, "fcc2"),
