@@ -49,7 +49,7 @@ public class HSAILHotSpotForeignCallsProvider implements HotSpotForeignCallsProv
     }
 
     public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        return host.lookupForeignCall(descriptor);
+        throw GraalInternalError.unimplemented();
     }
 
     public Value[] getNativeABICallerSaveRegisters() {

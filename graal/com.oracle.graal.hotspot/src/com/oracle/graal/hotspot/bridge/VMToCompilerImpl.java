@@ -202,7 +202,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                             initializedForeignCalls.add(foreignCalls);
                             foreignCalls.initialize(providers, config);
                         }
-                        HotSpotHostLoweringProvider lowerer = (HotSpotHostLoweringProvider) providers.getLowerer();
+                        HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
                         if (!initializedLowerers.contains(lowerer)) {
                             initializedLowerers.add(lowerer);
                             initializeLowerer(providers, lowerer);
@@ -210,7 +210,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     }
                 }
 
-                private void initializeLowerer(HotSpotProviders providers, HotSpotHostLoweringProvider lowerer) {
+                private void initializeLowerer(HotSpotProviders providers, HotSpotLoweringProvider lowerer) {
                     final Replacements replacements = providers.getReplacements();
                     ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
                     TargetDescription target = providers.getCodeCache().getTarget();

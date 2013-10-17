@@ -29,6 +29,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.util.*;
 
 @ServiceProvider(HotSpotBackendFactory.class)
 public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
@@ -42,7 +43,11 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         ConstantReflectionProvider constantReflection = host.getConstantReflection();
         HotSpotForeignCallsProvider foreignCalls = new HSAILHotSpotForeignCallsProvider(host.getForeignCalls());
         LoweringProvider lowerer = new HSAILHotSpotLoweringProvider(host.getLowerer());
-        Replacements replacements = host.getReplacements();
+        // Replacements cannot have speculative optimizations since they have
+        // to be valid for the entire run of the VM.
+        Assumptions assumptions = new Assumptions(false);
+        Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
+        Replacements replacements = new HSAILHotSpotReplacementsImpl(p, assumptions);
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
         HotSpotSuitesProvider suites = host.getSuites();
         HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None);

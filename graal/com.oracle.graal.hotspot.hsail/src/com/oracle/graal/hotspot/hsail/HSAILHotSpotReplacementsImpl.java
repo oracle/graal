@@ -20,36 +20,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ptx;
+package com.oracle.graal.hotspot.hsail;
+
+import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.replacements.*;
 
-public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
+/**
+ * Filters the substitutions and snippets supported by HSAIL.
+ */
+public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
 
-    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
+    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions) {
+        super(providers, assumptions);
     }
 
-    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
+    @Override
+    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
+        // TODO decide here what methods substitutions are supported
+        return null;
     }
 
-    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
+    @Override
+    public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
+        // TODO decide here what macro substitutions are supported
+        return null;
     }
 
-    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value[] getNativeABICallerSaveRegisters() {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
+    @Override
+    public StructuredGraph getSnippet(ResolvedJavaMethod method) {
+        // TODO must work in cooperation with HSAILHotSpotLoweringProvider
+        return null;
     }
 }

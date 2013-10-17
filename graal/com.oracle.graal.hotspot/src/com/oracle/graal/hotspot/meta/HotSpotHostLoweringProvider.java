@@ -57,7 +57,7 @@ import com.oracle.graal.replacements.*;
 /**
  * HotSpot implementation of {@link LoweringProvider}.
  */
-public class HotSpotHostLoweringProvider implements LoweringProvider {
+public class HotSpotHostLoweringProvider implements HotSpotLoweringProvider {
 
     protected final HotSpotGraalRuntime runtime;
     protected final MetaAccessProvider metaAccess;

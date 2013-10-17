@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,36 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ptx;
+package com.oracle.graal.hotspot.meta;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.spi.*;
 
-public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
+/**
+ * HotSpot extension of {@link LoweringProvider}.
+ */
+public interface HotSpotLoweringProvider extends LoweringProvider {
 
-    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
+    void initialize(HotSpotProviders providers, HotSpotVMConfig config);
 
-    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value[] getNativeABICallerSaveRegisters() {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-    }
+    int getScalingFactor(Kind elementKind);
 }
