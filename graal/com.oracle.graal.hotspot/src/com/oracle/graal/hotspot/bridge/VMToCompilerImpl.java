@@ -566,7 +566,8 @@ public class VMToCompilerImpl implements VMToCompiler {
 
                 final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
                 int id = compileTaskIds.incrementAndGet();
-                CompilationTask task = CompilationTask.create(runtime, createPhasePlan(optimisticOpts, osrCompilation), optimisticOpts, method, entryBCI, id);
+                HotSpotBackend backend = runtime.getHostBackend();
+                CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, method, entryBCI, id);
 
                 if (blocking) {
                     task.runCompilation();
@@ -699,10 +700,10 @@ public class VMToCompilerImpl implements VMToCompiler {
         return new LocalImpl(name, type, holder, bciStart, bciEnd, slot);
     }
 
-    public PhasePlan createPhasePlan(OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
+    public PhasePlan createPhasePlan(HotSpotProviders providers, OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
         PhasePlan phasePlan = new PhasePlan();
-        MetaAccessProvider metaAccess = runtime.getHostProviders().getMetaAccess();
-        ForeignCallsProvider foreignCalls = runtime.getHostProviders().getForeignCalls();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
         if (onStackReplacement) {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());

@@ -75,7 +75,7 @@ public class HSAILCompilationResult {
         consoleHandler.setLevel(logLevel);
     }
 
-    private static final HSAILHotSpotBackend backend;
+    static final HSAILHotSpotBackend backend;
     static {
         // Look for installed HSAIL backend
         HSAILHotSpotBackend b = (HSAILHotSpotBackend) Graal.getRuntime().getCapability(Backend.class, "HSAIL");

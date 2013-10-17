@@ -67,8 +67,8 @@ public final class CompilationTask implements Runnable {
 
     private StructuredGraph graph;
 
-    public static CompilationTask create(HotSpotGraalRuntime runtime, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
-        return new CompilationTask(runtime.getHostBackend(), plan, optimisticOpts, method, entryBCI, id);
+    public static CompilationTask create(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+        return new CompilationTask(backend, plan, optimisticOpts, method, entryBCI, id);
     }
 
     private CompilationTask(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
