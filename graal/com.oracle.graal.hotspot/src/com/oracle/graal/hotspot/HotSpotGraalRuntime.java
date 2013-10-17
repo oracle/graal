@@ -213,7 +213,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             printConfig(config);
         }
 
-        String hostArchitecture = System.getProperty("os.arch");
+        String hostArchitecture = getHostArchitecture();
         hostBackend = findFactory(hostArchitecture).createBackend(this, null);
         hostProviders = hostBackend.getProviders();
         backends.put(hostArchitecture, hostBackend);
@@ -237,12 +237,30 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     /**
-     * Gets the supported GPUs. This method first looks for a comma separated list of names in the
-     * "graal.gpu.isalist" system property. If this property is not set, then the GPU native support
-     * code is queried.
+     * Gets the host architecture name for the purpose of finding the corresponding
+     * {@linkplain HotSpotBackendFactory backend}.
+     */
+    private static String getHostArchitecture() {
+        String arch = System.getProperty("os.arch");
+        switch (arch) {
+            case "x86_64":
+                // This is what Mac OS X reports;
+                arch = "amd64";
+                break;
+        }
+        return arch;
+    }
+
+    public static final String GRAAL_GPU_ISALIST_PROPERTY_NAME = "graal.gpu.isalist";
+
+    /**
+     * Gets the names of the supported GPU architectures for the purpose of finding the
+     * corresponding {@linkplain HotSpotBackendFactory backend} objects. This method first looks for
+     * a comma separated list of names in the {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system
+     * property. If this property is not set, then the GPU native support code is queried.
      */
     private String[] getGPUArchitectures() {
-        String gpuList = System.getProperty("graal.gpu.isalist");
+        String gpuList = System.getProperty(GRAAL_GPU_ISALIST_PROPERTY_NAME);
         if (gpuList != null) {
             String[] gpus = gpuList.split(",");
             return gpus;
