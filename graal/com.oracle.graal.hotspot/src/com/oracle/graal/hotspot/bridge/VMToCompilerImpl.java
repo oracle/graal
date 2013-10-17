@@ -327,6 +327,14 @@ public class VMToCompilerImpl implements VMToCompiler {
                     TTY.print(".");
                     TTY.flush();
                 }
+
+                // Are we out of time?
+                final int timedBootstrap = TimedBootstrap.getValue();
+                if (timedBootstrap != -1) {
+                    if ((System.currentTimeMillis() - startTime) > timedBootstrap) {
+                        break;
+                    }
+                }
             }
         } while ((System.currentTimeMillis() - startTime) <= TimedBootstrap.getValue());
 
