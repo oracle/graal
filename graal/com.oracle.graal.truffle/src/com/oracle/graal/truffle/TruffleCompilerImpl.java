@@ -23,7 +23,9 @@
 package com.oracle.graal.truffle;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -53,6 +55,8 @@ import com.oracle.truffle.api.nodes.*;
  * Implementation of the Truffle compiler using Graal.
  */
 public class TruffleCompilerImpl implements TruffleCompiler {
+
+    private static final PrintStream OUT = TTY.out().out();
 
     private final Providers providers;
     private final Suites suites;
@@ -115,24 +119,27 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         config.setSkippedExceptionTypes(skippedExceptionTypes);
         runtime.evictDeoptedGraphs();
 
-        compilable.timeCompilationStarted = System.nanoTime();
+        long timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);
         try (TimerCloseable a = PartialEvaluationTime.start()) {
             graph = partialEvaluator.createGraph(compilable, assumptions);
         }
-        compilable.timePartialEvaluationFinished = System.nanoTime();
-        compilable.nodeCountPartialEval = graph.getNodeCount();
-        InstalledCode compiledMethod = compileMethodHelper(graph, config, compilable, assumptions);
-        compilable.timeCompilationFinished = System.nanoTime();
-        compilable.nodeCountLowered = graph.getNodeCount();
+        long timePartialEvaluationFinished = System.nanoTime();
+        int nodeCountPartialEval = graph.getNodeCount();
+        InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions);
+        long timeCompilationFinished = System.nanoTime();
+        int nodeCountLowered = graph.getNodeCount();
+
+        if (TraceTruffleCompilation.getValue() && compiledMethod != null) {
+            int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode());
+            OUT.printf("[truffle] optimized %-50s |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", compilable.getRootNode(), nodeCountTruffle,
+                            (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
+                            (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, compiledMethod.getCode().length);
+        }
         return compiledMethod;
     }
 
     public InstalledCode compileMethodHelper(final StructuredGraph graph, final GraphBuilderConfiguration config, final Assumptions assumptions) {
-        return compileMethodHelper(graph, config, null, assumptions);
-    }
-
-    public InstalledCode compileMethodHelper(final StructuredGraph graph, final GraphBuilderConfiguration config, final OptimizedCallTarget compilable, final Assumptions assumptions) {
         final PhasePlan plan = createPhasePlan(config);
 
         Debug.scope("TruffleFinal", graph, new Runnable() {
@@ -192,9 +199,6 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         if (Debug.isLogEnabled()) {
             Debug.log(providers.getCodeCache().disassemble(result, compiledMethod));
-        }
-        if (compilable != null) {
-            compilable.codeSize = result.getTargetCodeSize();
         }
         return compiledMethod;
     }
