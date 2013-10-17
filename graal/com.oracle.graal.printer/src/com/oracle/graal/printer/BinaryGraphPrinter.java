@@ -71,10 +71,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    private static final class ConstantPool extends LinkedHashMap<Object, Integer> {
+    private static final class ConstantPool extends LinkedHashMap<Object, Character> {
 
-        private final LinkedList<Integer> availableIds;
-        private int nextId;
+        private final LinkedList<Character> availableIds;
+        private char nextId;
         private static final long serialVersionUID = -2676889957907285681L;
 
         public ConstantPool() {
@@ -83,7 +83,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
 
         @Override
-        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Integer> eldest) {
+        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Character> eldest) {
             if (size() > CONSTANT_POOL_MAX_SIZE) {
                 availableIds.addFirst(eldest.getValue());
                 return true;
@@ -91,15 +91,15 @@ public class BinaryGraphPrinter implements GraphPrinter {
             return false;
         }
 
-        private Integer nextAvailableId() {
+        private Character nextAvailableId() {
             if (!availableIds.isEmpty()) {
                 return availableIds.removeFirst();
             }
             return nextId++;
         }
 
-        public int add(Object obj) {
-            Integer id = nextAvailableId();
+        public char add(Object obj) {
+            Character id = nextAvailableId();
             put(obj, id);
             return id;
         }
@@ -232,7 +232,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_NULL);
             return;
         }
-        Integer id = constantPool.get(object);
+        Character id = constantPool.get(object);
         if (id == null) {
             addPoolEntry(object);
         } else {
@@ -251,7 +251,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             } else {
                 writeByte(POOL_STRING);
             }
-            writeInt(id.intValue());
+            writeShort(id.charValue());
         }
     }
 
@@ -263,9 +263,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void addPoolEntry(Object object) throws IOException {
-        int index = constantPool.add(object);
+        char index = constantPool.add(object);
         writeByte(POOL_NEW);
-        writeInt(index);
+        writeShort(index);
         if (object instanceof Class<?>) {
             Class<?> klass = (Class<?>) object;
             writeByte(POOL_CLASS);
