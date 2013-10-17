@@ -26,7 +26,10 @@ package com.oracle.graal.compiler.hsail.test;
 import java.util.*;
 
 import org.junit.*;
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+
+import com.oracle.graal.compiler.hsail.*;
+import com.oracle.graal.compiler.hsail.test.infra.*;
+import com.oracle.graal.graph.*;
 
 /**
  * Unit test of NBody demo app.
@@ -94,7 +97,10 @@ public class StaticNBodyTest extends GraalKernelTester {
         dispatchMethodKernel(bodies, inxyz, outxyz, invxyz, outvxyz);
     }
 
-    @Test
+    /**
+     * Requires {@link HSAILLIRGenerator#emitDirectCall} to be implemented.
+     */
+    @Test(expected = GraalInternalError.class)
     public void test() {
         testGeneratedHsail();
     }

@@ -24,6 +24,9 @@
 package com.oracle.graal.compiler.hsail.test;
 
 import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.hsail.*;
+
 import org.junit.Test;
 
 /**
@@ -56,7 +59,10 @@ public class StringContainsTest extends GraalKernelTester {
         dispatchMethodKernel(NUM, base);
     }
 
-    @Test
+    /**
+     * Requires {@link HSAILHotSpotForeignCallsProvider#lookupForeignCall} to be implemented.
+     */
+    @Test(expected = GraalInternalError.class)
     public void test() {
         testGeneratedHsail();
     }
