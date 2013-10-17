@@ -26,6 +26,7 @@ import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
@@ -54,6 +55,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     }
 
     private InstalledCode installedCode;
+    private Future<InstalledCode> installedCodeTask;
     private final TruffleCompiler compiler;
     private final CompilationPolicy compilationPolicy;
     private boolean disableCompilation;
@@ -105,6 +107,13 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
                 OUT.printf("[truffle] invalidated %-48s |Inv# %d                                     |Replace# %d\n", rootNode, invalidationCount, nodeReplaceCount);
             }
         }
+
+        Future<InstalledCode> task = this.installedCodeTask;
+        if (task != null) {
+            task.cancel(true);
+            this.installedCodeTask = null;
+            compilationPolicy.compilationInvalidated();
+        }
     }
 
     private Object interpreterCall(PackedFrame caller, Arguments args) {
@@ -113,17 +122,53 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         if (disableCompilation || !compilationPolicy.compileOrInline()) {
             return executeHelper(caller, args);
         } else {
-            compileOrInline();
-            return call(caller, args);
+            return compileOrInline(caller, args);
         }
     }
 
-    private void compileOrInline() {
+    private Object compileOrInline(PackedFrame caller, Arguments args) {
+        if (installedCodeTask != null) {
+            // There is already a compilation running.
+            if (installedCodeTask.isCancelled()) {
+                installedCodeTask = null;
+            } else {
+                if (installedCodeTask.isDone()) {
+                    receiveInstalledCode();
+                }
+                return executeHelper(caller, args);
+            }
+        }
+
         if (TruffleFunctionInlining.getValue() && inline()) {
             compilationPolicy.inlined(MIN_INVOKES_AFTER_INLINING);
+            return call(caller, args);
         } else {
             compile();
+            return executeHelper(caller, args);
         }
+    }
+
+    private void receiveInstalledCode() {
+        try {
+            this.installedCode = installedCodeTask.get();
+            if (TruffleCallTargetProfiling.getValue()) {
+                resetProfiling();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            disableCompilation = true;
+            OUT.printf("[truffle] opt failed %-48s  %s\n", rootNode, e.getMessage());
+            if (e.getCause() instanceof BailoutException) {
+                // Bailout => move on.
+            } else {
+                if (TraceTruffleCompilationExceptions.getValue()) {
+                    e.printStackTrace(OUT);
+                }
+                if (TruffleCompilationExceptionsAreFatal.getValue()) {
+                    System.exit(-1);
+                }
+            }
+        }
+        installedCodeTask = null;
     }
 
     public boolean inline() {
@@ -133,30 +178,9 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     public void compile() {
         CompilerAsserts.neverPartOfCompilation();
-        try {
-            installedCode = compiler.compile(this);
-            if (installedCode == null) {
-                throw new BailoutException(String.format("code installation failed"));
-            } else {
-                if (TruffleCallTargetProfiling.getValue()) {
-                    resetProfiling();
-                }
-            }
-        } catch (Throwable e) {
-            disableCompilation = true;
-            if (TraceTruffleCompilation.getValue()) {
-                if (e instanceof BailoutException) {
-                    OUT.printf("[truffle] opt bailout %-48s  %s\n", rootNode, e.getMessage());
-                } else {
-                    OUT.printf("[truffle] opt failed %-49s  %s\n", rootNode, e.toString());
-                    if (TraceTruffleCompilationExceptions.getValue()) {
-                        e.printStackTrace(OUT);
-                    }
-                    if (TruffleCompilationExceptionsAreFatal.getValue()) {
-                        System.exit(-1);
-                    }
-                }
-            }
+        this.installedCodeTask = compiler.compile(this);
+        if (!TruffleBackgroundCompilation.getValue()) {
+            receiveInstalledCode();
         }
     }
 

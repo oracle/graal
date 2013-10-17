@@ -39,6 +39,7 @@ import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -65,6 +66,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private final ResolvedJavaType[] skippedExceptionTypes;
     private final HotSpotGraalRuntime runtime;
     private final TruffleCache truffleCache;
+    private final ThreadPoolExecutor compileQueue;
 
     private static final Class[] SKIPPED_EXCEPTION_CLASSES = new Class[]{SlowPathException.class, UnexpectedResultException.class, ArithmeticException.class};
 
@@ -78,6 +80,9 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.backend = Graal.getRequiredCapability(Backend.class);
         this.runtime = HotSpotGraalRuntime.runtime();
         this.skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
+
+        // Create compilation queue.
+        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), CompilerThread.FACTORY);
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
@@ -98,15 +103,22 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         return skippedExceptionTypes;
     }
 
-    public InstalledCode compile(final OptimizedCallTarget compilable) {
-        Object[] debug = new Object[]{new DebugDumpScope("Truffle: " + compilable)};
-        return Debug.scope("Truffle", debug, new Callable<InstalledCode>() {
+    public Future<InstalledCode> compile(final OptimizedCallTarget compilable) {
+        Future<InstalledCode> future = compileQueue.submit(new Callable<InstalledCode>() {
 
             @Override
             public InstalledCode call() throws Exception {
-                return compileMethodImpl(compilable);
+                Object[] debug = new Object[]{new DebugDumpScope("Truffle: " + compilable)};
+                return Debug.scope("Truffle", debug, new Callable<InstalledCode>() {
+
+                    @Override
+                    public InstalledCode call() throws Exception {
+                        return compileMethodImpl(compilable);
+                    }
+                });
             }
         });
+        return future;
     }
 
     public static final DebugTimer PartialEvaluationTime = Debug.timer("PartialEvaluationTime");
@@ -124,15 +136,23 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         try (TimerCloseable a = PartialEvaluationTime.start()) {
             graph = partialEvaluator.createGraph(compilable, assumptions);
         }
+        if (Thread.interrupted()) {
+            return null;
+        }
         long timePartialEvaluationFinished = System.nanoTime();
         int nodeCountPartialEval = graph.getNodeCount();
         InstalledCode compiledMethod = compileMethodHelper(graph, config, assumptions);
         long timeCompilationFinished = System.nanoTime();
         int nodeCountLowered = graph.getNodeCount();
 
-        if (TraceTruffleCompilation.getValue() && compiledMethod != null) {
+        if (compiledMethod == null) {
+            throw new BailoutException("Could not install method, code cache is full!");
+        }
+
+        if (TraceTruffleCompilation.getValue()) {
             int nodeCountTruffle = NodeUtil.countNodes(compilable.getRootNode());
-            OUT.printf("[truffle] optimized %-50s |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", compilable.getRootNode(), nodeCountTruffle,
+            System.out.println(compiledMethod.getCode());
+            OUT.printf("[truffle] optimized %-50s %d |Nodes %7d |Time %5.0f(%4.0f+%-4.0f)ms |Nodes %5d/%5d |CodeSize %d\n", compilable.getRootNode(), compilable.hashCode(), nodeCountTruffle,
                             (timeCompilationFinished - timeCompilationStarted) / 1e6, (timePartialEvaluationFinished - timeCompilationStarted) / 1e6,
                             (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, compiledMethod.getCode().length);
         }

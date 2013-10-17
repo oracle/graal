@@ -132,6 +132,10 @@ public class PartialEvaluator {
                 // Make sure frame does not escape.
                 expandTree(graph, assumptions);
 
+                if (Thread.interrupted()) {
+                    return;
+                }
+
                 new VerifyFrameDoesNotEscapePhase().apply(graph, false);
 
                 if (TraceTruffleCompilationDetails.getValue() && constantReceivers != null) {
@@ -217,6 +221,10 @@ public class PartialEvaluator {
                         canonicalizer.applyIncremental(graph, phaseContext, mark);
                         changed = true;
                     }
+                }
+
+                if (Thread.interrupted()) {
+                    return;
                 }
 
                 if (graph.getNodeCount() > TruffleCompilerOptions.TruffleGraphMaxNodes.getValue()) {

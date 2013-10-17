@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.truffle;
 
+import java.util.concurrent.*;
+
 import com.oracle.graal.api.code.*;
 
 /**
@@ -30,5 +32,5 @@ import com.oracle.graal.api.code.*;
  */
 public interface TruffleCompiler {
 
-    InstalledCode compile(OptimizedCallTarget node);
+    Future<InstalledCode> compile(OptimizedCallTarget node);
 }
