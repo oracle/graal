@@ -358,9 +358,9 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         if (trueValue.kind() != Kind.Int && trueValue.kind() != Kind.Long) {
                             return false;
                         }
-                        if (trueValue.isConstant() && falseValue.isConstant()) {
-                            ConditionalNode materialize = graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
-                            graph().replaceFloating(singlePhi, materialize);
+                        ConditionalNode conditional = canonicalizeConditionalCascade(trueValue, falseValue);
+                        if (conditional != null) {
+                            graph().replaceFloating(singlePhi, conditional);
                             removeEmptyIf(tool);
                             return true;
                         }
@@ -369,6 +369,44 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
         return false;
+    }
+
+    private ConditionalNode canonicalizeConditionalCascade(ValueNode trueValue, ValueNode falseValue) {
+        if (trueValue.isConstant() && falseValue.isConstant()) {
+            return graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
+        } else {
+            ConditionalNode conditional = null;
+            ValueNode constant = null;
+            boolean negateCondition;
+            if (trueValue instanceof ConditionalNode && falseValue.isConstant()) {
+                conditional = (ConditionalNode) trueValue;
+                constant = falseValue;
+                negateCondition = true;
+            } else if (falseValue instanceof ConditionalNode && trueValue.isConstant()) {
+                conditional = (ConditionalNode) falseValue;
+                constant = trueValue;
+                negateCondition = false;
+            } else {
+                return null;
+            }
+            boolean negateConditionalCondition;
+            ValueNode otherValue;
+            if (constant == conditional.x()) {
+                otherValue = conditional.y();
+                negateConditionalCondition = false;
+            } else if (constant == conditional.y()) {
+                otherValue = conditional.x();
+                negateConditionalCondition = true;
+            } else {
+                return null;
+            }
+            if (otherValue.isConstant()) {
+                double shortCutProbability = probability(trueSuccessor());
+                LogicNode newCondition = LogicNode.or(condition(), negateCondition, conditional.condition(), negateConditionalCondition, shortCutProbability);
+                return graph().unique(new ConditionalNode(newCondition, constant, otherValue));
+            }
+        }
+        return null;
     }
 
     /**
