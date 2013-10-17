@@ -149,6 +149,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void ensureAvailable(int i) throws IOException {
+        assert buffer.capacity() >= i : "Can not make " + i + " bytes available, buffer is too small";
         while (buffer.remaining() < i) {
             flush();
         }
@@ -186,10 +187,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private void writeString(String str) throws IOException {
         writeInt(str.length());
-        ensureAvailable(str.length() * 2);
-        for (int i = 0; i < str.length(); i++) {
-            buffer.putChar(str.charAt(i));
-        }
+        int sizeInBytes = str.length() * 2;
+        ensureAvailable(sizeInBytes);
+        buffer.asCharBuffer().put(str);
+        buffer.position(buffer.position() + sizeInBytes);
     }
 
     private void writeBytes(byte[] b) throws IOException {
@@ -207,10 +208,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length * 4);
-            for (int i = 0; i < b.length; i++) {
-                buffer.putInt(b[i]);
-            }
+            int sizeInBytes = b.length * 4;
+            ensureAvailable(sizeInBytes);
+            buffer.asIntBuffer().put(b);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -219,10 +220,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length * 8);
-            for (int i = 0; i < b.length; i++) {
-                buffer.putDouble(b[i]);
-            }
+            int sizeInBytes = b.length * 8;
+            ensureAvailable(sizeInBytes);
+            buffer.asDoubleBuffer().put(b);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 
