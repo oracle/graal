@@ -57,7 +57,7 @@ import com.oracle.graal.replacements.*;
 /**
  * HotSpot implementation of {@link LoweringProvider}.
  */
-public class HotSpotLoweringProvider implements LoweringProvider {
+public class HotSpotHostLoweringProvider implements LoweringProvider {
 
     protected final HotSpotGraalRuntime runtime;
     protected final MetaAccessProvider metaAccess;
@@ -72,7 +72,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
     private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     private UnsafeLoadSnippets.Templates unsafeLoadSnippets;
 
-    public HotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    public HotSpotHostLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;

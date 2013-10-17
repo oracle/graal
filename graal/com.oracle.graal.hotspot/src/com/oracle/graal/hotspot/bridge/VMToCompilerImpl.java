@@ -180,9 +180,8 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        final HotSpotProviders providers = runtime.getHostProviders();
-        final MetaAccessProvider metaAccess = providers.getMetaAccess();
-        assert VerifyOptionsPhase.checkOptions(metaAccess, providers.getForeignCalls());
+        final HotSpotProviders hostProviders = runtime.getHostProviders();
+        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostProviders.getForeignCalls());
 
         // Install intrinsics.
         if (Intrinsify.getValue()) {
@@ -191,14 +190,33 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
 
-                    final Replacements replacements = providers.getReplacements();
-                    ServiceLoader<ReplacementsProvider> serviceLoader = ServiceLoader.loadInstalled(ReplacementsProvider.class);
-                    TargetDescription target = providers.getCodeCache().getTarget();
-                    HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-                    for (ReplacementsProvider provider : serviceLoader) {
-                        provider.registerReplacements(metaAccess, lowerer, replacements, target);
+                    List<LoweringProvider> initializedLowerers = new ArrayList<>();
+                    List<ForeignCallsProvider> initializedForeignCalls = new ArrayList<>();
+
+                    for (Map.Entry<String, HotSpotBackend> e : runtime.getBackends().entrySet()) {
+                        HotSpotBackend backend = e.getValue();
+                        HotSpotProviders providers = backend.getProviders();
+
+                        HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
+                        if (!initializedForeignCalls.contains(foreignCalls)) {
+                            initializedForeignCalls.add(foreignCalls);
+                            foreignCalls.initialize(providers, config);
+                        }
+                        HotSpotHostLoweringProvider lowerer = (HotSpotHostLoweringProvider) providers.getLowerer();
+                        if (!initializedLowerers.contains(lowerer)) {
+                            initializedLowerers.add(lowerer);
+                            initializeLowerer(providers, lowerer);
+                        }
                     }
-                    providers.getForeignCalls().initialize(providers, config);
+                }
+
+                private void initializeLowerer(HotSpotProviders providers, HotSpotHostLoweringProvider lowerer) {
+                    final Replacements replacements = providers.getReplacements();
+                    ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
+                    TargetDescription target = providers.getCodeCache().getTarget();
+                    for (ReplacementsProvider replacementsProvider : sl) {
+                        replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, target);
+                    }
                     lowerer.initialize(providers, config);
                     if (BootstrapReplacements.getValue()) {
                         for (ResolvedJavaMethod method : replacements.getAllReplacements()) {

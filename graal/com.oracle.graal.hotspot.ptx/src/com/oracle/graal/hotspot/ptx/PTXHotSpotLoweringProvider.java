@@ -30,7 +30,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class PTXHotSpotLoweringProvider extends HotSpotLoweringProvider {
+public class PTXHotSpotLoweringProvider extends HotSpotHostLoweringProvider {
 
     public PTXHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
         super(runtime, metaAccess, foreignCalls);
