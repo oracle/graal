@@ -252,16 +252,17 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     /**
      * Gets the names of the supported GPU architectures for the purpose of finding the
      * corresponding {@linkplain HotSpotBackendFactory backend} objects. This method first looks for
-     * a comma separated list of names in the {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system
-     * property. If this property is not set, then the GPU native support code is queried.
+     * a comma or {@link java.io.File#pathSeparatorChar} separated list of names in the
+     * {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system property. If this property is not set, then
+     * the GPU native support code is queried.
      */
-    private String[] getGPUArchitectureNames() {
+    private static String[] getGPUArchitectureNames() {
         String gpuList = System.getProperty(GRAAL_GPU_ISALIST_PROPERTY_NAME);
-        if (gpuList != null) {
-            String[] gpus = gpuList.split(",");
+        if (gpuList != null && !gpuList.isEmpty()) {
+            String[] gpus = gpuList.split("[,:]");
             return gpus;
         }
-        return compilerToGpu.getAvailableGPUArchitectures();
+        return new String[0];
     }
 
     private static void printConfig(HotSpotVMConfig config) {
