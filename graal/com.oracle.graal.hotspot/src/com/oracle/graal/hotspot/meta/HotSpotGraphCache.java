@@ -30,6 +30,7 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -96,7 +97,8 @@ public class HotSpotGraphCache implements GraphCache {
 
     private final Map<Long, WeakReference<ResolvedJavaMethod>> cachedGraphIds = Collections.synchronizedMap(new LRUCache());
 
-    public HotSpotGraphCache() {
+    public HotSpotGraphCache(CompilerToVM compilerToVM) {
+        this.compilerToVM = compilerToVM;
         if (PrintGraphCache.getValue()) {
             Runtime.getRuntime().addShutdownHook(new Thread() {
 
@@ -127,7 +129,7 @@ public class HotSpotGraphCache implements GraphCache {
     }
 
     @Override
-    public void put(StructuredGraph graph, boolean hasMatureProfilingInfo) {
+    public boolean put(StructuredGraph graph, boolean hasMatureProfilingInfo) {
         assert graph.method() != null;
         if (hasMatureProfilingInfo) {
             cachedGraphIds.put(graph.graphId(), new WeakReference<>(graph.method()));
@@ -136,7 +138,9 @@ public class HotSpotGraphCache implements GraphCache {
             if (PrintGraphCache.getValue()) {
                 putCounter++;
             }
+            return true;
         }
+        return false;
     }
 
     public void clear() {
@@ -171,6 +175,19 @@ public class HotSpotGraphCache implements GraphCache {
             }
             if (PrintGraphCache.getValue()) {
                 removeCounter++;
+            }
+        }
+    }
+
+    private final CompilerToVM compilerToVM;
+
+    public void removeStaleGraphs() {
+        long[] deoptedGraphs = compilerToVM.getDeoptedLeafGraphIds();
+        if (deoptedGraphs != null) {
+            if (deoptedGraphs.length == 0) {
+                clear();
+            } else {
+                removeGraphs(deoptedGraphs);
             }
         }
     }

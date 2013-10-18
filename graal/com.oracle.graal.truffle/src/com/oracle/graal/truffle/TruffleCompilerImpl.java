@@ -36,7 +36,6 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.hotspot.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -45,6 +44,7 @@ import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.nodes.*;
@@ -59,7 +59,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
     private final PartialEvaluator partialEvaluator;
     private final Backend backend;
     private final ResolvedJavaType[] skippedExceptionTypes;
-    private final HotSpotGraalRuntime runtime;
+    private final RuntimeProvider runtime;
     private final TruffleCache truffleCache;
 
     private static final Class[] SKIPPED_EXCEPTION_CLASSES = new Class[]{SlowPathException.class, UnexpectedResultException.class, ArithmeticException.class};
@@ -68,18 +68,18 @@ public class TruffleCompilerImpl implements TruffleCompiler {
                     OptimisticOptimizations.Optimization.RemoveNeverExecutedCode, OptimisticOptimizations.Optimization.UseTypeCheckedInlining, OptimisticOptimizations.Optimization.UseTypeCheckHints);
 
     public TruffleCompilerImpl() {
+        this.runtime = Graal.getRequiredCapability(RuntimeProvider.class);
+        this.backend = runtime.getHostBackend();
         Replacements truffleReplacements = ((GraalTruffleRuntime) Truffle.getRuntime()).getReplacements();
-        this.providers = GraalCompiler.getGraalProviders().copyWith(truffleReplacements);
-        this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
-        this.backend = Graal.getRequiredCapability(Backend.class);
-        this.runtime = HotSpotGraalRuntime.runtime();
+        this.providers = backend.getProviders().copyWith(truffleReplacements);
+        this.suites = backend.getSuites().createSuites();
         this.skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
         this.truffleCache = new TruffleCache(providers, config, TruffleCompilerImpl.Optimizations);
 
-        this.partialEvaluator = new PartialEvaluator(providers, truffleCache);
+        this.partialEvaluator = new PartialEvaluator(runtime, providers, truffleCache);
 
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(System.out);
@@ -113,7 +113,10 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         final StructuredGraph graph;
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
-        runtime.evictDeoptedGraphs();
+        GraphCache graphCache = runtime.getGraphCache();
+        if (graphCache != null) {
+            graphCache.removeStaleGraphs();
+        }
 
         compilable.timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);

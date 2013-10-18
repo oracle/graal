@@ -32,7 +32,6 @@ import java.util.concurrent.*;
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -289,18 +288,5 @@ public class GraalCompiler {
         }
 
         Debug.dump(result, "After code generation");
-    }
-
-    /**
-     * Creates a set of providers via {@link Graal#getRequiredCapability(Class)}.
-     */
-    public static Providers getGraalProviders() {
-        MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        CodeCacheProvider codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
-        ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
-        ForeignCallsProvider foreignCalls = Graal.getRequiredCapability(ForeignCallsProvider.class);
-        LoweringProvider lowerer = Graal.getRequiredCapability(LoweringProvider.class);
-        Replacements replacements = Graal.getRequiredCapability(Replacements.class);
-        return new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.test;
+package com.oracle.graal.runtime;
 
-import static org.junit.Assert.*;
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.nodes.spi.*;
 
-import org.junit.*;
+/**
+ * A runtime supporting a host backend as well, zero or more additional backends and an optional
+ * {@linkplain GraphCache graph cache}.
+ */
+public interface RuntimeProvider {
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.runtime.*;
-import com.oracle.graal.truffle.*;
-import com.oracle.truffle.api.*;
+    /**
+     * Gets the host backend.
+     */
+    Backend getHostBackend();
 
-public class TruffleRuntimeTest {
+    /**
+     * Gets the backend for a given architecture.
+     * 
+     * @param arch a specific architecture class
+     */
+    <T extends Architecture> Backend getBackend(Class<T> arch);
 
-    @Test
-    public void testGraalCapabilities() {
-        assertNotNull(Graal.getRuntime().getCapability(RuntimeProvider.class));
-    }
-
-    @Test
-    public void testRuntimeAvailable() {
-        assertNotNull(Truffle.getRuntime());
-    }
-
-    @Test
-    public void testRuntimeIsGraalRuntime() {
-        TruffleRuntime runtime = Truffle.getRuntime();
-        assertEquals(GraalTruffleRuntime.class, runtime.getClass());
-    }
+    /**
+     * Gets the graph cache (if any) maintained by this runtime.
+     */
+    GraphCache getGraphCache();
 }

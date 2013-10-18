@@ -69,10 +69,5 @@ public class Graal {
         public <T> T getCapability(Class<T> clazz) {
             return null;
         }
-
-        @Override
-        public <T> T getCapability(Class<T> clazz, String selector) {
-            return null;
-        }
     }
 }

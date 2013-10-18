@@ -140,7 +140,11 @@ public final class CompilationTask implements Runnable {
 
                     @Override
                     public CompilationResult call() throws Exception {
-                        backend.getRuntime().evictDeoptedGraphs();
+                        GraphCache graphCache = backend.getRuntime().getGraphCache();
+                        if (graphCache != null) {
+                            graphCache.removeStaleGraphs();
+                        }
+
                         HotSpotProviders providers = backend.getProviders();
                         Replacements replacements = providers.getReplacements();
                         graph = replacements.getMethodSubstitution(method);
@@ -153,8 +157,8 @@ public final class CompilationTask implements Runnable {
                         InliningUtil.InlinedBytecodes.add(method.getCodeSize());
                         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
                         Suites suites = providers.getSuites().getDefaultSuites();
-                        return GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), backend.getRuntime().getCache(), plan, optimisticOpts,
-                                        method.getSpeculationLog(), suites, new CompilationResult());
+                        return GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites,
+                                        new CompilationResult());
                     }
                 });
             } finally {

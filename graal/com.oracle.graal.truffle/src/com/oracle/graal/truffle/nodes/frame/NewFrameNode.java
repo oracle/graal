@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.graal.truffle.nodes.*;
 import com.oracle.truffle.api.*;
@@ -45,7 +46,7 @@ import com.oracle.truffle.api.frame.*;
  */
 public class NewFrameNode extends FixedWithNextNode implements IterableNodeType, VirtualizableAllocation, Canonicalizable {
 
-    static final ResolvedJavaType FRAME_TYPE = Graal.getRequiredCapability(MetaAccessProvider.class).lookupJavaType(FrameWithoutBoxing.class);
+    static final ResolvedJavaType FRAME_TYPE = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess().lookupJavaType(FrameWithoutBoxing.class);
 
     @Input private ValueNode descriptor;
     @Input private ValueNode caller;

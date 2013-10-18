@@ -54,6 +54,7 @@ import com.oracle.graal.phases.schedule.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.printer.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
 
 /**
@@ -82,9 +83,9 @@ public abstract class GraalCompilerTest extends GraalTest {
     private final Suites suites;
 
     public GraalCompilerTest() {
-        this.backend = Graal.getRequiredCapability(Backend.class);
+        this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
-        this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
+        this.suites = backend.getSuites().createSuites();
     }
 
     /**
@@ -93,16 +94,17 @@ public abstract class GraalCompilerTest extends GraalTest {
      * 
      * @param arch the name of the desired backend architecture
      */
-    public GraalCompilerTest(String arch) {
-        Backend b = Graal.getRuntime().getCapability(Backend.class, arch);
+    public GraalCompilerTest(Class<? extends Architecture> arch) {
+        RuntimeProvider runtime = Graal.getRequiredCapability(RuntimeProvider.class);
+        Backend b = runtime.getBackend(arch);
         if (b != null) {
             this.backend = b;
         } else {
             // Fall back to the default/host backend
-            this.backend = Graal.getRuntime().getCapability(Backend.class);
+            this.backend = runtime.getHostBackend();
         }
         this.providers = backend.getProviders();
-        this.suites = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
+        this.suites = backend.getSuites().createSuites();
     }
 
     @BeforeClass
@@ -530,7 +532,7 @@ public abstract class GraalCompilerTest extends GraalTest {
                             Debug.dump(new Object[]{compResult, code}, "After code installation");
                         }
                         if (Debug.isLogEnabled()) {
-                            DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
+                            DisassemblerProvider dis = backend.getDisassembler();
                             if (dis != null) {
                                 String text = dis.disassemble(code);
                                 if (text != null) {

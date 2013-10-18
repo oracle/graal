@@ -33,6 +33,8 @@ import sun.misc.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.runtime.*;
 
 /**
  * Context for type related api.meta tests.
@@ -40,13 +42,17 @@ import com.oracle.graal.api.runtime.*;
 public class TypeUniverse {
 
     public final Unsafe unsafe;
-    public final MetaAccessProvider metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-    public final ConstantReflectionProvider constantReflection = Graal.getRequiredCapability(ConstantReflectionProvider.class);
+
+    public final MetaAccessProvider metaAccess;
+    public final ConstantReflectionProvider constantReflection;
     public final Collection<Class<?>> classes = new HashSet<>();
     public final Map<Class<?>, Class<?>> arrayClasses = new HashMap<>();
     public final List<Constant> constants = new ArrayList<>();
 
     public TypeUniverse() {
+        Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        metaAccess = providers.getMetaAccess();
+        constantReflection = providers.getConstantReflection();
         Unsafe theUnsafe = null;
         try {
             theUnsafe = Unsafe.getUnsafe();

@@ -43,6 +43,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.runtime.*;
 
 /**
  * The following unit tests assert the presence of write barriers for both Serial and G1 GCs.
@@ -58,7 +59,7 @@ public class WriteBarrierAdditionTest extends GraalCompilerTest {
     private final MetaAccessProvider metaAccess;
 
     public WriteBarrierAdditionTest() {
-        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
+        this.metaAccess = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders().getMetaAccess();
     }
 
     public static class Container {

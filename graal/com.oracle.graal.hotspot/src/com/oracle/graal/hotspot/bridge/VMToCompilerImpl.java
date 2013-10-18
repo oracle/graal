@@ -193,7 +193,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                     List<LoweringProvider> initializedLowerers = new ArrayList<>();
                     List<ForeignCallsProvider> initializedForeignCalls = new ArrayList<>();
 
-                    for (Map.Entry<String, HotSpotBackend> e : runtime.getBackends().entrySet()) {
+                    for (Map.Entry<?, HotSpotBackend> e : runtime.getBackends().entrySet()) {
                         HotSpotBackend backend = e.getValue();
                         HotSpotProviders providers = backend.getProviders();
 
@@ -361,8 +361,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         bootstrapRunning = false;
 
         TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
-        if (runtime.getCache() != null) {
-            runtime.getCache().clear();
+        if (runtime.getGraphCache() != null) {
+            runtime.getGraphCache().clear();
         }
         System.gc();
         phaseTransition("bootstrap2");

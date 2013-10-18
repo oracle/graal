@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 
@@ -57,10 +56,6 @@ public class HotSpotProviders extends Providers {
 
     public HotSpotDisassemblerProvider getDisassembler() {
         return disassembler;
-    }
-
-    public BytecodeDisassemblerProvider getBytecodeDisassembler() {
-        return new BytecodeDisassembler();
     }
 
     @Override

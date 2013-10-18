@@ -27,14 +27,4 @@ public interface GraalRuntime {
     String getName();
 
     <T> T getCapability(Class<T> clazz);
-
-    /**
-     * Requests a capability represented by a given class.
-     * 
-     * @param selector a value the runtime will use to refine the capability returned (if any). An
-     *            example may be the name of an architecture when asking for a capability
-     *            representing a compiler backend.
-     */
-    <T> T getCapability(Class<T> clazz, String selector);
-
 }
