@@ -70,7 +70,12 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> TruffleUseTimeForCompilationDecision = new OptionValue<>(false);
     @Option(help = "")
-    public static final OptionValue<Integer> TruffleCompilationDecisionTime = new OptionValue<>(100);
+    public static final OptionValue<Long> TruffleCompilationDecisionTime = new OptionValue<>(100 * 1000000L);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TruffleCompilationDecisionTimePrintFail = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TruffleBackgroundCompilation = new OptionValue<>(true);
+
     // tracing
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilation = new OptionValue<>(true);
