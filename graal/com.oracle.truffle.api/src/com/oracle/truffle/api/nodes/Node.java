@@ -170,8 +170,8 @@ public abstract class Node implements Cloneable {
      * @param reason a description of the reason for the replacement
      * @return the new node
      */
-    @SuppressWarnings({"unchecked"})
     public final <T extends Node> T replace(T newNode, String reason) {
+        CompilerDirectives.transferToInterpreter();
         if (this.getParent() == null) {
             throw new IllegalStateException("This node cannot be replaced, because it does not yet have a parent.");
         }
@@ -180,13 +180,40 @@ public abstract class Node implements Cloneable {
             newNode.assignSourceSection(sourceSection);
         }
         onReplace(newNode, reason);
-        return (T) this.getParent().replaceChild(this, newNode);
+        ((Node) newNode).parent = this.parent;
+        if (!NodeUtil.replaceChild(this.parent, this, newNode)) {
+            fixupTree();
+        }
+        return newNode;
     }
 
-    private <T extends Node> T replaceChild(T oldChild, T newChild) {
-        NodeUtil.replaceChild(this, oldChild, newChild);
-        adoptChild(newChild);
-        return newChild;
+    /**
+     * Rewrite has failed; the tree is likely inconsistent, so fix any stale parent references.
+     * 
+     * This is a rather expensive operation but rare to occur.
+     */
+    private void fixupTree() {
+        Node rootNode = NodeUtil.findParent(this, RootNode.class);
+        if (rootNode == null) {
+            throw new UnsupportedOperationException("Tree does not have a root node.");
+        }
+        int fixCount = rootNode.fixupChildren();
+        assert fixCount != 0 : "sanity check failed: missing @Child[ren] or adoptChild?";
+        // if nothing had to be fixed, rewrite failed due to node not being a proper child.
+    }
+
+    private int fixupChildren() {
+        int fixCount = 0;
+        for (Node child : getChildren()) {
+            if (child != null) {
+                if (child.parent != this) {
+                    child.parent = this;
+                    fixCount++;
+                }
+                fixCount += child.fixupChildren();
+            }
+        }
+        return fixCount;
     }
 
     /**
