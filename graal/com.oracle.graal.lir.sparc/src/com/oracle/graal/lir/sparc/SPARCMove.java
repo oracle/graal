@@ -213,7 +213,7 @@ public class SPARCMove {
     @Opcode("CAS")
     public static class CompareAndSwapOp extends SPARCLIRInstruction {
 
-// @Def protected AllocatableValue result;
+        // @Def protected AllocatableValue result;
         @Use protected AllocatableValue address;
         @Use protected AllocatableValue cmpValue;
         @Use protected AllocatableValue newValue;

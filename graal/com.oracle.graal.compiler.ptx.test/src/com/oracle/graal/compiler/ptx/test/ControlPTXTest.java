@@ -60,12 +60,10 @@ public class ControlPTXTest extends PTXTestBase {
         } else {
             printReport("testIfElse2I: no VALUE");
         }
-        Boolean bret = (Boolean) invoke(compile("testIntegerTestBranch2I"),
-                                        0xff00, 0x00ff);
+        Boolean bret = (Boolean) invoke(compile("testIntegerTestBranch2I"), 0xff00, 0x00ff);
         if (bret != null) {
             printReport("testIntegerTestBranch2I: " + bret);
-            printReport("testIntegerTestBranch2I: actual: " +
-                                testIntegerTestBranch2I(0xff00, 0x00ff));
+            printReport("testIntegerTestBranch2I: actual: " + testIntegerTestBranch2I(0xff00, 0x00ff));
         } else {
             printReport("testIntegerTestBranch2I: no VALUE");
         }

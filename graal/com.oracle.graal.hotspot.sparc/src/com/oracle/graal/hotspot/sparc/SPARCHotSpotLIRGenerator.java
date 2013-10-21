@@ -154,7 +154,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
 
     @Override
     public void emitTailcall(Value[] args, Value address) {
-// append(new AMD64TailcallOp(args, address));
+        // append(new AMD64TailcallOp(args, address));
         throw GraalInternalError.unimplemented();
     }
 
@@ -242,14 +242,16 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         assert access == null || access instanceof HeapAccess;
         if (isCompressCandidate(access)) {
             if (config.useCompressedOops && kind == Kind.Object) {
-// append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) :
-// null, config.narrowOopBase, config.narrowOopShift,
-// config.logMinObjAlignment));
+                // append(new LoadCompressedPointer(kind, result, loadAddress, access != null ?
+                // state(access) :
+                // null, config.narrowOopBase, config.narrowOopShift,
+                // config.logMinObjAlignment));
                 throw GraalInternalError.unimplemented();
             } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-// append(new LoadCompressedPointer(kind, result, loadAddress, access != null ? state(access) :
-// null, config.narrowKlassBase, config.narrowKlassShift,
-// config.logKlassAlignment));
+                // append(new LoadCompressedPointer(kind, result, loadAddress, access != null ?
+                // state(access) :
+                // null, config.narrowKlassBase, config.narrowKlassShift,
+                // config.logKlassAlignment));
                 throw GraalInternalError.unimplemented();
             } else {
                 append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
@@ -280,21 +282,21 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Variable input = load(inputVal);
         if (isCompressCandidate(access)) {
             if (config.useCompressedOops && kind == Kind.Object) {
-// if (input.getKind() == Kind.Object) {
-// Variable scratch = newVariable(Kind.Long);
-// append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
-// config.narrowOopBase, config.narrowOopShift,
-// config.logMinObjAlignment));
-// } else {
-// // the input oop is already compressed
-// append(new StoreOp(input.getKind(), storeAddress, input, state));
-// }
+                // if (input.getKind() == Kind.Object) {
+                // Variable scratch = newVariable(Kind.Long);
+                // append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
+                // config.narrowOopBase, config.narrowOopShift,
+                // config.logMinObjAlignment));
+                // } else {
+                // // the input oop is already compressed
+                // append(new StoreOp(input.getKind(), storeAddress, input, state));
+                // }
                 throw GraalInternalError.unimplemented();
             } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-// Variable scratch = newVariable(Kind.Long);
-// append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
-// config.narrowKlassBase, config.narrowKlassShift,
-// config.logKlassAlignment));
+                // Variable scratch = newVariable(Kind.Long);
+                // append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state,
+                // config.narrowKlassBase, config.narrowKlassShift,
+                // config.logKlassAlignment));
                 throw GraalInternalError.unimplemented();
             } else {
                 append(new StoreOp(kind, storeAddress, input, state));

@@ -129,7 +129,6 @@ public class HSAILMove {
         }
     }
 
-
     public abstract static class MemOp extends HSAILLIRInstruction {
 
         protected final Kind kind;
@@ -267,8 +266,6 @@ public class HSAILMove {
         }
         masm.emitCompressedOopDecode(result, narrowOopBase, narrowOopShift);
     }
-
-
 
     public static class LeaOp extends HSAILLIRInstruction {
 

@@ -31,6 +31,7 @@ public class IntegerPTXTest extends PTXTestBase {
     @Test
     public void testAdd() {
 
+        // @formatter:off
         /* Integer r4 = (Integer) invoke(compile("testAdd2B"), (byte) 6, (byte) 4);
         if (r4 == null) {
             printReport("testAdd2B FAILED");
@@ -39,6 +40,7 @@ public class IntegerPTXTest extends PTXTestBase {
         } else {
             printReport("testAdd2B FAILED");
         } */
+        // @formatter:on
 
         Integer r4 = (Integer) invoke(compile("testAdd2I"), 18, 24);
         if (r4 == null) {
@@ -345,7 +347,6 @@ public class IntegerPTXTest extends PTXTestBase {
     public static int testL2I(long a) {
         return (int) a;
     }
-
 
     public static void main(String[] args) {
         IntegerPTXTest test = new IntegerPTXTest();

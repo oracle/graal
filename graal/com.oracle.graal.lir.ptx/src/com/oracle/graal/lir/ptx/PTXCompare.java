@@ -67,8 +67,7 @@ public enum PTXCompare {
         }
     }
 
-    public static void emit(PTXAssembler masm, PTXCompare opcode,
-                            Condition condition, Value x, Value y, int p) {
+    public static void emit(PTXAssembler masm, PTXCompare opcode, Condition condition, Value x, Value y, int p) {
         if (isConstant(x)) {
             new Setp(condition, x, y, p).emit(masm);
         } else if (isConstant(y)) {

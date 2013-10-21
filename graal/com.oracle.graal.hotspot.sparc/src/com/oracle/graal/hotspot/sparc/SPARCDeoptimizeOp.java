@@ -41,13 +41,13 @@ final class SPARCDeoptimizeOp extends SPARCLIRInstruction {
     @Override
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         // TODO the patched call address looks odd (and is invalid) compared to other runtime calls:
-// 0xffffffff749bb5fc: call 0xffffffff415a720c ; {runtime_call}
-// [Exception Handler]
-// 0xffffffff749bb604: call 0xffffffff749bb220 ; {runtime_call}
-// 0xffffffff749bb608: nop
-// [Deopt Handler Code]
-// 0xffffffff749bb60c: call 0xffffffff748da540 ; {runtime_call}
-// 0xffffffff749bb610: nop
+        // 0xffffffff749bb5fc: call 0xffffffff415a720c ; {runtime_call}
+        // [Exception Handler]
+        // 0xffffffff749bb604: call 0xffffffff749bb220 ; {runtime_call}
+        // 0xffffffff749bb608: nop
+        // [Deopt Handler Code]
+        // 0xffffffff749bb60c: call 0xffffffff748da540 ; {runtime_call}
+        // 0xffffffff749bb610: nop
         SPARCCall.directCall(tasm, masm, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
     }
 }

@@ -107,8 +107,7 @@ abstract class LIRIntrospection extends FieldIntrospection {
 
         private static boolean verifyFlags(Field field, Class<?> type, EnumSet<OperandFlag> flags) {
             if (flags.contains(REG)) {
-                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) ||
-                       type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field with REG flag:" + field;
+                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) || type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field with REG flag:" + field;
             }
             if (flags.contains(STACK)) {
                 assert type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field with STACK flag:" + field;

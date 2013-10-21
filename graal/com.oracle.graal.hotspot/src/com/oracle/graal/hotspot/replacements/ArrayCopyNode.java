@@ -93,7 +93,8 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
         }
         // the canonicalization before loop unrolling is needed to propagate the length into
         // additions, etc.
-        PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.getConstantReflection(), tool.getForeignCalls(), tool.getLowerer(), tool.assumptions(), tool.getReplacements());
+        PhaseContext context = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.getConstantReflection(), tool.getForeignCalls(), tool.getLowerer(), tool.assumptions(),
+                        tool.getReplacements());
         new CanonicalizerPhase(true).apply(snippetGraph, context);
         new LoopFullUnrollPhase(new CanonicalizerPhase(true)).apply(snippetGraph, context);
         new CanonicalizerPhase(true).apply(snippetGraph, context);

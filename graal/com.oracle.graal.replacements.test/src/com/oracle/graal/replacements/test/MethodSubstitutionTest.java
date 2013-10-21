@@ -51,8 +51,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
                 StructuredGraph graph = parse(snippet);
                 PhasePlan phasePlan = getDefaultPhasePlan();
                 Assumptions assumptions = new Assumptions(true);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan,
-                                OptimisticOptimizations.ALL);
+                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
                 Debug.dump(graph, "Graph");
                 new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
                 Debug.dump(graph, "Graph");

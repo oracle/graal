@@ -242,14 +242,14 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Object:
                 append(new BranchOp(finalCondition, label, kind));
                 break;
-// case Float:
-// append(new CompareOp(FCMP, x, y));
-// append(new BranchOp(condition, label));
-// break;
-// case Double:
-// append(new CompareOp(DCMP, x, y));
-// append(new BranchOp(condition, label));
-// break;
+            // case Float:
+            // append(new CompareOp(FCMP, x, y));
+            // append(new BranchOp(condition, label));
+            // break;
+            // case Double:
+            // append(new CompareOp(DCMP, x, y));
+            // append(new BranchOp(condition, label));
+            // break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
         }
@@ -631,7 +631,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitUDiv(Value a, Value b, DeoptimizingNode deopting) {
-// LIRFrameState state = state(deopting);
+        // LIRFrameState state = state(deopting);
         switch (a.getKind().getStackKind()) {
             case Int:
                 // emitDivRem(IUDIV, a, b, state);
@@ -646,7 +646,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
 
     @Override
     public Value emitURem(Value a, Value b, DeoptimizingNode deopting) {
-// LIRFrameState state = state(deopting);
+        // LIRFrameState state = state(deopting);
         switch (a.getKind().getStackKind()) {
             case Int:
                 // emitDivRem(IUREM, a, b, state);
