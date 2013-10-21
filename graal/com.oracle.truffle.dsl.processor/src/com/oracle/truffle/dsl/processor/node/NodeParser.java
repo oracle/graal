@@ -227,7 +227,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         List<TypeData> polymorphicSignature = new ArrayList<>();
         // TODO we should support more optimized for boxing
-// List<ActualParameter> updatePolymorphic = generic.getReturnTypeAndParameters();
+        // List<ActualParameter> updatePolymorphic = generic.getReturnTypeAndParameters();
         List<ActualParameter> updatePolymorphic = Arrays.asList();
         for (ActualParameter genericParameter : updatePolymorphic) {
             if (!genericParameter.getSpecification().isSignature()) {
