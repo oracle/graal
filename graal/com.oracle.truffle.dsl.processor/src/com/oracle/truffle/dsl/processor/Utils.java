@@ -306,7 +306,7 @@ public class Utils {
             case LONG:
                 return "Long";
             case DECLARED:
-                return ((DeclaredType) mirror).asElement().getSimpleName().toString();
+                return fixECJBinaryNameIssue(((DeclaredType) mirror).asElement().getSimpleName().toString());
             case ARRAY:
                 return getTypeId(((ArrayType) mirror).getComponentType()) + "Array";
             case VOID:
@@ -379,7 +379,7 @@ public class Utils {
     }
 
     private static String getDeclaredName(DeclaredType element) {
-        String simpleName = element.asElement().getSimpleName().toString();
+        String simpleName = fixECJBinaryNameIssue(element.asElement().getSimpleName().toString());
 
         if (element.getTypeArguments().size() == 0) {
             return simpleName;
@@ -397,6 +397,14 @@ public class Utils {
         }
         b.append(">");
         return b.toString();
+    }
+
+    public static String fixECJBinaryNameIssue(String name) {
+        if (name.contains("$")) {
+            int lastIndex = name.lastIndexOf('$');
+            return name.substring(lastIndex + 1, name.length());
+        }
+        return name;
     }
 
     public static String getQualifiedName(TypeElement element) {

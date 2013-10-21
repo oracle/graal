@@ -135,7 +135,7 @@ public final class OrganizedImports {
     }
 
     private String createDeclaredTypeName(Element enclosedElement, DeclaredType type) {
-        String name = type.asElement().getSimpleName().toString();
+        String name = Utils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
 
         if (needsImport(enclosedElement, type)) {
             TypeMirror usedByType = simpleNamesUsed.get(name);
