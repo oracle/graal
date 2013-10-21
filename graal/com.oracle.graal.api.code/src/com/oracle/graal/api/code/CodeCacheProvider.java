@@ -42,6 +42,16 @@ public interface CodeCacheProvider {
     InstalledCode addMethod(ResolvedJavaMethod method, CompilationResult compResult);
 
     /**
+     * Adds the given compilation result as a default implementation of the given method.
+     * 
+     * @param method a method to which the executable code is begin added
+     * @param compResult the compilation result to be added
+     * @return a reference to the compiled and ready-to-run code or null if the code installation
+     *         failed
+     */
+    InstalledCode addDefaultMethod(ResolvedJavaMethod method, CompilationResult compResult);
+
+    /**
      * Returns a disassembly of some compiled code.
      * 
      * @param compResult some compiled code

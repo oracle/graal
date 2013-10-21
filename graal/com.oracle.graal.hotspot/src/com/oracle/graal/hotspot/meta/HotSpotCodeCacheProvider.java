@@ -36,6 +36,7 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.printer.*;
 
 /**
@@ -171,6 +172,11 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
             return null;
         }
         return code;
+    }
+
+    public InstalledCode addDefaultMethod(ResolvedJavaMethod method, CompilationResult compResult) {
+        HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
+        return installMethod(hotspotMethod, StructuredGraph.INVOCATION_ENTRY_BCI, compResult);
     }
 
     public InstalledCode addExternalMethod(ResolvedJavaMethod method, CompilationResult compResult) {
