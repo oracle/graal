@@ -52,6 +52,8 @@ public class GraalDebugConfig implements DebugConfig {
                    "Complete - aggregate by qualified name%n" +
                    "Thread - aggregate by qualified name and thread")
     public static final OptionValue<String> DebugValueSummary = new OptionValue<>("Name");
+    @Option(help = "Omit reporting 0-value metrics")
+    public static final OptionValue<Boolean> SuppressZeroDebugValues = new OptionValue<>(false);
     @Option(help = "Send Graal IR to dump handlers on error")
     public static final OptionValue<Boolean> DumpOnError = new OptionValue<>(false);
     @Option(help = "Enable expensive assertions")
