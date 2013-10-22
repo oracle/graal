@@ -326,6 +326,8 @@ public class CompilationResult implements Serializable {
     private int customStackAreaOffset = -1;
     private int registerRestoreEpilogueOffset = -1;
 
+    private final String name;
+
     /**
      * The buffer containing the emitted machine code.
      */
@@ -346,6 +348,14 @@ public class CompilationResult implements Serializable {
      * evict graphs from the graph cache when deoptimizations occur.
      */
     private long[] leafGraphIds;
+
+    public CompilationResult() {
+        this(null);
+    }
+
+    public CompilationResult(String name) {
+        this.name = name;
+    }
 
     public void setAssumptions(Assumptions assumptions) {
         this.assumptions = assumptions;
@@ -619,5 +629,9 @@ public class CompilationResult implements Serializable {
             return emptyList();
         }
         return unmodifiableList(marks);
+    }
+
+    public String getName() {
+        return name;
     }
 }

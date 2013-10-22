@@ -154,7 +154,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
                     CodeCacheProvider codeCache = providers.getCodeCache();
                     CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
                     return GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
-                                    new CompilationResult());
+                                    new CompilationResult(compilable.toString()));
                 }
             }
         });

@@ -46,17 +46,17 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
     private final HotSpotResolvedJavaMethod method;
     private final boolean isDefault;
     private final boolean isExternal;
+    private final String name;
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault) {
-        this.method = method;
-        this.isDefault = isDefault;
-        this.isExternal = false;
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, String name, boolean isDefault) {
+        this(method, name, isDefault, false);
     }
 
-    public HotSpotNmethod(HotSpotResolvedJavaMethod method, boolean isDefault, boolean isExternal) {
+    public HotSpotNmethod(HotSpotResolvedJavaMethod method, String name, boolean isDefault, boolean isExternal) {
         this.method = method;
         this.isDefault = isDefault;
         this.isExternal = isExternal;
+        this.name = name;
     }
 
     public boolean isDefault() {
@@ -84,7 +84,7 @@ public final class HotSpotNmethod extends HotSpotInstalledCode {
 
     @Override
     public String toString() {
-        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b]", method, getCodeBlob(), isDefault);
+        return String.format("InstalledNmethod[method=%s, codeBlob=0x%x, isDefault=%b, name=]", method, getCodeBlob(), isDefault, name);
     }
 
     @Override
