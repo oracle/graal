@@ -22,16 +22,20 @@
  */
 package com.oracle.graal.truffle.hotspot.amd64;
 
+import com.oracle.graal.amd64.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.amd64.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.graal.truffle.hotspot.amd64.util.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 
@@ -63,7 +67,32 @@ class AMD64HotSpotTruffleBackend extends AMD64HotSpotBackend {
     protected void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedStub) {
         super.emitCodePrefix(installedCodeOwner, tasm, asm, regConfig, config, verifiedStub);
         if (getInstrumentedMethod().equals(installedCodeOwner)) {
-            // TODO emit tailcall code
+            HotSpotProviders providers = getRuntime().getHostProviders();
+            Register thisRegister = providers.getCodeCache().getRegisterConfig().getCallingConventionRegisters(Type.JavaCall, Kind.Object)[0];
+            Register spillRegister = AMD64.r10; // TODO(mg): fix me
+            AMD64Address nMethodAddress = new AMD64Address(thisRegister, OptimizedCallTargetFieldInfo.getCompiledMethodFieldOffset());
+            if (config.useCompressedOops) {
+                asm.movl(spillRegister, nMethodAddress);
+                AMD64HotSpotMove.decodePointer(asm, spillRegister, providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment);
+            } else {
+                asm.movq(spillRegister, nMethodAddress);
+            }
+            Label doProlog = new Label();
+
+            asm.cmpq(spillRegister, 0);
+            asm.jcc(ConditionFlag.Equal, doProlog);
+
+            AMD64Address codeBlobAddress = new AMD64Address(spillRegister, OptimizedCallTargetFieldInfo.getCodeBlobFieldOffset());
+            asm.movq(spillRegister, codeBlobAddress);
+            asm.cmpq(spillRegister, 0);
+            asm.jcc(ConditionFlag.Equal, doProlog);
+
+            AMD64Address verifiedEntryPointAddress = new AMD64Address(spillRegister, config.nmethodEntryOffset);
+            asm.movq(spillRegister, verifiedEntryPointAddress);
+
+            asm.jmp(spillRegister);
+
+            asm.bind(doProlog);
         }
     }
 }

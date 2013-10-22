@@ -22,11 +22,28 @@
  */
 package com.oracle.graal.truffle;
 
+import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
+import java.lang.reflect.*;
 import java.util.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.compiler.*;
+import com.oracle.graal.compiler.target.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.java.*;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.PhasePosition;
+import com.oracle.graal.phases.common.*;
+import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.impl.*;
@@ -45,8 +62,17 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
     private Replacements truffleReplacements;
     private ArrayList<String> includes;
     private ArrayList<String> excludes;
+    private final CodeCacheProvider codeCacheProvider;
+    private final ResolvedJavaMethod callMethod;
+    private final CompilationResult callCompilationResult;
 
     private GraalTruffleRuntime() {
+        Providers providers = getGraalProviders();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        codeCacheProvider = providers.getCodeCache();
+        callMethod = metaAccess.lookupJavaMethod(getCallMethod());
+        callCompilationResult = compileMethod(callMethod, providers);
+        installOptimizedCallTargetCallMethod();
     }
 
     public String getName() {
@@ -137,5 +163,40 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
                 includes.add(item);
             }
         }
+    }
+
+    public void installOptimizedCallTargetCallMethod() {
+        codeCacheProvider.addDefaultMethod(callMethod, callCompilationResult);
+    }
+
+    private static Method getCallMethod() {
+        Method method;
+        try {
+            method = OptimizedCallTarget.class.getDeclaredMethod("call", new Class[]{PackedFrame.class, Arguments.class});
+        } catch (NoSuchMethodException | SecurityException e) {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+        return method;
+    }
+
+    private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod, Providers providers) {
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        Suites suites = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
+        suites.getHighTier().findPhase(InliningPhase.class).remove();
+        StructuredGraph graph = new StructuredGraph(javaMethod);
+        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+        PhasePlan phasePlan = new PhasePlan();
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+        Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
+        return GraalCompiler.compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
+                        new CompilationResult());
+    }
+
+    private static Providers getGraalProviders() {
+        RuntimeProvider runtimeProvider = Graal.getRequiredCapability(RuntimeProvider.class);
+        return runtimeProvider.getHostBackend().getProviders();
     }
 }
