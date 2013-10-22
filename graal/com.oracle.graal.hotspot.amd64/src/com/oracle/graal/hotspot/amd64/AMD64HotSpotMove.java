@@ -210,7 +210,7 @@ public class AMD64HotSpotMove {
         }
     }
 
-    private static void decodePointer(AMD64MacroAssembler masm, Register resRegister, Register heapBaseRegister, long base, int shift, int alignment) {
+    public static void decodePointer(AMD64MacroAssembler masm, Register resRegister, Register heapBaseRegister, long base, int shift, int alignment) {
         // If the base is zero, the compressed address has to be shifted left
         // in order to be uncompressed.
         if (base == 0) {
