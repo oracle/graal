@@ -130,6 +130,10 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         config.setSkippedExceptionTypes(skippedExceptionTypes);
         runtime.evictDeoptedGraphs();
 
+        if (TraceTruffleInliningTree.getValue()) {
+            printInlineTree(compilable.getRootNode());
+        }
+
         long timeCompilationStarted = System.nanoTime();
         Assumptions assumptions = new Assumptions(true);
         try (TimerCloseable a = PartialEvaluationTime.start()) {
@@ -155,6 +159,37 @@ public class TruffleCompilerImpl implements TruffleCompiler {
                             (timeCompilationFinished - timePartialEvaluationFinished) / 1e6, nodeCountPartialEval, nodeCountLowered, compiledMethod.getCode().length);
         }
         return compiledMethod;
+    }
+
+    private void printInlineTree(RootNode rootNode) {
+        OUT.println();
+        OUT.println("Inlining tree for: " + rootNode);
+        rootNode.accept(new InlineTreeVisitor());
+    }
+
+    private class InlineTreeVisitor implements NodeVisitor {
+
+        public boolean visit(Node node) {
+            if (node instanceof InlinedCallSite) {
+                InlinedCallSite inlinedCallSite = (InlinedCallSite) node;
+                int indent = this.indent(node);
+                for (int i = 0; i < indent; ++i) {
+                    OUT.print("   ");
+                }
+                OUT.println(inlinedCallSite.getCallTarget());
+            }
+            return true;
+        }
+
+        private int indent(Node n) {
+            if (n instanceof RootNode) {
+                return 0;
+            } else if (n instanceof InlinedCallSite) {
+                return indent(n.getParent()) + 1;
+            } else {
+                return indent(n.getParent());
+            }
+        }
     }
 
     public InstalledCode compileMethodHelper(final StructuredGraph graph, final GraphBuilderConfiguration config, final Assumptions assumptions) {
