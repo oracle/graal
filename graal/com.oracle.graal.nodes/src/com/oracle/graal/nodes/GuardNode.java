@@ -45,7 +45,7 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
-    private final DeoptimizationAction action;
+    private DeoptimizationAction action;
     private boolean negated;
 
     public GuardNode(LogicNode condition, GuardingNode anchor, DeoptimizationReason reason, DeoptimizationAction action, boolean negated) {
@@ -107,4 +107,8 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
     public void negate() {
         negated = !negated;
     }
+
+    public void setAction(DeoptimizationAction invalidaterecompile) {
+        this.action = invalidaterecompile;
+}
 }
