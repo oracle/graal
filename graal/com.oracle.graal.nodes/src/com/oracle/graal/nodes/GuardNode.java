@@ -110,5 +110,5 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
 
     public void setAction(DeoptimizationAction invalidaterecompile) {
         this.action = invalidaterecompile;
-}
+    }
 }
