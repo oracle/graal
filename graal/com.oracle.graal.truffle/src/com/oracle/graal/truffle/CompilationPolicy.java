@@ -31,17 +31,21 @@ public class CompilationPolicy {
     private int loopAndInvokeCounter;
     private long prevTimestamp;
 
-    private final int initialInvokeCounter;
     private final int compilationThreshold;
+    private final String name;
 
-    public CompilationPolicy(final int compilationThreshold, final int initialInvokeCounter) {
+    public CompilationPolicy(final int compilationThreshold, final int initialInvokeCounter, final String name) {
         this.invokeCounter = initialInvokeCounter;
         this.loopAndInvokeCounter = compilationThreshold;
         this.originalInvokeCounter = compilationThreshold;
-        this.prevTimestamp = System.currentTimeMillis();
+        this.prevTimestamp = System.nanoTime();
 
         this.compilationThreshold = compilationThreshold;
-        this.initialInvokeCounter = initialInvokeCounter;
+        this.name = name;
+    }
+
+    public String getName() {
+        return this.name;
     }
 
     public int getInvokeCounter() {
@@ -91,19 +95,23 @@ public class CompilationPolicy {
     public boolean compileOrInline() {
         if (invokeCounter <= 0 && loopAndInvokeCounter <= 0) {
             if (TruffleUseTimeForCompilationDecision.getValue()) {
-                long timestamp = System.currentTimeMillis();
-                if ((timestamp - prevTimestamp) < TruffleCompilationDecisionTime.getValue()) {
+                long timestamp = System.nanoTime();
+                long timespan = (timestamp - prevTimestamp);
+                if (timespan < (TruffleCompilationDecisionTime.getValue())) {
                     return true;
                 }
-                this.invokeCounter = initialInvokeCounter;
                 this.loopAndInvokeCounter = compilationThreshold;
                 this.originalInvokeCounter = compilationThreshold;
                 this.prevTimestamp = timestamp;
+                if (TruffleCompilationDecisionTimePrintFail.getValue()) {
+                    // Checkstyle: stop
+                    System.out.println(name + ": timespan  " + (timespan / 1000000) + " ms  larger than threshold");
+                    // Checkstyle: resume
+                }
             } else {
                 return true;
             }
         }
         return false;
     }
-
 }

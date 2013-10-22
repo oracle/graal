@@ -48,11 +48,6 @@ public interface CompilerToGPU {
     int availableProcessors();
 
     /**
-     * Gets the architecture names of the available GPUs.
-     */
-    String[] getAvailableGPUArchitectures();
-
-    /**
      * Attempts to generate and return a bound function to the loaded method kernel on the GPU.
      * 
      * @param code the text or binary values for a method kernel

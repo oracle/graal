@@ -38,15 +38,14 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.logging.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.runtime.*;
 
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
-public final class HotSpotGraalRuntime implements GraalRuntime {
+public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider {
 
     private static final HotSpotGraalRuntime instance = new HotSpotGraalRuntime();
     static {
@@ -106,11 +105,11 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         for (HotSpotBackendFactory factory : ServiceLoader.loadInstalled(HotSpotBackendFactory.class)) {
             if (factory.getArchitecture().equalsIgnoreCase(architecture)) {
                 if (factory.getGraalRuntimeName().equals(GraalRuntime.getValue())) {
-                    assert selected == null;
+                    assert selected == null || checkFactoryOverriding(selected, factory);
                     selected = factory;
                 }
                 if (factory.getGraalRuntimeName().equals("basic")) {
-                    assert basic == null;
+                    assert basic == null || checkFactoryOverriding(basic, factory);
                     basic = factory;
                 } else {
                     nonBasic = factory;
@@ -133,6 +132,18 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
                 return basic;
             }
         }
+    }
+
+    /**
+     * Checks that a factory overriding is valid. A factory B can only override/replace a factory A
+     * if the B.getClass() is a subclass of A.getClass(). This models the assumption that B is
+     * extends the behavior of A and has therefore understood the behavior expected of A.
+     * 
+     * @param baseFactory
+     * @param overridingFactory
+     */
+    private static boolean checkFactoryOverriding(HotSpotBackendFactory baseFactory, HotSpotBackendFactory overridingFactory) {
+        return baseFactory.getClass().isAssignableFrom(overridingFactory.getClass());
     }
 
     /**
@@ -173,15 +184,13 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     protected/* final */CompilerToGPU compilerToGpu;
     protected/* final */VMToCompiler vmToCompiler;
 
-    protected final HotSpotProviders hostProviders;
-
     private HotSpotRuntimeInterpreterInterface runtimeInterpreterInterface;
     private volatile HotSpotGraphCache cache;
 
     protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
 
-    private final Map<String, HotSpotBackend> backends = new HashMap<>();
+    private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
     private HotSpotGraalRuntime() {
         CompilerToVM toVM = new CompilerToVMImpl();
@@ -210,31 +219,36 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
             printConfig(config);
         }
 
-        String hostArchitecture = getHostArchitecture();
-        hostBackend = findFactory(hostArchitecture).createBackend(this, null);
-        hostProviders = hostBackend.getProviders();
-        backends.put(hostArchitecture, hostBackend);
+        String hostArchitecture = getHostArchitectureName();
+        hostBackend = registerBackend(findFactory(hostArchitecture).createBackend(this, null));
 
-        String[] gpuArchitectures = getGPUArchitectures();
+        String[] gpuArchitectures = getGPUArchitectureNames();
         for (String arch : gpuArchitectures) {
             HotSpotBackendFactory factory = findFactory(arch);
             if (factory == null) {
                 throw new GraalInternalError("No backend available for specified GPU architecture \"%s\"", arch);
             }
-            backends.put(factory.getArchitecture(), factory.createBackend(this, hostBackend));
+            registerBackend(factory.createBackend(this, hostBackend));
         }
 
         GraalOptions.StackShadowPages.setValue(config.stackShadowPages);
         if (GraalOptions.CacheGraphs.getValue()) {
-            cache = new HotSpotGraphCache();
+            cache = new HotSpotGraphCache(compilerToVm);
         }
+    }
+
+    private HotSpotBackend registerBackend(HotSpotBackend backend) {
+        Class<? extends Architecture> arch = backend.getTarget().arch.getClass();
+        HotSpotBackend oldValue = backends.put(arch, backend);
+        assert oldValue == null : "cannot overwrite existing backend for architecture " + arch.getSimpleName();
+        return backend;
     }
 
     /**
      * Gets the host architecture name for the purpose of finding the corresponding
      * {@linkplain HotSpotBackendFactory backend}.
      */
-    private static String getHostArchitecture() {
+    private static String getHostArchitectureName() {
         String arch = System.getProperty("os.arch");
         switch (arch) {
             case "x86_64":
@@ -250,16 +264,17 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     /**
      * Gets the names of the supported GPU architectures for the purpose of finding the
      * corresponding {@linkplain HotSpotBackendFactory backend} objects. This method first looks for
-     * a comma separated list of names in the {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system
-     * property. If this property is not set, then the GPU native support code is queried.
+     * a comma or {@link java.io.File#pathSeparatorChar} separated list of names in the
+     * {@value #GRAAL_GPU_ISALIST_PROPERTY_NAME} system property. If this property is not set, then
+     * the GPU native support code is queried.
      */
-    private String[] getGPUArchitectures() {
+    private static String[] getGPUArchitectureNames() {
         String gpuList = System.getProperty(GRAAL_GPU_ISALIST_PROPERTY_NAME);
-        if (gpuList != null) {
-            String[] gpus = gpuList.split(",");
+        if (gpuList != null && !gpuList.isEmpty()) {
+            String[] gpus = gpuList.split("[,:]");
             return gpus;
         }
-        return compilerToGpu.getAvailableGPUArchitectures();
+        return new String[0];
     }
 
     private static void printConfig(HotSpotVMConfig config) {
@@ -285,7 +300,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
         return hostBackend.getTarget();
     }
 
-    public HotSpotGraphCache getCache() {
+    public HotSpotGraphCache getGraphCache() {
         return cache;
     }
 
@@ -335,26 +350,13 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
 
     public HotSpotRuntimeInterpreterInterface getRuntimeInterpreterInterface() {
         if (runtimeInterpreterInterface == null) {
-            runtimeInterpreterInterface = new HotSpotRuntimeInterpreterInterface(hostProviders.getMetaAccess());
+            runtimeInterpreterInterface = new HotSpotRuntimeInterpreterInterface(getHostProviders().getMetaAccess());
         }
         return runtimeInterpreterInterface;
     }
 
     public HotSpotProviders getHostProviders() {
-        return hostProviders;
-    }
-
-    public void evictDeoptedGraphs() {
-        if (cache != null) {
-            long[] deoptedGraphs = getCompilerToVM().getDeoptedLeafGraphIds();
-            if (deoptedGraphs != null) {
-                if (deoptedGraphs.length == 0) {
-                    cache.clear();
-                } else {
-                    cache.removeGraphs(deoptedGraphs);
-                }
-            }
-        }
+        return getHostBackend().getProviders();
     }
 
     @Override
@@ -363,60 +365,24 @@ public final class HotSpotGraalRuntime implements GraalRuntime {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> T getCapability(HotSpotBackend backend, Class<T> clazz) {
-        HotSpotProviders providers = backend.getProviders();
-        if (clazz == LoweringProvider.class) {
-            return (T) providers.getLowerer();
-        }
-        if (clazz == CodeCacheProvider.class) {
-            return (T) providers.getCodeCache();
-        }
-        if (clazz == MetaAccessProvider.class) {
-            return (T) providers.getMetaAccess();
-        }
-        if (clazz == ConstantReflectionProvider.class) {
-            return (T) providers.getConstantReflection();
-        }
-        if (clazz == ForeignCallsProvider.class) {
-            return (T) providers.getForeignCalls();
-        }
-        if (clazz == DisassemblerProvider.class) {
-            return (T) providers.getDisassembler();
-        }
-        if (clazz == BytecodeDisassemblerProvider.class) {
-            return (T) providers.getBytecodeDisassembler();
-        }
-        if (clazz == SuitesProvider.class) {
-            return (T) providers.getSuites();
-        }
-        if (clazz == Replacements.class) {
-            return (T) providers.getReplacements();
-        }
-        if (clazz == HotSpotRegistersProvider.class) {
-            return (T) providers.getRegisters();
-        }
-        if (clazz == Backend.class) {
-            return (T) backend;
-        }
-        return null;
-    }
-
     @Override
     public <T> T getCapability(Class<T> clazz) {
-        return getCapability(clazz, null);
-    }
-
-    @Override
-    public <T> T getCapability(Class<T> clazz, String selector) {
-        HotSpotBackend backend = selector == null ? hostBackend : backends.get(selector);
-        return backend == null ? null : getCapability(backend, clazz);
+        if (clazz == RuntimeProvider.class) {
+            return (T) this;
+        }
+        return null;
     }
 
     public HotSpotBackend getHostBackend() {
         return hostBackend;
     }
 
-    public Map<String, HotSpotBackend> getBackends() {
+    public <T extends Architecture> Backend getBackend(Class<T> arch) {
+        assert arch != Architecture.class;
+        return backends.get(arch);
+    }
+
+    public Map<Class<? extends Architecture>, HotSpotBackend> getBackends() {
         return Collections.unmodifiableMap(backends);
     }
 

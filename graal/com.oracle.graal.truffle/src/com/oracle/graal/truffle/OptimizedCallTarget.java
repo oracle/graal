@@ -46,7 +46,7 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
     protected OptimizedCallTarget(RootNode rootNode, FrameDescriptor descriptor, TruffleCompiler compiler, int invokeCounter, int compilationThreshold) {
         super(rootNode, descriptor);
         this.compiler = compiler;
-        this.compilationPolicy = new CompilationPolicy(compilationThreshold, invokeCounter);
+        this.compilationPolicy = new CompilationPolicy(compilationThreshold, invokeCounter, rootNode.toString());
         this.rootNode.setCallTarget(this);
 
         if (TruffleCallTargetProfiling.getValue()) {

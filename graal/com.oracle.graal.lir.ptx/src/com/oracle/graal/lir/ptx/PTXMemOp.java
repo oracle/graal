@@ -43,8 +43,7 @@ public class PTXMemOp {
         @Use({COMPOSITE}) protected PTXAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadOp(Kind kind, Variable result, PTXAddressValue address,
-                      LIRFrameState state) {
+        public LoadOp(Kind kind, Variable result, PTXAddressValue address, LIRFrameState state) {
             this.kind = kind;
             this.result = result;
             this.address = address;
@@ -63,8 +62,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new Ld(Global, result, addr.getBase(),
-                           Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new Ld(Global, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -99,8 +97,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new St(Global, input, addr.getBase(),
-                           Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new St(Global, input, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());
@@ -117,8 +114,7 @@ public class PTXMemOp {
         @Use({COMPOSITE}) protected PTXAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadParamOp(Kind kind, Variable result, PTXAddressValue address,
-                           LIRFrameState state) {
+        public LoadParamOp(Kind kind, Variable result, PTXAddressValue address, LIRFrameState state) {
             this.kind = kind;
             this.result = result;
             this.address = address;
@@ -137,8 +133,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new Ld(Parameter, result, addr.getBase(),
-                           Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -156,8 +151,7 @@ public class PTXMemOp {
         @Use({COMPOSITE}) protected PTXAddressValue address;
         @State protected LIRFrameState state;
 
-        public LoadReturnAddrOp(Kind kind, Variable result,
-                                PTXAddressValue address, LIRFrameState state) {
+        public LoadReturnAddrOp(Kind kind, Variable result, PTXAddressValue address, LIRFrameState state) {
             this.kind = kind;
             this.result = result;
             this.address = address;
@@ -172,8 +166,7 @@ public class PTXMemOp {
                 case Long:
                 case Float:
                 case Double:
-                    new Ld(Parameter, result, addr.getBase(),
-                           Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -190,8 +183,7 @@ public class PTXMemOp {
         @Use({REG}) protected Variable input;
         @State protected LIRFrameState state;
 
-        public StoreReturnValOp(Kind kind, PTXAddressValue address,
-                                Variable input, LIRFrameState state) {
+        public StoreReturnValOp(Kind kind, PTXAddressValue address, Variable input, LIRFrameState state) {
             this.kind = kind;
             this.address = address;
             this.input = input;
@@ -210,8 +202,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new St(Global, input, addr.getBase(),
-                           Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new St(Global, input, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere("missing: " + address.getKind());

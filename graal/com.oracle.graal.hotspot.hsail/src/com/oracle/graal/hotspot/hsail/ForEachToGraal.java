@@ -81,7 +81,7 @@ public class ForEachToGraal implements CompileAndDispatch {
         if (hsailCompResult != null) {
             hsailCompResult.dumpCompilationResult();
         }
-        return hsailCompResult.getCompilationResult();
+        return hsailCompResult;
     }
 
     // Implementations of the CompileAndDispatch interface.

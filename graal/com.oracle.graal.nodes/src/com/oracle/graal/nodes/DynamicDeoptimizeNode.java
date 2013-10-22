@@ -23,9 +23,11 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable {
+public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Canonicalizable {
     @Input private ValueNode actionAndReason;
 
     public DynamicDeoptimizeNode(ValueNode actionAndReason) {
@@ -43,5 +45,16 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
 
     public void generate(LIRGeneratorTool generator) {
         generator.emitDeoptimize(generator.operand(actionAndReason), this);
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (actionAndReason.isConstant()) {
+            Constant constant = actionAndReason.asConstant();
+            DeoptimizeNode newDeopt = graph().add(new DeoptimizeNode(tool.getMetaAccess().decodeDeoptAction(constant), tool.getMetaAccess().decodeDeoptReason(constant)));
+            newDeopt.setDeoptimizationState(getDeoptimizationState());
+            return newDeopt;
+        }
+        return this;
     }
 }

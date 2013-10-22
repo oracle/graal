@@ -41,14 +41,14 @@ final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
     public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
         leaveFrame(tasm);
 
-// SPARCHotSpotBackend backend = (SPARCHotSpotBackend)
-// HotSpotGraalRuntime.runtime().getBackend();
-// final boolean isStub = true;
-// HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
-// frameContext.enter(tasm);
+        // SPARCHotSpotBackend backend = (SPARCHotSpotBackend)
+        // HotSpotGraalRuntime.runtime().getBackend();
+        // final boolean isStub = true;
+        // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
+        // frameContext.enter(tasm);
         Register scratch = g3;
         SPARCCall.indirectJmp(tasm, masm, scratch, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
 
-// frameContext.leave(tasm);
+        // frameContext.leave(tasm);
     }
 }

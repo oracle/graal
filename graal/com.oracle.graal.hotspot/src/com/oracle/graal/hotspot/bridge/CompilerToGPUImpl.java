@@ -39,8 +39,6 @@ public class CompilerToGPUImpl implements CompilerToGPU {
 
     public native int availableProcessors();
 
-    public native String[] getAvailableGPUArchitectures();
-
     public native Object executeExternalMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     public native Object executeParallelMethodVarargs(int dimX, int dimY, int dimZ, Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;

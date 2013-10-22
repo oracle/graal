@@ -30,6 +30,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.phases.util.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.test.*;
 
 public abstract class AssemblerTest extends GraalTest {
@@ -43,8 +45,9 @@ public abstract class AssemblerTest extends GraalTest {
     }
 
     public AssemblerTest() {
-        this.metaAccess = Graal.getRequiredCapability(MetaAccessProvider.class);
-        this.codeCache = Graal.getRequiredCapability(CodeCacheProvider.class);
+        Providers providers = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
+        this.metaAccess = providers.getMetaAccess();
+        this.codeCache = providers.getCodeCache();
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -62,7 +65,7 @@ public abstract class AssemblerTest extends GraalTest {
 
         InstalledCode code = codeCache.addMethod(method, compResult);
 
-        DisassemblerProvider dis = Graal.getRuntime().getCapability(DisassemblerProvider.class);
+        DisassemblerProvider dis = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getDisassembler();
         if (dis != null) {
             String disasm = dis.disassemble(code);
             Assert.assertTrue(code.toString(), disasm == null || disasm.length() > 0);

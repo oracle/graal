@@ -26,8 +26,8 @@ import static org.junit.Assert.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.*;
 import com.oracle.truffle.api.*;
 
@@ -35,7 +35,7 @@ public class TruffleRuntimeTest {
 
     @Test
     public void testGraalCapabilities() {
-        assertNotNull(Graal.getRuntime().getCapability(MetaAccessProvider.class));
+        assertNotNull(Graal.getRuntime().getCapability(RuntimeProvider.class));
     }
 
     @Test

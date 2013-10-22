@@ -41,6 +41,7 @@ import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.runtime.*;
 
 /**
  * use
@@ -204,7 +205,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         // create suites everytime, as we modify options for the compiler
-        final Suites suitesLocal = Graal.getRequiredCapability(SuitesProvider.class).createSuites();
+        final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
         final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
                         new SpeculationLog(), suitesLocal, new CompilationResult());
         addMethod(method, compResult);

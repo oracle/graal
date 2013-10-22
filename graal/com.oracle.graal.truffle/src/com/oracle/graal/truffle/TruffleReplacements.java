@@ -26,12 +26,13 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
-import com.oracle.graal.compiler.*;
+import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.runtime.*;
 import com.oracle.graal.truffle.substitutions.*;
 
 /**
@@ -47,7 +48,7 @@ public final class TruffleReplacements extends ReplacementsImpl {
     }
 
     static Replacements makeInstance() {
-        Providers graalProviders = GraalCompiler.getGraalProviders();
+        Providers graalProviders = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getProviders();
         Replacements truffleReplacements = new TruffleReplacements(graalProviders);
 
         truffleReplacements.registerSubstitutions(CompilerAssertsSubstitutions.class);

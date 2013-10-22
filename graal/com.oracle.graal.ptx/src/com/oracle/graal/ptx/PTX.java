@@ -35,10 +35,9 @@ import com.oracle.graal.api.meta.*;
  */
 public class PTX extends Architecture {
 
-    public static final RegisterCategory REG    = new RegisterCategory("REG");
-    public static final RegisterCategory SREG   = new RegisterCategory("SREG");
-    public static final RegisterCategory PARAM  = new RegisterCategory("PARAM");
-
+    public static final RegisterCategory REG = new RegisterCategory("REG");
+    public static final RegisterCategory SREG = new RegisterCategory("SREG");
+    public static final RegisterCategory PARAM = new RegisterCategory("PARAM");
 
     // @formatter:off
 
@@ -194,8 +193,7 @@ public class PTX extends Architecture {
     // @formatter:on
 
     public PTX() {
-        super("PTX", 8, ByteOrder.LITTLE_ENDIAN, false, allRegisters,
-              LOAD_STORE | STORE_STORE, 0, r15.encoding + 1, 8);
+        super("PTX", 8, ByteOrder.LITTLE_ENDIAN, false, allRegisters, LOAD_STORE | STORE_STORE, 0, r15.encoding + 1, 8);
     }
 
     @Override
@@ -231,6 +229,5 @@ public class PTX extends Architecture {
             return Kind.Illegal;
         }
     }
-
 
 }

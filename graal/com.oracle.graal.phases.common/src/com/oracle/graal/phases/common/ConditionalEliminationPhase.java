@@ -318,44 +318,43 @@ public class ConditionalEliminationPhase extends Phase {
                 ShortCircuitOrNode disjunction = (ShortCircuitOrNode) condition;
                 registerCondition(disjunction.isXNegated(), disjunction.getX(), anchor);
                 registerCondition(disjunction.isYNegated(), disjunction.getY(), anchor);
-            } else {
-                state.addCondition(isTrue, condition, anchor);
+            }
+            state.addCondition(isTrue, condition, anchor);
 
-                if (isTrue && condition instanceof InstanceOfNode) {
-                    InstanceOfNode instanceOf = (InstanceOfNode) condition;
-                    ValueNode object = instanceOf.object();
-                    state.addNullness(false, object);
-                    state.addType(instanceOf.type(), object);
-                } else if (condition instanceof IsNullNode) {
-                    IsNullNode nullCheck = (IsNullNode) condition;
-                    state.addNullness(isTrue, nullCheck.object());
-                } else if (condition instanceof ObjectEqualsNode) {
-                    ObjectEqualsNode equals = (ObjectEqualsNode) condition;
-                    ValueNode x = equals.x();
-                    ValueNode y = equals.y();
-                    if (isTrue) {
-                        if (state.isNull(x) && !state.isNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(true, y);
-                        } else if (!state.isNull(x) && state.isNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(true, x);
-                        }
-                        if (state.isNonNull(x) && !state.isNonNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(false, y);
-                        } else if (!state.isNonNull(x) && state.isNonNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(false, x);
-                        }
-                    } else {
-                        if (state.isNull(x) && !state.isNonNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(false, y);
-                        } else if (!state.isNonNull(x) && state.isNull(y)) {
-                            metricObjectEqualsRegistered.increment();
-                            state.addNullness(false, x);
-                        }
+            if (isTrue && condition instanceof InstanceOfNode) {
+                InstanceOfNode instanceOf = (InstanceOfNode) condition;
+                ValueNode object = instanceOf.object();
+                state.addNullness(false, object);
+                state.addType(instanceOf.type(), object);
+            } else if (condition instanceof IsNullNode) {
+                IsNullNode nullCheck = (IsNullNode) condition;
+                state.addNullness(isTrue, nullCheck.object());
+            } else if (condition instanceof ObjectEqualsNode) {
+                ObjectEqualsNode equals = (ObjectEqualsNode) condition;
+                ValueNode x = equals.x();
+                ValueNode y = equals.y();
+                if (isTrue) {
+                    if (state.isNull(x) && !state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, y);
+                    } else if (!state.isNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(true, x);
+                    }
+                    if (state.isNonNull(x) && !state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, y);
+                    } else if (!state.isNonNull(x) && state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, x);
+                    }
+                } else {
+                    if (state.isNull(x) && !state.isNonNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, y);
+                    } else if (!state.isNonNull(x) && state.isNull(y)) {
+                        metricObjectEqualsRegistered.increment();
+                        state.addNullness(false, x);
                     }
                 }
             }

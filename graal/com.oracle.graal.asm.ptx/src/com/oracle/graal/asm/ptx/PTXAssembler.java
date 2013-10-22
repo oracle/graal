@@ -918,9 +918,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
         public void emit(PTXAssembler asm) {
 
             if (booleanOperator != null) {
-                asm.emitString("setp." + operator.getOperator() + "." + booleanOperator.getOperator() + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ", %r;"); // Predicates
-// need to be objects
-
+                // Predicates need to be objects
+                asm.emitString("setp." + operator.getOperator() + "." + booleanOperator.getOperator() + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ", %r;");
             } else {
                 asm.emitString("setp." + operator.getOperator() + "." + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ";");
             }

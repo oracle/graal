@@ -32,7 +32,6 @@ import java.util.Map.Entry;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
@@ -42,7 +41,7 @@ import com.oracle.graal.phases.schedule.*;
 
 public class BinaryGraphPrinter implements GraphPrinter {
 
-    private static final int CONSTANT_POOL_MAX_SIZE = 2000;
+    private static final int CONSTANT_POOL_MAX_SIZE = 8000;
 
     private static final int BEGIN_GROUP = 0x00;
     private static final int BEGIN_GRAPH = 0x01;
@@ -71,10 +70,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
     private static final int KLASS = 0x00;
     private static final int ENUM_KLASS = 0x01;
 
-    private static final class ConstantPool extends LinkedHashMap<Object, Integer> {
+    private static final class ConstantPool extends LinkedHashMap<Object, Character> {
 
-        private final LinkedList<Integer> availableIds;
-        private int nextId;
+        private final LinkedList<Character> availableIds;
+        private char nextId;
         private static final long serialVersionUID = -2676889957907285681L;
 
         public ConstantPool() {
@@ -83,7 +82,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
 
         @Override
-        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Integer> eldest) {
+        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Character> eldest) {
             if (size() > CONSTANT_POOL_MAX_SIZE) {
                 availableIds.addFirst(eldest.getValue());
                 return true;
@@ -91,15 +90,15 @@ public class BinaryGraphPrinter implements GraphPrinter {
             return false;
         }
 
-        private Integer nextAvailableId() {
+        private Character nextAvailableId() {
             if (!availableIds.isEmpty()) {
                 return availableIds.removeFirst();
             }
             return nextId++;
         }
 
-        public int add(Object obj) {
-            Integer id = nextAvailableId();
+        public char add(Object obj) {
+            Character id = nextAvailableId();
             put(obj, id);
             return id;
         }
@@ -149,6 +148,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void ensureAvailable(int i) throws IOException {
+        assert buffer.capacity() >= i : "Can not make " + i + " bytes available, buffer is too small";
         while (buffer.remaining() < i) {
             flush();
         }
@@ -186,10 +186,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
 
     private void writeString(String str) throws IOException {
         writeInt(str.length());
-        ensureAvailable(str.length() * 2);
-        for (int i = 0; i < str.length(); i++) {
-            buffer.putChar(str.charAt(i));
-        }
+        int sizeInBytes = str.length() * 2;
+        ensureAvailable(sizeInBytes);
+        buffer.asCharBuffer().put(str);
+        buffer.position(buffer.position() + sizeInBytes);
     }
 
     private void writeBytes(byte[] b) throws IOException {
@@ -207,10 +207,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length * 4);
-            for (int i = 0; i < b.length; i++) {
-                buffer.putInt(b[i]);
-            }
+            int sizeInBytes = b.length * 4;
+            ensureAvailable(sizeInBytes);
+            buffer.asIntBuffer().put(b);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -219,10 +219,10 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeInt(-1);
         } else {
             writeInt(b.length);
-            ensureAvailable(b.length * 8);
-            for (int i = 0; i < b.length; i++) {
-                buffer.putDouble(b[i]);
-            }
+            int sizeInBytes = b.length * 8;
+            ensureAvailable(sizeInBytes);
+            buffer.asDoubleBuffer().put(b);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -231,7 +231,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_NULL);
             return;
         }
-        Integer id = constantPool.get(object);
+        Character id = constantPool.get(object);
         if (id == null) {
             addPoolEntry(object);
         } else {
@@ -250,7 +250,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             } else {
                 writeByte(POOL_STRING);
             }
-            writeInt(id.intValue());
+            writeShort(id.charValue());
         }
     }
 
@@ -262,9 +262,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private void addPoolEntry(Object object) throws IOException {
-        int index = constantPool.add(object);
+        char index = constantPool.add(object);
         writeByte(POOL_NEW);
-        writeInt(index);
+        writeShort(index);
         if (object instanceof Class<?>) {
             Class<?> klass = (Class<?>) object;
             writeByte(POOL_CLASS);
@@ -293,14 +293,16 @@ public class BinaryGraphPrinter implements GraphPrinter {
             writeByte(POOL_NODE_CLASS);
             writeString(nodeClass.getJavaClass().getSimpleName());
             writeString(nodeClass.getNameTemplate());
-            List<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
+            Collection<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
             writeShort((char) directInputPositions.size());
             for (Position pos : directInputPositions) {
+                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
-            List<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
+            Collection<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
             writeShort((char) directSuccessorPositions.size());
             for (Position pos : directSuccessorPositions) {
+                writeByte(pos.subIndex == NodeClass.NOT_ITERABLE ? 0 : 1);
                 writePoolObject(nodeClass.getName(pos));
             }
         } else if (object instanceof ResolvedJavaMethod) {
@@ -411,25 +413,53 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writePoolObject(key);
                 writePropertyObject(entry.getValue());
             }
-            // successors
-            NodeClassIterable successors = node.successors();
-            writeShort((char) successors.count());
-            NodeClassIterator suxIt = successors.iterator();
-            while (suxIt.hasNext()) {
-                Position pos = suxIt.nextPosition();
-                Node sux = nodeClass.get(node, pos);
-                writeInt(sux.getId());
-                writeShort((char) pos.index);
-            }
             // inputs
-            NodeClassIterable inputs = node.inputs();
-            writeShort((char) inputs.count());
-            NodeClassIterator inIt = inputs.iterator();
-            while (inIt.hasNext()) {
-                Position pos = inIt.nextPosition();
-                Node in = nodeClass.get(node, pos);
-                writeInt(in.getId());
-                writeShort((char) pos.index);
+            Collection<Position> directInputPositions = nodeClass.getFirstLevelInputPositions();
+            for (Position pos : directInputPositions) {
+                if (pos.subIndex == NodeClass.NOT_ITERABLE) {
+                    Node in = nodeClass.get(node, pos);
+                    if (in != null) {
+                        writeInt(in.getId());
+                    } else {
+                        writeInt(-1);
+                    }
+                } else {
+                    NodeList<?> list = nodeClass.getNodeList(node, pos);
+                    int listSize = list.count();
+                    assert listSize == ((char) listSize);
+                    writeShort((char) listSize);
+                    for (Node in : list) {
+                        if (in != null) {
+                            writeInt(in.getId());
+                        } else {
+                            writeInt(-1);
+                        }
+                    }
+                }
+            }
+            // successors
+            Collection<Position> directSuccessorPositions = nodeClass.getFirstLevelSuccessorPositions();
+            for (Position pos : directSuccessorPositions) {
+                if (pos.subIndex == NodeClass.NOT_ITERABLE) {
+                    Node sux = nodeClass.get(node, pos);
+                    if (sux != null) {
+                        writeInt(sux.getId());
+                    } else {
+                        writeInt(-1);
+                    }
+                } else {
+                    NodeList<?> list = nodeClass.getNodeList(node, pos);
+                    int listSize = list.count();
+                    assert listSize == ((char) listSize);
+                    writeShort((char) listSize);
+                    for (Node sux : list) {
+                        if (sux != null) {
+                            writeInt(sux.getId());
+                        } else {
+                            writeInt(-1);
+                        }
+                    }
+                }
             }
             props.clear();
         }

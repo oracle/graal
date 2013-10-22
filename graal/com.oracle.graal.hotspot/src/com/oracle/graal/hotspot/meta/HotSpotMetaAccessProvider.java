@@ -79,14 +79,29 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         return runtime.getCompilerToVM().getJavaField(reflectionField);
     }
 
+    private static final int ACTION_SHIFT = 0;
+    private static final int ACTION_MASK = 0x07;
+    private static final int REASON_SHIFT = 3;
+    private static final int REASON_MASK = 0x1f;
+
     @Override
     public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason) {
-        final int actionShift = 0;
-        final int reasonShift = 3;
-
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
-        return Constant.forInt(~(((reasonValue) << reasonShift) + ((actionValue) << actionShift)));
+        Constant c = Constant.forInt(~(((reasonValue) << REASON_SHIFT) + ((actionValue) << ACTION_SHIFT)));
+        return c;
+    }
+
+    public DeoptimizationReason decodeDeoptReason(Constant constant) {
+        int reasonValue = ((~constant.asInt()) >> REASON_SHIFT) & REASON_MASK;
+        DeoptimizationReason reason = convertDeoptReason(reasonValue);
+        return reason;
+    }
+
+    public DeoptimizationAction decodeDeoptAction(Constant constant) {
+        int actionValue = ((~constant.asInt()) >> ACTION_SHIFT) & ACTION_MASK;
+        DeoptimizationAction action = convertDeoptAction(actionValue);
+        return action;
     }
 
     public int convertDeoptAction(DeoptimizationAction action) {
@@ -103,6 +118,22 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                 return runtime.getConfig().deoptActionMakeNotCompilable;
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public DeoptimizationAction convertDeoptAction(int action) {
+        if (action == runtime.getConfig().deoptActionNone) {
+            return DeoptimizationAction.None;
+        } else if (action == runtime.getConfig().deoptActionMaybeRecompile) {
+            return DeoptimizationAction.RecompileIfTooManyDeopts;
+        } else if (action == runtime.getConfig().deoptActionReinterpret) {
+            return DeoptimizationAction.InvalidateReprofile;
+        } else if (action == runtime.getConfig().deoptActionMakeNotEntrant) {
+            return DeoptimizationAction.InvalidateRecompile;
+        } else if (action == runtime.getConfig().deoptActionMakeNotCompilable) {
+            return DeoptimizationAction.InvalidateStopCompiling;
+        } else {
+            throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -138,6 +169,40 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                 return runtime.getConfig().deoptReasonLoopLimitCheck;
             default:
                 throw GraalInternalError.shouldNotReachHere();
+        }
+    }
+
+    public DeoptimizationReason convertDeoptReason(int reason) {
+        if (reason == runtime.getConfig().deoptReasonNone) {
+            return DeoptimizationReason.None;
+        } else if (reason == runtime.getConfig().deoptReasonNullCheck) {
+            return DeoptimizationReason.NullCheckException;
+        } else if (reason == runtime.getConfig().deoptReasonRangeCheck) {
+            return DeoptimizationReason.BoundsCheckException;
+        } else if (reason == runtime.getConfig().deoptReasonClassCheck) {
+            return DeoptimizationReason.ClassCastException;
+        } else if (reason == runtime.getConfig().deoptReasonArrayCheck) {
+            return DeoptimizationReason.ArrayStoreException;
+        } else if (reason == runtime.getConfig().deoptReasonUnreached0) {
+            return DeoptimizationReason.UnreachedCode;
+        } else if (reason == runtime.getConfig().deoptReasonTypeCheckInlining) {
+            return DeoptimizationReason.TypeCheckedInliningViolated;
+        } else if (reason == runtime.getConfig().deoptReasonOptimizedTypeCheck) {
+            return DeoptimizationReason.OptimizedTypeCheckViolated;
+        } else if (reason == runtime.getConfig().deoptReasonNotCompiledExceptionHandler) {
+            return DeoptimizationReason.NotCompiledExceptionHandler;
+        } else if (reason == runtime.getConfig().deoptReasonUnresolved) {
+            return DeoptimizationReason.Unresolved;
+        } else if (reason == runtime.getConfig().deoptReasonJsrMismatch) {
+            return DeoptimizationReason.JavaSubroutineMismatch;
+        } else if (reason == runtime.getConfig().deoptReasonDiv0Check) {
+            return DeoptimizationReason.ArithmeticException;
+        } else if (reason == runtime.getConfig().deoptReasonConstraint) {
+            return DeoptimizationReason.RuntimeConstraint;
+        } else if (reason == runtime.getConfig().deoptReasonLoopLimitCheck) {
+            return DeoptimizationReason.LoopLimitCheck;
+        } else {
+            throw GraalInternalError.shouldNotReachHere(Integer.toHexString(reason));
         }
     }
 }
