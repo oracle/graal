@@ -34,10 +34,10 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
-import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
 public class UnsafeArrayCopySnippets implements Snippets {
@@ -47,7 +47,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
 
-    private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind) {
+    private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind, LocationIdentity locationIdentity) {
         int arrayBaseOffset = arrayBaseOffset(baseKind);
         int elementSize = arrayIndexScale(baseKind);
         long byteLength = (long) length * elementSize;
@@ -86,76 +86,81 @@ public class UnsafeArrayCopySnippets implements Snippets {
             for (long i = 0; i < postLoopBytes; i += elementSize) {
                 srcOffset -= elementSize;
                 destOffset -= elementSize;
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
             }
             // Main-loop
             for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
                 srcOffset -= VECTOR_SIZE;
                 destOffset -= VECTOR_SIZE;
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND, locationIdentity);
             }
             // Pre-loop
             for (long i = 0; i < preLoopBytes; i += elementSize) {
                 srcOffset -= elementSize;
                 destOffset -= elementSize;
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
             }
         } else {
             // Pre-loop
             for (long i = 0; i < preLoopBytes; i += elementSize) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
                 srcOffset += elementSize;
                 destOffset += elementSize;
             }
             // Main-loop
             for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND, locationIdentity);
                 srcOffset += VECTOR_SIZE;
                 destOffset += VECTOR_SIZE;
             }
             // Post-loop
             for (long i = 0; i < postLoopBytes; i += elementSize) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, baseKind, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, baseKind, locationIdentity);
                 srcOffset += elementSize;
                 destOffset += elementSize;
             }
         }
     }
 
+    @Fold
+    private static LocationIdentity getArrayLocation(Kind kind) {
+        return NamedLocationIdentity.getArrayLocation(kind);
+    }
+
     @Snippet
     public static void arraycopyByte(byte[] src, int srcPos, byte[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte, getArrayLocation(Kind.Byte));
     }
 
     @Snippet
     public static void arraycopyBoolean(boolean[] src, int srcPos, boolean[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte, getArrayLocation(Kind.Boolean));
     }
 
     @Snippet
     public static void arraycopyChar(char[] src, int srcPos, char[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Char);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Char, getArrayLocation(Kind.Char));
     }
 
     @Snippet
     public static void arraycopyShort(short[] src, int srcPos, short[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Short);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Short, getArrayLocation(Kind.Short));
     }
 
     @Snippet
     public static void arraycopyInt(int[] src, int srcPos, int[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Int);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Int, getArrayLocation(Kind.Int));
     }
 
     @Snippet
     public static void arraycopyFloat(float[] src, int srcPos, float[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Float);
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Float, getArrayLocation(Kind.Float));
     }
 
     @Snippet
@@ -165,15 +170,16 @@ public class UnsafeArrayCopySnippets implements Snippets {
         long byteLength = (long) length * arrayIndexScale(baseKind);
         long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
         long destOffset = (long) destPos * arrayIndexScale(baseKind);
+        LocationIdentity arrayLocation = getArrayLocation(Kind.Long);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
             }
         } else {
             for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
             }
         }
     }
@@ -185,10 +191,11 @@ public class UnsafeArrayCopySnippets implements Snippets {
         long byteLength = (long) length * arrayIndexScale(baseKind);
         long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
         long destOffset = (long) destPos * arrayIndexScale(baseKind);
+        LocationIdentity arrayLocation = getArrayLocation(Kind.Double);
         if (src == dest && srcPos < destPos) { // bad aliased case
             for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
             }
         } else {
             for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
@@ -197,8 +204,8 @@ public class UnsafeArrayCopySnippets implements Snippets {
                  * values to be copied atomically, but not long values. For example, on Intel 32-bit
                  * this code is not atomic as long as the vector kind remains Kind.Long.
                  */
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND);
+                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
             }
         }
     }
@@ -210,17 +217,18 @@ public class UnsafeArrayCopySnippets implements Snippets {
     public static void arraycopyObject(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
         final int scale = arrayIndexScale(Kind.Object);
         int arrayBaseOffset = arrayBaseOffset(Kind.Object);
+        LocationIdentity arrayLocation = getArrayLocation(Kind.Object);
         if (src == dest && srcPos < destPos) { // bad aliased case
             long start = (long) (length - 1) * scale;
             for (long i = start; i >= 0; i -= scale) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object);
-                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + (i + (long) destPos * scale), a, Kind.Object, arrayLocation);
             }
         } else {
             long end = (long) length * scale;
             for (long i = 0; i < end; i += scale) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object);
-                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a);
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + (i + (long) destPos * scale), a, Kind.Object, arrayLocation);
             }
         }
     }
