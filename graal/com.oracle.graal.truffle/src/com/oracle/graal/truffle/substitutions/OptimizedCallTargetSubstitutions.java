@@ -37,6 +37,9 @@ public class OptimizedCallTargetSubstitutions {
     public static native Object call(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object callHelper(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
     public static native Object interpreterCall(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
