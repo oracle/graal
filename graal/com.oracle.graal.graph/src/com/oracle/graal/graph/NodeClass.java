@@ -1194,7 +1194,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
 
                     public Position next() {
-                        Position pos = new Position(true, i, i >= directInputCount ? 0 : NOT_ITERABLE);
+                        Position pos = new Position(true, i, i >= directInputCount ? NODE_LIST : NOT_ITERABLE);
                         i++;
                         return pos;
                     }
@@ -1224,7 +1224,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
 
                     public Position next() {
-                        Position pos = new Position(false, i, i >= directSuccessorCount ? 0 : NOT_ITERABLE);
+                        Position pos = new Position(false, i, i >= directSuccessorCount ? NODE_LIST : NOT_ITERABLE);
                         i++;
                         return pos;
                     }
