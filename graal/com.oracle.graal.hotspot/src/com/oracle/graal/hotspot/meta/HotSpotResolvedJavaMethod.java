@@ -190,6 +190,14 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
+     * Manually adds a DontInline annotation to this method.
+     */
+    public void setDontInline() {
+        dontInline = true;
+        runtime().getCompilerToVM().dontInline(metaspaceMethod, this);
+    }
+
+    /**
      * Returns true if this method is one of the special methods that is ignored by security stack
      * walks.
      * 

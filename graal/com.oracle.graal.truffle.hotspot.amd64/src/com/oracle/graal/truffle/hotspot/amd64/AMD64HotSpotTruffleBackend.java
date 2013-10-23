@@ -46,7 +46,7 @@ import com.oracle.truffle.api.frame.*;
  */
 class AMD64HotSpotTruffleBackend extends AMD64HotSpotBackend {
 
-    private ResolvedJavaMethod optimizedCallTargetCall;
+    private HotSpotResolvedJavaMethod optimizedCallTargetCall;
 
     public AMD64HotSpotTruffleBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
@@ -55,7 +55,9 @@ class AMD64HotSpotTruffleBackend extends AMD64HotSpotBackend {
     private ResolvedJavaMethod getInstrumentedMethod() throws GraalInternalError {
         if (optimizedCallTargetCall == null) {
             try {
-                optimizedCallTargetCall = getProviders().getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("call", PackedFrame.class, Arguments.class));
+                optimizedCallTargetCall = (HotSpotResolvedJavaMethod) getProviders().getMetaAccess().lookupJavaMethod(
+                                OptimizedCallTarget.class.getDeclaredMethod("call", PackedFrame.class, Arguments.class));
+                optimizedCallTargetCall.setDontInline();
             } catch (NoSuchMethodException | SecurityException e) {
                 throw new GraalInternalError(e);
             }
@@ -89,7 +91,6 @@ class AMD64HotSpotTruffleBackend extends AMD64HotSpotBackend {
 
             AMD64Address verifiedEntryPointAddress = new AMD64Address(spillRegister, config.nmethodEntryOffset);
             asm.movq(spillRegister, verifiedEntryPointAddress);
-
             asm.jmp(spillRegister);
 
             asm.bind(doProlog);
