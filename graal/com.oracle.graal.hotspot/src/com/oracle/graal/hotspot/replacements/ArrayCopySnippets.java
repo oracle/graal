@@ -78,9 +78,6 @@ public class ArrayCopySnippets implements Snippets {
         return arraycopyMethods.get(kind);
     }
 
-    private static final Kind VECTOR_KIND = Kind.Long;
-    private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
-
     private static void checkedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind) {
         Object nonNullSrc = guardingNonNull(src);
         Object nonNullDest = guardingNonNull(dest);
