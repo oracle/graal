@@ -71,16 +71,12 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
 
     @Override
     public Object call(PackedFrame caller, Arguments args) {
-        return callHelper(caller, args);
-    }
-
-    private Object callHelper(PackedFrame caller, Arguments args) {
         if (compiledMethod != null && compiledMethod.isValid()) {
             TruffleRuntime runtime = Truffle.getRuntime();
             if (runtime instanceof GraalTruffleRuntime) {
                 OUT.printf("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
                 OUT.println();
-                ((GraalTruffleRuntime) runtime).installOptimizedCallTargetCallMethod();
+                GraalTruffleRuntime.installOptimizedCallTargetCallMethod();
             }
         }
         if (TruffleCallTargetProfiling.getValue()) {

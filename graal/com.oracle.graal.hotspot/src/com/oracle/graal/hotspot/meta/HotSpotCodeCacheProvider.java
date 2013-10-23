@@ -174,7 +174,7 @@ public abstract class HotSpotCodeCacheProvider implements CodeCacheProvider {
         return code;
     }
 
-    public InstalledCode addDefaultMethod(ResolvedJavaMethod method, CompilationResult compResult) {
+    public InstalledCode setDefaultMethod(ResolvedJavaMethod method, CompilationResult compResult) {
         HotSpotResolvedJavaMethod hotspotMethod = (HotSpotResolvedJavaMethod) method;
         return installMethod(hotspotMethod, StructuredGraph.INVOCATION_ENTRY_BCI, compResult);
     }

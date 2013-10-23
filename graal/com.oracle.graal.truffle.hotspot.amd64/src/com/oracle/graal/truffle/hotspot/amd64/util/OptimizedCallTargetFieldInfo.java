@@ -38,32 +38,26 @@ public class OptimizedCallTargetFieldInfo {
 
     public static int getCodeBlobFieldOffset() {
         if (codeBlobFieldOffset == -1) {
-            try {
-                HotSpotInstalledCode.class.getDeclaredField("codeBlob").setAccessible(true);
-                Field codeBlobField = HotSpotInstalledCode.class.getDeclaredField("codeBlob");
-                codeBlobFieldOffset = (int) unsafe.objectFieldOffset(codeBlobField);
-            } catch (NoSuchFieldException | SecurityException e) {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-            return codeBlobFieldOffset;
-        } else {
-            return codeBlobFieldOffset;
+            codeBlobFieldOffset = getFieldOffset("codeBlob", HotSpotInstalledCode.class);
         }
+        return codeBlobFieldOffset;
     }
 
     public static int getCompiledMethodFieldOffset() {
         if (compiledMethodFieldOffset == -1) {
-            try {
-                OptimizedCallTarget.class.getDeclaredField("compiledMethod").setAccessible(true);
-                Field compiledMethodField = OptimizedCallTarget.class.getDeclaredField("compiledMethod");
-                compiledMethodFieldOffset = (int) unsafe.objectFieldOffset(compiledMethodField);
-            } catch (NoSuchFieldException | SecurityException e) {
-                throw GraalInternalError.shouldNotReachHere();
-            }
-            return compiledMethodFieldOffset;
-        } else {
-            return compiledMethodFieldOffset;
+            compiledMethodFieldOffset = getFieldOffset("compiledMethod", OptimizedCallTarget.class);
         }
+        return compiledMethodFieldOffset;
+
     }
 
+    private static int getFieldOffset(String name, Class container) {
+        try {
+            container.getDeclaredField(name).setAccessible(true);
+            Field field = container.getDeclaredField(name);
+            return (int) unsafe.objectFieldOffset(field);
+        } catch (NoSuchFieldException | SecurityException e) {
+            throw GraalInternalError.shouldNotReachHere();
+        }
+    }
 }
