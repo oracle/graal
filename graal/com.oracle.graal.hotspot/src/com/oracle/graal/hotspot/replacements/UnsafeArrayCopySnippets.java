@@ -40,12 +40,16 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
 import com.oracle.graal.word.*;
 
+/**
+ * As opposed to {@link ArrayCopySnippets}, these Snippets do <b>not</b> perform store checks.
+ */
 public class UnsafeArrayCopySnippets implements Snippets {
 
     private static final boolean supportsUnalignedMemoryAccess = runtime().getTarget().arch.supportsUnalignedMemoryAccess();
 
+    // TODO: make vector kind architecture dependent
     private static final Kind VECTOR_KIND = Kind.Long;
-    private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
+    private static final long VECTOR_SIZE = arrayIndexScale(VECTOR_KIND);
 
     private static void vectorizedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind, LocationIdentity locationIdentity) {
         int arrayBaseOffset = arrayBaseOffset(baseKind);
@@ -165,72 +169,22 @@ public class UnsafeArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyLong(long[] src, int srcPos, long[] dest, int destPos, int length) {
-        Kind baseKind = Kind.Long;
-        int arrayBaseOffset = arrayBaseOffset(baseKind);
-        long byteLength = (long) length * arrayIndexScale(baseKind);
-        long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
-        long destOffset = (long) destPos * arrayIndexScale(baseKind);
-        LocationIdentity arrayLocation = getArrayLocation(Kind.Long);
-        if (src == dest && srcPos < destPos) { // bad aliased case
-            for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
-            }
-        } else {
-            for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
-            }
-        }
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Long, getArrayLocation(Kind.Long));
     }
 
     @Snippet
     public static void arraycopyDouble(double[] src, int srcPos, double[] dest, int destPos, int length) {
-        Kind baseKind = Kind.Double;
-        int arrayBaseOffset = arrayBaseOffset(baseKind);
-        long byteLength = (long) length * arrayIndexScale(baseKind);
-        long srcOffset = (long) srcPos * arrayIndexScale(baseKind);
-        long destOffset = (long) destPos * arrayIndexScale(baseKind);
-        LocationIdentity arrayLocation = getArrayLocation(Kind.Double);
-        if (src == dest && srcPos < destPos) { // bad aliased case
-            for (long i = byteLength - VECTOR_SIZE; i >= 0; i -= VECTOR_SIZE) {
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
-            }
-        } else {
-            for (long i = 0; i < byteLength; i += VECTOR_SIZE) {
-                /*
-                 * TODO atomicity problem on 32-bit architectures: The JVM spec requires double
-                 * values to be copied atomically, but not long values. For example, on Intel 32-bit
-                 * this code is not atomic as long as the vector kind remains Kind.Long.
-                 */
-                Long a = UnsafeLoadNode.load(src, arrayBaseOffset + i + srcOffset, VECTOR_KIND, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + i + destOffset, a.longValue(), VECTOR_KIND, arrayLocation);
-            }
-        }
+        /*
+         * TODO atomicity problem on 32-bit architectures: The JVM spec requires double values to be
+         * copied atomically, but not long values. For example, on Intel 32-bit this code is not
+         * atomic as long as the vector kind remains Kind.Long.
+         */
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Double, getArrayLocation(Kind.Double));
     }
 
-    /**
-     * Does NOT perform store checks.
-     */
     @Snippet
     public static void arraycopyObject(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        final int scale = arrayIndexScale(Kind.Object);
-        int arrayBaseOffset = arrayBaseOffset(Kind.Object);
-        LocationIdentity arrayLocation = getArrayLocation(Kind.Object);
-        if (src == dest && srcPos < destPos) { // bad aliased case
-            long start = (long) (length - 1) * scale;
-            for (long i = start; i >= 0; i -= scale) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + (i + (long) destPos * scale), a, Kind.Object, arrayLocation);
-            }
-        } else {
-            long end = (long) length * scale;
-            for (long i = 0; i < end; i += scale) {
-                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + (i + (long) destPos * scale), a, Kind.Object, arrayLocation);
-            }
-        }
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Object, getArrayLocation(Kind.Object));
     }
 
     @Snippet
