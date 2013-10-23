@@ -238,14 +238,15 @@ public class StampTool {
             if (shiftCount != 0) {
                 long lowerBound;
                 long upperBound;
+                long downMask = value.downMask() >>> shiftCount;
                 if (value.lowerBound() < 0) {
-                    lowerBound = 0;
+                    lowerBound = downMask;
                     upperBound = IntegerStamp.defaultMask(kind) >>> shiftCount;
                 } else {
                     lowerBound = value.lowerBound() >>> shiftCount;
                     upperBound = value.upperBound() >>> shiftCount;
                 }
-                return new IntegerStamp(kind, lowerBound, upperBound, value.downMask() >>> shiftCount, value.upMask() >>> shiftCount);
+                return new IntegerStamp(kind, lowerBound, upperBound, downMask, value.upMask() >>> shiftCount);
             }
         }
         long mask = IntegerStamp.upMaskFor(kind, value.lowerBound(), value.upperBound());
