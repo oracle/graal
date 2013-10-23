@@ -193,7 +193,7 @@ public class ArrayCopySnippets implements Snippets {
             checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
-                arrayObjectCopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
+                UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object);
             } else {
                 genericPrimitiveCallCounter.inc();
                 UnsafeArrayCopyNode.arraycopyPrimitive(nonNullSrc, srcPos, nonNullDest, destPos, length, layoutHelper);
