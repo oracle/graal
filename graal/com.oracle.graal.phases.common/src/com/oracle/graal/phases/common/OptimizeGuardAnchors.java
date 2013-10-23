@@ -89,10 +89,9 @@ public class OptimizeGuardAnchors extends Phase {
         int successorCount = controlSplit.successors().count();
         List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
         for (GuardNode guard : successor.guards().snapshot()) {
-            if (guard.condition().usages().count() < successorCount) {
+            if (guard.isDeleted() || guard.condition().usages().count() < successorCount) {
                 continue;
             }
-
             for (GuardNode conditonGuard : guard.condition().usages().filter(GuardNode.class)) {
                 if (conditonGuard != guard) {
                     GuardingNode conditonGuardAnchor = conditonGuard.getGuard();
