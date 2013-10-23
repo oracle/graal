@@ -90,30 +90,30 @@ public class ArrayCopySnippets implements Snippets {
 
     public static int checkArrayType(Word hub) {
         int layoutHelper = readLayoutHelper(hub);
-        if (layoutHelper >= 0) {
+        if (probability(SLOW_PATH_PROBABILITY, layoutHelper >= 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         return layoutHelper;
     }
 
     public static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
-        if (srcPos < 0) {
+        if (probability(SLOW_PATH_PROBABILITY, srcPos < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (destPos < 0) {
+        if (probability(SLOW_PATH_PROBABILITY, destPos < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (length < 0) {
+        if (probability(SLOW_PATH_PROBABILITY, length < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (srcPos + length > ArrayLengthNode.arrayLength(src)) {
+        if (probability(SLOW_PATH_PROBABILITY, srcPos + length > ArrayLengthNode.arrayLength(src))) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (destPos + length > ArrayLengthNode.arrayLength(dest)) {
+        if (probability(SLOW_PATH_PROBABILITY, destPos + length > ArrayLengthNode.arrayLength(dest))) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
