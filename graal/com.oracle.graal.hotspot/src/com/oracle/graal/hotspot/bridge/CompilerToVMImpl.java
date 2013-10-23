@@ -178,7 +178,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long readUnsafeKlassPointer(Object o);
 
     @Override
-    public native void dontInline(long metaspaceMethod, HotSpotResolvedJavaMethod method);
+    public native void dontInline(long metaspaceMethod);
 
     @Override
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
