@@ -194,7 +194,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      */
     public void setDontInline() {
         dontInline = true;
-        runtime().getCompilerToVM().dontInline(metaspaceMethod);
+        runtime().getCompilerToVM().doNotInlineOrCompile(metaspaceMethod);
     }
 
     /**
