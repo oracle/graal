@@ -800,7 +800,7 @@ public class SnippetTemplate {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
             if (locationIdentity == ANY_LOCATION) {
-                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode);
+                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             return true;
