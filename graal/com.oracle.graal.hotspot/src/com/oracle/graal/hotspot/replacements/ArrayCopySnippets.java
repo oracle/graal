@@ -85,7 +85,7 @@ public class ArrayCopySnippets implements Snippets {
         UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, baseKind);
     }
 
-    public static int checkArrayType(Word hub) {
+    private static int checkArrayType(Word hub) {
         int layoutHelper = readLayoutHelper(hub);
         if (probability(SLOW_PATH_PROBABILITY, layoutHelper >= 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
@@ -93,7 +93,7 @@ public class ArrayCopySnippets implements Snippets {
         return layoutHelper;
     }
 
-    public static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
+    private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
         if (probability(SLOW_PATH_PROBABILITY, srcPos < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
@@ -167,12 +167,6 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        arrayObjectCopy(src, srcPos, dest, destPos, length);
-    }
-
-    // Does NOT perform store checks
-    @Snippet
-    public static void arrayObjectCopy(Object src, int srcPos, Object dest, int destPos, int length) {
         objectCounter.inc();
         checkedCopy(src, srcPos, dest, destPos, length, Kind.Object);
     }
