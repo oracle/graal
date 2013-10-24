@@ -206,7 +206,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         }
 
         private static boolean tryKillUnused(Node node) {
-            if (node.isAlive() && GraphUtil.isFloatingNode().apply(node) && node.usages().isEmpty()) {
+            if (node.isAlive() && GraphUtil.isFloatingNode().apply(node) && node.recordsUsages() && node.usages().isEmpty()) {
                 GraphUtil.killWithUnusedFloatingInputs(node);
                 return true;
             }

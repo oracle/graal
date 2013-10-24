@@ -174,7 +174,7 @@ public class HotSpotOptions {
         if (value != null) {
             OptionValue<?> optionValue = desc.getOptionValue();
             optionValue.setValue(value);
-            // Logger.info("Set option " + fieldName + " to " + value);
+            // Logger.info("Set option " + desc.getName() + " to " + value);
         } else {
             Logger.info("Wrong value \"" + valueString + "\" for option " + optionName);
             return false;

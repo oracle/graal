@@ -45,6 +45,17 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Used to measure the impact of ConstantNodes not recording their usages. This and all code
+     * predicated on this value being true will be removed at some point.
+     */
+    public static final boolean ConstantNodeRecordsUsages = Boolean.getBoolean("graal.constantNodeRecordsUsages");
+
+    @Override
+    public boolean recordsUsages() {
+        return ConstantNodeRecordsUsages;
+    }
+
+    /**
      * Constructs a new ConstantNode representing the specified constant.
      * 
      * @param value the constant
