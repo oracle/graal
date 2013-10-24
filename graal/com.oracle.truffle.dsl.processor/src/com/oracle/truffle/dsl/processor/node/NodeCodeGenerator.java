@@ -964,14 +964,76 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 for (CodeExecutableElement method : createImplicitChildrenAccessors()) {
                     clazz.add(method);
                 }
-
                 clazz.add(createGenericExecuteAndSpecialize(node, rootGroup));
                 clazz.add(createInfoMessage(node));
+            }
+
+            if (needsInvokeCopyConstructorMethod()) {
+                clazz.add(createInvokeCopyConstructor(clazz.asType(), null));
+                clazz.add(createCopyPolymorphicConstructor(clazz.asType()));
             }
 
             if (node.getGenericSpecialization() != null && node.getGenericSpecialization().isReachable()) {
                 clazz.add(createGenericExecute(node, rootGroup));
             }
+        }
+
+        protected boolean needsInvokeCopyConstructorMethod() {
+            return getModel().getNode().isPolymorphic();
+        }
+
+        protected CodeExecutableElement createInvokeCopyConstructor(TypeMirror baseType, SpecializationData specialization) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), baseType, "invokeCopyConstructor");
+            if (specialization == null) {
+                method.getModifiers().add(ABSTRACT);
+            } else {
+                CodeTreeBuilder builder = method.createBuilder();
+                builder.startReturn();
+                builder.startNew(getElement().asType());
+                builder.string("this");
+                for (ActualParameter param : getImplicitTypeParamters(specialization)) {
+                    builder.string(implicitTypeName(param));
+                }
+                builder.end().end();
+            }
+            return method;
+        }
+
+        protected CodeExecutableElement createCopyPolymorphicConstructor(TypeMirror baseType) {
+            CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED, FINAL), baseType, "copyPolymorphic");
+            CodeTreeBuilder builder = method.createBuilder();
+            CodeTreeBuilder nullBuilder = builder.create();
+            CodeTreeBuilder oldBuilder = builder.create();
+            CodeTreeBuilder resetBuilder = builder.create();
+
+            for (ActualParameter param : getModel().getParameters()) {
+                if (!param.getSpecification().isSignature()) {
+                    continue;
+                }
+                NodeChildData child = getModel().getNode().findChild(param.getSpecification().getName());
+
+                CodeTreeBuilder access = builder.create();
+                access.string("this.").string(child.getName());
+                if (child.getCardinality().isMany()) {
+                    access.string("[").string(String.valueOf(param.getIndex())).string("]");
+                }
+
+                String oldName = "old" + Utils.firstLetterUpperCase(param.getLocalName());
+                oldBuilder.declaration(child.getNodeData().getNodeType(), oldName, access);
+                nullBuilder.startStatement().tree(access.getRoot()).string(" = null").end();
+                resetBuilder.startStatement().tree(access.getRoot()).string(" = ").string(oldName).end();
+            }
+
+            builder.tree(oldBuilder.getRoot());
+            builder.tree(nullBuilder.getRoot());
+
+            builder.startStatement().type(baseType).string(" copy = ");
+            builder.startCall("invokeCopyConstructor").end();
+            builder.end();
+
+            builder.tree(resetBuilder.getRoot());
+            builder.startReturn().string("copy").end();
+            return method;
         }
 
         private List<CodeExecutableElement> createImplicitChildrenAccessors() {
@@ -1795,27 +1857,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             String uninitializedName = nodeSpecializationClassName(node.getUninitializedSpecialization());
             CodeTreeBuilder builder = parent.create();
 
+            builder.declaration(getElement().asType(), "currentCopy", currentNode + ".copyPolymorphic()");
             builder.declaration(polyClassName, "polymorphic", builder.create().startNew(polyClassName).string(currentNode).end());
-
-            for (ActualParameter param : node.getGenericSpecialization().getParameters()) {
-                if (!param.getSpecification().isSignature()) {
-                    continue;
-                }
-                NodeChildData child = node.findChild(param.getSpecification().getName());
-                if (child != null) {
-                    builder.startStatement().string(currentNode).string(".").string(child.getName());
-                    if (child.getCardinality().isMany()) {
-                        builder.string("[").string(String.valueOf(param.getIndex())).string("]");
-                    }
-                    builder.string(" = null").end();
-                }
-            }
             builder.startStatement().startCall(currentNode, "replace").string("polymorphic").string("message").end().end();
-            builder.startStatement().startCall("polymorphic", "setNext0").string(currentNode).end().end();
-            builder.startStatement().startCall(currentNode, "setNext0").startNew(uninitializedName).string(currentNode).end().end().end();
+            builder.startStatement().startCall("polymorphic", "setNext0").string("currentCopy").end().end();
+            builder.startStatement().startCall("currentCopy", "setNext0").startNew(uninitializedName).string(currentNode).end().end().end();
 
             builder.startReturn();
-            builder.startCall(currentNode + ".next0", executeCachedName(node.getGenericPolymorphicSpecialization()));
+            builder.startCall("currentCopy.next0", executeCachedName(node.getGenericPolymorphicSpecialization()));
             addInternalValueParameterNames(builder, node.getGenericSpecialization(), node.getGenericSpecialization(), null, true, true, null);
             builder.end();
             builder.end();
@@ -1979,6 +2028,21 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             } else {
                 return createExecuteChildImplicit(parent, child, sourceExecutable, targetParameter, unexpectedParameter);
             }
+        }
+
+        protected final List<ActualParameter> getImplicitTypeParamters(SpecializationData model) {
+            List<ActualParameter> parameter = new ArrayList<>();
+            for (ActualParameter param : model.getParameters()) {
+                if (!param.getSpecification().isSignature()) {
+                    continue;
+                }
+                NodeChildData child = getModel().getNode().findChild(param.getSpecification().getName());
+                List<TypeData> types = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
+                if (types.size() > 1) {
+                    parameter.add(param);
+                }
+            }
+            return parameter;
         }
 
         protected final TreeSet<TypeData> lookupPolymorphicTargetTypes(ActualParameter param) {
@@ -2529,6 +2593,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 getElement().add(createUpdateType(parameter));
             }
 
+            if (needsInvokeCopyConstructorMethod()) {
+                clazz.add(createInvokeCopyConstructor(nodeGen.asType(), specialization));
+            }
+
             createCachedExecuteMethods(specialization);
 
         }
@@ -2607,6 +2675,9 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             if (specialization.getNode().isPolymorphic()) {
                 getElement().add(createUpdateTypes(nodeGen.asType()));
             }
+            if (needsInvokeCopyConstructorMethod()) {
+                clazz.add(createInvokeCopyConstructor(nodeGen.asType(), specialization));
+            }
         }
 
         protected void createConstructors(CodeTypeElement clazz) {
@@ -2636,20 +2707,13 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                         builder.statement("this.next0 = null");
                     }
 
-                    for (ActualParameter param : getModel().getParameters()) {
-                        if (!param.getSpecification().isSignature()) {
-                            continue;
-                        }
-                        NodeChildData child = getModel().getNode().findChild(param.getSpecification().getName());
-                        List<TypeData> types = child.getNodeData().getTypeSystem().lookupSourceTypes(param.getTypeSystemType());
-                        if (types.size() > 1) {
-                            clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), getContext().getType(Class.class), implicitTypeName(param)));
-                            superConstructor.getParameters().add(new CodeVariableElement(getContext().getType(Class.class), implicitTypeName(param)));
+                    for (ActualParameter param : getImplicitTypeParamters(getModel())) {
+                        clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), getContext().getType(Class.class), implicitTypeName(param)));
+                        superConstructor.getParameters().add(new CodeVariableElement(getContext().getType(Class.class), implicitTypeName(param)));
 
-                            builder.startStatement();
-                            builder.string("this.").string(implicitTypeName(param)).string(" = ").string(implicitTypeName(param));
-                            builder.end();
-                        }
+                        builder.startStatement();
+                        builder.string("this.").string(implicitTypeName(param)).string(" = ").string(implicitTypeName(param));
+                        builder.end();
                     }
 
                     clazz.add(superConstructor);
