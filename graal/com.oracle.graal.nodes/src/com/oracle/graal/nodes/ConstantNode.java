@@ -65,6 +65,35 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         this.value = value;
     }
 
+    /**
+     * Computes the usages of this node by iterating over all the nodes in the graph, searching for
+     * those that have this node as an input.
+     */
+    public List<Node> gatherUsages() {
+        assert !ConstantNodeRecordsUsages;
+        List<Node> usages = new ArrayList<>();
+        for (Node node : graph().getNodes()) {
+            for (Node input : node.inputs()) {
+                if (input == this) {
+                    usages.add(node);
+                }
+            }
+        }
+        return usages;
+    }
+
+    public void replace(Node replacement) {
+        if (!recordsUsages()) {
+            List<Node> usages = gatherUsages();
+            for (Node usage : usages) {
+                usage.replaceFirstInput(this, replacement);
+            }
+            graph().removeFloating(this);
+        } else {
+            graph().replaceFloating(this, replacement);
+        }
+    }
+
     @Override
     public void generate(LIRGeneratorTool gen) {
         if (gen.canInlineConstant(value) || onlyUsedInVirtualState()) {
