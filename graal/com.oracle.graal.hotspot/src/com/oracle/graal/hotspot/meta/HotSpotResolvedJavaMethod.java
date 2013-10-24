@@ -34,9 +34,11 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
+import com.oracle.graal.java.*;
 
 /**
  * Implementation of {@link JavaMethod} for resolved HotSpot methods.
@@ -448,7 +450,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     /**
-     * Returns the offset of this method into the v-table. The method must have a v-table entry has
+     * Returns the offset of this method into the v-table. The method must have a v-table entry as
      * indicated by {@link #isInVirtualMethodTable()}, otherwise an exception is thrown.
      * 
      * @return the offset of this method into the v-table
@@ -457,12 +459,19 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (!isInVirtualMethodTable() || !holder.isInitialized()) {
             throw new GraalInternalError("%s does not have a vtable entry", this);
         }
-        return runtime().getCompilerToVM().getVtableEntryOffset(metaspaceMethod);
+        HotSpotVMConfig config = runtime().getConfig();
+        final int vtableIndex = getVtableIndex();
+        return config.instanceKlassVtableStartOffset + vtableIndex * config.vtableEntrySize + config.vtableEntryMethodOffset;
     }
 
     @Override
     public boolean isInVirtualMethodTable() {
-        return runtime().getCompilerToVM().hasVtableEntry(metaspaceMethod);
+        return getVtableIndex() >= 0;
+    }
+
+    private int getVtableIndex() {
+        HotSpotVMConfig config = runtime().getConfig();
+        return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);
     }
 
     public void setCurrentTask(CompilationTask task) {
