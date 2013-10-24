@@ -104,7 +104,7 @@ public class PartialEvaluator {
 
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
-        Debug.scope("createGraph", graph, new Runnable() {
+        Debug.scope("createGraph", new Runnable() {
 
             @Override
             public void run() {
@@ -245,13 +245,12 @@ public class PartialEvaluator {
                 ValueNode arg = arguments.get(local.index());
                 if (arg.isConstant()) {
                     Constant constant = arg.asConstant();
-                    ConstantNode constantNode = ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy);
-                    local.replaceAndDelete(constantNode);
-                    for (Node usage : constantNode.usages()) {
+                    for (Node usage : local.usages()) {
                         if (usage instanceof Canonicalizable) {
                             modifiedNodes.add(usage);
                         }
                     }
+                    local.replaceAndDelete(ConstantNode.forConstant(constant, phaseContext.getMetaAccess(), graphCopy));
                 }
             }
             Debug.scope("TruffleUnrollLoop", targetMethod, new Runnable() {

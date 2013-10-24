@@ -120,8 +120,6 @@ public interface CompilerToVM {
      */
     JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
-    int constantPoolLength(HotSpotResolvedObjectType pool);
-
     Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
 
     JavaMethod lookupMethodInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
@@ -202,10 +200,6 @@ public interface CompilerToVM {
 
     Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
-    int getVtableEntryOffset(long metaspaceMethod);
-
-    boolean hasVtableEntry(long metaspaceMethod);
-
     long[] getDeoptedLeafGraphIds();
 
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
@@ -217,6 +211,8 @@ public interface CompilerToVM {
     Object readUnsafeUncompressedPointer(Object o, long displacement);
 
     long readUnsafeKlassPointer(Object o);
+
+    void doNotInlineOrCompile(long metaspaceMethod);
 
     /**
      * Invalidates the profiling information and restarts profiling upon the next invocation.

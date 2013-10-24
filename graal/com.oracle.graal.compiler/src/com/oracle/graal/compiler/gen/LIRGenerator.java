@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.CallingConvention.Type.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
+import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
@@ -66,6 +67,13 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     protected final DebugInfoBuilder debugInfoBuilder;
 
     protected Block currentBlock;
+
+    /**
+     * Maps constants the variables within the scope of a single block to avoid loading a constant
+     * more than once per block.
+     */
+    private Map<Constant, Variable> constantsLoadedInCurrentBlock;
+
     private ValueNode currentInstruction;
     private ValueNode lastInstructionPrinted; // Debugging only
 
@@ -151,7 +159,38 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (nodeOperands == null) {
             return null;
         }
-        return nodeOperands.get(node);
+        Value operand = nodeOperands.get(node);
+        if (operand == null) {
+            return getConstantOperand(node);
+        }
+        return operand;
+    }
+
+    private Value getConstantOperand(ValueNode node) {
+        if (!ConstantNodeRecordsUsages) {
+            Constant value = node.asConstant();
+            if (value != null) {
+                if (canInlineConstant(value)) {
+                    return setResult(node, value);
+                } else {
+                    Variable loadedValue;
+                    if (constantsLoadedInCurrentBlock == null) {
+                        constantsLoadedInCurrentBlock = new HashMap<>();
+                        loadedValue = null;
+                    } else {
+                        loadedValue = constantsLoadedInCurrentBlock.get(value);
+                    }
+                    if (loadedValue == null) {
+                        loadedValue = emitMove(value);
+                        constantsLoadedInCurrentBlock.put(value, loadedValue);
+                    }
+                    return loadedValue;
+                }
+            }
+        } else {
+            // Constant is loaded by ConstantNode.generate()
+        }
+        return null;
     }
 
     public ValueNode valueForOperand(Value value) {
@@ -188,7 +227,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public Value setResult(ValueNode x, Value operand) {
         assert (!isRegister(operand) || !attributes(asRegister(operand)).isAllocatable());
-        assert operand(x) == null : "operand cannot be set twice";
+        assert nodeOperands == null || nodeOperands.get(x) == null : "operand cannot be set twice";
         assert operand != null && isLegal(operand) : "operand must be legal";
         assert operand.getKind().getStackKind() == x.kind() || x.kind() == Kind.Illegal : operand.getKind().getStackKind() + " must match " + x.kind();
         assert !(x instanceof VirtualObjectNode);
@@ -296,6 +335,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
 
         currentBlock = block;
+        resetLoadedConstants();
+
         // set up the list of LIR instructions
         assert lir.lir(block) == null : "LIR list already computed for this block";
         lir.setLir(block, new ArrayList<LIRInstruction>());
@@ -319,7 +360,9 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             if (TraceLIRGeneratorLevel.getValue() >= 3) {
                 TTY.println("LIRGen for " + instr);
             }
-            if (instr instanceof ValueNode) {
+            if (!ConstantNodeRecordsUsages && instr instanceof ConstantNode) {
+                // Loading of constants is done lazily by operand()
+            } else if (instr instanceof ValueNode) {
                 ValueNode valueNode = (ValueNode) instr;
                 if (operand(valueNode) == null) {
                     if (!peephole(valueNode)) {
@@ -352,6 +395,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         if (PrintIRWithLIR.getValue()) {
             TTY.println();
+        }
+    }
+
+    private void resetLoadedConstants() {
+        if (constantsLoadedInCurrentBlock != null && !constantsLoadedInCurrentBlock.isEmpty()) {
+            constantsLoadedInCurrentBlock.clear();
         }
     }
 

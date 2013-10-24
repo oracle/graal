@@ -78,9 +78,6 @@ public class ArrayCopySnippets implements Snippets {
         return arraycopyMethods.get(kind);
     }
 
-    private static final Kind VECTOR_KIND = Kind.Long;
-    private static final long VECTOR_SIZE = arrayIndexScale(Kind.Long);
-
     private static void checkedCopy(Object src, int srcPos, Object dest, int destPos, int length, Kind baseKind) {
         Object nonNullSrc = guardingNonNull(src);
         Object nonNullDest = guardingNonNull(dest);
@@ -88,32 +85,32 @@ public class ArrayCopySnippets implements Snippets {
         UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, baseKind);
     }
 
-    public static int checkArrayType(Word hub) {
+    private static int checkArrayType(Word hub) {
         int layoutHelper = readLayoutHelper(hub);
-        if (layoutHelper >= 0) {
+        if (probability(SLOW_PATH_PROBABILITY, layoutHelper >= 0)) {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
         return layoutHelper;
     }
 
-    public static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
-        if (srcPos < 0) {
+    private static void checkLimits(Object src, int srcPos, Object dest, int destPos, int length) {
+        if (probability(SLOW_PATH_PROBABILITY, srcPos < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (destPos < 0) {
+        if (probability(SLOW_PATH_PROBABILITY, destPos < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (length < 0) {
+        if (probability(SLOW_PATH_PROBABILITY, length < 0)) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (srcPos + length > ArrayLengthNode.arrayLength(src)) {
+        if (probability(SLOW_PATH_PROBABILITY, srcPos + length > ArrayLengthNode.arrayLength(src))) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        if (destPos + length > ArrayLengthNode.arrayLength(dest)) {
+        if (probability(SLOW_PATH_PROBABILITY, destPos + length > ArrayLengthNode.arrayLength(dest))) {
             checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
@@ -170,12 +167,6 @@ public class ArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopy(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        arrayObjectCopy(src, srcPos, dest, destPos, length);
-    }
-
-    // Does NOT perform store checks
-    @Snippet
-    public static void arrayObjectCopy(Object src, int srcPos, Object dest, int destPos, int length) {
         objectCounter.inc();
         checkedCopy(src, srcPos, dest, destPos, length, Kind.Object);
     }
@@ -193,7 +184,7 @@ public class ArrayCopySnippets implements Snippets {
             checkLimits(nonNullSrc, srcPos, nonNullDest, destPos, length);
             if (probability(FAST_PATH_PROBABILITY, isObjectArray)) {
                 genericObjectExactCallCounter.inc();
-                arrayObjectCopy(nonNullSrc, srcPos, nonNullDest, destPos, length);
+                UnsafeArrayCopyNode.arraycopy(nonNullSrc, srcPos, nonNullDest, destPos, length, Kind.Object);
             } else {
                 genericPrimitiveCallCounter.inc();
                 UnsafeArrayCopyNode.arraycopyPrimitive(nonNullSrc, srcPos, nonNullDest, destPos, length, layoutHelper);

@@ -39,10 +39,6 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
 
-    public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind) {
-        this(object, offset, value, accessKind, LocationIdentity.ANY_LOCATION);
-    }
-
     public UnsafeStoreNode(ValueNode object, ValueNode offset, ValueNode value, Kind accessKind, LocationIdentity locationIdentity) {
         super(StampFactory.forVoid(), object, offset, accessKind, locationIdentity);
         assert accessKind != Kind.Void && accessKind != Kind.Illegal;
@@ -106,55 +102,55 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, Object value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, Object value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putObject(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, boolean value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, boolean value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putBoolean(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, byte value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, byte value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putByte(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, char value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, char value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putChar(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, double value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, double value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putDouble(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, float value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, float value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putFloat(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, int value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, int value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putInt(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, long value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, long value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putLong(object, offset, value);
     }
 
     @SuppressWarnings("unused")
     @NodeIntrinsic
-    public static void store(Object object, long offset, short value, @ConstantNodeParameter Kind kind) {
+    public static void store(Object object, long offset, short value, @ConstantNodeParameter Kind kind, @ConstantNodeParameter LocationIdentity locationIdentity) {
         unsafe.putShort(object, offset, value);
     }
 }

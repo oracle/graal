@@ -273,6 +273,20 @@ public class SnippetTemplate {
         }
     }
 
+    static class VarargsPlaceholderNode extends FloatingNode implements ArrayLengthProvider {
+
+        final Varargs varargs;
+
+        public VarargsPlaceholderNode(Varargs varargs, MetaAccessProvider metaAccess) {
+            super(StampFactory.exactNonNull(metaAccess.lookupJavaType(varargs.componentType).getArrayClass()));
+            this.varargs = varargs;
+        }
+
+        public ValueNode length() {
+            return ConstantNode.forInt(varargs.length, graph());
+        }
+    }
+
     static class CacheKey {
 
         private final ResolvedJavaMethod method;
@@ -411,7 +425,7 @@ public class SnippetTemplate {
         assert checkTemplate(metaAccess, args, method, signature);
 
         int parameterCount = args.info.getParameterCount();
-        ConstantNode[] placeholders = new ConstantNode[parameterCount];
+        VarargsPlaceholderNode[] placeholders = new VarargsPlaceholderNode[parameterCount];
 
         for (int i = 0; i < parameterCount; i++) {
             if (args.info.isConstantParameter(i)) {
@@ -426,8 +440,7 @@ public class SnippetTemplate {
                 nodeReplacements.put(snippetGraph.getLocal(i), ConstantNode.forConstant(constantArg, metaAccess, snippetCopy));
             } else if (args.info.isVarargsParameter(i)) {
                 Varargs varargs = (Varargs) args.values[i];
-                Object array = Array.newInstance(varargs.componentType, varargs.length);
-                ConstantNode placeholder = ConstantNode.forObject(array, metaAccess, snippetCopy);
+                VarargsPlaceholderNode placeholder = snippetCopy.unique(new VarargsPlaceholderNode(varargs, providers.getMetaAccess()));
                 nodeReplacements.put(snippetGraph.getLocal(i), placeholder);
                 placeholders[i] = placeholder;
             }
@@ -461,7 +474,7 @@ public class SnippetTemplate {
                 }
                 parameters[i] = locals;
 
-                ConstantNode placeholder = placeholders[i];
+                VarargsPlaceholderNode placeholder = placeholders[i];
                 assert placeholder != null;
                 for (Node usage : placeholder.usages().snapshot()) {
                     if (usage instanceof LoadIndexedNode) {
@@ -584,7 +597,7 @@ public class SnippetTemplate {
         this.returnNode = retNode;
     }
 
-    private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, ConstantNode[] placeholders) {
+    private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {
         for (int i = 0; i < parameterCount; i++) {
             if (placeholders[i] != null) {
                 assert placeholders[i].isDeleted() : placeholders[i];
@@ -800,7 +813,7 @@ public class SnippetTemplate {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((MemoryCheckpoint.Single) replacee).getLocationIdentity();
             if (locationIdentity == ANY_LOCATION) {
-                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode);
+                assert !(memoryMap.getLastLocationAccess(ANY_LOCATION) instanceof StartNode) : replacee + " kills ANY_LOCATION, but snippet does not";
             }
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             return true;

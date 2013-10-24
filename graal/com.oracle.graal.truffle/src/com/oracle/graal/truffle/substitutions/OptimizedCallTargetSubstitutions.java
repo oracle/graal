@@ -34,6 +34,9 @@ import com.oracle.truffle.api.frame.*;
 public class OptimizedCallTargetSubstitutions {
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
+    public static native Object call(OptimizedCallTarget target, PackedFrame caller, Arguments args);
+
+    @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)
     public static native Object callHelper(OptimizedCallTarget target, PackedFrame caller, Arguments args);
 
     @MacroSubstitution(macro = NeverInlineMacroNode.class, isStatic = false)

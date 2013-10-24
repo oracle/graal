@@ -99,9 +99,8 @@ public final class FixedGuardNode extends DeoptimizingFixedWithNextNode implemen
                 DeoptimizeNode deopt = graph().add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, reason));
                 deopt.setDeoptimizationState(getDeoptimizationState());
                 setNext(deopt);
-            } else {
-                this.replaceAtUsages(null);
             }
+            this.replaceAtUsages(null);
             graph().removeFixed(this);
         }
     }

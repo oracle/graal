@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.nodes.ConstantNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.io.*;
@@ -116,12 +117,32 @@ public abstract class GraalCompilerTest extends GraalTest {
         assertEquals(expected, graph, false);
     }
 
+    protected int countUnusedConstants(StructuredGraph graph) {
+        int total = 0;
+        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
+            if (!ConstantNodeRecordsUsages) {
+                if (node.gatherUsages().isEmpty()) {
+                    total++;
+                }
+            } else {
+                if (node.usages().isEmpty()) {
+                    total++;
+                }
+            }
+        }
+        return total;
+    }
+
+    protected int getNodeCountExcludingUnusedConstants(StructuredGraph graph) {
+        return graph.getNodeCount() - countUnusedConstants(graph);
+    }
+
     protected void assertEquals(StructuredGraph expected, StructuredGraph graph, boolean excludeVirtual) {
         String expectedString = getCanonicalGraphString(expected, excludeVirtual);
         String actualString = getCanonicalGraphString(graph, excludeVirtual);
         String mismatchString = "mismatch in graphs:\n========= expected =========\n" + expectedString + "\n\n========= actual =========\n" + actualString;
 
-        if (!excludeVirtual && expected.getNodeCount() != graph.getNodeCount()) {
+        if (!excludeVirtual && getNodeCountExcludingUnusedConstants(expected) != getNodeCountExcludingUnusedConstants(graph)) {
             Debug.dump(expected, "Node count not matching - expected");
             Debug.dump(graph, "Node count not matching - actual");
             Assert.fail("Graphs do not have the same number of nodes: " + expected.getNodeCount() + " vs. " + graph.getNodeCount() + "\n" + mismatchString);
@@ -161,16 +182,18 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             result.append("\n");
             for (Node node : schedule.getBlockToNodesMap().get(block)) {
-                if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
-                    int id;
-                    if (canonicalId.get(node) != null) {
-                        id = canonicalId.get(node);
-                    } else {
-                        id = nextId++;
-                        canonicalId.set(node, id);
+                if (node.recordsUsages()) {
+                    if (!excludeVirtual || !(node instanceof VirtualObjectNode || node instanceof ProxyNode)) {
+                        int id;
+                        if (canonicalId.get(node) != null) {
+                            id = canonicalId.get(node);
+                        } else {
+                            id = nextId++;
+                            canonicalId.set(node, id);
+                        }
+                        String name = node instanceof ConstantNode ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
+                        result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.usages().count() + ")\n"));
                     }
-                    String name = node instanceof ConstantNode ? node.toString(Verbosity.Name) : node.getClass().getSimpleName();
-                    result.append("  " + id + "|" + name + (excludeVirtual ? "\n" : "    (" + node.usages().count() + ")\n"));
                 }
             }
         }

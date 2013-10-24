@@ -45,6 +45,17 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     /**
+     * Used to measure the impact of ConstantNodes not recording their usages. This and all code
+     * predicated on this value being true will be removed at some point.
+     */
+    public static final boolean ConstantNodeRecordsUsages = Boolean.getBoolean("graal.constantNodeRecordsUsages");
+
+    @Override
+    public boolean recordsUsages() {
+        return ConstantNodeRecordsUsages;
+    }
+
+    /**
      * Constructs a new ConstantNode representing the specified constant.
      * 
      * @param value the constant
@@ -52,6 +63,35 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
     protected ConstantNode(Constant value, MetaAccessProvider metaAccess) {
         super(StampFactory.forConstant(value, metaAccess));
         this.value = value;
+    }
+
+    /**
+     * Computes the usages of this node by iterating over all the nodes in the graph, searching for
+     * those that have this node as an input.
+     */
+    public List<Node> gatherUsages() {
+        assert !ConstantNodeRecordsUsages;
+        List<Node> usages = new ArrayList<>();
+        for (Node node : graph().getNodes()) {
+            for (Node input : node.inputs()) {
+                if (input == this) {
+                    usages.add(node);
+                }
+            }
+        }
+        return usages;
+    }
+
+    public void replace(Node replacement) {
+        if (!recordsUsages()) {
+            List<Node> usages = gatherUsages();
+            for (Node usage : usages) {
+                usage.replaceFirstInput(this, replacement);
+            }
+            graph().removeFloating(this);
+        } else {
+            graph().replaceFloating(this, replacement);
+        }
     }
 
     @Override

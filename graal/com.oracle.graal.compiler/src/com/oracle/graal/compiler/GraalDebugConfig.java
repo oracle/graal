@@ -69,7 +69,11 @@ public class GraalDebugConfig implements DebugConfig {
     // @formatter:on
 
     public static boolean areDebugScopePatternsEnabled() {
-        return DumpOnError.getValue() || Dump.getValue() != null || Meter.getValue() != null || Time.getValue() != null || Log.getValue() != null;
+        return DumpOnError.getValue() || Dump.getValue() != null || Log.getValue() != null || areMetricsOrTimersEnabled();
+    }
+
+    public static boolean areMetricsOrTimersEnabled() {
+        return Meter.getValue() != null || Time.getValue() != null;
     }
 
     private final DebugFilter logFilter;

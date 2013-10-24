@@ -401,7 +401,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
-        if (Debug.isEnabled() && areDebugScopePatternsEnabled()) {
+        if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {

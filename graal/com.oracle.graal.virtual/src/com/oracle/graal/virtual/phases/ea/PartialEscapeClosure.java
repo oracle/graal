@@ -531,8 +531,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     void addAndMarkAlias(VirtualObjectNode virtual, ValueNode node) {
         if (node.isAlive()) {
             aliases.set(node, virtual);
-            for (Node usage : node.usages()) {
-                markVirtualUsages(usage);
+            if (node.recordsUsages()) {
+                for (Node usage : node.usages()) {
+                    markVirtualUsages(usage);
+                }
             }
         }
     }

@@ -156,7 +156,7 @@ public final class TruffleCache {
                             int beforeInvokeMark = graph.getMark();
                             expandInvoke(methodCallTarget);
                             for (Node arg : argumentSnapshot) {
-                                if (arg != null) {
+                                if (arg != null && arg.recordsUsages()) {
                                     for (Node argUsage : arg.usages()) {
                                         if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
                                             canonicalizerUsages.add(argUsage);

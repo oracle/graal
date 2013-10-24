@@ -94,7 +94,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             return false;
         }
 
-        if (method != curMethod || !curDecorators.equals(decorators)) {
+        if (!method.equals(curMethod) || !curDecorators.equals(decorators)) {
             cfgPrinter.printCompilation(method);
             TTY.println("CFGPrinter: Dumping method %s to %s", method, cfgFile);
             curMethod = method;

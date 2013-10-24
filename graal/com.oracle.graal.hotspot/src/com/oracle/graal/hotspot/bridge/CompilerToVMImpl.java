@@ -76,9 +76,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
     @Override
-    public native int constantPoolLength(HotSpotResolvedObjectType pool);
-
-    @Override
     public native Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
 
     @Override
@@ -145,12 +142,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode);
 
     @Override
-    public native int getVtableEntryOffset(long metaspaceMethod);
-
-    @Override
-    public native boolean hasVtableEntry(long metaspaceMethod);
-
-    @Override
     public native long[] getDeoptedLeafGraphIds();
 
     @Override
@@ -176,6 +167,9 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native long readUnsafeKlassPointer(Object o);
+
+    @Override
+    public native void doNotInlineOrCompile(long metaspaceMethod);
 
     @Override
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {

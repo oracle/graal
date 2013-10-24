@@ -20,25 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.amd64;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.amd64.*;
-import com.oracle.graal.truffle.*;
+package com.oracle.graal.hotspot;
 
-/**
- * Factory to create a Truffle-specialized AMD64 HotSpot backend.
- */
-@ServiceProvider(TruffleBackendFactory.class)
-public class AMD64HotSpotTruffleBackendFactory implements TruffleBackendFactory {
+import java.lang.annotation.*;
 
-    @Override
-    public Backend createBackend(Backend original) {
-        return new AMD64HotSpotTruffleBackend((AMD64HotSpotBackend) original);
-    }
+// TODO remove this annotation after we moved to JDK 8 and use sun.invoke.Stable instead
 
-    public String getArchitecture() {
-        return "AMD64";
-    }
+@Target(ElementType.FIELD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Stable {
 }

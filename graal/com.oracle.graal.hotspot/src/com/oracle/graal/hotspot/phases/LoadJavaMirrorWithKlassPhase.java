@@ -68,7 +68,7 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
                 LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), classMirrorOffset, graph));
                 FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
 
-                graph.replaceFloating(node, freadNode);
+                node.replace(freadNode);
             }
         }
     }
