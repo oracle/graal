@@ -361,7 +361,7 @@ public class Graph {
             int minCount = Integer.MAX_VALUE;
             Node minCountNode = null;
             for (Node input : node.inputs()) {
-                if (input != null) {
+                if (input != null && input.recordsUsages()) {
                     int estimate = input.getUsageCountUpperBound();
                     if (estimate == 0) {
                         return null;

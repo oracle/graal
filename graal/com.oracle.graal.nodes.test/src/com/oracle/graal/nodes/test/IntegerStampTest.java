@@ -174,6 +174,13 @@ public class IntegerStampTest {
                         StampTool.add(StampFactory.forInteger(Kind.Long, Long.MIN_VALUE, Long.MIN_VALUE + 1), StampFactory.forInteger(Kind.Long, Integer.MIN_VALUE, Integer.MAX_VALUE)));
         assertEquals(StampFactory.forInteger(Kind.Int, -2147483647, 31 - 2147483647),
                         StampTool.add(StampFactory.forInteger(Kind.Int, 0, 31), StampFactory.forInteger(Kind.Int, -2147483647, -2147483647)));
+
+        assertEquals(StampFactory.forInteger(Kind.Int, 0x8000007e, 0x8000007f, 0x8000007eL, 0x8000007fL),
+                        StampTool.add(StampFactory.forInteger(Kind.Int, 0x7ffffffe, 0x7fffffff, 0x7ffffffeL, 0x7fffffffL), StampFactory.forInteger(Kind.Int, 128, 128)));
+
+        assertEquals(StampFactory.forInteger(Kind.Long, -9223372036854775808L, 9223372036854775806L, 0, 0xfffffffffffffffeL),
+                        StampTool.add(StampFactory.forInteger(Kind.Long, -9223372036854775808L, 9223372036854775806L, 0, 0xfffffffffffffffeL),
+                                        StampFactory.forInteger(Kind.Long, -9223372036854775808L, 9223372036854775806L, 0, 0xfffffffffffffffeL)));
     }
 
     @Test

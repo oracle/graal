@@ -123,13 +123,17 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
-        node.safeDelete();
+        if (node.recordsUsages()) {
+            List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
+            node.safeDelete();
 
-        for (Node in : floatingInputs) {
-            if (in.isAlive() && in.usages().isEmpty()) {
-                killWithUnusedFloatingInputs(in);
+            for (Node in : floatingInputs) {
+                if (in.isAlive() && (!in.recordsUsages() || in.usages().isEmpty())) {
+                    killWithUnusedFloatingInputs(in);
+                }
             }
+        } else {
+            assert node.inputs().isEmpty();
         }
     }
 

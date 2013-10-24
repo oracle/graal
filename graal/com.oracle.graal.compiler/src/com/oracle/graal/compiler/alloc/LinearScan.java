@@ -869,8 +869,7 @@ public final class LinearScan {
 
         // check that the liveIn set of the first block is empty
         Block startBlock = ir.cfg.getStartBlock();
-        BitSet liveInArgs = new BitSet(blockData.get(startBlock).liveIn.size());
-        if (!blockData.get(startBlock).liveIn.equals(liveInArgs)) {
+        if (blockData.get(startBlock).liveIn.cardinality() != 0) {
             if (DetailedAsserts.getValue()) {
                 reportFailure(numBlocks);
             }
@@ -878,73 +877,76 @@ public final class LinearScan {
             TTY.println("preds=" + startBlock.getPredecessorCount() + ", succs=" + startBlock.getSuccessorCount());
             TTY.println("startBlock-ID: " + startBlock.getId());
 
-            // bailout of if this occurs in product mode.
-            throw new GraalInternalError("liveIn set of first block must be empty");
+            // bailout if this occurs in product mode.
+            throw new GraalInternalError("liveIn set of first block must be empty: " + blockData.get(startBlock).liveIn);
         }
     }
 
     private void reportFailure(int numBlocks) {
         TTY.println(gen.getGraph().toString());
-        TTY.println("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined)");
-        TTY.print("affected registers:");
-        TTY.println(blockData.get(ir.cfg.getStartBlock()).liveIn.toString());
+        TTY.println("Error: liveIn set of first block must be empty (when this fails, variables are used before they are defined):");
+        BitSet startBlockLiveIn = blockData.get(ir.cfg.getStartBlock()).liveIn;
+        for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+            Value operand = operandFor(operandNum);
+            TTY.println("  var %d; operand=%s; node=%s", operandNum, operand.toString(), gen.valueForOperand(operand));
+        }
 
         // print some additional information to simplify debugging
-        for (int operandNum = 0; operandNum < blockData.get(ir.cfg.getStartBlock()).liveIn.size(); operandNum++) {
-            if (blockData.get(ir.cfg.getStartBlock()).liveIn.get(operandNum)) {
-                Value operand = operandFor(operandNum);
-                TTY.println(" var %d; operand=%s; node=%s", operandNum, operand.toString(), gen.valueForOperand(operand));
+        for (int operandNum = startBlockLiveIn.nextSetBit(0); operandNum >= 0; operandNum = startBlockLiveIn.nextSetBit(operandNum + 1)) {
+            Value operand = operandFor(operandNum);
+            TTY.println("---- Detailed information for var %d; operand=%s; node=%s ----", operandNum, operand.toString(), gen.valueForOperand(operand));
 
-                Deque<Block> definedIn = new ArrayDeque<>();
-                HashSet<Block> usedIn = new HashSet<>();
-                for (Block block : sortedBlocks) {
-                    if (blockData.get(block).liveGen.get(operandNum)) {
-                        usedIn.add(block);
-                        TTY.println("  used in block B%d", block.getId());
-                        for (LIRInstruction ins : ir.lir(block)) {
-                            TTY.println(ins.id() + ": " + ins.toString());
-                            ins.forEachState(new ValueProcedure() {
+            Deque<Block> definedIn = new ArrayDeque<>();
+            HashSet<Block> usedIn = new HashSet<>();
+            for (Block block : sortedBlocks) {
+                if (blockData.get(block).liveGen.get(operandNum)) {
+                    usedIn.add(block);
+                    TTY.println("used in block B%d {", block.getId());
+                    for (LIRInstruction ins : ir.lir(block)) {
+                        TTY.println("  " + ins.id() + ": " + ins.toString());
+                        ins.forEachState(new ValueProcedure() {
 
-                                @Override
-                                public Value doValue(Value liveStateOperand) {
-                                    TTY.println("   operand=" + liveStateOperand);
-                                    return liveStateOperand;
-                                }
-                            });
-                        }
-                    }
-                    if (blockData.get(block).liveKill.get(operandNum)) {
-                        definedIn.add(block);
-                        TTY.println("  defined in block B%d", block.getId());
-                        for (LIRInstruction ins : ir.lir(block)) {
-                            TTY.println(ins.id() + ": " + ins.toString());
-                        }
-                    }
-                }
-
-                int[] hitCount = new int[numBlocks];
-
-                while (!definedIn.isEmpty()) {
-                    Block block = definedIn.removeFirst();
-                    usedIn.remove(block);
-                    for (Block successor : block.getSuccessors()) {
-                        if (successor.isLoopHeader()) {
-                            if (!block.isLoopEnd()) {
-                                definedIn.add(successor);
+                            @Override
+                            public Value doValue(Value liveStateOperand) {
+                                TTY.println("    operand=" + liveStateOperand);
+                                return liveStateOperand;
                             }
-                        } else {
-                            if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
-                                definedIn.add(successor);
-                            }
-                        }
+                        });
                     }
+                    TTY.println("}");
                 }
-                TTY.print("  offending usages are in: ");
-                for (Block block : usedIn) {
-                    TTY.print("B%d ", block.getId());
+                if (blockData.get(block).liveKill.get(operandNum)) {
+                    definedIn.add(block);
+                    TTY.println("defined in block B%d {", block.getId());
+                    for (LIRInstruction ins : ir.lir(block)) {
+                        TTY.println("  " + ins.id() + ": " + ins.toString());
+                    }
+                    TTY.println("}");
                 }
-                TTY.println();
             }
+
+            int[] hitCount = new int[numBlocks];
+
+            while (!definedIn.isEmpty()) {
+                Block block = definedIn.removeFirst();
+                usedIn.remove(block);
+                for (Block successor : block.getSuccessors()) {
+                    if (successor.isLoopHeader()) {
+                        if (!block.isLoopEnd()) {
+                            definedIn.add(successor);
+                        }
+                    } else {
+                        if (++hitCount[successor.getId()] == successor.getPredecessorCount()) {
+                            definedIn.add(successor);
+                        }
+                    }
+                }
+            }
+            TTY.print("**** offending usages are in: ");
+            for (Block block : usedIn) {
+                TTY.print("B%d ", block.getId());
+            }
+            TTY.println();
         }
     }
 
