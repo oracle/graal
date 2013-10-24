@@ -104,7 +104,7 @@ public class PartialEvaluator {
 
         final StructuredGraph graph = new StructuredGraph(executeHelperMethod);
 
-        Debug.scope("createGraph", graph, new Runnable() {
+        Debug.scope("createGraph", new Runnable() {
 
             @Override
             public void run() {

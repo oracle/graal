@@ -102,7 +102,7 @@ public class PartialEvaluationTest extends GraalCompilerTest {
             compilable.call(null, arguments);
         } while (compilable.inline());
 
-        StructuredGraph graph = Debug.scope("TruffleCompilation", new DebugDumpScope("TruffleCompilation: " + compilable), new Callable<StructuredGraph>() {
+        StructuredGraph graph = Debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable), new Callable<StructuredGraph>() {
 
             @Override
             public StructuredGraph call() {
