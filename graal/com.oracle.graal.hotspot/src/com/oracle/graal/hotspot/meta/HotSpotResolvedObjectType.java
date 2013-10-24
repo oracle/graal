@@ -488,6 +488,13 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return Constant.forIntegerKind(runtime().getTarget().wordKind, metaspaceKlass, this);
     }
 
+    /**
+     * Gets the address of the C++ Klass object for this type.
+     */
+    public long metaspaceKlass() {
+        return metaspaceKlass;
+    }
+
     public boolean isPrimaryType() {
         return runtime().getConfig().secondarySuperCacheOffset != superCheckOffset();
     }
@@ -500,7 +507,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     public long prototypeMarkWord() {
         HotSpotVMConfig config = runtime().getConfig();
         if (isArray()) {
-            return config.arrayPrototypeMarkWord;
+            return config.arrayPrototypeMarkWord();
         } else {
             return unsafeReadWord(metaspaceKlass + config.prototypeMarkWordOffset);
         }

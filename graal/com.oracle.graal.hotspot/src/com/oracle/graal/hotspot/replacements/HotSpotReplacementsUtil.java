@@ -81,21 +81,21 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int threadTlabTopOffset() {
-        return config().threadTlabTopOffset;
+        return config().threadTlabTopOffset();
     }
 
     public static final LocationIdentity TLAB_END_LOCATION = new NamedLocationIdentity("TlabEnd");
 
     @Fold
     private static int threadTlabEndOffset() {
-        return config().threadTlabEndOffset;
+        return config().threadTlabEndOffset();
     }
 
     public static final LocationIdentity TLAB_START_LOCATION = new NamedLocationIdentity("TlabStart");
 
     @Fold
     private static int threadTlabStartOffset() {
-        return config().threadTlabStartOffset;
+        return config().threadTlabStartOffset();
     }
 
     public static final LocationIdentity PENDING_EXCEPTION_LOCATION = new NamedLocationIdentity("PendingException");
@@ -230,7 +230,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static long arrayPrototypeMarkWord() {
-        return config().arrayPrototypeMarkWord;
+        return config().arrayPrototypeMarkWord();
     }
 
     @Fold
@@ -358,22 +358,22 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int cardTableShift() {
-        return config().cardtableShift;
+        return config().cardtableShift();
     }
 
     @Fold
     public static long cardTableStart() {
-        return config().cardtableStartAddress;
+        return config().cardtableStartAddress();
     }
 
     @Fold
     public static int g1CardQueueIndexOffset() {
-        return config().g1CardQueueIndexOffset;
+        return config().g1CardQueueIndexOffset();
     }
 
     @Fold
     public static int g1CardQueueBufferOffset() {
-        return config().g1CardQueueBufferOffset;
+        return config().g1CardQueueBufferOffset();
     }
 
     @Fold
@@ -383,17 +383,17 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int g1SATBQueueMarkingOffset() {
-        return config().g1SATBQueueMarkingOffset;
+        return config().g1SATBQueueMarkingOffset();
     }
 
     @Fold
     public static int g1SATBQueueIndexOffset() {
-        return config().g1SATBQueueIndexOffset;
+        return config().g1SATBQueueIndexOffset();
     }
 
     @Fold
     public static int g1SATBQueueBufferOffset() {
-        return config().g1SATBQueueBufferOffset;
+        return config().g1SATBQueueBufferOffset();
     }
 
     @Fold
@@ -561,7 +561,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static long tlabIntArrayMarkWord() {
-        return config().tlabIntArrayMarkWord;
+        return config().tlabIntArrayMarkWord();
     }
 
     @Fold
@@ -578,7 +578,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int threadTlabSizeOffset() {
-        return config().threadTlabSizeOffset;
+        return config().threadTlabSizeOffset();
     }
 
     public static final LocationIdentity TLAB_THREAD_ALLOCATED_BYTES_LOCATION = new NamedLocationIdentity("TlabThreadAllocatedBytes");
@@ -592,28 +592,28 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int tlabRefillWasteLimitOffset() {
-        return config().tlabRefillWasteLimitOffset;
+        return config().tlabRefillWasteLimitOffset();
     }
 
     public static final LocationIdentity TLAB_NOF_REFILLS_LOCATION = new NamedLocationIdentity("TlabNOfRefills");
 
     @Fold
     public static int tlabNumberOfRefillsOffset() {
-        return config().tlabNumberOfRefillsOffset;
+        return config().tlabNumberOfRefillsOffset();
     }
 
     public static final LocationIdentity TLAB_FAST_REFILL_WASTE_LOCATION = new NamedLocationIdentity("TlabFastRefillWaste");
 
     @Fold
     public static int tlabFastRefillWasteOffset() {
-        return config().tlabFastRefillWasteOffset;
+        return config().tlabFastRefillWasteOffset();
     }
 
     public static final LocationIdentity TLAB_SLOW_ALLOCATIONS_LOCATION = new NamedLocationIdentity("TlabSlowAllocations");
 
     @Fold
     public static int tlabSlowAllocationsOffset() {
-        return config().tlabSlowAllocationsOffset;
+        return config().tlabSlowAllocationsOffset();
     }
 
     @Fold
@@ -663,7 +663,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int layoutHelperElementTypePrimitiveInPlace() {
-        return config().layoutHelperElementTypePrimitiveInPlace;
+        return config().layoutHelperElementTypePrimitiveInPlace();
     }
 
     static {
@@ -705,7 +705,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static long gcTotalCollectionsAddress() {
-        return config().gcTotalCollectionsAddress;
+        return config().gcTotalCollectionsAddress();
     }
 
     @Fold

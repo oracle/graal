@@ -60,7 +60,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         assert access == null || access instanceof HeapAccess;
         if (config.useCompressedOops && isCompressCandidate(access)) {
             Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment));
+            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment()));
         } else {
             append(new LoadOp(kind, result, loadAddress, state));
         }
@@ -74,7 +74,7 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         Variable input = load(inputVal);
         if (config.useCompressedOops && isCompressCandidate(access)) {
             Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment));
+            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment()));
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
         }

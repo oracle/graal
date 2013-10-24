@@ -138,7 +138,7 @@ class AMD64HotSpotTruffleBackend extends Backend {
         AMD64Address nMethodAddress = new AMD64Address(thisRegister, OptimizedCallTargetFieldInfo.getCompiledMethodFieldOffset());
         if (config.useCompressedOops) {
             asm.movl(spillRegister, nMethodAddress);
-            AMD64HotSpotMove.decodePointer(asm, spillRegister, providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment);
+            AMD64HotSpotMove.decodePointer(asm, spillRegister, providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment());
         } else {
             asm.movq(spillRegister, nMethodAddress);
         }

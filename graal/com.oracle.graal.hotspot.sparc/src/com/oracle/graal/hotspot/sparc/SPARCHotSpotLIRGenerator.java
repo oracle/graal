@@ -103,9 +103,9 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             HotSpotRegistersProvider registers = getProviders().getRegisters();
             Register thread = registers.getThreadRegister();
             Register stackPointer = registers.getStackPointerRegister();
-            append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset, thread, stackPointer));
+            append(new SPARCHotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread, stackPointer));
             result = super.emitForeignCall(linkage, info, args);
-            append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset, config.threadLastJavaPcOffset, config.threadJavaFrameAnchorFlagsOffset, thread));
+            append(new SPARCHotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaPcOffset(), config.threadJavaFrameAnchorFlagsOffset(), thread));
         } else {
             result = super.emitForeignCall(linkage, null, args);
         }

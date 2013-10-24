@@ -61,7 +61,6 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     public static void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         final int pos = masm.codeBuffer.position();
         new Setx(config.safepointPollingAddress, scratch).emit(masm);
-        assert !config.isPollingPageFar;
         tasm.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
         if (state != null) {
             tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);

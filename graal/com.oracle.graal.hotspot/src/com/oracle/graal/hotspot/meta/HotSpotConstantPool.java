@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import com.oracle.graal.api.meta.*;
@@ -43,7 +44,9 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
 
     @Override
     public int length() {
-        return runtime().getCompilerToVM().constantPoolLength(type);
+        HotSpotVMConfig config = runtime().getConfig();
+        long constantPoolAddress = unsafe.getAddress(type.metaspaceKlass() + config.instanceKlassConstantsOffset);
+        return unsafe.getInt(constantPoolAddress + config.constantPoolLengthOffset);
     }
 
     @Override
