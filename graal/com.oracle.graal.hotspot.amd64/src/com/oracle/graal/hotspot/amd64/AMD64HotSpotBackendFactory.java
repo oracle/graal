@@ -56,8 +56,8 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotCodeCacheProvider codeCache = createCodeCache(runtime, target);
         HotSpotConstantReflectionProvider constantReflection = createConstantReflection(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
-        HotSpotForeignCallsProvider foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        LoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls);
+        HotSpotHostForeignCallsProvider foreignCalls = createForeignCalls(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
+        HotSpotHostLoweringProvider lowerer = createLowerer(runtime, metaAccess, foreignCalls);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);

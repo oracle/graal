@@ -48,7 +48,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -180,41 +179,17 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        final HotSpotProviders hostProviders = runtime.getHostProviders();
-        HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) hostProviders.getForeignCalls();
-        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostForeignCalls);
+        HotSpotBackend hostBackend = runtime.getHostBackend();
+        final HotSpotProviders hostProviders = hostBackend.getProviders();
+        assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostProviders.getForeignCalls());
 
-        // Initialize host ForeignCallsProvider
-        hostForeignCalls.initialize(hostProviders, config);
-
-        // Install intrinsics.
-        if (Intrinsify.getValue()) {
-            Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
-
-                @Override
-                public void run() {
-
-                    HotSpotMetaAccessProvider hostMetaAccess = hostProviders.getMetaAccess();
-                    Replacements hostReplacements = hostProviders.getReplacements();
-                    LoweringProvider hostLowerer = hostProviders.getLowerer();
-                    ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
-                    TargetDescription hostTarget = hostProviders.getCodeCache().getTarget();
-                    for (ReplacementsProvider replacementsProvider : sl) {
-                        replacementsProvider.registerReplacements(hostMetaAccess, hostLowerer, hostReplacements, hostTarget);
-                    }
-                    if (BootstrapReplacements.getValue()) {
-                        for (ResolvedJavaMethod method : hostReplacements.getAllReplacements()) {
-                            hostReplacements.getMacroSubstitution(method);
-                            hostReplacements.getMethodSubstitution(method);
-                        }
-                    }
-                }
-            });
+        // Complete initialization of backends
+        hostBackend.completeInitialization();
+        for (HotSpotBackend backend : runtime.getBackends().values()) {
+            if (backend != hostBackend) {
+                backend.completeInitialization();
+            }
         }
-
-        // Initialize host LoweringProvider
-        HotSpotHostLoweringProvider hostLowerer = (HotSpotHostLoweringProvider) hostProviders.getLowerer();
-        hostLowerer.initialize(hostProviders, config);
 
         // Create compilation queue.
         compileQueue = new ThreadPoolExecutor(Threads.getValue(), Threads.getValue(), 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), CompilerThread.FACTORY);
