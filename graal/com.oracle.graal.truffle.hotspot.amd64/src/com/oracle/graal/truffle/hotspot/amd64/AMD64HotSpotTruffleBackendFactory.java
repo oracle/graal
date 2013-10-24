@@ -20,17 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.lir.ptx;
+package com.oracle.graal.truffle.hotspot.amd64;
 
-import static com.oracle.graal.lir.ptx.ThreadDimension.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.amd64.*;
+import com.oracle.graal.hotspot.meta.*;
 
-import java.lang.annotation.*;
+/**
+ * Factory to create a Truffle-specialized AMD64 HotSpot backend.
+ */
+@ServiceProvider(HotSpotBackendFactory.class)
+public class AMD64HotSpotTruffleBackendFactory extends AMD64HotSpotBackendFactory {
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.PARAMETER})
-public @interface Warp {
-
-    String value() default "";
-
-    ThreadDimension dimension() default X;
+    @Override
+    protected AMD64HotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
+        return new AMD64HotSpotTruffleBackend(runtime, providers);
+    }
 }

@@ -446,8 +446,8 @@ public class SPARCControlFlow {
         }
 
         // Load jump table entry into scratch and jump to it
-// masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
-// masm.addq(scratch, value);
+        // masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
+        // masm.addq(scratch, value);
         new Jmp(new SPARCAddress(scratch, 0)).emit(masm);
         new Nop().emit(masm);  // delay slot
 

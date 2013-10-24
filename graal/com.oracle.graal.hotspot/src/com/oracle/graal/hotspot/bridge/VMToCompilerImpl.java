@@ -401,7 +401,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
-        if (Debug.isEnabled() && areDebugScopePatternsEnabled()) {
+        if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
@@ -533,7 +533,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         for (DebugValue value : debugValues) {
             long l = scope.map.getCurrentValue(value.getIndex());
-            if (l != 0) {
+            if (l != 0 || !SuppressZeroDebugValues.getValue()) {
                 scope.print();
                 printIndent(scope.level + 1);
                 TTY.println(value.getName() + "=" + value.toString(l));

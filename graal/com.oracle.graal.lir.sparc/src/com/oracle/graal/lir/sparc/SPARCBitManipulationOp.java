@@ -143,45 +143,45 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
-// SPARCAddress src = (SPARCAddress) tasm.asAddress(input);
-// switch (opcode) {
-// case IPOPCNT:
-// new Ldsw(src, tmp).emit(masm);
-// // clear upper word for 64 bit POPC
-// new Srl(tmp, g0, dst).emit(masm);
-// new Popc(tmp, dst).emit(masm);
-// break;
-// case LPOPCNT:
-// new Ldx(src, tmp).emit(masm);
-// new Popc(tmp, dst).emit(masm);
-// break;
-// case BSF:
-// assert input.getKind() == Kind.Int;
-// new Ldsw(src, tmp).emit(masm);
-// new Srl(tmp, 1, tmp).emit(masm);
-// new Srl(tmp, 0, dst).emit(masm);
-// new Or(tmp, tmp, dst).emit(masm);
-// new Srl(dst, 2, tmp).emit(masm);
-// new Or(dst, tmp, dst).emit(masm);
-// new Srl(dst, 4, tmp).emit(masm);
-// new Or(dst, tmp, dst).emit(masm);
-// new Srl(dst, 8, tmp).emit(masm);
-// new Or(dst, tmp, dst).emit(masm);
-// new Srl(dst, 16, tmp).emit(masm);
-// new Or(dst, tmp, dst).emit(masm);
-// new Popc(dst, dst).emit(masm);
-// new Mov(Kind.Int.getBitCount(), tmp).emit(masm);
-// new Sub(tmp, dst, dst).emit(masm);
-// break;
-// case IBSR:
-// // masm.bsrl(dst, src);
-// // countLeadingZerosI_bsr masm.bsrq(dst, src);
-// // masm.bsrl(dst, src);
-// case LBSR:
-// // masm.bsrq(dst, src);
-// default:
-// throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
-// }
+            // SPARCAddress src = (SPARCAddress) tasm.asAddress(input);
+            // switch (opcode) {
+            // case IPOPCNT:
+            // new Ldsw(src, tmp).emit(masm);
+            // // clear upper word for 64 bit POPC
+            // new Srl(tmp, g0, dst).emit(masm);
+            // new Popc(tmp, dst).emit(masm);
+            // break;
+            // case LPOPCNT:
+            // new Ldx(src, tmp).emit(masm);
+            // new Popc(tmp, dst).emit(masm);
+            // break;
+            // case BSF:
+            // assert input.getKind() == Kind.Int;
+            // new Ldsw(src, tmp).emit(masm);
+            // new Srl(tmp, 1, tmp).emit(masm);
+            // new Srl(tmp, 0, dst).emit(masm);
+            // new Or(tmp, tmp, dst).emit(masm);
+            // new Srl(dst, 2, tmp).emit(masm);
+            // new Or(dst, tmp, dst).emit(masm);
+            // new Srl(dst, 4, tmp).emit(masm);
+            // new Or(dst, tmp, dst).emit(masm);
+            // new Srl(dst, 8, tmp).emit(masm);
+            // new Or(dst, tmp, dst).emit(masm);
+            // new Srl(dst, 16, tmp).emit(masm);
+            // new Or(dst, tmp, dst).emit(masm);
+            // new Popc(dst, dst).emit(masm);
+            // new Mov(Kind.Int.getBitCount(), tmp).emit(masm);
+            // new Sub(tmp, dst, dst).emit(masm);
+            // break;
+            // case IBSR:
+            // // masm.bsrl(dst, src);
+            // // countLeadingZerosI_bsr masm.bsrq(dst, src);
+            // // masm.bsrl(dst, src);
+            // case LBSR:
+            // // masm.bsrq(dst, src);
+            // default:
+            // throw GraalInternalError.shouldNotReachHere("missing: " + opcode);
+            // }
         }
     }
 

@@ -138,32 +138,44 @@ public class GraalCompiler {
         Debug.scope("GraalCompiler", new Object[]{graph, providers.getCodeCache()}, new Runnable() {
 
             public void run() {
-                final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-                final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
+                compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, speculationLog, suites, compilationResult);
+            }
+        });
 
-                    public LIR call() {
-                        try (TimerCloseable a = FrontEnd.start()) {
-                            return emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
-                        }
-                    }
-                });
-                try (TimerCloseable a = BackEnd.start()) {
-                    final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
+        return compilationResult;
+    }
 
-                        public LIRGenerator call() {
-                            return emitLIR(backend, target, lir, graph, cc);
-                        }
-                    });
-                    Debug.scope("CodeGen", lirGen, new Runnable() {
+    /**
+     * Same as {@link #compileGraph} but without entering a
+     * {@linkplain Debug#scope(String, Object[], Runnable) debug scope}.
+     */
+    public static <T extends CompilationResult> T compileGraphNoScope(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
+                    final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
+        final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
+        final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
 
-                        public void run() {
-                            emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
-                        }
-
-                    });
+            public LIR call() {
+                try (TimerCloseable a = FrontEnd.start()) {
+                    return emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
                 }
             }
         });
+        try (TimerCloseable a = BackEnd.start()) {
+            final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
+
+                public LIRGenerator call() {
+                    return emitLIR(backend, target, lir, graph, cc);
+                }
+            });
+            Debug.scope("CodeGen", lirGen, new Runnable() {
+
+                public void run() {
+                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+                }
+
+            });
+        }
 
         return compilationResult;
     }

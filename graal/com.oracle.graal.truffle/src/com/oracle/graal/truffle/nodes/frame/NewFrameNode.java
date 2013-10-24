@@ -163,7 +163,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
             ConstantNode tagDefault = ConstantNode.forByte((byte) 0, graph());
             for (int i = 0; i < frameSize; i++) {
                 objectArrayEntryState[i] = objectDefault;
-                primitiveArrayEntryState[i] = initialValue(frameDescriptor.getSlots().get(i).getKind());
+                primitiveArrayEntryState[i] = initialPrimitiveValue(frameDescriptor.getSlots().get(i).getKind());
                 tagArrayEntryState[i] = tagDefault;
             }
             tool.getAssumptions().record(new AssumptionValidAssumption((OptimizedAssumption) frameDescriptor.getVersion()));
@@ -186,7 +186,7 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
         tool.replaceWithVirtual(virtualFrame);
     }
 
-    private ValueNode initialValue(FrameSlotKind kind) {
+    private ValueNode initialPrimitiveValue(FrameSlotKind kind) {
         Kind graalKind = null;
         switch (kind) {
             case Boolean:
@@ -208,9 +208,8 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
                 graalKind = Kind.Long;
                 break;
             case Object:
-                graalKind = Kind.Object;
-                break;
             case Illegal:
+                // won't be stored in the primitive array, so default to long
                 graalKind = Kind.Long;
                 break;
             default:

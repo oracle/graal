@@ -105,11 +105,11 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         for (HotSpotBackendFactory factory : ServiceLoader.loadInstalled(HotSpotBackendFactory.class)) {
             if (factory.getArchitecture().equalsIgnoreCase(architecture)) {
                 if (factory.getGraalRuntimeName().equals(GraalRuntime.getValue())) {
-                    assert selected == null;
+                    assert selected == null || checkFactoryOverriding(selected, factory);
                     selected = factory;
                 }
                 if (factory.getGraalRuntimeName().equals("basic")) {
-                    assert basic == null;
+                    assert basic == null || checkFactoryOverriding(basic, factory);
                     basic = factory;
                 } else {
                     nonBasic = factory;
@@ -132,6 +132,18 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
                 return basic;
             }
         }
+    }
+
+    /**
+     * Checks that a factory overriding is valid. A factory B can only override/replace a factory A
+     * if the B.getClass() is a subclass of A.getClass(). This models the assumption that B is
+     * extends the behavior of A and has therefore understood the behavior expected of A.
+     * 
+     * @param baseFactory
+     * @param overridingFactory
+     */
+    private static boolean checkFactoryOverriding(HotSpotBackendFactory baseFactory, HotSpotBackendFactory overridingFactory) {
+        return baseFactory.getClass().isAssignableFrom(overridingFactory.getClass());
     }
 
     /**

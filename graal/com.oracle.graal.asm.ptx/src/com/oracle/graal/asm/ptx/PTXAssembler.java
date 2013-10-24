@@ -360,16 +360,16 @@ public class PTXAssembler extends AbstractPTXAssembler {
             assert var instanceof Variable;
             assert val instanceof Constant;
             Constant constant = (Constant) val;
-            return ("[" + emitRegister((Variable) var, false) + " + " + constant.asBoxedValue() + "]");
+            return ("[" + ((space == PTXStateSpace.Parameter) ? emitParameter((Variable) var) : emitRegister((Variable) var, false)) + " + " + constant.asBoxedValue() + "]");
         }
 
         @Override
         public String emitRegister(Variable var, boolean comma) {
-            /*
-             * if (space == Parameter) { return ("param" + var.index); } else { return ("%r" +
-             * var.index); }
-             */
             return ("%r" + var.index);
+        }
+
+        public String emitParameter(Variable v) {
+            return ("param" + v.index);
         }
 
         public String emit(boolean isLoad) {
@@ -671,7 +671,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public String emitParameter(Variable v) {
-            return (" %r" + v.index);
+            return (" param" + v.index);
         }
 
         public void emit(PTXAssembler asm) {
@@ -918,9 +918,8 @@ public class PTXAssembler extends AbstractPTXAssembler {
         public void emit(PTXAssembler asm) {
 
             if (booleanOperator != null) {
-                asm.emitString("setp." + operator.getOperator() + "." + booleanOperator.getOperator() + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ", %r;"); // Predicates
-// need to be objects
-
+                // Predicates need to be objects
+                asm.emitString("setp." + operator.getOperator() + "." + booleanOperator.getOperator() + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ", %r;");
             } else {
                 asm.emitString("setp." + operator.getOperator() + "." + typeForKind(kind) + " %p" + predicate + emitValue(first) + emitValue(second) + ";");
             }

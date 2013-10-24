@@ -55,10 +55,7 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
     private final Register[] nativeGeneralParameterRegisters;
 
     private static Register[] initAllocatable() {
-        Register[] registers = new Register[] {
-            r0,  r1,  r2,  r3,  r4,  r5,  r6,  r7,
-            r8,  r9,  r10, r11, r12, r13, r14, r15,
-        };
+        Register[] registers = new Register[]{r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15};
 
         return registers;
     }
@@ -94,9 +91,8 @@ public class PTXHotSpotRegisterConfig implements RegisterConfig {
         throw GraalInternalError.unimplemented("PTXHotSpotRegisterConfig.getRegisterForRole()");
     }
 
-    private static CallingConvention callingConvention(@SuppressWarnings("unused") Register[] generalParameterRegisters,
-                                                JavaType returnType, JavaType[] parameterTypes,
-                                                Type type, TargetDescription target, boolean stackOnly) {
+    private static CallingConvention callingConvention(@SuppressWarnings("unused") Register[] generalParameterRegisters, JavaType returnType, JavaType[] parameterTypes, Type type,
+                    TargetDescription target, boolean stackOnly) {
 
         assert stackOnly == false;
 

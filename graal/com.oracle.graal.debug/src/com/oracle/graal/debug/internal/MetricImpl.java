@@ -28,6 +28,8 @@ public final class MetricImpl extends DebugValue implements DebugMetric {
 
     public MetricImpl(String name, boolean conditional) {
         super(name, conditional);
+        // Allows for zero-count metrics to be shown
+        getCurrentValue();
     }
 
     public void increment() {

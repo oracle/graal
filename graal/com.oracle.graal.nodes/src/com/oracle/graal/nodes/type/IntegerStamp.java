@@ -185,7 +185,9 @@ public class IntegerStamp extends Stamp {
             return StampFactory.illegal(Kind.Illegal);
         }
         IntegerStamp other = (IntegerStamp) otherStamp;
-        return createStamp(other, Math.min(upperBound, other.upperBound), Math.max(lowerBound, other.lowerBound), downMask | other.downMask, upMask & other.upMask);
+        long newDownMask = downMask | other.downMask;
+        long newLowerBound = Math.max(lowerBound, other.lowerBound) | newDownMask;
+        return createStamp(other, Math.min(upperBound, other.upperBound), newLowerBound, newDownMask, upMask & other.upMask);
     }
 
     @Override
