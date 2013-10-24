@@ -976,7 +976,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
 
         private List<CodeExecutableElement> createImplicitChildrenAccessors() {
             NodeData node = getModel().getNode();
-// Map<NodeChildData, Set<TypeData>> expectTypes = new HashMap<>();
+            // Map<NodeChildData, Set<TypeData>> expectTypes = new HashMap<>();
             @SuppressWarnings("unchecked")
             List<Set<TypeData>> expectTypes = Arrays.<Set<TypeData>> asList(new Set[node.getGenericSpecialization().getParameters().size()]);
 
@@ -2688,8 +2688,8 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             final SpecializationData polymorphic = node.getGenericPolymorphicSpecialization();
 
             ExecutableElement executeCached = nodeGen.getMethod(executeCachedName(polymorphic));
-// ExecutableTypeData execType = new ExecutableTypeData(polymorphic, executeCached,
-// node.getTypeSystem(), polymorphic.getReturnType().getTypeSystemType());
+            // ExecutableTypeData execType = new ExecutableTypeData(polymorphic, executeCached,
+            // node.getTypeSystem(), polymorphic.getReturnType().getTypeSystemType());
 
             ExecutableTypeMethodParser parser = new ExecutableTypeMethodParser(getContext(), node);
             ExecutableTypeData execType = parser.parse(Arrays.asList(executeCached)).get(0);
