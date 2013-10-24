@@ -31,6 +31,7 @@ import static com.oracle.graal.replacements.SnippetTemplate.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
+import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
@@ -38,16 +39,15 @@ import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.SnippetTemplate.AbstractTemplates;
 import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 import com.oracle.graal.replacements.SnippetTemplate.SnippetInfo;
+import com.oracle.graal.replacements.nodes.*;
 import com.oracle.graal.word.*;
 
 /**
  * As opposed to {@link ArrayCopySnippets}, these Snippets do <b>not</b> perform store checks.
  */
 public class UnsafeArrayCopySnippets implements Snippets {
-
     private static final boolean supportsUnalignedMemoryAccess = runtime().getTarget().arch.supportsUnalignedMemoryAccess();
 
-    // TODO: make vector kind architecture dependent
     private static final Kind VECTOR_KIND = Kind.Long;
     private static final long VECTOR_SIZE = arrayIndexScale(VECTOR_KIND);
 
@@ -182,9 +182,30 @@ public class UnsafeArrayCopySnippets implements Snippets {
         vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Double, getArrayLocation(Kind.Double));
     }
 
+    /**
+     * For this kind, Object, we want to avoid write barriers between writes, but instead have them
+     * at the end of the snippet. This is done by using {@link DirectObjectStoreNode}, and rely on
+     * {@link WriteBarrierAdditionPhase} to put write barriers after the {@link UnsafeArrayCopyNode}
+     * with kind Object.
+     */
     @Snippet
     public static void arraycopyObject(Object[] src, int srcPos, Object[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Object, getArrayLocation(Kind.Object));
+        final int scale = arrayIndexScale(Kind.Object);
+        int arrayBaseOffset = arrayBaseOffset(Kind.Object);
+        LocationIdentity arrayLocation = getArrayLocation(Kind.Object);
+        if (src == dest && srcPos < destPos) { // bad aliased case
+            long start = (long) (length - 1) * scale;
+            for (long i = start; i >= 0; i -= scale) {
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
+                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a, getArrayLocation(Kind.Object));
+            }
+        } else {
+            long end = (long) length * scale;
+            for (long i = 0; i < end; i += scale) {
+                Object a = UnsafeLoadNode.load(src, arrayBaseOffset + i + (long) srcPos * scale, Kind.Object, arrayLocation);
+                DirectObjectStoreNode.storeObject(dest, arrayBaseOffset, i + (long) destPos * scale, a, getArrayLocation(Kind.Object));
+            }
+        }
     }
 
     @Snippet
