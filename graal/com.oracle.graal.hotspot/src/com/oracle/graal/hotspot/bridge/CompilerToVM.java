@@ -120,8 +120,6 @@ public interface CompilerToVM {
      */
     JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
-    int constantPoolLength(HotSpotResolvedObjectType pool);
-
     Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
 
     JavaMethod lookupMethodInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
@@ -201,10 +199,6 @@ public interface CompilerToVM {
     Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
 
     Object executeCompiledMethodVarargs(Object[] args, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
-
-    int getVtableEntryOffset(long metaspaceMethod);
-
-    boolean hasVtableEntry(long metaspaceMethod);
 
     long[] getDeoptedLeafGraphIds();
 
