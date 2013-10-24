@@ -144,7 +144,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
 
     @Snippet
     public static void arraycopyBoolean(boolean[] src, int srcPos, boolean[] dest, int destPos, int length) {
-        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Byte, getArrayLocation(Kind.Boolean));
+        vectorizedCopy(src, srcPos, dest, destPos, length, Kind.Boolean, getArrayLocation(Kind.Boolean));
     }
 
     @Snippet
