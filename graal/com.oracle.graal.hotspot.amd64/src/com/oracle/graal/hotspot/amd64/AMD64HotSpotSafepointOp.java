@@ -27,6 +27,7 @@ import static com.oracle.graal.hotspot.bridge.Marks.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.lir.*;
@@ -57,9 +58,19 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         emitCode(tasm, asm, config, false, state, scratch.getRegister());
     }
 
+    /**
+     * Tests if the polling page address can be reached from the code cache with 32-bit
+     * displacements.
+     */
+    private static boolean isPollingPageFar(HotSpotVMConfig config) {
+        final long pollingPageAddress = config.safepointPollingAddress;
+        // TODO return ForceUnreachable ||
+        return !NumUtil.isInt(pollingPageAddress - config.codeCacheLowBoundary()) || !NumUtil.isInt(pollingPageAddress - config.codeCacheHighBoundary());
+    }
+
     public static void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         final int pos = asm.codeBuffer.position();
-        if (config.isPollingPageFar) {
+        if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
             tasm.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
             if (state != null) {

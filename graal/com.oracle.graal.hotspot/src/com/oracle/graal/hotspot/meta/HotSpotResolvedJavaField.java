@@ -199,6 +199,11 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
                 if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
                     return value;
                 }
+            } else if (isStable()) {
+                Constant value = readValue(receiver);
+                if (assumeDefaultStableFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
+                    return value;
+                }
             } else {
                 Class<?> clazz = object.getClass();
                 if (StableOptionValue.class.isAssignableFrom(clazz)) {
@@ -227,6 +232,20 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
 
     private static boolean assumeNonStaticFinalFieldsAsFinal(Class<?> clazz) {
         return clazz == SnippetCounter.class;
+    }
+
+    /**
+     * Usually {@link Stable} fields are not considered constant if the value is the
+     * {@link Constant#isDefaultForKind default value}. For some special classes we want to override
+     * this behavior.
+     */
+    private static boolean assumeDefaultStableFieldsAsFinal(Class<?> clazz) {
+        // HotSpotVMConfig has a lot of zero-value fields which we know are stable and want to be
+        // considered as constants.
+        if (clazz == HotSpotVMConfig.class) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -265,6 +284,16 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             return javaField.isSynthetic();
         }
         return false;
+    }
+
+    /**
+     * Checks if this field has the {@link Stable} annotation.
+     * 
+     * @return true if field has {@link Stable} annotation, false otherwise
+     */
+    public boolean isStable() {
+        Annotation annotation = getAnnotation(Stable.class);
+        return annotation != null;
     }
 
     @Override

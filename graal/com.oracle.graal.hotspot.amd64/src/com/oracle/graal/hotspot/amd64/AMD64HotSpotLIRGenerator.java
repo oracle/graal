@@ -265,9 +265,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         if (linkage.canDeoptimize()) {
             assert info != null || stub != null;
             Register thread = getProviders().getRegisters().getThreadRegister();
-            append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset, thread));
+            append(new AMD64HotSpotCRuntimeCallPrologueOp(config.threadLastJavaSpOffset(), thread));
             result = super.emitForeignCall(linkage, info, args);
-            append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset, config.threadLastJavaFpOffset, thread));
+            append(new AMD64HotSpotCRuntimeCallEpilogueOp(config.threadLastJavaSpOffset(), config.threadLastJavaFpOffset(), thread));
         } else {
             result = super.emitForeignCall(linkage, null, args);
         }
@@ -521,7 +521,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     private int getLogMinObjectAlignment() {
-        return config.logMinObjAlignment;
+        return config.logMinObjAlignment();
     }
 
     private int getNarrowOopShift() {
