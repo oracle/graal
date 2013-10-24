@@ -252,7 +252,7 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    protected void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedStub) {
+    public void emitCodePrefix(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, AMD64MacroAssembler asm, RegisterConfig regConfig, HotSpotVMConfig config, Label verifiedStub) {
         HotSpotProviders providers = getProviders();
         if (installedCodeOwner != null && !isStatic(installedCodeOwner.getModifiers())) {
             tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
@@ -282,14 +282,14 @@ public class AMD64HotSpotBackend extends HotSpotBackend {
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    protected void emitCodeBody(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, LIRGenerator lirGen) {
+    public void emitCodeBody(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, LIRGenerator lirGen) {
         lirGen.lir.emitCode(tasm);
     }
 
     /**
      * @param installedCodeOwner see {@link Backend#emitCode}
      */
-    protected void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, LIRGenerator lirGen, AMD64MacroAssembler asm, FrameMap frameMap) {
+    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, TargetMethodAssembler tasm, LIRGenerator lirGen, AMD64MacroAssembler asm, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
         if (frameContext != null && !frameContext.isStub) {

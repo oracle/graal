@@ -174,6 +174,18 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         return method;
     }
 
+    private static Backend instrumentBackend(Backend original) {
+        String arch = original.getTarget().arch.getName();
+
+        for (TruffleBackendFactory factory : ServiceLoader.loadInstalled(TruffleBackendFactory.class)) {
+            if (factory.getArchitecture().equals(arch)) {
+                return factory.createBackend(original);
+            }
+        }
+
+        return original;
+    }
+
     private static CompilationResult compileMethod(ResolvedJavaMethod javaMethod) {
         Providers providers = getGraalProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -187,8 +199,8 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
-        return GraalCompiler.compileGraph(graph, cc, javaMethod, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
-                        new CompilationResult());
+        return GraalCompiler.compileGraph(graph, cc, javaMethod, providers, instrumentBackend(backend), providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                        new SpeculationLog(), suites, new CompilationResult());
     }
 
     private static Providers getGraalProviders() {
