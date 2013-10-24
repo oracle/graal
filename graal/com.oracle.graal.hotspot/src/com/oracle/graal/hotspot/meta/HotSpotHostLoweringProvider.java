@@ -79,18 +79,6 @@ public class HotSpotHostLoweringProvider implements HotSpotLoweringProvider {
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-        Replacements r = providers.getReplacements();
-
-        r.registerSubstitutions(ObjectSubstitutions.class);
-        r.registerSubstitutions(SystemSubstitutions.class);
-        r.registerSubstitutions(ThreadSubstitutions.class);
-        r.registerSubstitutions(UnsafeSubstitutions.class);
-        r.registerSubstitutions(ClassSubstitutions.class);
-        r.registerSubstitutions(AESCryptSubstitutions.class);
-        r.registerSubstitutions(CipherBlockChainingSubstitutions.class);
-        r.registerSubstitutions(CRC32Substitutions.class);
-        r.registerSubstitutions(ReflectionSubstitutions.class);
-
         TargetDescription target = providers.getCodeCache().getTarget();
         checkcastDynamicSnippets = new CheckCastDynamicSnippets.Templates(providers, target);
         instanceofSnippets = new InstanceOfSnippets.Templates(providers, target);
@@ -100,8 +88,7 @@ public class HotSpotHostLoweringProvider implements HotSpotLoweringProvider {
         boxingSnippets = new BoxingSnippets.Templates(providers, target);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(providers, target);
-
-        r.registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
+        providers.getReplacements().registerSnippetTemplateCache(new UnsafeArrayCopySnippets.Templates(providers, target));
     }
 
     @Override
