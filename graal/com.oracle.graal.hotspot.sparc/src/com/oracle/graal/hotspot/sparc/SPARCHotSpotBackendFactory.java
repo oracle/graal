@@ -28,6 +28,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.sparc.*;
 
@@ -54,7 +55,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        HotSpotLoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls);
+        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);

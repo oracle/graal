@@ -183,6 +183,8 @@ public class VMToCompilerImpl implements VMToCompiler {
         final HotSpotProviders hostProviders = runtime.getHostProviders();
         HotSpotHostForeignCallsProvider hostForeignCalls = (HotSpotHostForeignCallsProvider) hostProviders.getForeignCalls();
         assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostForeignCalls);
+
+        // Initialize host ForeignCallsProvider
         hostForeignCalls.initialize(hostProviders, config);
 
         // Install intrinsics.
@@ -209,17 +211,10 @@ public class VMToCompilerImpl implements VMToCompiler {
                 }
             });
         }
-        List<LoweringProvider> initializedLowerers = new ArrayList<>();
-        for (Map.Entry<?, HotSpotBackend> e : runtime.getBackends().entrySet()) {
-            HotSpotBackend backend = e.getValue();
-            HotSpotProviders providers = backend.getProviders();
 
-            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-            if (!initializedLowerers.contains(lowerer)) {
-                initializedLowerers.add(lowerer);
-                lowerer.initialize(providers, config);
-            }
-        }
+        // Initialize host LoweringProvider
+        HotSpotHostLoweringProvider hostLowerer = (HotSpotHostLoweringProvider) hostProviders.getLowerer();
+        hostLowerer.initialize(hostProviders, config);
 
         // Create compilation queue.
         compileQueue = new ThreadPoolExecutor(Threads.getValue(), Threads.getValue(), 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), CompilerThread.FACTORY);

@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.hotspot.ptx;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class PTXHotSpotLoweringProvider implements HotSpotLoweringProvider {
+public class PTXHotSpotLoweringProvider implements LoweringProvider {
 
     private final LoweringProvider host;
 
@@ -54,13 +51,6 @@ public class PTXHotSpotLoweringProvider implements HotSpotLoweringProvider {
     }
 
     public ValueNode reconstructArrayIndex(LocationNode location) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-    }
-
-    public int getScalingFactor(Kind elementKind) {
         throw GraalInternalError.unimplemented();
     }
 }
