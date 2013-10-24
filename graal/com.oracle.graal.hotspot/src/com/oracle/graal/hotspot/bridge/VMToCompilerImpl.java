@@ -192,38 +192,33 @@ public class VMToCompilerImpl implements VMToCompiler {
                 @Override
                 public void run() {
 
-                    List<LoweringProvider> initializedLowerers = new ArrayList<>();
-
-                    for (Map.Entry<?, HotSpotBackend> e : runtime.getBackends().entrySet()) {
-                        HotSpotBackend backend = e.getValue();
-                        HotSpotProviders providers = backend.getProviders();
-
-                        HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-                        if (!initializedLowerers.contains(lowerer)) {
-                            initializedLowerers.add(lowerer);
-                            initializeLowerer(providers, lowerer);
-                        }
-                    }
-                }
-
-                private void initializeLowerer(HotSpotProviders providers, HotSpotLoweringProvider lowerer) {
-                    final Replacements replacements = providers.getReplacements();
+                    HotSpotMetaAccessProvider hostMetaAccess = hostProviders.getMetaAccess();
+                    Replacements hostReplacements = hostProviders.getReplacements();
+                    LoweringProvider hostLowerer = hostProviders.getLowerer();
                     ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
-                    TargetDescription target = providers.getCodeCache().getTarget();
+                    TargetDescription hostTarget = hostProviders.getCodeCache().getTarget();
                     for (ReplacementsProvider replacementsProvider : sl) {
-                        replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, target);
+                        replacementsProvider.registerReplacements(hostMetaAccess, hostLowerer, hostReplacements, hostTarget);
                     }
-                    lowerer.initialize(providers, config);
                     if (BootstrapReplacements.getValue()) {
-                        for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
-                            replacements.getMacroSubstitution(method);
-                            replacements.getMethodSubstitution(method);
-                            replacements.getSnippet(method);
+                        for (ResolvedJavaMethod method : hostReplacements.getAllReplacements()) {
+                            hostReplacements.getMacroSubstitution(method);
+                            hostReplacements.getMethodSubstitution(method);
                         }
                     }
                 }
             });
+        }
+        List<LoweringProvider> initializedLowerers = new ArrayList<>();
+        for (Map.Entry<?, HotSpotBackend> e : runtime.getBackends().entrySet()) {
+            HotSpotBackend backend = e.getValue();
+            HotSpotProviders providers = backend.getProviders();
 
+            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
+            if (!initializedLowerers.contains(lowerer)) {
+                initializedLowerers.add(lowerer);
+                lowerer.initialize(providers, config);
+            }
         }
 
         // Create compilation queue.
