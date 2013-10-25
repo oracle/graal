@@ -22,38 +22,33 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 
 /**
- * Filters the substitutions and snippets supported by HSAIL.
+ * The substitutions and snippets supported by HSAIL.
  */
 public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
 
-    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions) {
+    private final Replacements host;
+
+    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions, Replacements host) {
         super(providers, assumptions);
+        this.host = host;
     }
 
     @Override
-    protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
-        // TODO decide here what methods substitutions are supported
-        return null;
-    }
-
-    @Override
-    public Class<? extends FixedWithNextNode> getMacroSubstitution(ResolvedJavaMethod method) {
-        // TODO decide here what macro substitutions are supported
-        return null;
-    }
-
-    @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method) {
-        // TODO must work in cooperation with HSAILHotSpotLoweringProvider
-        return null;
+    public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
+        StructuredGraph m = super.getMethodSubstitution(original);
+        if (m == null) {
+            if (original.getDeclaringClass().equals(providers.getMetaAccess().lookupJavaType(Math.class))) {
+                return host.getMethodSubstitution(original);
+            }
+        }
+        return m;
     }
 }

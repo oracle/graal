@@ -37,14 +37,17 @@ public class HotSpotRegisters implements HotSpotRegistersProvider {
     }
 
     public Register getThreadRegister() {
+        assert !threadRegister.equals(Register.None) : "thread register is not defined";
         return threadRegister;
     }
 
     public Register getHeapBaseRegister() {
+        assert !heapBaseRegister.equals(Register.None) : "heap base register is not defined";
         return heapBaseRegister;
     }
 
     public Register getStackPointerRegister() {
+        assert !stackPointerRegister.equals(Register.None) : "stack pointer register is not defined";
         return stackPointerRegister;
     }
 }
