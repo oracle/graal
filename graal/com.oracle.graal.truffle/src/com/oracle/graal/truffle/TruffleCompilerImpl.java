@@ -81,7 +81,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
         // Create compilation queue.
-        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), CompilerThread.FACTORY);
+        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
@@ -215,7 +215,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
                         public CompilationResult call() {
                             CodeCacheProvider codeCache = providers.getCodeCache();
                             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
-                            CompilationResult compilationResult = new CompilationResult(compilable.toString());
+                            CompilationResult compilationResult = new CompilationResult(graph.method().toString());
                             return GraalCompiler.compileGraphNoScope(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL,
                                             new SpeculationLog(), suites, compilationResult);
                         }
