@@ -24,14 +24,11 @@ package com.oracle.graal.hotspot.meta;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.*;
 
 /**
  * HotSpot extension of {@link ForeignCallsProvider}.
  */
 public interface HotSpotForeignCallsProvider extends ForeignCallsProvider {
-
-    void initialize(HotSpotProviders providers, HotSpotVMConfig config);
 
     /**
      * Gets the registers that must be saved across a foreign call into the runtime.

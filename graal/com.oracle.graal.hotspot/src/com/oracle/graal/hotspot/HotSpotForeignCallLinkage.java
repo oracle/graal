@@ -139,17 +139,17 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
         Class<?>[] argumentTypes = descriptor.getArgumentTypes();
         JavaType[] parameterTypes = new JavaType[argumentTypes.length];
         for (int i = 0; i < parameterTypes.length; ++i) {
-            parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess);
+            parameterTypes[i] = asJavaType(argumentTypes[i], metaAccess, codeCache);
         }
         TargetDescription target = codeCache.getTarget();
-        JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess);
+        JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, codeCache);
         RegisterConfig regConfig = codeCache.getRegisterConfig();
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, target, false);
     }
 
-    private static JavaType asJavaType(Class type, MetaAccessProvider metaAccess) {
+    private static JavaType asJavaType(Class type, MetaAccessProvider metaAccess, CodeCacheProvider codeCache) {
         if (WordBase.class.isAssignableFrom(type)) {
-            return metaAccess.lookupJavaType(getHostWordKind().toJavaClass());
+            return metaAccess.lookupJavaType(codeCache.getTarget().wordKind.toJavaClass());
         } else {
             return metaAccess.lookupJavaType(type);
         }

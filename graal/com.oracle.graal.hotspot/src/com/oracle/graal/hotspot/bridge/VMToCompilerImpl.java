@@ -48,7 +48,6 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -180,54 +179,16 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        final HotSpotProviders hostProviders = runtime.getHostProviders();
+        HotSpotBackend hostBackend = runtime.getHostBackend();
+        final HotSpotProviders hostProviders = hostBackend.getProviders();
         assert VerifyOptionsPhase.checkOptions(hostProviders.getMetaAccess(), hostProviders.getForeignCalls());
 
-        // Install intrinsics.
-        if (Intrinsify.getValue()) {
-            Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
-
-                @Override
-                public void run() {
-
-                    List<LoweringProvider> initializedLowerers = new ArrayList<>();
-                    List<ForeignCallsProvider> initializedForeignCalls = new ArrayList<>();
-
-                    for (Map.Entry<?, HotSpotBackend> e : runtime.getBackends().entrySet()) {
-                        HotSpotBackend backend = e.getValue();
-                        HotSpotProviders providers = backend.getProviders();
-
-                        HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
-                        if (!initializedForeignCalls.contains(foreignCalls)) {
-                            initializedForeignCalls.add(foreignCalls);
-                            foreignCalls.initialize(providers, config);
-                        }
-                        HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
-                        if (!initializedLowerers.contains(lowerer)) {
-                            initializedLowerers.add(lowerer);
-                            initializeLowerer(providers, lowerer);
-                        }
-                    }
-                }
-
-                private void initializeLowerer(HotSpotProviders providers, HotSpotLoweringProvider lowerer) {
-                    final Replacements replacements = providers.getReplacements();
-                    ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
-                    TargetDescription target = providers.getCodeCache().getTarget();
-                    for (ReplacementsProvider replacementsProvider : sl) {
-                        replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, target);
-                    }
-                    lowerer.initialize(providers, config);
-                    if (BootstrapReplacements.getValue()) {
-                        for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
-                            replacements.getMacroSubstitution(method);
-                            replacements.getMethodSubstitution(method);
-                            replacements.getSnippet(method);
-                        }
-                    }
-                }
-            });
-
+        // Complete initialization of backends
+        hostBackend.completeInitialization();
+        for (HotSpotBackend backend : runtime.getBackends().values()) {
+            if (backend != hostBackend) {
+                backend.completeInitialization();
+            }
         }
 
         // Create compilation queue.

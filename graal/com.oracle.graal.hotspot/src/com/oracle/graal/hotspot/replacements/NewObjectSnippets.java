@@ -332,7 +332,7 @@ public class NewObjectSnippets implements Snippets {
             Kind elementKind = elementType.getKind();
             ConstantNode hub = ConstantNode.forConstant(arrayType.klass(), providers.getMetaAccess(), graph);
             final int headerSize = HotSpotGraalRuntime.getArrayBaseOffset(elementKind);
-            HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
+            HotSpotHostLoweringProvider lowerer = (HotSpotHostLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
 
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage());

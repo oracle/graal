@@ -31,24 +31,89 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 
-// @formatter:off
 /**
  * Defines arithmetic instruction nodes.
  */
 public enum HSAILArithmetic {
-    IADD, OADD, ISUB, FSUB, DSUB, IMUL, FMUL,
-    DMUL, IDIV, FDIV, DDIV, IUADD, IUSUB,
-    IUMUL, IUDIV, LADD, DADD, FADD, LSUB,
-    LMUL, LDIV, LUADD, LUSUB, LUMUL,
-    LUDIV, IMAX, LMAX, IUMAX, LUMAX,
-    IMIN, LMIN, IUMIN, LUMIN, IREM,
-    LREM, FREM, DREM, IUREM, LUREM,
-    ICARRY, LCARRY, IUCARRY, LUCARRY,
-    IAND, LAND, INEG, INOT, I2B, I2S, I2L,
-    F2D, F2I, F2L, D2F, I2F, I2D, D2I,
-    L2F, D2L, MOV_F2I, MOV_D2L, L2D, MOV_I2F,
-    MOV_L2D, ISHL, LSHL, ISHR, LSHR, IUSHR, LUSHR,
-    SQRT, UNDEF, CALL, L2I;
+    IADD,
+    OADD,
+    ISUB,
+    FSUB,
+    DSUB,
+    IMUL,
+    FMUL,
+    DMUL,
+    IDIV,
+    FDIV,
+    DDIV,
+    IUADD,
+    IUSUB,
+    IUMUL,
+    IUDIV,
+    LADD,
+    DADD,
+    FADD,
+    LSUB,
+    LMUL,
+    LDIV,
+    LUADD,
+    LUSUB,
+    LUMUL,
+    LUDIV,
+    IMAX,
+    LMAX,
+    IUMAX,
+    LUMAX,
+    IMIN,
+    LMIN,
+    IUMIN,
+    LUMIN,
+    IREM,
+    LREM,
+    FREM,
+    DREM,
+    IUREM,
+    LUREM,
+    ICARRY,
+    LCARRY,
+    IUCARRY,
+    LUCARRY,
+    IAND,
+    LAND,
+    INEG,
+    INOT,
+    I2B,
+    I2S,
+    I2L,
+    I2C,
+    F2D,
+    F2I,
+    F2L,
+    D2F,
+    I2F,
+    I2D,
+    D2I,
+    L2F,
+    D2L,
+    MOV_F2I,
+    MOV_D2L,
+    L2D,
+    MOV_I2F,
+    MOV_L2D,
+    ISHL,
+    LSHL,
+    ISHR,
+    LSHR,
+    IUSHR,
+    LUSHR,
+    SQRT,
+    UNDEF,
+    CALL,
+    L2I,
+    IXOR,
+    LXOR,
+    IOR,
+    LOR;
 
     public static class Op1Stack extends HSAILLIRInstruction {
         @Opcode private final HSAILArithmetic opcode;
@@ -215,7 +280,8 @@ public enum HSAILArithmetic {
     @SuppressWarnings("unused")
     protected static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value result) {
         switch (opcode) {
-            default:   throw GraalInternalError.shouldNotReachHere();
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
@@ -225,19 +291,43 @@ public enum HSAILArithmetic {
             switch (opcode) {
                 case I2F:
                 case I2D:
-                case D2I:
                 case I2L:
-                case L2I:
+                case F2I:
                 case F2D:
-                case D2F: masm.emitConvert(dst, src); break;
-                case SQRT: masm.emitArg1("sqrt", dst, src); break;
-                case UNDEF: masm.undefined("undefined node"); break;
-                case CALL: masm.undefined("undefined node CALL"); break;
-                case INOT: masm.emitArg1("not", dst, src); break;
+                case F2L:
+                case D2I:
+                case D2L:
+                case D2F:
+                case L2I:
+                case L2F:
+                case L2D:
+                    masm.emitConvert(dst, src);
+                    break;
+                case I2S:
+                    masm.emitConvertIntToShort(dst, src);
+                    break;
+                case I2C:
+                    masm.emitConvertIntToChar(dst, src);
+                    break;
+                case I2B:
+                    masm.emitConvertIntToByte(dst, src);
+                    break;
+                case SQRT:
+                    masm.emitArg1("sqrt", dst, src);
+                    break;
+                case UNDEF:
+                    masm.undefined("undefined node");
+                    break;
+                case CALL:
+                    masm.undefined("undefined node CALL");
+                    break;
+                case INOT:
+                    masm.emitArg1("not", dst, src);
+                    break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
-        }  else {
+        } else {
             throw GraalInternalError.shouldNotReachHere();
         }
         if (info != null) {
@@ -248,9 +338,8 @@ public enum HSAILArithmetic {
 
     public static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         /**
-         * First check if one of src1 or src2 is an AddressValue.  If it is,
-         * convert the address to a register using an lda instruction.  We can
-         * just reuse the eventual dst register for this.
+         * First check if one of src1 or src2 is an AddressValue. If it is, convert the address to a
+         * register using an lda instruction. We can just reuse the eventual dst register for this.
          */
         if (src1 instanceof HSAILAddressValue) {
             assert (!(src2 instanceof HSAILAddressValue));
@@ -270,41 +359,64 @@ public enum HSAILArithmetic {
             case DADD:
             case FADD:
             case OADD:
-                masm.emit("add", dst, src1, src2); break;
+                masm.emit("add", dst, src1, src2);
+                break;
             case ISUB:
             case LSUB:
             case DSUB:
             case FSUB:
-                masm.emit("sub", dst, src1, src2); break;
+                masm.emit("sub", dst, src1, src2);
+                break;
             case IMUL:
             case LMUL:
             case FMUL:
             case DMUL:
             case LUMUL:
-                masm.emit("mul", dst, src1, src2); break;
+                masm.emit("mul", dst, src1, src2);
+                break;
             case IDIV:
             case LDIV:
             case FDIV:
             case DDIV:
-                masm.emit("div", dst, src1, src2); break;
+                masm.emit("div", dst, src1, src2);
+                break;
             case IMAX:
             case LMAX:
-                masm.emit("max", dst, src1, src2); break;
+                masm.emit("max", dst, src1, src2);
+                break;
             case IMIN:
             case LMIN:
-                masm.emit("min", dst, src1, src2); break;
+                masm.emit("min", dst, src1, src2);
+                break;
             case ISHL:
             case LSHL:
-                masm.emit("shl", dst, src1, src2); break;
+                masm.emit("shl", dst, src1, src2);
+                break;
             case ISHR:
             case LSHR:
-                masm.emit("shr", dst, src1, src2); break;
+                masm.emit("shr", dst, src1, src2);
+                break;
             case IUSHR:
             case LUSHR:
-                masm.emitForceUnsigned("shr", dst, src1, src2); break;
+                masm.emitForceUnsigned("shr", dst, src1, src2);
+                break;
+            case IAND:
+            case LAND:
+                masm.emitBitwiseLogical("and", dst, src1, src2);
+                break;
+            case IXOR:
+            case LXOR:
+                masm.emitBitwiseLogical("xor", dst, src1, src2);
+                break;
+            case IOR:
+            case LOR:
+                masm.emitBitwiseLogical("or", dst, src1, src2);
+                break;
             case IREM:
-                masm.emit("rem", dst, src1, src2); break;
-            default:    throw GraalInternalError.shouldNotReachHere();
+                masm.emit("rem", dst, src1, src2);
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
         if (info != null) {
             assert exceptionOffset != -1;
@@ -313,12 +425,11 @@ public enum HSAILArithmetic {
     }
 
     private static void verifyKind(HSAILArithmetic opcode, Value result, Value x, Value y) {
-        assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int)
-        || (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long)
-        || (opcode.name().startsWith("LU") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Int)
-        || (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float)
-        || (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double)
-        || (opcode.name().startsWith("O") && result.getKind() == Kind.Object && x.getKind() == Kind.Object && (y.getKind() == Kind.Int || y.getKind() == Kind.Long)
-                        );
+        assert (opcode.name().startsWith("I") && result.getKind() == Kind.Int && x.getKind().getStackKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) ||
+                        (opcode.name().startsWith("L") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Long) ||
+                        (opcode.name().startsWith("LU") && result.getKind() == Kind.Long && x.getKind() == Kind.Long && y.getKind() == Kind.Int) ||
+                        (opcode.name().startsWith("F") && result.getKind() == Kind.Float && x.getKind() == Kind.Float && y.getKind() == Kind.Float) ||
+                        (opcode.name().startsWith("D") && result.getKind() == Kind.Double && x.getKind() == Kind.Double && y.getKind() == Kind.Double) ||
+                        (opcode.name().startsWith("O") && result.getKind() == Kind.Object && x.getKind() == Kind.Object && (y.getKind() == Kind.Int || y.getKind() == Kind.Long));
     }
 }

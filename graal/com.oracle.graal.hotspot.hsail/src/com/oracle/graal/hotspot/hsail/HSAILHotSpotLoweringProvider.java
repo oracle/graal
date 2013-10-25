@@ -22,16 +22,13 @@
  */
 package com.oracle.graal.hotspot.hsail;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
-public class HSAILHotSpotLoweringProvider implements HotSpotLoweringProvider {
+public class HSAILHotSpotLoweringProvider implements LoweringProvider {
 
     private LoweringProvider host;
 
@@ -49,13 +46,6 @@ public class HSAILHotSpotLoweringProvider implements HotSpotLoweringProvider {
     }
 
     public ValueNode reconstructArrayIndex(LocationNode location) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
-    }
-
-    public int getScalingFactor(Kind elementKind) {
         throw GraalInternalError.unimplemented();
     }
 }

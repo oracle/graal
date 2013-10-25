@@ -223,12 +223,46 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         }
     }
 
+    public static final String getArgTypeBitwiseLogical(Value src) {
+        String length = getArgType(src);
+        String prefix = "b" + (length.endsWith("64") ? "64" : "32");
+        return prefix;
+    }
+
     public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
         String prefix = "cmp_" + condition + (unordered ? "u" : "") + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
         String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
+    /**
+     * I2S requires special handling because Graal passes an int for the destination operand instead
+     * of a short.
+     */
+    public void emitConvertIntToShort(Value dest, Value src) {
+        emitString("cvt_s16_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
+    }
+
+    /**
+     * I2C requires special handling because Graal passes an int for the destination operand instead
+     * of a char.
+     */
+    public void emitConvertIntToChar(Value dest, Value src) {
+        emitString("cvt_u16_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
+    }
+
+    /**
+     * I2B requires special handling because Graal passes an int for the destination operand instead
+     * of a byte.
+     */
+    public void emitConvertIntToByte(Value dest, Value src) {
+        emitString("cvt_s8_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
+    }
+
+    /**
+     * Generic handler for all other conversions.
+     * 
+     */
     public void emitConvert(Value dest, Value src) {
         String prefix = (getArgType(dest).equals("f32") && getArgType(src).equals("f64")) ? "cvt_near_" : "cvt_";
         emitString(prefix + getArgType(dest) + "_" + getArgType(src) + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
@@ -293,6 +327,17 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     public final void cmovCommon(Value dest, Value trueReg, Value falseReg, int width) {
         String instr = (width == 32 ? "cmov_b32" : "cmov_b64");
         emit(instr, dest, "$c0, ", trueReg, falseReg);
+    }
+
+    /**
+     * 
+     * Emit code to generate a 32-bit or 64-bit bitwise logical operation. Used to generate bitwise
+     * AND, OR and XOR.
+     */
+    public final void emitBitwiseLogical(String mnemonic, Value dest, Value src0, Value src1) {
+        // Bitwise ops don't use a control register so the fourth arg is empty.
+        String prefix = getArgTypeBitwiseLogical(dest);
+        emit(mnemonic + "_" + prefix, dest, "", src0, src1);
     }
 
     /**

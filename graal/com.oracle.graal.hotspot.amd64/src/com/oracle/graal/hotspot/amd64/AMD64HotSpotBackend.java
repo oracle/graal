@@ -55,7 +55,7 @@ import com.oracle.graal.nodes.cfg.*;
 /**
  * HotSpot AMD64 specific backend.
  */
-public class AMD64HotSpotBackend extends HotSpotBackend {
+public class AMD64HotSpotBackend extends HotSpotHostBackend {
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
 

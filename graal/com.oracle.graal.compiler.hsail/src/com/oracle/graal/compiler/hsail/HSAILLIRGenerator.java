@@ -461,12 +461,34 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     @Override
     public Variable emitOr(Value a, Value b) {
-        throw GraalInternalError.unimplemented();
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Stack(IOR, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Stack(LOR, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
     public Variable emitXor(Value a, Value b) {
-        throw GraalInternalError.unimplemented();
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                append(new Op2Stack(IXOR, result, a, loadNonConst(b)));
+                break;
+            case Long:
+                append(new Op2Stack(LXOR, result, a, loadNonConst(b)));
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
     @Override
@@ -517,21 +539,43 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             case I2L:
                 append(new Op1Stack(I2L, result, input));
                 break;
+            case I2S:
+                append(new Op1Stack(I2S, result, input));
+                break;
+            case I2C:
+                append(new Op1Stack(I2C, result, input));
+                break;
+            case I2B:
+                append(new Op1Stack(I2B, result, input));
+                break;
             case I2D:
                 append(new Op1Stack(I2D, result, input));
                 break;
             case D2I:
                 append(new Op1Stack(D2I, result, input));
                 break;
+            case D2F:
+                append(new Op1Stack(D2F, result, input));
+                break;
+            case D2L:
+                append(new Op1Stack(D2L, result, input));
+                break;
             case L2I:
                 append(new Op1Stack(L2I, result, input));
+                break;
+            case L2F:
+                append(new Op1Stack(L2F, result, input));
+                break;
+            case L2D:
+                append(new Op1Stack(L2D, result, input));
                 break;
             case F2D:
                 append(new Op1Stack(F2D, result, input));
                 break;
-            case D2F:
-                append(new Op1Stack(D2F, result, input));
+            case F2L:
+                append(new Op1Stack(F2L, result, input));
                 break;
+
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }

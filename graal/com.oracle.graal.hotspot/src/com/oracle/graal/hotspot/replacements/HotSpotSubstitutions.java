@@ -20,32 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.ptx;
+package com.oracle.graal.hotspot.replacements;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.api.runtime.*;
+import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.replacements.*;
 
-public class PTXHotSpotForeignCallsProvider implements HotSpotForeignCallsProvider {
+@ServiceProvider(ReplacementsProvider.class)
+public class HotSpotSubstitutions implements ReplacementsProvider {
 
-    public boolean isReexecutable(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public LocationIdentity[] getKilledLocations(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public boolean canDeoptimize(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-        throw GraalInternalError.unimplemented();
-    }
-
-    public Value[] getNativeABICallerSaveRegisters() {
-        throw GraalInternalError.unimplemented();
+    @Override
+    public void registerReplacements(MetaAccessProvider metaAccess, LoweringProvider loweringProvider, Replacements replacements, TargetDescription target) {
+        replacements.registerSubstitutions(ObjectSubstitutions.class);
+        replacements.registerSubstitutions(SystemSubstitutions.class);
+        replacements.registerSubstitutions(ThreadSubstitutions.class);
+        replacements.registerSubstitutions(UnsafeSubstitutions.class);
+        replacements.registerSubstitutions(ClassSubstitutions.class);
+        replacements.registerSubstitutions(AESCryptSubstitutions.class);
+        replacements.registerSubstitutions(CipherBlockChainingSubstitutions.class);
+        replacements.registerSubstitutions(CRC32Substitutions.class);
+        replacements.registerSubstitutions(ReflectionSubstitutions.class);
     }
 }
