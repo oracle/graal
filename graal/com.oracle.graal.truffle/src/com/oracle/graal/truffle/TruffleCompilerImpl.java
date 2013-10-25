@@ -81,7 +81,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
         this.skippedExceptionTypes = getSkippedExceptionTypes(providers.getMetaAccess());
 
         // Create compilation queue.
-        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+        compileQueue = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), TruffleCompilerThread.FACTORY);
 
         final GraphBuilderConfiguration config = GraphBuilderConfiguration.getEagerDefault();
         config.setSkippedExceptionTypes(skippedExceptionTypes);
@@ -107,7 +107,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
             @Override
             public InstalledCode call() throws Exception {
-                Object[] debug = new Object[]{new DebugDumpScope("Truffle: " + compilable)};
+                Object[] debug = new Object[]{new TruffleDebugJavaMethod(compilable)};
                 return Debug.scope("Truffle", debug, new Callable<InstalledCode>() {
 
                     @Override

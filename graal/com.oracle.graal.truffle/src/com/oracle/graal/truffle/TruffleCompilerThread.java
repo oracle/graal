@@ -20,30 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot;
+package com.oracle.graal.truffle;
 
-import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-
-import java.io.*;
 import java.util.concurrent.*;
 
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.printer.*;
 
-public final class CompilerThread extends Thread {
+public final class TruffleCompilerThread extends Thread {
 
     public static final ThreadFactory FACTORY = new ThreadFactory() {
 
         @Override
         public Thread newThread(Runnable r) {
-            return new CompilerThread(r);
+            return new TruffleCompilerThread(r);
         }
     };
 
-    private CompilerThread(Runnable r) {
+    private TruffleCompilerThread(Runnable r) {
         super(r);
-        this.setName("GraalCompilerThread-" + this.getId());
+        this.setName("TruffleCompilerThread-" + this.getId());
         this.setPriority(MAX_PRIORITY);
         this.setDaemon(true);
     }
@@ -52,8 +49,7 @@ public final class CompilerThread extends Thread {
     public void run() {
         GraalDebugConfig debugConfig = null;
         if (Debug.isEnabled()) {
-            PrintStream log = runtime().getVMToCompiler().log();
-            debugConfig = DebugEnvironment.initialize(log);
+            debugConfig = DebugEnvironment.initialize(System.out);
         }
         try {
             super.run();
