@@ -33,6 +33,8 @@ import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.nodes.java.ArrayLengthNode.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
+import java.util.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
@@ -296,61 +298,95 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
         } else if (n instanceof CommitAllocationNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
                 CommitAllocationNode commit = (CommitAllocationNode) n;
-
                 ValueNode[] allocations = new ValueNode[commit.getVirtualObjects().size()];
-                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                    int entryCount = virtual.entryCount();
-
-                    FixedWithNextNode newObject;
-                    if (virtual instanceof VirtualInstanceNode) {
-                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
-                    } else {
-                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
-                        newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
-                    }
-                    graph.addBeforeFixed(commit, newObject);
-                    allocations[objIndex] = newObject;
-                }
+                BitSet omittedValues = new BitSet();
                 int valuePos = 0;
                 for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                     VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                     int entryCount = virtual.entryCount();
-
-                    ValueNode newObject = allocations[objIndex];
+                    FixedWithNextNode newObject;
                     if (virtual instanceof VirtualInstanceNode) {
-                        VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
+                        newObject = graph.add(new NewInstanceNode(virtual.type(), true));
+                        graph.addBeforeFixed(commit, newObject);
+                        allocations[objIndex] = newObject;
                         for (int i = 0; i < entryCount; i++) {
-                            ValueNode value = commit.getValues().get(valuePos++);
+                            ValueNode value = commit.getValues().get(valuePos);
                             if (value instanceof VirtualObjectNode) {
                                 value = allocations[commit.getVirtualObjects().indexOf(value)];
                             }
-                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            if (value == null) {
+                                omittedValues.set(valuePos);
+                            } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
                                 WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true),
-                                                (virtualInstance.field(i).getKind() == Kind.Object && !deferInitBarrier(newObject)) ? BarrierType.IMPRECISE : BarrierType.NONE,
+                                                (virtualInstance.field(i).getKind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE,
                                                 virtualInstance.field(i).getKind() == Kind.Object);
-                                graph.addBeforeFixed(commit, graph.add(write));
+                                graph.addAfterFixed(newObject, graph.add(write));
                             }
+                            valuePos++;
                         }
-
                     } else {
-                        VirtualArrayNode array = (VirtualArrayNode) virtual;
-                        ResolvedJavaType element = array.componentType();
+                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                        newObject = graph.add(new NewArrayNode(element, ConstantNode.forInt(entryCount, graph), true));
+                        graph.addBeforeFixed(commit, newObject);
+                        allocations[objIndex] = newObject;
                         for (int i = 0; i < entryCount; i++) {
-                            ValueNode value = commit.getValues().get(valuePos++);
+                            ValueNode value = commit.getValues().get(valuePos);
                             if (value instanceof VirtualObjectNode) {
-                                int indexOf = commit.getVirtualObjects().indexOf(value);
-                                assert indexOf != -1 : commit + " " + value;
-                                value = allocations[indexOf];
+                                value = allocations[commit.getVirtualObjects().indexOf(value)];
                             }
-                            if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            if (value == null) {
+                                omittedValues.set(valuePos);
+                            } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
                                 WriteNode write = new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph), true),
-                                                (value.kind() == Kind.Object && !deferInitBarrier(newObject)) ? BarrierType.PRECISE : BarrierType.NONE, value.kind() == Kind.Object);
-                                graph.addBeforeFixed(commit, graph.add(write));
+                                                (value.kind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE, value.kind() == Kind.Object);
+                                graph.addAfterFixed(newObject, graph.add(write));
                             }
+                            valuePos++;
                         }
                     }
                 }
+                valuePos = 0;
+
+                for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
+                    VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
+                    int entryCount = virtual.entryCount();
+                    ValueNode newObject = allocations[objIndex];
+                    if (virtual instanceof VirtualInstanceNode) {
+                        for (int i = 0; i < entryCount; i++) {
+                            if (omittedValues.get(valuePos)) {
+                                ValueNode value = commit.getValues().get(valuePos);
+                                assert value instanceof VirtualObjectNode;
+                                ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
+                                if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                                    VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
+                                    assert virtualInstance.field(i).getKind() == Kind.Object;
+                                    WriteNode write = new WriteNode(newObject, allocValue, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true),
+                                                    BarrierType.IMPRECISE, true);
+                                    graph.addBeforeFixed(commit, graph.add(write));
+                                }
+                            }
+                            valuePos++;
+                        }
+                    } else {
+                        ResolvedJavaType element = ((VirtualArrayNode) virtual).componentType();
+                        for (int i = 0; i < entryCount; i++) {
+                            if (omittedValues.get(valuePos)) {
+                                ValueNode value = commit.getValues().get(valuePos);
+                                assert value instanceof VirtualObjectNode;
+                                ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
+                                if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                                    assert allocValue.kind() == Kind.Object;
+                                    WriteNode write = new WriteNode(newObject, allocValue, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph), true), BarrierType.PRECISE,
+                                                    true);
+                                    graph.addBeforeFixed(commit, graph.add(write));
+                                }
+                            }
+                            valuePos++;
+                        }
+                    }
+                }
+
                 for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                     FixedValueAnchorNode anchor = graph.add(new FixedValueAnchorNode(allocations[objIndex]));
                     allocations[objIndex] = anchor;
@@ -549,7 +585,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
 
     private static BarrierType getFieldStoreBarrierType(StoreFieldNode storeField) {
         BarrierType barrierType = BarrierType.NONE;
-        if (storeField.field().getKind() == Kind.Object && !deferInitBarrier(storeField.object())) {
+        if (storeField.field().getKind() == Kind.Object) {
             barrierType = BarrierType.IMPRECISE;
         }
         return barrierType;
@@ -557,14 +593,10 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
 
     private static BarrierType getArrayStoreBarrierType(StoreIndexedNode store) {
         BarrierType barrierType = BarrierType.NONE;
-        if (store.elementKind() == Kind.Object && !deferInitBarrier(store.array())) {
+        if (store.elementKind() == Kind.Object) {
             barrierType = BarrierType.PRECISE;
         }
         return barrierType;
-    }
-
-    private static boolean deferInitBarrier(ValueNode object) {
-        return useDeferredInitBarriers() && (object instanceof NewInstanceNode || object instanceof NewArrayNode);
     }
 
     private static BarrierType getUnsafeStoreBarrierType(UnsafeStoreNode store) {
