@@ -24,13 +24,14 @@ package com.oracle.graal.replacements;
 
 //JaCoCo Exclude
 
-import static com.oracle.graal.graph.FieldIntrospection.*;
+import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import java.io.*;
 import java.util.*;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.replacements.Snippet.*;
+import com.oracle.graal.replacements.Snippet.Fold;
 import com.oracle.graal.replacements.nodes.*;
 
 /**
@@ -133,7 +134,8 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
      */
     public void inc() {
         if (group != null) {
-            DirectObjectStoreNode.storeLong(this, countOffset(), 0, value + 1);
+            // TODO: instead of ANY_LOCATION we should actually use the location for the field "value".
+            DirectObjectStoreNode.storeLong(this, countOffset(), 0, value + 1, LocationIdentity.ANY_LOCATION);
         }
     }
 

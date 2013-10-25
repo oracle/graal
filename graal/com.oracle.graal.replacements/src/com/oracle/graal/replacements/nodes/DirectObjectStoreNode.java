@@ -22,15 +22,12 @@
  */
 package com.oracle.graal.replacements.nodes;
 
-import static com.oracle.graal.api.meta.LocationIdentity.*;
-
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.word.*;
 
 /**
  * A special purpose store node that differs from {@link UnsafeStoreNode} in that it is not a
@@ -42,30 +39,26 @@ public class DirectObjectStoreNode extends FixedWithNextNode implements Lowerabl
     @Input private ValueNode value;
     @Input private ValueNode offset;
     private final int displacement;
+    private final LocationIdentity locationIdentity;
 
-    public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value) {
+    public DirectObjectStoreNode(ValueNode object, int displacement, ValueNode offset, ValueNode value, LocationIdentity locationIdentity) {
         super(StampFactory.forVoid());
         this.object = object;
         this.value = value;
         this.offset = offset;
         this.displacement = displacement;
+        this.locationIdentity = locationIdentity;
     }
 
     @NodeIntrinsic
-    public static native void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value);
+    public static native void storeObject(Object obj, @ConstantNodeParameter int displacement, long offset, Object value, @ConstantNodeParameter LocationIdentity locationIdentity);
 
     @NodeIntrinsic
-    public static native void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value);
-
-    @NodeIntrinsic
-    public static native void storeWord(Object obj, @ConstantNodeParameter int displacement, long offset, Word value);
-
-    @NodeIntrinsic
-    public static native void storeInt(Object obj, @ConstantNodeParameter int displacement, long offset, int value);
+    public static native void storeLong(Object obj, @ConstantNodeParameter int displacement, long offset, long value, @ConstantNodeParameter LocationIdentity locationIdenity);
 
     @Override
     public void lower(LoweringTool tool) {
-        IndexedLocationNode location = IndexedLocationNode.create(ANY_LOCATION, value.kind(), displacement, offset, graph(), 1);
+        IndexedLocationNode location = IndexedLocationNode.create(locationIdentity, value.kind(), displacement, offset, graph(), 1);
         WriteNode write = graph().add(new WriteNode(object, value, location, BarrierType.NONE, value.kind() == Kind.Object));
         graph().replaceFixedWithFixed(this, write);
     }

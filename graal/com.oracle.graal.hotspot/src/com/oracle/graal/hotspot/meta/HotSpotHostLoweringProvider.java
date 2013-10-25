@@ -186,7 +186,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
         } else if (n instanceof CompareAndSwapNode) {
             // Separate out GC barrier semantics
             CompareAndSwapNode cas = (CompareAndSwapNode) n;
-            LocationNode location = IndexedLocationNode.create(ANY_LOCATION, cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
+            LocationNode location = IndexedLocationNode.create(cas.getLocationIdentity(), cas.expected().kind(), cas.displacement(), cas.offset(), graph, 1);
             LoweredCompareAndSwapNode atomicNode = graph.add(new LoweredCompareAndSwapNode(cas.object(), location, cas.expected(), cas.newValue(), getCompareAndSwapBarrier(cas),
                             cas.expected().kind() == Kind.Object));
             atomicNode.setStateAfter(cas.stateAfter());
