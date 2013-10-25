@@ -37,6 +37,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.Stub;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.sparc.*;
 import com.oracle.graal.nodes.*;
@@ -164,8 +165,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         if (stub != null) {
             // SPARC stubs always enter a frame which saves the registers.
-            final Set<Register> definedRegisters = new HashSet<>();
-            stub.initDestroyedRegisters(definedRegisters);
+            Set<Register> destroyedRegisters = Collections.emptySet();
+            Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo = Collections.emptyMap();
+            updateStub(stub, destroyedRegisters, calleeSaveInfo, frameMap);
         }
 
         return tasm;

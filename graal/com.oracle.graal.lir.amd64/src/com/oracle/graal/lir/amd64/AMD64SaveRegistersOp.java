@@ -29,13 +29,14 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Saves registers to stack slots.
  */
 @Opcode("SAVE_REGISTER")
-public class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
+public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveRegistersOp {
 
     /**
      * The registers (potentially) saved by this operation.
@@ -47,9 +48,15 @@ public class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
      */
     @Def(STACK) protected final StackSlot[] slots;
 
-    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlot[] slots) {
+    /**
+     * Specifies if {@link #remove(Set)} should have an effect.
+     */
+    protected final boolean forceAll;
+
+    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlot[] slots, boolean forceAll) {
         this.savedRegisters = savedRegisters;
         this.slots = slots;
+        this.forceAll = forceAll;
     }
 
     protected void saveRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, StackSlot result, Register register) {
@@ -70,26 +77,33 @@ public class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
         return slots;
     }
 
-    /**
-     * Prunes the set of registers saved by this operation to exclude those in {@code ignored} and
-     * updates {@code debugInfo} with a {@linkplain DebugInfo#getCalleeSaveInfo() description} of
-     * where each preserved register is saved.
-     */
-    @Override
-    public void update(Set<Register> ignored, DebugInfo debugInfo, FrameMap frameMap) {
-        int preserved = 0;
-        for (int i = 0; i < savedRegisters.length; i++) {
-            if (savedRegisters[i] != null) {
-                if (ignored.contains(savedRegisters[i])) {
-                    savedRegisters[i] = null;
-                } else {
-                    preserved++;
+    public int remove(Set<Register> doNotSave) {
+        return prune(doNotSave, savedRegisters);
+    }
+
+    static int prune(Set<Register> toRemove, Register[] registers) {
+        int pruned = 0;
+        for (int i = 0; i < registers.length; i++) {
+            if (registers[i] != null) {
+                if (toRemove.contains(registers[i])) {
+                    registers[i] = null;
+                    pruned++;
                 }
             }
         }
-        if (preserved != 0) {
-            Register[] keys = new Register[preserved];
-            int[] values = new int[keys.length];
+        return pruned;
+    }
+
+    public RegisterSaveLayout getMap(FrameMap frameMap) {
+        int total = 0;
+        for (int i = 0; i < savedRegisters.length; i++) {
+            if (savedRegisters[i] != null) {
+                total++;
+            }
+        }
+        Register[] keys = new Register[total];
+        int[] values = new int[total];
+        if (total != 0) {
             int mapIndex = 0;
             for (int i = 0; i < savedRegisters.length; i++) {
                 if (savedRegisters[i] != null) {
@@ -98,10 +112,8 @@ public class AMD64SaveRegistersOp extends AMD64RegistersPreservationOp {
                     mapIndex++;
                 }
             }
-            assert mapIndex == preserved;
-            if (debugInfo != null) {
-                debugInfo.setCalleeSaveInfo(new RegisterSaveLayout(keys, values));
-            }
+            assert mapIndex == total;
         }
+        return new RegisterSaveLayout(keys, values);
     }
 }

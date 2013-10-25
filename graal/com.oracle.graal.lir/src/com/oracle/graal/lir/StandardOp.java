@@ -24,6 +24,9 @@ package com.oracle.graal.lir;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import java.util.*;
+
+import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.graph.*;
@@ -136,6 +139,32 @@ public class StandardOp {
         Value getInput();
 
         AllocatableValue getResult();
+    }
+
+    /**
+     * An operation that saves registers to the stack. The set of saved registers can be
+     * {@linkplain #remove(Set) pruned} and a mapping from registers to the frame slots in which
+     * they are saved can be {@linkplain #getMap(FrameMap) retrieved}.
+     */
+    public interface SaveRegistersOp {
+
+        /**
+         * Prunes {@code doNotSave} from the registers saved by this operation.
+         * 
+         * @param doNotSave registers that should not be saved by this operation
+         * @return the number of registers pruned
+         */
+        int remove(Set<Register> doNotSave);
+
+        /**
+         * Gets a map from the saved registers saved by this operation to the frame slots in which
+         * they are saved.
+         * 
+         * @param frameMap used to {@linkplain FrameMap#indexForStackSlot(StackSlot) convert} a
+         *            virtual slot to a frame slot index
+         */
+        RegisterSaveLayout getMap(FrameMap frameMap);
+
     }
 
     /**

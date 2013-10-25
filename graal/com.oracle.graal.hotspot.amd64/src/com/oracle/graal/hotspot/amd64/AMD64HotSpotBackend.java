@@ -45,12 +45,9 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
-import com.oracle.graal.lir.StandardOp.LabelOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.cfg.*;
 
 /**
  * HotSpot AMD64 specific backend.
@@ -183,52 +180,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
         }
 
         if (stub != null) {
-
-            final Set<Register> definedRegisters = gatherDefinedRegisters(lir);
-            stub.initDestroyedRegisters(definedRegisters);
-
-            // Eliminate unnecessary register preservation and
-            // record where preserved registers are saved
-            for (Map.Entry<LIRFrameState, AMD64RegistersPreservationOp> e : gen.calleeSaveInfo.entrySet()) {
-                AMD64RegistersPreservationOp save = e.getValue();
-                DebugInfo info = e.getKey() == null ? null : e.getKey().debugInfo();
-                save.update(definedRegisters, info, frameMap);
-            }
+            Set<Register> definedRegisters = gatherDefinedRegisters(lir);
+            updateStub(stub, definedRegisters, gen.calleeSaveInfo, frameMap);
         }
 
         return tasm;
-    }
-
-    /**
-     * Finds all the registers that are defined by some given LIR.
-     * 
-     * @param lir the LIR to examine
-     * @return the registers that are defined by or used as temps for any instruction in {@code lir}
-     */
-    private static Set<Register> gatherDefinedRegisters(LIR lir) {
-        final Set<Register> definedRegisters = new HashSet<>();
-        ValueProcedure defProc = new ValueProcedure() {
-
-            @Override
-            public Value doValue(Value value) {
-                if (ValueUtil.isRegister(value)) {
-                    final Register reg = ValueUtil.asRegister(value);
-                    definedRegisters.add(reg);
-                }
-                return value;
-            }
-        };
-        for (Block block : lir.codeEmittingOrder()) {
-            for (LIRInstruction op : lir.lir(block)) {
-                if (op instanceof LabelOp) {
-                    // Don't consider this as a definition
-                } else {
-                    op.forEachTemp(defProc);
-                    op.forEachOutput(defProc);
-                }
-            }
-        }
-        return definedRegisters;
     }
 
     @Override

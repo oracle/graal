@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.amd64;
 
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
+import static com.oracle.graal.lir.amd64.AMD64SaveRegistersOp.*;
 
 import java.util.*;
 
@@ -30,13 +31,14 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 
 /**
  * Writes well known garbage values to registers.
  */
 @Opcode("ZAP_REGISTER")
-public final class AMD64ZapRegistersOp extends AMD64RegistersPreservationOp {
+public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements SaveRegistersOp {
 
     /**
      * The registers that are zapped.
@@ -63,17 +65,11 @@ public final class AMD64ZapRegistersOp extends AMD64RegistersPreservationOp {
         }
     }
 
-    /**
-     * Prunes the set of registers zapped by this operation to exclude those in {@code ignored}.
-     */
-    @Override
-    public void update(Set<Register> ignored, DebugInfo debugInfo, FrameMap frameMap) {
-        for (int i = 0; i < zappedRegisters.length; i++) {
-            if (zappedRegisters[i] != null) {
-                if (ignored.contains(zappedRegisters[i])) {
-                    zappedRegisters[i] = null;
-                }
-            }
-        }
+    public int remove(Set<Register> doNotSave) {
+        return prune(doNotSave, zappedRegisters);
+    }
+
+    public RegisterSaveLayout getMap(FrameMap frameMap) {
+        return new RegisterSaveLayout(new Register[0], new int[0]);
     }
 }
