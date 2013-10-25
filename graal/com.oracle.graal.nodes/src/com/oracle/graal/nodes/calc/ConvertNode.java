@@ -37,11 +37,27 @@ import com.oracle.graal.nodes.type.*;
 public class ConvertNode extends FloatingNode implements Canonicalizable, Lowerable, ArithmeticLIRLowerable {
 
     public static enum Op {
+        // formatter:off
+        B2S(Byte, Short, true),
+        B2C(Byte, Char, true),
+        B2I(Byte, Int, true),
+        B2L(Byte, Long, true),
+        S2B(Short, Byte, false),
+        S2C(Short, Char, true),
+        S2I(Short, Int, true),
+        S2L(Short, Long, true),
+        C2B(Char, Byte, false),
+        C2S(Char, Short, true),
+        C2I(Char, Int, true),
+        C2L(Char, Long, true),
         I2L(Int, Long, true),
         L2I(Long, Int, false),
         I2B(Int, Byte, false),
         I2C(Int, Char, false),
         I2S(Int, Short, false),
+        L2B(Long, Byte, false),
+        L2C(Long, Char, false),
+        L2S(Long, Short, false),
         F2D(Float, Double, true),
         D2F(Double, Float, false),
         I2F(Int, Float, false),
@@ -57,6 +73,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         MOV_L2D(Long, Double, false),
         MOV_F2I(Float, Int, false),
         MOV_D2L(Double, Long, false);
+        // formatter:on
 
         public final Kind from;
         public final Kind to;
@@ -74,6 +91,45 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
 
         public static Op getOp(Kind from, Kind to) {
             switch (from) {
+                case Byte:
+                    switch (to) {
+                        case Char:
+                            return B2C;
+                        case Short:
+                            return B2S;
+                        case Int:
+                            return B2I;
+                        case Long:
+                            return B2L;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                case Char:
+                    switch (to) {
+                        case Byte:
+                            return C2B;
+                        case Short:
+                            return C2S;
+                        case Int:
+                            return C2I;
+                        case Long:
+                            return C2L;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
+                case Short:
+                    switch (to) {
+                        case Byte:
+                            return S2B;
+                        case Char:
+                            return S2C;
+                        case Int:
+                            return S2I;
+                        case Long:
+                            return S2L;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere();
+                    }
                 case Int:
                     switch (to) {
                         case Byte:
@@ -93,6 +149,12 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
                     }
                 case Long:
                     switch (to) {
+                        case Byte:
+                            return L2B;
+                        case Char:
+                            return L2C;
+                        case Short:
+                            return L2S;
                         case Int:
                             return L2I;
                         case Float:
@@ -146,7 +208,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
      */
     public ConvertNode(Op opcode, ValueNode value) {
         super(StampFactory.forKind(opcode.to.getStackKind()));
-        assert value.kind() == opcode.from : opcode + " : " + value.kind() + " != " + opcode.from;
+        assert value.kind() == opcode.from.getStackKind() : opcode + " : " + value.kind() + " != " + opcode.from;
         this.opcode = opcode;
         this.value = value;
     }
@@ -155,6 +217,30 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         assert inputs.length == 1;
         Constant c = inputs[0];
         switch (opcode) {
+            case B2C:
+                return Constant.forChar((char) (byte) c.asInt());
+            case B2S:
+                return Constant.forShort((byte) c.asInt());
+            case B2I:
+                return Constant.forInt((byte) c.asInt());
+            case B2L:
+                return Constant.forLong((byte) c.asInt());
+            case C2B:
+                return Constant.forByte((byte) (char) c.asInt());
+            case C2S:
+                return Constant.forShort((short) (char) c.asInt());
+            case C2I:
+                return Constant.forInt((char) c.asInt());
+            case C2L:
+                return Constant.forLong((char) c.asInt());
+            case S2B:
+                return Constant.forByte((byte) (short) c.asInt());
+            case S2C:
+                return Constant.forChar((char) (short) c.asInt());
+            case S2I:
+                return Constant.forInt((short) c.asInt());
+            case S2L:
+                return Constant.forLong((short) c.asInt());
             case I2L:
                 return Constant.forLong(c.asInt());
             case L2I:
@@ -165,6 +251,12 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
                 return Constant.forChar((char) c.asInt());
             case I2S:
                 return Constant.forShort((short) c.asInt());
+            case L2B:
+                return Constant.forByte((byte) c.asLong());
+            case L2C:
+                return Constant.forChar((char) c.asLong());
+            case L2S:
+                return Constant.forShort((short) c.asLong());
             case F2D:
                 return Constant.forDouble(c.asFloat());
             case D2F:

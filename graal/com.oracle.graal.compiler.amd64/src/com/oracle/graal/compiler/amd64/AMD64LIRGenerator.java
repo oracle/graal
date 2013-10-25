@@ -690,19 +690,33 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable input = load(inputVal);
         Variable result = newVariable(opcode.to);
         switch (opcode) {
+            case B2L:
+            case S2L:
+            case C2L:
+                // x2L == x2I . I2L
+                // since byte, short and char are stored as int in registers, x2I is a nop
             case I2L:
                 append(new Unary2Op(I2L, result, input));
                 break;
             case L2I:
                 append(new Unary1Op(L2I, result, input));
                 break;
+            case C2B:
+            case S2B:
             case I2B:
+            case L2B:
                 append(new Unary2Op(I2B, result, input));
                 break;
+            case B2C:
+            case S2C:
             case I2C:
+            case L2C:
                 append(new Unary1Op(I2C, result, input));
                 break;
+            case B2S:
+            case C2S:
             case I2S:
+            case L2S:
                 append(new Unary2Op(I2S, result, input));
                 break;
             case F2D:
@@ -751,6 +765,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 // Instructions that move or generate 32-bit register values also set the upper 32
                 // bits of the register to zero.
                 // Consequently, there is no need for a special zero-extension move.
+            case B2I:
+            case C2I:
+            case S2I:
                 emitMove(result, input);
                 break;
             default:
