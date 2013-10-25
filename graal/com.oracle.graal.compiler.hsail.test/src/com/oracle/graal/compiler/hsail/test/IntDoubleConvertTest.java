@@ -24,48 +24,48 @@
 package com.oracle.graal.compiler.hsail.test;
 
 import java.util.*;
-import org.junit.*;
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests integer to long conversion.
+ * Tests integer to double conversion.
  */
-public class IntLongConvertTest extends GraalKernelTester {
+public class IntDoubleConvertTest extends GraalKernelTester {
 
     static final int size = 128;
     static final int[] inputInt = new int[size];
-    static final long[] inputLong = new long[size];
+    static final double[] inputDouble = new double[size];
     @Result static final int[] outputInt = new int[size];
-    @Result static final long[] outputLong = new long[size];
+    @Result static final double[] outputDouble = new double[size];
     static int[] seedInt = new int[size];
     {
         for (int i = 0; i < seedInt.length; i++) {
             seedInt[i] = (int) Math.random();
         }
     }
-    static long[] seedLong = new long[size];
+    static double[] seedDouble = new double[size];
     {
-        for (int i = 0; i < seedLong.length; i++) {
-            seedLong[i] = (long) Math.random();
+        for (int i = 0; i < seedDouble.length; i++) {
+            seedDouble[i] = Math.random();
         }
     }
 
-    public static void run(int[] inInt, long[] inLong, int[] outInt, long[] outLong, int gid) {
-        outInt[gid] = (int) inLong[gid];
-        outLong[gid] = inInt[gid];
+    public static void run(int[] inInt, double[] inDouble, int[] outInt, double[] outDouble, int gid) {
+        outInt[gid] = (int) inDouble[gid];
+        outDouble[gid] = inInt[gid];
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seedLong, 0, inputLong, 0, seedLong.length);
-        Arrays.fill(outputLong, 0);
+        System.arraycopy(seedDouble, 0, inputDouble, 0, seedDouble.length);
+        Arrays.fill(outputDouble, 0);
         System.arraycopy(seedInt, 0, inputInt, 0, seedInt.length);
         Arrays.fill(outputInt, 0);
-        dispatchMethodKernel(64, inputInt, inputLong, outputInt, outputLong);
+        dispatchMethodKernel(64, inputInt, inputDouble, outputInt, outputDouble);
     }
 
-    @Test
     public void test() {
-        testGeneratedHsail();
+        super.testGeneratedHsail();
     }
+
 }

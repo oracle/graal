@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,34 +34,34 @@ public class IntFloatConvertTest extends GraalKernelTester {
 
     static final int size = 128;
     static final int[] inputInt = new int[size];
-    static final double[] inputDouble = new double[size];
+    static final float[] inputFloat = new float[size];
     @Result static final int[] outputInt = new int[size];
-    @Result static final double[] outputDouble = new double[size];
+    @Result static final float[] outputFloat = new float[size];
     static int[] seedInt = new int[size];
     {
         for (int i = 0; i < seedInt.length; i++) {
             seedInt[i] = (int) Math.random();
         }
     }
-    static double[] seedDouble = new double[size];
+    static float[] seedFloat = new float[size];
     {
-        for (int i = 0; i < seedDouble.length; i++) {
-            seedDouble[i] = Math.random();
+        for (int i = 0; i < seedFloat.length; i++) {
+            seedFloat[i] = (float) Math.random();
         }
     }
 
-    public static void run(int[] inInt, double[] inDouble, int[] outInt, double[] outDouble, int gid) {
-        outInt[gid] = (int) inDouble[gid];
-        outDouble[gid] = inInt[gid];
+    public static void run(int[] inInt, float[] inFloat, int[] outInt, float[] outFloat, int gid) {
+        outInt[gid] = (int) inFloat[gid];
+        outFloat[gid] = inInt[gid];
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seedDouble, 0, inputDouble, 0, seedDouble.length);
-        Arrays.fill(outputDouble, 0);
+        System.arraycopy(seedFloat, 0, inputFloat, 0, seedFloat.length);
+        Arrays.fill(outputFloat, 0);
         System.arraycopy(seedInt, 0, inputInt, 0, seedInt.length);
         Arrays.fill(outputInt, 0);
-        dispatchMethodKernel(64, inputInt, inputDouble, outputInt, outputDouble);
+        dispatchMethodKernel(64, inputInt, inputFloat, outputInt, outputFloat);
     }
 
     public void test() {

@@ -24,48 +24,47 @@
 package com.oracle.graal.compiler.hsail.test;
 
 import java.util.*;
-import org.junit.*;
-import com.oracle.graal.compiler.hsail.test.infra.GraalKernelTester;
+import com.oracle.graal.compiler.hsail.test.infra.*;
 
 /**
- * Tests integer to long conversion.
+ * Tests float to double conversion.
  */
-public class IntLongConvertTest extends GraalKernelTester {
+public class FloatDoubleConvertTest extends GraalKernelTester {
 
     static final int size = 128;
-    static final int[] inputInt = new int[size];
-    static final long[] inputLong = new long[size];
-    @Result static final int[] outputInt = new int[size];
-    @Result static final long[] outputLong = new long[size];
-    static int[] seedInt = new int[size];
+    static final float[] inputFloat = new float[size];
+    static final double[] inputDouble = new double[size];
+    @Result static final float[] outputFloat = new float[size];
+    @Result static final double[] outputDouble = new double[size];
+    static float[] seedFloat = new float[size];
     {
-        for (int i = 0; i < seedInt.length; i++) {
-            seedInt[i] = (int) Math.random();
+        for (int i = 0; i < seedFloat.length; i++) {
+            seedFloat[i] = (float) Math.random();
         }
     }
-    static long[] seedLong = new long[size];
+    static double[] seedDouble = new double[size];
     {
-        for (int i = 0; i < seedLong.length; i++) {
-            seedLong[i] = (long) Math.random();
+        for (int i = 0; i < seedDouble.length; i++) {
+            seedDouble[i] = Math.random();
         }
     }
 
-    public static void run(int[] inInt, long[] inLong, int[] outInt, long[] outLong, int gid) {
-        outInt[gid] = (int) inLong[gid];
-        outLong[gid] = inInt[gid];
+    public static void run(float[] inFloat, double[] inDouble, float[] outFloat, double[] outDouble, int gid) {
+        outFloat[gid] = (float) inDouble[gid];
+        outDouble[gid] = inFloat[gid];
     }
 
     @Override
     public void runTest() {
-        System.arraycopy(seedLong, 0, inputLong, 0, seedLong.length);
-        Arrays.fill(outputLong, 0);
-        System.arraycopy(seedInt, 0, inputInt, 0, seedInt.length);
-        Arrays.fill(outputInt, 0);
-        dispatchMethodKernel(64, inputInt, inputLong, outputInt, outputLong);
+        System.arraycopy(seedDouble, 0, inputDouble, 0, seedDouble.length);
+        Arrays.fill(outputDouble, 0);
+        System.arraycopy(seedFloat, 0, inputFloat, 0, seedFloat.length);
+        Arrays.fill(outputFloat, 0);
+        dispatchMethodKernel(64, inputFloat, inputDouble, outputFloat, outputDouble);
     }
 
-    @Test
     public void test() {
-        testGeneratedHsail();
+        super.testGeneratedHsail();
     }
+
 }
