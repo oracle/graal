@@ -1315,7 +1315,7 @@ public final class NodeClass extends FieldIntrospection {
                     newNodes.put(node, replacement);
                 } else {
                     Node newNode = node.clone(graph, false);
-                    assert newNode.inputs().count() == 0 || newNode.usages().count() == 0;
+                    assert newNode.inputs().isEmpty() || newNode.usages().isEmpty();
                     assert newNode.getClass() == node.getClass();
                     newNodes.put(node, newNode);
                 }
