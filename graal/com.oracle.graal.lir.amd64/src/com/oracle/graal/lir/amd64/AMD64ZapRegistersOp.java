@@ -65,6 +65,10 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
         }
     }
 
+    public boolean supportsRemove() {
+        return true;
+    }
+
     public int remove(Set<Register> doNotSave) {
         return prune(doNotSave, zappedRegisters);
     }

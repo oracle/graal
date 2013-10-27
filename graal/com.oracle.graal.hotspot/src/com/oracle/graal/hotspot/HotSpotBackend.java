@@ -138,11 +138,15 @@ public abstract class HotSpotBackend extends Backend {
     protected void updateStub(Stub stub, Set<Register> destroyedRegisters, Map<LIRFrameState, SaveRegistersOp> calleeSaveInfo, FrameMap frameMap) {
         stub.initDestroyedRegisters(destroyedRegisters);
 
-        // Eliminate unnecessary register preservation and
-        // record where preserved registers are saved
         for (Map.Entry<LIRFrameState, SaveRegistersOp> e : calleeSaveInfo.entrySet()) {
             SaveRegistersOp save = e.getValue();
-            save.remove(destroyedRegisters);
+            if (save.supportsRemove()) {
+                // Since the registers destroyed by the stub are declared as temporaries in the
+                // linkage (see ForeignCallLinkage.getTemporaries()) for the stub, the caller
+                // will already save these registers and so there's no need for the stub to
+                // save them again.
+                save.remove(destroyedRegisters);
+            }
             DebugInfo info = e.getKey() == null ? null : e.getKey().debugInfo();
             if (info != null) {
                 info.setCalleeSaveInfo(save.getMap(frameMap));

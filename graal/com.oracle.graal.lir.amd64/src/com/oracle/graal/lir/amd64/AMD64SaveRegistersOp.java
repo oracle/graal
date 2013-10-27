@@ -29,7 +29,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.asm.*;
 
 /**
@@ -51,12 +51,19 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
     /**
      * Specifies if {@link #remove(Set)} should have an effect.
      */
-    protected final boolean forceAll;
+    protected final boolean supportsRemove;
 
-    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlot[] slots, boolean forceAll) {
+    /**
+     * 
+     * @param savedRegisters the registers saved by this operation which may be subject to
+     *            {@linkplain #remove(Set) pruning}
+     * @param slots the slots to which the registers are saved
+     * @param supportsRemove determines if registers can be {@linkplain #remove(Set) pruned}
+     */
+    public AMD64SaveRegistersOp(Register[] savedRegisters, StackSlot[] slots, boolean supportsRemove) {
         this.savedRegisters = savedRegisters;
         this.slots = slots;
-        this.forceAll = forceAll;
+        this.supportsRemove = supportsRemove;
     }
 
     protected void saveRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, StackSlot result, Register register) {
@@ -77,7 +84,14 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
         return slots;
     }
 
+    public boolean supportsRemove() {
+        return supportsRemove;
+    }
+
     public int remove(Set<Register> doNotSave) {
+        if (!supportsRemove) {
+            throw new UnsupportedOperationException();
+        }
         return prune(doNotSave, savedRegisters);
     }
 

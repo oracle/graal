@@ -149,10 +149,17 @@ public class StandardOp {
     public interface SaveRegistersOp {
 
         /**
+         * Determines if the {@link #remove(Set)} operation is supported for this object.
+         */
+        boolean supportsRemove();
+
+        /**
          * Prunes {@code doNotSave} from the registers saved by this operation.
          * 
          * @param doNotSave registers that should not be saved by this operation
          * @return the number of registers pruned
+         * @throws UnsupportedOperationException if removal is not {@linkplain #supportsRemove()
+         *             supported}
          */
         int remove(Set<Register> doNotSave);
 
