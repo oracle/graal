@@ -74,7 +74,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         if (state != null && state.getState() == EscapeState.Virtual) {
             int fieldIndex = ((VirtualInstanceNode) state.getVirtualObject()).fieldIndex(field());
             if (fieldIndex != -1) {
-                tool.setVirtualEntry(state, fieldIndex, value());
+                tool.setVirtualEntry(state, fieldIndex, value(), false);
                 tool.delete();
             }
         }

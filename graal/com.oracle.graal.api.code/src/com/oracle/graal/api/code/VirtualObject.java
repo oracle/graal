@@ -138,12 +138,18 @@ public final class VirtualObject extends Value {
         if (values != null) {
             if (!type.isArray()) {
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
-                assert fields.length == values.length : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
+                int fieldIndex = 0;
                 for (int i = 0; i < values.length; i++) {
-                    ResolvedJavaField field = fields[i];
+                    ResolvedJavaField field = fields[fieldIndex++];
                     Kind valKind = values[i].getKind().getStackKind();
-                    assert valKind == field.getKind().getStackKind() : field + ": " + valKind + " != " + field.getKind().getStackKind();
+                    if ((valKind == Kind.Double || valKind == Kind.Long) && field.getKind() == Kind.Int) {
+                        assert fields[fieldIndex].getKind() == Kind.Int;
+                        fieldIndex++;
+                    } else {
+                        assert valKind == field.getKind().getStackKind() : field + ": " + valKind + " != " + field.getKind().getStackKind();
+                    }
                 }
+                assert fields.length == fieldIndex : type + ": fields=" + Arrays.toString(fields) + ", field values=" + Arrays.toString(values);
             } else {
                 Kind componentKind = type.getComponentType().getKind().getStackKind();
                 for (int i = 0; i < values.length; i++) {

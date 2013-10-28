@@ -84,8 +84,9 @@ public interface VirtualizerTool {
      * @param state the state.
      * @param index the index to be set.
      * @param value the new value for the given index.
+     * @param unsafe if true, then mismatching value {@link Kind}s will be accepted.
      */
-    void setVirtualEntry(State state, int index, ValueNode value);
+    void setVirtualEntry(State state, int index, ValueNode value, boolean unsafe);
 
     // scalar replacement
 

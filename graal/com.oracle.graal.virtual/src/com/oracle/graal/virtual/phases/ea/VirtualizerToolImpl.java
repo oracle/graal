@@ -80,22 +80,26 @@ class VirtualizerToolImpl implements VirtualizerTool {
     }
 
     @Override
-    public void setVirtualEntry(State objectState, int index, ValueNode value) {
+    public void setVirtualEntry(State objectState, int index, ValueNode value, boolean unsafe) {
         ObjectState obj = (ObjectState) objectState;
         assert obj != null && obj.isVirtual() : "not virtual: " + obj;
-        ObjectState valueState = closure.getObjectState(state, value);
         ValueNode newValue;
-        if (valueState == null) {
-            newValue = getReplacedValue(value);
-            assert obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
+        if (value == null) {
+            newValue = null;
         } else {
-            if (valueState.getState() != EscapeState.Virtual) {
-                newValue = valueState.getMaterializedValue();
-                assert newValue.kind() == Kind.Object;
+            ObjectState valueState = closure.getObjectState(state, value);
+            if (valueState == null) {
+                newValue = getReplacedValue(value);
+                assert unsafe || obj.getEntry(index) == null || obj.getEntry(index).kind() == newValue.kind() || (isObjectEntry(obj.getEntry(index)) && isObjectEntry(newValue));
             } else {
-                newValue = valueState.getVirtualObject();
+                if (valueState.getState() != EscapeState.Virtual) {
+                    newValue = valueState.getMaterializedValue();
+                    assert newValue.kind() == Kind.Object;
+                } else {
+                    newValue = valueState.getVirtualObject();
+                }
+                assert obj.getEntry(index) == null || isObjectEntry(obj.getEntry(index));
             }
-            assert obj.getEntry(index) == null || isObjectEntry(obj.getEntry(index));
         }
         obj.setEntry(index, newValue);
     }

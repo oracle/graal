@@ -317,10 +317,19 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
                             if (value == null) {
                                 omittedValues.set(valuePos);
                             } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                                // Constant.illegal is always the defaultForKind, so it is skipped
                                 VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                WriteNode write = new WriteNode(newObject, value, createFieldLocation(graph, (HotSpotResolvedJavaField) virtualInstance.field(i), true),
-                                                (virtualInstance.field(i).getKind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE,
-                                                virtualInstance.field(i).getKind() == Kind.Object);
+                                Kind accessKind;
+                                HotSpotResolvedJavaField field = (HotSpotResolvedJavaField) virtualInstance.field(i);
+                                if (value.kind().getStackKind() != field.getKind().getStackKind()) {
+                                    assert value.kind() == Kind.Long || value.kind() == Kind.Double;
+                                    accessKind = value.kind();
+                                } else {
+                                    accessKind = field.getKind();
+                                }
+                                ConstantLocationNode location = ConstantLocationNode.create(INIT_LOCATION, accessKind, field.offset(), graph);
+                                BarrierType barrierType = (virtualInstance.field(i).getKind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
+                                WriteNode write = new WriteNode(newObject, value, location, barrierType, virtualInstance.field(i).getKind() == Kind.Object);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                             valuePos++;
@@ -338,8 +347,20 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
                             if (value == null) {
                                 omittedValues.set(valuePos);
                             } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                                WriteNode write = new WriteNode(newObject, value, createArrayLocation(graph, element.getKind(), ConstantNode.forInt(i, graph), true),
-                                                (value.kind() == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE, value.kind() == Kind.Object);
+                                // Constant.illegal is always the defaultForKind, so it is skipped
+                                Kind componentKind = element.getKind();
+                                Kind accessKind;
+                                if (value.kind().getStackKind() != componentKind.getStackKind()) {
+                                    assert value.kind() == Kind.Long || value.kind() == Kind.Double;
+                                    accessKind = value.kind();
+                                } else {
+                                    accessKind = componentKind;
+                                }
+
+                                int scale = getScalingFactor(componentKind);
+                                ConstantLocationNode location = ConstantLocationNode.create(INIT_LOCATION, accessKind, getArrayBaseOffset(componentKind) + i * scale, graph);
+                                BarrierType barrierType = (componentKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
+                                WriteNode write = new WriteNode(newObject, value, location, barrierType, componentKind == Kind.Object);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                             valuePos++;

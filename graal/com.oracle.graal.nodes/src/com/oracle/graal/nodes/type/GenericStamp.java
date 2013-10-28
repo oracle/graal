@@ -27,7 +27,7 @@ import com.oracle.graal.api.meta.*;
 public final class GenericStamp extends Stamp {
 
     public enum GenericStampType {
-        Dependency, Extension, Virtual, Condition, Void
+        Dependency, Extension, Condition, Void
     }
 
     private final GenericStampType type;

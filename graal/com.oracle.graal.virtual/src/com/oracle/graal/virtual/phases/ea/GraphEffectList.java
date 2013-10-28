@@ -132,13 +132,14 @@ public class GraphEffectList extends EffectList {
     }
 
     /**
-     * Sets the phi node's input at the given index to the given value.
+     * Sets the phi node's input at the given index to the given value, adding new phi inputs as
+     * needed.
      * 
      * @param node The phi node whose input should be changed.
      * @param index The index of the phi input to be changed.
      * @param value The new value for the phi input.
      */
-    public void setPhiInput(final PhiNode node, final int index, final ValueNode value) {
+    public void initializePhiInput(final PhiNode node, final int index, final ValueNode value) {
         add(new Effect() {
 
             @Override
@@ -149,7 +150,7 @@ public class GraphEffectList extends EffectList {
             @Override
             public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
                 assert node.isAlive() && value.isAlive() && index >= 0;
-                node.setValueAt(index, value);
+                node.initializeValueAt(index, value);
             }
         });
     }

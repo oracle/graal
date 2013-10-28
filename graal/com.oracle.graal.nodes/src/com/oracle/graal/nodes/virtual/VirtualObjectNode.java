@@ -32,8 +32,8 @@ public abstract class VirtualObjectNode extends ValueNode implements LIRLowerabl
 
     private boolean hasIdentity;
 
-    public VirtualObjectNode(boolean hasIdentity) {
-        super(StampFactory.virtual());
+    public VirtualObjectNode(ResolvedJavaType type, boolean hasIdentity) {
+        super(StampFactory.exactNonNull(type));
         this.hasIdentity = hasIdentity;
     }
 

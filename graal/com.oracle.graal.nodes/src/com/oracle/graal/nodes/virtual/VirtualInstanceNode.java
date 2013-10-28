@@ -37,7 +37,7 @@ public class VirtualInstanceNode extends VirtualObjectNode {
     }
 
     public VirtualInstanceNode(ResolvedJavaType type, ResolvedJavaField[] fields, boolean hasIdentity) {
-        super(hasIdentity);
+        super(type, hasIdentity);
         this.type = type;
         this.fields = fields;
     }

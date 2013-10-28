@@ -77,10 +77,23 @@ public class UnsafeStoreNode extends UnsafeAccessNode implements StateSplit, Low
                 long offset = indexValue.asConstant().asLong();
                 int entryIndex = state.getVirtualObject().entryIndexForOffset(offset);
                 if (entryIndex != -1) {
+                    Kind entryKind = state.getVirtualObject().entryKind(entryIndex);
                     ValueNode entry = state.getEntry(entryIndex);
-                    if (entry.kind() == value.kind() || state.getVirtualObject().entryKind(entryIndex) == accessKind()) {
-                        tool.setVirtualEntry(state, entryIndex, value());
+                    if (entry.kind() == value.kind() || entryKind == accessKind()) {
+                        tool.setVirtualEntry(state, entryIndex, value(), true);
                         tool.delete();
+                    } else {
+                        if ((accessKind() == Kind.Long || accessKind() == Kind.Double) && entryKind == Kind.Int) {
+                            int nextIndex = state.getVirtualObject().entryIndexForOffset(offset + 4);
+                            if (nextIndex != -1) {
+                                Kind nextKind = state.getVirtualObject().entryKind(nextIndex);
+                                if (nextKind == Kind.Int) {
+                                    tool.setVirtualEntry(state, entryIndex, value(), true);
+                                    tool.setVirtualEntry(state, nextIndex, ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), graph()), true);
+                                    tool.delete();
+                                }
+                            }
+                        }
                     }
                 }
             }

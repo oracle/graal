@@ -187,7 +187,7 @@ public class ArrayCopyNode extends MacroNode implements Virtualizable, Lowerable
                     return;
                 }
                 for (int i = 0; i < length; i++) {
-                    tool.setVirtualEntry(destState, destPos + i, srcState.getEntry(srcPos + i));
+                    tool.setVirtualEntry(destState, destPos + i, srcState.getEntry(srcPos + i), false);
                 }
                 tool.delete();
                 if (Debug.isLogEnabled()) {

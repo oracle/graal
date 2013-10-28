@@ -37,7 +37,6 @@ public class StampFactory {
     private static final Stamp objectAlwaysNullStamp = new ObjectStamp(null, false, false, true);
     private static final Stamp dependencyStamp = new GenericStamp(GenericStampType.Dependency);
     private static final Stamp extensionStamp = new GenericStamp(GenericStampType.Extension);
-    private static final Stamp virtualStamp = new GenericStamp(GenericStampType.Virtual);
     private static final Stamp conditionStamp = new GenericStamp(GenericStampType.Condition);
     private static final Stamp voidStamp = new GenericStamp(GenericStampType.Void);
     private static final Stamp nodeIntrinsicStamp = new ObjectStamp(null, false, false, false);
@@ -92,10 +91,6 @@ public class StampFactory {
 
     public static Stamp extension() {
         return extensionStamp;
-    }
-
-    public static Stamp virtual() {
-        return virtualStamp;
     }
 
     public static Stamp condition() {
@@ -163,6 +158,8 @@ public class StampFactory {
                 return forFloat(kind, value.asFloat(), value.asFloat(), !Float.isNaN(value.asFloat()));
             case Double:
                 return forFloat(kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
+            case Illegal:
+                return illegal(Kind.Illegal);
             default:
                 throw new GraalInternalError("unexpected kind: %s", kind);
         }

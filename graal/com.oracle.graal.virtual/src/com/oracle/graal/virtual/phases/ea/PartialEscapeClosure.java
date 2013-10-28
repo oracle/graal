@@ -208,20 +208,26 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private void ensureMaterialized(BlockT state, ObjectState obj, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
+    /**
+     * @return true if materialization happened, false if not.
+     */
+    private boolean ensureMaterialized(BlockT state, ObjectState obj, FixedNode materializeBefore, GraphEffectList effects, DebugMetric metric) {
         assert obj != null;
         if (obj.getState() == EscapeState.Virtual) {
             metric.increment();
             state.materializeBefore(materializeBefore, obj.virtual, EscapeState.Materialized, effects);
+            assert !obj.isVirtual();
+            return true;
         } else {
             assert obj.getState() == EscapeState.Materialized;
+            return false;
         }
-        assert !obj.isVirtual();
     }
 
-    private void replaceWithMaterialized(ValueNode value, Node usage, FixedNode materializeBefore, BlockT state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
-        ensureMaterialized(state, obj, materializeBefore, effects, metric);
+    private boolean replaceWithMaterialized(ValueNode value, Node usage, FixedNode materializeBefore, BlockT state, ObjectState obj, GraphEffectList effects, DebugMetric metric) {
+        boolean materialized = ensureMaterialized(state, obj, materializeBefore, effects, metric);
         effects.replaceFirstInput(usage, value, obj.getMaterializedValue());
+        return materialized;
     }
 
     @Override
@@ -275,8 +281,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     protected class MergeProcessor extends EffectsClosure<BlockT>.MergeProcessor {
 
         private final HashMap<Object, PhiNode> materializedPhis = new HashMap<>();
-        private final IdentityHashMap<VirtualObjectNode, PhiNode[]> valuePhis = new IdentityHashMap<>();
-        private final IdentityHashMap<PhiNode, PhiNode[]> valueObjectMergePhis = new IdentityHashMap<>();
+        private final IdentityHashMap<ValueNode, PhiNode[]> valuePhis = new IdentityHashMap<>();
         private final IdentityHashMap<PhiNode, VirtualObjectNode> valueObjectVirtuals = new IdentityHashMap<>();
 
         public MergeProcessor(Block mergeBlock) {
@@ -292,21 +297,13 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             return result;
         }
 
-        private PhiNode[] getValuePhis(VirtualObjectNode virtual) {
-            PhiNode[] result = valuePhis.get(virtual);
-            if (result == null) {
-                result = new PhiNode[virtual.entryCount()];
-                valuePhis.put(virtual, result);
-            }
-            return result;
-        }
-
-        private PhiNode[] getValueObjectMergePhis(PhiNode phi, int entryCount) {
-            PhiNode[] result = valueObjectMergePhis.get(phi);
+        private PhiNode[] getValuePhis(ValueNode key, int entryCount) {
+            PhiNode[] result = valuePhis.get(key);
             if (result == null) {
                 result = new PhiNode[entryCount];
-                valueObjectMergePhis.put(phi, result);
+                valuePhis.put(key, result);
             }
+            assert result.length == entryCount;
             return result;
         }
 
@@ -319,194 +316,299 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
             return result;
         }
 
+        /**
+         * Merge all predecessor block states into one block state. This is an iterative process,
+         * because merging states can lead to materializations which make previous parts of the
+         * merging operation invalid. The merging process is executed until a stable state has been
+         * reached. This method needs to be careful to place the effects of the merging operation
+         * into the correct blocks.
+         * 
+         * @param states the predecessor block states of the merge
+         */
         @Override
         protected void merge(List<BlockT> states) {
             super.merge(states);
 
-            /*
-             * Iterative processing: Merging the materialized/virtual state of virtual objects can
-             * lead to new materializations, which can lead to new materializations because of phis,
-             * and so on.
-             */
-
+            // calculate the set of virtual objects that exist in all predecessors
             HashSet<VirtualObjectNode> virtualObjTemp = new HashSet<>(states.get(0).getVirtualObjects());
             for (int i = 1; i < states.size(); i++) {
                 virtualObjTemp.retainAll(states.get(i).getVirtualObjects());
             }
 
+            ObjectState[] objStates = new ObjectState[states.size()];
             boolean materialized;
             do {
                 mergeEffects.clear();
                 afterMergeEffects.clear();
                 materialized = false;
                 for (VirtualObjectNode object : virtualObjTemp) {
-                    ObjectState[] objStates = new ObjectState[states.size()];
-                    for (int i = 0; i < states.size(); i++) {
-                        objStates[i] = states.get(i).getObjectStateOptional(object);
-                        assert objStates[i] != null;
+                    for (int i = 0; i < objStates.length; i++) {
+                        objStates[i] = states.get(i).getObjectState(object);
                     }
+
+                    // determine if all inputs are virtual or the same materialized value
                     int virtual = 0;
                     ObjectState startObj = objStates[0];
                     boolean locksMatch = true;
-                    ValueNode singleValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
+                    ValueNode uniqueMaterializedValue = startObj.isVirtual() ? null : startObj.getMaterializedValue();
                     for (ObjectState obj : objStates) {
                         if (obj.isVirtual()) {
                             virtual++;
-                            singleValue = null;
-                        } else {
-                            if (obj.getMaterializedValue() != singleValue) {
-                                singleValue = null;
-                            }
+                            uniqueMaterializedValue = null;
+                            locksMatch &= obj.locksEqual(startObj);
+                        } else if (obj.getMaterializedValue() != uniqueMaterializedValue) {
+                            uniqueMaterializedValue = null;
                         }
-                        locksMatch &= obj.locksEqual(startObj);
                     }
 
-                    if (virtual < states.size() || !locksMatch) {
-                        if (singleValue == null) {
+                    if (virtual == objStates.length && locksMatch) {
+                        materialized |= mergeObjectStates(object, objStates, states);
+                    } else {
+                        if (uniqueMaterializedValue != null) {
+                            newState.addObject(object, new ObjectState(object, uniqueMaterializedValue, EscapeState.Materialized, null));
+                        } else {
                             PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
                             mergeEffects.addFloatingNode(materializedValuePhi, "materializedPhi");
-                            for (int i = 0; i < states.size(); i++) {
-                                BlockT state = states.get(i);
+                            for (int i = 0; i < objStates.length; i++) {
                                 ObjectState obj = objStates[i];
-                                materialized |= obj.isVirtual();
                                 Block predecessor = mergeBlock.getPredecessors().get(i);
-                                ensureMaterialized(state, obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                                materialized |= ensureMaterialized(states.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
                                 afterMergeEffects.addPhiInput(materializedValuePhi, obj.getMaterializedValue());
                             }
                             newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null));
-                        } else {
-                            newState.addObject(object, new ObjectState(object, singleValue, EscapeState.Materialized, null));
                         }
-                    } else {
-                        assert virtual == states.size();
-                        ValueNode[] values = startObj.getEntries().clone();
-                        PhiNode[] phis = getValuePhis(object);
-                        for (int index = 0; index < values.length; index++) {
-                            for (int i = 1; i < states.size(); i++) {
-                                ValueNode[] fields = objStates[i].getEntries();
-                                if (phis[index] == null && values[index] != fields[index]) {
-                                    Kind kind = values[index].kind();
-                                    if (kind == Kind.Illegal) {
-                                        // Can happen if one of the values is virtual and is only
-                                        // materialized in the following loop.
-                                        kind = Kind.Object;
-                                    }
-                                    phis[index] = new PhiNode(kind, merge);
-                                }
-                            }
-                        }
-                        outer: for (int index = 0; index < values.length; index++) {
-                            if (phis[index] != null) {
-                                mergeEffects.addFloatingNode(phis[index], "virtualMergePhi");
-                                for (int i = 0; i < states.size(); i++) {
-                                    if (!objStates[i].isVirtual()) {
-                                        break outer;
-                                    }
-                                    ValueNode[] fields = objStates[i].getEntries();
-                                    if (fields[index] instanceof VirtualObjectNode) {
-                                        ObjectState obj = states.get(i).getObjectState((VirtualObjectNode) fields[index]);
-                                        materialized |= obj.isVirtual();
-                                        Block predecessor = mergeBlock.getPredecessors().get(i);
-                                        ensureMaterialized(states.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
-                                        fields[index] = obj.getMaterializedValue();
-                                    }
-                                    afterMergeEffects.addPhiInput(phis[index], fields[index]);
-                                }
-                                values[index] = phis[index];
-                            }
-                        }
-                        newState.addObject(object, new ObjectState(object, values, EscapeState.Virtual, startObj.getLocks()));
                     }
                 }
 
                 for (PhiNode phi : merge.phis()) {
                     if (usages.isMarked(phi) && phi.type() == PhiType.Value) {
-                        materialized |= processPhi(phi, states);
+                        materialized |= processPhi(phi, states, virtualObjTemp);
                     }
                 }
             } while (materialized);
         }
 
-        private boolean processPhi(PhiNode phi, List<BlockT> states) {
+        /**
+         * Try to merge multiple virtual object states into a single object state. If the incoming
+         * object states are compatible, then this method will create PhiNodes for the object's
+         * entries where needed. If they are incompatible, then all incoming virtual objects will be
+         * materialized, and a PhiNode for the materialized values will be created. Object states
+         * can be incompatible if they contain {@code long} or {@code double} values occupying two
+         * {@code int} slots in such a way that that their values cannot be merged using PhiNodes.
+         * 
+         * @param object the virtual object that should be associated with the merged object state
+         * @param objStates the incoming object states (all of which need to be virtual)
+         * @param blockStates the predecessor block states of the merge
+         * @return true if materialization happened during the merge, false otherwise
+         */
+        private boolean mergeObjectStates(VirtualObjectNode object, ObjectState[] objStates, List<BlockT> blockStates) {
+            boolean compatible = true;
+            ValueNode[] values = objStates[0].getEntries().clone();
+
+            // determine all entries that have a two-slot value
+            Kind[] twoSlotKinds = null;
+            outer: for (int i = 0; i < objStates.length; i++) {
+                ValueNode[] entries = objStates[i].getEntries();
+                int valueIndex = 0;
+                while (valueIndex < values.length) {
+                    Kind otherKind = entries[valueIndex].kind();
+                    Kind entryKind = object.entryKind(valueIndex);
+                    if (entryKind == Kind.Int && (otherKind == Kind.Long || otherKind == Kind.Double)) {
+                        if (twoSlotKinds == null) {
+                            twoSlotKinds = new Kind[values.length];
+                        }
+                        if (twoSlotKinds[valueIndex] != null && twoSlotKinds[valueIndex] != otherKind) {
+                            compatible = false;
+                            break outer;
+                        }
+                        twoSlotKinds[valueIndex] = otherKind;
+                        // skip the next entry
+                        valueIndex++;
+                    } else {
+                        assert entryKind.getStackKind() == otherKind.getStackKind() : entryKind + " vs " + otherKind;
+                    }
+                    valueIndex++;
+                }
+            }
+            if (compatible && twoSlotKinds != null) {
+                // if there are two-slot values then make sure the incoming states can be merged
+                outer: for (int valueIndex = 0; valueIndex < values.length; valueIndex++) {
+                    if (twoSlotKinds[valueIndex] != null) {
+                        assert valueIndex < object.entryCount() - 1 && object.entryKind(valueIndex) == Kind.Int && object.entryKind(valueIndex + 1) == Kind.Int;
+                        for (int i = 0; i < objStates.length; i++) {
+                            ValueNode value = objStates[i].getEntry(valueIndex);
+                            Kind valueKind = value.kind();
+                            if (valueKind != twoSlotKinds[valueIndex]) {
+                                ValueNode nextValue = objStates[i].getEntry(valueIndex + 1);
+                                if (value.isConstant() && value.asConstant().equals(Constant.INT_0) && nextValue.isConstant() && nextValue.asConstant().equals(Constant.INT_0)) {
+                                    // rewrite to a zero constant of the larger kind
+                                    objStates[i].setEntry(valueIndex, ConstantNode.defaultForKind(twoSlotKinds[valueIndex], merge.graph()));
+                                    objStates[i].setEntry(valueIndex + 1, ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), merge.graph()));
+                                } else {
+                                    compatible = false;
+                                    break outer;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (compatible) {
+                // virtual objects are compatible: create phis for all entries that need them
+                PhiNode[] phis = getValuePhis(object, object.entryCount());
+                int valueIndex = 0;
+                while (valueIndex < values.length) {
+                    for (int i = 1; i < objStates.length; i++) {
+                        ValueNode[] fields = objStates[i].getEntries();
+                        if (phis[valueIndex] == null && values[valueIndex] != fields[valueIndex]) {
+                            phis[valueIndex] = new PhiNode(values[valueIndex].kind(), merge);
+                        }
+                    }
+                    if (twoSlotKinds != null && twoSlotKinds[valueIndex] != null) {
+                        // skip an entry after a long/double value that occupies two int slots
+                        valueIndex++;
+                        phis[valueIndex] = null;
+                        values[valueIndex] = ConstantNode.forConstant(Constant.forIllegal(), tool.getMetaAccessProvider(), merge.graph());
+                    }
+                    valueIndex++;
+                }
+
+                boolean materialized = false;
+                for (int i = 0; i < values.length; i++) {
+                    PhiNode phi = phis[i];
+                    if (phi != null) {
+                        mergeEffects.addFloatingNode(phi, "virtualMergePhi");
+                        if (object.entryKind(i) == Kind.Object) {
+                            materialized |= mergeObjectEntry(objStates, blockStates, phi, i);
+                        } else {
+                            mergePrimitiveEntry(objStates, phi, i);
+                        }
+                        values[i] = phi;
+                    }
+                }
+                newState.addObject(object, new ObjectState(object, values, EscapeState.Virtual, objStates[0].getLocks()));
+                return materialized;
+            } else {
+                // not compatible: materialize in all predecessors
+                PhiNode materializedValuePhi = getCachedPhi(object, Kind.Object);
+                for (int i = 0; i < blockStates.size(); i++) {
+                    ObjectState obj = objStates[i];
+                    Block predecessor = mergeBlock.getPredecessors().get(i);
+                    ensureMaterialized(blockStates.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                    afterMergeEffects.addPhiInput(materializedValuePhi, obj.getMaterializedValue());
+                }
+                newState.addObject(object, new ObjectState(object, materializedValuePhi, EscapeState.Materialized, null));
+                return true;
+            }
+        }
+
+        /**
+         * Fill the inputs of the PhiNode corresponding to one {@link Kind#Object} entry in the
+         * virtual object.
+         * 
+         * @return true if materialization happened during the merge, false otherwise
+         */
+        private boolean mergeObjectEntry(ObjectState[] objStates, List<BlockT> blockStates, PhiNode phi, int entryIndex) {
+            boolean materialized = false;
+            for (int i = 0; i < objStates.length; i++) {
+                if (!objStates[i].isVirtual()) {
+                    break;
+                }
+                ValueNode[] entries = objStates[i].getEntries();
+                if (entries[entryIndex] instanceof VirtualObjectNode) {
+                    ObjectState obj = blockStates.get(i).getObjectState((VirtualObjectNode) entries[entryIndex]);
+                    Block predecessor = mergeBlock.getPredecessors().get(i);
+                    materialized |= ensureMaterialized(blockStates.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_MERGE);
+                    entries[entryIndex] = obj.getMaterializedValue();
+                }
+                afterMergeEffects.addPhiInput(phi, entries[entryIndex]);
+            }
+            return materialized;
+        }
+
+        /**
+         * Fill the inputs of the PhiNode corresponding to one primitive entry in the virtual
+         * object.
+         */
+        private void mergePrimitiveEntry(ObjectState[] objStates, PhiNode phi, int entryIndex) {
+            for (ObjectState state : objStates) {
+                if (!state.isVirtual()) {
+                    break;
+                }
+                afterMergeEffects.addPhiInput(phi, state.getEntries()[entryIndex]);
+            }
+        }
+
+        /**
+         * Examine a PhiNode and try to replace it with merging of virtual objects if all its inputs
+         * refer to virtual object states. In order for the merging to happen, all incoming object
+         * states need to be compatible and without object identity (meaning that their object
+         * identity if not used later on).
+         * 
+         * @param phi the PhiNode that should be processed
+         * @param states the predecessor block states of the merge
+         * @param mergedVirtualObjects the set of virtual objects that exist in all incoming states,
+         *            and therefore also exist in the merged state
+         * @return true if materialization happened during the merge, false otherwise
+         */
+        private boolean processPhi(PhiNode phi, List<BlockT> states, Set<VirtualObjectNode> mergedVirtualObjects) {
             aliases.set(phi, null);
             assert states.size() == phi.valueCount();
+
+            // determine how many inputs are virtual and if they're all the same virtual object
             int virtualInputs = 0;
-            boolean materialized = false;
-            VirtualObjectNode sameObject = null;
-            ResolvedJavaType sameType = null;
-            int sameEntryCount = -1;
-            boolean hasIdentity = false;
-            for (int i = 0; i < phi.valueCount(); i++) {
-                ValueNode value = phi.valueAt(i);
-                ObjectState obj = getObjectState(states.get(i), value);
+            ObjectState[] objStates = new ObjectState[states.size()];
+            boolean uniqueVirtualObject = true;
+            for (int i = 0; i < objStates.length; i++) {
+                ObjectState obj = objStates[i] = getObjectState(states.get(i), phi.valueAt(i));
                 if (obj != null) {
                     if (obj.isVirtual()) {
-                        virtualInputs++;
-                        if (i == 0) {
-                            sameObject = obj.virtual;
-                            sameType = obj.virtual.type();
-                            sameEntryCount = obj.virtual.entryCount();
-                        } else {
-                            if (sameObject != obj.virtual) {
-                                sameObject = null;
-                            }
-                            if (sameType != obj.virtual.type()) {
-                                sameType = null;
-                            }
-                            if (sameEntryCount != obj.virtual.entryCount()) {
-                                sameEntryCount = -1;
-                            }
-                            hasIdentity |= obj.virtual.hasIdentity();
+                        if (objStates[0] == null || objStates[0].virtual != obj.virtual) {
+                            uniqueVirtualObject = false;
                         }
-                    } else {
-                        afterMergeEffects.setPhiInput(phi, i, obj.getMaterializedValue());
+                        virtualInputs++;
                     }
                 }
             }
-            boolean materialize = false;
-            if (virtualInputs == 0) {
-                // nothing to do...
-            } else if (virtualInputs == phi.valueCount()) {
-                if (sameObject != null) {
-                    addAndMarkAlias(sameObject, phi);
-                } else if (sameType != null && sameEntryCount != -1) {
-                    if (!hasIdentity) {
-                        VirtualObjectNode virtual = getValueObjectVirtual(phi, getObjectState(states.get(0), phi.valueAt(0)).virtual);
-
-                        PhiNode[] phis = getValueObjectMergePhis(phi, virtual.entryCount());
-                        for (int i = 0; i < virtual.entryCount(); i++) {
-                            assert virtual.entryKind(i) != Kind.Object;
-                            if (phis[i] == null) {
-                                phis[i] = new PhiNode(virtual.entryKind(i), merge);
-                            }
-                            mergeEffects.addFloatingNode(phis[i], "valueObjectPhi");
-                            for (int i2 = 0; i2 < phi.valueCount(); i2++) {
-                                afterMergeEffects.addPhiInput(phis[i], getObjectState(states.get(i2), phi.valueAt(i2)).getEntry(i));
-                            }
+            if (virtualInputs == objStates.length) {
+                if (uniqueVirtualObject) {
+                    // all inputs refer to the same object: just make the phi node an alias
+                    addAndMarkAlias(objStates[0].virtual, phi);
+                    return false;
+                } else {
+                    // all inputs are virtual: check if they're compatible and without identity
+                    boolean compatible = true;
+                    ObjectState firstObj = objStates[0];
+                    for (int i = 0; i < objStates.length; i++) {
+                        ObjectState obj = objStates[i];
+                        boolean hasIdentity = obj.virtual.hasIdentity() && mergedVirtualObjects.contains(obj.virtual);
+                        if (hasIdentity || firstObj.virtual.type() != obj.virtual.type() || firstObj.virtual.entryCount() != obj.virtual.entryCount() || !firstObj.locksEqual(obj)) {
+                            compatible = false;
+                            break;
                         }
+                    }
+
+                    if (compatible) {
+                        VirtualObjectNode virtual = getValueObjectVirtual(phi, getObjectState(states.get(0), phi.valueAt(0)).virtual);
                         mergeEffects.addFloatingNode(virtual, "valueObjectNode");
-                        newState.addObject(virtual, new ObjectState(virtual, Arrays.copyOf(phis, phis.length, ValueNode[].class), EscapeState.Virtual, null));
+
+                        boolean materialized = mergeObjectStates(virtual, objStates, states);
                         addAndMarkAlias(virtual, virtual);
                         addAndMarkAlias(virtual, phi);
-                    } else {
-                        materialize = true;
+                        return materialized;
                     }
-                } else {
-                    materialize = true;
                 }
-            } else {
-                materialize = true;
             }
 
-            if (materialize) {
-                for (int i = 0; i < phi.valueCount(); i++) {
-                    ValueNode value = phi.valueAt(i);
-                    ObjectState obj = getObjectState(states.get(i), value);
-                    if (obj != null) {
-                        materialized |= obj.isVirtual();
-                        Block predecessor = mergeBlock.getPredecessors().get(i);
-                        replaceWithMaterialized(value, phi, predecessor.getEndNode(), states.get(i), obj, blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_PHI);
-                    }
+            // otherwise: materialize all phi inputs
+            boolean materialized = false;
+            for (int i = 0; i < objStates.length; i++) {
+                ObjectState obj = objStates[i];
+                if (obj != null) {
+                    Block predecessor = mergeBlock.getPredecessors().get(i);
+                    materialized |= ensureMaterialized(states.get(i), obj, predecessor.getEndNode(), blockEffects.get(predecessor), METRIC_MATERIALIZATIONS_PHI);
+                    afterMergeEffects.initializePhiInput(phi, i, obj.getMaterializedValue());
                 }
             }
             return materialized;

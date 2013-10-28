@@ -98,7 +98,7 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
                 VirtualObjectNode virtual = state.getVirtualObject();
                 int entryIndex = virtual.entryIndexForOffset(constantLocation.getDisplacement());
                 if (entryIndex != -1 && virtual.entryKind(entryIndex) == constantLocation.getValueKind()) {
-                    tool.setVirtualEntry(state, entryIndex, value());
+                    tool.setVirtualEntry(state, entryIndex, value(), false);
                     tool.delete();
                 }
             }
