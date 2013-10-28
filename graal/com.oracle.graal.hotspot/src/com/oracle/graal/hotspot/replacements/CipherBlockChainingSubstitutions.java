@@ -30,6 +30,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -42,14 +43,22 @@ import com.oracle.graal.word.*;
 public class CipherBlockChainingSubstitutions {
 
     private static final long embeddedCipherOffset;
+    private static final LocationIdentity embeddedCipherLocationIdentity;
     private static final long rOffset;
+    private static final LocationIdentity rLocationIdentity;
     static {
         try {
             // Need to use launcher class path as com.sun.crypto.provider.AESCrypt
             // is normally not on the boot class path
             ClassLoader cl = Launcher.getLauncher().getClassLoader();
-            embeddedCipherOffset = UnsafeAccess.unsafe.objectFieldOffset(Class.forName("com.sun.crypto.provider.FeedbackCipher", true, cl).getDeclaredField("embeddedCipher"));
-            rOffset = UnsafeAccess.unsafe.objectFieldOffset(Class.forName("com.sun.crypto.provider.CipherBlockChaining", true, cl).getDeclaredField("r"));
+
+            Class<?> feedbackCipherClass = Class.forName("com.sun.crypto.provider.FeedbackCipher", true, cl);
+            embeddedCipherOffset = UnsafeAccess.unsafe.objectFieldOffset(feedbackCipherClass.getDeclaredField("embeddedCipher"));
+            embeddedCipherLocationIdentity = HotSpotResolvedObjectType.fromClass(feedbackCipherClass).findInstanceFieldWithOffset(embeddedCipherOffset);
+
+            Class<?> cipherBlockChainingClass = Class.forName("com.sun.crypto.provider.CipherBlockChaining", true, cl);
+            rOffset = UnsafeAccess.unsafe.objectFieldOffset(cipherBlockChainingClass.getDeclaredField("r"));
+            rLocationIdentity = HotSpotResolvedObjectType.fromClass(cipherBlockChainingClass).findInstanceFieldWithOffset(rOffset);
         } catch (Exception ex) {
             throw new GraalInternalError(ex);
         }
@@ -62,7 +71,7 @@ public class CipherBlockChainingSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
         if (getAESCryptClass().isInstance(embeddedCipher)) {
             crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, true);
         } else {
@@ -72,7 +81,7 @@ public class CipherBlockChainingSubstitutions {
 
     @MethodSubstitution(isStatic = false)
     static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
         if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
             crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
         } else {
@@ -82,7 +91,7 @@ public class CipherBlockChainingSubstitutions {
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
         Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, AESCryptSubstitutions.kLocationIdentity);
-        Object rObject = UnsafeLoadNode.load(rcvr, rOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object rObject = UnsafeLoadNode.load(rcvr, rOffset, Kind.Object, rLocationIdentity);
         Word kAddr = (Word) Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
         Word rAddr = (Word) Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte));
         Word inAddr = Word.unsigned(GetObjectAddressNode.get(in) + arrayBaseOffset(Kind.Byte) + inOffset);
