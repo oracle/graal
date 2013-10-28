@@ -119,6 +119,14 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
             used[index] = true;
             usedCount++;
         }
+        if (usedCount == 0) {
+            List<Node> inputSnapshot = inputs().snapshot();
+            graph().removeFixed(this);
+            for (Node input : inputSnapshot) {
+                tool.removeIfUnused(input);
+            }
+            return;
+        }
         boolean progress;
         do {
             progress = false;
