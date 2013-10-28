@@ -127,6 +127,12 @@ public abstract class HotSpotBackend extends Backend {
 
     /**
      * Updates a given stub with respect to the registers it destroys.
+     * <p>
+     * Any entry in {@code calleeSaveInfo} that {@linkplain SaveRegistersOp#supportsRemove()
+     * supports} pruning will have {@code destroyedRegisters}
+     * {@linkplain SaveRegistersOp#remove(Set) removed} as these registers are declared as
+     * temporaries in the stub's {@linkplain ForeignCallLinkage linkage} (and thus will be saved by
+     * the stub's caller).
      * 
      * @param stub the stub to update
      * @param destroyedRegisters the registers destroyed by the stub
@@ -141,10 +147,6 @@ public abstract class HotSpotBackend extends Backend {
         for (Map.Entry<LIRFrameState, SaveRegistersOp> e : calleeSaveInfo.entrySet()) {
             SaveRegistersOp save = e.getValue();
             if (save.supportsRemove()) {
-                // Since the registers destroyed by the stub are declared as temporaries in the
-                // linkage (see ForeignCallLinkage.getTemporaries()) for the stub, the caller
-                // will already save these registers and so there's no need for the stub to
-                // save them again.
                 save.remove(destroyedRegisters);
             }
             DebugInfo info = e.getKey() == null ? null : e.getKey().debugInfo();
