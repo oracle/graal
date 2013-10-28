@@ -1377,10 +1377,10 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             TypeMirror genericReturnType = node.getGenericSpecialization().getReturnType().getType();
             CodeExecutableElement method = new CodeExecutableElement(modifiers(PROTECTED), genericReturnType, EXECUTE_GENERIC_NAME);
 
-            if (!node.getGenericSpecialization().hasFrame(getContext())) {
+            if (!node.needsFrame(getContext())) {
                 method.getAnnotationMirrors().add(new CodeAnnotationMirror(getContext().getTruffleTypes().getSlowPath()));
             }
-            addInternalValueParameters(method, node.getGenericSpecialization(), node.needsFrame(), false);
+            addInternalValueParameters(method, node.getGenericSpecialization(), node.needsFrame(getContext()), false);
             final CodeTreeBuilder builder = method.createBuilder();
 
             builder.tree(createExecuteTree(builder, node.getGenericSpecialization(), group, false, new CodeBlock<SpecializationData>() {
@@ -1803,7 +1803,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
             if (current.isGeneric()) {
                 builder.startReturn().tree(replace).string(".").startCall(EXECUTE_GENERIC_NAME);
-                addInternalValueParameterNames(builder, source, current, null, current.getNode().needsFrame(), true, null);
+                addInternalValueParameterNames(builder, source, current, null, current.getNode().needsFrame(getContext()), true, null);
                 builder.end().end();
             } else if (current.getMethod() == null) {
                 if (replaceCall != null) {
@@ -2968,7 +2968,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 emitEncounteredSynthetic(builder, specialization);
             } else if (specialization.isGeneric()) {
                 returnBuilder.startCall("super", EXECUTE_GENERIC_NAME);
-                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, node.needsFrame(), true, null);
+                addInternalValueParameterNames(returnBuilder, specialization, specialization, null, node.needsFrame(getContext()), true, null);
                 returnBuilder.end();
             } else {
                 returnBuilder.tree(createTemplateMethodCall(returnBuilder, null, specialization, specialization, null));

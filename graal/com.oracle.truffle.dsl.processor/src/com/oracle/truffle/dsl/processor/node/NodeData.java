@@ -78,12 +78,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.assumptions = splitSource.assumptions;
     }
 
-    public boolean needsFrame() {
+    public boolean needsFrame(ProcessorContext context) {
         for (SpecializationData specialization : specializations) {
             if (!specialization.isReachable()) {
                 continue;
             }
-            if (specialization.findParameter("frameValue") != null) {
+            if (specialization.hasFrame(context)) {
                 return true;
             }
         }

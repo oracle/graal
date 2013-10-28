@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.SlowPath;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.test.SlowPathTestFactory.SlowPathOnGeneric0Factory;
 import com.oracle.truffle.api.dsl.test.SlowPathTestFactory.SlowPathOnGeneric1Factory;
+import com.oracle.truffle.api.dsl.test.SlowPathTestFactory.SlowPathOnGeneric2Factory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
@@ -64,6 +65,29 @@ public class SlowPathTest {
         @Specialization
         @SuppressWarnings("unused")
         Object doObject0(int value0) {
+            throw new AssertionError();
+        }
+
+    }
+
+    @Test
+    public void testSlowPathOnGeneric2() throws NoSuchMethodException, SecurityException {
+        Node node = SlowPathOnGeneric2Factory.create(null);
+        Assert.assertNull(node.getClass().getSuperclass().getDeclaredMethod("executeGeneric0", VirtualFrame.class, Object.class).getAnnotation(SlowPath.class));
+    }
+
+    @NodeChild
+    abstract static class SlowPathOnGeneric2 extends ValueNode {
+
+        @Specialization(order = 0)
+        @SuppressWarnings("unused")
+        Object doObject0(int value0) {
+            throw new AssertionError();
+        }
+
+        @Specialization(order = 1)
+        @SuppressWarnings("unused")
+        Object doObject1(VirtualFrame frame, String value0) {
             throw new AssertionError();
         }
 
