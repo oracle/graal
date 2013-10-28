@@ -81,7 +81,7 @@ public class CipherBlockChainingSubstitutions {
     }
 
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt) {
-        Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
+        Object kObject = UnsafeLoadNode.load(embeddedCipher, AESCryptSubstitutions.kOffset, Kind.Object, AESCryptSubstitutions.kLocationIdentity);
         Object rObject = UnsafeLoadNode.load(rcvr, rOffset, Kind.Object, LocationIdentity.ANY_LOCATION);
         Word kAddr = (Word) Word.fromObject(kObject).add(arrayBaseOffset(Kind.Byte));
         Word rAddr = (Word) Word.fromObject(rObject).add(arrayBaseOffset(Kind.Byte));
