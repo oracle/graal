@@ -23,29 +23,23 @@
 package com.oracle.graal.compiler.test.ea;
 
 import java.lang.ref.*;
-import java.util.concurrent.*;
 
 import org.junit.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.nodes.virtual.*;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.graph.*;
-import com.oracle.graal.phases.tiers.*;
-import com.oracle.graal.virtual.phases.ea.*;
 
 /**
  * The PartialEscapeAnalysisPhase is expected to remove all allocations and return the correct
  * values.
  */
-public class PartialEscapeAnalysisTest extends GraalCompilerTest {
+public class PartialEscapeAnalysisTest extends EATestBase {
 
     public static class TestObject {
 
@@ -71,7 +65,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void test1() {
-        testMaterialize("test1Snippet", 0.25, 1);
+        testPartialEscapeAnalysis("test1Snippet", 0.25, 1);
     }
 
     @SuppressWarnings("all")
@@ -90,7 +84,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void test2() {
-        testMaterialize("test2Snippet", 1.5, 3, LoadIndexedNode.class);
+        testPartialEscapeAnalysis("test2Snippet", 1.5, 3, LoadIndexedNode.class);
     }
 
     public static Object test2Snippet(int a, Object x, Object y, Object z) {
@@ -109,7 +103,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void test3() {
-        testMaterialize("test3Snippet", 0.5, 1, StoreFieldNode.class, LoadFieldNode.class);
+        testPartialEscapeAnalysis("test3Snippet", 0.5, 1, StoreFieldNode.class, LoadFieldNode.class);
     }
 
     public static Object test3Snippet(int a) {
@@ -127,7 +121,7 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testCache() {
-        testMaterialize("testCacheSnippet", 0.75, 1);
+        testPartialEscapeAnalysis("testCacheSnippet", 0.75, 1);
     }
 
     public static class CacheKey {
@@ -175,57 +169,40 @@ public class PartialEscapeAnalysisTest extends GraalCompilerTest {
 
     @Test
     public void testReference1() {
-        assertEquals(1, processMethod("testReference1Snippet").getNodes().filter(NewInstanceNode.class).count());
+        prepareGraph("testReference1Snippet", false);
+        assertEquals(1, graph.getNodes().filter(NewInstanceNode.class).count());
     }
 
     @SafeVarargs
-    final void testMaterialize(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
-        StructuredGraph result = processMethod(snippet);
+    protected final void testPartialEscapeAnalysis(final String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
+        prepareGraph(snippet, false);
+        for (MergeNode merge : graph.getNodes(MergeNode.class)) {
+            merge.setStateAfter(null);
+        }
+        new DeadCodeEliminationPhase().apply(graph);
+        new CanonicalizerPhase(true).apply(graph, context);
         try {
-            Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", result.getNodes().filter(NewInstanceNode.class).isEmpty());
-            Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", result.getNodes().filter(NewArrayNode.class).isEmpty());
+            Assert.assertTrue("partial escape analysis should have removed all NewInstanceNode allocations", graph.getNodes().filter(NewInstanceNode.class).isEmpty());
+            Assert.assertTrue("partial escape analysis should have removed all NewArrayNode allocations", graph.getNodes().filter(NewArrayNode.class).isEmpty());
 
-            NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(result).apply();
+            NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
             double probabilitySum = 0;
             int materializeCount = 0;
-            for (CommitAllocationNode materialize : result.getNodes().filter(CommitAllocationNode.class)) {
+            for (CommitAllocationNode materialize : graph.getNodes().filter(CommitAllocationNode.class)) {
                 probabilitySum += nodeProbabilities.get(materialize) * materialize.getVirtualObjects().size();
                 materializeCount += materialize.getVirtualObjects().size();
             }
             Assert.assertEquals("unexpected number of MaterializeObjectNodes", expectedCount, materializeCount);
             Assert.assertEquals("unexpected probability of MaterializeObjectNodes", expectedProbability, probabilitySum, 0.01);
-            for (Node node : result.getNodes()) {
+            for (Node node : graph.getNodes()) {
                 for (Class<? extends Node> clazz : invalidNodeClasses) {
                     Assert.assertFalse("instance of invalid class: " + clazz.getSimpleName(), clazz.isInstance(node) && node.usages().isNotEmpty());
                 }
             }
         } catch (AssertionError e) {
-            TypeSystemTest.outputGraph(result, snippet + ": " + e.getMessage());
+            TypeSystemTest.outputGraph(graph, snippet + ": " + e.getMessage());
             throw e;
         }
     }
 
-    private StructuredGraph processMethod(final String snippet) {
-        return Debug.scope("PartialEscapeAnalysisTest " + snippet, new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
-
-            @Override
-            public StructuredGraph call() {
-                StructuredGraph graph = parse(snippet);
-
-                Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(true).apply(graph, context);
-                new PartialEscapePhase(false, new CanonicalizerPhase(true)).apply(graph, context);
-
-                for (MergeNode merge : graph.getNodes(MergeNode.class)) {
-                    merge.setStateAfter(null);
-                }
-                new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(true).apply(graph, context);
-                return graph;
-            }
-        });
-    }
 }

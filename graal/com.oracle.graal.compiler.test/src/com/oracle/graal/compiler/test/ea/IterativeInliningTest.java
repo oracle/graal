@@ -30,6 +30,7 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.compiler.test.ea.EATestBase.TestClassInt;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.*;
@@ -50,14 +51,10 @@ public class IterativeInliningTest extends GraalCompilerTest {
         }
     }
 
-    public static class TestInt implements Callable<Integer> {
-
-        public int x;
-        public int y;
+    public static class TestInt extends TestClassInt implements Callable<Integer> {
 
         public TestInt(int x, int y) {
-            this.x = x;
-            this.y = y;
+            super(x, y);
         }
 
         @Override
