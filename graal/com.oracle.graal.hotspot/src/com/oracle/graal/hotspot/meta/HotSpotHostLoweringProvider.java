@@ -350,9 +350,12 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
                                 // Constant.illegal is always the defaultForKind, so it is skipped
                                 Kind componentKind = element.getKind();
                                 Kind accessKind;
-                                if (value.kind().getStackKind() != componentKind.getStackKind()) {
-                                    assert value.kind() == Kind.Long || value.kind() == Kind.Double;
-                                    accessKind = value.kind();
+                                Kind valueKind = value.kind();
+                                if (valueKind.getStackKind() != componentKind.getStackKind()) {
+                                    // Given how Truffle uses unsafe, it can happen that
+                                    // valueKind is Kind.Int
+                                    // assert valueKind == Kind.Long || valueKind == Kind.Double;
+                                    accessKind = valueKind;
                                 } else {
                                     accessKind = componentKind;
                                 }
