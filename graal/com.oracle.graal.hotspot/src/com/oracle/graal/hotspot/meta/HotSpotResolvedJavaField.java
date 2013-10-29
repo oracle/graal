@@ -194,26 +194,39 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              */
             assert !Modifier.isStatic(flags);
             Object object = receiver.asObject();
-            if (Modifier.isFinal(getModifiers())) {
-                Constant value = readValue(receiver);
-                if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
-                    return value;
-                }
-            } else if (isStable()) {
-                Constant value = readValue(receiver);
-                if (assumeDefaultStableFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
-                    return value;
-                }
-            } else {
-                Class<?> clazz = object.getClass();
-                if (StableOptionValue.class.isAssignableFrom(clazz)) {
-                    assert getName().equals("value") : "Unexpected field in " + StableOptionValue.class.getName() + " hierarchy:" + this;
-                    StableOptionValue<?> option = (StableOptionValue<?>) object;
-                    return Constant.forObject(option.getValue());
+
+            // Canonicalization may attempt to process an unsafe read before
+            // processing a guard (e.g. a type check) for this read
+            // so we need to type check the object being read
+            if (isInObject(object)) {
+                if (Modifier.isFinal(getModifiers())) {
+                    Constant value = readValue(receiver);
+                    if (assumeNonStaticFinalFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
+                        return value;
+                    }
+                } else if (isStable()) {
+                    Constant value = readValue(receiver);
+                    if (assumeDefaultStableFieldsAsFinal(object.getClass()) || !value.isDefaultForKind()) {
+                        return value;
+                    }
+                } else {
+                    Class<?> clazz = object.getClass();
+                    if (StableOptionValue.class.isAssignableFrom(clazz)) {
+                        assert getName().equals("value") : "Unexpected field in " + StableOptionValue.class.getName() + " hierarchy:" + this;
+                        StableOptionValue<?> option = (StableOptionValue<?>) object;
+                        return Constant.forObject(option.getValue());
+                    }
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * Determines if a given object contains this field.
+     */
+    public boolean isInObject(Object object) {
+        return getDeclaringClass().isAssignableFrom(HotSpotResolvedObjectType.fromClass(object.getClass()));
     }
 
     @Override
@@ -226,7 +239,9 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
             return null;
         } else {
             assert !Modifier.isStatic(flags);
-            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), receiver.asObject(), offset, getKind() == Kind.Object);
+            Object object = receiver.asObject();
+            assert object != null && isInObject(object);
+            return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), object, offset, getKind() == Kind.Object);
         }
     }
 
