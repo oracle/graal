@@ -167,20 +167,13 @@ public class AMD64ConvertSnippets implements Snippets {
 
             StructuredGraph graph = convert.graph();
 
-            // Insert a unique placeholder node in place of the Convert node so that the
-            // Convert node can be used as an input to the snippet. All usage of the
-            // Convert node are replaced by the placeholder which in turn is replaced by the
-            // snippet.
-
-            LocalNode replacee = graph.addWithoutUnique(new LocalNode(Integer.MAX_VALUE, convert.stamp()));
-            convert.replaceAtUsages(replacee);
             Arguments args = new Arguments(key, graph.getGuardsStage());
             args.add("input", convert.value());
-            args.add("result", convert.graph().unique(new AMD64ConvertNode(convert.opcode, convert.value())));
+            args.add("result", graph.unique(new AMD64ConvertNode(convert.opcode, convert.value())));
 
             SnippetTemplate template = template(args);
             Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
-            template.instantiate(providers.getMetaAccess(), replacee, DEFAULT_REPLACER, tool, args);
+            template.instantiate(providers.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
             graph.removeFloating(convert);
         }
     }
