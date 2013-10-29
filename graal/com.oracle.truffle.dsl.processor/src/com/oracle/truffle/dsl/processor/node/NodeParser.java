@@ -663,7 +663,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
         // calculate reachability
         SpecializationData prev = null;
-        int specializationCount = 0;
+        int polymorphicCombinations = 0;
         boolean reachable = true;
         for (SpecializationData specialization : specializations) {
             if (specialization.isUninitialized()) {
@@ -680,14 +680,23 @@ public class NodeParser extends TemplateParser<NodeData> {
                 reachable = false;
             }
             if (!specialization.isGeneric()) {
-                specializationCount++;
+                int combinations = 1;
+                for (ActualParameter parameter : specialization.getParameters()) {
+                    if (!parameter.getSpecification().isSignature()) {
+                        continue;
+                    }
+                    TypeData type = parameter.getTypeSystemType();
+                    combinations *= node.getTypeSystem().lookupSourceTypes(type).size();
+                }
+                polymorphicCombinations += combinations;
             }
+
             prev = specialization;
         }
 
         // initialize polymorphic depth
         if (node.getPolymorphicDepth() < 0) {
-            node.setPolymorphicDepth(specializationCount - 1);
+            node.setPolymorphicDepth(polymorphicCombinations - 1);
         }
 
         // reduce polymorphicness if generic is not reachable
