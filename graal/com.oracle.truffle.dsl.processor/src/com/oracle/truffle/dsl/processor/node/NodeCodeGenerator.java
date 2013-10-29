@@ -1280,9 +1280,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 CodeTree init = createAdoptChild(builder, varType, CodeTreeBuilder.singleString(copyAccess));
                 builder.startStatement().string("this.").string(varName).string(" = ").tree(init).end();
             }
-            if (getModel().getNode().isPolymorphic()) {
-                builder.statement("this.next0 = adoptChild(copy.next0)");
-            }
 
             return method;
         }
@@ -2702,11 +2699,12 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 CodeTreeBuilder builder = superConstructor.createBuilder();
                 builder.tree(body);
 
-                if (superConstructor != null) {
-                    if (getModel().isGeneric() && node.isPolymorphic()) {
-                        builder.statement("this.next0 = null");
+                if (node.isPolymorphic()) {
+                    if (specialization.isSpecialized() || specialization.isPolymorphic()) {
+                        builder.statement("this.next0 = adoptChild(copy.next0)");
                     }
-
+                }
+                if (superConstructor != null) {
                     for (ActualParameter param : getImplicitTypeParamters(getModel())) {
                         clazz.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), getContext().getType(Class.class), implicitTypeName(param)));
                         superConstructor.getParameters().add(new CodeVariableElement(getContext().getType(Class.class), implicitTypeName(param)));
