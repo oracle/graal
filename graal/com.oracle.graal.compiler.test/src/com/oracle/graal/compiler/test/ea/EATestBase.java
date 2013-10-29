@@ -37,6 +37,13 @@ import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.virtual.phases.ea.*;
 
+//JaCoCo Exclude
+
+/**
+ * This base class for all Escape Analysis tests does not contain tests itself, therefore it is not
+ * automatically excluded from JaCoCo. Since it includes code that is used in the test snippets, it
+ * needs to be excluded manually.
+ */
 public class EATestBase extends GraalCompilerTest {
 
     public static class TestClassInt {
