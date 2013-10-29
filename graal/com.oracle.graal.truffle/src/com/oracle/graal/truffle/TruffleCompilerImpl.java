@@ -217,7 +217,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             @Override
             public CompilationResult call() {
                 try (TimerCloseable a = CompilationTime.start()) {
-                    return Debug.scope("GraalCompiler", new Object[]{providers.getCodeCache()}, new Callable<CompilationResult>() {
+                    return Debug.scope("GraalCompiler", new Object[]{graph, providers.getCodeCache()}, new Callable<CompilationResult>() {
                         public CompilationResult call() {
                             CodeCacheProvider codeCache = providers.getCodeCache();
                             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
