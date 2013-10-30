@@ -134,7 +134,8 @@ public class SnippetCounter implements Comparable<SnippetCounter> {
      */
     public void inc() {
         if (group != null) {
-            // TODO: instead of ANY_LOCATION we should actually use the location for the field "value".
+            // TODO: instead of ANY_LOCATION we should actually
+            // use the location for the field "value".
             DirectObjectStoreNode.storeLong(this, countOffset(), 0, value + 1, LocationIdentity.ANY_LOCATION);
         }
     }
