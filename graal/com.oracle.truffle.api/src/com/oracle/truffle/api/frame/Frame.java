@@ -191,11 +191,37 @@ public interface Frame {
     MaterializedFrame materialize();
 
     /**
-     * To check whether the given {@link FrameSlot} has been initialized or not. An initialized slot
-     * has previously been read or modified.
-     * 
-     * @param slot the slot
-     * @return true if the slot is uninitialized.
+     * Check whether the given {@link FrameSlot} is of type object.
      */
-    boolean isInitialized(FrameSlot slot);
+    boolean isObject(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type byte.
+     */
+    boolean isByte(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type boolean.
+     */
+    boolean isBoolean(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type int.
+     */
+    boolean isInt(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type long.
+     */
+    boolean isLong(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type float.
+     */
+    boolean isFloat(FrameSlot slot);
+
+    /**
+     * Check whether the given {@link FrameSlot} is of type double.
+     */
+    boolean isDouble(FrameSlot slot);
 }

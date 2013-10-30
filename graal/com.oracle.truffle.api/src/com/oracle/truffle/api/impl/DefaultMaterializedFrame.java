@@ -136,7 +136,37 @@ final class DefaultMaterializedFrame implements MaterializedFrame, PackedFrame {
     }
 
     @Override
-    public boolean isInitialized(FrameSlot slot) {
-        return wrapped.isInitialized(slot);
+    public boolean isObject(FrameSlot slot) {
+        return wrapped.isObject(slot);
+    }
+
+    @Override
+    public boolean isByte(FrameSlot slot) {
+        return wrapped.isByte(slot);
+    }
+
+    @Override
+    public boolean isBoolean(FrameSlot slot) {
+        return wrapped.isBoolean(slot);
+    }
+
+    @Override
+    public boolean isInt(FrameSlot slot) {
+        return wrapped.isInt(slot);
+    }
+
+    @Override
+    public boolean isLong(FrameSlot slot) {
+        return wrapped.isLong(slot);
+    }
+
+    @Override
+    public boolean isFloat(FrameSlot slot) {
+        return wrapped.isFloat(slot);
+    }
+
+    @Override
+    public boolean isDouble(FrameSlot slot) {
+        return wrapped.isDouble(slot);
     }
 }

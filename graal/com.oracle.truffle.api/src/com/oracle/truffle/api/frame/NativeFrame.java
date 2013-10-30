@@ -48,77 +48,77 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
 
     @Override
     public Object getObject(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setObject(FrameSlot slot, Object value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public byte getByte(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setByte(FrameSlot slot, byte value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public boolean getBoolean(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setBoolean(FrameSlot slot, boolean value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public int getInt(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setInt(FrameSlot slot, int value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public long getLong(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setLong(FrameSlot slot, long value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public float getFloat(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setFloat(FrameSlot slot, float value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public double getDouble(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public void setDouble(FrameSlot slot, double value) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
     public Object getValue(FrameSlot slot) {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
@@ -133,7 +133,7 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
 
     @Override
     public MaterializedFrame materialize() {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
@@ -143,11 +143,45 @@ public class NativeFrame implements VirtualFrame, PackedFrame {
 
     @Override
     public FrameDescriptor getFrameDescriptor() {
-        throw new UnsupportedOperationException("native frame");
+        throw unsupportedInNativeFrame();
     }
 
     @Override
-    public boolean isInitialized(FrameSlot slot) {
+    public boolean isObject(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isByte(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isBoolean(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isInt(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isLong(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isFloat(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    @Override
+    public boolean isDouble(FrameSlot slot) {
+        throw unsupportedInNativeFrame();
+    }
+
+    private static UnsupportedOperationException unsupportedInNativeFrame() {
         throw new UnsupportedOperationException("native frame");
     }
 }

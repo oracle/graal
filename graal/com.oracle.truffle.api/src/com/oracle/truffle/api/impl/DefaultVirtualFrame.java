@@ -200,12 +200,46 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         }
     }
 
-    @Override
-    public boolean isInitialized(FrameSlot slot) {
+    private byte getTag(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
             resize();
         }
-        return tags[slotIndex] != 0;
+        return tags[slotIndex];
+    }
+
+    @Override
+    public boolean isObject(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Object.ordinal();
+    }
+
+    @Override
+    public boolean isByte(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Byte.ordinal();
+    }
+
+    @Override
+    public boolean isBoolean(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Boolean.ordinal();
+    }
+
+    @Override
+    public boolean isInt(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Int.ordinal();
+    }
+
+    @Override
+    public boolean isLong(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Long.ordinal();
+    }
+
+    @Override
+    public boolean isFloat(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Float.ordinal();
+    }
+
+    @Override
+    public boolean isDouble(FrameSlot slot) {
+        return getTag(slot) == FrameSlotKind.Double.ordinal();
     }
 }
