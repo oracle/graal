@@ -36,8 +36,8 @@ import com.oracle.truffle.api.impl.*;
 public final class FrameDescriptor implements Cloneable {
 
     private final FrameTypeConversion typeConversion;
-    private final ArrayList<FrameSlotImpl> slots;
-    private final HashMap<Object, FrameSlotImpl> identifierToSlotMap;
+    private final ArrayList<FrameSlot> slots;
+    private final HashMap<Object, FrameSlot> identifierToSlotMap;
     private Assumption version;
     private HashMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
 
@@ -58,7 +58,7 @@ public final class FrameDescriptor implements Cloneable {
 
     public FrameSlot addFrameSlot(Object identifier, FrameSlotKind kind) {
         assert !identifierToSlotMap.containsKey(identifier);
-        FrameSlotImpl slot = new FrameSlotImpl(this, identifier, slots.size(), kind);
+        FrameSlot slot = new FrameSlot(this, identifier, slots.size(), kind);
         slots.add(slot);
         identifierToSlotMap.put(identifier, slot);
         updateVersion();

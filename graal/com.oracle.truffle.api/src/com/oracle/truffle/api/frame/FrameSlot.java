@@ -24,18 +24,51 @@
  */
 package com.oracle.truffle.api.frame;
 
+import com.oracle.truffle.api.*;
+
 /**
  * A slot in a frame that can store a value of a given type.
  */
-public interface FrameSlot extends Cloneable {
+public final class FrameSlot implements Cloneable {
 
-    Object getIdentifier();
+    private final FrameDescriptor descriptor;
+    private final Object identifier;
+    private final int index;
+    @com.oracle.truffle.api.CompilerDirectives.CompilationFinal private FrameSlotKind kind;
 
-    int getIndex();
+    public FrameSlot(FrameDescriptor descriptor, Object identifier, int index, FrameSlotKind kind) {
+        this.descriptor = descriptor;
+        this.identifier = identifier;
+        this.index = index;
+        this.kind = kind;
+    }
 
-    FrameSlotKind getKind();
+    public Object getIdentifier() {
+        return identifier;
+    }
 
-    void setKind(FrameSlotKind kind);
+    public int getIndex() {
+        return index;
+    }
 
-    FrameDescriptor getFrameDescriptor();
+    public FrameSlotKind getKind() {
+        return kind;
+    }
+
+    public void setKind(final FrameSlotKind kind) {
+        if (this.kind != kind) {
+            CompilerDirectives.transferToInterpreter();
+            this.kind = kind;
+            this.descriptor.updateVersion();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "[" + index + "," + identifier + "," + kind + "]";
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return this.descriptor;
+    }
 }
