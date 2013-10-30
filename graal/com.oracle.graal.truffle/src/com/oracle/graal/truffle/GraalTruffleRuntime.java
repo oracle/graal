@@ -93,7 +93,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Arguments arguments) {
-        return createMaterializedFrame(arguments);
+        return createMaterializedFrame(arguments, new FrameDescriptor());
     }
 
     @Override
