@@ -44,6 +44,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
     protected final NodeMap<ValueNode> aliases;
     protected final BlockMap<GraphEffectList> blockEffects;
     private final IdentityHashMap<Loop, GraphEffectList> loopMergeEffects = new IdentityHashMap<>();
+    private final IdentityHashMap<LoopBeginNode, BlockT> loopEntryStates = new IdentityHashMap<>();
 
     private boolean changed;
 
@@ -122,6 +123,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
         FixedWithNextNode lastFixedNode = null;
         for (Node node : schedule.getBlockToNodesMap().get(block)) {
             aliases.set(node, null);
+            if (node instanceof LoopExitNode) {
+                LoopExitNode loopExit = (LoopExitNode) node;
+                processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
+            }
             changed |= processNode(node, state, effects, lastFixedNode);
             if (node instanceof FixedWithNextNode) {
                 lastFixedNode = (FixedWithNextNode) node;
@@ -169,10 +174,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 loopMergeEffects.put(loop, mergeProcessor.afterMergeEffects);
 
                 assert info.exitStates.size() == loop.exits.size();
+                loopEntryStates.put(loop.loopBegin(), loopEntryState);
                 for (int i = 0; i < loop.exits.size(); i++) {
-                    BlockT exitState = info.exitStates.get(i);
-                    assert exitState != null : "no loop exit state at " + loop.exits.get(i) + " / " + loop.header;
-                    processLoopExit((LoopExitNode) loop.exits.get(i).getBeginNode(), loopEntryState, exitState, blockEffects.get(loop.exits.get(i)));
+                    assert info.exitStates.get(i) != null : "no loop exit state at " + loop.exits.get(i) + " / " + loop.header;
                 }
 
                 return info.exitStates;
