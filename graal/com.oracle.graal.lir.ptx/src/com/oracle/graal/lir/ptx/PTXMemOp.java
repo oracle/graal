@@ -166,7 +166,9 @@ public class PTXMemOp {
                 case Long:
                 case Float:
                 case Double:
-                    new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    Ld ldIns = new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement()));
+                    ldIns.setLdRetAddrInstruction(true);
+                    ldIns.emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

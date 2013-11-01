@@ -40,7 +40,11 @@ public class ArrayPTXTest extends PTXTestBase {
         int[] array3 = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
         invoke(compile("testStoreArray1I"), array1, 2);
-        printReport("testStoreArray1I: " + Arrays.toString(array1));
+        if (array1[2] == 42) {
+            printReport("testStoreArray1I: " + Arrays.toString(array1) + " PASSED");
+        } else {
+            printReport("testStoreArray1I: " + Arrays.toString(array1) + " FAILED");
+        }
 
         invoke(compile("testStoreArrayWarp0"), array2, 2);
         printReport("testStoreArrayWarp0: " + Arrays.toString(array2));

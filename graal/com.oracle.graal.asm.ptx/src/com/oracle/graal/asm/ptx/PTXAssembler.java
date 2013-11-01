@@ -105,6 +105,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         protected Value source1;
         protected Value source2;
         private boolean logicInstruction = false;
+        private boolean ldRetAddrInstruction = false;
 
         public StandardFormat(Variable dst, Value src1, Value src2) {
             setDestination(dst);
@@ -139,8 +140,18 @@ public class PTXAssembler extends AbstractPTXAssembler {
             logicInstruction = b;
         }
 
+        public void setLdRetAddrInstruction(boolean b) {
+            ldRetAddrInstruction = b;
+        }
+
         public String typeForKind(Kind k) {
-            if (logicInstruction) {
+            if (ldRetAddrInstruction) {
+                if (System.getProperty("os.arch").compareTo("amd64") == 0) {
+                    return "u64";
+                } else {
+                    return "u32";
+                }
+            } else if (logicInstruction) {
                 switch (k.getTypeChar()) {
                     case 's':
                         return "b16";
@@ -658,16 +669,16 @@ public class PTXAssembler extends AbstractPTXAssembler {
     }
 
     public static class Param extends SingleOperandFormat {
-
-        private boolean lastParameter;
+        // Last parameter holds the return parameter.
+        private boolean returnParameter;
 
         public Param(Variable d, boolean lastParam) {
             super(d, null);
-            setLastParameter(lastParam);
+            setReturnParameter(lastParam);
         }
 
-        public void setLastParameter(boolean value) {
-            lastParameter = value;
+        public void setReturnParameter(boolean value) {
+            returnParameter = value;
         }
 
         public String emitParameter(Variable v) {
@@ -675,30 +686,38 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
 
         public void emit(PTXAssembler asm) {
-            asm.emitString(".param ." + paramForKind(dest.getKind()) + emitParameter(dest) + (lastParameter ? "" : ","));
+            asm.emitString(".param ." + paramForKind(dest.getKind()) + emitParameter(dest) + (returnParameter ? "" : ","));
         }
 
         public String paramForKind(Kind k) {
-            switch (k.getTypeChar()) {
-                case 'z':
-                case 'f':
-                    return "s32";
-                case 'b':
-                    return "s8";
-                case 's':
-                    return "s16";
-                case 'c':
-                    return "u16";
-                case 'i':
-                    return "s32";
-                case 'j':
-                    return "s64";
-                case 'd':
-                    return "f64";
-                case 'a':
+            if (returnParameter) {
+                if (System.getProperty("os.arch").compareTo("amd64") == 0) {
                     return "u64";
-                default:
-                    throw GraalInternalError.shouldNotReachHere();
+                } else {
+                    return "u32";
+                }
+            } else {
+                switch (k.getTypeChar()) {
+                    case 'z':
+                    case 'f':
+                        return "s32";
+                    case 'b':
+                        return "s8";
+                    case 's':
+                        return "s16";
+                    case 'c':
+                        return "u16";
+                    case 'i':
+                        return "s32";
+                    case 'j':
+                        return "s64";
+                    case 'd':
+                        return "f64";
+                    case 'a':
+                        return "u64";
+                    default:
+                        throw GraalInternalError.shouldNotReachHere();
+                }
             }
         }
 

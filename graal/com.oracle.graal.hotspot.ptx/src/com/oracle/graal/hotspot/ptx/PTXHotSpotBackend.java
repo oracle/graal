@@ -44,6 +44,7 @@ import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.lir.ptx.PTXMemOp.LoadReturnAddrOp;
 
 /**
  * HotSpot PTX specific backend.
@@ -62,6 +63,84 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     @Override
     public FrameMap newFrameMap() {
         return new PTXFrameMap(getCodeCache());
+    }
+
+    static final class RegisterAnalysis extends ValueProcedure {
+        private final SortedSet<Integer> unsigned64 = new TreeSet<>();
+        private final SortedSet<Integer> signed64 = new TreeSet<>();
+        private final SortedSet<Integer> float32 = new TreeSet<>();
+        private final SortedSet<Integer> signed32 = new TreeSet<>();
+        private final SortedSet<Integer> float64 = new TreeSet<>();
+
+        LIRInstruction op;
+
+        void emitDeclarations(Buffer codeBuffer) {
+            for (Integer i : signed32) {
+                codeBuffer.emitString(".reg .s32 %r" + i.intValue() + ";");
+            }
+            for (Integer i : signed64) {
+                codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
+            }
+            for (Integer i : unsigned64) {
+                codeBuffer.emitString(".reg .u64 %r" + i.intValue() + ";");
+            }
+            for (Integer i : float32) {
+                codeBuffer.emitString(".reg .f32 %r" + i.intValue() + ";");
+            }
+            for (Integer i : float64) {
+                codeBuffer.emitString(".reg .f64 %r" + i.intValue() + ";");
+            }
+        }
+
+        @Override
+        public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
+            if (isVariable(value)) {
+                Variable regVal = (Variable) value;
+                Kind regKind = regVal.getKind();
+                if ((op instanceof LoadReturnAddrOp) && (mode == OperandMode.DEF)) {
+                    unsigned64.add(regVal.index);
+                } else {
+                    switch (regKind) {
+                        case Int:
+                            // If the register was used as a wider signed type
+                            // do not add it here
+                            if (!signed64.contains(regVal.index)) {
+                                signed32.add(regVal.index);
+                            }
+                            break;
+                        case Long:
+                            // If the register was used as a narrower signed type
+                            // remove it from there and add it to wider type.
+                            if (signed32.contains(regVal.index)) {
+                                signed32.remove(regVal.index);
+                            }
+                            signed64.add(regVal.index);
+                            break;
+                        case Float:
+                            // If the register was used as a wider signed type
+                            // do not add it here
+                            if (!float64.contains(regVal.index)) {
+                                float32.add(regVal.index);
+                            }
+                            break;
+                        case Double:
+                            // If the register was used as a narrower signed type
+                            // remove it from there and add it to wider type.
+                            if (float32.contains(regVal.index)) {
+                                float32.remove(regVal.index);
+                            }
+                            float64.add(regVal.index);
+                            break;
+                        case Object:
+                            unsigned64.add(regVal.index);
+                            break;
+                        default:
+                            throw GraalInternalError.shouldNotReachHere("unhandled register type " + value.toString());
+                    }
+                }
+            }
+            return value;
+        }
     }
 
     class PTXFrameContext implements FrameContext {
@@ -147,94 +226,27 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         assert codeCacheOwner != null : lirGen.getGraph() + " is not associated with a method";
 
         Buffer codeBuffer = tasm.asm.codeBuffer;
-
-        final SortedSet<Integer> signed32 = new TreeSet<>();
-        final SortedSet<Integer> signed64 = new TreeSet<>();
-        final SortedSet<Integer> unsigned64 = new TreeSet<>();
-        final SortedSet<Integer> float32 = new TreeSet<>();
-        final SortedSet<Integer> float64 = new TreeSet<>();
-
-        ValueProcedure trackRegisterKind = new ValueProcedure() {
-
-            @Override
-            public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
-                if (isVariable(value)) {
-                    Variable regVal = (Variable) value;
-                    Kind regKind = regVal.getKind();
-                    switch (regKind) {
-                        case Int:
-                            // If the register was used as a wider signed type
-                            // do not add it here
-                            if (!signed64.contains(regVal.index)) {
-                                signed32.add(regVal.index);
-                            }
-                            break;
-                        case Long:
-                            // If the register was used as a narrower signed type
-                            // remove it from there and add it to wider type.
-                            if (signed32.contains(regVal.index)) {
-                                signed32.remove(regVal.index);
-                            }
-                            signed64.add(regVal.index);
-                            break;
-                        case Float:
-                            // If the register was used as a wider signed type
-                            // do not add it here
-                            if (!float64.contains(regVal.index)) {
-                                float32.add(regVal.index);
-                            }
-                            break;
-                        case Double:
-                            // If the register was used as a narrower signed type
-                            // remove it from there and add it to wider type.
-                            if (float32.contains(regVal.index)) {
-                                float32.remove(regVal.index);
-                            }
-                            float64.add(regVal.index);
-                            break;
-                        case Object:
-                            unsigned64.add(regVal.index);
-                            break;
-                        default:
-                            throw GraalInternalError.shouldNotReachHere("unhandled register type " + value.toString());
-                    }
-                }
-                return value;
-            }
-        };
+        RegisterAnalysis registerAnalysis = new RegisterAnalysis();
 
         for (Block b : lirGen.lir.codeEmittingOrder()) {
             for (LIRInstruction op : lirGen.lir.lir(b)) {
                 if (op instanceof LabelOp) {
                     // Don't consider this as a definition
                 } else {
-                    op.forEachTemp(trackRegisterKind);
-                    op.forEachOutput(trackRegisterKind);
+                    registerAnalysis.op = op;
+                    op.forEachTemp(registerAnalysis);
+                    op.forEachOutput(registerAnalysis);
                 }
             }
         }
 
-        for (Integer i : signed32) {
-            codeBuffer.emitString(".reg .s32 %r" + i.intValue() + ";");
-        }
-        for (Integer i : signed64) {
-            codeBuffer.emitString(".reg .s64 %r" + i.intValue() + ";");
-        }
-        for (Integer i : unsigned64) {
-            codeBuffer.emitString(".reg .u64 %r" + i.intValue() + ";");
-        }
-        for (Integer i : float32) {
-            codeBuffer.emitString(".reg .f32 %r" + i.intValue() + ";");
-        }
-        for (Integer i : float64) {
-            codeBuffer.emitString(".reg .f64 %r" + i.intValue() + ";");
-        }
+        registerAnalysis.emitDeclarations(codeBuffer);
+
         // emit predicate register declaration
         int maxPredRegNum = ((PTXLIRGenerator) lirGen).getNextPredRegNumber();
         if (maxPredRegNum > 0) {
             codeBuffer.emitString(".reg .pred %p<" + maxPredRegNum + ">;");
         }
-        codeBuffer.emitString(".reg .pred %r;");  // used for setp bool
     }
 
     @Override
