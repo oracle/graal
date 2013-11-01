@@ -246,12 +246,29 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented();
     }
 
+    /**
+     * Generates the LIR instruction for a negation operation.
+     * 
+     * @param input the value that is being negated
+     * @return Variable that represents the result of the negation
+     */
     @Override
     public Variable emitNegate(Value input) {
         Variable result = newVariable(input.getKind());
         switch (input.getKind()) {
             case Int:
+                // Note: The Int case also handles the negation of shorts, bytes, and chars because
+                // Java treats these types as ints at the bytecode level.
                 append(new Op1Stack(INEG, result, input));
+                break;
+            case Long:
+                append(new Op1Stack(LNEG, result, input));
+                break;
+            case Double:
+                append(new Op1Stack(DNEG, result, input));
+                break;
+            case Float:
+                append(new Op1Stack(FNEG, result, input));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -260,12 +277,23 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
 
     }
 
+    /**
+     * Generates the LIR instruction for a bitwise NOT operation.
+     * 
+     * @param input the source operand
+     * @return Variable that represents the result of the operation
+     */
     @Override
     public Variable emitNot(Value input) {
         Variable result = newVariable(input.getKind());
         switch (input.getKind()) {
             case Int:
+                // Note: The Int case also covers other primitive integral types smaller than an int
+                // (char, byte, short) because Java treats these types as ints.
                 append(new Op1Stack(INOT, result, input));
+                break;
+            case Long:
+                append(new Op1Stack(LNOT, result, input));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere();
@@ -491,11 +519,20 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    /**
+     * Generates the LIR instruction for a shift left operation.
+     * 
+     * @param a The value that is being shifted
+     * @param b The shift amount
+     * @return Variable that represents the result of the operation
+     */
     @Override
     public Variable emitShl(Value a, Value b) {
         Variable result = newVariable(a.getKind());
         switch (a.getKind()) {
             case Int:
+                // Note: The Int case also covers the shifting of bytes, shorts and chars because
+                // Java treats these types as ints at the bytecode level.
                 append(new ShiftOp(ISHL, result, a, b));
                 break;
             case Long:
@@ -507,11 +544,38 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         return result;
     }
 
+    /**
+     * Generates the LIR instruction for a shift right operation.
+     * 
+     * @param a The value that is being shifted
+     * @param b The shift amount
+     * @return Variable that represents the result of the operation
+     */
     @Override
     public Variable emitShr(Value a, Value b) {
-        throw GraalInternalError.unimplemented();
+        Variable result = newVariable(a.getKind());
+        switch (a.getKind()) {
+            case Int:
+                // Note: The Int case also covers the shifting of bytes, shorts and chars because
+                // Java treats these types as ints at the bytecode level.
+                append(new ShiftOp(ISHR, result, a, b));
+                break;
+            case Long:
+                append(new ShiftOp(LSHR, result, a, b));
+                break;
+            default:
+                GraalInternalError.shouldNotReachHere();
+        }
+        return result;
     }
 
+    /**
+     * Generates the LIR instruction for an unsigned shift right operation.
+     * 
+     * @param a The value that is being shifted
+     * @param b The shift amount
+     * @return Variable that represents the result of the operation
+     */
     @Override
     public Variable emitUShr(Value a, Value b) {
         Variable result = newVariable(a.getKind());
@@ -575,7 +639,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             case F2L:
                 append(new Op1Stack(F2L, result, input));
                 break;
-
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
