@@ -51,6 +51,8 @@ public interface VMToCompiler {
 
     void bootstrap() throws Throwable;
 
+    void compileTheWorld() throws Throwable;
+
     PrintStream log();
 
     JavaMethod createUnresolvedJavaMethod(String name, String signature, JavaType holder);
