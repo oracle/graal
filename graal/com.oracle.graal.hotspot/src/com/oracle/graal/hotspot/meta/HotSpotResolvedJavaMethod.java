@@ -74,11 +74,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      */
     public static HotSpotResolvedObjectType getHolder(long metaspaceMethod) {
         HotSpotVMConfig config = runtime().getConfig();
-        long constMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        long constMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
         assert constMethod != 0;
-        long constantPool = unsafe.getLong(constMethod + config.constMethodConstantsOffset);
+        long constantPool = unsafe.getAddress(constMethod + config.constMethodConstantsOffset);
         assert constantPool != 0;
-        long holder = unsafe.getLong(constantPool + config.constantPoolHolderOffset);
+        long holder = unsafe.getAddress(constantPool + config.constantPoolHolderOffset);
         assert holder != 0;
         return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(holder);
     }
@@ -231,7 +231,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
-        long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        long metaspaceConstMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
         return unsafe.getShort(metaspaceConstMethod + config.methodMaxLocalsOffset) & 0xFFFF;
     }
 
@@ -242,7 +242,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
-        long metaspaceConstMethod = unsafe.getLong(metaspaceMethod + config.methodConstMethodOffset);
+        long metaspaceConstMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
         return config.extraStackEntries + (unsafe.getShort(metaspaceConstMethod + config.constMethodMaxStackOffset) & 0xFFFF);
     }
 
