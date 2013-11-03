@@ -235,7 +235,7 @@ public class Graph {
 
     public <T extends Node> T addOrUnique(T node) {
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node);
+            return uniqueHelper(node, true);
         }
         return add(node);
     }
@@ -301,27 +301,38 @@ public class Graph {
     }
 
     /**
-     * Adds a new node to the graph, if a <i>similar</i> node already exists in the graph, the
-     * provided node will not be added to the graph but the <i>similar</i> node will be returned
-     * instead.
+     * Looks for a node <i>similar</i> to {@code node} and returns it if found. Otherwise
+     * {@code node} is added to this graph and returned.
      * 
-     * @param node
-     * @return the node which was added to the graph or a <i>similar</i> which was already in the
-     *         graph.
+     * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
-        assert checkValueNumberable(node);
-        return uniqueHelper(node);
+        return uniqueHelper(node, true);
+    }
+
+    /**
+     * Looks for a node <i>similar</i> to {@code node}. If not found, {@code node} is added to the
+     * cache in this graph used to canonicalize nodes.
+     * <p>
+     * Note that node must implement {@link ValueNumberable} and must be an
+     * {@linkplain Node#isExternal() external} node.
+     * 
+     * @return a node similar to {@code node} if one exists, otherwise {@code node}
+     */
+    public <T extends Node> T uniqueWithoutAdd(T node) {
+        assert node.isExternal() : node;
+        assert node instanceof ValueNumberable : node;
+        return uniqueHelper(node, false);
     }
 
     @SuppressWarnings("unchecked")
-    <T extends Node> T uniqueHelper(T node) {
+    <T extends Node> T uniqueHelper(T node, boolean addIfMissing) {
         assert node.getNodeClass().valueNumberable();
         Node other = this.findDuplicate(node);
         if (other != null) {
             return (T) other;
         } else {
-            Node result = addHelper(node);
+            Node result = addIfMissing ? addHelper(node) : node;
             if (node.getNodeClass().isLeafNode()) {
                 putNodeIntoCache(result);
             }
@@ -330,7 +341,7 @@ public class Graph {
     }
 
     void putNodeIntoCache(Node node) {
-        assert node.graph() == this || node.graph() == null;
+        assert node.isExternal() || node.graph() == this || node.graph() == null;
         assert node.getNodeClass().valueNumberable();
         assert node.getNodeClass().isLeafNode() : node.getClass();
         cachedNodes.put(new CacheEntry(node), node);
@@ -381,13 +392,6 @@ public class Graph {
             }
             return null;
         }
-    }
-
-    private static boolean checkValueNumberable(Node node) {
-        if (!node.getNodeClass().valueNumberable()) {
-            throw new VerificationError("node is not valueNumberable").addContext(node);
-        }
-        return true;
     }
 
     public boolean isNew(int mark, Node node) {
@@ -650,6 +654,7 @@ public class Graph {
     }
 
     void register(Node node) {
+        assert !node.isExternal();
         assert node.id() == Node.INITIAL_ID;
         int id = nodes.size();
         nodes.add(id, node);

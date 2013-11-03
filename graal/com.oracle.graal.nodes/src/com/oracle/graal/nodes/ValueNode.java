@@ -110,7 +110,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      * @return {@code true} if this value represents the null constant
      */
     public final boolean isNullConstant() {
-        return this instanceof ConstantNode && ((ConstantNode) this).value.isNull();
+        return this instanceof ConstantNode && ((ConstantNode) this).getValue().isNull();
     }
 
     /**
@@ -121,7 +121,7 @@ public abstract class ValueNode extends ScheduledNode implements StampProvider {
      */
     public final Constant asConstant() {
         if (this instanceof ConstantNode) {
-            return ((ConstantNode) this).value;
+            return ((ConstantNode) this).getValue();
         }
         return null;
     }

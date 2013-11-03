@@ -39,6 +39,7 @@ import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
+import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
@@ -487,7 +488,7 @@ public class InliningUtil {
             ConstantNode typeHub = ConstantNode.forConstant(type.getEncoding(Representation.ObjectHub), metaAccess, graph);
             LoadHubNode receiverHub = graph.unique(new LoadHubNode(nonNullReceiver, typeHub.kind(), null));
 
-            CompareNode typeCheck = CompareNode.createCompareNode(Condition.EQ, receiverHub, typeHub);
+            CompareNode typeCheck = CompareNode.createCompareNode(graph, Condition.EQ, receiverHub, typeHub);
             FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile));
             assert invoke.predecessor() != null;
 
@@ -803,7 +804,7 @@ public class InliningUtil {
                 FixedNode lastSucc = successors[concretes.size()];
                 for (int i = concretes.size() - 1; i >= 0; --i) {
                     LoadMethodNode method = graph.add(new LoadMethodNode(concretes.get(i), hub, constantMethods[i].kind()));
-                    CompareNode methodCheck = CompareNode.createCompareNode(Condition.EQ, method, constantMethods[i]);
+                    CompareNode methodCheck = CompareNode.createCompareNode(graph, Condition.EQ, method, constantMethods[i]);
                     IfNode ifNode = graph.add(new IfNode(methodCheck, successors[i], lastSucc, probability[i]));
                     method.setNext(ifNode);
                     lastSucc = method;
@@ -1433,7 +1434,12 @@ public class InliningUtil {
             if (returnNode.result() instanceof LocalNode) {
                 returnValue = localReplacement.replacement(returnNode.result());
             } else if (returnNode.result() != null) {
-                returnValue = duplicates.get(returnNode.result());
+                returnValue = returnNode.result();
+                if (!returnValue.isExternal()) {
+                    returnValue = duplicates.get(returnValue);
+                } else if (returnValue instanceof ValueNumberable) {
+                    returnValue = graph.uniqueWithoutAdd(returnValue);
+                }
             }
             invoke.asNode().replaceAtUsages(returnValue);
             Node returnDuplicate = duplicates.get(returnNode);

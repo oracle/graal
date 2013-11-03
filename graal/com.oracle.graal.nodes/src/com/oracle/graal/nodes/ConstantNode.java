@@ -25,23 +25,45 @@ package com.oracle.graal.nodes;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * The {@code ConstantNode} represents a constant such as an integer value, long, float, object
- * reference, address, etc.
+ * The {@code ConstantNode} represents a {@link Constant constant}.
  */
 @NodeInfo(shortName = "Const", nameTemplate = "Const({p#rawvalue})")
-public class ConstantNode extends FloatingNode implements LIRLowerable {
+public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
-    public final Constant value;
+    private static final DebugMetric ConstantNodes = Debug.metric("ConstantNodes");
+
+    private final Constant value;
 
     protected ConstantNode(Constant value) {
         super(StampFactory.forConstant(value));
         this.value = value;
+        ConstantNodes.increment();
+    }
+
+    /**
+     * Constructs a new ConstantNode representing the specified constant.
+     * 
+     * @param value the constant
+     */
+    protected ConstantNode(Constant value, MetaAccessProvider metaAccess) {
+        super(StampFactory.forConstant(value, metaAccess));
+        this.value = value;
+        ConstantNodes.increment();
+    }
+
+    /**
+     * @return the constant value represented by this node
+     */
+    public Constant getValue() {
+        return value;
     }
 
     /**
@@ -55,24 +77,24 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         return ConstantNodeRecordsUsages;
     }
 
-    /**
-     * Constructs a new ConstantNode representing the specified constant.
-     * 
-     * @param value the constant
-     */
-    protected ConstantNode(Constant value, MetaAccessProvider metaAccess) {
-        super(StampFactory.forConstant(value, metaAccess));
-        this.value = value;
+    @Override
+    public boolean isAlive() {
+        return true;
+    }
+
+    @Override
+    public boolean isExternal() {
+        return true;
     }
 
     /**
      * Computes the usages of this node by iterating over all the nodes in the graph, searching for
      * those that have this node as an input.
      */
-    public List<Node> gatherUsages() {
+    public List<Node> gatherUsages(StructuredGraph graph) {
         assert !ConstantNodeRecordsUsages;
         List<Node> usages = new ArrayList<>();
-        for (Node node : graph().getNodes()) {
+        for (Node node : graph.getNodes()) {
             for (Node input : node.inputs()) {
                 if (input == this) {
                     usages.add(node);
@@ -82,20 +104,45 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         return usages;
     }
 
-    public void replace(Node replacement) {
+    /**
+     * Gathers all the {@link ConstantNode}s that are inputs to the {@linkplain Graph#getNodes()
+     * live nodes} in a given graph. This is an expensive operation that should only be used in
+     * test/verification/AOT code.
+     */
+    public static NodeIterable<ConstantNode> getConstantNodes(StructuredGraph graph) {
+        Map<ConstantNode, ConstantNode> result = new HashMap<>();
+        for (Node node : graph.getNodes()) {
+            for (Node input : node.inputs()) {
+                if (input instanceof ConstantNode) {
+                    result.put((ConstantNode) input, (ConstantNode) input);
+                }
+            }
+        }
+        return new ConstantNodeList(result.keySet());
+    }
+
+    /**
+     * Replaces this node at its usages with another node. If {@value #ConstantNodeRecordsUsages} is
+     * false, this is an expensive operation that should only be used in test/verification/AOT code.
+     */
+    public void replace(StructuredGraph graph, Node replacement) {
         if (!recordsUsages()) {
-            List<Node> usages = gatherUsages();
+            List<Node> usages = gatherUsages(graph);
             for (Node usage : usages) {
                 usage.replaceFirstInput(this, replacement);
             }
-            graph().removeFloating(this);
+            if (!isExternal()) {
+                graph.removeFloating(this);
+            }
         } else {
+            assert graph == graph();
             graph().replaceFloating(this, replacement);
         }
     }
 
     @Override
     public void generate(LIRGeneratorTool gen) {
+        assert ConstantNodeRecordsUsages : "LIR generator should generate constants per-usage";
         if (gen.canInlineConstant(value) || onlyUsedInVirtualState()) {
             gen.setResult(this, value);
         } else {
@@ -118,9 +165,9 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
         if (constant.getKind().getStackKind() == Kind.Int && constant.getKind() != Kind.Int) {
             return forInt(constant.asInt(), graph);
         } else if (constant.getKind() == Kind.Object) {
-            return graph.unique(new ConstantNode(constant, metaAccess));
+            return unique(graph, new ConstantNode(constant, metaAccess));
         } else {
-            return graph.unique(new ConstantNode(constant));
+            return unique(graph, new ConstantNode(constant));
         }
     }
 
@@ -136,100 +183,95 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
      * Returns a node for a double constant.
      * 
      * @param d the double value for which to create the instruction
-     * @param graph
      * @return a node for a double constant
      */
     public static ConstantNode forDouble(double d, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forDouble(d)));
+        return unique(graph, new ConstantNode(Constant.forDouble(d)));
     }
 
     /**
      * Returns a node for a float constant.
      * 
      * @param f the float value for which to create the instruction
-     * @param graph
      * @return a node for a float constant
      */
     public static ConstantNode forFloat(float f, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forFloat(f)));
+        return unique(graph, new ConstantNode(Constant.forFloat(f)));
     }
 
     /**
      * Returns a node for an long constant.
      * 
      * @param i the long value for which to create the instruction
-     * @param graph
      * @return a node for an long constant
      */
     public static ConstantNode forLong(long i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forLong(i)));
+        return unique(graph, new ConstantNode(Constant.forLong(i)));
     }
 
     /**
      * Returns a node for an integer constant.
      * 
      * @param i the integer value for which to create the instruction
-     * @param graph
      * @return a node for an integer constant
      */
     public static ConstantNode forInt(int i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forInt(i)));
+        return unique(graph, new ConstantNode(Constant.forInt(i)));
     }
 
     /**
      * Returns a node for a boolean constant.
      * 
      * @param i the boolean value for which to create the instruction
-     * @param graph
      * @return a node representing the boolean
      */
     public static ConstantNode forBoolean(boolean i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forInt(i ? 1 : 0)));
+        return unique(graph, new ConstantNode(Constant.forInt(i ? 1 : 0)));
     }
 
     /**
      * Returns a node for a byte constant.
      * 
      * @param i the byte value for which to create the instruction
-     * @param graph
      * @return a node representing the byte
      */
     public static ConstantNode forByte(byte i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forInt(i)));
+        return unique(graph, new ConstantNode(Constant.forInt(i)));
     }
 
     /**
      * Returns a node for a char constant.
      * 
      * @param i the char value for which to create the instruction
-     * @param graph
      * @return a node representing the char
      */
     public static ConstantNode forChar(char i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forInt(i)));
+        return unique(graph, new ConstantNode(Constant.forInt(i)));
     }
 
     /**
      * Returns a node for a short constant.
      * 
      * @param i the short value for which to create the instruction
-     * @param graph
      * @return a node representing the short
      */
     public static ConstantNode forShort(short i, Graph graph) {
-        return graph.unique(new ConstantNode(Constant.forInt(i)));
+        return unique(graph, new ConstantNode(Constant.forInt(i)));
     }
 
     /**
      * Returns a node for an object constant.
      * 
      * @param o the object value for which to create the instruction
-     * @param graph
      * @return a node representing the object
      */
     public static ConstantNode forObject(Object o, MetaAccessProvider metaAccess, Graph graph) {
         assert !(o instanceof Constant) : "wrapping a Constant into a Constant";
-        return graph.unique(new ConstantNode(Constant.forObject(o), metaAccess));
+        return unique(graph, new ConstantNode(Constant.forObject(o), metaAccess));
+    }
+
+    private static ConstantNode unique(Graph graph, ConstantNode node) {
+        return graph.uniqueWithoutAdd(node);
     }
 
     public static ConstantNode forIntegerKind(Kind kind, long value, Graph graph) {
@@ -290,6 +332,17 @@ public class ConstantNode extends FloatingNode implements LIRLowerable {
             return super.toString(Verbosity.Name) + "(" + value.getKind().format(value.asBoxedValue()) + ")";
         } else {
             return super.toString(verbosity);
+        }
+    }
+
+    static class ConstantNodeList extends NodeList<ConstantNode> {
+
+        public ConstantNodeList(Collection<ConstantNode> nodes) {
+            super(nodes.toArray(new ConstantNode[nodes.size()]));
+        }
+
+        @Override
+        protected void update(ConstantNode oldNode, ConstantNode newNode) {
         }
     }
 }

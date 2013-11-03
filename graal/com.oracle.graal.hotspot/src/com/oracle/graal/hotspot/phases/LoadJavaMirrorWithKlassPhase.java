@@ -23,6 +23,7 @@
 package com.oracle.graal.hotspot.phases;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.nodes.ConstantNode.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -52,23 +53,30 @@ public class LoadJavaMirrorWithKlassPhase extends BasePhase<PhaseContext> {
         this.classMirrorOffset = classMirrorOffset;
     }
 
+    private FloatingReadNode getClassConstantReplacement(StructuredGraph graph, PhaseContext context, Constant constant) {
+        if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
+            MetaAccessProvider metaAccess = context.getMetaAccess();
+            ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) constant.asObject());
+            assert type instanceof HotSpotResolvedObjectType;
+
+            Constant klass = ((HotSpotResolvedObjectType) type).klass();
+            ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
+
+            Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
+            LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), classMirrorOffset, graph));
+            FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
+            return freadNode;
+        }
+        return null;
+    }
+
     @Override
     protected void run(StructuredGraph graph, PhaseContext context) {
-        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
+        for (ConstantNode node : getConstantNodes(graph)) {
             Constant constant = node.asConstant();
-            if (constant.getKind() == Kind.Object && constant.asObject() instanceof Class<?>) {
-                MetaAccessProvider metaAccess = context.getMetaAccess();
-                ResolvedJavaType type = metaAccess.lookupJavaType((Class<?>) constant.asObject());
-                assert type instanceof HotSpotResolvedObjectType;
-
-                Constant klass = ((HotSpotResolvedObjectType) type).klass();
-                ConstantNode klassNode = ConstantNode.forConstant(klass, metaAccess, graph);
-
-                Stamp stamp = StampFactory.exactNonNull(metaAccess.lookupJavaType(Class.class));
-                LocationNode location = graph.unique(ConstantLocationNode.create(FINAL_LOCATION, stamp.kind(), classMirrorOffset, graph));
-                FloatingReadNode freadNode = graph.unique(new FloatingReadNode(klassNode, location, null, stamp));
-
-                node.replace(freadNode);
+            FloatingReadNode freadNode = getClassConstantReplacement(graph, context, constant);
+            if (freadNode != null) {
+                node.replace(graph, freadNode);
             }
         }
     }

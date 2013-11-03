@@ -160,4 +160,27 @@ public class NodeMap<T> {
             }
         };
     }
+
+    @Override
+    public String toString() {
+        Iterator<Entry<Node, T>> i = entries().iterator();
+        if (!i.hasNext()) {
+            return "{}";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('{');
+        while (true) {
+            Entry<Node, T> e = i.next();
+            Node key = e.getKey();
+            T value = e.getValue();
+            sb.append(key);
+            sb.append('=');
+            sb.append(value);
+            if (!i.hasNext()) {
+                return sb.append('}').toString();
+            }
+            sb.append(',').append(' ');
+        }
+    }
 }

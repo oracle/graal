@@ -123,7 +123,7 @@ public class GraphUtil {
     }
 
     public static void killWithUnusedFloatingInputs(Node node) {
-        if (node.recordsUsages()) {
+        if (node.recordsUsages() && !node.isExternal()) {
             List<Node> floatingInputs = node.inputs().filter(isFloatingNode()).snapshot();
             node.safeDelete();
 

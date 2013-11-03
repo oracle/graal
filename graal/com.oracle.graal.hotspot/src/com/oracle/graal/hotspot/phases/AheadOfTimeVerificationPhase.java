@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.hotspot.phases;
 
+import static com.oracle.graal.nodes.ConstantNode.*;
+
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -38,8 +40,8 @@ public class AheadOfTimeVerificationPhase extends VerifyPhase<PhaseContext> {
 
     @Override
     protected boolean verify(StructuredGraph graph, PhaseContext context) {
-        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
-            if (node.recordsUsages() || !node.gatherUsages().isEmpty()) {
+        for (ConstantNode node : getConstantNodes(graph)) {
+            if (node.recordsUsages() || !node.gatherUsages(graph).isEmpty()) {
                 assert !isObject(node) || isNullReference(node) || isInternedString(node) : "illegal object constant: " + node;
             }
         }

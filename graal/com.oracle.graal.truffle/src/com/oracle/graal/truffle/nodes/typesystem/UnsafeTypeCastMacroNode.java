@@ -58,7 +58,7 @@ public class UnsafeTypeCastMacroNode extends NeverPartOfCompilationNode implemen
                 return objectArgument;
             }
             ResolvedJavaType lookupJavaType = tool.getMetaAccess().lookupJavaType(c);
-            ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
+            ConditionAnchorNode valueAnchorNode = graph().add(new ConditionAnchorNode(CompareNode.createCompareNode(graph(), Condition.EQ, conditionArgument, ConstantNode.forBoolean(true, graph()))));
             UnsafeCastNode piCast = graph().unique(new UnsafeCastNode(objectArgument, StampFactory.declaredNonNull(lookupJavaType), valueAnchorNode));
             this.replaceAtUsages(piCast);
             return valueAnchorNode;

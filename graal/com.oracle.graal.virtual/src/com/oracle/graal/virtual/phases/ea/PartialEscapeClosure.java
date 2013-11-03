@@ -616,7 +616,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     public ObjectState getObjectState(PartialEscapeBlockState<?> state, ValueNode value) {
-        if (value == null) {
+        if (value == null || value.isExternal()) {
             return null;
         }
         if (value.isAlive() && !aliases.isNew(value)) {

@@ -216,7 +216,7 @@ public class InstanceOfSnippets implements Snippets {
 
                 Arguments args;
 
-                StructuredGraph graph = hub.graph();
+                StructuredGraph graph = instanceOf.graph();
                 if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet()) {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
                     args = new Arguments(instanceofWithProfile, graph.getGuardsStage());

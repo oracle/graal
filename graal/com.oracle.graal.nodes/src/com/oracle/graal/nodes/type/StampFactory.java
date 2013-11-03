@@ -160,6 +160,12 @@ public class StampFactory {
                 return forFloat(kind, value.asDouble(), value.asDouble(), !Double.isNaN(value.asDouble()));
             case Illegal:
                 return illegal(Kind.Illegal);
+            case Object:
+                if (value.isNull()) {
+                    return alwaysNull();
+                } else {
+                    return objectNonNull();
+                }
             default:
                 throw new GraalInternalError("unexpected kind: %s", kind);
         }

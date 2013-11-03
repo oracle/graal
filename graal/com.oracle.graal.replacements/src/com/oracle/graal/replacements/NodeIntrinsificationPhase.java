@@ -72,6 +72,7 @@ public class NodeIntrinsificationPhase extends Phase {
         ResolvedJavaMethod target = methodCallTargetNode.targetMethod();
         NodeIntrinsic intrinsic = target.getAnnotation(Node.NodeIntrinsic.class);
         ResolvedJavaType declaringClass = target.getDeclaringClass();
+        StructuredGraph graph = methodCallTargetNode.graph();
         if (intrinsic != null) {
             assert target.getAnnotation(Fold.class) == null;
             assert Modifier.isStatic(target.getModifiers()) : "node intrinsic must be static: " + target;
@@ -86,10 +87,10 @@ public class NodeIntrinsificationPhase extends Phase {
 
             // Create the new node instance.
             ResolvedJavaType c = getNodeClass(target, intrinsic);
-            Node newInstance = createNodeInstance(c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeConstructorArguments);
+            Node newInstance = createNodeInstance(graph, c, parameterTypes, methodCallTargetNode.invoke().asNode().stamp(), intrinsic.setStampFromReturnType(), nodeConstructorArguments);
 
             // Replace the invoke with the new node.
-            newInstance = methodCallTargetNode.graph().addOrUnique(newInstance);
+            newInstance = graph.addOrUnique(newInstance);
             methodCallTargetNode.invoke().intrinsify(newInstance);
 
             // Clean up checkcast instructions inserted by javac if the return type is generic.
@@ -194,12 +195,13 @@ public class NodeIntrinsificationPhase extends Phase {
         return result;
     }
 
-    private Node createNodeInstance(ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType, Constant[] nodeConstructorArguments) {
+    private Node createNodeInstance(StructuredGraph graph, ResolvedJavaType nodeClass, ResolvedJavaType[] parameterTypes, Stamp invokeStamp, boolean setStampFromReturnType,
+                    Constant[] nodeConstructorArguments) {
         ResolvedJavaMethod constructor = null;
         Constant[] arguments = null;
 
         for (ResolvedJavaMethod c : nodeClass.getDeclaredConstructors()) {
-            Constant[] match = match(c, parameterTypes, nodeConstructorArguments);
+            Constant[] match = match(graph, c, parameterTypes, nodeConstructorArguments);
 
             if (match != null) {
                 if (constructor == null) {
@@ -246,7 +248,7 @@ public class NodeIntrinsificationPhase extends Phase {
         return false;
     }
 
-    private Constant[] match(ResolvedJavaMethod c, ResolvedJavaType[] parameterTypes, Constant[] nodeConstructorArguments) {
+    private Constant[] match(StructuredGraph graph, ResolvedJavaMethod c, ResolvedJavaType[] parameterTypes, Constant[] nodeConstructorArguments) {
         Constant[] arguments = null;
         Constant[] injected = null;
 
@@ -257,6 +259,8 @@ public class NodeIntrinsificationPhase extends Phase {
                 injected = injected == null ? new Constant[1] : Arrays.copyOf(injected, injected.length + 1);
                 if (signature[i].equals(metaAccess.lookupJavaType(MetaAccessProvider.class))) {
                     injected[injected.length - 1] = Constant.forObject(metaAccess);
+                } else if (signature[i].equals(metaAccess.lookupJavaType(StructuredGraph.class))) {
+                    injected[injected.length - 1] = Constant.forObject(graph);
                 } else if (signature[i].equals(metaAccess.lookupJavaType(ForeignCallsProvider.class))) {
                     injected[injected.length - 1] = Constant.forObject(providers.getForeignCalls());
                 } else {

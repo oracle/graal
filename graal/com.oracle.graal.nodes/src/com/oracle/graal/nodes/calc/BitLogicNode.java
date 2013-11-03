@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -43,9 +42,8 @@ public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLo
         assert kind == Kind.Int || kind == Kind.Long;
     }
 
-    public static BitLogicNode and(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static BitLogicNode and(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new AndNode(Kind.Int, v1, v2));
@@ -56,9 +54,8 @@ public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLo
         }
     }
 
-    public static BitLogicNode or(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static BitLogicNode or(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new OrNode(Kind.Int, v1, v2));
@@ -69,9 +66,8 @@ public abstract class BitLogicNode extends BinaryNode implements ArithmeticLIRLo
         }
     }
 
-    public static BitLogicNode xor(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static BitLogicNode xor(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new XorNode(Kind.Int, v1, v2));

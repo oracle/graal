@@ -231,7 +231,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     public ValueNode getScalarAlias(ValueNode node) {
         assert !(node instanceof VirtualObjectNode);
-        if (node == null || !node.isAlive() || aliases.isNew(node)) {
+        if (node == null || !node.isAlive() || node.isExternal() || aliases.isNew(node)) {
             return node;
         }
         ValueNode result = aliases.get(node);

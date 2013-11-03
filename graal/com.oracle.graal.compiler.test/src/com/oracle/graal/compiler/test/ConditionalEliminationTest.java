@@ -144,8 +144,8 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         StructuredGraph graph = parse("testNullnessSnippet");
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
-            if (ConstantNodeRecordsUsages || !constant.gatherUsages().isEmpty()) {
+        for (ConstantNode constant : getConstantNodes(graph)) {
+            if (ConstantNodeRecordsUsages || !constant.gatherUsages(graph).isEmpty()) {
                 assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
             }
         }
@@ -178,8 +178,8 @@ public class ConditionalEliminationTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
         new ConditionalEliminationPhase(getMetaAccess()).apply(graph);
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), null));
-        for (ConstantNode constant : graph.getNodes().filter(ConstantNode.class)) {
-            if (ConstantNodeRecordsUsages || !constant.gatherUsages().isEmpty()) {
+        for (ConstantNode constant : getConstantNodes(graph)) {
+            if (ConstantNodeRecordsUsages || !constant.gatherUsages(graph).isEmpty()) {
                 assertTrue("unexpected constant: " + constant, constant.asConstant().isNull() || constant.asConstant().asInt() > 0);
             }
         }

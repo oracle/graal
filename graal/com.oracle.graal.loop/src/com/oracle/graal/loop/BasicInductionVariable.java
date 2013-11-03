@@ -45,6 +45,11 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
+    public StructuredGraph graph() {
+        return phi.graph();
+    }
+
+    @Override
     public Direction direction() {
         Stamp stamp = rawStride.stamp();
         if (stamp instanceof IntegerStamp) {
@@ -83,7 +88,7 @@ public class BasicInductionVariable extends InductionVariable {
             return rawStride;
         }
         if (op instanceof IntegerSubNode) {
-            return rawStride.graph().unique(new NegateNode(rawStride));
+            return graph().unique(new NegateNode(rawStride));
         }
         throw GraalInternalError.shouldNotReachHere();
     }
@@ -117,7 +122,7 @@ public class BasicInductionVariable extends InductionVariable {
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
         Kind fromKind = phi.kind();
-        Graph graph = phi.graph();
+        StructuredGraph graph = graph();
         ValueNode stride = strideNode();
         ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
         ValueNode initNode = this.initNode();
@@ -127,13 +132,13 @@ public class BasicInductionVariable extends InductionVariable {
             maxTripCount = graph.unique(new ConvertNode(convertOp, maxTripCount));
             initNode = graph.unique(new ConvertNode(convertOp, initNode));
         }
-        return IntegerArithmeticNode.add(IntegerArithmeticNode.mul(stride, IntegerArithmeticNode.sub(maxTripCount, ConstantNode.forIntegerKind(kind, 1, graph))), initNode);
+        return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerKind(kind, 1, graph))), initNode);
     }
 
     @Override
     public ValueNode exitValueNode() {
         ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
-        return IntegerArithmeticNode.add(IntegerArithmeticNode.mul(strideNode(), maxTripCount), initNode());
+        return IntegerArithmeticNode.add(graph(), IntegerArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
     }
 
     @Override

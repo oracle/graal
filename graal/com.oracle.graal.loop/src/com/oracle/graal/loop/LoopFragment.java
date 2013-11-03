@@ -72,7 +72,10 @@ public abstract class LoopFragment {
     @SuppressWarnings("unchecked")
     public <New extends Node, Old extends New> New getDuplicatedNode(Old n) {
         assert isDuplicate();
-        return (New) duplicationMap.get(n);
+        if (!n.isExternal()) {
+            return (New) duplicationMap.get(n);
+        }
+        return n;
     }
 
     protected <New extends Node, Old extends New> void putDuplicatedNode(Old oldNode, New newNode) {

@@ -72,7 +72,7 @@ public class VerifyUsageWithEquals extends VerifyPhase<PhaseContext> {
         for (ObjectEqualsNode cn : graph.getNodes().filter(ObjectEqualsNode.class)) {
             if (!isEqualsMethod(graph)) {
                 // bail out if we compare an object of type klass with == or != (except null checks)
-                assert !(checkUsage(cn.x(), cn.y(), context.getMetaAccess()) && checkUsage(cn.y(), cn.x(), context.getMetaAccess())) : "Verifcation of " + klass.getName() +
+                assert !(checkUsage(cn.x(), cn.y(), context.getMetaAccess()) && checkUsage(cn.y(), cn.x(), context.getMetaAccess())) : "Verification of " + klass.getName() +
                                 " usage failed: Comparing " + cn.x() + " and " + cn.y() + " in " + graph.method() + " must use .equals() for object equality, not '==' or '!='";
             }
         }

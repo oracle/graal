@@ -141,7 +141,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
             }
             if (condition == null || condition.y() != testValue) {
                 // Re-use previously generated condition if the trueValue for the test is the same
-                condition = createCompareNode(Condition.EQ, result, testValue);
+                condition = createCompareNode(result.graph(), Condition.EQ, result, testValue);
             }
             return condition;
         }
@@ -152,13 +152,13 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
          * @param t the true value for the materialization
          * @param f the false value for the materialization
          */
-        ValueNode asMaterialization(ValueNode t, ValueNode f) {
+        ValueNode asMaterialization(StructuredGraph graph, ValueNode t, ValueNode f) {
             assert isInitialized();
             if (t == this.trueValue && f == this.falseValue) {
                 // Can simply use the phi result if the same materialized values are expected.
                 return result;
             } else {
-                return t.graph().unique(new ConditionalNode(asCondition(trueValue), t, f));
+                return graph.unique(new ConditionalNode(asCondition(trueValue), t, f));
             }
         }
     }
@@ -230,7 +230,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
 
         @Override
         public void replaceUsingInstantiation() {
-            ValueNode newValue = instantiation.asMaterialization(trueValue, falseValue);
+            ValueNode newValue = instantiation.asMaterialization(usage.graph(), trueValue, falseValue);
             usage.replaceAtUsages(newValue);
             usage.clearInputs();
             assert usage.usages().isEmpty();

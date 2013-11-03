@@ -23,7 +23,6 @@
 package com.oracle.graal.nodes.calc;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -34,9 +33,8 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
         assert kind == Kind.Int || kind == Kind.Long;
     }
 
-    public static IntegerAddNode add(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerAddNode(Kind.Int, v1, v2));
@@ -47,9 +45,8 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
         }
     }
 
-    public static IntegerMulNode mul(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static IntegerMulNode mul(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerMulNode(Kind.Int, v1, v2));
@@ -60,9 +57,8 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
         }
     }
 
-    public static IntegerSubNode sub(ValueNode v1, ValueNode v2) {
-        assert v1.kind() == v2.kind() && v1.graph() == v2.graph();
-        Graph graph = v1.graph();
+    public static IntegerSubNode sub(StructuredGraph graph, ValueNode v1, ValueNode v2) {
+        assert v1.kind() == v2.kind();
         switch (v1.kind()) {
             case Int:
                 return graph.unique(new IntegerSubNode(Kind.Int, v1, v2));

@@ -29,7 +29,6 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
@@ -59,12 +58,9 @@ public class CompiledMethodTest extends GraalCompilerTest {
         new CanonicalizerPhase(true).apply(graph, new PhaseContext(getProviders(), new Assumptions(false)));
         new DeadCodeEliminationPhase().apply(graph);
 
-        for (Node node : graph.getNodes()) {
-            if (node instanceof ConstantNode) {
-                ConstantNode constant = (ConstantNode) node;
-                if (constant.kind() == Kind.Object && " ".equals(constant.value.asObject())) {
-                    constant.replace(ConstantNode.forObject("-", getMetaAccess(), graph));
-                }
+        for (ConstantNode node : ConstantNode.getConstantNodes(graph)) {
+            if (node.kind() == Kind.Object && " ".equals(node.getValue().asObject())) {
+                node.replace(graph, ConstantNode.forObject("-", getMetaAccess(), graph));
             }
         }
 

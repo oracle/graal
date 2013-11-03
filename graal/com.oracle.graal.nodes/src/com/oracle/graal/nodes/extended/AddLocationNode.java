@@ -82,7 +82,7 @@ public final class AddLocationNode extends LocationNode implements Canonicalizab
             IndexedLocationNode yIdx = (IndexedLocationNode) y;
             if (xIdx.getIndexScaling() == yIdx.getIndexScaling()) {
                 long displacement = xIdx.getDisplacement() + yIdx.getDisplacement();
-                ValueNode index = IntegerArithmeticNode.add(xIdx.getIndex(), yIdx.getIndex());
+                ValueNode index = IntegerArithmeticNode.add(graph(), xIdx.getIndex(), yIdx.getIndex());
                 return IndexedLocationNode.create(getLocationIdentity(), getValueKind(), displacement, index, graph(), xIdx.getIndexScaling());
             }
         }

@@ -60,7 +60,7 @@ public class NodeWorkList implements Iterable<Node> {
 
     public void addAll(Iterable<? extends Node> nodes) {
         for (Node node : nodes) {
-            if (node.isAlive()) {
+            if (node.isAlive() && !node.isExternal()) {
                 this.add(node);
             }
         }

@@ -119,9 +119,9 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected int countUnusedConstants(StructuredGraph graph) {
         int total = 0;
-        for (ConstantNode node : graph.getNodes().filter(ConstantNode.class)) {
+        for (ConstantNode node : getConstantNodes(graph)) {
             if (!ConstantNodeRecordsUsages) {
-                if (node.gatherUsages().isEmpty()) {
+                if (node.gatherUsages(graph).isEmpty()) {
                     total++;
                 }
             } else {
@@ -520,7 +520,6 @@ public abstract class GraalCompilerTest extends GraalTest {
                 if (cached.isValid()) {
                     return cached;
                 }
-
             }
         }
 

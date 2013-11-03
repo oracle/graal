@@ -112,13 +112,17 @@ public class DeadCodeEliminationPhase extends Phase {
         for (Node node : graph.getNodes()) {
             if (flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    flood.add(input);
+                    if (!input.isExternal()) {
+                        flood.add(input);
+                    }
                 }
             }
         }
         for (Node current : flood) {
             for (Node input : current.inputs()) {
-                flood.add(input);
+                if (!input.isExternal()) {
+                    flood.add(input);
+                }
             }
         }
     }

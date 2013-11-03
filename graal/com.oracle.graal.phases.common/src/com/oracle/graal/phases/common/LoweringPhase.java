@@ -98,7 +98,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 // Short cut creation of null check guard if the object is known to be non-null.
                 return null;
             }
-            StructuredGraph graph = object.graph();
+            StructuredGraph graph = guardedNode.asNode().graph();
             if (graph.getGuardsStage().ordinal() > GuardsStage.FLOATING_GUARDS.ordinal()) {
                 NullCheckNode nullCheck = graph.add(new NullCheckNode(object));
                 graph.addBeforeFixed((FixedNode) guardedNode, nullCheck);

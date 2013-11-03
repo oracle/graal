@@ -47,7 +47,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        ValueNode length = readArrayLength(array(), tool.getConstantReflection());
+        ValueNode length = readArrayLength(graph(), array(), tool.getConstantReflection());
         if (length != null) {
             return length;
         }
@@ -57,10 +57,12 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
     /**
      * Gets the length of an array if possible.
      * 
+     * @param graph TODO
      * @param array an array
+     * 
      * @return a node representing the length of {@code array} or null if it is not available
      */
-    public static ValueNode readArrayLength(ValueNode array, ConstantReflectionProvider constantReflection) {
+    public static ValueNode readArrayLength(StructuredGraph graph, ValueNode array, ConstantReflectionProvider constantReflection) {
         if (array instanceof ArrayLengthProvider) {
             ValueNode length = ((ArrayLengthProvider) array).length();
             if (length != null) {
@@ -72,7 +74,7 @@ public final class ArrayLengthNode extends FixedWithNextNode implements Canonica
             if (constantValue != null && constantValue.isNonNull()) {
                 Integer constantLength = constantReflection.lookupArrayLength(constantValue);
                 if (constantLength != null) {
-                    return ConstantNode.forInt(constantLength, array.graph());
+                    return ConstantNode.forInt(constantLength, graph);
                 }
             }
         }

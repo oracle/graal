@@ -144,7 +144,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         return this;
     }
 
-    public static CompareNode createCompareNode(Condition condition, ValueNode x, ValueNode y) {
+    public static CompareNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
         assert x.kind() == y.kind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
         assert x.kind() != Kind.Double && x.kind() != Kind.Float;
@@ -166,6 +166,6 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
             comparison = new IntegerBelowThanNode(x, y);
         }
 
-        return x.graph().unique(comparison);
+        return graph.unique(comparison);
     }
 }

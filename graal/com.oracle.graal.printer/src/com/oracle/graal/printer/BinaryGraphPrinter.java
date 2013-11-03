@@ -137,8 +137,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
         ControlFlowGraph cfg = schedule == null ? null : schedule.getCFG();
         BlockMap<List<ScheduledNode>> blockToNodes = schedule == null ? null : schedule.getBlockToNodesMap();
         Block[] blocks = cfg == null ? null : cfg.getBlocks();
-        writeNodes(graph);
-        writeBlocks(blocks, blockToNodes);
+        Map<Node, Integer> externalNodes = new HashMap<>();
+        writeNodes(graph, externalNodes);
+        writeBlocks(blocks, blockToNodes, externalNodes);
     }
 
     private void flush() throws IOException {
@@ -388,7 +389,17 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     @SuppressWarnings("deprecation")
-    private void writeNodes(Graph graph) throws IOException {
+    private static int getNodeId(Node node, Map<Node, Integer> externalNodes) {
+        if (!node.isExternal()) {
+            return node.getId();
+        } else {
+            Integer id = externalNodes.get(node);
+            assert id != null;
+            return id;
+        }
+    }
+
+    private void writeNodes(Graph graph, Map<Node, Integer> externalNodes) throws IOException {
         NodesToDoubles probabilities = null;
         if (PrintGraphProbabilities.getValue()) {
             try {
@@ -397,14 +408,26 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         }
         Map<Object, Object> props = new HashMap<>();
-        writeInt(graph.getNodeCount());
+        int firstExternalNodeId = graph.getNodeCount() + graph.getDeletedNodeCount();
+        for (Node node : graph.getNodes()) {
+            for (Node input : node.inputs()) {
+                if (input.isExternal()) {
+                    if (!externalNodes.containsKey(input)) {
+                        externalNodes.put(input, externalNodes.size() + firstExternalNodeId);
+                    }
+                }
+            }
+        }
+
+        writeInt(graph.getNodeCount() + externalNodes.size());
+
         for (Node node : graph.getNodes()) {
             NodeClass nodeClass = node.getNodeClass();
             node.getDebugProperties(props);
             if (probabilities != null && node instanceof FixedNode && probabilities.contains((FixedNode) node)) {
                 props.put("probability", probabilities.get((FixedNode) node));
             }
-            writeInt(node.getId());
+            writeInt(getNodeId(node, externalNodes));
             writePoolObject(nodeClass);
             writeByte(node.predecessor() == null ? 0 : 1);
             // properties
@@ -415,20 +438,35 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writePropertyObject(entry.getValue());
             }
             // inputs
-            writeEdges(node, nodeClass.getFirstLevelInputPositions());
+            writeEdges(node, nodeClass.getFirstLevelInputPositions(), externalNodes);
             // successors
-            writeEdges(node, nodeClass.getFirstLevelSuccessorPositions());
+            writeEdges(node, nodeClass.getFirstLevelSuccessorPositions(), externalNodes);
 
+            props.clear();
+        }
+        for (Node node : externalNodes.keySet()) {
+            NodeClass nodeClass = node.getNodeClass();
+            node.getDebugProperties(props);
+            writeInt(getNodeId(node, externalNodes));
+            writePoolObject(nodeClass);
+            writeByte(0);
+            // properties
+            writeShort((char) props.size());
+            for (Entry<Object, Object> entry : props.entrySet()) {
+                String key = entry.getKey().toString();
+                writePoolObject(key);
+                writePropertyObject(entry.getValue());
+            }
             props.clear();
         }
     }
 
-    private void writeEdges(Node node, Collection<Position> positions) throws IOException {
+    private void writeEdges(Node node, Collection<Position> positions, Map<Node, Integer> externalNodes) throws IOException {
         NodeClass nodeClass = node.getNodeClass();
         for (Position pos : positions) {
             if (pos.subIndex == NodeClass.NOT_ITERABLE) {
                 Node edge = nodeClass.get(node, pos);
-                writeNodeRef(edge);
+                writeNodeRef(edge, externalNodes);
             } else {
                 NodeList<?> list = nodeClass.getNodeList(node, pos);
                 if (list == null) {
@@ -438,24 +476,22 @@ public class BinaryGraphPrinter implements GraphPrinter {
                     assert listSize == ((char) listSize);
                     writeShort((char) listSize);
                     for (Node edge : list) {
-                        writeNodeRef(edge);
+                        writeNodeRef(edge, externalNodes);
                     }
                 }
             }
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private void writeNodeRef(Node edge) throws IOException {
+    private void writeNodeRef(Node edge, Map<Node, Integer> externalNodes) throws IOException {
         if (edge != null) {
-            writeInt(edge.getId());
+            writeInt(getNodeId(edge, externalNodes));
         } else {
             writeInt(-1);
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private void writeBlocks(Block[] blocks, BlockMap<List<ScheduledNode>> blockToNodes) throws IOException {
+    private void writeBlocks(Block[] blocks, BlockMap<List<ScheduledNode>> blockToNodes, Map<Node, Integer> externalNodes) throws IOException {
         if (blocks != null) {
             writeInt(blocks.length);
             for (Block block : blocks) {
@@ -463,7 +499,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
                 writeInt(block.getId());
                 writeInt(nodes.size());
                 for (Node node : nodes) {
-                    writeInt(node.getId());
+                    writeInt(getNodeId(node, externalNodes));
                 }
                 writeInt(block.getSuccessors().size());
                 for (Block sux : block.getSuccessors()) {

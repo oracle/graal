@@ -113,8 +113,8 @@ public final class ConditionalNode extends BinaryNode implements Canonicalizable
         generator.emitConditional(this);
     }
 
-    private ConditionalNode(Condition condition, ValueNode x, ValueNode y) {
-        this(createCompareNode(condition, x, y));
+    private ConditionalNode(@InjectedNodeParameter StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
+        this(createCompareNode(graph, condition, x, y));
     }
 
     private ConditionalNode(ValueNode type, ValueNode object) {

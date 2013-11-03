@@ -80,17 +80,17 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
             }
             if (c < 0) {
                 if (kind() == Kind.Int) {
-                    return IntegerArithmeticNode.sub(x(), ConstantNode.forInt((int) -c, graph()));
+                    return IntegerArithmeticNode.sub(graph(), x(), ConstantNode.forInt((int) -c, graph()));
                 } else {
                     assert kind() == Kind.Long;
-                    return IntegerArithmeticNode.sub(x(), ConstantNode.forLong(-c, graph()));
+                    return IntegerArithmeticNode.sub(graph(), x(), ConstantNode.forLong(-c, graph()));
                 }
             }
         }
         if (x() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(y(), ((NegateNode) x()).x());
+            return IntegerArithmeticNode.sub(graph(), y(), ((NegateNode) x()).x());
         } else if (y() instanceof NegateNode) {
-            return IntegerArithmeticNode.sub(x(), ((NegateNode) y()).x());
+            return IntegerArithmeticNode.sub(graph(), x(), ((NegateNode) y()).x());
         }
         return this;
     }

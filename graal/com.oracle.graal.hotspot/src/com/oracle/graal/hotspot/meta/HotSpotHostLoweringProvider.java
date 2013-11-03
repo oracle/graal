@@ -695,13 +695,14 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
         base /= scale;
         assert NumUtil.isInt(base);
 
+        StructuredGraph graph = location.graph();
         if (index == null) {
-            return ConstantNode.forInt((int) base, location.graph());
+            return ConstantNode.forInt((int) base, graph);
         } else {
             if (base == 0) {
                 return index;
             } else {
-                return IntegerArithmeticNode.add(ConstantNode.forInt((int) base, location.graph()), index);
+                return IntegerArithmeticNode.add(graph, ConstantNode.forInt((int) base, graph), index);
             }
         }
     }
@@ -709,7 +710,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
     private GuardingNode createBoundsCheck(AccessIndexedNode n, LoweringTool tool) {
         StructuredGraph g = n.graph();
         ValueNode array = n.array();
-        ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
+        ValueNode arrayLength = readArrayLength(n.graph(), array, tool.getConstantReflection());
         if (arrayLength == null) {
             Stamp stamp = StampFactory.positiveInt();
             ReadNode readArrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, runtime.getConfig().arrayLengthOffset, g), stamp, BarrierType.NONE, false));

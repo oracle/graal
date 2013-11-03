@@ -46,6 +46,8 @@ public abstract class InductionVariable {
         }
     }
 
+    public abstract StructuredGraph graph();
+
     protected final LoopEx loop;
 
     public InductionVariable(LoopEx loop) {

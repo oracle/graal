@@ -187,7 +187,7 @@ public class DebugInfoBuilder {
             }
         } else if (value instanceof ConstantNode) {
             Debug.metric("StateConstants").increment();
-            return ((ConstantNode) value).value;
+            return ((ConstantNode) value).getValue();
 
         } else if (value != null) {
             Debug.metric("StateVariables").increment();
