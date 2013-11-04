@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.replacements;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -35,9 +36,7 @@ public class DoubleSubstitutions {
 
     @MethodSubstitution
     public static long doubleToRawLongBits(double value) {
-        @JavacBug(id = 6995200)
-        Long result = ConvertNode.convert(ConvertNode.Op.MOV_D2L, value);
-        return result;
+        return ReinterpretNode.reinterpret(Kind.Long, value);
     }
 
     // TODO This method is not necessary, since the JDK method does exactly this
@@ -52,8 +51,6 @@ public class DoubleSubstitutions {
 
     @MethodSubstitution
     public static double longBitsToDouble(long bits) {
-        @JavacBug(id = 6995200)
-        Double result = ConvertNode.convert(ConvertNode.Op.MOV_L2D, bits);
-        return result;
+        return ReinterpretNode.reinterpret(Kind.Double, bits);
     }
 }

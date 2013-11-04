@@ -688,9 +688,9 @@ public class GraphBuilderPhase extends Phase {
         frameState.ipush(append(new NormalizeCompareNode(x, y, isUnorderedLess)));
     }
 
-    private void genConvert(ConvertNode.Op opcode) {
-        ValueNode input = frameState.pop(opcode.from.getStackKind());
-        frameState.push(opcode.to.getStackKind(), append(new ConvertNode(opcode, input)));
+    private void genConvert(Kind from, Kind to) {
+        ValueNode input = frameState.pop(from.getStackKind());
+        frameState.push(to.getStackKind(), append(new ConvertNode(from, to, input)));
     }
 
     private void genIncrement() {
@@ -1940,21 +1940,21 @@ public class GraphBuilderPhase extends Phase {
             case LOR            : // fall through
             case LXOR           : genLogicOp(Kind.Long, opcode); break;
             case IINC           : genIncrement(); break;
-            case I2L            : genConvert(ConvertNode.Op.I2L); break;
-            case I2F            : genConvert(ConvertNode.Op.I2F); break;
-            case I2D            : genConvert(ConvertNode.Op.I2D); break;
-            case L2I            : genConvert(ConvertNode.Op.L2I); break;
-            case L2F            : genConvert(ConvertNode.Op.L2F); break;
-            case L2D            : genConvert(ConvertNode.Op.L2D); break;
-            case F2I            : genConvert(ConvertNode.Op.F2I); break;
-            case F2L            : genConvert(ConvertNode.Op.F2L); break;
-            case F2D            : genConvert(ConvertNode.Op.F2D); break;
-            case D2I            : genConvert(ConvertNode.Op.D2I); break;
-            case D2L            : genConvert(ConvertNode.Op.D2L); break;
-            case D2F            : genConvert(ConvertNode.Op.D2F); break;
-            case I2B            : genConvert(ConvertNode.Op.I2B); break;
-            case I2C            : genConvert(ConvertNode.Op.I2C); break;
-            case I2S            : genConvert(ConvertNode.Op.I2S); break;
+            case I2L            : genConvert(Kind.Int, Kind.Long); break;
+            case I2F            : genConvert(Kind.Int, Kind.Float); break;
+            case I2D            : genConvert(Kind.Int, Kind.Double); break;
+            case L2I            : genConvert(Kind.Long, Kind.Int); break;
+            case L2F            : genConvert(Kind.Long, Kind.Float); break;
+            case L2D            : genConvert(Kind.Long, Kind.Double); break;
+            case F2I            : genConvert(Kind.Float, Kind.Int); break;
+            case F2L            : genConvert(Kind.Float, Kind.Long); break;
+            case F2D            : genConvert(Kind.Float, Kind.Double); break;
+            case D2I            : genConvert(Kind.Double, Kind.Int); break;
+            case D2L            : genConvert(Kind.Double, Kind.Long); break;
+            case D2F            : genConvert(Kind.Double, Kind.Float); break;
+            case I2B            : genConvert(Kind.Int, Kind.Byte); break;
+            case I2C            : genConvert(Kind.Int, Kind.Char); break;
+            case I2S            : genConvert(Kind.Int, Kind.Short); break;
             case LCMP           : genCompareOp(Kind.Long, false); break;
             case FCMPL          : genCompareOp(Kind.Float, true); break;
             case FCMPG          : genCompareOp(Kind.Float, false); break;

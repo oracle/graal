@@ -40,12 +40,11 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.lir.ptx.*;
+import com.oracle.graal.lir.ptx.PTXArithmetic.ConvertOp;
 import com.oracle.graal.lir.ptx.PTXArithmetic.Op1Stack;
 import com.oracle.graal.lir.ptx.PTXArithmetic.Op2Reg;
 import com.oracle.graal.lir.ptx.PTXArithmetic.Op2Stack;
 import com.oracle.graal.lir.ptx.PTXArithmetic.ShiftOp;
-import com.oracle.graal.lir.ptx.PTXArithmetic.Unary1Op;
-import com.oracle.graal.lir.ptx.PTXArithmetic.Unary2Op;
 import com.oracle.graal.lir.ptx.PTXCompare.CompareOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.BranchOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.CondMoveOp;
@@ -63,7 +62,6 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -236,7 +234,7 @@ public class PTXLIRGenerator extends LIRGenerator {
                 Value convertedIndex;
                 Value indexRegister;
 
-                convertedIndex = emitConvert(Op.I2L, index);
+                convertedIndex = emitConvert(Kind.Int, Kind.Long, index);
                 if (scale != 1) {
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(convertedIndex, Constant.forInt(CodeUtil.log2(scale)));
@@ -678,76 +676,16 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConvert(ConvertNode.Op opcode, Value inputVal) {
+    public Variable emitConvert(Kind from, Kind to, Value inputVal) {
         Variable input = load(inputVal);
-        Variable result = newVariable(opcode.to);
-        switch (opcode) {
-            case I2L:
-                append(new Unary2Op(I2L, result, input));
-                break;
-            case L2I:
-                append(new Unary1Op(L2I, result, input));
-                break;
-            case I2B:
-                append(new Unary2Op(I2B, result, input));
-                break;
-            case I2C:
-                append(new Unary1Op(I2C, result, input));
-                break;
-            case I2S:
-                append(new Unary2Op(I2S, result, input));
-                break;
-            case F2D:
-                append(new Unary2Op(F2D, result, input));
-                break;
-            case D2F:
-                append(new Unary2Op(D2F, result, input));
-                break;
-            case I2F:
-                append(new Unary2Op(I2F, result, input));
-                break;
-            case I2D:
-                append(new Unary2Op(I2D, result, input));
-                break;
-            case F2I:
-                append(new Unary2Op(F2I, result, input));
-                break;
-            case D2I:
-                append(new Unary2Op(D2I, result, input));
-                break;
-            case L2F:
-                append(new Unary2Op(L2F, result, input));
-                break;
-            case L2D:
-                append(new Unary2Op(L2D, result, input));
-                break;
-            case F2L:
-                append(new Unary2Op(F2L, result, input));
-                break;
-            case D2L:
-                append(new Unary2Op(D2L, result, input));
-                break;
-            case MOV_I2F:
-                append(new Unary2Op(MOV_I2F, result, input));
-                break;
-            case MOV_L2D:
-                append(new Unary2Op(MOV_L2D, result, input));
-                break;
-            case MOV_F2I:
-                append(new Unary2Op(MOV_F2I, result, input));
-                break;
-            case MOV_D2L:
-                append(new Unary2Op(MOV_D2L, result, input));
-                break;
-            case UNSIGNED_I2L:
-                // Instructions that move or generate 32-bit register values also set the upper 32
-                // bits of the register to zero.
-                // Consequently, there is no need for a special zero-extension move.
-                emitMove(result, input);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+        Variable result = newVariable(to);
+        append(new ConvertOp(result, input, to, from));
+        return result;
+    }
+
+    public Value emitReinterpret(Kind to, Value inputVal) {
+        Variable result = newVariable(to);
+        emitMove(result, inputVal);
         return result;
     }
 

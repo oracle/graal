@@ -136,7 +136,7 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
         if (x() instanceof ConvertNode && y() instanceof ConvertNode) {
             ConvertNode convertX = (ConvertNode) x();
             ConvertNode convertY = (ConvertNode) y();
-            if (convertX.opcode.isLossless() && convertY.opcode.isLossless()) {
+            if (convertX.isLossless() && convertY.isLossless()) {
                 setX(convertX.value());
                 setY(convertY.value());
             }

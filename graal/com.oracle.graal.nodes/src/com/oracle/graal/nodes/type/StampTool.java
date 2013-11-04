@@ -304,7 +304,7 @@ public class StampTool {
         return StampFactory.forInteger(Kind.Long, intStamp.lowerBound(), intStamp.upperBound(), signExtend(intStamp.downMask(), Kind.Int), signExtend(intStamp.upMask(), Kind.Int));
     }
 
-    private static IntegerStamp narrowingKindConvertion(IntegerStamp fromStamp, Kind toKind) {
+    public static IntegerStamp narrowingKindConversion(IntegerStamp fromStamp, Kind toKind) {
         assert toKind == Kind.Byte || toKind == Kind.Char || toKind == Kind.Short || toKind == Kind.Int;
         final long upperBound;
         if (fromStamp.lowerBound() < toKind.getMinValue()) {
@@ -332,26 +332,6 @@ public class StampTool {
         } else {
             return value;
         }
-    }
-
-    public static IntegerStamp intToByte(IntegerStamp intStamp) {
-        assert intStamp.kind() == Kind.Int;
-        return narrowingKindConvertion(intStamp, Kind.Byte);
-    }
-
-    public static IntegerStamp intToShort(IntegerStamp intStamp) {
-        assert intStamp.kind() == Kind.Int;
-        return narrowingKindConvertion(intStamp, Kind.Short);
-    }
-
-    public static IntegerStamp intToChar(IntegerStamp intStamp) {
-        assert intStamp.kind() == Kind.Int;
-        return narrowingKindConvertion(intStamp, Kind.Char);
-    }
-
-    public static IntegerStamp longToInt(IntegerStamp longStamp) {
-        assert longStamp.kind() == Kind.Long;
-        return narrowingKindConvertion(longStamp, Kind.Int);
     }
 
     public static long saturate(long v, Kind kind) {

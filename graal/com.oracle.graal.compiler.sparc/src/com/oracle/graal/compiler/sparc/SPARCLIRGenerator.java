@@ -61,7 +61,6 @@ import com.oracle.graal.lir.sparc.SPARCMove.NullCheckOp;
 import com.oracle.graal.lir.sparc.SPARCMove.StackLoadAddressOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -156,7 +155,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             } else {
                 if (scale != 1) {
                     // Variable longIndex = newVariable(Kind.Long);
-                    Variable longIndex = emitConvert(Op.I2L, index);
+                    AllocatableValue longIndex = emitConvert(Kind.Int, Kind.Long, index);
                     if (CodeUtil.isPowerOf2(scale)) {
                         indexRegister = emitShl(longIndex, Constant.forLong(CodeUtil.log2(scale)));
                     } else {
@@ -755,78 +754,164 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
         }
     }
 
-    @Override
-    public Variable emitConvert(Op opcode, Value inputVal) {
-        Variable input = load(inputVal);
-        Variable result = newVariable(opcode.to);
-        switch (opcode) {
-            case I2L:
-                append(new Unary2Op(I2L, result, input));
-                break;
-            case L2I:
-                append(new Unary2Op(L2I, result, input));
-                break;
-            case I2B:
-                append(new Unary2Op(I2B, result, input));
-                break;
-            case I2C:
-                append(new Unary2Op(I2C, result, input));
-                break;
-            case I2S:
-                append(new Unary2Op(I2S, result, input));
-                break;
-            case F2D:
-                append(new Unary2Op(F2D, result, input));
-                break;
-            case D2F:
-                append(new Unary2Op(D2F, result, input));
-                break;
-            case I2F:
-                append(new Unary2Op(I2F, result, input));
-                break;
-            case I2D:
-                append(new Unary2Op(I2D, result, input));
-                break;
-            case F2I:
-                append(new Unary2Op(F2I, result, input));
-                break;
-            case D2I:
-                append(new Unary2Op(D2I, result, input));
-                break;
-            case L2F:
-                append(new Unary2Op(L2F, result, input));
-                break;
-            case L2D:
-                append(new Unary2Op(L2D, result, input));
-                break;
-            case F2L:
-                append(new Unary2Op(F2L, result, input));
-                break;
-            case D2L:
-                append(new Unary2Op(D2L, result, input));
-                break;
-            case MOV_I2F:
-                append(new Unary2Op(MOV_I2F, result, input));
-                break;
-            case MOV_L2D:
-                append(new Unary2Op(MOV_L2D, result, input));
-                break;
-            case MOV_F2I:
-                append(new Unary2Op(MOV_F2I, result, input));
-                break;
-            case MOV_D2L:
-                append(new Unary2Op(MOV_D2L, result, input));
-                break;
-            case UNSIGNED_I2L:
-                // Instructions that move or generate 32-bit register values also set the upper 32
-                // bits of the register to zero.
-                // Consequently, there is no need for a special zero-extension move.
-                emitMove(result, input);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+    private AllocatableValue emitConvertMove(Kind kind, AllocatableValue input) {
+        Variable result = newVariable(kind);
+        emitMove(result, input);
         return result;
+    }
+
+    private AllocatableValue emitConvert2Op(Kind kind, SPARCArithmetic op, AllocatableValue input) {
+        Variable result = newVariable(kind);
+        append(new Unary2Op(op, result, input));
+        return result;
+    }
+
+    @Override
+    public AllocatableValue emitConvert(Kind from, Kind to, Value inputVal) {
+        assert inputVal.getKind() == from.getStackKind();
+
+        AllocatableValue input = asAllocatable(inputVal);
+        if (from == to) {
+            return input;
+        }
+        switch (to) {
+            case Byte:
+                switch (from) {
+                    case Short:
+                    case Char:
+                    case Int:
+                    case Long:
+                        return emitConvert2Op(to, I2B, input);
+                    case Float:
+                    case Double:
+                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
+                        return emitConvert(Kind.Int, to, intVal);
+                }
+                break;
+            case Char:
+                switch (from) {
+                    case Byte:
+                    case Short:
+                    case Int:
+                    case Long:
+                        return emitConvert2Op(to, I2C, input);
+                    case Float:
+                    case Double:
+                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
+                        return emitConvert(Kind.Int, to, intVal);
+                }
+                break;
+            case Short:
+                switch (from) {
+                    case Byte:
+                    case Char:
+                    case Int:
+                    case Long:
+                        return emitConvert2Op(to, I2S, input);
+                    case Float:
+                    case Double:
+                        AllocatableValue intVal = emitConvert(from, Kind.Int, inputVal);
+                        return emitConvert(Kind.Int, to, intVal);
+                }
+                break;
+            case Int:
+                switch (from) {
+                    case Byte:
+                    case Short:
+                    case Char:
+                        return emitConvertMove(to, input);
+                    case Long:
+                        return emitConvert2Op(to, L2I, input);
+                    case Float:
+                        return emitConvert2Op(to, F2I, input);
+                    case Double:
+                        return emitConvert2Op(to, D2I, input);
+                }
+                break;
+            case Long:
+                switch (from) {
+                    case Byte:
+                    case Short:
+                    case Char:
+                    case Int:
+                        return emitConvert2Op(to, I2L, input);
+                    case Float:
+                        return emitConvert2Op(to, F2L, input);
+                    case Double:
+                        return emitConvert2Op(to, D2L, input);
+                }
+                break;
+            case Float:
+                switch (from) {
+                    case Byte:
+                    case Short:
+                    case Char:
+                    case Int:
+                        return emitConvert2Op(to, I2F, input);
+                    case Long:
+                        return emitConvert2Op(to, L2F, input);
+                    case Double:
+                        return emitConvert2Op(to, D2F, input);
+                }
+                break;
+            case Double:
+                switch (from) {
+                    case Byte:
+                    case Short:
+                    case Char:
+                    case Int:
+                        return emitConvert2Op(to, I2D, input);
+                    case Long:
+                        return emitConvert2Op(to, L2D, input);
+                    case Float:
+                        return emitConvert2Op(to, F2D, input);
+                }
+                break;
+        }
+        throw GraalInternalError.shouldNotReachHere();
+    }
+
+    public AllocatableValue emitReinterpret(Kind to, Value inputVal) {
+        Kind from = inputVal.getKind();
+        AllocatableValue input = asAllocatable(inputVal);
+
+        // These cases require a move between CPU and FPU registers:
+        switch (to) {
+            case Int:
+                switch (from) {
+                    case Float:
+                    case Double:
+                        return emitConvert2Op(to, MOV_F2I, input);
+                }
+                break;
+            case Long:
+                switch (from) {
+                    case Float:
+                    case Double:
+                        return emitConvert2Op(to, MOV_D2L, input);
+                }
+                break;
+            case Float:
+                switch (from) {
+                    case Int:
+                    case Long:
+                        return emitConvert2Op(to, MOV_I2F, input);
+                }
+                break;
+            case Double:
+                switch (from) {
+                    case Int:
+                    case Long:
+                        return emitConvert2Op(to, MOV_L2D, input);
+                }
+                break;
+        }
+
+        // Otherwise, just emit an ordinary move instruction.
+        // Instructions that move or generate 32-bit register values also set the upper 32
+        // bits of the register to zero.
+        // Consequently, there is no need for a special zero-extension move.
+        return emitConvertMove(to, input);
     }
 
     @Override

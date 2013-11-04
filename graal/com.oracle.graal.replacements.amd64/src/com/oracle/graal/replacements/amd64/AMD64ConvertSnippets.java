@@ -25,13 +25,10 @@ package com.oracle.graal.replacements.amd64;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 import static com.oracle.graal.replacements.SnippetTemplate.*;
 
-import java.util.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
@@ -147,20 +144,44 @@ public class AMD64ConvertSnippets implements Snippets {
 
     public static class Templates extends AbstractTemplates {
 
-        private final EnumMap<Op, SnippetInfo> snippets;
+        private final SnippetInfo f2i;
+        private final SnippetInfo f2l;
+        private final SnippetInfo d2i;
+        private final SnippetInfo d2l;
 
         public Templates(Providers providers, TargetDescription target) {
             super(providers, target);
 
-            snippets = new EnumMap<>(Op.class);
-            snippets.put(Op.F2I, snippet(AMD64ConvertSnippets.class, "f2i"));
-            snippets.put(Op.F2L, snippet(AMD64ConvertSnippets.class, "f2l"));
-            snippets.put(Op.D2I, snippet(AMD64ConvertSnippets.class, "d2i"));
-            snippets.put(Op.D2L, snippet(AMD64ConvertSnippets.class, "d2l"));
+            f2i = snippet(AMD64ConvertSnippets.class, "f2i");
+            f2l = snippet(AMD64ConvertSnippets.class, "f2l");
+            d2i = snippet(AMD64ConvertSnippets.class, "d2i");
+            d2l = snippet(AMD64ConvertSnippets.class, "d2l");
         }
 
         public void lower(ConvertNode convert, LoweringTool tool) {
-            SnippetInfo key = snippets.get(convert.opcode);
+            SnippetInfo key = null;
+            switch (convert.getFromKind()) {
+                case Float:
+                    switch (convert.getToKind()) {
+                        case Int:
+                            key = f2i;
+                            break;
+                        case Long:
+                            key = f2l;
+                            break;
+                    }
+                    break;
+                case Double:
+                    switch (convert.getToKind()) {
+                        case Int:
+                            key = d2i;
+                            break;
+                        case Long:
+                            key = d2l;
+                            break;
+                    }
+                    break;
+            }
             if (key == null) {
                 return;
             }
@@ -169,10 +190,10 @@ public class AMD64ConvertSnippets implements Snippets {
 
             Arguments args = new Arguments(key, graph.getGuardsStage());
             args.add("input", convert.value());
-            args.add("result", graph.unique(new AMD64ConvertNode(convert.opcode, convert.value())));
+            args.add("result", graph.unique(new AMD64ConvertNode(convert.getFromKind(), convert.getToKind(), convert.value())));
 
             SnippetTemplate template = template(args);
-            Debug.log("Lowering %s in %s: node=%s, template=%s, arguments=%s", convert.opcode, graph, convert, template, args);
+            Debug.log("Lowering %c2%c in %s: node=%s, template=%s, arguments=%s", convert.getFromKind().getTypeChar(), convert.getToKind().getTypeChar(), graph, convert, template, args);
             template.instantiate(providers.getMetaAccess(), convert, DEFAULT_REPLACER, tool, args);
             graph.removeFloating(convert);
         }

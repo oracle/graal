@@ -38,28 +38,16 @@ public enum HSAILArithmetic {
     CALL,
     FDIV,
     FREM,
-    D2F,
-    D2I,
-    D2L,
     DADD,
     DDIV,
     DMUL,
     DNEG,
     DREM,
     DSUB,
-    F2D,
-    F2I,
-    F2L,
     FADD,
     FMUL,
     FNEG,
     FSUB,
-    I2B,
-    I2C,
-    I2D,
-    I2F,
-    I2L,
-    I2S,
     IADD,
     IAND,
     ICARRY,
@@ -84,9 +72,6 @@ public enum HSAILArithmetic {
     IUSHR,
     IUSUB,
     IXOR,
-    L2D,
-    L2F,
-    L2I,
     LADD,
     LAND,
     LCARRY,
@@ -111,13 +96,28 @@ public enum HSAILArithmetic {
     LUSHR,
     LUSUB,
     LXOR,
-    MOV_F2I,
-    MOV_D2L,
-    MOV_I2F,
-    MOV_L2D,
     OADD,
     SQRT,
     UNDEF;
+
+    public static class ConvertOp extends HSAILLIRInstruction {
+        private final Kind from;
+        private final Kind to;
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue x;
+
+        public ConvertOp(AllocatableValue result, AllocatableValue x, Kind to, Kind from) {
+            this.from = from;
+            this.to = to;
+            this.result = result;
+            this.x = x;
+        }
+
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+            masm.emitConvert(result, x, to, from);
+        }
+    }
 
     public static class Op1Stack extends HSAILLIRInstruction {
         @Opcode private final HSAILArithmetic opcode;
@@ -293,29 +293,6 @@ public enum HSAILArithmetic {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
-                case I2F:
-                case I2D:
-                case I2L:
-                case F2I:
-                case F2D:
-                case F2L:
-                case D2I:
-                case D2L:
-                case D2F:
-                case L2I:
-                case L2F:
-                case L2D:
-                    masm.emitConvert(dst, src);
-                    break;
-                case I2S:
-                    masm.emitConvertIntToShort(dst, src);
-                    break;
-                case I2C:
-                    masm.emitConvertIntToChar(dst, src);
-                    break;
-                case I2B:
-                    masm.emitConvertIntToByte(dst, src);
-                    break;
                 case SQRT:
                     masm.emit("sqrt", dst, src);
                     break;

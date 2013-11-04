@@ -25,7 +25,6 @@ package com.oracle.graal.replacements.amd64;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -37,12 +36,14 @@ import com.oracle.graal.nodes.type.*;
 public class AMD64ConvertNode extends FloatingNode implements ArithmeticLIRLowerable {
 
     @Input private ValueNode value;
-    public final Op opcode;
+    private final Kind from;
+    private final Kind to;
 
-    public AMD64ConvertNode(Op opcode, ValueNode value) {
-        super(StampFactory.forKind(opcode.to.getStackKind()));
-        this.opcode = opcode;
+    public AMD64ConvertNode(Kind from, Kind to, ValueNode value) {
+        super(StampFactory.forKind(to.getStackKind()));
         this.value = value;
+        this.from = from;
+        this.to = to;
     }
 
     public Constant evalConst(Constant... inputs) {
@@ -52,6 +53,6 @@ public class AMD64ConvertNode extends FloatingNode implements ArithmeticLIRLower
     }
 
     public void generate(ArithmeticLIRGenerator gen) {
-        gen.setResult(this, gen.emitConvert(opcode, gen.operand(value)));
+        gen.setResult(this, gen.emitConvert(from, to, gen.operand(value)));
     }
 }

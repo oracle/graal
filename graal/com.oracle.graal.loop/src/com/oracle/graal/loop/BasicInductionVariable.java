@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
-import com.oracle.graal.nodes.calc.ConvertNode.Op;
 import com.oracle.graal.nodes.type.*;
 
 public class BasicInductionVariable extends InductionVariable {
@@ -127,10 +126,9 @@ public class BasicInductionVariable extends InductionVariable {
         ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
         ValueNode initNode = this.initNode();
         if (fromKind != kind) {
-            Op convertOp = Op.getOp(fromKind, kind);
-            stride = graph.unique(new ConvertNode(convertOp, stride));
-            maxTripCount = graph.unique(new ConvertNode(convertOp, maxTripCount));
-            initNode = graph.unique(new ConvertNode(convertOp, initNode));
+            stride = graph.unique(new ConvertNode(fromKind, kind, stride));
+            maxTripCount = graph.unique(new ConvertNode(fromKind, kind, maxTripCount));
+            initNode = graph.unique(new ConvertNode(fromKind, kind, initNode));
         }
         return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerKind(kind, 1, graph))), initNode);
     }

@@ -235,37 +235,11 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
-    /**
-     * I2S requires special handling because Graal passes an int for the destination operand instead
-     * of a short.
-     */
-    public void emitConvertIntToShort(Value dest, Value src) {
-        emitString("cvt_s16_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
-    }
-
-    /**
-     * I2C requires special handling because Graal passes an int for the destination operand instead
-     * of a char.
-     */
-    public void emitConvertIntToChar(Value dest, Value src) {
-        emitString("cvt_u16_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
-    }
-
-    /**
-     * I2B requires special handling because Graal passes an int for the destination operand instead
-     * of a byte.
-     */
-    public void emitConvertIntToByte(Value dest, Value src) {
-        emitString("cvt_s8_s32 " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
-    }
-
-    /**
-     * Generic handler for all other conversions.
-     * 
-     */
-    public void emitConvert(Value dest, Value src) {
-        String prefix = (getArgType(dest).equals("f32") && getArgType(src).equals("f64")) ? "cvt_near_" : "cvt_";
-        emitString(prefix + getArgType(dest) + "_" + getArgType(src) + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
+    public void emitConvert(Value dest, Value src, Kind destKind, Kind srcKind) {
+        String destType = getArgTypeFromKind(destKind);
+        String srcType = getArgTypeFromKind(srcKind);
+        String prefix = (destType.equals("f32") && srcType.equals("f64")) ? "cvt_near_" : "cvt_";
+        emitString(prefix + destType + "_" + srcType + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
     }
 
     public static String mapAddress(HSAILAddress addr) {

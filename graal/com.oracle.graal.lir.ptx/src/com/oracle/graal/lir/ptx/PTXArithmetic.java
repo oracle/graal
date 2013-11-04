@@ -39,84 +39,33 @@ public enum PTXArithmetic {
     LADD, LSUB, LMUL, LDIV, LDIVREM, LREM, LUDIV, LUREM, LAND, LOR, LXOR, LSHL, LSHR, LUSHR,
     FADD, FSUB, FMUL, FDIV, FREM, FAND, FOR, FXOR,
     DADD, DSUB, DMUL, DDIV, DREM, DAND, DOR, DXOR,
-    INEG, LNEG, FNEG, DNEG, INOT, LNOT,
-    I2L, L2I, I2B, I2C, I2S,
-    F2D, D2F,
-    I2F, I2D, F2I, D2I,
-    L2F, L2D, F2L, D2L,
-    MOV_I2F, MOV_L2D, MOV_F2I, MOV_D2L;
+    INEG, LNEG, FNEG, DNEG, INOT, LNOT;
 
 
-    /**
-     * Unary operation with separate source and destination operand. 
-     */
-    public static class Unary2Op extends PTXLIRInstruction {
-        @Opcode private final PTXArithmetic opcode;
+    public static class ConvertOp extends PTXLIRInstruction {
+        private final Kind from;
+        private final Kind to;
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue x;
 
-        public Unary2Op(PTXArithmetic opcode, AllocatableValue result, AllocatableValue x) {
-            this.opcode = opcode;
+        public ConvertOp(AllocatableValue result, AllocatableValue x, Kind to, Kind from) {
+            this.from = from;
+            this.to = to;
             this.result = result;
             this.x = x;
         }
 
         @Override
         public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            switch (opcode) {
-                case I2L:
-                case I2C:
-                case I2B:
-                case I2F:
-                case I2D:
-                case F2I:
-                case F2L:
-                case F2D:
-                case D2I:
-                case D2L:
-                case D2F:
-                    break;  // cvt handles the move
-                default:
-                    PTXMove.move(tasm, masm, result, x);
+            Variable dst = (Variable) result;
+            Variable src = (Variable) x;
+            if (from == Kind.Long && to == Kind.Int) {
+                new And(dst, src, Constant.forLong(0xFFFFFFFF)).emit(masm);
+            } else if ((from == Kind.Int || from == Kind.Long) && to == Kind.Short) {
+                new And(dst, src, Constant.forInt((short) 0xFFFF)).emit(masm);
+            } else {
+                new Cvt((Variable) result, (Variable) x, to, from).emit(masm);
             }
-            emit(tasm, masm, opcode, result, x, null);
-        }
-    }
-
-    /**
-     * Unary operation with single operand for source and destination. 
-     */
-    public static class Unary1Op extends PTXLIRInstruction {
-        @Opcode private final PTXArithmetic opcode;
-        @Def({REG, HINT}) protected AllocatableValue result;
-        @Use({REG, STACK}) protected AllocatableValue x;
-
-        public Unary1Op(PTXArithmetic opcode, AllocatableValue result, AllocatableValue x) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            emit(tasm, masm, opcode, result);
-        }
-    }
-
-    public static class Op1Reg extends PTXLIRInstruction {
-        @Opcode private final PTXArithmetic opcode;
-        @Def({REG, HINT}) protected Value result;
-        @Use({REG}) protected Value x;
-
-        public Op1Reg(PTXArithmetic opcode, Value result, Value x) {
-            this.opcode = opcode;
-            this.result = result;
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
         }
     }
 
@@ -270,22 +219,6 @@ public enum PTXArithmetic {
         }
     }
 
-    protected static void emit(@SuppressWarnings("unused") TargetMethodAssembler tasm,
-                               PTXAssembler masm, PTXArithmetic opcode, Value result) {
-
-        Variable var = (Variable) result;
-        switch (opcode) {
-            case L2I:
-                new And(var, var, Constant.forLong(0xFFFFFFFF)).emit(masm);
-                break;
-            case I2C:
-                new And(var, var, Constant.forInt((short) 0xFFFF)).emit(masm);
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere("missing: "  + opcode);
-        }
-    }
-
     public static void emit(TargetMethodAssembler tasm, PTXAssembler masm, PTXArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         Variable dest = (Variable) dst;
@@ -301,19 +234,6 @@ public enum PTXArithmetic {
                 case INOT:
                 case LNOT:
                     new Not(dest, source).emit(masm);
-                    break;
-                case I2L:
-                case I2C:
-                case I2B:
-                case I2F:
-                case I2D:
-                case F2I:
-                case F2L:
-                case F2D:
-                case D2I:
-                case D2L:
-                case D2F:
-                    new Cvt(dest, source).emit(masm);
                     break;
                 case LSHL:
                     new Shl(dest, dest, src).emit(masm);

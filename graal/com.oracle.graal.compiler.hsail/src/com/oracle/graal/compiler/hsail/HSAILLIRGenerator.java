@@ -146,7 +146,7 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             } else {
                 Value indexRegister;
                 Value convertedIndex;
-                convertedIndex = this.emitConvert(ConvertNode.Op.I2L, index);
+                convertedIndex = this.emitConvert(Kind.Int, Kind.Long, index);
                 if (scale != 1) {
                     indexRegister = emitUMul(convertedIndex, Constant.forInt(scale));
                 } else {
@@ -593,55 +593,17 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitConvert(ConvertNode.Op opcode, Value inputVal) {
+    public Variable emitConvert(Kind from, Kind to, Value inputVal) {
         Variable input = load(inputVal);
-        Variable result = newVariable(opcode.to);
-        switch (opcode) {
-            case I2F:
-                append(new Op1Stack(I2F, result, input));
-                break;
-            case I2L:
-                append(new Op1Stack(I2L, result, input));
-                break;
-            case I2S:
-                append(new Op1Stack(I2S, result, input));
-                break;
-            case I2C:
-                append(new Op1Stack(I2C, result, input));
-                break;
-            case I2B:
-                append(new Op1Stack(I2B, result, input));
-                break;
-            case I2D:
-                append(new Op1Stack(I2D, result, input));
-                break;
-            case D2I:
-                append(new Op1Stack(D2I, result, input));
-                break;
-            case D2F:
-                append(new Op1Stack(D2F, result, input));
-                break;
-            case D2L:
-                append(new Op1Stack(D2L, result, input));
-                break;
-            case L2I:
-                append(new Op1Stack(L2I, result, input));
-                break;
-            case L2F:
-                append(new Op1Stack(L2F, result, input));
-                break;
-            case L2D:
-                append(new Op1Stack(L2D, result, input));
-                break;
-            case F2D:
-                append(new Op1Stack(F2D, result, input));
-                break;
-            case F2L:
-                append(new Op1Stack(F2L, result, input));
-                break;
-            default:
-                throw GraalInternalError.shouldNotReachHere();
-        }
+        Variable result = newVariable(to);
+        append(new ConvertOp(result, input, to, from));
+        return result;
+    }
+
+    @Override
+    public Value emitReinterpret(Kind to, Value inputVal) {
+        Variable result = newVariable(to);
+        emitMove(result, inputVal);
         return result;
     }
 

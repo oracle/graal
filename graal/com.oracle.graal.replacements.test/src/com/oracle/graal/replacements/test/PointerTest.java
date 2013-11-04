@@ -122,7 +122,8 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
         if (indexConvert) {
             ConvertNode convert = (ConvertNode) location.getIndex();
-            Assert.assertEquals(ConvertNode.Op.I2L, convert.opcode);
+            Assert.assertEquals(Kind.Int, convert.getFromKind());
+            Assert.assertEquals(Kind.Long, convert.getToKind());
             Assert.assertEquals(graph.getLocal(1), convert.value());
         } else {
             Assert.assertEquals(graph.getLocal(1), location.getIndex());
@@ -151,7 +152,8 @@ public class PointerTest extends GraalCompilerTest implements Snippets {
 
         if (indexConvert) {
             ConvertNode convert = (ConvertNode) location.getIndex();
-            Assert.assertEquals(ConvertNode.Op.I2L, convert.opcode);
+            Assert.assertEquals(Kind.Int, convert.getFromKind());
+            Assert.assertEquals(Kind.Long, convert.getToKind());
             Assert.assertEquals(graph.getLocal(1), convert.value());
         } else {
             Assert.assertEquals(graph.getLocal(1), location.getIndex());
