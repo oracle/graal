@@ -35,10 +35,10 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new LoweringPhase(canonicalizer));
 
+        appendPhase(new RemoveValueProxyPhase());
+
         appendPhase(new ExpandLogicPhase());
 
         appendPhase(new DeadCodeEliminationPhase());
-
-        appendPhase(new RemoveValueProxyPhase());
     }
 }
