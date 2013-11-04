@@ -79,6 +79,16 @@ public class HSAILControlFlow {
         }
     }
 
+    public static class ForeignCall2ArgOp extends ForeignCall1ArgOp {
+
+        @Use({REG, ILLEGAL}) protected Value arg2;
+
+        public ForeignCall2ArgOp(String callName, Value out, Value arg1, Value arg2) {
+            super(callName, out, arg1);
+            this.arg2 = arg2;
+        }
+    }
+
     public static class CompareBranchOp extends HSAILLIRInstruction implements StandardOp.BranchOp {
 
         @Opcode protected final HSAILCompare opcode;
@@ -205,13 +215,13 @@ public class HSAILControlFlow {
 
         @Opcode protected final HSAILCompare opcode;
         @Def({REG, HINT}) protected Value result;
-        @Alive({REG}) protected Value trueValue;
+        @Use({REG, STACK, CONST}) protected Value trueValue;
         @Use({REG, STACK, CONST}) protected Value falseValue;
         @Use({REG, STACK, CONST}) protected Value left;
         @Use({REG, STACK, CONST}) protected Value right;
         protected final Condition condition;
 
-        public CondMoveOp(HSAILCompare opcode, Variable left, Variable right, Variable result, Condition condition, Variable trueValue, Value falseValue) {
+        public CondMoveOp(HSAILCompare opcode, Variable left, Variable right, Variable result, Condition condition, Value trueValue, Value falseValue) {
             this.opcode = opcode;
             this.result = result;
             this.left = left;

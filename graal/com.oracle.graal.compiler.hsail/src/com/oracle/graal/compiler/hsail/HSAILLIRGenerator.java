@@ -45,8 +45,6 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.CompareBranchOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCompareBranchOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCondMoveOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCall1ArgOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.ForeignCallNoArgOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
 import com.oracle.graal.lir.hsail.HSAILMove.LeaOp;
 import com.oracle.graal.lir.hsail.HSAILMove.MoveFromRegOp;
@@ -625,27 +623,6 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     @Override
     protected void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
         throw GraalInternalError.unimplemented();
-    }
-
-    @Override
-    protected void emitForeignCall(ForeignCallLinkage linkage, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
-        String callName = linkage.getDescriptor().getName();
-        if (callName.equals("createOutOfBoundsException") || callName.equals("createNullPointerException")) {
-            // hack Alert !!
-            switch (arguments.length) {
-                case 0:
-                    append(new ForeignCallNoArgOp(callName, result));
-                    break;
-                case 1:
-                    append(new ForeignCall1ArgOp(callName, result, arguments[0]));
-                    break;
-                default:
-                    throw GraalInternalError.unimplemented();
-            }
-
-        } else {
-            throw GraalInternalError.unimplemented();
-        }
     }
 
     @Override
