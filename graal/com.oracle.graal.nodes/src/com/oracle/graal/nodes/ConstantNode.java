@@ -78,6 +78,11 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     }
 
     @Override
+    public boolean isDeleted() {
+        return false;
+    }
+
+    @Override
     public boolean isAlive() {
         return true;
     }
