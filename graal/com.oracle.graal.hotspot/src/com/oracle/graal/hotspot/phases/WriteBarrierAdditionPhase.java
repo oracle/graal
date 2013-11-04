@@ -26,10 +26,11 @@ import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.nodes.*;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
+import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 
 public class WriteBarrierAdditionPhase extends Phase {
@@ -74,11 +75,14 @@ public class WriteBarrierAdditionPhase extends Phase {
     }
 
     protected void addG1PostWriteBarrier(AccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(object, value, location, precise)));
+        final boolean alwaysNull = ObjectStamp.isObjectAlwaysNull(value);
+        graph.addAfterFixed(node, graph.add(new G1PostWriteBarrier(object, value, location, precise, alwaysNull)));
     }
 
     protected void addSerialPostWriteBarrier(AccessNode node, ValueNode object, ValueNode value, LocationNode location, boolean precise, StructuredGraph graph) {
-        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, value, location, precise)));
+        final boolean alwaysNull = ObjectStamp.isObjectAlwaysNull(value);
+        final LocationNode loc = (precise ? location : null);
+        graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(object, loc, precise, alwaysNull)));
     }
 
     private void addWriteNodeBarriers(WriteNode node, StructuredGraph graph) {
