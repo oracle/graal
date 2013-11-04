@@ -274,11 +274,11 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         gen.setResult(this, gen.emitConvert(from, to, gen.operand(value())));
     }
 
-    public static ValueNode convert(Kind toKind, ValueNode value) {
+    public static ValueNode convert(StructuredGraph graph, Kind toKind, ValueNode value) {
         Kind fromKind = value.kind();
         if (fromKind == toKind) {
             return value;
         }
-        return value.graph().unique(new ConvertNode(fromKind, toKind, value));
+        return graph.unique(new ConvertNode(fromKind, toKind, value));
     }
 }

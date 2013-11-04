@@ -93,7 +93,7 @@ public class DerivedOffsetInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
-        return op(base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(kind, offset));
+        return op(base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(graph(), kind, offset));
     }
 
     @Override

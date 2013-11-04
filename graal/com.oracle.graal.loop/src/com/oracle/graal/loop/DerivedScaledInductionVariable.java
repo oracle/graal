@@ -103,7 +103,7 @@ public class DerivedScaledInductionVariable extends InductionVariable {
 
     @Override
     public ValueNode extremumNode(boolean assumePositiveTripCount, Kind kind) {
-        return IntegerArithmeticNode.mul(graph(), base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(kind, scale));
+        return IntegerArithmeticNode.mul(graph(), base.extremumNode(assumePositiveTripCount, kind), ConvertNode.convert(graph(), kind, scale));
     }
 
     @Override
