@@ -451,31 +451,44 @@ public final class NodeUtil {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T extends Node> T findParent(final Node start, final Class<T> clazz) {
-        assert start != null;
-        if (clazz.isInstance(start.getParent())) {
-            return (T) start.getParent();
+    public static <T> T findParent(Node start, Class<T> clazz) {
+        Node parent = start.getParent();
+        if (parent == null) {
+            return null;
+        } else if (clazz.isInstance(parent)) {
+            return clazz.cast(parent);
         } else {
-            return start.getParent() != null ? findParent(start.getParent(), clazz) : null;
+            return findParent(parent, clazz);
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public static <I> I findParentInterface(final Node start, final Class<I> clazz) {
-        assert start != null;
-        if (clazz.isInstance(start.getParent())) {
-            return (I) start.getParent();
-        } else {
-            return (start.getParent() != null ? findParentInterface(start.getParent(), clazz) : null);
+    public static <T> List<T> findAllParents(Node start, Class<T> clazz) {
+        List<T> parents = new ArrayList<>();
+        T parent = findParent(start, clazz);
+        while (parent != null) {
+            parents.add(parent);
+            parent = findParent((Node) parent, clazz);
         }
+        return parents;
     }
 
-    @SuppressWarnings("unchecked")
+    public static List<Node> collectNodes(Node parent, Node child) {
+        List<Node> nodes = new ArrayList<>();
+        Node current = child;
+        while (current != null) {
+            nodes.add(current);
+            if (current == parent) {
+                return nodes;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalArgumentException("Node " + parent + " is not a parent of " + child + ".");
+    }
+
     public static <T> T findFirstNodeInstance(Node root, Class<T> clazz) {
         for (Node childNode : findNodeChildren(root)) {
             if (clazz.isInstance(childNode)) {
-                return (T) childNode;
+                return clazz.cast(childNode);
             } else {
                 T node = findFirstNodeInstance(childNode, clazz);
                 if (node != null) {
