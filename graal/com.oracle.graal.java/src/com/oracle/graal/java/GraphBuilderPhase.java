@@ -49,12 +49,20 @@ import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
 public class GraphBuilderPhase extends Phase {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "The trace level for the bytecode parser used when building a graph from bytecode")
+        public static final OptionValue<Integer> TraceBytecodeParserLevel = new OptionValue<>(0);
+        // @formatter:on
+    }
 
     public static final class RuntimeCalls {
 
@@ -63,14 +71,14 @@ public class GraphBuilderPhase extends Phase {
     }
 
     /**
-     * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
-     * the bytecode instructions as they are parsed.
+     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
+     * bytecode instructions as they are parsed.
      */
     public static final int TRACELEVEL_INSTRUCTIONS = 1;
 
     /**
-     * The minimum value to which {@link GraalOptions#TraceBytecodeParserLevel} must be set to trace
-     * the frame state before each bytecode instruction as it is parsed.
+     * The minimum value to which {@link Options#TraceBytecodeParserLevel} must be set to trace the
+     * frame state before each bytecode instruction as it is parsed.
      */
     public static final int TRACELEVEL_STATE = 2;
 
@@ -1787,8 +1795,10 @@ public class GraphBuilderPhase extends Phase {
         }
     }
 
+    private final int traceLevel = Options.TraceBytecodeParserLevel.getValue();
+
     private void traceState() {
-        if (TraceBytecodeParserLevel.getValue() >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
+        if (traceLevel >= TRACELEVEL_STATE && Debug.isLogEnabled()) {
             Debug.log(String.format("|   state [nr locals = %d, stack depth = %d, method = %s]", frameState.localsSize(), frameState.stackSize(), method));
             for (int i = 0; i < frameState.localsSize(); ++i) {
                 ValueNode value = frameState.localAt(i);
@@ -2018,7 +2028,7 @@ public class GraphBuilderPhase extends Phase {
     }
 
     private void traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (TraceBytecodeParserLevel.getValue() >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
+        if (traceLevel >= TRACELEVEL_INSTRUCTIONS && Debug.isLogEnabled()) {
             StringBuilder sb = new StringBuilder(40);
             sb.append(blockStart ? '+' : '|');
             if (bci < 10) {
