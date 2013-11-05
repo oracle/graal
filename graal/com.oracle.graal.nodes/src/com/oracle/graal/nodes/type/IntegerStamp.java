@@ -42,7 +42,7 @@ public class IntegerStamp extends Stamp {
     private final long upMask;
 
     public IntegerStamp(Kind kind) {
-        this(kind.getStackKind(), kind.getMinValue(), kind.getMaxValue(), 0, defaultMask(kind == Kind.Char ? kind : kind.getStackKind()));
+        this(kind.getStackKind(), kind.getMinValue(), kind.getMaxValue(), 0, defaultMask(isUnsignedKind(kind) ? kind : kind.getStackKind()));
     }
 
     public IntegerStamp(Kind kind, long lowerBound, long upperBound, long downMask, long upMask) {
@@ -261,5 +261,9 @@ public class IntegerStamp extends Stamp {
             return Constant.forIntegerKind(kind(), lowerBound, null);
         }
         return null;
+    }
+
+    private static boolean isUnsignedKind(Kind kind) {
+        return kind == Kind.Char;
     }
 }
