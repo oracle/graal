@@ -34,6 +34,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.java.*;
@@ -211,7 +212,7 @@ public class PartialEvaluator {
 
                     if (inlineGraph != null) {
                         int nodeCountBefore = graph.getNodeCount();
-                        int mark = graph.getMark();
+                        Mark mark = graph.getMark();
                         InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
                         if (Debug.isDumpEnabled()) {
                             int nodeCountAfter = graph.getNodeCount();

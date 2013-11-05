@@ -26,6 +26,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
@@ -59,7 +60,7 @@ public abstract class LoopTransformations {
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
         while (!loopBegin.isDeleted()) {
-            int mark = graph.getMark();
+            Mark mark = graph.getMark();
             peel(loop);
             canonicalizer.applyIncremental(graph, context, mark);
             if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {

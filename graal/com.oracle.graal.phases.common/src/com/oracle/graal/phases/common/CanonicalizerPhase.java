@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -71,14 +72,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
     }
 
     /**
-     * @param newNodesMark only the {@linkplain Graph#getNewNodes(int) new nodes} specified by this
+     * @param newNodesMark only the {@linkplain Graph#getNewNodes(Mark) new nodes} specified by this
      *            mark are processed
      */
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Mark newNodesMark) {
         applyIncremental(graph, context, newNodesMark, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, int newNodesMark, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, canonicalizeReads, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
@@ -94,11 +95,11 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         new Instance(context, canonicalizeReads, workingSet, customCanonicalizer).apply(graph, dumpGraph);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, Mark newNodesMark) {
         applyIncremental(graph, context, workingSet, newNodesMark, true);
     }
 
-    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, int newNodesMark, boolean dumpGraph) {
+    public void applyIncremental(StructuredGraph graph, PhaseContext context, Iterable<Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
         new Instance(context, canonicalizeReads, workingSet, newNodesMark, customCanonicalizer).apply(graph, dumpGraph);
     }
 
@@ -109,7 +110,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
     private static final class Instance extends Phase {
 
-        private final int newNodesMark;
+        private final Mark newNodesMark;
         private final PhaseContext context;
         private final CustomCanonicalizer customCanonicalizer;
         private final Iterable<Node> initWorkingSet;
@@ -119,18 +120,18 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
         private Tool tool;
 
         private Instance(PhaseContext context, boolean canonicalizeReads, CustomCanonicalizer customCanonicalizer) {
-            this(context, canonicalizeReads, null, 0, customCanonicalizer);
+            this(context, canonicalizeReads, null, null, customCanonicalizer);
         }
 
         private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<Node> workingSet, CustomCanonicalizer customCanonicalizer) {
-            this(context, canonicalizeReads, workingSet, 0, customCanonicalizer);
+            this(context, canonicalizeReads, workingSet, null, customCanonicalizer);
         }
 
-        private Instance(PhaseContext context, boolean canonicalizeReads, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(PhaseContext context, boolean canonicalizeReads, Mark newNodesMark, CustomCanonicalizer customCanonicalizer) {
             this(context, canonicalizeReads, null, newNodesMark, customCanonicalizer);
         }
 
-        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<Node> workingSet, int newNodesMark, CustomCanonicalizer customCanonicalizer) {
+        private Instance(PhaseContext context, boolean canonicalizeReads, Iterable<Node> workingSet, Mark newNodesMark, CustomCanonicalizer customCanonicalizer) {
             super("Canonicalizer");
             this.newNodesMark = newNodesMark;
             this.context = context;
@@ -141,13 +142,14 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
 
         @Override
         protected void run(StructuredGraph graph) {
+            boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {
-                workList = graph.createNodeWorkList(newNodesMark == 0, MAX_ITERATION_PER_NODE);
+                workList = graph.createNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
             } else {
                 workList = graph.createNodeWorkList(false, MAX_ITERATION_PER_NODE);
                 workList.addAll(initWorkingSet);
             }
-            if (newNodesMark > 0) {
+            if (!wholeGraph) {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
             tool = new Tool();
@@ -182,7 +184,7 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     return;
                 }
                 StructuredGraph graph = (StructuredGraph) node.graph();
-                int mark = graph.getMark();
+                Mark mark = graph.getMark();
                 if (!tryKillUnused(node)) {
                     if (!tryCanonicalize(node, nodeClass)) {
                         if (node instanceof ValueNode) {

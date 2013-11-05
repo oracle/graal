@@ -34,6 +34,7 @@ import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
@@ -506,7 +507,7 @@ public class SnippetTemplate {
                 LoopBeginNode loopBegin = explodeLoop.findLoopBegin();
                 if (loopBegin != null) {
                     LoopEx loop = new LoopsData(snippetCopy).loop(loopBegin);
-                    int mark = snippetCopy.getMark();
+                    Mark mark = snippetCopy.getMark();
                     LoopTransformations.fullUnroll(loop, phaseContext, new CanonicalizerPhase(true));
                     new CanonicalizerPhase(true).applyIncremental(snippetCopy, phaseContext, mark);
                 }
