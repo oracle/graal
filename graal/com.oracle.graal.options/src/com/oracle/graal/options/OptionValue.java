@@ -32,6 +32,8 @@ public class OptionValue<T> {
      */
     protected T value;
 
+    private OptionDescriptor descriptor;
+
     public OptionValue(T value) {
         this.value = value;
     }
@@ -52,6 +54,26 @@ public class OptionValue<T> {
      */
     protected T initialValue() {
         throw new InternalError("Uninitialized option value must override initialValue()");
+    }
+
+    /**
+     * Sets the descriptor for this option.
+     */
+    public void setDescriptor(OptionDescriptor descriptor) {
+        this.descriptor = descriptor;
+    }
+
+    /**
+     * Gets the name of this option. The name for an option value with a null
+     * {@linkplain #setDescriptor(OptionDescriptor) descriptor} is {@code "<anonymous>"}.
+     */
+    public String getName() {
+        return descriptor == null ? "<anonymous>" : (descriptor.getDeclaringClass().getName() + "." + descriptor.getName());
+    }
+
+    @Override
+    public String toString() {
+        return getName() + "=" + value;
     }
 
     /**

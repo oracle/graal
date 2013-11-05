@@ -42,6 +42,7 @@ public class OptionDescriptor {
         this.option = option;
         this.declaringClass = declaringClass;
         this.fieldName = fieldName;
+        option.setDescriptor(this);
     }
 
     /**
