@@ -39,6 +39,8 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.phases.tiers.*;
@@ -172,7 +174,6 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
     }
 
     @Test
-    @Ignore
     public void testBoxedBooleanAOT() {
         StructuredGraph result = compile("getBoxedBoolean", true);
 
@@ -199,19 +200,17 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(test);
         ResolvedJavaMethod method = graph.method();
 
-        boolean originalSetting = AOTCompilation.getValue();
-        AOTCompilation.setValue(compileAOT);
-        PhasePlan phasePlan = new PhasePlan();
-        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-        CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-        // create suites everytime, as we modify options for the compiler
-        final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
-        final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog(), suitesLocal, new CompilationResult());
-        addMethod(method, compResult);
-
-        AOTCompilation.setValue(originalSetting);
+        try (OverrideScope s = OptionValue.override(AOTCompilation, compileAOT)) {
+            PhasePlan phasePlan = new PhasePlan();
+            GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+            phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+            // create suites everytime, as we modify options for the compiler
+            final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
+            final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                            new SpeculationLog(), suitesLocal, new CompilationResult());
+            addMethod(method, compResult);
+        }
 
         return graph;
     }
