@@ -729,8 +729,8 @@ public final class NodeClass extends FieldIntrospection {
                     value = unsafe.getLong(node, dataOffsets[i]);
                 } else if (type == Boolean.TYPE) {
                     value = unsafe.getBoolean(node, dataOffsets[i]);
-                } else if (type == Long.TYPE) {
-                    value = unsafe.getLong(node, dataOffsets[i]);
+                } else if (type == Float.TYPE) {
+                    value = unsafe.getFloat(node, dataOffsets[i]);
                 } else if (type == Double.TYPE) {
                     value = unsafe.getDouble(node, dataOffsets[i]);
                 } else {
