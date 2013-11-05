@@ -30,8 +30,8 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
 
     private final boolean autoGrow;
     private final BitSet bitMap;
-    private final Graph graph;
     private int nodeCount;
+    private final NodeIdAccessor nodeIdAccessor;
 
     public NodeBitMap(Graph graph) {
         this(graph, false);
@@ -42,14 +42,14 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
     }
 
     private NodeBitMap(Graph graph, boolean autoGrow, int nodeCount, BitSet bits) {
-        this.graph = graph;
+        this.nodeIdAccessor = new NodeIdAccessor(graph);
         this.autoGrow = autoGrow;
         this.nodeCount = nodeCount;
         bitMap = bits;
     }
 
     public Graph graph() {
-        return graph;
+        return nodeIdAccessor.getGraph();
     }
 
     public void setUnion(NodeBitMap other) {
@@ -70,11 +70,11 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
     }
 
     public boolean isMarked(Node node) {
-        return bitMap.get(node.id());
+        return bitMap.get(nodeIdAccessor.getNodeId(node));
     }
 
     public boolean isNew(Node node) {
-        return node.id() >= nodeCount;
+        return nodeIdAccessor.getNodeId(node) >= nodeCount;
     }
 
     public void mark(Node node) {
@@ -82,7 +82,7 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
             grow();
         }
         assert check(node);
-        bitMap.set(node.id());
+        bitMap.set(nodeIdAccessor.getNodeId(node));
     }
 
     public void clear(Node node) {
@@ -90,7 +90,7 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
             return;
         }
         assert check(node);
-        bitMap.clear(node.id());
+        bitMap.clear(nodeIdAccessor.getNodeId(node));
     }
 
     public void clearAll() {
@@ -98,20 +98,20 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
     }
 
     public void intersect(NodeBitMap other) {
-        assert graph == other.graph;
+        assert graph() == other.graph();
         bitMap.and(other.bitMap);
     }
 
     public void grow(Node node) {
-        nodeCount = Math.max(nodeCount, node.id() + 1);
+        nodeCount = Math.max(nodeCount, nodeIdAccessor.getNodeId(node) + 1);
     }
 
     public void grow() {
-        nodeCount = Math.max(nodeCount, graph.nodeIdCount());
+        nodeCount = Math.max(nodeCount, graph().nodeIdCount());
     }
 
     private boolean check(Node node) {
-        assert node.graph() == graph : "this node is not part of the graph";
+        assert node.graph() == graph() : "this node is not part of the graph";
         assert !isNew(node) : "node was added to the graph after creating the node bitmap: " + node;
         assert node.isAlive() : "node is deleted!";
         return true;
@@ -180,7 +180,7 @@ public final class NodeBitMap extends AbstractNodeIterable<Node> {
     }
 
     public NodeBitMap copy() {
-        return new NodeBitMap(graph, autoGrow, nodeCount, (BitSet) bitMap.clone());
+        return new NodeBitMap(graph(), autoGrow, nodeCount, (BitSet) bitMap.clone());
     }
 
     @Override
