@@ -182,11 +182,13 @@ public class OptionValue<T> {
      * Gets the value of this option.
      */
     public T getValue() {
-        OverrideScope overrideScope = overrideScopes.get();
-        if (overrideScope != null) {
-            T override = overrideScope.getOverride(this);
-            if (override != null) {
-                return override;
+        if (!(this instanceof StableOptionValue)) {
+            OverrideScope overrideScope = overrideScopes.get();
+            if (overrideScope != null) {
+                T override = overrideScope.getOverride(this);
+                if (override != null) {
+                    return override;
+                }
             }
         }
         if (value == UNINITIALIZED) {
