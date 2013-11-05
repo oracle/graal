@@ -314,26 +314,67 @@ public class GraphUtil {
             }
         } while (v != null);
 
-        // if the simple check fails (this can happen for complicated phi/proxy/phi constructs), we
-        // do an exhaustive search
         if (v == null) {
-            NodeWorkList worklist = proxy.graph().createNodeWorkList();
-            worklist.add(proxy);
-            for (Node node : worklist) {
-                if (node instanceof ValueProxy) {
-                    worklist.add(((ValueProxy) node).getOriginalValue());
-                } else if (node instanceof PhiNode) {
-                    worklist.addAll(((PhiNode) node).values());
-                } else {
-                    if (v == null) {
-                        v = (ValueNode) node;
-                    } else {
-                        return null;
-                    }
-                }
-            }
+            v = new OriginalValueSearch(proxy).result;
         }
         return v;
     }
 
+    /**
+     * Exhaustive search for {@link GraphUtil#originalValue(ValueNode)} when a simple search fails.
+     * This can happen in the presence of complicated phi/proxy/phi constructs.
+     */
+    static class OriginalValueSearch {
+        ValueNode result;
+
+        public OriginalValueSearch(ValueNode proxy) {
+            NodeWorkList worklist = proxy.graph().createNodeWorkList();
+            worklist.add(proxy);
+            for (Node node : worklist) {
+                if (node instanceof ValueProxy) {
+                    ValueNode originalValue = ((ValueProxy) node).getOriginalValue();
+                    if (!process(originalValue, worklist)) {
+                        return;
+                    }
+                } else if (node instanceof PhiNode) {
+                    for (Node value : ((PhiNode) node).values()) {
+                        if (!process((ValueNode) value, worklist)) {
+                            return;
+                        }
+                    }
+                } else {
+                    if (!process((ValueNode) node, null)) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        /**
+         * Process a node as part of this search.
+         * 
+         * @param node the next node encountered in the search
+         * @param worklist if non-null and {@code node} is not external, {@code node} will be added
+         *            to this list. Otherwise, {@code node} is treated as a candidate result.
+         * @return true if the search should continue, false if a definitive {@link #result} has
+         *         been found
+         */
+        private boolean process(ValueNode node, NodeWorkList worklist) {
+            if (node.isAlive()) {
+                if (node.isExternal() || worklist == null) {
+                    if (result == null) {
+                        // Initial candidate result: continue search
+                        result = node;
+                    } else if (result != node) {
+                        // Conflicts with existing candidate: stop search with null result
+                        result = null;
+                        return false;
+                    }
+                } else {
+                    worklist.add(node);
+                }
+            }
+            return true;
+        }
+    }
 }

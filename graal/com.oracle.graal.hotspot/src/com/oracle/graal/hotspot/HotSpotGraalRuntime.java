@@ -157,10 +157,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      * Reads a word value from a given address.
      */
     public static long unsafeReadWord(long address) {
-        if (getHostWordKind() == Kind.Long) {
-            return unsafe.getLong(address);
-        }
-        return unsafe.getInt(address);
+        return unsafe.getAddress(address);
     }
 
     /**
@@ -177,7 +174,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         if (getHostWordKind() == Kind.Long) {
             return unsafe.getLong(object, offset);
         }
-        return unsafe.getInt(object, offset);
+        return unsafe.getInt(object, offset) & 0xFFFFFFFFL;
     }
 
     protected/* final */CompilerToVM compilerToVm;
