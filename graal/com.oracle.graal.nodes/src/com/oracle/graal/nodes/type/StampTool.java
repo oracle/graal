@@ -135,42 +135,39 @@ public class StampTool {
     }
 
     public static IntegerStamp add(IntegerStamp stamp1, IntegerStamp stamp2) {
-        try {
-            if (stamp1.isUnrestricted() || stamp2.isUnrestricted()) {
-                return (IntegerStamp) StampFactory.forKind(stamp1.kind());
-            }
-            Kind kind = stamp1.kind();
-            assert stamp1.kind() == stamp2.kind();
-            long defaultMask = IntegerStamp.defaultMask(kind);
-            long variableBits = (stamp1.downMask() ^ stamp1.upMask()) | (stamp2.downMask() ^ stamp2.upMask());
-            long variableBitsWithCarry = variableBits | (carryBits(stamp1.downMask(), stamp2.downMask()) ^ carryBits(stamp1.upMask(), stamp2.upMask()));
-            long newDownMask = (stamp1.downMask() + stamp2.downMask()) & ~variableBitsWithCarry;
-            long newUpMask = (stamp1.downMask() + stamp2.downMask()) | variableBitsWithCarry;
-
-            newDownMask &= defaultMask;
-            newUpMask &= defaultMask;
-
-            long lowerBound;
-            long upperBound;
-            boolean lowerOverflowsPositively = addOverflowsPositively(stamp1.lowerBound(), stamp2.lowerBound(), kind);
-            boolean upperOverflowsPositively = addOverflowsPositively(stamp1.upperBound(), stamp2.upperBound(), kind);
-            boolean lowerOverflowsNegatively = addOverflowsNegatively(stamp1.lowerBound(), stamp2.lowerBound(), kind);
-            boolean upperOverflowsNegatively = addOverflowsNegatively(stamp1.upperBound(), stamp2.upperBound(), kind);
-            if ((lowerOverflowsNegatively && !upperOverflowsNegatively) || (!lowerOverflowsNegatively && !lowerOverflowsPositively && upperOverflowsPositively)) {
-                lowerBound = kind.getMinValue();
-                upperBound = kind.getMaxValue();
-            } else {
-                lowerBound = signExtend(stamp1.lowerBound() + stamp2.lowerBound(), kind);
-                upperBound = signExtend(stamp1.upperBound() + stamp2.upperBound(), kind);
-            }
-            IntegerStamp limit = StampFactory.forInteger(kind, lowerBound, upperBound);
-            newUpMask &= limit.upMask();
-            upperBound = signExtend(upperBound & newUpMask, kind);
-            lowerBound |= newDownMask;
-            return new IntegerStamp(kind, lowerBound, upperBound, newDownMask, newUpMask);
-        } catch (Throwable e) {
-            throw new RuntimeException(stamp1 + " + " + stamp2, e);
+        if (stamp1.isUnrestricted() || stamp2.isUnrestricted()) {
+            return (IntegerStamp) StampFactory.forKind(stamp1.kind());
         }
+        Kind kind = stamp1.kind();
+        assert stamp1.kind() == stamp2.kind();
+        long defaultMask = IntegerStamp.defaultMask(kind);
+        long variableBits = (stamp1.downMask() ^ stamp1.upMask()) | (stamp2.downMask() ^ stamp2.upMask());
+        long variableBitsWithCarry = variableBits | (carryBits(stamp1.downMask(), stamp2.downMask()) ^ carryBits(stamp1.upMask(), stamp2.upMask()));
+        long newDownMask = (stamp1.downMask() + stamp2.downMask()) & ~variableBitsWithCarry;
+        long newUpMask = (stamp1.downMask() + stamp2.downMask()) | variableBitsWithCarry;
+
+        newDownMask &= defaultMask;
+        newUpMask &= defaultMask;
+
+        long lowerBound;
+        long upperBound;
+        boolean lowerOverflowsPositively = addOverflowsPositively(stamp1.lowerBound(), stamp2.lowerBound(), kind);
+        boolean upperOverflowsPositively = addOverflowsPositively(stamp1.upperBound(), stamp2.upperBound(), kind);
+        boolean lowerOverflowsNegatively = addOverflowsNegatively(stamp1.lowerBound(), stamp2.lowerBound(), kind);
+        boolean upperOverflowsNegatively = addOverflowsNegatively(stamp1.upperBound(), stamp2.upperBound(), kind);
+        if ((lowerOverflowsNegatively && !upperOverflowsNegatively) || (!lowerOverflowsPositively && upperOverflowsPositively)) {
+            lowerBound = kind.getMinValue();
+            upperBound = kind.getMaxValue();
+        } else {
+            lowerBound = signExtend((stamp1.lowerBound() + stamp2.lowerBound()) & defaultMask, kind);
+            upperBound = signExtend((stamp1.upperBound() + stamp2.upperBound()) & defaultMask, kind);
+        }
+        IntegerStamp limit = StampFactory.forInteger(kind, lowerBound, upperBound);
+        newUpMask &= limit.upMask();
+        upperBound = signExtend(upperBound & newUpMask, kind);
+        newDownMask |= limit.downMask();
+        lowerBound |= newDownMask;
+        return new IntegerStamp(kind, lowerBound, upperBound, newDownMask, newUpMask);
     }
 
     public static Stamp sub(IntegerStamp stamp1, IntegerStamp stamp2) {
