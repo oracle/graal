@@ -25,17 +25,37 @@ package com.oracle.graal.truffle.nodes;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.truffle.*;
 
-public class AssumptionValidAssumption extends Assumptions.Assumption {
+public final class AssumptionValidAssumption extends Assumptions.Assumption {
 
     private static final long serialVersionUID = 2010244979610891262L;
 
-    private OptimizedAssumption assumption;
+    private final OptimizedAssumption assumption;
 
     public AssumptionValidAssumption(OptimizedAssumption assumption) {
         this.assumption = assumption;
+        assert assumption != null;
     }
 
     public OptimizedAssumption getAssumption() {
         return assumption;
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 + assumption.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof AssumptionValidAssumption) {
+            AssumptionValidAssumption other = (AssumptionValidAssumption) obj;
+            return other.assumption == this.assumption;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return assumption.toString();
     }
 }
