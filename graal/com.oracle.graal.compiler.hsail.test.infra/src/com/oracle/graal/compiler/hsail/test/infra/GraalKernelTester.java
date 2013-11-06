@@ -27,12 +27,14 @@ package com.oracle.graal.compiler.hsail.test.infra;
  * This class extends KernelTester and provides a base class
  * for which the HSAIL code comes from the Graal compiler.
  */
-import com.oracle.graal.hotspot.hsail.*;
-
-import java.lang.reflect.Method;
-import java.io.*;
-
 import static com.oracle.graal.phases.GraalOptions.*;
+
+import java.io.*;
+import java.lang.reflect.*;
+
+import com.oracle.graal.graph.*;
+import com.oracle.graal.hotspot.hsail.*;
+import com.oracle.graal.options.*;
 
 public abstract class GraalKernelTester extends KernelTester {
 
@@ -74,5 +76,15 @@ public abstract class GraalKernelTester extends KernelTester {
         boolean canGenerateCalls = false;   // not implemented yet
         boolean canExecuteCalls = runningOnSimulator();
         return (canGenerateCalls && canExecuteCalls);
+    }
+
+    public static OptionValue<?> getOptionFromField(Class declaringClass, String fieldName) {
+        try {
+            Field f = declaringClass.getDeclaredField(fieldName);
+            f.setAccessible(true);
+            return (OptionValue<?>) f.get(null);
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
     }
 }

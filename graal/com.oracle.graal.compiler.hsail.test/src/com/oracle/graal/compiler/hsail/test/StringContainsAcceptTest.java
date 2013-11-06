@@ -24,6 +24,12 @@
 package com.oracle.graal.compiler.hsail.test;
 
 import org.junit.Test;
+
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.*;
+import com.oracle.graal.phases.*;
+
+import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assume.*;
 
 /**
@@ -50,8 +56,9 @@ public class StringContainsAcceptTest extends StringContainsTest {
     @Test
     @Override
     public void test() {
-        assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
-        testGeneratedHsail();
+        try (OverrideScope s = OptionValue.override(InlineEverything, true, getOptionFromField(GraalOptions.class, "RemoveNeverExecutedCode"), false)) {
+            assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
+            testGeneratedHsail();
+        }
     }
-
 }
