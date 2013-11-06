@@ -580,6 +580,9 @@ public class Graph {
      * ordering between the nodes within the list.
      */
     public boolean maybeCompress() {
+        if (Debug.isEnabled()) {
+            return false;
+        }
         int liveNodeCount = getNodeCount();
         int liveNodePercent = liveNodeCount * 100 / nodesSize;
         if (COMPRESSION_THRESHOLD == 0 || liveNodePercent >= COMPRESSION_THRESHOLD) {
