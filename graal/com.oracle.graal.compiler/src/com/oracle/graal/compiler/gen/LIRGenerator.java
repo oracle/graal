@@ -773,7 +773,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
     }
 
-    private void emitSequentialSwitch(final SwitchNode x, Variable key, LabelRef defaultTarget) {
+    protected void emitSequentialSwitch(final SwitchNode x, Variable key, LabelRef defaultTarget) {
         int keyCount = x.keyCount();
         Integer[] indexes = Util.createSortedPermutation(keyCount, new Comparator<Integer>() {
 
