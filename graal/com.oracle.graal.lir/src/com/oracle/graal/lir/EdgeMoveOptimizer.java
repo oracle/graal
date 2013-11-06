@@ -24,7 +24,7 @@ package com.oracle.graal.lir;
 
 import java.util.*;
 
-import com.oracle.graal.lir.StandardOp.*;
+import com.oracle.graal.lir.StandardOp.MoveOp;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
@@ -182,9 +182,16 @@ public final class EdgeMoveOptimizer {
 
         assert numSux == 2 : "method should not be called otherwise";
 
-        assert instructions.get(instructions.size() - 1) instanceof StandardOp.JumpOp : "block must end with unconditional jump";
+        LIRInstruction lastInstruction = instructions.get(instructions.size() - 1);
+        if (lastInstruction instanceof StandardOp.FallThroughOp) {
+            assert ((StandardOp.FallThroughOp) lastInstruction).fallThroughTarget() != null : "block must end with unconditional jump";
+            // fall through ops like switches cannot be optimized anyway - they have input operands
+            return;
+        } else {
+            assert lastInstruction instanceof StandardOp.JumpOp : "block must end with unconditional jump";
+        }
 
-        if (instructions.get(instructions.size() - 1).hasState()) {
+        if (lastInstruction.hasState()) {
             // cannot optimize instructions when debug info is needed
             return;
         }
