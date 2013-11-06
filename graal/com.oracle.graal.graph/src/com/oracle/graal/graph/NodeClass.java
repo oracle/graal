@@ -677,6 +677,32 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    private static int deepHashCode0(Object o) {
+        if (o instanceof Object[]) {
+            return Arrays.deepHashCode((Object[]) o);
+        } else if (o instanceof byte[]) {
+            return Arrays.hashCode((byte[]) o);
+        } else if (o instanceof short[]) {
+            return Arrays.hashCode((short[]) o);
+        } else if (o instanceof int[]) {
+            return Arrays.hashCode((int[]) o);
+        } else if (o instanceof long[]) {
+            return Arrays.hashCode((long[]) o);
+        } else if (o instanceof char[]) {
+            return Arrays.hashCode((char[]) o);
+        } else if (o instanceof float[]) {
+            return Arrays.hashCode((float[]) o);
+        } else if (o instanceof double[]) {
+            return Arrays.hashCode((double[]) o);
+        } else if (o instanceof boolean[]) {
+            return Arrays.hashCode((boolean[]) o);
+        } else if (o != null) {
+            return o.hashCode();
+        } else {
+            return 0;
+        }
+    }
+
     public int valueNumber(Node n) {
         int number = 0;
         if (canGVN) {
@@ -700,11 +726,7 @@ public final class NodeClass extends FieldIntrospection {
                     }
                 } else {
                     Object o = unsafe.getObject(n, dataOffsets[i]);
-                    if (o instanceof Object[]) {
-                        number += Arrays.deepHashCode((Object[]) o);
-                    } else if (o != null) {
-                        number += o.hashCode();
-                    }
+                    number += deepHashCode0(o);
                 }
                 number *= 13;
             }
@@ -741,6 +763,33 @@ public final class NodeClass extends FieldIntrospection {
             }
             properties.put(fieldNames.get(dataOffsets[i]), value);
         }
+    }
+
+    private static boolean deepEquals0(Object e1, Object e2) {
+        assert e1 != null;
+        boolean eq;
+        if (e1 instanceof Object[] && e2 instanceof Object[]) {
+            eq = Arrays.deepEquals((Object[]) e1, (Object[]) e2);
+        } else if (e1 instanceof byte[] && e2 instanceof byte[]) {
+            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
+        } else if (e1 instanceof short[] && e2 instanceof short[]) {
+            eq = Arrays.equals((short[]) e1, (short[]) e2);
+        } else if (e1 instanceof int[] && e2 instanceof int[]) {
+            eq = Arrays.equals((int[]) e1, (int[]) e2);
+        } else if (e1 instanceof long[] && e2 instanceof long[]) {
+            eq = Arrays.equals((long[]) e1, (long[]) e2);
+        } else if (e1 instanceof char[] && e2 instanceof char[]) {
+            eq = Arrays.equals((char[]) e1, (char[]) e2);
+        } else if (e1 instanceof float[] && e2 instanceof float[]) {
+            eq = Arrays.equals((float[]) e1, (float[]) e2);
+        } else if (e1 instanceof double[] && e2 instanceof double[]) {
+            eq = Arrays.equals((double[]) e1, (double[]) e2);
+        } else if (e1 instanceof boolean[] && e2 instanceof boolean[]) {
+            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
+        } else {
+            eq = e1.equals(e2);
+        }
+        return eq;
     }
 
     public boolean valueEqual(Node a, Node b) {
@@ -782,14 +831,8 @@ public final class NodeClass extends FieldIntrospection {
                 Object objectB = unsafe.getObject(b, dataOffsets[i]);
                 if (objectA != objectB) {
                     if (objectA != null && objectB != null) {
-                        if (objectA instanceof Object[] && objectB instanceof Object[]) {
-                            if (!Arrays.deepEquals((Object[]) objectA, (Object[]) objectB)) {
-                                return false;
-                            }
-                        } else {
-                            if (!(objectA.equals(objectB))) {
-                                return false;
-                            }
+                        if (!deepEquals0(objectA, objectB)) {
+                            return false;
                         }
                     } else {
                         return false;
