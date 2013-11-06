@@ -32,6 +32,7 @@ public abstract class FloatArithmeticNode extends BinaryNode implements Arithmet
 
     public FloatArithmeticNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
         super(kind, x, y);
+        assert kind.isNumericFloat();
         this.isStrictFP = isStrictFP;
     }
 

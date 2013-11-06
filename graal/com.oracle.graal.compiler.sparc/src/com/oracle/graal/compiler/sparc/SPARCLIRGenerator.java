@@ -267,7 +267,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     private void emitIntegerTest(Value a, Value b) {
-        assert a.getKind().getStackKind() == Kind.Int || a.getKind() == Kind.Long;
+        assert a.getKind().isNumericInteger();
         if (LIRValueUtil.isVariable(b)) {
             append(new SPARCTestOp(load(b), loadNonConst(a)));
         } else {

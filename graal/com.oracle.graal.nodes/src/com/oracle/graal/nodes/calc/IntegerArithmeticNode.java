@@ -30,7 +30,7 @@ public abstract class IntegerArithmeticNode extends BinaryNode implements Arithm
 
     public IntegerArithmeticNode(Kind kind, ValueNode x, ValueNode y) {
         super(kind, x, y);
-        assert kind == Kind.Int || kind == Kind.Long;
+        assert kind.isNumericInteger();
     }
 
     public static IntegerAddNode add(StructuredGraph graph, ValueNode v1, ValueNode v2) {

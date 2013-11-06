@@ -38,8 +38,8 @@ public final class IntegerEqualsNode extends CompareNode {
      */
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(x, y);
-        assert x.kind() != Kind.Double && x.kind() != Kind.Float && x.kind() != Kind.Object;
-        assert y.kind() != Kind.Double && y.kind() != Kind.Float && y.kind() != Kind.Object;
+        assert !x.kind().isNumericFloat() && x.kind() != Kind.Object;
+        assert !y.kind().isNumericFloat() && y.kind() != Kind.Object;
     }
 
     @Override
