@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.io.*;
 import java.lang.annotation.*;
 import java.util.*;
 
@@ -184,6 +185,7 @@ public abstract class Node implements Cloneable {
         if (!NodeUtil.replaceChild(this.parent, this, newNode)) {
             fixupTree();
         }
+        reportReplace();
         return newNode;
     }
 
@@ -193,7 +195,7 @@ public abstract class Node implements Cloneable {
      * This is a rather expensive operation but rare to occur.
      */
     private void fixupTree() {
-        Node rootNode = NodeUtil.findParent(this, RootNode.class);
+        Node rootNode = getRootNode();
         if (rootNode == null) {
             throw new UnsupportedOperationException("Tree does not have a root node.");
         }
@@ -243,6 +245,15 @@ public abstract class Node implements Cloneable {
         return false;
     }
 
+    private void reportReplace() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null) {
+            if (rootNode.getCallTarget() instanceof ReplaceObserver) {
+                ((ReplaceObserver) rootNode.getCallTarget()).nodeReplaced();
+            }
+        }
+    }
+
     /**
      * Intended to be implemented by subclasses of {@link Node} to receive a notification when the
      * node is rewritten. This method is invoked before the actual replace has happened.
@@ -251,37 +262,34 @@ public abstract class Node implements Cloneable {
      * @param reason the reason the replace supplied
      */
     protected void onReplace(Node newNode, String reason) {
-        RootNode rootNode = NodeUtil.findParent(this, RootNode.class);
-        if (rootNode != null) {
-            if (rootNode.getCallTarget() instanceof ReplaceObserver) {
-                ((ReplaceObserver) rootNode.getCallTarget()).nodeReplaced();
-            }
-        }
         if (TruffleOptions.TraceRewrites) {
-            Class<? extends Node> from = getClass();
-            Class<? extends Node> to = newNode.getClass();
+            traceRewrite(newNode, reason);
+        }
+    }
 
-            if (TruffleOptions.TraceRewritesFilterFromKind != null) {
-                if (filterByKind(from, TruffleOptions.TraceRewritesFilterFromKind)) {
-                    return;
-                }
-            }
+    private void traceRewrite(Node newNode, String reason) {
+        Class<? extends Node> from = getClass();
+        Class<? extends Node> to = newNode.getClass();
 
-            if (TruffleOptions.TraceRewritesFilterToKind != null) {
-                if (filterByKind(to, TruffleOptions.TraceRewritesFilterToKind)) {
-                    return;
-                }
-            }
-
-            String filter = TruffleOptions.TraceRewritesFilterClass;
-            if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
+        if (TruffleOptions.TraceRewritesFilterFromKind != null) {
+            if (filterByKind(from, TruffleOptions.TraceRewritesFilterFromKind)) {
                 return;
             }
-
-            // CheckStyle: stop system..print check
-            System.out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(from), formatNodeInfo(to), reason);
-            // CheckStyle: resume system..print check
         }
+
+        if (TruffleOptions.TraceRewritesFilterToKind != null) {
+            if (filterByKind(to, TruffleOptions.TraceRewritesFilterToKind)) {
+                return;
+            }
+        }
+
+        String filter = TruffleOptions.TraceRewritesFilterClass;
+        if (filter != null && (filterByContainsClassName(from, filter) || filterByContainsClassName(to, filter))) {
+            return;
+        }
+
+        PrintStream out = System.out;
+        out.printf("[truffle]   rewrite %-50s |From %-40s |To %-40s |Reason %s.%n", this.toString(), formatNodeInfo(from), formatNodeInfo(to), reason);
     }
 
     private static String formatNodeInfo(Class<? extends Node> clazz) {
@@ -380,6 +388,23 @@ public abstract class Node implements Cloneable {
     @Deprecated
     protected final Object clone() throws CloneNotSupportedException {
         throw new IllegalStateException("This method should never be called, use the copy method instead!");
+    }
+
+    /**
+     * Get the root node of the tree a node belongs to.
+     * 
+     * @return the {@link RootNode} or {@code null} if there is none.
+     */
+    protected final RootNode getRootNode() {
+        Node rootNode = this;
+        while (rootNode.getParent() != null) {
+            assert !(rootNode instanceof RootNode) : "root node must not have a parent";
+            rootNode = rootNode.getParent();
+        }
+        if (rootNode instanceof RootNode) {
+            return (RootNode) rootNode;
+        }
+        return null;
     }
 
     /**
