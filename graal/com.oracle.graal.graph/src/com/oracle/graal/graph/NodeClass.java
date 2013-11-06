@@ -721,8 +721,24 @@ public final class NodeClass extends FieldIntrospection {
                         if (booleanValue) {
                             number += 7;
                         }
+                    } else if (type == Float.TYPE) {
+                        float floatValue = unsafe.getFloat(n, dataOffsets[i]);
+                        number += Float.floatToRawIntBits(floatValue);
+                    } else if (type == Double.TYPE) {
+                        double doubleValue = unsafe.getDouble(n, dataOffsets[i]);
+                        long longValue = Double.doubleToRawLongBits(doubleValue);
+                        number += longValue ^ (longValue >>> 32);
+                    } else if (type == Short.TYPE) {
+                        short shortValue = unsafe.getShort(n, dataOffsets[i]);
+                        number += shortValue;
+                    } else if (type == Character.TYPE) {
+                        char charValue = unsafe.getChar(n, dataOffsets[i]);
+                        number += charValue;
+                    } else if (type == Byte.TYPE) {
+                        byte byteValue = unsafe.getByte(n, dataOffsets[i]);
+                        number += byteValue;
                     } else {
-                        assert false;
+                        assert false : "unhandled property type: " + type;
                     }
                 } else {
                     Object o = unsafe.getObject(n, dataOffsets[i]);
@@ -755,6 +771,12 @@ public final class NodeClass extends FieldIntrospection {
                     value = unsafe.getFloat(node, dataOffsets[i]);
                 } else if (type == Double.TYPE) {
                     value = unsafe.getDouble(node, dataOffsets[i]);
+                } else if (type == Short.TYPE) {
+                    value = unsafe.getShort(node, dataOffsets[i]);
+                } else if (type == Character.TYPE) {
+                    value = unsafe.getChar(node, dataOffsets[i]);
+                } else if (type == Byte.TYPE) {
+                    value = unsafe.getByte(node, dataOffsets[i]);
                 } else {
                     assert false : "unhandled property type: " + type;
                 }
@@ -817,10 +839,34 @@ public final class NodeClass extends FieldIntrospection {
                     if (aLong != bLong) {
                         return false;
                     }
+                } else if (type == Float.TYPE) {
+                    float aFloat = unsafe.getFloat(a, dataOffsets[i]);
+                    float bFloat = unsafe.getFloat(b, dataOffsets[i]);
+                    if (aFloat != bFloat) {
+                        return false;
+                    }
                 } else if (type == Double.TYPE) {
                     double aDouble = unsafe.getDouble(a, dataOffsets[i]);
                     double bDouble = unsafe.getDouble(b, dataOffsets[i]);
                     if (aDouble != bDouble) {
+                        return false;
+                    }
+                } else if (type == Short.TYPE) {
+                    short aShort = unsafe.getShort(a, dataOffsets[i]);
+                    short bShort = unsafe.getShort(b, dataOffsets[i]);
+                    if (aShort != bShort) {
+                        return false;
+                    }
+                } else if (type == Character.TYPE) {
+                    char aChar = unsafe.getChar(a, dataOffsets[i]);
+                    char bChar = unsafe.getChar(b, dataOffsets[i]);
+                    if (aChar != bChar) {
+                        return false;
+                    }
+                } else if (type == Byte.TYPE) {
+                    byte aByte = unsafe.getByte(a, dataOffsets[i]);
+                    byte bByte = unsafe.getByte(b, dataOffsets[i]);
+                    if (aByte != bByte) {
                         return false;
                     }
                 } else {
