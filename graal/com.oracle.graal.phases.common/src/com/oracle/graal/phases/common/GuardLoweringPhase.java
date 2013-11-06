@@ -27,6 +27,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -144,7 +145,8 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private void lowerToIf(GuardNode guard) {
             StructuredGraph graph = guard.graph();
             AbstractBeginNode fastPath = graph.add(new BeginNode());
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
+            @SuppressWarnings("deprecation")
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), (short) (Debug.isEnabled() ? guard.getId() : 0)));
             AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
             AbstractBeginNode trueSuccessor;
             AbstractBeginNode falseSuccessor;
