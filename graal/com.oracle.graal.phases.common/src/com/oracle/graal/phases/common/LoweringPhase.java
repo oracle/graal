@@ -94,6 +94,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
+        public GuardingNode getCurrentGuardAnchor() {
+            return guardAnchor;
+        }
+
+        @Override
         public GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object) {
             if (ObjectStamp.isObjectNonNull(object)) {
                 // Short cut creation of null check guard if the object is known to be non-null.

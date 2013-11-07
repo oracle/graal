@@ -885,7 +885,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
-            replacements.put(entryPointNode, replaceeGraph.start());
+            replacements.put(entryPointNode, BeginNode.prevBegin(replacee));
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippet.method());
 
@@ -981,7 +981,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNode = entryPointNode.next();
             StructuredGraph replaceeGraph = replacee.graph();
             IdentityHashMap<Node, Node> replacements = bind(replaceeGraph, metaAccess, args);
-            replacements.put(entryPointNode, replaceeGraph.start());
+            replacements.put(entryPointNode, tool.getCurrentGuardAnchor().asNode());
             Map<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             Debug.dump(replaceeGraph, "After inlining snippet %s", snippetCopy.method());
 
