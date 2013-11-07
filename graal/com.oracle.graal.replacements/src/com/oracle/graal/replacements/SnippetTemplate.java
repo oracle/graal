@@ -335,6 +335,10 @@ public class SnippetTemplate {
 
     private static final DebugTimer SnippetCreationAndSpecialization = Debug.timer("SnippetCreationAndSpecialization");
     private static final DebugMetric SnippetSpecializations = Debug.metric("SnippetSpecializations");
+    private static final DebugMetric SnippetSpecializationsNodeCount = Debug.metric("SnippetSpecializationsNodeCount");
+    private static final DebugMetric SnippetGraphsNodeCount = Debug.metric("SnippetGraphsNodeCount");
+
+    private static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
 
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
@@ -348,7 +352,11 @@ public class SnippetTemplate {
         protected AbstractTemplates(Providers providers, TargetDescription target) {
             this.providers = providers;
             this.target = target;
-            this.templates = new ConcurrentHashMap<>();
+            if (UseSnippetTemplateCache) {
+                this.templates = new ConcurrentHashMap<>();
+            } else {
+                this.templates = null;
+            }
         }
 
         /**
@@ -372,7 +380,7 @@ public class SnippetTemplate {
          * Gets a template for a given key, creating it first if necessary.
          */
         protected SnippetTemplate template(final Arguments args) {
-            SnippetTemplate template = templates.get(args.cacheKey);
+            SnippetTemplate template = UseSnippetTemplateCache ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetSpecializations.increment();
                 try (TimerCloseable a = SnippetCreationAndSpecialization.start()) {
@@ -383,7 +391,9 @@ public class SnippetTemplate {
                             return new SnippetTemplate(providers, args);
                         }
                     });
-                    templates.put(args.cacheKey, template);
+                    if (UseSnippetTemplateCache) {
+                        templates.put(args.cacheKey, template);
+                    }
                 }
             }
             return template;
@@ -410,6 +420,7 @@ public class SnippetTemplate {
      */
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
+        SnippetGraphsNodeCount.add(snippetGraph.getNodeCount());
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -596,6 +607,8 @@ public class SnippetTemplate {
         this.deoptNodes = curDeoptNodes;
         this.stampNodes = curStampNodes;
         this.returnNode = retNode;
+
+        SnippetSpecializationsNodeCount.add(nodes.size());
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {
