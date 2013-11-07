@@ -105,7 +105,7 @@ class TruffleInliningImpl implements TruffleInlining {
 
         public InliningPolicy(OptimizedCallTarget caller) {
             this.callerNodeCount = NodeUtil.countNodes(caller.getRootNode());
-            this.callerInvocationCount = caller.getCompilationPolicy().getOriginalInvokeCounter();
+            this.callerInvocationCount = caller.getCompilationProfile().getOriginalInvokeCounter();
         }
 
         public boolean continueInlining() {

@@ -22,8 +22,10 @@
  */
 package com.oracle.graal.truffle;
 
-public interface CompilationPolicy {
+public class DefaultCompilationPolicy implements CompilationPolicy {
 
-    boolean shouldCompile(CompilationProfile profile);
+    public boolean shouldCompile(CompilationProfile profile) {
+        return profile.getInvokeCounter() <= 0 && profile.getLoopAndInvokeCounter() <= 0;
+    }
 
 }
