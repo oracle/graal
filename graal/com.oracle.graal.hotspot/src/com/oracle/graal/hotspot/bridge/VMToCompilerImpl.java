@@ -323,6 +323,9 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         } while ((System.currentTimeMillis() - startTime) <= TimedBootstrap.getValue());
 
+        if (ResetDebugValuesAfterBootstrap.getValue()) {
+            printDebugValues("bootstrap", true);
+        }
         phaseTransition("bootstrap");
 
         bootstrapRunning = false;
@@ -368,6 +371,25 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
+        printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
+        phaseTransition("final");
+
+        if (runtime.getConfig().ciTime) {
+            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond", System.out);
+            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond", System.out);
+        }
+
+        SnippetCounter.printGroups(TTY.out().out());
+        BenchmarkCounters.shutdown(runtime.getCompilerToVM(), compilerStartTime);
+    }
+
+    private void printDebugValues(String phase, boolean reset) throws GraalInternalError {
+        TTY.println();
+        if (phase != null) {
+            TTY.println("<DebugValues:" + phase + ">");
+        } else {
+            TTY.println("<DebugValues>");
+        }
         if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
@@ -414,16 +436,17 @@ public class VMToCompilerImpl implements VMToCompiler {
                         throw new GraalInternalError("Unknown summary type: %s", summary);
                 }
             }
+            if (reset) {
+                for (DebugValueMap topLevelMap : topLevelMaps) {
+                    topLevelMap.reset();
+                }
+            }
+            if (phase != null) {
+                TTY.println("</DebugValues:" + phase + ">");
+            } else {
+                TTY.println("</DebugValues>");
+            }
         }
-        phaseTransition("final");
-
-        if (runtime.getConfig().ciTime) {
-            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond", System.out);
-            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond", System.out);
-        }
-
-        SnippetCounter.printGroups(TTY.out().out());
-        BenchmarkCounters.shutdown(runtime.getCompilerToVM(), compilerStartTime);
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {
