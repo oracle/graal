@@ -94,9 +94,7 @@ public class CompilationProfile {
         invalidationCount++;
         int invalidationReprofileCount = TruffleInvalidationReprofileCount.getValue();
         invokeCounter = invalidationReprofileCount;
-        if (TruffleFunctionInlining.getValue()) {
-            originalInvokeCounter += invalidationReprofileCount;
-        }
+        originalInvokeCounter += invalidationReprofileCount;
     }
 
     void reportInterpreterCall() {
