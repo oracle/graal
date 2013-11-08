@@ -527,7 +527,7 @@ public final class LinearScan {
         Interval interval;
         interval = createUnhandledLists(mustStoreAtDefinition, null).first;
         if (DetailedAsserts.getValue()) {
-            checkIntervals(interval, getTraceLevel());
+            checkIntervals(interval);
         }
 
         LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
@@ -596,7 +596,7 @@ public final class LinearScan {
         assert interval == Interval.EndMarker : "missed an interval";
     }
 
-    private static void checkIntervals(Interval interval, int traceLevel) {
+    private void checkIntervals(Interval interval) {
         Interval prev = null;
         Interval temp = interval;
         while (temp != Interval.EndMarker) {
