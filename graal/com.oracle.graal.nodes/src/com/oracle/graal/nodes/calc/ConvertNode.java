@@ -87,9 +87,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        Constant c = inputs[0];
+    public static Constant convert(Kind from, Kind to, Constant c) {
         switch (from) {
             case Byte:
                 byte byteVal = (byte) c.asInt();
@@ -226,6 +224,11 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
                 break;
         }
         throw GraalInternalError.shouldNotReachHere();
+    }
+
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        return convert(from, to, inputs[0]);
     }
 
     @Override
