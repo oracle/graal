@@ -23,7 +23,9 @@
 package com.oracle.graal.replacements;
 
 import static com.oracle.graal.api.meta.LocationIdentity.*;
+import static com.oracle.graal.api.meta.MetaUtil.*;
 
+import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -112,6 +114,17 @@ public class SnippetTemplate {
             names = new String[count];
             // Retrieve the names only when assertions are turned on.
             assert initNames();
+        }
+
+        private int templateCount;
+
+        void notifyNewTemplate() {
+            templateCount++;
+            if (UseSnippetTemplateCache && templateCount > MaxTemplatesPerSnippet) {
+                PrintStream err = System.err;
+                err.printf("WARNING: Exceeded %d templates for snippet %s%n" + "         Adjust maximum with %s system property%n", MaxTemplatesPerSnippet, format("%h.%n(%p)", method),
+                                MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME);
+            }
         }
 
         private boolean initNames() {
@@ -350,7 +363,9 @@ public class SnippetTemplate {
     private static final DebugMetric SnippetTemplatesNodeCount = Debug.metric("SnippetTemplatesNodeCount");
     private static final DebugMetric SnippetGraphsNodeCount = Debug.metric("SnippetGraphsNodeCount");
 
+    private static final String MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME = "graal.maxTemplatesPerSnippet";
     private static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
+    private static final int MaxTemplatesPerSnippet = Integer.getInteger(MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME, 50);
 
     /**
      * Base class for snippet classes. It provides a cache for {@link SnippetTemplate}s.
@@ -648,6 +663,7 @@ public class SnippetTemplate {
         this.returnNode = retNode;
 
         SnippetTemplatesNodeCount.add(nodes.size());
+        args.info.notifyNewTemplate();
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {
