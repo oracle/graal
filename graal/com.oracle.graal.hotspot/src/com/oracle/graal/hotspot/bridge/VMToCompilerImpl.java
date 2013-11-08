@@ -384,13 +384,13 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     private void printDebugValues(String phase, boolean reset) throws GraalInternalError {
-        TTY.println();
-        if (phase != null) {
-            TTY.println("<DebugValues:" + phase + ">");
-        } else {
-            TTY.println("<DebugValues>");
-        }
         if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
+            TTY.println();
+            if (phase != null) {
+                TTY.println("<DebugValues:" + phase + ">");
+            } else {
+                TTY.println("<DebugValues>");
+            }
             List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
             List<DebugValue> debugValues = KeyRegistry.getDebugValues();
             if (debugValues.size() > 0) {
@@ -435,16 +435,16 @@ public class VMToCompilerImpl implements VMToCompiler {
                     default:
                         throw new GraalInternalError("Unknown summary type: %s", summary);
                 }
-            }
-            if (reset) {
-                for (DebugValueMap topLevelMap : topLevelMaps) {
-                    topLevelMap.reset();
+                if (reset) {
+                    for (DebugValueMap topLevelMap : topLevelMaps) {
+                        topLevelMap.reset();
+                    }
                 }
-            }
-            if (phase != null) {
-                TTY.println("</DebugValues:" + phase + ">");
-            } else {
-                TTY.println("</DebugValues>");
+                if (phase != null) {
+                    TTY.println("</DebugValues:" + phase + ">");
+                } else {
+                    TTY.println("</DebugValues>");
+                }
             }
         }
     }
