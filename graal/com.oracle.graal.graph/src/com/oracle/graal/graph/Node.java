@@ -745,12 +745,12 @@ public abstract class Node implements Cloneable, Formattable {
         }
         if (recordsUsages()) {
             for (Node usage : usages()) {
-                assertFalse(usage.isDeleted(), "usage must never be deleted");
+                assertFalse(usage.isDeleted(), "usage %s must never be deleted", usage);
                 assertTrue(usage.inputs().contains(this), "missing input in usage %s", usage);
             }
         }
         if (predecessor != null) {
-            assertFalse(predecessor.isDeleted(), "predecessor must never be deleted");
+            assertFalse(predecessor.isDeleted(), "predecessor %s must never be deleted", predecessor);
             assertTrue(predecessor.successors().contains(this), "missing successor in predecessor %s", predecessor);
         }
         return true;
