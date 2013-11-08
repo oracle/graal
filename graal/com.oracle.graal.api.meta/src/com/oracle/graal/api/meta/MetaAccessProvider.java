@@ -74,7 +74,7 @@ public interface MetaAccessProvider {
      * 
      * @return the encoded value as an integer
      */
-    Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, short speculationId);
+    Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int speculationId);
 
     DeoptimizationReason decodeDeoptReason(Constant constant);
 

@@ -84,10 +84,10 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     private static final int REASON_SHIFT = 3;
     private static final int REASON_MASK = 0x1f;
     private static final int DEBUG_SHIFT = 8;
-    private static final int DEBUG_MASK = 0xffff;
+    private static final int DEBUG_MASK = 0x7fffff;
 
     @Override
-    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, short speculationId) {
+    public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, int speculationId) {
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
         int speculationValue = speculationId & DEBUG_MASK;
