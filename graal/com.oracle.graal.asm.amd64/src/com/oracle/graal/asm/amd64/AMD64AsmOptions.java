@@ -23,11 +23,9 @@
 package com.oracle.graal.asm.amd64;
 
 public class AMD64AsmOptions {
-
-    public static int Atomics = 0;
-    public static boolean UseNormalNop = false;
-    public static boolean UseAddressNop = true;
-    public static boolean UseIncDec = true;
-    public static boolean UseXmmLoadAndClearUpper = true;
-    public static boolean UseXmmRegToRegMoveAll = true;
+    public static final boolean UseNormalNop = false;
+    public static final boolean UseAddressNop = true;
+    public static final boolean UseIncDec = true;
+    public static final boolean UseXmmLoadAndClearUpper = true;
+    public static final boolean UseXmmRegToRegMoveAll = true;
 }
