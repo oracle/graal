@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.LocationNode.Location;
 import com.oracle.graal.nodes.spi.*;
@@ -32,11 +33,13 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, Virtualizable {
+public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;
     private final boolean initialization;
+
+    @Input private Node lastLocationAccess;
 
     public FrameState stateAfter() {
         return stateAfter;
@@ -87,6 +90,15 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
     @Override
     public LocationIdentity getLocationIdentity() {
         return location().getLocationIdentity();
+    }
+
+    public Node getLastLocationAccess() {
+        return lastLocationAccess;
+    }
+
+    public void setLastLocationAccess(Node lla) {
+        updateUsages(lastLocationAccess, lla);
+        lastLocationAccess = lla;
     }
 
     @Override

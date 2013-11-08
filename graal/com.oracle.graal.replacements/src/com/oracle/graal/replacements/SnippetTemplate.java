@@ -824,7 +824,7 @@ public class SnippetTemplate {
                 return;
             }
             for (Node usage : newNode.usages().snapshot()) {
-                if (usage instanceof FloatingReadNode && ((FloatingReadNode) usage).lastLocationAccess() == newNode) {
+                if (usage instanceof FloatingReadNode && ((FloatingReadNode) usage).getLastLocationAccess() == newNode) {
                     assert newNode.graph().isAfterFloatingReadPhase();
 
                     // lastLocationAccess points into the snippet graph. find a proper

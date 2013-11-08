@@ -22,10 +22,11 @@
  */
 package com.oracle.graal.nodes.extended;
 
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
-public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access {
+public abstract class FloatingAccessNode extends FloatingGuardedNode implements Access, MemoryAccess {
 
     @Input private ValueNode object;
     @Input private LocationNode location;
@@ -44,6 +45,10 @@ public abstract class FloatingAccessNode extends FloatingGuardedNode implements 
 
     public LocationNode nullCheckLocation() {
         return location;
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return location.getLocationIdentity();
     }
 
     public boolean getNullCheck() {

@@ -347,7 +347,7 @@ public final class SchedulePhase extends Phase {
                 if (n.location().getLocationIdentity() == FINAL_LOCATION) {
                     continue;
                 }
-                Node first = n.lastLocationAccess();
+                Node first = n.getLastLocationAccess();
                 assert first != null;
 
                 Map<LocationIdentity, Node> killMap = blockToKillMapInit.get(forKillLocation(first));
@@ -424,7 +424,7 @@ public final class SchedulePhase extends Phase {
         } else if (n instanceof FloatingReadNode) {
             FloatingReadNode frn = (FloatingReadNode) n;
             Debug.printf(" // from %s", frn.location().getLocationIdentity());
-            Debug.printf(", lastAccess: %s", frn.lastLocationAccess());
+            Debug.printf(", lastAccess: %s", frn.getLastLocationAccess());
             Debug.printf(", object: %s", frn.object());
         } else if (n instanceof GuardNode) {
             Debug.printf(", guard: %s", ((GuardNode) n).getGuard());
@@ -544,7 +544,7 @@ public final class SchedulePhase extends Phase {
         LocationIdentity locid = n.location().getLocationIdentity();
         assert locid != FINAL_LOCATION;
 
-        Node upperBound = n.lastLocationAccess();
+        Node upperBound = n.getLastLocationAccess();
         Block upperBoundBlock = forKillLocation(upperBound);
         Block earliestBlock = earliestBlock(n);
         assert upperBoundBlock.dominates(earliestBlock) : "upper bound (" + upperBoundBlock + ") should dominate earliest (" + earliestBlock + ")";
@@ -925,7 +925,7 @@ public final class SchedulePhase extends Phase {
                     FloatingReadNode frn = (FloatingReadNode) i;
                     if (frn.location().getLocationIdentity() != FINAL_LOCATION) {
                         reads.add(frn);
-                        if (nodesFor(b).contains(frn.lastLocationAccess())) {
+                        if (nodesFor(b).contains(frn.getLastLocationAccess())) {
                             assert !beforeLastLocation.isMarked(frn);
                             beforeLastLocation.mark(frn);
                         }
@@ -970,7 +970,7 @@ public final class SchedulePhase extends Phase {
         for (FloatingReadNode frn : new ArrayList<>(reads)) { // TODO: change to iterator?
             LocationIdentity readLocation = frn.location().getLocationIdentity();
             assert readLocation != FINAL_LOCATION;
-            if (frn.lastLocationAccess() == node) {
+            if (frn.getLastLocationAccess() == node) {
                 assert identity == ANY_LOCATION || readLocation == identity : "location doesn't match: " + readLocation + ", " + identity;
                 beforeLastLocation.clear(frn);
             } else if (!beforeLastLocation.isMarked(frn) && (readLocation == identity || (!(node instanceof StartNode) && ANY_LOCATION == identity))) {

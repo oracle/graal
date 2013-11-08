@@ -35,7 +35,7 @@ public class ReadEliminationPhase extends Phase {
         for (FloatingReadNode n : graph.getNodes(FloatingReadNode.class)) {
             if (isReadEliminable(n)) {
                 NodeMap<ValueNode> nodeMap = n.graph().createNodeMap();
-                ValueNode value = getValue(n, n.lastLocationAccess(), nodeMap);
+                ValueNode value = getValue(n, n.getLastLocationAccess(), nodeMap);
                 Debug.log("Eliminated memory read %1.1s and replaced with node %s", n, value);
                 graph.replaceFloating(n, value);
             }
@@ -43,7 +43,7 @@ public class ReadEliminationPhase extends Phase {
     }
 
     private static boolean isReadEliminable(FloatingReadNode n) {
-        return isWrites(n, n.lastLocationAccess(), n.graph().createNodeBitMap());
+        return isWrites(n, n.getLastLocationAccess(), n.graph().createNodeBitMap());
     }
 
     private static boolean isWrites(FloatingReadNode n, Node lastLocationAccess, NodeBitMap visited) {
