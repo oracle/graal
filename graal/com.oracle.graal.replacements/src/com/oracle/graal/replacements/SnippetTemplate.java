@@ -427,7 +427,7 @@ public class SnippetTemplate {
         return false;
     }
 
-    private static String debugValueName(SnippetTemplate template, String category, Arguments args) {
+    private static String debugValueName(String category, Arguments args) {
         if (Debug.isEnabled()) {
             StringBuilder result = new StringBuilder(category).append('[');
             SnippetInfo info = args.info;
@@ -445,7 +445,7 @@ public class SnippetTemplate {
                     sep = ", ";
                 }
             }
-            result.append(")]@").append(template.hashCode());
+            result.append(")]");
             return result.toString();
 
         }
@@ -458,8 +458,8 @@ public class SnippetTemplate {
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
         SnippetGraphsNodeCount.add(snippetGraph.getNodeCount());
-        instantiationTimer = Debug.timer(debugValueName(this, "SnippetTemplateInstantiationTime", args));
-        instantiationCounter = Debug.metric(debugValueName(this, "SnippetTemplateInstantiationCount", args));
+        instantiationTimer = Debug.timer(debugValueName("SnippetTemplateInstantiationTime", args));
+        instantiationCounter = Debug.metric(debugValueName("SnippetTemplateInstantiationCount", args));
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
