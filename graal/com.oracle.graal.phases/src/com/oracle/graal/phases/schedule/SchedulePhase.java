@@ -189,7 +189,7 @@ public final class SchedulePhase extends Phase {
                 MergeNode mergeNode = (MergeNode) block.getBeginNode();
                 for (PhiNode phi : mergeNode.usages().filter(PhiNode.class)) {
                     if (phi.type() == PhiType.Memory) {
-                        LocationIdentity identity = (LocationIdentity) phi.getIdentity();
+                        LocationIdentity identity = phi.getIdentity();
                         locationKilledBy(identity, phi, currentState);
                     }
                 }
@@ -266,7 +266,7 @@ public final class SchedulePhase extends Phase {
                 for (Node usage : begin.usages()) {
                     if (usage instanceof ProxyNode && ((ProxyNode) usage).type() == PhiType.Memory) {
                         ProxyNode proxy = (ProxyNode) usage;
-                        LocationIdentity identity = (LocationIdentity) proxy.getIdentity();
+                        LocationIdentity identity = proxy.getIdentity();
                         locationKilledBy(identity, proxy, exitState);
                     }
                 }
