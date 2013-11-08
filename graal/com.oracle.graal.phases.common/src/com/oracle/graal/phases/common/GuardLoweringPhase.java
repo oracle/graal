@@ -27,7 +27,6 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.*;
 import java.util.Map.Entry;
 
-import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -35,6 +34,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -54,6 +54,12 @@ import com.oracle.graal.phases.tiers.*;
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
+    static class Options {
+        //@formatter:off
+        @Option(help = "")
+        public static final OptionValue<Boolean> UseGuardIdAsSpeculationId = new OptionValue<>(false);
+        //@formatter:on
+    }
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
@@ -125,9 +131,11 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
     private static class LowerGuards extends ScheduledNodeIterator {
 
         private final Block block;
+        private boolean useGuardIdAsSpeculationId;
 
         public LowerGuards(Block block) {
             this.block = block;
+            this.useGuardIdAsSpeculationId = Options.UseGuardIdAsSpeculationId.getValue();
         }
 
         @Override
@@ -146,7 +154,7 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             StructuredGraph graph = guard.graph();
             AbstractBeginNode fastPath = graph.add(new BeginNode());
             @SuppressWarnings("deprecation")
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), (short) (Debug.isEnabled() ? guard.getId() : 0)));
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), (short) (useGuardIdAsSpeculationId ? guard.getId() : 0)));
             AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
             AbstractBeginNode trueSuccessor;
             AbstractBeginNode falseSuccessor;
