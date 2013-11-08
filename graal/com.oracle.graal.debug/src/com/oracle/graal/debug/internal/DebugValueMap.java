@@ -56,7 +56,9 @@ public class DebugValueMap {
     }
 
     public void reset() {
-        Arrays.fill(values, 0L);
+        if (values != null) {
+            Arrays.fill(values, 0L);
+        }
         if (children != null) {
             for (DebugValueMap child : children) {
                 child.reset();
