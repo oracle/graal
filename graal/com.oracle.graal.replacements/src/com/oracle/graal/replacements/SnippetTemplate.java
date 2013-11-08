@@ -33,8 +33,8 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.loop.*;
 import com.oracle.graal.nodes.*;
@@ -427,12 +427,39 @@ public class SnippetTemplate {
         return false;
     }
 
+    private static String debugValueName(SnippetTemplate template, String category, Arguments args) {
+        if (Debug.isEnabled()) {
+            StringBuilder result = new StringBuilder(category).append('[');
+            SnippetInfo info = args.info;
+            result.append(info.method.getName()).append('(');
+            String sep = "";
+            for (int i = 0; i < info.getParameterCount(); i++) {
+                if (info.isConstantParameter(i)) {
+                    result.append(sep);
+                    if (info.names[i] != null) {
+                        result.append(info.names[i]);
+                    } else {
+                        result.append(i);
+                    }
+                    result.append('=').append(args.values[i]);
+                    sep = ", ";
+                }
+            }
+            result.append(")]@").append(template.hashCode());
+            return result.toString();
+
+        }
+        return null;
+    }
+
     /**
      * Creates a snippet template.
      */
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
         SnippetGraphsNodeCount.add(snippetGraph.getNodeCount());
+        instantiationTimer = Debug.timer(debugValueName(this, "SnippetTemplateInstantiationTime", args));
+        instantiationCounter = Debug.metric(debugValueName(this, "SnippetTemplateInstantiationCount", args));
 
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
@@ -621,8 +648,6 @@ public class SnippetTemplate {
         this.returnNode = retNode;
 
         SnippetTemplatesNodeCount.add(nodes.size());
-        instantiationTimer = Debug.timer("SnippetTemplateInstantiationTime[" + args.info.method.getName() + "]@" + hashCode());
-        instantiationCounter = Debug.metric("SnippetTemplateInstantiationCount[" + args.info.method.getName() + "]@" + hashCode());
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {
