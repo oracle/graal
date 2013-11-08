@@ -73,6 +73,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                 // the null check and if a field is found, the offset is so small that this is
                 // never a valid access of an arbitrary address.
                 if (field != null && field.getKind() == this.accessKind()) {
+                    assert !graph().isAfterFloatingReadPhase() : "cannot add more precise memory location after floating read phase";
                     return cloneAsFieldAccess(field);
                 }
             }
