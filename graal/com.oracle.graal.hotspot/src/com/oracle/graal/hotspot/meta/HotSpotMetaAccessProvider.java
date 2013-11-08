@@ -90,7 +90,9 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
     public Constant encodeDeoptActionAndReason(DeoptimizationAction action, DeoptimizationReason reason, short speculationId) {
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
-        Constant c = Constant.forInt(~((speculationId << DEBUG_SHIFT) | (reasonValue << REASON_SHIFT) | (actionValue << ACTION_SHIFT)));
+        int speculationValue = speculationId & DEBUG_MASK;
+        Constant c = Constant.forInt(~((speculationValue << DEBUG_SHIFT) | (reasonValue << REASON_SHIFT) | (actionValue << ACTION_SHIFT)));
+        assert c.asInt() < 0;
         return c;
     }
 
