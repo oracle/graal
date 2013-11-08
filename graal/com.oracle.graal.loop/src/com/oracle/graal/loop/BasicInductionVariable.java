@@ -123,19 +123,25 @@ public class BasicInductionVariable extends InductionVariable {
         Kind fromKind = phi.kind();
         StructuredGraph graph = graph();
         ValueNode stride = strideNode();
-        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
         ValueNode initNode = this.initNode();
         if (fromKind != kind) {
             stride = graph.unique(new ConvertNode(fromKind, kind, stride));
-            maxTripCount = graph.unique(new ConvertNode(fromKind, kind, maxTripCount));
             initNode = graph.unique(new ConvertNode(fromKind, kind, initNode));
+        }
+        ValueNode maxTripCount = loop.counted().maxTripCountNode(assumePositiveTripCount);
+        if (maxTripCount.kind() != kind) {
+            maxTripCount = graph.unique(new ConvertNode(maxTripCount.kind(), kind, maxTripCount));
         }
         return IntegerArithmeticNode.add(graph, IntegerArithmeticNode.mul(graph, stride, IntegerArithmeticNode.sub(graph, maxTripCount, ConstantNode.forIntegerKind(kind, 1, graph))), initNode);
     }
 
     @Override
     public ValueNode exitValueNode() {
+        Kind kind = phi.kind();
         ValueNode maxTripCount = loop.counted().maxTripCountNode(false);
+        if (maxTripCount.kind() != kind) {
+            maxTripCount = graph().unique(new ConvertNode(maxTripCount.kind(), kind, maxTripCount));
+        }
         return IntegerArithmeticNode.add(graph(), IntegerArithmeticNode.mul(graph(), strideNode(), maxTripCount), initNode());
     }
 
