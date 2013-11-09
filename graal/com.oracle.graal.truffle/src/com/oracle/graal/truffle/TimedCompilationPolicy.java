@@ -20,42 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.nodes;
+package com.oracle.graal.truffle;
 
-import com.oracle.graal.api.code.*;
-import com.oracle.graal.truffle.*;
+import static com.oracle.graal.truffle.TruffleCompilerOptions.*;
 
-public final class AssumptionValidAssumption extends Assumptions.Assumption {
-
-    private static final long serialVersionUID = 2010244979610891262L;
-
-    private final OptimizedAssumption assumption;
-
-    public AssumptionValidAssumption(OptimizedAssumption assumption) {
-        this.assumption = assumption;
-        assert assumption != null;
-    }
-
-    public OptimizedAssumption getAssumption() {
-        return assumption;
-    }
+public class TimedCompilationPolicy extends DefaultCompilationPolicy {
 
     @Override
-    public int hashCode() {
-        return 31 + assumption.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof AssumptionValidAssumption) {
-            AssumptionValidAssumption other = (AssumptionValidAssumption) obj;
-            return other.assumption == this.assumption;
+    public boolean shouldCompile(CompilationProfile profile) {
+        if (super.shouldCompile(profile)) {
+            long timestamp = System.nanoTime();
+            long prevTimestamp = profile.getPreviousTimestamp();
+            long timespan = (timestamp - prevTimestamp);
+            if (timespan < (TruffleCompilationDecisionTime.getValue())) {
+                return true;
+            }
+            // TODO shouldCompile should not modify the compilation profile
+            // maybe introduce another method?
+            profile.reportTiminingFailed(timestamp);
+            if (TruffleCompilationDecisionTimePrintFail.getValue()) {
+                // Checkstyle: stop
+                System.out.println(profile.getName() + ": timespan  " + (timespan / 1000000) + " ms  larger than threshold");
+                // Checkstyle: resume
+            }
         }
         return false;
     }
 
-    @Override
-    public String toString() {
-        return assumption.toString();
-    }
 }

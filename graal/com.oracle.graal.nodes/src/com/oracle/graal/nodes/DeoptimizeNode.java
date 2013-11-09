@@ -31,12 +31,18 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerab
 
     private final DeoptimizationAction action;
     private final DeoptimizationReason reason;
+    private final int speculationId;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
+        this(action, reason, (short) 0);
+    }
+
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int speculationId) {
         assert action != null;
         assert reason != null;
         this.action = action;
         this.reason = reason;
+        this.speculationId = speculationId;
     }
 
     public DeoptimizationAction action() {
@@ -49,12 +55,12 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerab
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason), this);
+        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason, speculationId), this);
     }
 
     @Override
     public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
-        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason), metaAccess, graph());
+        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason, speculationId), metaAccess, graph());
     }
 
     @NodeIntrinsic

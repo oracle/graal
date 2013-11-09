@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.options;
 
+import java.io.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -136,8 +137,24 @@ public class OptionValue<T> {
 
     private OptionDescriptor descriptor;
 
+    private long reads;
+    private OptionValue<?> next;
+    private static OptionValue head;
+
+    private static final boolean ShowReadsHistogram = Boolean.getBoolean("graal.showOptionValueReadsHistogram");
+
+    private static void addToHistogram(OptionValue<?> option) {
+        if (ShowReadsHistogram) {
+            synchronized (OptionValue.class) {
+                option.next = head;
+                head = option;
+            }
+        }
+    }
+
     public OptionValue(T value) {
         this.value = value;
+        addToHistogram(this);
     }
 
     private static final Object UNINITIALIZED = "UNINITIALIZED";
@@ -149,6 +166,7 @@ public class OptionValue<T> {
     @SuppressWarnings("unchecked")
     protected OptionValue() {
         this.value = (T) UNINITIALIZED;
+        addToHistogram(this);
     }
 
     /**
@@ -167,21 +185,25 @@ public class OptionValue<T> {
 
     /**
      * Gets the name of this option. The name for an option value with a null
-     * {@linkplain #setDescriptor(OptionDescriptor) descriptor} is {@code "<anonymous>"}.
+     * {@linkplain #setDescriptor(OptionDescriptor) descriptor} is the value of
+     * {@link Object#toString()}.
      */
     public String getName() {
-        return descriptor == null ? "<anonymous>" : (descriptor.getDeclaringClass().getName() + "." + descriptor.getName());
+        return descriptor == null ? super.toString() : (descriptor.getDeclaringClass().getName() + "." + descriptor.getName());
     }
 
     @Override
     public String toString() {
-        return getName() + "=" + value;
+        return getName() + "=" + getValue();
     }
 
     /**
      * Gets the value of this option.
      */
     public T getValue() {
+        if (ShowReadsHistogram) {
+            reads++;
+        }
         if (!(this instanceof StableOptionValue)) {
             OverrideScope overrideScope = overrideScopes.get();
             if (overrideScope != null) {
@@ -195,6 +217,26 @@ public class OptionValue<T> {
             value = initialValue();
         }
         return value;
+    }
+
+    /**
+     * Gets the values of this option including overridden values.
+     * 
+     * @param c the collection to which the values are added. If null, one is allocated.
+     * @return the collection to which the values were added in order from most overridden to
+     *         current value
+     */
+    @SuppressWarnings("unchecked")
+    public Collection<T> getValues(Collection<T> c) {
+        Collection<T> values = c == null ? new ArrayList<T>() : c;
+        if (!(this instanceof StableOptionValue)) {
+            OverrideScope overrideScope = overrideScopes.get();
+            if (overrideScope != null) {
+                overrideScope.getOverrides(this, (Collection<Object>) values);
+            }
+        }
+        values.add(value);
+        return values;
     }
 
     /**
@@ -213,6 +255,8 @@ public class OptionValue<T> {
         abstract void addToInherited(Map<OptionValue, Object> inherited);
 
         abstract <T> T getOverride(OptionValue<T> option);
+
+        abstract void getOverrides(OptionValue<?> option, Collection<Object> c);
 
         public abstract void close();
     }
@@ -243,6 +287,13 @@ public class OptionValue<T> {
                 return (T) value;
             }
             return null;
+        }
+
+        @Override
+        void getOverrides(OptionValue<?> key, Collection<Object> c) {
+            if (key == this.option) {
+                c.add(value);
+            }
         }
 
         @Override
@@ -311,10 +362,52 @@ public class OptionValue<T> {
         }
 
         @Override
+        void getOverrides(OptionValue<?> option, Collection<Object> c) {
+            Object v = overrides.get(option);
+            if (v != null) {
+                c.add(v);
+            }
+            if (parent != null) {
+                parent.getOverrides(option, c);
+            }
+        }
+
+        @Override
         public void close() {
             if (!overrides.isEmpty()) {
                 overrideScopes.set(parent);
             }
+        }
+    }
+
+    static {
+        if (ShowReadsHistogram) {
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    ArrayList<OptionValue<?>> options = new ArrayList<>();
+                    for (OptionValue<?> option = head; option != null; option = option.next) {
+                        options.add(option);
+                    }
+                    Collections.sort(options, new Comparator<OptionValue<?>>() {
+
+                        public int compare(OptionValue<?> o1, OptionValue<?> o2) {
+                            if (o1.reads < o2.reads) {
+                                return -1;
+                            } else if (o1.reads > o2.reads) {
+                                return 1;
+                            } else {
+                                return o1.getName().compareTo(o2.getName());
+                            }
+                        }
+                    });
+                    PrintStream out = System.out;
+                    out.println("=== OptionValue reads histogram ===");
+                    for (OptionValue<?> option : options) {
+                        out.println(option.reads + "\t" + option);
+                    }
+                }
+            });
         }
     }
 }

@@ -23,9 +23,14 @@
 
 package com.oracle.graal.compiler.hsail.test;
 
+import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assume.*;
 
 import org.junit.*;
+
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
+import com.oracle.graal.phases.*;
 
 /**
  * Unit test of NBody demo app. This version uses a call to the main routine which would normally be
@@ -37,10 +42,15 @@ public class StaticNBodyCallTest extends StaticNBodyTest {
         StaticNBodyTest.run(inxyz, outxyz, invxyz, outvxyz, gid);
     }
 
+    public void before() {
+    }
+
     @Test
     @Override
-    public void test() {
-        assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
-        testGeneratedHsail();
+    public void test() throws Exception {
+        try (OverrideScope s = OptionValue.override(InlineEverything, true, getOptionFromField(GraalOptions.class, "RemoveNeverExecutedCode"), false)) {
+            assumeTrue(aggressiveInliningEnabled() || canHandleHSAILMethodCalls());
+            testGeneratedHsail();
+        }
     }
 }

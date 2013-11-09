@@ -38,7 +38,7 @@ public class ReverseBytesNode extends FloatingNode implements LIRGenLowerable, C
 
     public ReverseBytesNode(ValueNode value) {
         super(StampFactory.forKind(value.kind()));
-        assert kind().getStackKind() == Kind.Int || kind() == Kind.Long;
+        assert kind().isNumericInteger();
         this.value = value;
     }
 

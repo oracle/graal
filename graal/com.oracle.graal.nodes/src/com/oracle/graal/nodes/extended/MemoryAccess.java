@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,28 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.nodes.calc;
+package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.graph.*;
 
-public abstract class FloatArithmeticNode extends BinaryNode implements ArithmeticLIRLowerable {
+/**
+ * This interface marks nodes that access some memory location, and that have an edge to the last
+ * node that kills this location.
+ */
+public interface MemoryAccess {
 
-    private final boolean isStrictFP;
+    LocationIdentity getLocationIdentity();
 
-    public FloatArithmeticNode(Kind kind, ValueNode x, ValueNode y, boolean isStrictFP) {
-        super(kind, x, y);
-        assert kind.isNumericFloat();
-        this.isStrictFP = isStrictFP;
-    }
+    Node getLastLocationAccess();
 
-    /**
-     * Checks whether this instruction has strict fp semantics.
-     * 
-     * @return {@code true} if this instruction has strict fp semantics
-     */
-    public boolean isStrictFP() {
-        return isStrictFP;
-    }
+    void setLastLocationAccess(Node lla);
 }

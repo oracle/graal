@@ -55,6 +55,17 @@ public class DebugValueMap {
         }
     }
 
+    public void reset() {
+        if (values != null) {
+            Arrays.fill(values, 0L);
+        }
+        if (children != null) {
+            for (DebugValueMap child : children) {
+                child.reset();
+            }
+        }
+    }
+
     private void ensureSize(int index) {
         if (values == null) {
             values = new long[index + 1];

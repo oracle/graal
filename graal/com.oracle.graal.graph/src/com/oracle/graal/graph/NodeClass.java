@@ -677,6 +677,32 @@ public final class NodeClass extends FieldIntrospection {
         }
     }
 
+    private static int deepHashCode0(Object o) {
+        if (o instanceof Object[]) {
+            return Arrays.deepHashCode((Object[]) o);
+        } else if (o instanceof byte[]) {
+            return Arrays.hashCode((byte[]) o);
+        } else if (o instanceof short[]) {
+            return Arrays.hashCode((short[]) o);
+        } else if (o instanceof int[]) {
+            return Arrays.hashCode((int[]) o);
+        } else if (o instanceof long[]) {
+            return Arrays.hashCode((long[]) o);
+        } else if (o instanceof char[]) {
+            return Arrays.hashCode((char[]) o);
+        } else if (o instanceof float[]) {
+            return Arrays.hashCode((float[]) o);
+        } else if (o instanceof double[]) {
+            return Arrays.hashCode((double[]) o);
+        } else if (o instanceof boolean[]) {
+            return Arrays.hashCode((boolean[]) o);
+        } else if (o != null) {
+            return o.hashCode();
+        } else {
+            return 0;
+        }
+    }
+
     public int valueNumber(Node n) {
         int number = 0;
         if (canGVN) {
@@ -695,16 +721,28 @@ public final class NodeClass extends FieldIntrospection {
                         if (booleanValue) {
                             number += 7;
                         }
+                    } else if (type == Float.TYPE) {
+                        float floatValue = unsafe.getFloat(n, dataOffsets[i]);
+                        number += Float.floatToRawIntBits(floatValue);
+                    } else if (type == Double.TYPE) {
+                        double doubleValue = unsafe.getDouble(n, dataOffsets[i]);
+                        long longValue = Double.doubleToRawLongBits(doubleValue);
+                        number += longValue ^ (longValue >>> 32);
+                    } else if (type == Short.TYPE) {
+                        short shortValue = unsafe.getShort(n, dataOffsets[i]);
+                        number += shortValue;
+                    } else if (type == Character.TYPE) {
+                        char charValue = unsafe.getChar(n, dataOffsets[i]);
+                        number += charValue;
+                    } else if (type == Byte.TYPE) {
+                        byte byteValue = unsafe.getByte(n, dataOffsets[i]);
+                        number += byteValue;
                     } else {
-                        assert false;
+                        assert false : "unhandled property type: " + type;
                     }
                 } else {
                     Object o = unsafe.getObject(n, dataOffsets[i]);
-                    if (o instanceof Object[]) {
-                        number += Arrays.deepHashCode((Object[]) o);
-                    } else if (o != null) {
-                        number += o.hashCode();
-                    }
+                    number += deepHashCode0(o);
                 }
                 number *= 13;
             }
@@ -733,6 +771,12 @@ public final class NodeClass extends FieldIntrospection {
                     value = unsafe.getFloat(node, dataOffsets[i]);
                 } else if (type == Double.TYPE) {
                     value = unsafe.getDouble(node, dataOffsets[i]);
+                } else if (type == Short.TYPE) {
+                    value = unsafe.getShort(node, dataOffsets[i]);
+                } else if (type == Character.TYPE) {
+                    value = unsafe.getChar(node, dataOffsets[i]);
+                } else if (type == Byte.TYPE) {
+                    value = unsafe.getByte(node, dataOffsets[i]);
                 } else {
                     assert false : "unhandled property type: " + type;
                 }
@@ -741,6 +785,33 @@ public final class NodeClass extends FieldIntrospection {
             }
             properties.put(fieldNames.get(dataOffsets[i]), value);
         }
+    }
+
+    private static boolean deepEquals0(Object e1, Object e2) {
+        assert e1 != null;
+        boolean eq;
+        if (e1 instanceof Object[] && e2 instanceof Object[]) {
+            eq = Arrays.deepEquals((Object[]) e1, (Object[]) e2);
+        } else if (e1 instanceof byte[] && e2 instanceof byte[]) {
+            eq = Arrays.equals((byte[]) e1, (byte[]) e2);
+        } else if (e1 instanceof short[] && e2 instanceof short[]) {
+            eq = Arrays.equals((short[]) e1, (short[]) e2);
+        } else if (e1 instanceof int[] && e2 instanceof int[]) {
+            eq = Arrays.equals((int[]) e1, (int[]) e2);
+        } else if (e1 instanceof long[] && e2 instanceof long[]) {
+            eq = Arrays.equals((long[]) e1, (long[]) e2);
+        } else if (e1 instanceof char[] && e2 instanceof char[]) {
+            eq = Arrays.equals((char[]) e1, (char[]) e2);
+        } else if (e1 instanceof float[] && e2 instanceof float[]) {
+            eq = Arrays.equals((float[]) e1, (float[]) e2);
+        } else if (e1 instanceof double[] && e2 instanceof double[]) {
+            eq = Arrays.equals((double[]) e1, (double[]) e2);
+        } else if (e1 instanceof boolean[] && e2 instanceof boolean[]) {
+            eq = Arrays.equals((boolean[]) e1, (boolean[]) e2);
+        } else {
+            eq = e1.equals(e2);
+        }
+        return eq;
     }
 
     public boolean valueEqual(Node a, Node b) {
@@ -768,10 +839,34 @@ public final class NodeClass extends FieldIntrospection {
                     if (aLong != bLong) {
                         return false;
                     }
+                } else if (type == Float.TYPE) {
+                    float aFloat = unsafe.getFloat(a, dataOffsets[i]);
+                    float bFloat = unsafe.getFloat(b, dataOffsets[i]);
+                    if (aFloat != bFloat) {
+                        return false;
+                    }
                 } else if (type == Double.TYPE) {
                     double aDouble = unsafe.getDouble(a, dataOffsets[i]);
                     double bDouble = unsafe.getDouble(b, dataOffsets[i]);
                     if (aDouble != bDouble) {
+                        return false;
+                    }
+                } else if (type == Short.TYPE) {
+                    short aShort = unsafe.getShort(a, dataOffsets[i]);
+                    short bShort = unsafe.getShort(b, dataOffsets[i]);
+                    if (aShort != bShort) {
+                        return false;
+                    }
+                } else if (type == Character.TYPE) {
+                    char aChar = unsafe.getChar(a, dataOffsets[i]);
+                    char bChar = unsafe.getChar(b, dataOffsets[i]);
+                    if (aChar != bChar) {
+                        return false;
+                    }
+                } else if (type == Byte.TYPE) {
+                    byte aByte = unsafe.getByte(a, dataOffsets[i]);
+                    byte bByte = unsafe.getByte(b, dataOffsets[i]);
+                    if (aByte != bByte) {
                         return false;
                     }
                 } else {
@@ -782,14 +877,8 @@ public final class NodeClass extends FieldIntrospection {
                 Object objectB = unsafe.getObject(b, dataOffsets[i]);
                 if (objectA != objectB) {
                     if (objectA != null && objectB != null) {
-                        if (objectA instanceof Object[] && objectB instanceof Object[]) {
-                            if (!Arrays.deepEquals((Object[]) objectA, (Object[]) objectB)) {
-                                return false;
-                            }
-                        } else {
-                            if (!(objectA.equals(objectB))) {
-                                return false;
-                            }
+                        if (!deepEquals0(objectA, objectB)) {
+                            return false;
                         }
                     } else {
                         return false;
@@ -1271,7 +1360,14 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     static Map<Node, Node> addGraphDuplicate(final Graph graph, final Graph oldGraph, int estimatedNodeCount, Iterable<Node> nodes, final DuplicationReplacement replacements) {
-        final Map<Node, Node> newNodes = (estimatedNodeCount > (oldGraph.getNodeCount() + oldGraph.getDeletedNodeCount() >> 4)) ? new NodeNodeMap(oldGraph) : new IdentityHashMap<Node, Node>();
+        final Map<Node, Node> newNodes;
+        if (estimatedNodeCount > (oldGraph.getNodeCount() + oldGraph.getNodesDeletedSinceLastCompression() >> 4)) {
+            // Use dense map
+            newNodes = new NodeNodeMap(oldGraph);
+        } else {
+            // Use sparse map
+            newNodes = new IdentityHashMap<>();
+        }
         createNodeDuplicates(graph, nodes, replacements, newNodes);
 
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {

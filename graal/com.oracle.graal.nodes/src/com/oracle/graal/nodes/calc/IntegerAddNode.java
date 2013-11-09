@@ -97,7 +97,7 @@ public class IntegerAddNode extends IntegerArithmeticNode implements Canonicaliz
 
     public static boolean isIntegerAddition(ValueNode result, ValueNode a, ValueNode b) {
         Kind kind = result.kind();
-        if (kind != a.kind() || kind != b.kind() || !(kind.getStackKind() == Kind.Int || kind == Kind.Long)) {
+        if (kind != a.kind() || kind != b.kind() || !kind.isNumericInteger()) {
             return false;
         }
         if (result.isConstant() && a.isConstant() && b.isConstant()) {

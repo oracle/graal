@@ -323,6 +323,9 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         } while ((System.currentTimeMillis() - startTime) <= TimedBootstrap.getValue());
 
+        if (ResetDebugValuesAfterBootstrap.getValue()) {
+            printDebugValues("bootstrap", true);
+        }
         phaseTransition("bootstrap");
 
         bootstrapRunning = false;
@@ -368,53 +371,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
 
-        if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
-            List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
-            List<DebugValue> debugValues = KeyRegistry.getDebugValues();
-            if (debugValues.size() > 0) {
-                ArrayList<DebugValue> sortedValues = new ArrayList<>(debugValues);
-                Collections.sort(sortedValues);
-
-                String summary = DebugValueSummary.getValue();
-                if (summary == null) {
-                    summary = "Complete";
-                }
-                switch (summary) {
-                    case "Name":
-                        printSummary(topLevelMaps, sortedValues);
-                        break;
-                    case "Partial": {
-                        DebugValueMap globalMap = new DebugValueMap("Global");
-                        for (DebugValueMap map : topLevelMaps) {
-                            flattenChildren(map, globalMap);
-                        }
-                        globalMap.normalize();
-                        printMap(new DebugValueScope(null, globalMap), sortedValues);
-                        break;
-                    }
-                    case "Complete": {
-                        DebugValueMap globalMap = new DebugValueMap("Global");
-                        for (DebugValueMap map : topLevelMaps) {
-                            globalMap.addChild(map);
-                        }
-                        globalMap.group();
-                        globalMap.normalize();
-                        printMap(new DebugValueScope(null, globalMap), sortedValues);
-                        break;
-                    }
-                    case "Thread":
-                        for (DebugValueMap map : topLevelMaps) {
-                            TTY.println("Showing the results for thread: " + map.getName());
-                            map.group();
-                            map.normalize();
-                            printMap(new DebugValueScope(null, map), sortedValues);
-                        }
-                        break;
-                    default:
-                        throw new GraalInternalError("Unknown summary type: %s", summary);
-                }
-            }
-        }
+        printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
         phaseTransition("final");
 
         if (runtime.getConfig().ciTime) {
@@ -424,6 +381,79 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         SnippetCounter.printGroups(TTY.out().out());
         BenchmarkCounters.shutdown(runtime.getCompilerToVM(), compilerStartTime);
+    }
+
+    private void printDebugValues(String phase, boolean reset) throws GraalInternalError {
+        if (Debug.isEnabled() && areMetricsOrTimersEnabled()) {
+            TTY.println();
+            if (phase != null) {
+                TTY.println("<DebugValues:" + phase + ">");
+            } else {
+                TTY.println("<DebugValues>");
+            }
+            List<DebugValueMap> topLevelMaps = DebugValueMap.getTopLevelMaps();
+            List<DebugValue> debugValues = KeyRegistry.getDebugValues();
+            if (debugValues.size() > 0) {
+                try {
+                    ArrayList<DebugValue> sortedValues = new ArrayList<>(debugValues);
+                    Collections.sort(sortedValues);
+
+                    String summary = DebugValueSummary.getValue();
+                    if (summary == null) {
+                        summary = "Complete";
+                    }
+                    switch (summary) {
+                        case "Name":
+                            printSummary(topLevelMaps, sortedValues);
+                            break;
+                        case "Partial": {
+                            DebugValueMap globalMap = new DebugValueMap("Global");
+                            for (DebugValueMap map : topLevelMaps) {
+                                flattenChildren(map, globalMap);
+                            }
+                            globalMap.normalize();
+                            printMap(new DebugValueScope(null, globalMap), sortedValues);
+                            break;
+                        }
+                        case "Complete": {
+                            DebugValueMap globalMap = new DebugValueMap("Global");
+                            for (DebugValueMap map : topLevelMaps) {
+                                globalMap.addChild(map);
+                            }
+                            globalMap.group();
+                            globalMap.normalize();
+                            printMap(new DebugValueScope(null, globalMap), sortedValues);
+                            break;
+                        }
+                        case "Thread":
+                            for (DebugValueMap map : topLevelMaps) {
+                                TTY.println("Showing the results for thread: " + map.getName());
+                                map.group();
+                                map.normalize();
+                                printMap(new DebugValueScope(null, map), sortedValues);
+                            }
+                            break;
+                        default:
+                            throw new GraalInternalError("Unknown summary type: %s", summary);
+                    }
+                    if (reset) {
+                        for (DebugValueMap topLevelMap : topLevelMaps) {
+                            topLevelMap.reset();
+                        }
+                    }
+                } catch (Throwable e) {
+                    // Don't want this to change the exit status of the VM
+                    PrintStream err = System.err;
+                    err.println("Error while printing debug values:");
+                    e.printStackTrace();
+                }
+            }
+            if (phase != null) {
+                TTY.println("</DebugValues:" + phase + ">");
+            } else {
+                TTY.println("</DebugValues>");
+            }
+        }
     }
 
     private void flattenChildren(DebugValueMap map, DebugValueMap globalMap) {

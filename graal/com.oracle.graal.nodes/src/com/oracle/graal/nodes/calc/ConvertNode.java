@@ -87,9 +87,7 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         throw GraalInternalError.shouldNotReachHere();
     }
 
-    public Constant evalConst(Constant... inputs) {
-        assert inputs.length == 1;
-        Constant c = inputs[0];
+    public static Constant convert(Kind from, Kind to, Constant c) {
         switch (from) {
             case Byte:
                 byte byteVal = (byte) c.asInt();
@@ -228,10 +226,20 @@ public class ConvertNode extends FloatingNode implements Canonicalizable, Lowera
         throw GraalInternalError.shouldNotReachHere();
     }
 
+    public Constant evalConst(Constant... inputs) {
+        assert inputs.length == 1;
+        return convert(from, to, inputs[0]);
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (value.isConstant()) {
             return ConstantNode.forPrimitive(evalConst(value.asConstant()), graph());
+        } else if (value instanceof ConvertNode) {
+            ConvertNode other = (ConvertNode) value;
+            if (other.isLossless() && other.to != Kind.Char) {
+                return graph().unique(new ConvertNode(other.from, this.to, other.value()));
+            }
         }
         return this;
     }

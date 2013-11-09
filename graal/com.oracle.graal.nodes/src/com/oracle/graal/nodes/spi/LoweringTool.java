@@ -57,4 +57,6 @@ public interface LoweringTool {
      * Gets the closest fixed node preceding the node currently being lowered.
      */
     FixedWithNextNode lastFixedNode();
+
+    GuardingNode getCurrentGuardAnchor();
 }

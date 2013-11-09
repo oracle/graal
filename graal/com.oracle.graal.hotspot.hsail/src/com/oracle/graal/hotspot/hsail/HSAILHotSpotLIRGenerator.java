@@ -46,6 +46,30 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         this.config = config;
     }
 
+    private int getLogMinObjectAlignment() {
+        return config.logMinObjAlignment();
+    }
+
+    private int getNarrowOopShift() {
+        return config.narrowOopShift;
+    }
+
+    private long getNarrowOopBase() {
+        return config.narrowOopBase;
+    }
+
+    private int getLogKlassAlignment() {
+        return config.logKlassAlignment;
+    }
+
+    private int getNarrowKlassShift() {
+        return config.narrowKlassShift;
+    }
+
+    private long getNarrowKlassBase() {
+        return config.narrowKlassBase;
+    }
+
     private static boolean isCompressCandidate(DeoptimizingNode access) {
         return access != null && ((HeapAccess) access).isCompressible();
     }
@@ -56,9 +80,12 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         Variable result = newVariable(kind);
         LIRFrameState state = access != null ? state(access) : null;
         assert access == null || access instanceof HeapAccess;
-        if (config.useCompressedOops && isCompressCandidate(access)) {
+        if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);
-            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment()));
+            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
+        } else if (isCompressCandidate(access) && config.useCompressedClassPointers && kind == Kind.Long) {
+            Variable scratch = newVariable(Kind.Long);
+            append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
         } else {
             append(new LoadOp(kind, result, loadAddress, state));
         }
@@ -70,9 +97,12 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         HSAILAddressValue storeAddress = asAddressValue(address);
         LIRFrameState state = access != null ? state(access) : null;
         Variable input = load(inputVal);
-        if (config.useCompressedOops && isCompressCandidate(access)) {
+        if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);
-            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, config.narrowOopBase, config.narrowOopShift, config.logMinObjAlignment()));
+            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
+        } else if (isCompressCandidate(access) && config.useCompressedClassPointers && kind == Kind.Long) {
+            Variable scratch = newVariable(Kind.Long);
+            append(new StoreCompressedPointer(kind, storeAddress, input, scratch, state, getNarrowKlassBase(), getNarrowKlassShift(), getLogKlassAlignment()));
         } else {
             append(new StoreOp(kind, storeAddress, input, state));
         }

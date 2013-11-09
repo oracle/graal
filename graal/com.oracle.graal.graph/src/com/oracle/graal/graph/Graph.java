@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@ package com.oracle.graal.graph;
 
 import java.util.*;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.GraphEvent.NodeEvent;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.iterators.*;
@@ -37,7 +38,15 @@ public class Graph {
 
     private static final boolean TIME_TRAVEL = false;
 
-    private final ArrayList<Node> nodes;
+    /**
+     * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
+     */
+    private Node[] nodes;
+
+    /**
+     * The number of valid entries in {@link #nodes}.
+     */
+    private int nodesSize;
 
     /**
      * Records the modification count for nodes. This is only used in assertions.
@@ -53,8 +62,14 @@ public class Graph {
     // they contain the first and last pointer to a linked list of all nodes with this type.
     private final ArrayList<Node> nodeCacheFirst;
     private final ArrayList<Node> nodeCacheLast;
-    private int deletedNodeCount;
+    private int nodesDeletedSinceLastCompression;
+    private int nodesDeletedBeforeLastCompression;
     private GraphEventLog eventLog;
+
+    /**
+     * The number of times this graph has been compressed.
+     */
+    int compressions;
 
     NodeChangedListener inputChangedListener;
     NodeChangedListener usagesDroppedToZeroListener;
@@ -110,19 +125,21 @@ public class Graph {
         return enabled;
     }
 
+    private static final int INITIAL_NODES_SIZE = 32;
+
     /**
      * Creates an empty Graph with a given name.
      * 
      * @param name the name of the graph, used for debugging purposes
      */
     public Graph(String name) {
-        nodes = new ArrayList<>(32);
+        nodes = new Node[INITIAL_NODES_SIZE];
         nodeCacheFirst = new ArrayList<>(NodeClass.cacheSize());
         nodeCacheLast = new ArrayList<>(NodeClass.cacheSize());
         this.name = name;
         if (MODIFICATION_COUNTS_ENABLED) {
-            nodeModCounts = new int[nodes.size()];
-            nodeUsageModCounts = new int[nodes.size()];
+            nodeModCounts = new int[INITIAL_NODES_SIZE];
+            nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
     }
 
@@ -204,16 +221,31 @@ public class Graph {
      * @return the number of live nodes in this graph
      */
     public int getNodeCount() {
-        return nodes.size() - getDeletedNodeCount();
+        return nodesSize - getNodesDeletedSinceLastCompression();
     }
 
     /**
-     * Gets the number of node which have been deleted from this graph.
-     * 
-     * @return the number of node which have been deleted from this graph
+     * Gets the number of times this graph has been {@linkplain #maybeCompress() compressed}. Node
+     * identifiers are only stable between compressions. To ensure this constraint is observed, any
+     * entity relying upon stable node identifiers should use {@link NodeIdAccessor}.
      */
-    public int getDeletedNodeCount() {
-        return deletedNodeCount;
+    public int getCompressions() {
+        return compressions;
+    }
+
+    /**
+     * Gets the number of nodes which have been deleted from this graph since it was last
+     * {@linkplain #maybeCompress() compressed}.
+     */
+    public int getNodesDeletedSinceLastCompression() {
+        return nodesDeletedSinceLastCompression;
+    }
+
+    /**
+     * Gets the total number of nodes which have been deleted from this graph.
+     */
+    public int getTotalNodesDeleted() {
+        return nodesDeletedSinceLastCompression + nodesDeletedBeforeLastCompression;
     }
 
     /**
@@ -394,15 +426,56 @@ public class Graph {
         }
     }
 
-    public boolean isNew(int mark, Node node) {
-        return node.id >= mark;
+    public boolean isNew(Mark mark, Node node) {
+        return node.id >= mark.getValue();
     }
 
     /**
-     * Gets a mark that can be used with {@link #getNewNodes(int)}.
+     * A snapshot of the {@linkplain Graph#getNodeCount() live node count} in a graph.
      */
-    public int getMark() {
-        return nodeIdCount();
+    public static class Mark extends NodeIdAccessor {
+        private final int value;
+
+        Mark(Graph graph) {
+            super(graph);
+            this.value = graph.nodeIdCount();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Mark) {
+                Mark other = (Mark) obj;
+                return other.getValue() == getValue() && other.getGraph() == getGraph();
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return value ^ (epoch + 11);
+        }
+
+        /**
+         * Determines if this mark is positioned at the first live node in the graph.
+         */
+        public boolean isStart() {
+            return value == 0;
+        }
+
+        /**
+         * Gets the {@linkplain Graph#getNodeCount() live node count} of the associated graph when
+         * this object was created.
+         */
+        int getValue() {
+            return value;
+        }
+    }
+
+    /**
+     * Gets a mark that can be used with {@link #getNewNodes}.
+     */
+    public Mark getMark() {
+        return new Mark(this);
     }
 
     private class NodeIterator implements Iterator<Node> {
@@ -419,22 +492,22 @@ public class Graph {
         }
 
         private void forward() {
-            if (index < nodes.size()) {
+            if (index < nodesSize) {
                 do {
                     index++;
-                } while (index < nodes.size() && nodes.get(index) == null);
+                } while (index < nodesSize && nodes[index] == null);
             }
         }
 
         @Override
         public boolean hasNext() {
             checkForDeletedNode();
-            return index < nodes.size();
+            return index < nodesSize;
         }
 
         private void checkForDeletedNode() {
-            if (index < nodes.size()) {
-                while (index < nodes.size() && nodes.get(index) == null) {
+            if (index < nodesSize) {
+                while (index < nodesSize && nodes[index] == null) {
                     index++;
                 }
             }
@@ -443,7 +516,7 @@ public class Graph {
         @Override
         public Node next() {
             try {
-                return nodes.get(index);
+                return nodes[index];
             } finally {
                 forward();
             }
@@ -459,8 +532,8 @@ public class Graph {
      * Returns an {@link Iterable} providing all nodes added since the last {@link Graph#getMark()
      * mark}.
      */
-    public NodeIterable<Node> getNewNodes(int mark) {
-        final int index = mark;
+    public NodeIterable<Node> getNewNodes(Mark mark) {
+        final int index = mark.getValue();
         return new AbstractNodeIterable<Node>() {
 
             @Override
@@ -492,6 +565,55 @@ public class Graph {
 
     private static final Node PLACE_HOLDER = new Node() {
     };
+
+    /**
+     * When the percent of live nodes in {@link #nodes} fall below this number, a call to
+     * {@link #maybeCompress()} will actually do compression.
+     */
+    public static final int COMPRESSION_THRESHOLD = Integer.getInteger("graal.graphCompressionThreshold", 70);
+
+    private static final DebugMetric GraphCompressions = Debug.metric("GraphCompressions");
+
+    /**
+     * If the {@linkplain #COMPRESSION_THRESHOLD compression threshold} is met, the list of nodes is
+     * compressed such that all non-null entries precede all null entries while preserving the
+     * ordering between the nodes within the list.
+     */
+    public boolean maybeCompress() {
+        if (Debug.isEnabled()) {
+            return false;
+        }
+        int liveNodeCount = getNodeCount();
+        int liveNodePercent = liveNodeCount * 100 / nodesSize;
+        if (COMPRESSION_THRESHOLD == 0 || liveNodePercent >= COMPRESSION_THRESHOLD) {
+            return false;
+        }
+        GraphCompressions.increment();
+        int nextId = 0;
+        for (int i = 0; nextId < liveNodeCount; i++) {
+            Node n = nodes[i];
+            if (n != null) {
+                assert n.id == i;
+                if (i != nextId) {
+                    assert n.id > nextId;
+                    n.id = nextId;
+                    nodes[nextId] = n;
+                    nodes[i] = null;
+                }
+                nextId++;
+            }
+        }
+        if (MODIFICATION_COUNTS_ENABLED) {
+            // This will cause any current iteration to fail with an assertion
+            Arrays.fill(nodeModCounts, 0);
+            Arrays.fill(nodeUsageModCounts, 0);
+        }
+        nodesSize = nextId;
+        compressions++;
+        nodesDeletedBeforeLastCompression += nodesDeletedSinceLastCompression;
+        nodesDeletedSinceLastCompression = 0;
+        return true;
+    }
 
     private class TypedNodeIterator<T extends IterableNodeType> implements Iterator<T> {
 
@@ -656,8 +778,12 @@ public class Graph {
     void register(Node node) {
         assert !node.isExternal();
         assert node.id() == Node.INITIAL_ID;
-        int id = nodes.size();
-        nodes.add(id, node);
+        if (nodes.length == nodesSize) {
+            nodes = Arrays.copyOf(nodes, (nodesSize * 2) + 1);
+        }
+        int id = nodesSize;
+        nodes[id] = node;
+        nodesSize++;
 
         int nodeClassId = node.getNodeClass().iterableId();
         if (nodeClassId != NodeClass.NOT_ITERABLE) {
@@ -704,8 +830,8 @@ public class Graph {
     void unregister(Node node) {
         assert !node.isDeleted() : "cannot delete a node twice! node=" + node;
         logNodeDeleted(node);
-        nodes.set(node.id(), null);
-        deletedNodeCount++;
+        nodes[node.id] = null;
+        nodesDeletedSinceLastCompression++;
 
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
@@ -728,7 +854,7 @@ public class Graph {
     }
 
     Node getNode(int i) {
-        return nodes.get(i);
+        return nodes[i];
     }
 
     /**
@@ -737,7 +863,7 @@ public class Graph {
      * @return the number of node ids generated so far
      */
     int nodeIdCount() {
-        return nodes.size();
+        return nodesSize;
     }
 
     /**

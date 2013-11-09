@@ -194,7 +194,7 @@ public final class Constant extends Value {
      * @return the constant value
      */
     public long asLong() {
-        assert getKind() == Kind.Long || getKind().getStackKind() == Kind.Int;
+        assert getKind().isNumericInteger();
         return primitive;
     }
 

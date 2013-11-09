@@ -140,29 +140,54 @@ public abstract class CompareNode extends LogicNode implements Canonicalizable, 
                 setX(convertX.value());
                 setY(convertY.value());
             }
+        } else if (x() instanceof ConvertNode && y().isConstant()) {
+            ConvertNode convertX = (ConvertNode) x();
+            ConstantNode newY = canonicalConvertConstant(convertX, y().asConstant());
+            if (newY != null) {
+                setX(convertX.value());
+                setY(newY);
+            }
+        } else if (y() instanceof ConvertNode && x().isConstant()) {
+            ConvertNode convertY = (ConvertNode) y();
+            ConstantNode newX = canonicalConvertConstant(convertY, x().asConstant());
+            if (newX != null) {
+                setX(newX);
+                setY(convertY.value());
+            }
         }
         return this;
+    }
+
+    private static ConstantNode canonicalConvertConstant(ConvertNode convert, Constant constant) {
+        if (convert.isLossless()) {
+            assert constant.getKind() == convert.getToKind();
+            Constant reverseConverted = ConvertNode.convert(convert.getToKind(), convert.getFromKind(), constant);
+            if (convert.evalConst(reverseConverted).equals(constant)) {
+                return ConstantNode.forPrimitive(reverseConverted, convert.graph());
+            }
+        }
+        return null;
     }
 
     public static CompareNode createCompareNode(StructuredGraph graph, Condition condition, ValueNode x, ValueNode y) {
         assert x.kind() == y.kind();
         assert condition.isCanonical() : "condition is not canonical: " + condition;
-        assert x.kind() != Kind.Double && x.kind() != Kind.Float;
+        assert !x.kind().isNumericFloat();
 
         CompareNode comparison;
         if (condition == Condition.EQ) {
             if (x.kind() == Kind.Object) {
                 comparison = new ObjectEqualsNode(x, y);
             } else {
-                assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
+                assert x.kind().isNumericInteger();
                 comparison = new IntegerEqualsNode(x, y);
             }
         } else if (condition == Condition.LT) {
-            assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
+            assert x.kind().isNumericInteger();
             comparison = new IntegerLessThanNode(x, y);
         } else {
             assert condition == Condition.BT;
-            assert x.kind().getStackKind() == Kind.Int || x.kind() == Kind.Long;
+            assert x.kind().isNumericInteger();
             comparison = new IntegerBelowThanNode(x, y);
         }
 

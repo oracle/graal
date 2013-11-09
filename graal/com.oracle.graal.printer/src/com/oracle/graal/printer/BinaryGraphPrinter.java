@@ -408,7 +408,7 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         }
         Map<Object, Object> props = new HashMap<>();
-        int firstExternalNodeId = graph.getNodeCount() + graph.getDeletedNodeCount();
+        int firstExternalNodeId = graph.getNodeCount() + graph.getTotalNodesDeleted();
         for (Node node : graph.getNodes()) {
             for (Node input : node.inputs()) {
                 if (input.isExternal()) {

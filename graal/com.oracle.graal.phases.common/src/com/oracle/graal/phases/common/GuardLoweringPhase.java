@@ -34,6 +34,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -53,6 +54,12 @@ import com.oracle.graal.phases.tiers.*;
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
+    static class Options {
+        //@formatter:off
+        @Option(help = "")
+        public static final OptionValue<Boolean> UseGuardIdAsSpeculationId = new OptionValue<>(false);
+        //@formatter:on
+    }
 
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
@@ -124,9 +131,11 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
     private static class LowerGuards extends ScheduledNodeIterator {
 
         private final Block block;
+        private boolean useGuardIdAsSpeculationId;
 
         public LowerGuards(Block block) {
             this.block = block;
+            this.useGuardIdAsSpeculationId = Options.UseGuardIdAsSpeculationId.getValue();
         }
 
         @Override
@@ -144,7 +153,8 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private void lowerToIf(GuardNode guard) {
             StructuredGraph graph = guard.graph();
             AbstractBeginNode fastPath = graph.add(new BeginNode());
-            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason()));
+            @SuppressWarnings("deprecation")
+            DeoptimizeNode deopt = graph.add(new DeoptimizeNode(guard.action(), guard.reason(), useGuardIdAsSpeculationId ? guard.getId() : 0));
             AbstractBeginNode deoptBranch = AbstractBeginNode.begin(deopt);
             AbstractBeginNode trueSuccessor;
             AbstractBeginNode falseSuccessor;

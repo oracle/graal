@@ -77,7 +77,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
                             return ConstantNode.forConstant(constant, metaAccess, read.graph());
                         }
                     }
-                } else if (object.kind() == Kind.Long || object.kind().getStackKind() == Kind.Int) {
+                } else if (object.kind().isNumericInteger()) {
                     long base = object.asConstant().asLong();
                     if (base != 0L) {
                         Constant constant = tool.getConstantReflection().readUnsafeConstant(kind, null, base + displacement, compressible);

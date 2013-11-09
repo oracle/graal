@@ -322,7 +322,7 @@ public enum Condition {
      *         the comparison is known to be false
      */
     public boolean foldCondition(Constant lt, Constant rt, ConstantReflectionProvider constantReflection) {
-        assert lt.getKind() != Kind.Double && lt.getKind() != Kind.Float && rt.getKind() != Kind.Double && rt.getKind() != Kind.Float;
+        assert !lt.getKind().isNumericFloat() && !rt.getKind().isNumericFloat();
         return foldCondition(lt, rt, constantReflection, false);
     }
 

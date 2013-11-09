@@ -51,7 +51,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
     @Input(notDataflow = true) private MergeNode merge;
     @Input private final NodeInputList<ValueNode> values = new NodeInputList<>(this);
     private final PhiType type;
-    private final Object identity;
+    private final LocationIdentity identity;
 
     /**
      * Create a value phi ({@link PhiType#Value}) with the specified kind.
@@ -77,7 +77,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
      * @param type the type of the new phi
      * @param merge the merge that the new phi belongs to
      */
-    public PhiNode(PhiType type, MergeNode merge, Object identity) {
+    public PhiNode(PhiType type, MergeNode merge, LocationIdentity identity) {
         super(type.stamp);
         assert type.stamp != null : merge + " " + type;
         this.type = type;
@@ -93,7 +93,7 @@ public class PhiNode extends FloatingNode implements Canonicalizable, GuardingNo
         return merge;
     }
 
-    public Object getIdentity() {
+    public LocationIdentity getIdentity() {
         assert type != PhiType.Value;
         return identity;
     }

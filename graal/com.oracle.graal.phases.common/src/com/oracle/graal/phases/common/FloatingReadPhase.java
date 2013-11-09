@@ -176,6 +176,10 @@ public class FloatingReadPhase extends Phase {
 
         @Override
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
+            if (node instanceof MemoryAccess) {
+                processAccess((MemoryAccess) node, state);
+            }
+
             if (node instanceof FloatableAccessNode && execmode == ExecutionMode.CREATE_FLOATING_READS) {
                 processFloatable((FloatableAccessNode) node, state);
             } else if (node instanceof MemoryCheckpoint.Single) {
@@ -189,6 +193,14 @@ public class FloatingReadPhase extends Phase {
                 ((ReturnNode) node).setMemoryMap(node.graph().unique(new MemoryMapImpl(state)));
             }
             return state;
+        }
+
+        private static void processAccess(MemoryAccess access, MemoryMapImpl state) {
+            LocationIdentity locationIdentity = access.getLocationIdentity();
+            if (locationIdentity != LocationIdentity.ANY_LOCATION) {
+                ValueNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
+                access.setLastLocationAccess(lastLocationAccess);
+            }
         }
 
         private static void processCheckpoint(MemoryCheckpoint.Single checkpoint, MemoryMapImpl state) {

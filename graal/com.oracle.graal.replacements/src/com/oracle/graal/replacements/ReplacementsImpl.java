@@ -36,6 +36,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
@@ -79,14 +80,23 @@ public class ReplacementsImpl implements Replacements {
         this.snippetTemplateCache = new HashMap<>();
     }
 
+    private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
+    private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
+
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : "Snippet must not be abstract or native";
 
-        StructuredGraph graph = graphs.get(method);
+        StructuredGraph graph = UseSnippetGraphCache ? graphs.get(method) : null;
         if (graph == null) {
-            graphs.putIfAbsent(method, makeGraph(method, null, inliningPolicy(method), method.getAnnotation(Snippet.class).removeAllFrameStates()));
-            graph = graphs.get(method);
+            try (TimerCloseable a = SnippetPreparationTime.start()) {
+                StructuredGraph newGraph = makeGraph(method, null, inliningPolicy(method), method.getAnnotation(Snippet.class).removeAllFrameStates());
+                if (UseSnippetGraphCache) {
+                    return newGraph;
+                }
+                graphs.putIfAbsent(method, newGraph);
+                graph = graphs.get(method);
+            }
         }
         return graph;
     }

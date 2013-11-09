@@ -355,38 +355,74 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     /**
-     * Emit code to build a 64-bit pointer from a compressed-oop and the associated base and shift.
-     * We only emit this if base and shift are not both zero.
+     * Emits code to build a 64-bit pointer from a compressed value and the associated base and
+     * shift. The compressed value could represent either a normal oop or a klass ptr. If the
+     * compressed value is 0, the uncompressed must also be 0. We only emit this if base and shift
+     * are not both zero.
+     * 
+     * @param result the register containing the compressed value on input and the uncompressed ptr
+     *            on output
+     * @param base the amount to be added to the compressed value
+     * @param shift the number of bits to shift left the compressed value
+     * @param testForNull true if the compressed value might be null
      */
-    public void emitCompressedOopDecode(Value result, long narrowOopBase, int narrowOopShift) {
-        if (narrowOopBase == 0) {
-            emit("shl", result, result, Constant.forInt(narrowOopShift));
-        } else if (narrowOopShift == 0) {
-            // only use add if result is not starting as null (unsigned compare)
-            emitCompare(result, Constant.forLong(0), "eq", false, true);
-            emit("add", result, result, Constant.forLong(narrowOopBase));
-            emitConditionalMove(result, Constant.forLong(0), result, 64);
+    public void emitCompressedOopDecode(Value result, long base, int shift, boolean testForNull) {
+        assert (base != 0 || shift != 0);
+        assert (!isConstant(result));
+        if (base == 0) {
+            // we don't have to test for null if shl is the only operation
+            emitForceUnsigned("shl", result, result, Constant.forInt(shift));
+        } else if (shift == 0) {
+            // only use add if result is not starting as null (test only if testForNull is true)
+            emitWithOptionalTestForNull(testForNull, "add", result, result, Constant.forLong(base));
         } else {
-            // only use mad if result is not starting as null (unsigned compare)
-            emitCompare(result, Constant.forLong(0), "eq", false, true);
-            emitTextFormattedInstruction("mad_u64 ", result, result, Constant.forInt(1 << narrowOopShift), Constant.forLong(narrowOopBase));
-            emitConditionalMove(result, Constant.forLong(0), result, 64);
+            // only use mad if result is not starting as null (test only if testForNull is true)
+            emitWithOptionalTestForNull(testForNull, "mad", result, result, Constant.forInt(1 << shift), Constant.forLong(base));
         }
     }
 
     /**
-     * Emit code to build a 32-bit compressed pointer from a full 64-bit pointer using the
-     * associated base and shift. We only emit this if base and shift are not both zero.
+     * Emits code to build a compressed value from a full 64-bit pointer using the associated base
+     * and shift. The compressed value could represent either a normal oop or a klass ptr. If the
+     * ptr is 0, the compressed value must also be 0. We only emit this if base and shift are not
+     * both zero.
+     * 
+     * @param result the register containing the 64-bit pointer on input and the compressed value on
+     *            output
+     * @param base the amount to be subtracted from the 64-bit pointer
+     * @param shift the number of bits to shift right the 64-bit pointer
+     * @param testForNull true if the 64-bit pointer might be null
      */
-    public void emitCompressedOopEncode(Value result, long narrowOopBase, int narrowOopShift) {
-        if (narrowOopBase != 0) {
-            // only use sub if result is not starting as null (unsigned compare)
-            emitCompare(result, Constant.forLong(0), "eq", false, true);
-            emit("sub", result, result, Constant.forLong(narrowOopBase));
-            emitConditionalMove(result, Constant.forLong(0), result, 64);
+    public void emitCompressedOopEncode(Value result, long base, int shift, boolean testForNull) {
+        assert (base != 0 || shift != 0);
+        assert (!isConstant(result));
+        if (base != 0) {
+            // only use sub if result is not starting as null (test only if testForNull is true)
+            emitWithOptionalTestForNull(testForNull, "sub", result, result, Constant.forLong(base));
         }
-        if (narrowOopShift != 0) {
-            emit("shr", result, result, Constant.forInt(narrowOopShift));
+        if (shift != 0) {
+            // note that the shr can still be done even if the result is null
+            emitForceUnsigned("shr", result, result, Constant.forInt(shift));
+        }
+    }
+
+    /**
+     * Emits code for the requested mnemonic on the result and sources. In addition, if testForNull
+     * is true, surrounds the instruction with code that will guarantee that if the result starts as
+     * 0, it will remain 0.
+     * 
+     * @param testForNull true if we want to add the code to check for and preserve null
+     * @param mnemonic the instruction to be applied (without size prefix)
+     * @param result the register which is both an input and the final output
+     * @param sources the sources for the mnemonic instruction
+     */
+    private void emitWithOptionalTestForNull(boolean testForNull, String mnemonic, Value result, Value... sources) {
+        if (testForNull) {
+            emitCompare(result, Constant.forLong(0), "eq", false, true);
+        }
+        emitForceUnsigned(mnemonic, result, sources);
+        if (testForNull) {
+            emitConditionalMove(result, Constant.forLong(0), result, 64);
         }
     }
 

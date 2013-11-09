@@ -209,12 +209,15 @@ public class GraalCompiler {
 
         HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, plan, optimisticOpts);
         suites.getHighTier().apply(graph, highTierContext);
+        graph.maybeCompress();
 
         MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts);
         suites.getMidTier().apply(graph, midTierContext);
+        graph.maybeCompress();
 
         LowTierContext lowTierContext = new LowTierContext(providers, assumptions, target);
         suites.getLowTier().apply(graph, lowTierContext);
+        graph.maybeCompress();
 
         // we do not want to store statistics about OSR compilations because it may prevent inlining
         if (!graph.isOSR()) {

@@ -29,6 +29,7 @@ import java.util.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -49,8 +50,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     final class LoweringToolImpl implements LoweringTool {
 
         private final PhaseContext context;
-        private final GuardingNode guardAnchor;
         private final NodeBitMap activeGuards;
+        private GuardingNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
         private ControlFlowGraph cfg;
 
@@ -90,6 +91,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public Replacements getReplacements() {
             return context.getReplacements();
+        }
+
+        @Override
+        public GuardingNode getCurrentGuardAnchor() {
+            return guardAnchor;
         }
 
         @Override
@@ -169,10 +175,10 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      * @throws AssertionError if the check fails
      */
     private boolean checkPostLowering(StructuredGraph graph, PhaseContext context) {
-        int expectedMark = graph.getMark();
+        Mark expectedMark = graph.getMark();
         lower(graph, context, 1);
-        int mark = graph.getMark();
-        assert mark == expectedMark : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(mark).snapshot();
+        Mark mark = graph.getMark();
+        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(mark).snapshot();
         return true;
     }
 
@@ -198,15 +204,15 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      * @param preLoweringMark the graph mark before {@code node} was lowered
      * @throws AssertionError if the check fails
      */
-    private static boolean checkPostNodeLowering(Node node, LoweringToolImpl loweringTool, int preLoweringMark) {
+    private static boolean checkPostNodeLowering(Node node, LoweringToolImpl loweringTool, Mark preLoweringMark) {
         StructuredGraph graph = (StructuredGraph) node.graph();
-        int postLoweringMark = graph.getMark();
+        Mark postLoweringMark = graph.getMark();
         NodeIterable<Node> newNodesAfterLowering = graph.getNewNodes(preLoweringMark);
         for (Node n : newNodesAfterLowering) {
             if (n instanceof Lowerable) {
                 ((Lowerable) n).lower(loweringTool);
-                int mark = graph.getMark();
-                assert postLoweringMark == mark : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
+                Mark mark = graph.getMark();
+                assert postLoweringMark.equals(mark) : graph + ": lowering of " + node + " produced lowerable " + n + " that should have been recursively lowered as it introduces these new nodes: " +
                                 graph.getNewNodes(postLoweringMark).snapshot();
             }
         }
@@ -236,7 +242,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             if (anchor == null) {
                 anchor = block.getBeginNode();
             }
-            process(block, activeGuards, anchor);
+            anchor = process(block, activeGuards, anchor);
 
             // Process always reached block first.
             Block alwaysReachedBlock = block.getPostdominator();
@@ -261,9 +267,9 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             }
         }
 
-        private void process(final Block b, final NodeBitMap activeGuards, final GuardingNode anchor) {
+        private GuardingNode process(final Block b, final NodeBitMap activeGuards, final GuardingNode startAnchor) {
 
-            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, anchor, activeGuards, b.getBeginNode(), schedule.getCFG());
+            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getCFG());
 
             // Lower the instructions of this block.
             List<ScheduledNode> nodes = schedule.nodesFor(b);
@@ -285,8 +291,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
 
                 if (node instanceof Lowerable) {
                     assert checkUsagesAreScheduled(node);
-                    int preLoweringMark = node.graph().getMark();
+                    Mark preLoweringMark = node.graph().getMark();
                     ((Lowerable) node).lower(loweringTool);
+                    if (node == startAnchor && node.isDeleted()) {
+                        loweringTool.guardAnchor = BeginNode.prevBegin(nextNode);
+                    }
                     assert checkPostNodeLowering(node, loweringTool, preLoweringMark);
                 }
 
@@ -310,6 +319,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
                 }
             }
+            return loweringTool.getCurrentGuardAnchor();
         }
 
         /**

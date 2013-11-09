@@ -32,6 +32,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -180,7 +181,7 @@ public class InliningPhase extends AbstractInliningPhase {
 
     private void doInline(GraphInfo callerGraphInfo, MethodInvocation calleeInfo, Assumptions callerAssumptions, HighTierContext context) {
         StructuredGraph callerGraph = callerGraphInfo.graph();
-        int markBeforeInlining = callerGraph.getMark();
+        Mark markBeforeInlining = callerGraph.getMark();
         InlineInfo callee = calleeInfo.callee();
         try {
             List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
@@ -190,7 +191,7 @@ public class InliningPhase extends AbstractInliningPhase {
             Debug.dump(callerGraph, "after %s", callee);
 
             if (OptCanonicalizer.getValue()) {
-                int markBeforeCanonicalization = callerGraph.getMark();
+                Mark markBeforeCanonicalization = callerGraph.getMark();
                 canonicalizer.applyIncremental(callerGraph, context, invokeUsages, markBeforeInlining);
 
                 // process invokes that are possibly created during canonicalization
