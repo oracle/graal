@@ -98,7 +98,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
                 srcOffset -= VECTOR_SIZE;
                 destOffset -= VECTOR_SIZE;
                 Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, VECTOR_KIND, locationIdentity);
             }
             // Pre-loop
             for (long i = 0; i < preLoopBytes; i += elementSize) {
@@ -118,7 +118,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
             // Main-loop
             for (long i = 0; i < mainLoopBytes; i += VECTOR_SIZE) {
                 Long a = UnsafeLoadNode.load(src, arrayBaseOffset + srcOffset, VECTOR_KIND, locationIdentity);
-                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a.longValue(), VECTOR_KIND, locationIdentity);
+                UnsafeStoreNode.store(dest, arrayBaseOffset + destOffset, a, VECTOR_KIND, locationIdentity);
                 srcOffset += VECTOR_SIZE;
                 destOffset += VECTOR_SIZE;
             }
