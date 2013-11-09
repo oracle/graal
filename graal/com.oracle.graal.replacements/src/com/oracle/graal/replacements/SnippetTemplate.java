@@ -450,6 +450,7 @@ public class SnippetTemplate {
         Debug.dump(snippetCopy, "Before specialization");
         if (!nodeReplacements.isEmpty()) {
             // Do deferred intrinsification of node intrinsics
+            new CanonicalizerPhase(true).apply(snippetCopy, phaseContext);
             new NodeIntrinsificationPhase(providers).apply(snippetCopy);
             new CanonicalizerPhase(true).apply(snippetCopy, phaseContext);
         }
