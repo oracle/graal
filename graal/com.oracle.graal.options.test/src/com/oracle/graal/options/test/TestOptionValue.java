@@ -25,6 +25,8 @@ package com.oracle.graal.options.test;
 import static com.oracle.graal.options.test.TestOptionValue.Options.*;
 import static org.junit.Assert.*;
 
+import java.util.*;
+
 import org.junit.*;
 
 import com.oracle.graal.options.*;
@@ -97,6 +99,29 @@ public class TestOptionValue {
             fail("cannot override stable option");
         } catch (IllegalArgumentException e) {
             // expected
+        }
+    }
+
+    @Test
+    public void toStringTest() {
+        assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=original", Mutable.toString());
+        try (OverrideScope s1 = OptionValue.override(Mutable, "override1")) {
+            assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=override1", Mutable.toString());
+            try (OverrideScope s2 = OptionValue.override(Mutable, "override2")) {
+                assertEquals("com.oracle.graal.options.test.TestOptionValue$Options.Mutable=override2", Mutable.toString());
+            }
+        }
+    }
+
+    @Test
+    public void getValuesTest() {
+        assertEquals(Arrays.asList("original"), Mutable.getValues(null));
+        assertEquals(Arrays.asList(true), Stable.getValues(null));
+        try (OverrideScope s1 = OptionValue.override(Mutable, "override1")) {
+            assertEquals(Arrays.asList("override1", "original"), Mutable.getValues(null));
+            try (OverrideScope s2 = OptionValue.override(Mutable, "override2")) {
+                assertEquals(Arrays.asList("override2", "override1", "original"), Mutable.getValues(null));
+            }
         }
     }
 }

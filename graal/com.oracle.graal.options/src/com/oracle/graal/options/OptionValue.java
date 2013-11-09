@@ -194,7 +194,7 @@ public class OptionValue<T> {
 
     @Override
     public String toString() {
-        return getName() + "=" + value;
+        return getName() + "=" + getValue();
     }
 
     /**
@@ -220,6 +220,26 @@ public class OptionValue<T> {
     }
 
     /**
+     * Gets the values of this option including overridden values.
+     * 
+     * @param c the collection to which the values are added. If null, one is allocated.
+     * @return the collection to which the values were added in order from most overridden to
+     *         current value
+     */
+    @SuppressWarnings("unchecked")
+    public Collection<T> getValues(Collection<T> c) {
+        Collection<T> values = c == null ? new ArrayList<T>() : c;
+        if (!(this instanceof StableOptionValue)) {
+            OverrideScope overrideScope = overrideScopes.get();
+            if (overrideScope != null) {
+                overrideScope.getOverrides(this, (Collection<Object>) values);
+            }
+        }
+        values.add(value);
+        return values;
+    }
+
+    /**
      * Sets the value of this option.
      */
     @SuppressWarnings("unchecked")
@@ -235,6 +255,8 @@ public class OptionValue<T> {
         abstract void addToInherited(Map<OptionValue, Object> inherited);
 
         abstract <T> T getOverride(OptionValue<T> option);
+
+        abstract void getOverrides(OptionValue<?> option, Collection<Object> c);
 
         public abstract void close();
     }
@@ -265,6 +287,13 @@ public class OptionValue<T> {
                 return (T) value;
             }
             return null;
+        }
+
+        @Override
+        void getOverrides(OptionValue<?> key, Collection<Object> c) {
+            if (key == this.option) {
+                c.add(value);
+            }
         }
 
         @Override
@@ -330,6 +359,17 @@ public class OptionValue<T> {
         @Override
         <T> T getOverride(OptionValue<T> option) {
             return (T) overrides.get(option);
+        }
+
+        @Override
+        void getOverrides(OptionValue<?> option, Collection<Object> c) {
+            Object v = overrides.get(option);
+            if (v != null) {
+                c.add(v);
+            }
+            if (parent != null) {
+                parent.getOverrides(option, c);
+            }
         }
 
         @Override
