@@ -47,7 +47,11 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @Override
     protected ResolvedJavaMethod registerMethodSubstitution(Member originalMethod, Method substituteMethod) {
-        if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
+        if (substituteMethod.getDeclaringClass().getDeclaringClass() == BoxingSubstitutions.class) {
+            if (config.useHeapProfiler) {
+                return null;
+            }
+        } else if (substituteMethod.getDeclaringClass() == IntegerSubstitutions.class || substituteMethod.getDeclaringClass() == LongSubstitutions.class) {
             if (substituteMethod.getName().equals("bitCount")) {
                 if (!config.usePopCountInstruction) {
                     return null;
