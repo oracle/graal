@@ -350,6 +350,13 @@ public class NodeIntrinsificationPhase extends Phase {
             unbox.replaceAtUsages(intrinsifiedNode);
             graph.removeFloating(unbox);
             Debug.log("%s: Removed an UnboxNode", Debug.contextSnapshot(JavaMethod.class));
+        } else if (usage instanceof UnsafeStoreNode) {
+            UnsafeStoreNode store = (UnsafeStoreNode) usage;
+            store.replaceFirstInput(input, intrinsifiedNode);
+        } else if (usage instanceof LoadFieldNode) {
+            LoadFieldNode load = (LoadFieldNode) usage;
+            load.replaceAtUsages(intrinsifiedNode);
+            graph.removeFixed(load);
         } else if (usage instanceof MethodCallTargetNode) {
             MethodCallTargetNode checkCastCallTarget = (MethodCallTargetNode) usage;
             assert checkCastCallTarget.targetMethod().getAnnotation(NodeIntrinsic.class) != null : "checkcast at " + sourceLocation(input) +
