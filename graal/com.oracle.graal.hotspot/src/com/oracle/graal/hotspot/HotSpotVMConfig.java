@@ -671,6 +671,7 @@ public class HotSpotVMConfig extends CompilerObject {
     }
 
     @HotSpotVMFlag(name = "GraalDeferredInitBarriers") @Stable public boolean useDeferredInitBarriers;
+    @HotSpotVMFlag(name = "GraalHProfEnabled") @Stable public boolean useHeapProfiler;
 
     // Compressed Oops related values.
     @HotSpotVMFlag(name = "UseCompressedOops") @Stable public boolean useCompressedOops;
