@@ -65,11 +65,7 @@ public class WriteBarrierSnippets implements Snippets {
     public static final LocationIdentity GC_INDEX_LOCATION = new NamedLocationIdentity("GC-Index");
 
     @Snippet
-    public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull) {
-        // No barriers are added if we are always storing a null.
-        if (alwaysNull) {
-            return;
-        }
+    public static void serialWriteBarrier(Object object, Object location, @ConstantParameter boolean usePrecise) {
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         Pointer oop;
         if (usePrecise) {
@@ -165,11 +161,7 @@ public class WriteBarrierSnippets implements Snippets {
     }
 
     @Snippet
-    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean alwaysNull, @ConstantParameter boolean trace) {
-        // No barriers are added if we are always storing a null.
-        if (alwaysNull) {
-            return;
-        }
+    public static void g1PostWriteBarrier(Object object, Object value, Object location, @ConstantParameter boolean usePrecise, @ConstantParameter boolean trace) {
         Word thread = thread();
         Object fixedObject = FixedValueAnchorNode.getObject(object);
         Object fixedValue = FixedValueAnchorNode.getObject(value);
@@ -341,11 +333,14 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(SerialWriteBarrier writeBarrier, @SuppressWarnings("unused") LoweringTool tool) {
+            if (writeBarrier.alwaysNull()) {
+                writeBarrier.graph().removeFixed(writeBarrier);
+                return;
+            }
             Arguments args = new Arguments(serialWriteBarrier, writeBarrier.graph().getGuardsStage());
             args.add("object", writeBarrier.getObject());
             args.add("location", writeBarrier.getLocation());
             args.addConst("usePrecise", writeBarrier.usePrecise());
-            args.addConst("alwaysNull", writeBarrier.alwaysNull());
             template(args).instantiate(providers.getMetaAccess(), writeBarrier, DEFAULT_REPLACER, args);
         }
 
@@ -380,12 +375,15 @@ public class WriteBarrierSnippets implements Snippets {
         }
 
         public void lower(G1PostWriteBarrier writeBarrierPost, @SuppressWarnings("unused") LoweringTool tool) {
+            if (writeBarrierPost.alwaysNull()) {
+                writeBarrierPost.graph().removeFixed(writeBarrierPost);
+                return;
+            }
             Arguments args = new Arguments(g1PostWriteBarrier, writeBarrierPost.graph().getGuardsStage());
             args.add("object", writeBarrierPost.getObject());
             args.add("value", writeBarrierPost.getValue());
             args.add("location", writeBarrierPost.getLocation());
             args.addConst("usePrecise", writeBarrierPost.usePrecise());
-            args.addConst("alwaysNull", writeBarrierPost.alwaysNull());
             args.addConst("trace", traceBarrier());
             template(args).instantiate(providers.getMetaAccess(), writeBarrierPost, DEFAULT_REPLACER, args);
         }
