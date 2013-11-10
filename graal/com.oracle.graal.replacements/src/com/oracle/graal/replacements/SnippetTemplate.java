@@ -361,7 +361,6 @@ public class SnippetTemplate {
     private static final DebugTimer SnippetTemplateCreationTime = Debug.timer("SnippetTemplateCreationTime");
     private static final DebugMetric SnippetTemplates = Debug.metric("SnippetTemplateCount");
     private static final DebugMetric SnippetTemplatesNodeCount = Debug.metric("SnippetTemplatesNodeCount");
-    private static final DebugMetric SnippetGraphsNodeCount = Debug.metric("SnippetGraphsNodeCount");
 
     private static final String MAX_TEMPLATES_PER_SNIPPET_PROPERTY_NAME = "graal.maxTemplatesPerSnippet";
     private static final boolean UseSnippetTemplateCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetTemplateCache", "true"));
@@ -472,7 +471,6 @@ public class SnippetTemplate {
      */
     protected SnippetTemplate(final Providers providers, Arguments args) {
         StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method);
-        SnippetGraphsNodeCount.add(snippetGraph.getNodeCount());
         instantiationTimer = Debug.timer(debugValueName("SnippetTemplateInstantiationTime", args));
         instantiationCounter = Debug.metric(debugValueName("SnippetTemplateInstantiationCount", args));
 

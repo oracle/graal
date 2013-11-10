@@ -83,6 +83,8 @@ public class ReplacementsImpl implements Replacements {
     private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
 
+    private static final DebugMetric SnippetGraphsNodeCount = Debug.metric("SnippetGraphsNodeCount");
+
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : "Snippet must not be abstract or native";
@@ -91,7 +93,8 @@ public class ReplacementsImpl implements Replacements {
         if (graph == null) {
             try (TimerCloseable a = SnippetPreparationTime.start()) {
                 StructuredGraph newGraph = makeGraph(method, null, inliningPolicy(method), method.getAnnotation(Snippet.class).removeAllFrameStates());
-                if (UseSnippetGraphCache) {
+                SnippetGraphsNodeCount.add(newGraph.getNodeCount());
+                if (!UseSnippetGraphCache) {
                     return newGraph;
                 }
                 graphs.putIfAbsent(method, newGraph);
