@@ -35,10 +35,14 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.CompilerToGPU;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -49,9 +53,23 @@ import com.oracle.graal.runtime.*;
 /**
  * Class that represents a HSAIL compilation result. Includes the compiled HSAIL code.
  */
-public class HSAILCompilationResult extends CompilationResult {
+public class HSAILCompilationResult extends ExternalCompilationResult {
 
     private static final long serialVersionUID = -4178700465275724625L;
+
+    private static CompilerToGPU toGPU = HotSpotGraalRuntime.runtime().getCompilerToGPU();
+    private static boolean validDevice = toGPU.deviceInit();
+
+    // The installedCode is the executable representation of the kernel in the code cache
+    private InstalledCode installedCode;
+
+    public void setInstalledCode(InstalledCode newCode) {
+        installedCode = newCode;
+    }
+
+    public InstalledCode getInstalledCode() {
+        return installedCode;
+    }
 
     private static final String propPkgName = HSAILCompilationResult.class.getPackage().getName();
     private static Level logLevel;
@@ -131,6 +149,48 @@ public class HSAILCompilationResult extends CompilationResult {
         return registerConfig.getCallingConvention(type, retType, argTypes, target, stackOnly);
     }
 
+    public static HSAILCompilationResult getCompiledLambda(Class consumerClass) {
+        /**
+         * Find the accept() method in the IntConsumer, then use Graal API to find the target lambda
+         * that accept will call.
+         */
+        Method[] icMethods = consumerClass.getMethods();
+        Method acceptMethod = null;
+        for (Method m : icMethods) {
+            if (m.getName().equals("accept") && acceptMethod == null) {
+                acceptMethod = m;
+                break;
+            }
+        }
+
+        Providers providers = backend.getProviders();
+        HotSpotMetaAccessProvider metaAccess = (HotSpotMetaAccessProvider) providers.getMetaAccess();
+        ResolvedJavaMethod rm = metaAccess.lookupJavaMethod(acceptMethod);
+        StructuredGraph graph = new StructuredGraph(rm);
+        GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(providers.getMetaAccess(), providers.getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+        graphBuilderPhase.apply(graph);
+        NodeIterable<Node> nin = graph.getNodes();
+        ResolvedJavaMethod lambdaMethod = null;
+        for (Node n : nin) {
+            if (n instanceof MethodCallTargetNode) {
+                lambdaMethod = ((MethodCallTargetNode) n).targetMethod();
+                Debug.log("target ... " + lambdaMethod);
+                break;
+            }
+        }
+        if (lambdaMethod == null) {
+            // Did not find call in Consumer.accept.
+            Debug.log("Should not Reach here, did not find call in accept()");
+            return null;
+        }
+        // Now that we have the target lambda, compile it.
+        HSAILCompilationResult hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(lambdaMethod);
+        if (hsailCompResult != null) {
+            hsailCompResult.dumpCompilationResult();
+        }
+        return hsailCompResult;
+    }
+
     public static HSAILCompilationResult getHSAILCompilationResult(StructuredGraph graph) {
         Debug.dump(graph, "Graph");
         Providers providers = backend.getProviders();
@@ -145,7 +205,22 @@ public class HSAILCompilationResult extends CompilationResult {
         try {
             HSAILCompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
                             suitesProvider.getDefaultSuites(), new HSAILCompilationResult());
+            if ((validDevice) && (compResult.getTargetCode() != null)) {
+                long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());
+
+                if (kernel == 0) {
+                    throw new GraalInternalError("Failed to compile kernel.");
+                }
+
+                ((ExternalCompilationResult) compResult).setEntryPoint(kernel);
+                HotSpotResolvedJavaMethod compiledMethod = (HotSpotResolvedJavaMethod) graph.method();
+                InstalledCode installedCode = ((HotSpotCodeCacheProvider) providers.getCodeCache()).addExternalMethod(compiledMethod, compResult);
+                compResult.setInstalledCode(installedCode);
+            }
             return compResult;
+        } catch (InvalidInstalledCodeException e) {
+            e.printStackTrace();
+            return null;
         } catch (GraalInternalError e) {
             String partialCode = backend.getPartialCodeString();
             if (partialCode != null && !partialCode.equals("")) {

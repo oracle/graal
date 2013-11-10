@@ -23,20 +23,10 @@
 
 package com.oracle.graal.hotspot.hsail;
 
-import java.lang.reflect.*;
-
-import com.amd.okra.*;
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.hsail.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.java.*;
-import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.java.*;
-import com.oracle.graal.phases.*;
 
 /**
  * Implements compile and dispatch of Java code containing lambda constructs. Currently only used by
@@ -44,78 +34,41 @@ import com.oracle.graal.phases.*;
  */
 public class ForEachToGraal implements CompileAndDispatch {
 
-    private static CompilationResult getCompiledLambda(Class consumerClass) {
-        /**
-         * Find the accept() method in the IntConsumer, then use Graal API to find the target lambda
-         * that accept will call.
-         */
-        Method[] icMethods = consumerClass.getMethods();
-        Method acceptMethod = null;
-        for (Method m : icMethods) {
-            if (m.getName().equals("accept") && acceptMethod == null) {
-                acceptMethod = m;
-            }
-        }
-        HotSpotProviders providers = HSAILCompilationResult.backend.getProviders();
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        ResolvedJavaMethod method = metaAccess.lookupJavaMethod(acceptMethod);
-        StructuredGraph graph = new StructuredGraph(method);
-        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-        NodeIterable<Node> nin = graph.getNodes();
-        ResolvedJavaMethod lambdaMethod = null;
-        for (Node n : nin) {
-            if (n instanceof MethodCallTargetNode) {
-                lambdaMethod = ((MethodCallTargetNode) n).targetMethod();
-                Debug.log("target ... " + lambdaMethod);
-                break;
-            }
-        }
-        if (lambdaMethod == null) {
-            // Did not find call in Consumer.accept.
-            Debug.log("Should not Reach here, did not find call in accept()");
-            return null;
-        }
-        // Now that we have the target lambda, compile it.
-        HSAILCompilationResult hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(lambdaMethod);
-        if (hsailCompResult != null) {
-            hsailCompResult.dumpCompilationResult();
-        }
-        return hsailCompResult;
+    private static HSAILCompilationResult getCompiledLambda(Class consumerClass) {
+        return HSAILCompilationResult.getCompiledLambda(consumerClass);
     }
 
     // Implementations of the CompileAndDispatch interface.
     @Override
     public Object createKernel(Class<?> consumerClass) {
         try {
-            CompilationResult result = getCompiledLambda(consumerClass);
-            if (result != null) {
-                String code = new String(new String(result.getTargetCode(), 0, result.getTargetCodeSize()));
-                OkraContext okraContext = new OkraContext();
-                OkraKernel okraKernel = new OkraKernel(okraContext, code, "&run");
-                if (okraKernel.isValid()) {
-                    return okraKernel;
-                }
-            }
+            return getCompiledLambda(consumerClass);
         } catch (Throwable e) {
             // Note: Graal throws Errors. We want to revert to regular Java in these cases.
             Debug.log("WARNING:Graal compilation failed.");
             e.printStackTrace();
             return null;
         }
-        // If we got this far, return null.
-        return null;
     }
 
     @Override
     public boolean dispatchKernel(Object kernel, int jobSize, Object[] args) {
-        if (!(kernel instanceof OkraKernel)) {
-            Debug.log("unknown kernel for dispatchKernel");
+        // kernel is an HSAILCompilationResult
+        HotSpotNmethod code = (HotSpotNmethod) ((HSAILCompilationResult) kernel).getInstalledCode();
+
+        if (code != null) {
+            try {
+                // No return value from HSAIL kernels
+                code.executeParallel(jobSize, 0, 0, args);
+                return true;
+            } catch (InvalidInstalledCodeException iice) {
+                Debug.log("WARNING:Invalid installed code at exec time." + iice);
+                iice.printStackTrace();
+                return false;
+            }
+        } else {
+            // Should throw something sensible here
             return false;
         }
-        OkraKernel okraKernel = (OkraKernel) kernel;
-        okraKernel.setLaunchAttributes(jobSize);
-        int status = okraKernel.dispatchWithArgs(args);
-        return (status == 0);
     }
 }

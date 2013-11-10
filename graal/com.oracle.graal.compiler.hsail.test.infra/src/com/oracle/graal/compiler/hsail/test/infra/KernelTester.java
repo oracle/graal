@@ -72,7 +72,7 @@ public abstract class KernelTester {
     public DispatchMode dispatchMode;
     // Where the hsail comes from.
     private HsailMode hsailMode;
-    private Method testMethod;
+    protected Method testMethod;
     // What type of okra dispatch to use when client calls.
     private boolean useLambdaMethod;
     private Class<?>[] testMethodParams = null;
@@ -581,7 +581,7 @@ public abstract class KernelTester {
         }
     }
 
-    private void dispatchMethodKernelOkra(int range, Object... args) {
+    protected void dispatchMethodKernelOkra(int range, Object... args) {
         Object[] fixedArgs = fixArgTypes(args);
         if (Modifier.isStatic(testMethod.getModifiers())) {
             dispatchKernelOkra(range, fixedArgs);
@@ -598,7 +598,7 @@ public abstract class KernelTester {
      * For primitive arg parameters, make sure arg types are cast to whatever the testMethod
      * signature says they should be.
      */
-    private Object[] fixArgTypes(Object[] args) {
+    protected Object[] fixArgTypes(Object[] args) {
         Object[] fixedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
             Class<?> paramClass = testMethodParams[i];
@@ -644,7 +644,7 @@ public abstract class KernelTester {
      * the lambda method itself as opposed to the wrapper that calls the lambda method. From the
      * consumer object, we need to find the fields and pass them to the kernel.
      */
-    private void dispatchLambdaMethodKernelOkra(int range, MyIntConsumer consumer) {
+    protected void dispatchLambdaMethodKernelOkra(int range, MyIntConsumer consumer) {
         logger.info("To determine parameters to pass to hsail kernel, we will examine   " + consumer.getClass());
         Field[] fields = consumer.getClass().getDeclaredFields();
         Object[] args = new Object[fields.length];
@@ -747,7 +747,7 @@ public abstract class KernelTester {
         newInstance().compareOkraToSeq(HsailMode.INJECT_OCL);
     }
 
-    private static Object getFieldFromObject(Field f, Object fromObj) {
+    protected static Object getFieldFromObject(Field f, Object fromObj) {
         try {
             f.setAccessible(true);
             Type type = f.getType();

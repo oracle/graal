@@ -32,8 +32,11 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.io.*;
 import java.lang.reflect.*;
 
+import com.oracle.graal.api.code.*;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.hsail.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 
 public abstract class GraalKernelTester extends KernelTester {
@@ -43,9 +46,9 @@ public abstract class GraalKernelTester extends KernelTester {
     private boolean saveInFile = false;
 
     @Override
-    public String getCompiledHSAILSource(Method testMethod) {
+    public String getCompiledHSAILSource(Method method) {
         if (hsailCompResult == null) {
-            hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(testMethod);
+            hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(method);
         }
         String hsailSource = hsailCompResult.getHSAILCode();
         if (showHsailSource) {
@@ -76,6 +79,56 @@ public abstract class GraalKernelTester extends KernelTester {
         boolean canGenerateCalls = false;   // not implemented yet
         boolean canExecuteCalls = runningOnSimulator();
         return (canGenerateCalls && canExecuteCalls);
+    }
+
+    @Override
+    protected void dispatchLambdaMethodKernelOkra(int range, MyIntConsumer consumer) {
+        HSAILCompilationResult hcr = HSAILCompilationResult.getCompiledLambda(consumer.getClass());
+        HotSpotNmethod code = (HotSpotNmethod) hcr.getInstalledCode();
+
+        logger.info("To determine parameters to pass to hsail kernel, we will examine   " + consumer.getClass());
+        Field[] fields = consumer.getClass().getDeclaredFields();
+        Object[] args = new Object[fields.length];
+        int argIndex = 0;
+        for (Field f : fields) {
+            logger.info("... " + f);
+            args[argIndex++] = getFieldFromObject(f, consumer);
+        }
+
+        if (code != null) {
+            try {
+                // No return value from HSAIL kernels
+                code.executeParallel(range, 0, 0, args);
+            } catch (InvalidInstalledCodeException e) {
+                Debug.log("WARNING:Invalid installed code: " + e);
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    protected void dispatchMethodKernelOkra(int range, Object... args) {
+        Object[] fixedArgs = fixArgTypes(args);
+
+        HSAILCompilationResult hcr = HSAILCompilationResult.getHSAILCompilationResult(testMethod);
+        HotSpotNmethod code = (HotSpotNmethod) hcr.getInstalledCode();
+
+        if (code != null) {
+            try {
+                if (Modifier.isStatic(testMethod.getModifiers())) {
+                    code.executeParallel(range, 0, 0, fixedArgs);
+                } else {
+                    // If it is a non-static method we have to push "this" as the first argument.
+                    Object[] newFixedArgs = new Object[fixedArgs.length + 1];
+                    System.arraycopy(fixedArgs, 0, newFixedArgs, 1, fixedArgs.length);
+                    newFixedArgs[0] = this;
+                    code.executeParallel(range, 0, 0, newFixedArgs);
+                }
+            } catch (InvalidInstalledCodeException e) {
+                Debug.log("WARNING:Invalid installed code: " + e);
+                e.printStackTrace();
+            }
+        }
     }
 
     public static OptionValue<?> getOptionFromField(Class declaringClass, String fieldName) {
