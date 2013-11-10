@@ -25,6 +25,7 @@ package com.oracle.graal.asm.hsail;
 
 import com.oracle.graal.api.code.*;
 
+import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 
 import com.oracle.graal.api.meta.*;
@@ -106,6 +107,23 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
 
     private void emitAddrOp(String instr, Value reg, HSAILAddress addr) {
         emitString(instr + " " + HSAIL.mapRegister(reg) + ", " + mapAddress(addr) + ";");
+    }
+
+    /**
+     * Emits a memory barrier instruction.
+     * 
+     * @param barriers the kind of barrier to emit
+     */
+    public final void emitMembar(int barriers) {
+        if (barriers == 0) {
+            emitString("// no barrier before volatile read");
+        } else if (barriers == JMM_POST_VOLATILE_READ) {
+            emitString("sync; // barriers=" + MemoryBarriers.barriersString(barriers));
+        } else if (barriers == JMM_PRE_VOLATILE_WRITE) {
+            emitString("sync; // barriers=" + MemoryBarriers.barriersString(barriers));
+        } else if (barriers == JMM_POST_VOLATILE_WRITE) {
+            emitString("sync; // barriers=" + MemoryBarriers.barriersString(barriers));
+        }
     }
 
     public final void emitLoad(Kind kind, Value dest, HSAILAddress addr) {
@@ -240,6 +258,17 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         String srcType = getArgTypeFromKind(srcKind);
         String prefix = (destType.equals("f32") && srcType.equals("f64")) ? "cvt_near_" : "cvt_";
         emitString(prefix + destType + "_" + srcType + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
+    }
+
+    /**
+     * Emits a convert instruction that uses unsigned prefix, regardless of the type of dest and
+     * src.
+     * 
+     * @param dest the destination operand
+     * @param src the source operand
+     */
+    public void emitConvertForceUnsigned(Value dest, Value src) {
+        emitString("cvt_" + getArgTypeForceUnsigned(dest) + "_" + getArgTypeForceUnsigned(src) + " " + HSAIL.mapRegister(dest) + ", " + HSAIL.mapRegister(src) + ";");
     }
 
     public static String mapAddress(HSAILAddress addr) {
@@ -424,6 +453,20 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         if (testForNull) {
             emitConditionalMove(result, Constant.forLong(0), result, 64);
         }
+    }
+
+    /**
+     * Emits an atomic_cas_global instruction.
+     * 
+     * @param result result operand that gets the original contents of the memory location
+     * @param address the memory location
+     * @param cmpValue the value that will be compared against the memory location
+     * @param newValue the new value that will be written to the memory location if the cmpValue
+     *            comparison matches
+     */
+    public void emitAtomicCas(AllocatableValue result, HSAILAddress address, AllocatableValue cmpValue, AllocatableValue newValue) {
+        emitString(String.format("atomic_cas_global_b%d   %s, %s, %s, %s;", getArgSize(cmpValue), HSAIL.mapRegister(result), mapAddress(address), HSAIL.mapRegister(cmpValue),
+                        HSAIL.mapRegister(newValue)));
     }
 
     /**
