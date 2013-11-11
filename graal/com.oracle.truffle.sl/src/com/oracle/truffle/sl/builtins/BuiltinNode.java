@@ -20,31 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.builtins;
 
-import org.junit.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+@NodeField(name = "context", type = SLContext.class)
+@NodeChild(value = "arguments", type = TypedNode[].class)
+public abstract class BuiltinNode extends TypedNode {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    public abstract SLContext getContext();
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
+    public abstract TypedNode[] getArguments();
 
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
-    }
 }

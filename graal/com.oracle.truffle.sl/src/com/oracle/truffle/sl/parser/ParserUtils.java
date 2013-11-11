@@ -20,31 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
 
-import org.junit.*;
+package com.oracle.truffle.sl.parser;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.impl.*;
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+public class ParserUtils {
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
-
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public static SourceSection createSourceSection(Source source, String identifier, Parser p) {
+        Token t = p.t;
+        if (t == null) {
+            t = p.la;
+        }
+        int startLine = -1;
+        int startColumn = -1;
+        int length = 0;
+        if (t != null) {
+            startLine = t.line;
+            startColumn = t.col;
+            length = t.val.length();
+        }
+        return new DefaultSourceSection(source, identifier, startLine, startColumn, 0, length);
     }
 }

@@ -20,16 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.nodes;
+package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.*;
 
-public abstract class TimeNode extends TypedNode {
-
-    public static final long START_TIME = System.currentTimeMillis();
+public abstract class PrintBuiltin extends BuiltinNode {
 
     @Specialization
-    public int doInt() {
-        return (int) (System.currentTimeMillis() - START_TIME);
+    public int doInt(int value) {
+        getContext().getPrintOutput().println(value);
+        return value;
+    }
+
+    @Specialization
+    public boolean doBoolean(boolean value) {
+        getContext().getPrintOutput().println(value);
+        return value;
+    }
+
+    @Specialization
+    public String doString(String value) {
+        getContext().getPrintOutput().println(value);
+        return value;
+    }
+
+    @Specialization
+    public Object doGeneric(Object value) {
+        getContext().getPrintOutput().println(value.toString());
+        return value;
     }
 }

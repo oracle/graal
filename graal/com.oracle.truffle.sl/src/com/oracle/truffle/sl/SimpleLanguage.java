@@ -24,12 +24,16 @@ package com.oracle.truffle.sl;
 
 import java.io.*;
 
+import javax.script.*;
+
 import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.impl.*;
 import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.sl.nodes.*;
-import com.oracle.truffle.sl.parser.*;
+import com.oracle.truffle.sl.runtime.*;
 
 public class SimpleLanguage {
+
+    private static final Object[] NO_ARGUMENTS = new Object[0];
 
     public static void main(String[] args) throws IOException {
         run(new FileInputStream(args[0]), System.out, 10, true);
@@ -42,23 +46,22 @@ public class SimpleLanguage {
             // CheckStyle: resume system..print check
         }
 
-        NodeFactory factory = new NodeFactory(printOutput);
-
-        Parser parser = new Parser(new Scanner(input), factory);
-        parser.Parse();
-
-        FunctionDefinitionNode rootNode = factory.findFunction("main");
-        if (log) {
-            NodeUtil.printTree(System.out, rootNode);
+        SLContext context = new SLContext(printOutput);
+        SLScript script;
+        try {
+            script = SLScript.create(context, input);
+        } catch (ScriptException e) {
+            // TODO temporary hack
+            throw new RuntimeException(e);
         }
 
+        if (log) {
+            printScript(script);
+        }
         try {
-            CallTarget function = Truffle.getRuntime().createCallTarget(rootNode, rootNode.getFrameDescriptor());
             for (int i = 0; i < repeats; i++) {
-                Arguments arguments = new SLArguments(new Object[0]);
-
                 long start = System.nanoTime();
-                Object result = function.call(null, arguments);
+                Object result = script.run(NO_ARGUMENTS);
                 long end = System.nanoTime();
 
                 if (result != null) {
@@ -73,8 +76,12 @@ public class SimpleLanguage {
 
         } finally {
             if (log) {
-                NodeUtil.printTree(System.out, rootNode);
+                printScript(script);
             }
         }
+    }
+
+    private static void printScript(SLScript script) {
+        NodeUtil.printTree(System.out, ((DefaultCallTarget) script.getMain()).getRootNode());
     }
 }

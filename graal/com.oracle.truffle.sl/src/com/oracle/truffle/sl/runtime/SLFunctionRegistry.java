@@ -20,31 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.runtime;
 
-import org.junit.*;
+import java.util.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+import com.oracle.truffle.api.*;
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+public final class SLFunctionRegistry {
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
+    private Map<String, CallTarget> map = new HashMap<>();
 
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public void register(String name, CallTarget target) {
+        if (map.containsKey(name)) {
+            throw new IllegalArgumentException(String.format("Function with name '%s' already exists.", name));
+        }
+        map.put(name, target);
     }
+
+    public CallTarget lookup(String name) {
+        return map.get(name);
+    }
+
 }

@@ -33,7 +33,7 @@ public class LoopPrintTest extends AbstractTest {
         "  while (i < 1000) {  ",
         "    i = i + 1;  ",
         "  }  ",
-        "  print i;  ",
+        "  print(i);  ",
         "}  ",
     };
 

@@ -20,31 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.nodes;
 
-import org.junit.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.runtime.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+public class ReadArgumentNode extends TypedNode {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    private final int index;
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
-
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public ReadArgumentNode(int index) {
+        this.index = index;
     }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        Object[] args = SLArguments.get(frame).arguments;
+        if (index < args.length) {
+            return args[index];
+        } else {
+            return SLNull.INSTANCE;
+        }
+    }
+
 }

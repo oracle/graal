@@ -20,31 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.builtins;
 
-import org.junit.*;
+import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.nodes.*;
+import com.oracle.truffle.sl.runtime.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+public abstract class DefaultBuiltins {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    public static void install(SLContext c) {
+        installBuiltin(c, PrintBuiltinFactory.getInstance(), "print");
+        installBuiltin(c, TimeBuiltinFactory.getInstance(), "time");
+    }
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
-
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    private static void installBuiltin(SLContext context, NodeFactory<? extends BuiltinNode> factory, String name) {
+        context.getFunctionRegistry().register(name, FunctionRootNode.createBuiltin(context, factory, name));
     }
 }

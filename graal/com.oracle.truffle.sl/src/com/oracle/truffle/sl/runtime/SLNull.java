@@ -20,42 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.nodes;
+package com.oracle.truffle.sl.runtime;
 
-import java.io.*;
+public final class SLNull {
 
-import com.oracle.truffle.api.dsl.*;
+    public static final SLNull INSTANCE = new SLNull();
 
-@NodeChild(type = TypedNode.class)
-public abstract class PrintNode extends StatementNode {
-
-    private final PrintStream output;
-
-    public PrintNode(PrintStream output) {
-        this.output = output;
+    private SLNull() {
     }
 
-    public PrintNode(PrintNode node) {
-        this(node.output);
-    }
-
-    @Specialization
-    public void doInt(int value) {
-        output.print(value);
-    }
-
-    @Specialization
-    public void doBoolean(boolean value) {
-        output.print(value);
-    }
-
-    @Specialization
-    public void doString(String value) {
-        output.print(value);
-    }
-
-    @Specialization
-    public void doGeneric(Object value) {
-        output.print(value.toString());
-    }
 }

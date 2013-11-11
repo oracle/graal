@@ -35,8 +35,12 @@ Function
 Function
 =
 "function"                                      (. factory.startFunction(); .)
-identifier                                      (. String name = t.val; .)
-Block<out StatementNode body>                   (. factory.createFunction(body, name); .)
+identifier                                      (. String name = t.val; 
+                                                   List<String> parameterNames = new ArrayList<>(); .)
+["(" [identifier                                (. parameterNames.add(t.val); .)
+] {"," identifier                               (. parameterNames.add(t.val); .)
+} ")"]
+Block<out StatementNode body>                   (. factory.createFunction(body, name, parameterNames.toArray(new String[parameterNames.size()])); .)
 .
 
 Block<out StatementNode result>
@@ -52,13 +56,20 @@ Statement<out StatementNode result>
 =                                               (. result = null; .)
 (
     WhileStatement<out result>
-|
-    AssignmentStatement<out result>
-|
-    OutputStatement<out result>
+|   
+    IfStatement<out result>
 |
     ReturnStatement<out result>
+|
+    Expression<out result> ";"
 )
+.
+
+IfStatement<out StatementNode result>
+=
+"if" "(" Expression<out ConditionNode condition> ")"  (. StatementNode thenNode = null; StatementNode elseNode = null; .)
+Block<out thenNode>                             
+["else" Block<out elseNode>]                    (. result = factory.createIf(condition, thenNode, elseNode); .)
 .
 
 WhileStatement<out StatementNode result>
@@ -70,22 +81,6 @@ Expression<out ConditionNode condition>
 Block<out StatementNode body>                   (. result = factory.createWhile(condition, body); .)
 .
 
-AssignmentStatement<out StatementNode result>
-=
-identifier                                      (. String name = t.val; .)
-"="
-Expression<out TypedNode rvalue>
-";"                                             (. result = factory.createAssignment(name, rvalue); .)
-.
-
-OutputStatement<out StatementNode result>
-=                                               (. List<TypedNode> expressions = new ArrayList<>(); .)
-"print"
-{
-    Expression<out TypedNode value>             (. expressions.add(value); .)
-}
-";"                                             (. result = factory.createPrint(expressions); .)
-.
 
 ReturnStatement<out StatementNode result>
 =
@@ -123,15 +118,13 @@ Factor<out result>
 Factor<out TypedNode result>
 =                                               (. result = null; .)
 (
-    TimeRef<out result>
-|
-    VariableRef<out result>
+    VariableRefOrCall<out result>
 |
     StringLiteral<out result>
 |
     NumericLiteral<out result>
 |
-    Ternary<out result>  
+    Ternary<out result>
 |
     "(" Expression<out result> ")"
 ) 
@@ -143,9 +136,23 @@ Ternary<out TypedNode result>                   (. TypedNode condition, thenPart
                                                 (. result = factory.createTernary(condition, thenPart, elsePart); .)
 .
 
-TimeRef<out TypedNode result> 
+VariableRefOrCall<out TypedNode result> 
 =
-"time"                                          (. result = factory.createTime(); .)
+VariableRef<out result>                  
+[
+  (Parameters<out TypedNode[] parameters>)      (. result = factory.createCall(result, parameters); .)
+| ("=" Expression<out TypedNode assignment>)    (. result = factory.createAssignment(result, assignment); .)
+]
+.
+
+Parameters<out TypedNode[] result> 
+=      
+"("                                         (. List<TypedNode> parameters = new ArrayList<>(); .)
+[Expression<out TypedNode e1>                   (. parameters.add(e1); .)
+{"," Expression<out TypedNode e2>               (. parameters.add(e2); .)
+}                                               
+]                                           (. result = parameters.toArray(new TypedNode[parameters.size()]); .) 
+")"
 .
 
 VariableRef<out TypedNode result>

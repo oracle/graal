@@ -20,31 +20,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.nodes;
 
-import org.junit.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.sl.runtime.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+public class ReadUninitializedNode extends TypedNode {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    private final SLContext context;
+    private final FrameSlot slot;
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
+    public ReadUninitializedNode(SLContext context, FrameSlot slot) {
+        this.context = context;
+        this.slot = slot;
+    }
 
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public FrameSlot getSlot() {
+        return slot;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        CompilerDirectives.transferToInterpreter();
+        Object result = frame.getValue(slot);
+        String identifier = (String) slot.getIdentifier();
+        if (result == null) {
+            // function access
+            return replace(new ReadFunctionNode(context.getFunctionRegistry(), identifier)).executeGeneric(frame);
+        } else {
+            // local variable access
+            return replace(ReadLocalNodeFactory.create(slot)).executeGeneric(frame);
+        }
     }
 }

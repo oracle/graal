@@ -25,6 +25,7 @@ package com.oracle.truffle.sl.nodes;
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
 
+@PolymorphicLimit(1)
 public abstract class ReadLocalNode extends FrameSlotNode {
 
     public ReadLocalNode(FrameSlot slot) {
@@ -45,13 +46,14 @@ public abstract class ReadLocalNode extends FrameSlotNode {
         return frame.getBoolean(slot);
     }
 
-    @Specialization
-    public Object doObject(VirtualFrame frame) {
-        try {
-            return frame.getObject(slot);
-        } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
-        }
+    @Specialization(rewriteOn = {FrameSlotTypeException.class})
+    public Object doObject(VirtualFrame frame) throws FrameSlotTypeException {
+        return frame.getObject(slot);
+    }
+
+    @Generic
+    public Object doGeneric(VirtualFrame frame) {
+        return frame.getValue(slot);
     }
 
 }

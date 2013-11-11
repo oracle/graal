@@ -24,26 +24,22 @@ package com.oracle.truffle.sl;
 
 import java.math.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.dsl.*;
+import com.oracle.truffle.sl.runtime.*;
 
-@TypeSystem({int.class, BigInteger.class, boolean.class, String.class})
+@TypeSystem({int.class, BigInteger.class, boolean.class, String.class, CallTarget.class, SLNull.class, Object[].class})
 public class SLTypes {
 
     @TypeCheck
-    public boolean isInteger(Object value) {
-        return value instanceof Integer || (value instanceof BigInteger && ((BigInteger) value).bitLength() < Integer.SIZE);
+    public boolean isSLNull(Object value) {
+        return SLNull.INSTANCE == value;
     }
 
     @TypeCast
-    public int asInteger(Object value) {
-        assert isInteger(value);
-        if (value instanceof Integer) {
-            return (int) value;
-        } else {
-            int result = ((BigInteger) value).intValue();
-            assert BigInteger.valueOf(result).equals(value) : "Losing precision";
-            return result;
-        }
+    public SLNull asSLNull(Object value) {
+        assert isSLNull(value);
+        return SLNull.INSTANCE;
     }
 
     @ImplicitCast

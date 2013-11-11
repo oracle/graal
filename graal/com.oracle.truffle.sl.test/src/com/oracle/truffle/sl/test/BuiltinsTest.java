@@ -25,22 +25,17 @@ package com.oracle.truffle.sl.test;
 import org.junit.*;
 
 // @formatter:off
-public class MulTest extends AbstractTest {
+public class BuiltinsTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
         "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
+        "  print(\"Hello World!\");  ",
+        "  time();  ",
         "}  ",
     };
 
     private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
+        "Hello World!",
     };
 
     @Test

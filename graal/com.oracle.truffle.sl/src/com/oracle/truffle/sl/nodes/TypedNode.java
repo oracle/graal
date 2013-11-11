@@ -24,9 +24,11 @@ package com.oracle.truffle.sl.nodes;
 
 import java.math.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 import com.oracle.truffle.sl.*;
+import com.oracle.truffle.sl.runtime.*;
 
 public abstract class TypedNode extends ConditionNode {
 
@@ -57,28 +59,25 @@ public abstract class TypedNode extends ConditionNode {
         return SLTypesGen.SLTYPES.expectString(executeGeneric(frame));
     }
 
+    public CallTarget executeCallTarget(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectCallTarget(executeGeneric(frame));
+    }
+
+    public Object[] executeArray(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectObjectArray(executeGeneric(frame));
+    }
+
+    public SLNull executeNull(VirtualFrame frame) throws UnexpectedResultException {
+        return SLTypesGen.SLTYPES.expectSLNull(executeGeneric(frame));
+    }
+
     @Override
-    public void executeVoid(VirtualFrame frame) {
+    public final void executeVoid(VirtualFrame frame) {
         executeGeneric(frame);
     }
 
     public boolean isString(Object a, Object b) {
         return a instanceof String || b instanceof String;
-    }
-
-    @SuppressWarnings("unused")
-    public Object executeEvaluated(VirtualFrame frame, Object val1) {
-        return executeGeneric(frame);
-    }
-
-    @SuppressWarnings("unused")
-    public Object executeEvaluated(VirtualFrame frame, Object val1, Object val2) {
-        return executeEvaluated(frame, val1);
-    }
-
-    @SuppressWarnings("unused")
-    public Object executeEvaluated(VirtualFrame frame, Object val1, Object val2, Object val3) {
-        return executeEvaluated(frame, val1, val2);
     }
 
 }

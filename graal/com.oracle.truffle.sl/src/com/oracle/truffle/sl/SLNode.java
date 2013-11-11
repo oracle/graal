@@ -35,7 +35,7 @@ public class SLNode extends Node {
 
     @Override
     public String toString() {
-        return NodeUtil.printTreeToString(this);
+        return getEncapsulatingSourceSection() != null ? getEncapsulatingSourceSection().toString() : super.toString();
     }
 
 }

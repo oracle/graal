@@ -22,20 +22,33 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.io.*;
-
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.nodes.*;
 
-public class PrintLineNode extends StatementNode {
+public final class ArgumentsNode extends TypedNode {
 
-    private final PrintStream output;
+    @Children private final TypedNode[] arguments;
 
-    public PrintLineNode(PrintStream output) {
-        this.output = output;
+    public ArgumentsNode(TypedNode[] arguments) {
+        this.arguments = adoptChildren(arguments);
+    }
+
+    public TypedNode[] getArguments() {
+        return arguments;
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame) {
-        output.println();
+    public Object[] executeGeneric(VirtualFrame frame) {
+        return executeArray(frame);
+    }
+
+    @Override
+    @ExplodeLoop
+    public Object[] executeArray(VirtualFrame frame) {
+        Object[] argumentValues = new Object[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            argumentValues[i] = arguments[i].executeGeneric(frame);
+        }
+        return argumentValues;
     }
 }

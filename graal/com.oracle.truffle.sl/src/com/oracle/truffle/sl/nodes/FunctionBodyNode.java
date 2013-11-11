@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,25 +25,24 @@ package com.oracle.truffle.sl.nodes;
 import com.oracle.truffle.api.frame.*;
 import com.oracle.truffle.api.nodes.*;
 
-public class FunctionDefinitionNode extends RootNode {
+public class FunctionBodyNode extends TypedNode {
 
     @Child private StatementNode body;
-
     @Child private TypedNode returnValue;
+    @Child private StatementNode writeArguments;
 
-    private final FrameDescriptor frameDescriptor;
-    private final String name;
+    private FrameDescriptor frameDescriptor;
 
-    public FunctionDefinitionNode(StatementNode body, FrameDescriptor frameDescriptor, String name, TypedNode returnValue) {
-        super(null);
-        this.body = adoptChild(body);
+    public FunctionBodyNode(FrameDescriptor frameDescriptor, StatementNode body, TypedNode returnValue, String[] parameterNames) {
         this.frameDescriptor = frameDescriptor;
-        this.name = name;
+        this.body = adoptChild(body);
         this.returnValue = adoptChild(returnValue);
+        this.writeArguments = adoptChild(new BlockNode(createWriteArguments(parameterNames)));
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeGeneric(VirtualFrame frame) {
+        writeArguments.executeVoid(frame);
         try {
             body.executeVoid(frame);
         } catch (ReturnException ex) {
@@ -56,12 +55,24 @@ public class FunctionDefinitionNode extends RootNode {
         }
     }
 
+    @Override
+    public Node copy() {
+        FunctionBodyNode copy = (FunctionBodyNode) super.copy();
+        copy.frameDescriptor = frameDescriptor.shallowCopy();
+        return copy;
+    }
+
+    private StatementNode[] createWriteArguments(String[] parameterNames) {
+        StatementNode[] writeNodes = new StatementNode[parameterNames.length];
+        for (int i = 0; i < parameterNames.length; i++) {
+            FrameSlot frameSlot = frameDescriptor.findOrAddFrameSlot(parameterNames[i]);
+            writeNodes[i] = WriteLocalNodeFactory.create(frameSlot, new ReadArgumentNode(i));
+        }
+        return writeNodes;
+    }
+
     public FrameDescriptor getFrameDescriptor() {
         return frameDescriptor;
     }
 
-    @Override
-    public String toString() {
-        return "Function " + name;
-    }
 }

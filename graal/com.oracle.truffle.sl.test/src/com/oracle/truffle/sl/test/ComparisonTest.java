@@ -29,13 +29,13 @@ public class ComparisonTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
         "function main {  ",
-        "  print 4 < 20;  ",
-        "  print 4 < \"20\";  ",
-        "  print \"4\" < 20;  ",
-        "  print \"4\" < \"20\";  ",
-        "  print 4 < 20000000000000;  ",
-        "  print 4000000000000 < 20;  ",
-        "  print 4000000000000 < 20000000000000;  ",
+        "  print(4 < 20);  ",
+        "  print(4 < \"20\");  ",
+        "  print(\"4\" < 20);  ",
+        "  print(\"4\" < \"20\");  ",
+        "  print(4 < 20000000000000);  ",
+        "  print(4000000000000 < 20);  ",
+        "  print(4000000000000 < 20000000000000);  ",
         "}  ",
     };
 

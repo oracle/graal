@@ -45,7 +45,9 @@ public abstract class IfNode extends StatementNode {
         if (condition) {
             thenPartNode.executeVoid(frame);
         } else {
-            elsePartNode.executeVoid(frame);
+            if (elsePartNode != null) {
+                elsePartNode.executeVoid(frame);
+            }
         }
     }
 

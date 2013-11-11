@@ -29,11 +29,11 @@ public class TernaryTest extends AbstractTest {
 
     private static String[] INPUT = new String[] {
         "function main {  " +
-        "  print #(1 < 2) ? 1 : 2;" +
-        "  print #(2 < 1) ? 100000000000000 : 1;  ",
-        "  print #(1 < 2) ? 100000000000000 : 1;  ",
-        "  print #(2 < 1) ? \"wrong\" : \"true\";",
-        "  print #(2 < 1) ? \"wrong\" : 1;",
+        "  print(#(1 < 2) ? 1 : 2);" +
+        "  print(#(2 < 1) ? 100000000000000 : 1);  ",
+        "  print(#(1 < 2) ? 100000000000000 : 1);  ",
+        "  print(#(2 < 1) ? \"wrong\" : \"true\");",
+        "  print(#(2 < 1) ? \"wrong\" : 1);",
         "}  ",
     };
 

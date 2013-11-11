@@ -20,31 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.builtins;
 
-import org.junit.*;
+import com.oracle.truffle.api.dsl.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+public abstract class TimeBuiltin extends BuiltinNode {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    public static final long START_TIME = System.currentTimeMillis();
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
-
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    @Specialization
+    public int doInt() {
+        return (int) (System.currentTimeMillis() - START_TIME);
     }
+
 }

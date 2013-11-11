@@ -20,31 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.runtime;
 
-import org.junit.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+public final class SLArguments extends Arguments {
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+    public final Object[] arguments;
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
+    public SLArguments(Object[] arguments) {
+        this.arguments = arguments;
+    }
 
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public static SLArguments get(VirtualFrame frame) {
+        return frame.getArguments(SLArguments.class);
     }
 }

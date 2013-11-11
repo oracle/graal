@@ -20,31 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.test;
+package com.oracle.truffle.sl.runtime;
 
-import org.junit.*;
+import java.io.*;
 
-// @formatter:off
-public class MulTest extends AbstractTest {
+import com.oracle.truffle.sl.builtins.*;
 
-    private static String[] INPUT = new String[] {
-        "function main {  ",
-        "  print(3 * 4);  ",
-        "  print(3 * 4000000000000);  ",
-        "  print(3000000000000 * 4);  ",
-        "  print(3000000000000 * 4000000000000);  ",
-        "}  ",
-    };
+public final class SLContext {
 
-    private static String[] OUTPUT = new String[] {
-        "12",
-        "12000000000000",
-        "12000000000000",
-        "12000000000000000000000000",
-    };
+    private final PrintStream printOutput;
+    private final SLFunctionRegistry functionRegistry;
 
-    @Test
-    public void test() {
-        executeSL(INPUT, OUTPUT, false);
+    public SLContext(PrintStream print) {
+        this.printOutput = print;
+        this.functionRegistry = new SLFunctionRegistry();
+        DefaultBuiltins.install(this);
     }
+
+    public PrintStream getPrintOutput() {
+        return printOutput;
+    }
+
+    public SLFunctionRegistry getFunctionRegistry() {
+        return functionRegistry;
+    }
+
 }
