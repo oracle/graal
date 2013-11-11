@@ -39,6 +39,9 @@ import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 
+import com.oracle.graal.phases.GraalOptions;
+import static com.oracle.graal.options.OptionValue.OverrideScope;
+
 public abstract class GraalKernelTester extends KernelTester {
 
     HSAILCompilationResult hsailCompResult;
@@ -142,4 +145,23 @@ public abstract class GraalKernelTester extends KernelTester {
             throw new GraalInternalError(e);
         }
     }
+
+    private OptionValue<?> accessibleRemoveNeverExecutedCode = getOptionFromField(GraalOptions.class, "RemoveNeverExecutedCode");
+
+    // Special overrides for the testGeneratedxxx routines which set
+    // required graal options that we need to run any junit test
+    @Override
+    public void testGeneratedHsail() {
+        try (OverrideScope s = OptionValue.override(GraalOptions.InlineEverything, true, accessibleRemoveNeverExecutedCode, false)) {
+            super.testGeneratedHsail();
+        }
+    }
+
+    @Override
+    public void testGeneratedHsailUsingLambdaMethod() {
+        try (OverrideScope s = OptionValue.override(GraalOptions.InlineEverything, true, accessibleRemoveNeverExecutedCode, false)) {
+            super.testGeneratedHsailUsingLambdaMethod();
+        }
+    }
+
 }
