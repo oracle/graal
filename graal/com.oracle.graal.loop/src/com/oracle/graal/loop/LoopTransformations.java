@@ -25,8 +25,8 @@ package com.oracle.graal.loop;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.NodeClass.NodeClassIterator;
 import com.oracle.graal.graph.NodeClass.Position;
 import com.oracle.graal.nodes.*;
@@ -63,6 +63,7 @@ public abstract class LoopTransformations {
             Mark mark = graph.getMark();
             peel(loop);
             canonicalizer.applyIncremental(graph, context, mark);
+            loop.invalidateFragments();
             if (iterations++ > UNROLL_LIMIT || graph.getNodeCount() > MaximumDesiredSize.getValue() * 3) {
                 throw new BailoutException("FullUnroll : Graph seems to grow out of proportion");
             }

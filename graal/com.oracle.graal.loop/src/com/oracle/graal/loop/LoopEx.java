@@ -64,6 +64,11 @@ public class LoopEx {
         return whole;
     }
 
+    public void invalidateFragments() {
+        inside = null;
+        whole = null;
+    }
+
     @SuppressWarnings("unused")
     public LoopFragmentInsideFrom insideFrom(FixedNode point) {
         // TODO (gd)
