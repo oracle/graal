@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
+import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
@@ -49,7 +49,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             move(tasm, masm, getResult(), getInput());
         }
 
@@ -76,7 +76,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             move(tasm, masm, getResult(), getInput());
         }
 
@@ -103,7 +103,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             move(tasm, masm, getResult(), getInput());
         }
 
@@ -129,7 +129,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -145,7 +145,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -166,12 +166,12 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
         }
     }
 
-    public static void move(TargetMethodAssembler tasm, PTXAssembler masm, Value result, Value input) {
+    public static void move(TargetMethodAssembler tasm, PTXMacroAssembler masm, Value result, Value input) {
         if (isVariable(input)) {
             if (isVariable(result)) {
                 reg2reg(masm, result, input);
@@ -189,7 +189,7 @@ public class PTXMove {
         }
     }
 
-    private static void reg2reg(PTXAssembler masm, Value result, Value input) {
+    private static void reg2reg(PTXMacroAssembler masm, Value result, Value input) {
         Variable dest = (Variable) result;
         Variable source = (Variable) input;
 
@@ -209,7 +209,7 @@ public class PTXMove {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, PTXAssembler masm, Value result, Constant input) {
+    private static void const2reg(TargetMethodAssembler tasm, PTXMacroAssembler masm, Value result, Constant input) {
         Variable dest = (Variable) result;
 
         switch (input.getKind().getStackKind()) {

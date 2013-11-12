@@ -33,8 +33,8 @@ public abstract class PTXLIRInstruction extends LIRInstruction {
 
     @Override
     public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (PTXAssembler) tasm.asm);
+        emitCode(tasm, (PTXMacroAssembler) tasm.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, PTXAssembler masm);
+    public abstract void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm);
 }

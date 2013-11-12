@@ -23,6 +23,7 @@
 package com.oracle.graal.lir.ptx;
 
 import static com.oracle.graal.asm.ptx.PTXAssembler.*;
+import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.nodes.calc.Condition.*;
@@ -48,7 +49,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             if (tasm.frameContext != null) {
                 tasm.frameContext.leave(tasm);
             }
@@ -62,7 +63,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             if (tasm.frameContext != null) {
                 tasm.frameContext.leave(tasm);
             }
@@ -83,7 +84,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             masm.bra(masm.nameOf(destination.label()), predRegNum);
         }
 
@@ -116,7 +117,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             cmove(tasm, masm, result, false, condition, false, trueValue, falseValue, predicate);
         }
     }
@@ -140,12 +141,12 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             cmove(tasm, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue, predicate);
         }
     }
 
-    private static void cmove(TargetMethodAssembler tasm, PTXAssembler asm, Value result, boolean isFloat, Condition condition, boolean unorderedIsTrue, Value trueValue, Value falseValue,
+    private static void cmove(TargetMethodAssembler tasm, PTXMacroAssembler asm, Value result, boolean isFloat, Condition condition, boolean unorderedIsTrue, Value trueValue, Value falseValue,
                     int predicateRegister) {
         // check that we don't overwrite an input operand before it is used.
         assert !result.equals(trueValue);
@@ -177,7 +178,7 @@ public class PTXControlFlow {
         }
     }
 
-    private static void cmove(PTXAssembler asm, Value result, Value other, int predicateRegister) {
+    private static void cmove(PTXMacroAssembler asm, Value result, Value other, int predicateRegister) {
         if (isVariable(other)) {
             assert !asVariable(other).equals(asVariable(result)) : "other already overwritten by previous move";
 
@@ -217,7 +218,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             Kind keyKind = key.getKind();
 
             if (keyKind == Kind.Int || keyKind == Kind.Long) {
@@ -275,7 +276,7 @@ public class PTXControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             tableswitch(tasm, masm, lowKey, defaultTarget, targets, index, scratch, predRegNum);
         }
     }

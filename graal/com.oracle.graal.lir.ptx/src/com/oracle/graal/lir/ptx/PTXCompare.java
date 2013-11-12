@@ -54,7 +54,7 @@ public enum PTXCompare {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             emit(masm, opcode, condition, x, y, predRegNum);
         }
 

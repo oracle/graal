@@ -30,36 +30,78 @@ public class ControlPTXTest extends PTXTestBase {
 
     @Test
     public void testControl() {
-        Integer ret = (Integer) invoke(compile("testLoop"), 42);
+        String testName = "testLoop";
+        int argVal1 = 42;
+        int argVal2;
+        Integer ret = (Integer) invoke(compile(testName), argVal1);
+        int jres = testLoop(argVal1);
         if (ret != null) {
-            printReport("testLoop: " + ret);
+            if (ret.intValue() == jres) {
+                printReport(testName + ": PASSED");
+            } else {
+                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
+            }
         } else {
-            printReport("testLoop: no VALUE");
+            printReport(testName + ": FAILED (null returned)");
         }
-        ret = (Integer) invoke(compile("testSwitchDefault1I"), 3);
+
+        testName = "testSwitchDefault1I";
+        argVal1 = 3;
+        ret = (Integer) invoke(compile(testName), argVal1);
+        jres = testSwitchDefault1I(argVal1);
         if (ret != null) {
-            printReport("testSwitchDefault1I: " + ret);
+            if (ret.intValue() == jres) {
+                printReport(testName + ": PASSED");
+            } else {
+                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
+            }
         } else {
-            printReport("testSwitchDefault1I: no VALUE");
+            printReport(testName + ": FAILED (null returned)");
         }
-        ret = (Integer) invoke(compile("testSwitch1I"), 2);
+
+        testName = "testSwitch1I";
+        argVal1 = 2;
+        ret = (Integer) invoke(compile(testName), argVal1);
+        jres = testSwitch1I(argVal1);
         if (ret != null) {
-            printReport("testSwitch1I: " + ret);
+            if (ret.intValue() == jres) {
+                printReport(testName + ": PASSED");
+            } else {
+                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
+            }
         } else {
-            printReport("testSwitch1I: no VALUE");
+            printReport(testName + ": FAILED (null returned)");
         }
-        ret = (Integer) invoke(compile("testIfElse1I"), 222);
+
+        testName = "testIfElse1I";
+        argVal1 = 222;
+        ret = (Integer) invoke(compile(testName), argVal1);
+        jres = testIfElse1I(argVal1);
         if (ret != null) {
-            printReport("testIfElse1I: " + ret);
+            if (ret.intValue() == jres) {
+                printReport(testName + ": PASSED");
+            } else {
+                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
+            }
         } else {
-            printReport("testIfElse1I: no VALUE");
+            printReport(testName + ": FAILED (null returned)");
         }
-        ret = (Integer) invoke(compile("testIfElse2I"), 19, 64);
+
+        testName = "testIfElse2I";
+        argVal1 = 19;
+        argVal2 = 64;
+        ret = (Integer) invoke(compile(testName), argVal1, argVal2);
+        jres = testIfElse2I(argVal1, argVal2);
         if (ret != null) {
-            printReport("testIfElse2I: " + (char) ret.intValue());
+            if (ret.intValue() == jres) {
+                printReport(testName + ": PASSED");
+            } else {
+                printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
+            }
         } else {
-            printReport("testIfElse2I: no VALUE");
+            printReport(testName + ": FAILED " + "Expected " + jres + " Got " + ret);
         }
+
         Boolean bret = (Boolean) invoke(compile("testIntegerTestBranch2I"), 0xff00, 0x00ff);
         if (bret != null) {
             printReport("testIntegerTestBranch2I: " + bret);

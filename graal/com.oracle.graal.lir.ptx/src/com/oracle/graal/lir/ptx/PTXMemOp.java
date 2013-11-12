@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
+import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.asm.ptx.PTXStateSpace.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
@@ -51,7 +51,7 @@ public class PTXMemOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (kind) {
                 case Byte:
@@ -87,7 +87,7 @@ public class PTXMemOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (kind) {
                 case Byte:
@@ -122,7 +122,7 @@ public class PTXMemOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (kind) {
                 case Byte:
@@ -133,7 +133,7 @@ public class PTXMemOp {
                 case Float:
                 case Double:
                 case Object:
-                    new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
+                    new LoadParam(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -159,16 +159,14 @@ public class PTXMemOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
             switch (kind) {
                 case Int:
                 case Long:
                 case Float:
                 case Double:
-                    Ld ldIns = new Ld(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement()));
-                    ldIns.setLdRetAddrInstruction(true);
-                    ldIns.emit(masm);
+                    new LoadAddr(Parameter, result, addr.getBase(), Constant.forLong(addr.getDisplacement())).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -193,7 +191,7 @@ public class PTXMemOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
             PTXAddress addr = address.toAddress();
 
             switch (kind) {

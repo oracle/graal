@@ -23,7 +23,7 @@
 
 package com.oracle.graal.lir.ptx;
 
-import static com.oracle.graal.asm.ptx.PTXAssembler.*;
+import static com.oracle.graal.asm.ptx.PTXMacroAssembler.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
 import com.oracle.graal.api.meta.*;
@@ -34,18 +34,23 @@ import com.oracle.graal.lir.asm.*;
 public class PTXParameterOp extends LIRInstruction {
 
     @Def({REG}) protected Value[] params;
+    // True if the parameter list has return argument as the last
+    // item of the array params.
+    private boolean hasReturnParam;
 
-    public PTXParameterOp(Value[] params) {
+    public PTXParameterOp(Value[] params, boolean hasReturn) {
         this.params = params;
+        hasReturnParam = hasReturn;
     }
 
     @Override
     public void emitCode(TargetMethodAssembler tasm) {
-        PTXAssembler masm = (PTXAssembler) tasm.asm;
+        PTXMacroAssembler masm = (PTXMacroAssembler) tasm.asm;
         // Emit parameter directives for arguments
         int argCount = params.length;
         for (int i = 0; i < argCount; i++) {
-            new Param((Variable) params[i], (i == (argCount - 1))).emit(masm);
+            boolean isReturnParam = (hasReturnParam && (i == (argCount - 1)));
+            new Param((Variable) params[i], isReturnParam).emit(masm, (i == (argCount - 1)));
         }
     }
 }

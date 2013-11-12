@@ -136,11 +136,12 @@ public class PTXLIRGenerator extends LIRGenerator {
         // Need to emit .param directives based on incoming arguments and return value
         CallingConvention incomingArguments = cc;
         Object returnObject = incomingArguments.getReturn();
-        AllocatableValue[] params;
-        int argCount;
+        AllocatableValue[] params = incomingArguments.getArguments();
+        int argCount = incomingArguments.getArgumentCount();
 
         if (returnObject == Value.ILLEGAL) {
             params = incomingArguments.getArguments();
+            append(new PTXParameterOp(params, false));
         } else {
             argCount = incomingArguments.getArgumentCount();
             params = new Variable[argCount + 1];
@@ -148,9 +149,9 @@ public class PTXLIRGenerator extends LIRGenerator {
                 params[i] = incomingArguments.getArgument(i);
             }
             params[argCount] = (Variable) returnObject;
+            append(new PTXParameterOp(params, true));
         }
 
-        append(new PTXParameterOp(params));
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
             Value param = params[local.index()];
             Annotation[] annos = graph.method().getParameterAnnotations()[local.index()];

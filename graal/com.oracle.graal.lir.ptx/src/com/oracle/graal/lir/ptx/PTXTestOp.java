@@ -44,7 +44,7 @@ public class PTXTestOp extends PTXLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, PTXAssembler masm) {
+    public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
         emit(masm, x, y, predicate);
     }
 

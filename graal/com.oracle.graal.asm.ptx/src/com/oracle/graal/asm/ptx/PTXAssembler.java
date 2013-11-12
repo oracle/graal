@@ -100,21 +100,17 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public static class StandardFormat {
 
+        // Type of destination value
         protected Kind valueKind;
         protected Variable dest;
         protected Value source1;
         protected Value source2;
-        private boolean logicInstruction = false;
-        private boolean ldRetAddrInstruction = false;
 
         public StandardFormat(Variable dst, Value src1, Value src2) {
             setDestination(dst);
             setSource1(src1);
             setSource2(src2);
             setKind(dst.getKind());
-
-            // testAdd2B fails this assertion
-            // assert valueKind == src1.getKind();
         }
 
         public void setKind(Kind k) {
@@ -124,6 +120,7 @@ public class PTXAssembler extends AbstractPTXAssembler {
         public void setDestination(Variable var) {
             assert var != null;
             dest = var;
+            setKind(var.getKind());
         }
 
         public void setSource1(Value val) {
@@ -136,57 +133,33 @@ public class PTXAssembler extends AbstractPTXAssembler {
             source2 = val;
         }
 
-        public void setLogicInstruction(boolean b) {
-            logicInstruction = b;
-        }
-
-        public void setLdRetAddrInstruction(boolean b) {
-            ldRetAddrInstruction = b;
-        }
-
         public String typeForKind(Kind k) {
-            if (ldRetAddrInstruction) {
-                if (System.getProperty("os.arch").compareTo("amd64") == 0) {
+            switch (k.getTypeChar()) {
+            // Boolean
+                case 'z':
+                    return "u8";
+                    // Byte
+                case 'b':
+                    return "b8";
+                    // Short
+                case 's':
+                    return "s16";
+                case 'c':
+                    return "u16";
+                case 'i':
+                    return "s32";
+                case 'f':
+                    return "f32";
+                case 'j':
+                    return "s64";
+                case 'd':
+                    return "f64";
+                case 'a':
                     return "u64";
-                } else {
+                case '-':
                     return "u32";
-                }
-            } else if (logicInstruction) {
-                switch (k.getTypeChar()) {
-                    case 's':
-                        return "b16";
-                    case 'i':
-                        return "b32";
-                    case 'j':
-                        return "b64";
-                    default:
-                        throw GraalInternalError.shouldNotReachHere();
-                }
-            } else {
-                switch (k.getTypeChar()) {
-                    case 'z':
-                        return "u8";
-                    case 'b':
-                        return "s8";
-                    case 's':
-                        return "s16";
-                    case 'c':
-                        return "u16";
-                    case 'i':
-                        return "s32";
-                    case 'f':
-                        return "f32";
-                    case 'j':
-                        return "s64";
-                    case 'd':
-                        return "f64";
-                    case 'a':
-                        return "u64";
-                    case '-':
-                        return "u32";
-                    default:
-                        throw GraalInternalError.shouldNotReachHere();
-                }
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         }
 
@@ -233,6 +206,32 @@ public class PTXAssembler extends AbstractPTXAssembler {
             } else {
                 return str;
             }
+        }
+    }
+
+    public static class LogicInstructionFormat extends StandardFormat {
+        public LogicInstructionFormat(Variable dst, Value src1, Value src2) {
+            super(dst, src1, src2);
+        }
+
+        @Override
+        public String emit() {
+            String kindStr;
+            switch (valueKind.getTypeChar()) {
+                case 's':
+                    kindStr = "b16";
+                    break;
+                case 'i':
+                    kindStr = "b32";
+                    break;
+                case 'j':
+                    kindStr = "b64";
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+
+            return (kindStr + emitRegister(dest, true) + emitValue(source1, true) + emitValue(source2, false) + ";");
         }
     }
 
@@ -397,132 +396,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
         }
     }
 
-    public static class Add extends StandardFormat {
-
-        public Add(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("add." + super.emit());
-        }
-    }
-
-    public static class And extends StandardFormat {
-
-        public And(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-            setLogicInstruction(true);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("and." + super.emit());
-        }
-    }
-
-    public static class Div extends StandardFormat {
-
-        public Div(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("div." + super.emit());
-        }
-    }
-
-    public static class Mul extends StandardFormat {
-
-        public Mul(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("mul.lo." + super.emit());
-        }
-    }
-
-    public static class Or extends StandardFormat {
-
-        public Or(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-            setLogicInstruction(true);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("or." + super.emit());
-        }
-    }
-
-    public static class Rem extends StandardFormat {
-
-        public Rem(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("rem." + super.emit());
-        }
-    }
-
-    public static class Shl extends StandardFormat {
-
-        public Shl(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-            setLogicInstruction(true);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("shl." + super.emit());
-        }
-    }
-
-    public static class Shr extends StandardFormat {
-
-        public Shr(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("shr." + super.emit());
-        }
-    }
-
-    public static class Sub extends StandardFormat {
-
-        public Sub(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("sub." + super.emit());
-        }
-    }
-
-    public static class Ushr extends StandardFormat {
-
-        public Ushr(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-            setKind(Kind.Illegal);  // get around not having an Unsigned Kind
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("shr." + super.emit());
-        }
-    }
-
-    public static class Xor extends StandardFormat {
-
-        public Xor(Variable dst, Value src1, Value src2) {
-            super(dst, src1, src2);
-            setLogicInstruction(true);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("xor." + super.emit());
-        }
-    }
-
     // Checkstyle: stop method name check
     public final void bra(String tgt, int pred) {
         assert pred >= 0;
@@ -539,93 +412,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
 
     public final void bra_uni(String tgt) {
         emitString("bra.uni" + " " + tgt + ";" + "");
-    }
-
-    public static class Cvt extends ConversionFormat {
-
-        public Cvt(Variable dst, Variable src, Kind dstKind, Kind srcKind) {
-            super(dst, src, dstKind, srcKind);
-        }
-
-        public void emit(PTXAssembler asm) {
-            if (dest.getKind() == Kind.Float || dest.getKind() == Kind.Double) {
-                // round-to-zero - might not be right
-                asm.emitString("cvt.rz." + super.emit());
-            } else {
-                asm.emitString("cvt." + super.emit());
-            }
-        }
-    }
-
-    public static class Mov extends SingleOperandFormat {
-
-        private int predicateRegisterNumber = -1;
-
-        public Mov(Variable dst, Value src) {
-            super(dst, src);
-        }
-
-        public Mov(Variable dst, Value src, int predicate) {
-            super(dst, src);
-            this.predicateRegisterNumber = predicate;
-        }
-
-        /*
-         * public Mov(Variable dst, AbstractAddress src) { throw
-         * GraalInternalError.unimplemented("AbstractAddress Mov"); }
-         */
-
-        public void emit(PTXAssembler asm) {
-            if (predicateRegisterNumber >= 0) {
-                asm.emitString("@%p" + String.valueOf(predicateRegisterNumber) + " mov." + super.emit());
-            } else {
-                asm.emitString("mov." + super.emit());
-            }
-        }
-    }
-
-    public static class Neg extends SingleOperandFormat {
-
-        public Neg(Variable dst, Variable src) {
-            super(dst, src);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("neg." + super.emit());
-        }
-    }
-
-    public static class Not extends BinarySingleOperandFormat {
-
-        public Not(Variable dst, Variable src) {
-            super(dst, src);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("not." + super.emit());
-        }
-    }
-
-    public static class Ld extends LoadStoreFormat {
-
-        public Ld(PTXStateSpace space, Variable dst, Variable src1, Value src2) {
-            super(space, dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("ld." + super.emit(true));
-        }
-    }
-
-    public static class St extends LoadStoreFormat {
-
-        public St(PTXStateSpace space, Variable dst, Variable src1, Value src2) {
-            super(space, dst, src1, src2);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString("st." + super.emit(false));
-        }
     }
 
     public final void exit() {
@@ -671,61 +457,6 @@ public class PTXAssembler extends AbstractPTXAssembler {
         public void emit(PTXAssembler asm) {
             asm.emitString(".global ." + valueForKind(kind) + " " + name + "[" + targets.length + "] = " + "{ " + emitTargets(asm, targets) + " };");
         }
-    }
-
-    public static class Param extends SingleOperandFormat {
-        // Last parameter holds the return parameter.
-        private boolean returnParameter;
-
-        public Param(Variable d, boolean lastParam) {
-            super(d, null);
-            setReturnParameter(lastParam);
-        }
-
-        public void setReturnParameter(boolean value) {
-            returnParameter = value;
-        }
-
-        public String emitParameter(Variable v) {
-            return (" param" + v.index);
-        }
-
-        public void emit(PTXAssembler asm) {
-            asm.emitString(".param ." + paramForKind(dest.getKind()) + emitParameter(dest) + (returnParameter ? "" : ","));
-        }
-
-        public String paramForKind(Kind k) {
-            if (returnParameter) {
-                if (System.getProperty("os.arch").compareTo("amd64") == 0) {
-                    return "u64";
-                } else {
-                    return "u32";
-                }
-            } else {
-                switch (k.getTypeChar()) {
-                    case 'z':
-                    case 'f':
-                        return "s32";
-                    case 'b':
-                        return "s8";
-                    case 's':
-                        return "s16";
-                    case 'c':
-                        return "u16";
-                    case 'i':
-                        return "s32";
-                    case 'j':
-                        return "s64";
-                    case 'd':
-                        return "f64";
-                    case 'a':
-                        return "u64";
-                    default:
-                        throw GraalInternalError.shouldNotReachHere();
-                }
-            }
-        }
-
     }
 
     public final void popc_b32(Register d, Register a) {

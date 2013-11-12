@@ -66,15 +66,23 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     static final class RegisterAnalysis extends ValueProcedure {
-        private final SortedSet<Integer> unsigned64 = new TreeSet<>();
-        private final SortedSet<Integer> signed64 = new TreeSet<>();
-        private final SortedSet<Integer> float32 = new TreeSet<>();
         private final SortedSet<Integer> signed32 = new TreeSet<>();
+        private final SortedSet<Integer> signed64 = new TreeSet<>();
+
+        // unsigned8 is only for ld, st and cbt
+        private final SortedSet<Integer> unsigned8 = new TreeSet<>();
+        private final SortedSet<Integer> unsigned64 = new TreeSet<>();
+
+        // private final SortedSet<Integer> float16 = new TreeSet<>();
+        private final SortedSet<Integer> float32 = new TreeSet<>();
         private final SortedSet<Integer> float64 = new TreeSet<>();
 
         LIRInstruction op;
 
         void emitDeclarations(Buffer codeBuffer) {
+            for (Integer i : unsigned8) {
+                codeBuffer.emitString(".reg .u8 %r" + i.intValue() + ";");
+            }
             for (Integer i : signed32) {
                 codeBuffer.emitString(".reg .s32 %r" + i.intValue() + ";");
             }
@@ -134,6 +142,9 @@ public class PTXHotSpotBackend extends HotSpotBackend {
                         case Object:
                             unsigned64.add(regVal.index);
                             break;
+                        case Byte:
+                            unsigned8.add(regVal.index);
+                            break;
                         default:
                             throw GraalInternalError.shouldNotReachHere("unhandled register type " + value.toString());
                     }
@@ -172,7 +183,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
 
     @Override
     protected AbstractAssembler createAssembler(FrameMap frameMap) {
-        return new PTXAssembler(getTarget(), frameMap.registerConfig);
+        return new PTXMacroAssembler(getTarget(), frameMap.registerConfig);
     }
 
     @Override
