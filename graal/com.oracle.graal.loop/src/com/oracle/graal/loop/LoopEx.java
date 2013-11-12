@@ -28,9 +28,11 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.loop.InductionVariable.Direction;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
+import com.oracle.graal.nodes.extended.*;
 
 public class LoopEx {
 
@@ -146,8 +148,74 @@ public class LoopEx {
         }
     }
 
-    public void setCounted(CountedLoopInfo countedLoopInfo) {
-        counted = countedLoopInfo;
+    public boolean detectCounted() {
+        LoopBeginNode loopBegin = loopBegin();
+        FixedNode next = loopBegin.next();
+        while (next instanceof FixedGuardNode || next instanceof ValueAnchorNode) {
+            next = ((FixedWithNextNode) next).next();
+        }
+        if (next instanceof IfNode) {
+            IfNode ifNode = (IfNode) next;
+            boolean negated = false;
+            if (!loopBegin.isLoopExit(ifNode.falseSuccessor())) {
+                if (!loopBegin.isLoopExit(ifNode.trueSuccessor())) {
+                    return false;
+                }
+                negated = true;
+            }
+            LogicNode ifTest = ifNode.condition();
+            if (!(ifTest instanceof IntegerLessThanNode)) {
+                if (ifTest instanceof IntegerBelowThanNode) {
+                    Debug.log("Ignored potential Counted loop at %s with |<|", loopBegin);
+                }
+                return false;
+            }
+            IntegerLessThanNode lessThan = (IntegerLessThanNode) ifTest;
+            Condition condition = null;
+            InductionVariable iv = null;
+            ValueNode limit = null;
+            if (isOutsideLoop(lessThan.x())) {
+                iv = getInductionVariables().get(lessThan.y());
+                if (iv != null) {
+                    condition = lessThan.condition().mirror();
+                    limit = lessThan.x();
+                }
+            } else if (isOutsideLoop(lessThan.y())) {
+                iv = getInductionVariables().get(lessThan.x());
+                if (iv != null) {
+                    condition = lessThan.condition();
+                    limit = lessThan.y();
+                }
+            }
+            if (condition == null) {
+                return false;
+            }
+            if (negated) {
+                condition = condition.negate();
+            }
+            boolean oneOff = false;
+            switch (condition) {
+                case LE:
+                    oneOff = true; // fall through
+                case LT:
+                    if (iv.direction() != Direction.Up) {
+                        return false;
+                    }
+                    break;
+                case GE:
+                    oneOff = true; // fall through
+                case GT:
+                    if (iv.direction() != Direction.Down) {
+                        return false;
+                    }
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
+            }
+            counted = new CountedLoopInfo(this, iv, limit, oneOff, negated ? ifNode.falseSuccessor() : ifNode.trueSuccessor());
+            return true;
+        }
+        return false;
     }
 
     public LoopsData loopsData() {
