@@ -139,7 +139,7 @@ public class AMD64Move {
                     masm.movswl(asRegister(result), address.toAddress());
                     break;
                 case Int:
-                    masm.movslq(asRegister(result), address.toAddress());
+                    masm.movl(asRegister(result), address.toAddress());
                     break;
                 case Long:
                     masm.movq(asRegister(result), address.toAddress());
