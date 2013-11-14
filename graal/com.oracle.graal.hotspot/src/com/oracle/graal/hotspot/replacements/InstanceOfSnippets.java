@@ -26,9 +26,9 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
+import static com.oracle.graal.hotspot.replacements.InstanceOfSnippets.Options.*;
 import static com.oracle.graal.hotspot.replacements.TypeCheckSnippetUtils.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -39,7 +39,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
-import com.oracle.graal.phases.*;
+import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
@@ -66,7 +66,7 @@ public class InstanceOfSnippets implements Snippets {
      * example, if a method is compiled after being interpreted 10000 times, the deoptimizing
      * snippet will only be used for an instanceof if its profile indicates that less than 1 in
      * 100000 executions are for an object whose type is not one of the top N profiled types (where
-     * {@code N == } {@link GraalOptions#InstanceOfMaxHints}).
+     * {@code N == } {@link Options#TypeCheckMaxHints}).
      */
     public static double hintHitProbabilityThresholdForDeoptimizingSnippet() {
         return 1.0D - (1.0D / (runtime().getConfig().compileThreshold * 10));
@@ -193,6 +193,19 @@ public class InstanceOfSnippets implements Snippets {
         return trueValue;
     }
 
+    static class Options {
+
+        // @formatter:off
+        @Option(help = "If the probability that a type check will hit one the profiled types (up to " +
+                       "TypeCheckMaxHints) is below this value, the type check will be compiled without profiling info")
+        static final OptionValue<Double> TypeCheckMinProfileHitProbability = new OptionValue<>(0.5);
+
+        @Option(help = "The maximum number of profiled types that will be used when compiling a profiled type check. " +
+                        "Note that TypeCheckMinProfileHitProbability also influences whether profiling info is used in compiled type checks.")
+        static final OptionValue<Integer> TypeCheckMaxHints = new OptionValue<>(2);
+        // @formatter:on
+    }
+
     public static class Templates extends InstanceOfSnippetsTemplates {
 
         private final SnippetInfo instanceofWithProfile = snippet(InstanceOfSnippets.class, "instanceofWithProfile");
@@ -210,7 +223,7 @@ public class InstanceOfSnippets implements Snippets {
             if (replacer.instanceOf instanceof InstanceOfNode) {
                 InstanceOfNode instanceOf = (InstanceOfNode) replacer.instanceOf;
                 ValueNode object = instanceOf.object();
-                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), InstanceOfMinHintHitProbability.getValue(), InstanceOfMaxHints.getValue());
+                TypeCheckHints hintInfo = new TypeCheckHints(instanceOf.type(), instanceOf.profile(), tool.assumptions(), TypeCheckMinProfileHitProbability.getValue(), TypeCheckMaxHints.getValue());
                 final HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) instanceOf.type();
                 ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), instanceOf.graph());
 
