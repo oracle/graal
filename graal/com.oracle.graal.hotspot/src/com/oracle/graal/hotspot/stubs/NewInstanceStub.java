@@ -26,8 +26,8 @@ import static com.oracle.graal.api.meta.LocationIdentity.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.nodes.DirectCompareAndSwapNode.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
-import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.*;
 import static com.oracle.graal.hotspot.stubs.StubUtil.*;
+import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -71,6 +71,22 @@ public class NewInstanceStub extends SnippetStub {
         args.add("hub", null);
         args.addConst("intArrayHub", intArrayHub);
         return args;
+    }
+
+    private static Word allocate(int size) {
+        Word thread = thread();
+        Word top = readTlabTop(thread);
+        Word end = readTlabEnd(thread);
+        Word newTop = top.add(size);
+        /*
+         * this check might lead to problems if the TLAB is within 16GB of the address space end
+         * (checked in c++ code)
+         */
+        if (probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+            writeTlabTop(thread, newTop);
+            return top;
+        }
+        return Word.zero();
     }
 
     @Fold
@@ -190,7 +206,7 @@ public class NewInstanceStub extends SnippetStub {
                 end = top.add(tlabRefillSizeInBytes.subtract(alignmentReserveInBytes));
                 initializeTlab(thread, top, end);
 
-                return allocate(sizeInBytes);
+                return NewInstanceStub.allocate(sizeInBytes);
             } else {
                 return Word.zero();
             }

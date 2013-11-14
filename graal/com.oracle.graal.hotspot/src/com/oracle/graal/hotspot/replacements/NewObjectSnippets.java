@@ -80,23 +80,6 @@ public class NewObjectSnippets implements Snippets {
 
     public static final ProfileMode PROFILE_MODE = ProfileMode.Total;
 
-    @Snippet
-    public static Word allocate(int size) {
-        Word thread = thread();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
-        Word newTop = top.add(size);
-        /*
-         * this check might lead to problems if the TLAB is within 16GB of the address space end
-         * (checked in c++ code)
-         */
-        if (probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
-            return top;
-        }
-        return Word.zero();
-    }
-
     @Fold
     private static String createName(String path, String typeContext) {
         switch (PROFILE_MODE) {
