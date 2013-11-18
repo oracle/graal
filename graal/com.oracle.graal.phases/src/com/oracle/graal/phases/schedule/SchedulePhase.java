@@ -494,17 +494,21 @@ public final class SchedulePhase extends Phase {
                 break;
             case LATEST:
             case LATEST_OUT_OF_LOOPS:
-                if (memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode && ((FloatingReadNode) node).location().getLocationIdentity() != FINAL_LOCATION) {
+                boolean scheduleRead = memsched == MemoryScheduling.OPTIMAL && node instanceof FloatingReadNode && ((FloatingReadNode) node).location().getLocationIdentity() != FINAL_LOCATION;
+                if (scheduleRead) {
                     block = optimalBlock((FloatingReadNode) node, strategy);
                 } else {
                     block = latestBlock(node, strategy);
-                    if (block == null) {
-                        block = earliestBlock;
-                    } else if (strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS && !(node instanceof VirtualObjectNode)) {
-                        // schedule at the latest position possible in the outermost loop possible
-                        block = scheduleOutOfLoops(node, block, earliestBlock);
-                    }
                 }
+                if (block == null) {
+                    block = earliestBlock;
+                } else if (strategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS && !(node instanceof VirtualObjectNode)) {
+                    // schedule at the latest position possible in the outermost loop possible
+                    block = scheduleOutOfLoops(node, block, earliestBlock);
+                }
+
+                assert !scheduleRead || forKillLocation(((FloatingReadNode) node).getLastLocationAccess()).dominates(block) : "out of loop violated memory semantics for " + node + ". moved to " +
+                                block + ", but upper bound is " + forKillLocation(((FloatingReadNode) node).getLastLocationAccess());
                 break;
             default:
                 throw new GraalInternalError("unknown scheduling strategy");
@@ -565,24 +569,7 @@ public final class SchedulePhase extends Phase {
             if (lastKill.equals(upperBound)) {
                 // assign node to the block which kills the location
 
-                boolean outOfLoop = false;
-
-                // schedule read out of the loop if possible, in terms of killMaps and earliest
-                // schedule
-                if (currentBlock != earliestBlock && previousBlock != earliestBlock) {
-                    Block t = currentBlock;
-                    while (t.getLoop() != null && t.getDominator() != null && earliestBlock.dominates(t)) {
-                        Block dom = t.getDominator();
-                        if (dom.getLoopDepth() < currentBlock.getLoopDepth() && blockToKillMap.get(dom).get(locid) == upperBound && earliestBlock.dominates(dom)) {
-                            printIterations(iterations, "moved out of loop, from " + currentBlock + " to " + dom);
-                            previousBlock = currentBlock = dom;
-                            outOfLoop = true;
-                        }
-                        t = dom;
-                    }
-                }
-
-                if (!outOfLoop && previousBlock.getBeginNode() instanceof MergeNode) {
+                if (previousBlock.getBeginNode() instanceof MergeNode) {
                     // merges kill locations right at the beginning of a block. if a merge is the
                     // killing node, we assign it to the dominating block.
 
@@ -722,6 +709,16 @@ public final class SchedulePhase extends Phase {
         return earliest;
     }
 
+    /**
+     * Schedules a node out of loop based on its earliest schedule. Note that this movement is only
+     * valid if it's done for <b>every</b> other node in the schedule, otherwise this movement is
+     * not valid.
+     * 
+     * @param n Node to schedule
+     * @param latestBlock latest possible schedule for {@code n}
+     * @param earliest earliest possible schedule for {@code n}
+     * @return block schedule for {@code n} which is not inside a loop (if possible)
+     */
     private static Block scheduleOutOfLoops(Node n, Block latestBlock, Block earliest) {
         if (latestBlock == null) {
             throw new SchedulingError("no latest : %s", n);
