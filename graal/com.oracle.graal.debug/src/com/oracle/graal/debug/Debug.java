@@ -353,8 +353,20 @@ public class Debug {
         return null;
     }
 
+    /**
+     * Creates a {@linkplain DebugMetric metric} that is enabled iff debugging is
+     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding to
+     * {@value #ENABLE_METRIC_PROPERTY_NAME_PREFIX} to {@code name} is
+     * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
+     * returned metric is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
+     * conditional.
+     * <p>
+     * A disabled metric has virtually no overhead.
+     */
     public static DebugMetric metric(String name) {
-        if (ENABLED) {
+        if (Boolean.getBoolean(ENABLE_METRIC_PROPERTY_NAME_PREFIX + name)) {
+            return new MetricImpl(name, false);
+        } else if (ENABLED) {
             return new MetricImpl(name, true);
         } else {
             return VOID_METRIC;
@@ -440,8 +452,30 @@ public class Debug {
         }
     };
 
+    /**
+     * @see #timer(String)
+     */
+    public static final String ENABLE_TIMER_PROPERTY_NAME_PREFIX = "graal.debug.timer.";
+
+    /**
+     * @see #metric(String)
+     */
+    public static final String ENABLE_METRIC_PROPERTY_NAME_PREFIX = "graal.debug.metric.";
+
+    /**
+     * Creates a {@linkplain DebugTimer timer} that is enabled iff debugging is
+     * {@linkplain #isEnabled() enabled} or the system property whose name is formed by adding to
+     * {@value #ENABLE_TIMER_PROPERTY_NAME_PREFIX} to {@code name} is
+     * {@linkplain Boolean#getBoolean(String) true}. If the latter condition is true, then the
+     * returned timer is {@linkplain DebugMetric#isConditional() unconditional} otherwise it is
+     * conditional.
+     * <p>
+     * A disabled timer has virtually no overhead.
+     */
     public static DebugTimer timer(String name) {
-        if (ENABLED) {
+        if (Boolean.getBoolean(ENABLE_TIMER_PROPERTY_NAME_PREFIX + name)) {
+            return new TimerImpl(name, false);
+        } else if (ENABLED) {
             return new TimerImpl(name, true);
         } else {
             return VOID_TIMER;
