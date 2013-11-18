@@ -68,6 +68,13 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Directive for the compiler to discontinue compilation at this code position and instead
+     * insert a transfer to the interpreter, invalidating the currently executing machine code.
+     */
+    public static void transferToInterpreterAndInvalidate() {
+    }
+
+    /**
      * Returns a boolean value indicating whether the method is executed in the interpreter.
      * 
      * @return {@code true} when executed in the interpreter, {@code false} in compiled code.
