@@ -94,7 +94,7 @@ public abstract class BinaryNode extends FloatingNode {
                 return IntegerArithmeticNode.add(graph, x, y);
             case Float:
             case Double:
-                return x.graph().unique(new FloatAddNode(x.kind(), x, y, false));
+                return graph.unique(new FloatAddNode(x.kind(), x, y, false));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -111,7 +111,7 @@ public abstract class BinaryNode extends FloatingNode {
                 return IntegerArithmeticNode.sub(graph, x, y);
             case Float:
             case Double:
-                return x.graph().unique(new FloatSubNode(x.kind(), x, y, false));
+                return graph.unique(new FloatSubNode(x.kind(), x, y, false));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -128,7 +128,7 @@ public abstract class BinaryNode extends FloatingNode {
                 return IntegerArithmeticNode.mul(graph, x, y);
             case Float:
             case Double:
-                return x.graph().unique(new FloatMulNode(x.kind(), x, y, false));
+                return graph.unique(new FloatMulNode(x.kind(), x, y, false));
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
