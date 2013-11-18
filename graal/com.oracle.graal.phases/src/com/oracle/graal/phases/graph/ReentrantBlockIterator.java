@@ -76,7 +76,7 @@ public final class ReentrantBlockIterator {
         apply(closure, start, closure.getInitialState(), null);
     }
 
-    private static <StateT> IdentityHashMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
+    public static <StateT> IdentityHashMap<FixedNode, StateT> apply(BlockIteratorClosure<StateT> closure, Block start, StateT initialState, Set<Block> boundary) {
         Deque<Block> blockQueue = new ArrayDeque<>();
         /*
          * States are stored on EndNodes before merges, and on BeginNodes after ControlSplitNodes.
@@ -173,6 +173,7 @@ public final class ReentrantBlockIterator {
                         mergedStates.add(states.get(end));
                     }
                     state = closure.merge(current, mergedStates);
+                    states.put(merge, state);
                 }
             }
         }
