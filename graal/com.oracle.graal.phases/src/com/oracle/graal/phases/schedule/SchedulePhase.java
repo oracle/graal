@@ -175,24 +175,53 @@ public final class SchedulePhase extends Phase {
         }
     }
 
-    private class NewMemoryScheduleClosure extends BlockIteratorClosure<Set<LocationIdentity>> {
+    private class KillSet implements Iterable<LocationIdentity> {
+        private final Set<LocationIdentity> set;
+
+        public KillSet() {
+            this.set = new HashSet<>();
+        }
+
+        public KillSet(KillSet other) {
+            this.set = new HashSet<>(other.set);
+        }
+
+        public void add(LocationIdentity locationIdentity) {
+            set.add(locationIdentity);
+        }
+
+        public void addAll(KillSet other) {
+            set.addAll(other.set);
+        }
+
+        public Iterator<LocationIdentity> iterator() {
+            return set.iterator();
+        }
+
+        public boolean isKilled(LocationIdentity locationIdentity) {
+            return set.contains(locationIdentity);
+        }
+
+    }
+
+    private class NewMemoryScheduleClosure extends BlockIteratorClosure<KillSet> {
         @Override
-        protected Set<LocationIdentity> getInitialState() {
+        protected KillSet getInitialState() {
             return cloneState(blockToKillSet.get(getCFG().getStartBlock()));
         }
 
         @Override
-        protected Set<LocationIdentity> processBlock(Block block, Set<LocationIdentity> currentState) {
+        protected KillSet processBlock(Block block, KillSet currentState) {
             currentState.addAll(computeKillSet(block));
             return currentState;
         }
 
         @Override
-        protected Set<LocationIdentity> merge(Block merge, List<Set<LocationIdentity>> states) {
+        protected KillSet merge(Block merge, List<KillSet> states) {
             assert merge.getBeginNode() instanceof MergeNode;
 
-            Set<LocationIdentity> initKillSet = new HashSet<>();
-            for (Set<LocationIdentity> state : states) {
+            KillSet initKillSet = new KillSet();
+            for (KillSet state : states) {
                 initKillSet.addAll(state);
             }
 
@@ -200,16 +229,16 @@ public final class SchedulePhase extends Phase {
         }
 
         @Override
-        protected Set<LocationIdentity> cloneState(Set<LocationIdentity> state) {
-            return new HashSet<>(state);
+        protected KillSet cloneState(KillSet state) {
+            return new KillSet(state);
         }
 
         @Override
-        protected List<Set<LocationIdentity>> processLoop(Loop loop, Set<LocationIdentity> state) {
-            LoopInfo<Set<LocationIdentity>> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
+        protected List<KillSet> processLoop(Loop loop, KillSet state) {
+            LoopInfo<KillSet> info = ReentrantBlockIterator.processLoop(this, loop, cloneState(state));
 
             assert loop.header.getBeginNode() instanceof LoopBeginNode;
-            Set<LocationIdentity> headerState = merge(loop.header, info.endStates);
+            KillSet headerState = merge(loop.header, info.endStates);
 
             // second iteration, for propagating information to loop exits
             info = ReentrantBlockIterator.processLoop(this, loop, cloneState(headerState));
@@ -226,12 +255,12 @@ public final class SchedulePhase extends Phase {
      * @param block block to analyze
      * @return all killed locations
      */
-    private Set<LocationIdentity> computeKillSet(Block block) {
-        Set<LocationIdentity> cachedSet = blockToKillSet.get(block);
+    private KillSet computeKillSet(Block block) {
+        KillSet cachedSet = blockToKillSet.get(block);
         if (cachedSet != null) {
             return cachedSet;
         }
-        HashSet<LocationIdentity> set = new HashSet<>();
+        KillSet set = new KillSet();
         blockToKillSet.put(block, set);
 
         if (block.getBeginNode() instanceof MergeNode) {
@@ -265,7 +294,7 @@ public final class SchedulePhase extends Phase {
      * Map from blocks to the nodes in each block.
      */
     private BlockMap<List<ScheduledNode>> blockToNodesMap;
-    private BlockMap<Set<LocationIdentity>> blockToKillSet;
+    private BlockMap<KillSet> blockToKillSet;
     private final Map<FloatingNode, List<FixedNode>> phantomUsages = new IdentityHashMap<>();
     private final Map<FixedNode, List<FloatingNode>> phantomInputs = new IdentityHashMap<>();
     private final SchedulingStrategy selectedStrategy;
@@ -343,11 +372,11 @@ public final class SchedulePhase extends Phase {
                 Debug.printf("post-dom: %s. ", b.getPostdominator());
                 Debug.printf("preds: %s. ", b.getPredecessors());
                 Debug.printf("succs: %s ====\n", b.getSuccessors());
-                BlockMap<Set<LocationIdentity>> killMaps = blockToKillSet;
-                if (killMaps != null) {
+                BlockMap<KillSet> killSets = blockToKillSet;
+                if (killSets != null) {
                     Debug.printf("X block kills: \n");
-                    if (killMaps.get(b) != null) {
-                        for (LocationIdentity locId : killMaps.get(b)) {
+                    if (killSets.get(b) != null) {
+                        for (LocationIdentity locId : killSets.get(b)) {
                             Debug.printf("X %s killed by %s\n", locId, "dunno anymore");
                         }
                     }
@@ -539,7 +568,7 @@ public final class SchedulePhase extends Phase {
         Stack<Block> path = computePathInDominatorTree(earliestBlock, latestBlock);
         Debug.printf("|path| is %d: %s\n", path.size(), path);
 
-        Set<LocationIdentity> killSet = new HashSet<>();
+        KillSet killSet = new KillSet();
         // follow path, start at earliest schedule
         while (path.size() > 0) {
             Block currentBlock = path.pop();
@@ -551,11 +580,11 @@ public final class SchedulePhase extends Phase {
                 HashSet<Block> region = computeRegion(currentBlock, dominatedBlock);
                 Debug.printf("%s: region for %s -> %s: %s\n", n, currentBlock, dominatedBlock, region);
 
-                Map<FixedNode, Set<LocationIdentity>> states;
-                states = ReentrantBlockIterator.apply(maschedClosure, currentBlock, new HashSet<>(killSet), region);
+                Map<FixedNode, KillSet> states;
+                states = ReentrantBlockIterator.apply(maschedClosure, currentBlock, new KillSet(killSet), region);
 
-                Set<LocationIdentity> mergeState = states.get(dominatedBlock.getBeginNode());
-                if (mergeState.contains(locid)) {
+                KillSet mergeState = states.get(dominatedBlock.getBeginNode());
+                if (mergeState.isKilled(locid)) {
                     // location got killed somewhere in the branches,
                     // thus we've to move the read above it
                     return currentBlock;
@@ -566,8 +595,8 @@ public final class SchedulePhase extends Phase {
                 if (dominatedBlock == null) {
                     return currentBlock;
                 }
-                Set<LocationIdentity> blockKills = computeKillSet(currentBlock);
-                if (blockKills.contains(locid)) {
+                KillSet blockKills = computeKillSet(currentBlock);
+                if (blockKills.isKilled(locid)) {
                     return currentBlock;
                 }
                 killSet.addAll(blockKills);
