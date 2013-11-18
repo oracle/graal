@@ -44,6 +44,11 @@ public class CompilerDirectivesSubstitutions {
     }
 
     @MethodSubstitution
+    public static void transferToInterpreterAndInvalidate() {
+        DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.UnreachedCode);
+    }
+
+    @MethodSubstitution
     public static boolean inInterpreter() {
         return false;
     }
