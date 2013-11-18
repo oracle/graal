@@ -27,13 +27,17 @@ import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static java.nio.file.Files.*;
 
 import java.io.*;
+import java.lang.reflect.*;
 import java.nio.charset.*;
 import java.nio.file.*;
 import java.util.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.logging.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.options.*;
+import com.oracle.graal.phases.common.*;
 
 /**
  * Called from {@code graalCompiler.cpp} to parse any Graal specific options. Such options are
@@ -184,13 +188,47 @@ public class HotSpotOptions {
     }
 
     /**
+     * Sets the relevant system property such that a {@link DebugTimer} or {@link DebugMetric}
+     * associated with a field in a class will be unconditionally enabled when it is created.
+     * <p>
+     * This method verifies that the named field exists and is of an expected type. However, it does
+     * not verify that the timer or metric created has the same name of the field.
+     * 
+     * @param c the class in which the field is declared
+     * @param name the name of the field
+     */
+    private static void unconditionallyEnableTimerOrMetric(Class c, String name) {
+        try {
+            Field field = c.getDeclaredField(name);
+            String propertyName;
+            if (DebugTimer.class.isAssignableFrom(field.getType())) {
+                propertyName = Debug.ENABLE_TIMER_PROPERTY_NAME_PREFIX + name;
+            } else {
+                assert DebugMetric.class.isAssignableFrom(field.getType());
+                propertyName = Debug.ENABLE_METRIC_PROPERTY_NAME_PREFIX + name;
+            }
+            String previous = System.setProperty(propertyName, "true");
+            if (previous != null) {
+                Logger.info("Overrode value \"" + previous + "\" of system property \"" + propertyName + "\" with \"true\"");
+            }
+        } catch (Exception e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
+    /**
      * Called from VM code once all Graal command line options have been processed by
      * {@link #setOption(String)}.
      * 
      * @param ciTime the value of the CITime HotSpot VM option
      */
     public static void finalizeOptions(boolean ciTime) {
-        if (areDebugScopePatternsEnabled() || ciTime) {
+        if (ciTime) {
+            unconditionallyEnableTimerOrMetric(GraphBuilderPhase.class, "BytecodesParsed");
+            unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
+            unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
+        }
+        if (areDebugScopePatternsEnabled()) {
             assert !Debug.Initialization.isDebugInitialized();
             System.setProperty(Debug.Initialization.INITIALIZER_PROPERTY_NAME, "true");
         }

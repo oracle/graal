@@ -157,12 +157,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        if (config.ciTime) {
-            BytecodesParsed.setConditional(false);
-            InlinedBytecodes.setConditional(false);
-            CompilationTime.setConditional(false);
-        }
-
         if (Debug.isEnabled()) {
             DebugEnvironment.initialize(log);
 
