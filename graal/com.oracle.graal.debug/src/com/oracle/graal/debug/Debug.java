@@ -450,6 +450,10 @@ public class Debug {
         public boolean isConditional() {
             return false;
         }
+
+        public long getCurrentValue() {
+            return 0L;
+        }
     };
 
     /**
@@ -494,6 +498,14 @@ public class Debug {
 
         public boolean isConditional() {
             return false;
+        }
+
+        public long getCurrentValue() {
+            return 0L;
+        }
+
+        public TimeUnit getTimeUnit() {
+            return null;
         }
     };
 }

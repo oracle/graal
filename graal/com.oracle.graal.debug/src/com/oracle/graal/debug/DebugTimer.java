@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.debug;
 
+import java.util.concurrent.*;
+
 import com.oracle.graal.debug.internal.*;
 
 /**
@@ -56,4 +58,14 @@ public interface DebugTimer {
      * enabled}.
      */
     boolean isConditional();
+
+    /**
+     * Gets the current value of this timer.
+     */
+    long getCurrentValue();
+
+    /**
+     * Gets the time unit of this timer.
+     */
+    TimeUnit getTimeUnit();
 }

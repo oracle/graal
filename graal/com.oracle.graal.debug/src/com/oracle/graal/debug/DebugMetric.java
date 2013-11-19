@@ -50,4 +50,9 @@ public interface DebugMetric {
      * enabled}.
      */
     boolean isConditional();
+
+    /**
+     * Gets the current value of this metric.
+     */
+    long getCurrentValue();
 }

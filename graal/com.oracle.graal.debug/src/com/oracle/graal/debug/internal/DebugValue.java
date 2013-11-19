@@ -38,7 +38,7 @@ public abstract class DebugValue implements Comparable<DebugValue> {
         this.conditional = conditional;
     }
 
-    protected long getCurrentValue() {
+    public long getCurrentValue() {
         ensureInitialized();
         return DebugScope.getInstance().getCurrentValue(index);
     }
