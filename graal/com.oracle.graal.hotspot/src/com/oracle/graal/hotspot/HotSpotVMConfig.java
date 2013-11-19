@@ -648,6 +648,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "CodeEntryAlignment") @Stable public int codeEntryAlignment;
     @HotSpotVMFlag(name = "VerifyOops") @Stable public boolean verifyOops;
     @HotSpotVMFlag(name = "CITime") @Stable public boolean ciTime;
+    @HotSpotVMFlag(name = "CITimeEach", optional = true) @Stable public boolean ciTimeEach;
     @HotSpotVMFlag(name = "CompileThreshold") @Stable public long compileThreshold;
     @HotSpotVMFlag(name = "CompileTheWorld") @Stable public boolean compileTheWorld;
     @HotSpotVMFlag(name = "CompileTheWorldStartAt") @Stable public int compileTheWorldStartAt;
@@ -736,6 +737,16 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
     @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE", optional = true) @Stable public int graalCountersSize;
+
+    @HotSpotVMField(name = "CompilerStatistics::_standard", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsStandardOffset;
+    @HotSpotVMField(name = "CompilerStatistics::_osr", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsOsrOffset;
+    @HotSpotVMField(name = "CompilerStatistics::_nmethods_size", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsNmethodsSizeOffset;
+    @HotSpotVMField(name = "CompilerStatistics::_nmethods_code_size", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsNmethodsCodeSizeOffset;
+    @HotSpotVMField(name = "CompilerStatistics::Data::_bytes", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataBytesOffset;
+    @HotSpotVMField(name = "CompilerStatistics::Data::_time", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataTimeOffset;
+    @HotSpotVMField(name = "CompilerStatistics::Data::_count", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataCountOffset;
+    @HotSpotVMField(name = "elapsedTimer::_counter", get = HotSpotVMField.Type.OFFSET) @Stable public long elapsedTimerCounterOffset;
+    @Stable public long elapsedTimerFrequency;
 
     /**
      * This field is used to pass exception objects into and out of the runtime system during
