@@ -26,7 +26,7 @@ import java.util.*;
 
 import com.oracle.graal.graph.iterators.*;
 
-public abstract class NodeList<T extends Node> extends AbstractList<T> implements NodeIterable<T> {
+public abstract class NodeList<T extends Node> extends AbstractList<T> implements NodeIterable<T>, RandomAccess {
 
     protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
 
