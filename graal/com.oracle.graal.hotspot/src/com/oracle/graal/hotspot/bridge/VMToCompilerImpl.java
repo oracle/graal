@@ -25,10 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.CompilationTask.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static com.oracle.graal.java.GraphBuilderPhase.*;
-import static com.oracle.graal.phases.common.InliningUtil.*;
 import static java.util.concurrent.TimeUnit.*;
 
 import java.io.*;
@@ -255,10 +252,6 @@ public class VMToCompilerImpl implements VMToCompiler {
      */
     protected void phaseTransition(String phase) {
         CompilationStatistics.clear(phase);
-        if (runtime.getConfig().ciTime) {
-            parsedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, parsedBytecodesPerSecond, BytecodesParsed, CompilationTime, TimeUnit.SECONDS);
-            inlinedBytecodesPerSecond = MetricRateInPhase.snapshot(phase, inlinedBytecodesPerSecond, InlinedBytecodes, CompilationTime, TimeUnit.SECONDS);
-        }
     }
 
     /**
@@ -343,9 +336,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         System.exit(0);
     }
 
-    private MetricRateInPhase parsedBytecodesPerSecond;
-    private MetricRateInPhase inlinedBytecodesPerSecond;
-
     private void enqueue(Method m) throws Throwable {
         JavaMethod javaMethod = runtime.getHostProviders().getMetaAccess().lookupJavaMethod(m);
         assert !Modifier.isAbstract(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) && !Modifier.isNative(((HotSpotResolvedJavaMethod) javaMethod).getModifiers()) : javaMethod;
@@ -373,11 +363,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         printDebugValues(ResetDebugValuesAfterBootstrap.getValue() ? "application" : null, false);
         phaseTransition("final");
-
-        if (runtime.getConfig().ciTime) {
-            parsedBytecodesPerSecond.printAll("ParsedBytecodesPerSecond", System.out);
-            inlinedBytecodesPerSecond.printAll("InlinedBytecodesPerSecond", System.out);
-        }
 
         SnippetCounter.printGroups(TTY.out().out());
         BenchmarkCounters.shutdown(runtime.getCompilerToVM(), compilerStartTime);
