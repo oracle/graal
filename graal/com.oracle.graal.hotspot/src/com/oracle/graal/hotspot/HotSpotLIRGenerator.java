@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.gen.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -55,4 +56,6 @@ public interface HotSpotLIRGenerator {
      * Gets a stack slot for a lock at a given lock nesting depth.
      */
     StackSlot getLockSlot(int lockDepth);
+
+    HotSpotProviders getProviders();
 }

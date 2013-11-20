@@ -57,7 +57,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    protected HotSpotProviders getProviders() {
+    public HotSpotProviders getProviders() {
         return (HotSpotProviders) super.getProviders();
     }
 

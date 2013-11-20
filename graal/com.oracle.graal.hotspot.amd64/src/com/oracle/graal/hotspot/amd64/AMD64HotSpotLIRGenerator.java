@@ -76,7 +76,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected HotSpotProviders getProviders() {
+    public HotSpotProviders getProviders() {
         return (HotSpotProviders) super.getProviders();
     }
 
