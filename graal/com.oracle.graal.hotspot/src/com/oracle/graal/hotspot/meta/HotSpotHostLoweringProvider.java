@@ -512,7 +512,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
                 newObjectSnippets.lower((NewMultiArrayNode) n);
             }
         } else if (n instanceof LoadExceptionObjectNode) {
-            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n);
+            exceptionObjectSnippets.lower((LoadExceptionObjectNode) n, registers);
         } else if (n instanceof IntegerDivNode || n instanceof IntegerRemNode || n instanceof UnsignedDivNode || n instanceof UnsignedRemNode) {
             // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
             // zero and the MIN_VALUE / -1 cases.
