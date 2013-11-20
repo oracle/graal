@@ -51,6 +51,16 @@ public class StandardOp {
         void setFallThroughTarget(LabelRef target);
     }
 
+    public interface NullCheck {
+        Value getCheckedValue();
+
+        LIRFrameState getState();
+    }
+
+    public interface ImplicitNullCheck {
+        boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit);
+    }
+
     /**
      * LIR operation that defines the position of a label. The first operation of every block must
      * implement this interface.

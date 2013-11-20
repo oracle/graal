@@ -34,7 +34,9 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.asm.amd64.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
 
 public class AMD64Move {
@@ -93,7 +95,7 @@ public class AMD64Move {
         }
     }
 
-    public abstract static class MemOp extends AMD64LIRInstruction {
+    public abstract static class MemOp extends AMD64LIRInstruction implements ImplicitNullCheck {
 
         protected final Kind kind;
         @Use({COMPOSITE}) protected AMD64AddressValue address;
@@ -113,6 +115,14 @@ public class AMD64Move {
                 tasm.recordImplicitException(masm.codeBuffer.position(), state);
             }
             emitMemAccess(masm);
+        }
+
+        public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
+            if (state == null && value.equals(address.base) && address.index == Value.ILLEGAL && address.displacement >= 0 && address.displacement < implicitNullCheckLimit) {
+                state = nullCheckState;
+                return true;
+            }
+            return false;
         }
     }
 
@@ -295,7 +305,7 @@ public class AMD64Move {
         }
     }
 
-    public static class NullCheckOp extends AMD64LIRInstruction {
+    public static class NullCheckOp extends AMD64LIRInstruction implements NullCheck {
 
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
@@ -309,6 +319,14 @@ public class AMD64Move {
         public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
             tasm.recordImplicitException(masm.codeBuffer.position(), state);
             masm.nullCheck(asRegister(input));
+        }
+
+        public Value getCheckedValue() {
+            return input;
+        }
+
+        public LIRFrameState getState() {
+            return state;
         }
     }
 
