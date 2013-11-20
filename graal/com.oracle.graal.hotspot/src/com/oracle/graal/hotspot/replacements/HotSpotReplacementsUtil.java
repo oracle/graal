@@ -207,11 +207,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static Register stackPointerRegister() {
-        return runtime().getHostProviders().getRegisters().getStackPointerRegister();
-    }
-
-    @Fold
     public static int wordSize() {
         return runtime().getTarget().wordSize;
     }
@@ -468,13 +463,6 @@ public class HotSpotReplacementsUtil {
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native Object verifyOopStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
-
-    /**
-     * Gets the value of the stack pointer register as a Word.
-     */
-    public static Word stackPointer() {
-        return registerAsWord(stackPointerRegister(), true, false);
-    }
 
     /**
      * Gets the value of the thread register as a Word.

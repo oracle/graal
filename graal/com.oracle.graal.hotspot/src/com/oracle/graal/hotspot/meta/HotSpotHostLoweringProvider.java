@@ -64,6 +64,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
     protected final HotSpotGraalRuntime runtime;
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
+    protected final HotSpotRegistersProvider registers;
 
     private CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
     private InstanceOfSnippets.Templates instanceofSnippets;
@@ -74,10 +75,11 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
     private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
     private UnsafeLoadSnippets.Templates unsafeLoadSnippets;
 
-    public HotSpotHostLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    public HotSpotHostLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;
+        this.registers = registers;
     }
 
     public void initialize(HotSpotProviders providers, HotSpotVMConfig config) {
@@ -485,7 +487,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
             }
         } else if (n instanceof MonitorEnterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-                monitorSnippets.lower((MonitorEnterNode) n, tool);
+                monitorSnippets.lower((MonitorEnterNode) n, registers.getStackPointerRegister());
             }
         } else if (n instanceof MonitorExitNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

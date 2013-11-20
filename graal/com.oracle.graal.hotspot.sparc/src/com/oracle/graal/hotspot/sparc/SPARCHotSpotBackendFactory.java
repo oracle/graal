@@ -50,12 +50,13 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         assert host == null;
         TargetDescription target = createTarget();
 
+        HotSpotRegistersProvider registers = new HotSpotRegisters(Register.None, Register.None, Register.None); // FIXME
         HotSpotMetaAccessProvider metaAccess = new HotSpotMetaAccessProvider(runtime);
         HotSpotCodeCacheProvider codeCache = new SPARCHotSpotCodeCacheProvider(runtime, target);
         HotSpotConstantReflectionProvider constantReflection = new HotSpotConstantReflectionProvider(runtime);
         Value[] nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(runtime.getConfig(), codeCache.getRegisterConfig());
         HotSpotForeignCallsProvider foreignCalls = new SPARCHotSpotForeignCallsProvider(runtime, metaAccess, codeCache, nativeABICallerSaveRegisters);
-        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls);
+        LoweringProvider lowerer = new SPARCHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
@@ -63,7 +64,6 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
         HotSpotReplacementsImpl replacements = new HotSpotReplacementsImpl(p, runtime.getConfig(), assumptions);
         HotSpotDisassemblerProvider disassembler = new HotSpotDisassemblerProvider(runtime);
         HotSpotSuitesProvider suites = new HotSpotSuitesProvider(runtime);
-        HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None); // FIXME
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
 
         return new SPARCHotSpotBackend(runtime, providers);

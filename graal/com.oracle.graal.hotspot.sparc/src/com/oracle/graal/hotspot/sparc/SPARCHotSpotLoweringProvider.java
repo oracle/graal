@@ -32,8 +32,8 @@ import com.oracle.graal.nodes.spi.*;
 
 public class SPARCHotSpotLoweringProvider extends HotSpotHostLoweringProvider {
 
-    public SPARCHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        super(runtime, metaAccess, foreignCalls);
+    public SPARCHotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
+        super(runtime, metaAccess, foreignCalls, registers);
     }
 
     @Override
