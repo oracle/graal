@@ -70,11 +70,11 @@ public class NewInstanceStub extends SnippetStub {
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS);
         args.add("hub", null);
         args.addConst("intArrayHub", intArrayHub);
+        args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
         return args;
     }
 
-    private static Word allocate(int size) {
-        Word thread = thread();
+    private static Word allocate(Word thread, int size) {
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(size);
@@ -102,11 +102,11 @@ public class NewInstanceStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub) {
+    private static Object newInstance(Word hub, @ConstantParameter Word intArrayHub, @ConstantParameter Register threadRegister) {
         int sizeInBytes = hub.readInt(klassInstanceSizeOffset(), LocationIdentity.FINAL_LOCATION);
         if (!forceSlowPath() && inlineContiguousAllocationSupported()) {
             if (hub.readByte(klassStateOffset(), CLASS_STATE_LOCATION) == klassStateFullyInitialized()) {
-                Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
+                Word memory = refillAllocate(threadRegister, intArrayHub, sizeInBytes, logging());
                 if (memory.notEqual(0)) {
                     Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
                     initializeObjectHeader(memory, prototypeMarkWord, hub);
@@ -122,9 +122,9 @@ public class NewInstanceStub extends SnippetStub {
             printf("newInstance: calling new_instance_c\n");
         }
 
-        newInstanceC(NEW_INSTANCE_C, thread(), hub);
+        newInstanceC(NEW_INSTANCE_C, registerAsWord(threadRegister), hub);
         handlePendingException(true);
-        return verifyObject(getAndClearObjectResult(thread()));
+        return verifyObject(getAndClearObjectResult(registerAsWord(threadRegister)));
     }
 
     /**
@@ -133,10 +133,11 @@ public class NewInstanceStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      * @param sizeInBytes the size of the allocation
      * @param log specifies if logging is enabled
+     * 
      * @return the newly allocated, uninitialized chunk of memory, or {@link Word#zero()} if the
      *         operation was unsuccessful
      */
-    static Word refillAllocate(Word intArrayHub, int sizeInBytes, boolean log) {
+    static Word refillAllocate(Register threadRegister, Word intArrayHub, int sizeInBytes, boolean log) {
         // If G1 is enabled, the "eden" allocation space is not the same always
         // and therefore we have to go to slowpath to allocate a new TLAB.
         if (useG1GC()) {
@@ -148,7 +149,7 @@ public class NewInstanceStub extends SnippetStub {
         Word intArrayMarkWord = Word.unsigned(tlabIntArrayMarkWord());
         int alignmentReserveInBytes = tlabAlignmentReserveInHeapWords() * wordSize();
 
-        Word thread = thread();
+        Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
 
@@ -206,7 +207,7 @@ public class NewInstanceStub extends SnippetStub {
                 end = top.add(tlabRefillSizeInBytes.subtract(alignmentReserveInBytes));
                 initializeTlab(thread, top, end);
 
-                return NewInstanceStub.allocate(sizeInBytes);
+                return NewInstanceStub.allocate(thread, sizeInBytes);
             } else {
                 return Word.zero();
             }

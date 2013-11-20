@@ -70,6 +70,7 @@ public class NewArrayStub extends SnippetStub {
         args.add("hub", null);
         args.add("length", null);
         args.addConst("intArrayHub", intArrayHub);
+        args.addConst("threadRegister", providers.getRegisters().getThreadRegister());
         return args;
     }
 
@@ -87,7 +88,7 @@ public class NewArrayStub extends SnippetStub {
      * @param intArrayHub the hub for {@code int[].class}
      */
     @Snippet
-    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub) {
+    private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub, @ConstantParameter Register threadRegister) {
         int layoutHelper = hub.readInt(layoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
@@ -102,7 +103,7 @@ public class NewArrayStub extends SnippetStub {
 
         // check that array length is small enough for fast path.
         if (length <= MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH) {
-            Word memory = refillAllocate(intArrayHub, sizeInBytes, logging());
+            Word memory = refillAllocate(threadRegister, intArrayHub, sizeInBytes, logging());
             if (memory.notEqual(0)) {
                 if (logging()) {
                     printf("newArray: allocated new array at %p\n", memory.rawValue());
@@ -114,9 +115,9 @@ public class NewArrayStub extends SnippetStub {
             printf("newArray: calling new_array_c\n");
         }
 
-        newArrayC(NEW_ARRAY_C, thread(), hub, length);
+        newArrayC(NEW_ARRAY_C, registerAsWord(threadRegister), hub, length);
         handlePendingException(true);
-        return verifyObject(getAndClearObjectResult(thread()));
+        return verifyObject(getAndClearObjectResult(registerAsWord(threadRegister)));
     }
 
     public static final ForeignCallDescriptor NEW_ARRAY_C = descriptorFor(NewArrayStub.class, "newArrayC");

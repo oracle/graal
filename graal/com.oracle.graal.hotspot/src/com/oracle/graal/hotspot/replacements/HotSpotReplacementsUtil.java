@@ -476,6 +476,12 @@ public class HotSpotReplacementsUtil {
         return loadWordFromObjectIntrinsic(object, offset, getWordKind(), LocationIdentity.ANY_LOCATION);
     }
 
+    /**
+     * Reads the value of a given register.
+     * 
+     * @param register a register which must not be available to the register allocator
+     * @return the value of {@code register} as a word
+     */
     public static Word registerAsWord(@ConstantNodeParameter Register register) {
         return registerAsWord(register, true, false);
     }
