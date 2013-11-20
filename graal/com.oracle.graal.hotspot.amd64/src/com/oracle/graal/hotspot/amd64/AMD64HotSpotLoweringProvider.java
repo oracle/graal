@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.amd64.*;
 
-public class AMD64HotSpotLoweringProvider extends HotSpotHostLoweringProvider {
+public class AMD64HotSpotLoweringProvider extends HotSpotLoweringProvider {
 
     private AMD64ConvertSnippets.Templates convertSnippets;
 

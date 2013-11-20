@@ -59,23 +59,23 @@ import com.oracle.graal.replacements.*;
 /**
  * HotSpot implementation of {@link LoweringProvider}.
  */
-public class HotSpotHostLoweringProvider implements LoweringProvider {
+public class HotSpotLoweringProvider implements LoweringProvider {
 
     protected final HotSpotGraalRuntime runtime;
     protected final MetaAccessProvider metaAccess;
     protected final ForeignCallsProvider foreignCalls;
     protected final HotSpotRegistersProvider registers;
 
-    private CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
-    private InstanceOfSnippets.Templates instanceofSnippets;
-    private NewObjectSnippets.Templates newObjectSnippets;
-    private MonitorSnippets.Templates monitorSnippets;
+    protected CheckCastDynamicSnippets.Templates checkcastDynamicSnippets;
+    protected InstanceOfSnippets.Templates instanceofSnippets;
+    protected NewObjectSnippets.Templates newObjectSnippets;
+    protected MonitorSnippets.Templates monitorSnippets;
     protected WriteBarrierSnippets.Templates writeBarrierSnippets;
-    private BoxingSnippets.Templates boxingSnippets;
-    private LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
-    private UnsafeLoadSnippets.Templates unsafeLoadSnippets;
+    protected BoxingSnippets.Templates boxingSnippets;
+    protected LoadExceptionObjectSnippets.Templates exceptionObjectSnippets;
+    protected UnsafeLoadSnippets.Templates unsafeLoadSnippets;
 
-    public HotSpotHostLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
+    public HotSpotLoweringProvider(HotSpotGraalRuntime runtime, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, HotSpotRegistersProvider registers) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
         this.foreignCalls = foreignCalls;

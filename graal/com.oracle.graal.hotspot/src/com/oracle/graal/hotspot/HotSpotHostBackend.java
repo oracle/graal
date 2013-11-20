@@ -45,7 +45,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         final HotSpotProviders providers = getProviders();
         HotSpotVMConfig config = getRuntime().getConfig();
         HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) providers.getForeignCalls();
-        final HotSpotHostLoweringProvider lowerer = (HotSpotHostLoweringProvider) providers.getLowerer();
+        final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
         foreignCalls.initialize(providers, config);
         lowerer.initialize(providers, config);
 
