@@ -28,6 +28,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.FallThroughOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -35,6 +36,96 @@ import com.oracle.graal.nodes.calc.*;
  * Implementation of control flow instructions.
  */
 public class HSAILControlFlow {
+
+    /**
+     * This class represents the LIR instruction that the HSAIL backend generates for a switch
+     * construct in Java.
+     * 
+     * The HSAIL backend compiles switch statements into a series of cascading compare and branch
+     * instructions because this is the currently the recommended way to generate optimally
+     * performing HSAIL code. Thus the execution path for both the TABLESWITCH and LOOKUPSWITCH
+     * bytecodes go through this op.
+     */
+    public static class SwitchOp extends HSAILLIRInstruction implements FallThroughOp {
+        /**
+         * The array of key constants used for the cases of this switch statement.
+         */
+        @Use({CONST}) protected Constant[] keyConstants;
+        /**
+         * The branch target labels that correspond to each case.
+         */
+        private final LabelRef[] keyTargets;
+        private LabelRef defaultTarget;
+        /**
+         * The key of the switch. This will be compared with each of the keyConstants.
+         */
+        @Alive({REG}) protected Value key;
+
+        /**
+         * Constructor. Called from the HSAILLIRGenerator.emitSequentialSwitch routine.
+         * 
+         * @param keyConstants
+         * @param keyTargets
+         * @param defaultTarget
+         * @param key
+         */
+        public SwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
+            assert keyConstants.length == keyTargets.length;
+            this.keyConstants = keyConstants;
+            this.keyTargets = keyTargets;
+            this.defaultTarget = defaultTarget;
+            this.key = key;
+        }
+
+        /**
+         * Get the default target for this switch op.
+         */
+        @Override
+        public LabelRef fallThroughTarget() {
+            return defaultTarget;
+        }
+
+        /**
+         * Set the default target.
+         * 
+         * @param target the default target
+         */
+        @Override
+        public void setFallThroughTarget(LabelRef target) {
+            defaultTarget = target;
+
+        }
+
+        /**
+         * Generates the code for this switch op.
+         * 
+         * The keys for switch statements in Java bytecode for of type int. However, Graal also
+         * generates a TypeSwitchNode (for method dispatch) which triggers the invocation of these
+         * routines with keys of type Long or Object. Currently we only support the
+         * IntegerSwitchNode so we throw an exception if the key isn't of type int.
+         * 
+         * @param tasm the TargetMethodAssembler
+         * @param masm the HSAIL assembler
+         */
+        @Override
+        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+            if (key.getKind() == Kind.Int) {
+                for (int i = 0; i < keyConstants.length; i++) {
+                    // Generate cascading compare and branches for each case.
+                    masm.emitCompare(key, keyConstants[i], "eq", false, false);
+                    masm.cbr(masm.nameOf(keyTargets[i].label()));
+                }
+                // Generate a jump for the default target if there is one.
+                if (defaultTarget != null) {
+                    masm.jmp(defaultTarget.label());
+                }
+
+            } else {
+                // Throw an exception if the key isn't of type int.
+                throw new GraalInternalError("Switch statments are only supported for int keys");
+            }
+        }
+    }
 
     public static class ReturnOp extends HSAILLIRInstruction {
 

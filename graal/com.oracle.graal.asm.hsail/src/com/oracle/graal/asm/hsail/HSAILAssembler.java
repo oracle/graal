@@ -23,6 +23,8 @@
 
 package com.oracle.graal.asm.hsail;
 
+import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
 
 import static com.oracle.graal.api.code.MemoryBarriers.*;
@@ -75,23 +77,35 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
     }
 
     /**
-     * An Object is only moved into a register when it is a class constant (which is not really a
-     * constant because it can be moved by GC). Because we can't patch the HSAIL once it is
-     * finalized, we handle changes due to GC movement by dereferencing a global reference that is
-     * created by JNI since these JNI global references do not move.
+     * Moves an Object into a register.
+     * 
+     * Because Object references become stale after Garbage collection (GC) the technique used here
+     * is to load a JNI global reference to that Object into the register. These JNI global
+     * references get updated by the GC whenever the GC moves an Object.
+     * 
+     * @param a the destination register
+     * @param obj the Object being moved
      */
     public final void mov(Register a, Object obj) {
         String regName = "$d" + a.encoding();
-        if (obj instanceof Class) {
-            Class<?> clazz = (Class<?>) obj;
-            long refHandle = OkraUtil.getRefHandle(clazz);
-            String className = clazz.getName();
-            emitString("mov_b64 " + regName + ", 0x" + Long.toHexString(refHandle) + ";  // handle for " + className);
-            emitString("ld_global_u64 " + regName + ", [" + regName + "];");
-        } else if (obj == null) {
+        // For a null object simply move 0x0 into the destination register.
+        if (obj == null) {
             emitString("mov_b64 " + regName + ", 0x0;  // null object");
         } else {
-            throw GraalInternalError.shouldNotReachHere("mov from object not a class");
+            // Get a JNI reference handle to the object.
+            long refHandle = OkraUtil.getRefHandle(obj);
+            // Get the clasname of the object for emitting a comment.
+            Class<?> clazz = obj.getClass();
+            String className = clazz.getName();
+            String comment = "// handle for object of type " + className;
+            // If the object is an array note the array length in the comment.
+            if (className.startsWith("[")) {
+                comment += ", length " + Array.getLength(obj);
+            }
+            // First move the reference handle into a register.
+            emitString("mov_b64 " + regName + ", 0x" + Long.toHexString(refHandle) + ";    " + comment);
+            // Next load the Object addressed by this reference handle into the destination reg.
+            emitString("ld_global_u64 " + regName + ", [" + regName + "];");
         }
 
     }
@@ -247,9 +261,22 @@ public class HSAILAssembler extends AbstractHSAILAssembler {
         return prefix;
     }
 
+    /**
+     * Emits a compare instruction.
+     * 
+     * @param src0 - the first source register
+     * @param src1 - the second source register
+     * @param condition - the compare condition i.e., eq, ne, lt, gt
+     * @param unordered - flag specifying if this is an unordered compare. This only applies to
+     *            float compares.
+     * @param isUnsignedCompare - flag specifying if this is a compare of unsigned values.
+     */
     public void emitCompare(Value src0, Value src1, String condition, boolean unordered, boolean isUnsignedCompare) {
+        // Formulate the prefix of the instruction.
         String prefix = "cmp_" + condition + (unordered ? "u" : "") + "_b1_" + (isUnsignedCompare ? getArgTypeForceUnsigned(src1) : getArgType(src1));
+        // Generate a comment for debugging purposes
         String comment = (isConstant(src1) && (src1.getKind() == Kind.Object) && (asConstant(src1).asObject() == null) ? " // null test " : "");
+        // Emit the instruction.
         emitString(prefix + " $c0, " + mapRegOrConstToString(src0) + ", " + mapRegOrConstToString(src1) + ";" + comment);
     }
 
