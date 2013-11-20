@@ -461,7 +461,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
             }
         } else if (n instanceof DynamicCounterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                BenchmarkCounters.lower((DynamicCounterNode) n, runtime.getHostProviders().getRegisters(), runtime.getConfig(), wordKind);
+                BenchmarkCounters.lower((DynamicCounterNode) n, registers, runtime.getConfig(), wordKind);
             }
         } else if (n instanceof CheckCastDynamicNode) {
             checkcastDynamicSnippets.lower((CheckCastDynamicNode) n);
