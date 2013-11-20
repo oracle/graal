@@ -36,7 +36,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -58,8 +58,14 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
         return false;
     }
 
+    @Override
+    protected Object getConstantParameterValue(int index, String name) {
+        assert index == 2;
+        return providers.getRegisters().getThreadRegister();
+    }
+
     @Snippet
-    private static void unwindExceptionToCaller(Object exception, Word returnAddress) {
+    private static void unwindExceptionToCaller(Object exception, Word returnAddress, @ConstantParameter Register threadRegister) {
         Pointer exceptionOop = Word.fromObject(exception);
         if (logging()) {
             printf("unwinding exception %p (", exceptionOop.rawValue());
@@ -68,10 +74,11 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
             decipher(returnAddress.rawValue());
             printf(")\n");
         }
-        checkNoExceptionInThread(assertionsEnabled());
+        Word thread = registerAsWord(threadRegister);
+        checkNoExceptionInThread(thread, assertionsEnabled());
         checkExceptionNotNull(assertionsEnabled(), exception);
 
-        Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread(), returnAddress);
+        Word handlerInCallerPc = exceptionHandlerForReturnAddress(EXCEPTION_HANDLER_FOR_RETURN_ADDRESS, thread, returnAddress);
 
         if (logging()) {
             printf("handler for exception %p at return address %p is at %p (", exceptionOop.rawValue(), returnAddress.rawValue(), handlerInCallerPc.rawValue());

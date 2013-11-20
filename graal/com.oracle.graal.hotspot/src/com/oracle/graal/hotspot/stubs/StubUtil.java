@@ -73,10 +73,10 @@ public class StubUtil {
         return new ForeignCallDescriptor(name, found.getReturnType(), cCallTypes);
     }
 
-    public static void handlePendingException(boolean isObjectResult) {
-        if (clearPendingException(thread())) {
+    public static void handlePendingException(Word thread, boolean isObjectResult) {
+        if (clearPendingException(thread)) {
             if (isObjectResult) {
-                getAndClearObjectResult(thread());
+                getAndClearObjectResult(thread);
             }
             DeoptimizeCallerNode.deopt(InvalidateReprofile, RuntimeConstraint);
         }

@@ -35,7 +35,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.replacements.*;
-import com.oracle.graal.replacements.Snippet.Fold;
+import com.oracle.graal.replacements.Snippet.*;
 import com.oracle.graal.word.*;
 
 /**
@@ -62,12 +62,19 @@ public class ExceptionHandlerStub extends SnippetStub {
         return false;
     }
 
+    @Override
+    protected Object getConstantParameterValue(int index, String name) {
+        assert index == 2;
+        return providers.getRegisters().getThreadRegister();
+    }
+
     @Snippet
-    private static void exceptionHandler(Object exception, Word exceptionPc) {
-        checkNoExceptionInThread(assertionsEnabled());
+    private static void exceptionHandler(Object exception, Word exceptionPc, @ConstantParameter Register threadRegister) {
+        Word thread = registerAsWord(threadRegister);
+        checkNoExceptionInThread(thread, assertionsEnabled());
         checkExceptionNotNull(assertionsEnabled(), exception);
-        writeExceptionOop(thread(), exception);
-        writeExceptionPc(thread(), exceptionPc);
+        writeExceptionOop(thread, exception);
+        writeExceptionPc(thread, exceptionPc);
         if (logging()) {
             printf("handling exception %p (", Word.fromObject(exception).rawValue());
             decipher(Word.fromObject(exception).rawValue());
@@ -79,7 +86,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         // patch throwing pc into return address so that deoptimization finds the right debug info
         patchReturnAddress(exceptionPc);
 
-        Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread());
+        Word handlerPc = exceptionHandlerForPc(EXCEPTION_HANDLER_FOR_PC, thread);
 
         if (logging()) {
             printf("handler for exception %p at %p is at %p (", Word.fromObject(exception).rawValue(), exceptionPc.rawValue(), handlerPc.rawValue());
@@ -91,16 +98,16 @@ public class ExceptionHandlerStub extends SnippetStub {
         patchReturnAddress(handlerPc);
     }
 
-    static void checkNoExceptionInThread(boolean enabled) {
+    static void checkNoExceptionInThread(Word thread, boolean enabled) {
         if (enabled) {
-            Object currentException = readExceptionOop(thread());
+            Object currentException = readExceptionOop(thread);
             if (currentException != null) {
                 fatal("exception object in thread must be null, not %p", Word.fromObject(currentException).rawValue());
             }
             if (cAssertionsEnabled()) {
                 // This thread-local is only cleared in DEBUG builds of the VM
                 // (see OptoRuntime::generate_exception_blob)
-                Word currentExceptionPc = readExceptionPc(thread());
+                Word currentExceptionPc = readExceptionPc(thread);
                 if (currentExceptionPc.notEqual(Word.zero())) {
                     fatal("exception PC in thread must be zero, not %p", currentExceptionPc.rawValue());
                 }

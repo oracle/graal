@@ -56,6 +56,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRGenL
 
     public ReadRegisterNode(Register register, Kind kind, boolean directUse, boolean incoming) {
         super(StampFactory.forKind(kind));
+        assert register != null;
         this.register = register;
         this.directUse = directUse;
         this.incoming = incoming;
@@ -67,6 +68,7 @@ public final class ReadRegisterNode extends FixedWithNextNode implements LIRGenL
      */
     public ReadRegisterNode(Register register, boolean directUse, boolean incoming) {
         super(StampFactory.forNodeIntrinsic());
+        assert register != null;
         this.register = register;
         this.directUse = directUse;
         this.incoming = incoming;

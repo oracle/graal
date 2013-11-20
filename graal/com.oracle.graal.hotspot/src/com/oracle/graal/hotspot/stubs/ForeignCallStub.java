@@ -54,8 +54,8 @@ import com.oracle.graal.word.phases.*;
  * deoptimization while the call is in progress. And since these are foreign/runtime calls on slow
  * paths, we don't want to force the register allocator to spill around the call. As such, this stub
  * saves and restores all allocatable registers. It also
- * {@linkplain StubUtil#handlePendingException(boolean) handles} any exceptions raised during the
- * foreign call.
+ * {@linkplain StubUtil#handlePendingException(Word, boolean) handles} any exceptions raised during
+ * the foreign call.
  */
 public class ForeignCallStub extends Stub {
 
@@ -226,9 +226,9 @@ public class ForeignCallStub extends Stub {
         LocalNode[] locals = createLocals(builder, args);
         List<InvokeNode> invokes = new ArrayList<>(3);
 
-        ReadRegisterNode thread = prependThread || isObjectResult ? builder.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false)) : null;
+        ReadRegisterNode thread = builder.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), true, false));
         ValueNode result = createTargetCall(builder, locals, thread);
-        invokes.add(createInvoke(builder, StubUtil.class, "handlePendingException", ConstantNode.forBoolean(isObjectResult, builder.graph)));
+        invokes.add(createInvoke(builder, StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, builder.graph)));
         if (isObjectResult) {
             InvokeNode object = createInvoke(builder, HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
             result = createInvoke(builder, StubUtil.class, "verifyObject", object);
@@ -276,7 +276,7 @@ public class ForeignCallStub extends Stub {
         return locals;
     }
 
-    private InvokeNode createInvoke(GraphBuilder builder, Class<?> declaringClass, String name, ValueNode... hpeArgs) {
+    private InvokeNode createInvoke(GraphBuilder builder, Class<?> declaringClass, String name, ValueNode... args) {
         ResolvedJavaMethod method = null;
         for (Method m : declaringClass.getDeclaredMethods()) {
             if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(name)) {
@@ -285,10 +285,23 @@ public class ForeignCallStub extends Stub {
             }
         }
         assert method != null : "did not find method in " + declaringClass + " named " + name;
-        JavaType returnType = method.getSignature().getReturnType(null);
-        MethodCallTargetNode callTarget = builder.graph.add(new MethodCallTargetNode(InvokeKind.Static, method, hpeArgs, returnType));
+        Signature signature = method.getSignature();
+        JavaType returnType = signature.getReturnType(null);
+        assert checkArgs(method, args);
+        MethodCallTargetNode callTarget = builder.graph.add(new MethodCallTargetNode(InvokeKind.Static, method, args, returnType));
         InvokeNode invoke = builder.append(new InvokeNode(callTarget, FrameState.UNKNOWN_BCI));
         return invoke;
+    }
+
+    private boolean checkArgs(ResolvedJavaMethod method, ValueNode... args) {
+        Signature signature = method.getSignature();
+        assert signature.getParameterCount(false) == args.length : target + ": wrong number of arguments to " + method;
+        for (int i = 0; i != args.length; i++) {
+            Kind expected = signature.getParameterKind(i).getStackKind();
+            Kind actual = args[i].stamp().kind();
+            assert expected == actual : target + ": wrong kind of value for argument " + i + " of calls to " + method + " [" + actual + " != " + expected + "]";
+        }
+        return true;
     }
 
     private StubForeignCallNode createTargetCall(GraphBuilder builder, LocalNode[] locals, ReadRegisterNode thread) {

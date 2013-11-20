@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.MetaUtil.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
@@ -82,9 +83,19 @@ public abstract class SnippetStub extends Stub implements Snippets {
     protected Arguments makeArguments(SnippetInfo stub) {
         Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS);
         for (int i = 0; i < stub.getParameterCount(); i++) {
-            args.add(stub.getParameterName(i), null);
+            String name = stub.getParameterName(i);
+            if (stub.isConstantParameter(i)) {
+                args.addConst(name, getConstantParameterValue(i, name));
+            } else {
+                assert !stub.isVarargsParameter(i);
+                args.add(name, null);
+            }
         }
         return args;
+    }
+
+    protected Object getConstantParameterValue(int index, String name) {
+        throw new GraalInternalError("%s must override getConstantParameterValue() to provide a value for parameter %d%s", getClass().getName(), index, name == null ? "" : " (" + name + ")");
     }
 
     @Override

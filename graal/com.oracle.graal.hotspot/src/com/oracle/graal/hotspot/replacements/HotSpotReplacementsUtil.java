@@ -202,11 +202,6 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static Register threadRegister() {
-        return runtime().getHostProviders().getRegisters().getThreadRegister();
-    }
-
-    @Fold
     public static int wordSize() {
         return runtime().getTarget().wordSize;
     }
@@ -463,13 +458,6 @@ public class HotSpotReplacementsUtil {
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native Object verifyOopStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object);
-
-    /**
-     * Gets the value of the thread register as a Word.
-     */
-    public static Word thread() {
-        return registerAsWord(threadRegister());
-    }
 
     public static Word loadWordFromObject(Object object, int offset) {
         assert offset != hubOffset() : "Use loadHubIntrinsic instead";
