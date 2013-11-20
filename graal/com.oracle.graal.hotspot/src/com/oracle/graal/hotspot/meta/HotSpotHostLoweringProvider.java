@@ -475,15 +475,15 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
             }
         } else if (n instanceof NewInstanceNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                newObjectSnippets.lower((NewInstanceNode) n);
+                newObjectSnippets.lower((NewInstanceNode) n, registers);
             }
         } else if (n instanceof NewArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                newObjectSnippets.lower((NewArrayNode) n);
+                newObjectSnippets.lower((NewArrayNode) n, registers);
             }
         } else if (n instanceof DynamicNewArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
-                newObjectSnippets.lower((DynamicNewArrayNode) n);
+                newObjectSnippets.lower((DynamicNewArrayNode) n, registers);
             }
         } else if (n instanceof MonitorEnterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

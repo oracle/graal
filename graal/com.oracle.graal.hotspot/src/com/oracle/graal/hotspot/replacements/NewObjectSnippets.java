@@ -113,9 +113,10 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
+    public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+                    @ConstantParameter String typeContext) {
         Object result;
-        Word thread = thread();
+        Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(size);
@@ -137,19 +138,20 @@ public class NewObjectSnippets implements Snippets {
 
     @Snippet
     public static Object allocateArray(Word hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents, @ConstantParameter String typeContext) {
+                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter String typeContext) {
         if (!belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             // This handles both negative array sizes and very large array sizes
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint);
         }
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, typeContext);
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, typeContext);
     }
 
-    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, String typeContext) {
+    private static Object allocateArrayImpl(Word hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, @ConstantParameter Register threadRegister,
+                    String typeContext) {
         Object result;
         int alignment = wordSize();
         int allocationSize = computeArrayAllocationSize(length, alignment, headerSize, log2ElementSize);
-        Word thread = thread();
+        Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
         Word newTop = top.add(allocationSize);
@@ -171,7 +173,7 @@ public class NewObjectSnippets implements Snippets {
     public static native Object dynamicNewArrayStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType, int length);
 
     @Snippet
-    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents) {
+    public static Object allocateArrayDynamic(Class<?> elementType, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister) {
         Word hub = loadWordFromObject(elementType, arrayKlassOffset());
         if (hub.equal(Word.zero()) || !belowThan(length, MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH)) {
             return dynamicNewArrayStub(DYNAMIC_NEW_ARRAY, elementType, length);
@@ -195,7 +197,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
 
-        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, "dynamic type");
+        return allocateArrayImpl(hub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, "dynamic type");
     }
 
     /**
@@ -288,7 +290,7 @@ public class NewObjectSnippets implements Snippets {
         /**
          * Lowers a {@link NewInstanceNode}.
          */
-        public void lower(NewInstanceNode newInstanceNode) {
+        public void lower(NewInstanceNode newInstanceNode, HotSpotRegistersProvider registers) {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
@@ -300,6 +302,7 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("fillContents", newInstanceNode.fillContents());
+            args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("typeContext", ProfileAllocations.getValue() ? toJavaName(type, false) : "");
 
             SnippetTemplate template = template(args);
@@ -310,7 +313,7 @@ public class NewObjectSnippets implements Snippets {
         /**
          * Lowers a {@link NewArrayNode}.
          */
-        public void lower(NewArrayNode newArrayNode) {
+        public void lower(NewArrayNode newArrayNode, HotSpotRegistersProvider registers) {
             StructuredGraph graph = newArrayNode.graph();
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
@@ -327,6 +330,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
+            args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("typeContext", ProfileAllocations.getValue() ? toJavaName(arrayType, false) : "");
 
             SnippetTemplate template = template(args);
@@ -334,11 +338,12 @@ public class NewObjectSnippets implements Snippets {
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
-        public void lower(DynamicNewArrayNode newArrayNode) {
+        public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers) {
             Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage());
             args.add("elementType", newArrayNode.getElementType());
             args.add("length", newArrayNode.length());
             args.addConst("fillContents", newArrayNode.fillContents());
+            args.addConst("threadRegister", registers.getThreadRegister());
 
             SnippetTemplate template = template(args);
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
