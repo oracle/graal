@@ -30,6 +30,7 @@ import static java.util.concurrent.TimeUnit.*;
 
 import java.io.*;
 import java.lang.reflect.*;
+import java.security.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -352,11 +353,18 @@ public class VMToCompilerImpl implements VMToCompiler {
         }
     }
 
-    public void shutdownCompiler() throws Throwable {
+    public void shutdownCompiler() throws Exception {
         try {
             assert !CompilationTask.withinEnqueue.get();
             CompilationTask.withinEnqueue.set(Boolean.TRUE);
-            shutdownCompileQueue(compileQueue);
+            // We have to use a privileged action here because shutting down the compiler might be
+            // called from user code which very likely contains unprivileged frames.
+            AccessController.doPrivileged(new PrivilegedExceptionAction<Void>() {
+                public Void run() throws Exception {
+                    shutdownCompileQueue(compileQueue);
+                    return null;
+                }
+            });
         } finally {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
@@ -535,15 +543,22 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public void compileMethod(long metaspaceMethod, final HotSpotResolvedObjectType holder, final int entryBCI, boolean blocking) throws Throwable {
-        HotSpotResolvedJavaMethod method = holder.createMethod(metaspaceMethod);
-        compileMethod(method, entryBCI, blocking);
+    public void compileMethod(long metaspaceMethod, final HotSpotResolvedObjectType holder, final int entryBCI, final boolean blocking) {
+        final HotSpotResolvedJavaMethod method = holder.createMethod(metaspaceMethod);
+        // We have to use a privileged action here because compilations are enqueued from user code
+        // which very likely contains unprivileged frames.
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                compileMethod(method, entryBCI, blocking);
+                return null;
+            }
+        });
     }
 
     /**
      * Compiles a method to machine code.
      */
-    public void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, boolean blocking) throws Throwable {
+    public void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, final boolean blocking) {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
             // no OSR compilations during bootstrap - the compiler is just too slow at this point,

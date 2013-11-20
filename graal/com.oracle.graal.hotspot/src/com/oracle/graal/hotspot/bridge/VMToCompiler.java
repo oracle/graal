@@ -39,12 +39,7 @@ public interface VMToCompiler {
      * Compiles a method to machine code. This method is called from the VM
      * (VMToCompiler::compileMethod).
      */
-    void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking) throws Throwable;
-
-    /**
-     * Compiles a method to machine code.
-     */
-    void compileMethod(HotSpotResolvedJavaMethod method, int entryBCI, boolean blocking) throws Throwable;
+    void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking);
 
     /**
      * Notifies this object of statistics for a completed compilation.
@@ -60,7 +55,7 @@ public interface VMToCompiler {
      */
     void notifyCompilationDone(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, TimeUnit timeUnit, HotSpotInstalledCode installedCode);
 
-    void shutdownCompiler() throws Throwable;
+    void shutdownCompiler() throws Exception;
 
     void startCompiler(boolean bootstrapEnabled, long statsAddress) throws Throwable;
 
