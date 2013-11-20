@@ -32,7 +32,9 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.lir.StandardOp.ImplicitNullCheck;
 import com.oracle.graal.lir.StandardOp.MoveOp;
+import com.oracle.graal.lir.StandardOp.NullCheck;
 import com.oracle.graal.lir.asm.*;
 
 public class SPARCMove {
@@ -91,7 +93,7 @@ public class SPARCMove {
         }
     }
 
-    public abstract static class MemOp extends SPARCLIRInstruction {
+    public abstract static class MemOp extends SPARCLIRInstruction implements ImplicitNullCheck {
 
         protected final Kind kind;
         @Use({COMPOSITE}) protected SPARCAddressValue address;
@@ -111,6 +113,14 @@ public class SPARCMove {
                 tasm.recordImplicitException(masm.codeBuffer.position(), state);
             }
             emitMemAccess(masm);
+        }
+
+        public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
+            if (state == null && value.equals(address.base) && address.index == Value.ILLEGAL && address.displacement >= 0 && address.displacement < implicitNullCheckLimit) {
+                state = nullCheckState;
+                return true;
+            }
+            return false;
         }
     }
 
@@ -193,7 +203,7 @@ public class SPARCMove {
         }
     }
 
-    public static class NullCheckOp extends SPARCLIRInstruction {
+    public static class NullCheckOp extends SPARCLIRInstruction implements NullCheck {
 
         @Use({REG}) protected AllocatableValue input;
         @State protected LIRFrameState state;
@@ -207,6 +217,14 @@ public class SPARCMove {
         public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
             tasm.recordImplicitException(masm.codeBuffer.position(), state);
             new Ldx(new SPARCAddress(asRegister(input), 0), r0).emit(masm);
+        }
+
+        public Value getCheckedValue() {
+            return input;
+        }
+
+        public LIRFrameState getState() {
+            return state;
         }
     }
 
