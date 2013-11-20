@@ -32,6 +32,7 @@ import com.oracle.graal.api.meta.*;
  * parameters. The syntax for the source pattern that is passed to the constructor is as follows:
  * 
  * <pre>
+ * SourcePatterns = SourcePattern ["," SourcePatterns] .
  * SourcePattern = [ Class "." ] method [ "(" [ Parameter { ";" Parameter } ] ")" ] .
  * Parameter = Class | "int" | "long" | "float" | "double" | "short" | "char" | "boolean" .
  * Class = { package "." } class .
@@ -80,6 +81,14 @@ import com.oracle.graal.api.meta.*;
  * 
  * Matches all methods named "visit" in classes in the package
  * "com.oracle.graal.compiler.graph".</pre>
+ * <li>
+ * 
+ * <pre>
+ * arraycopy,toString
+ * </pre>
+ * 
+ * Matches all methods named "arraycopy" or "toString", meaning that ',' acts as an <i>or</i>
+ * operator.</li>
  * </ul>
  */
 public class MethodFilter {
