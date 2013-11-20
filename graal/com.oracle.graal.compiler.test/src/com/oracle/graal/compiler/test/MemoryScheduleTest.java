@@ -22,6 +22,7 @@
  */
 package com.oracle.graal.compiler.test;
 
+import static com.oracle.graal.phases.GraalOptions.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
@@ -37,6 +38,8 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
+import com.oracle.graal.options.*;
+import com.oracle.graal.options.OptionValue.OverrideScope;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.schedule.*;
@@ -408,6 +411,30 @@ public class MemoryScheduleTest extends GraphScheduleTest {
         }
     }
 
+    /**
+     * read should move inside the loop (out of loop is disabled).
+     */
+    public static int testBlockSchedule2Snippet(int value) {
+        int res = 0;
+
+        container.a = value;
+        for (int i = 0; i < 100; i++) {
+            if (i == 10) {
+                return container.a;
+            }
+            res += i;
+        }
+        return res;
+    }
+
+    @Test
+    public void testBlockSchedule2() {
+        SchedulePhase schedule = getFinalSchedule("testBlockSchedule2Snippet", TestMode.WITHOUT_FRAMESTATES, MemoryScheduling.OPTIMAL, SchedulingStrategy.LATEST);
+        assertReadWithinStartBlock(schedule, false);
+        assertReadWithinReturnBlock(schedule, false);
+        assertReadAndWriteInSameBlock(schedule, false);
+    }
+
     /*
      * read of field a should be in first block, read of field b in loop begin block
      */
@@ -547,43 +574,51 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     }
 
     private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched) {
+        return getFinalSchedule(snippet, mode, memsched, SchedulingStrategy.LATEST_OUT_OF_LOOPS);
+    }
+
+    private SchedulePhase getFinalSchedule(final String snippet, final TestMode mode, final MemoryScheduling memsched, final SchedulingStrategy schedulingStrategy) {
         final StructuredGraph graph = parse(snippet);
         return Debug.scope("FloatingReadTest", graph, new Callable<SchedulePhase>() {
 
             @Override
             public SchedulePhase call() throws Exception {
-                Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new CanonicalizerPhase(true).apply(graph, context);
-                if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                }
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof StateSplit) {
-                            FrameState stateAfter = ((StateSplit) node).stateAfter();
-                            if (stateAfter != null) {
-                                ((StateSplit) node).setStateAfter(null);
-                                GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+
+                try (OverrideScope s = OptionValue.override(OptScheduleOutOfLoops, schedulingStrategy == SchedulingStrategy.LATEST_OUT_OF_LOOPS)) {
+                    Assumptions assumptions = new Assumptions(false);
+                    HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+                    CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+                    canonicalizer.apply(graph, context);
+                    if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
+                        new InliningPhase(canonicalizer).apply(graph, context);
+                    }
+                    new LoweringPhase(canonicalizer).apply(graph, context);
+                    if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
+                        for (Node node : graph.getNodes()) {
+                            if (node instanceof StateSplit) {
+                                FrameState stateAfter = ((StateSplit) node).stateAfter();
+                                if (stateAfter != null) {
+                                    ((StateSplit) node).setStateAfter(null);
+                                    GraphUtil.killWithUnusedFloatingInputs(stateAfter);
+                                }
                             }
                         }
                     }
+                    Debug.dump(graph, "after removal of framestates");
+
+                    new FloatingReadPhase().apply(graph);
+                    new RemoveValueProxyPhase().apply(graph);
+
+                    MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL);
+                    new GuardLoweringPhase().apply(graph, midContext);
+                    new LoweringPhase(canonicalizer).apply(graph, midContext);
+                    new LoweringPhase(canonicalizer).apply(graph, midContext);
+
+                    SchedulePhase schedule = new SchedulePhase(schedulingStrategy, memsched);
+                    schedule.apply(graph);
+                    assertEquals(1, graph.getNodes().filter(StartNode.class).count());
+                    return schedule;
                 }
-                Debug.dump(graph, "after removal of framestates");
-
-                new FloatingReadPhase().apply(graph);
-                new RemoveValueProxyPhase().apply(graph);
-
-                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL);
-                new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, midContext);
-
-                SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, memsched);
-                schedule.apply(graph);
-                assertEquals(1, graph.getNodes().filter(StartNode.class).count());
-                return schedule;
             }
         });
     }
