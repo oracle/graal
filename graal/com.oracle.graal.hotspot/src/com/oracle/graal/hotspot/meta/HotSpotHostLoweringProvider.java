@@ -494,19 +494,19 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
                 monitorSnippets.lower((MonitorExitNode) n, tool);
             }
         } else if (n instanceof G1PreWriteBarrier) {
-            writeBarrierSnippets.lower((G1PreWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((G1PreWriteBarrier) n, registers);
         } else if (n instanceof G1PostWriteBarrier) {
-            writeBarrierSnippets.lower((G1PostWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((G1PostWriteBarrier) n, registers);
         } else if (n instanceof G1ReferentFieldReadBarrier) {
-            writeBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, tool);
+            writeBarrierSnippets.lower((G1ReferentFieldReadBarrier) n, registers);
         } else if (n instanceof SerialWriteBarrier) {
-            writeBarrierSnippets.lower((SerialWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((SerialWriteBarrier) n);
         } else if (n instanceof SerialArrayRangeWriteBarrier) {
-            writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((SerialArrayRangeWriteBarrier) n);
         } else if (n instanceof G1ArrayRangePreWriteBarrier) {
-            writeBarrierSnippets.lower((G1ArrayRangePreWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((G1ArrayRangePreWriteBarrier) n, registers);
         } else if (n instanceof G1ArrayRangePostWriteBarrier) {
-            writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, tool);
+            writeBarrierSnippets.lower((G1ArrayRangePostWriteBarrier) n, registers);
         } else if (n instanceof NewMultiArrayNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
                 newObjectSnippets.lower((NewMultiArrayNode) n);
