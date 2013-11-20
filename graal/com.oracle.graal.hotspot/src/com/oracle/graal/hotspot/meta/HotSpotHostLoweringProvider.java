@@ -487,7 +487,7 @@ public class HotSpotHostLoweringProvider implements LoweringProvider {
             }
         } else if (n instanceof MonitorEnterNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
-                monitorSnippets.lower((MonitorEnterNode) n, registers.getStackPointerRegister());
+                monitorSnippets.lower((MonitorEnterNode) n, registers);
             }
         } else if (n instanceof MonitorExitNode) {
             if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {

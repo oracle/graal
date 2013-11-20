@@ -468,12 +468,16 @@ public class HotSpotReplacementsUtil {
      * Gets the value of the thread register as a Word.
      */
     public static Word thread() {
-        return registerAsWord(threadRegister(), true, false);
+        return registerAsWord(threadRegister());
     }
 
     public static Word loadWordFromObject(Object object, int offset) {
         assert offset != hubOffset() : "Use loadHubIntrinsic instead";
         return loadWordFromObjectIntrinsic(object, offset, getWordKind(), LocationIdentity.ANY_LOCATION);
+    }
+
+    public static Word registerAsWord(@ConstantNodeParameter Register register) {
+        return registerAsWord(register, true, false);
     }
 
     @NodeIntrinsic(value = ReadRegisterNode.class, setStampFromReturnType = true)

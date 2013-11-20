@@ -38,6 +38,7 @@ import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
 import com.oracle.graal.graph.iterators.*;
+import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
@@ -96,7 +97,8 @@ public class MonitorSnippets implements Snippets {
     public static final boolean CHECK_BALANCED_MONITORS = Boolean.getBoolean("graal.monitors.checkBalanced");
 
     @Snippet
-    public static void monitorenter(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register stackPointerRegister, @ConstantParameter boolean trace) {
+    public static void monitorenter(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter Register stackPointerRegister,
+                    @ConstantParameter boolean trace) {
         verifyOop(object);
 
         if (object == null) {
@@ -130,7 +132,7 @@ public class MonitorSnippets implements Snippets {
                 // whether the bias owner and the epoch are both still current.
                 Word hub = loadHubIntrinsic(object, getWordKind(), anchorNode);
                 final Word prototypeMarkWord = hub.readWord(prototypeMarkWordOffset(), PROTOTYPE_MARK_WORD_LOCATION);
-                final Word thread = thread();
+                final Word thread = registerAsWord(threadRegister);
                 final Word tmp = prototypeMarkWord.or(thread).xor(mark).and(~ageMaskInPlace());
                 trace(trace, "prototypeMarkWord: 0x%016lx\n", prototypeMarkWord);
                 trace(trace, "           thread: 0x%016lx\n", thread);
@@ -253,7 +255,7 @@ public class MonitorSnippets implements Snippets {
             // assuming both the stack pointer and page_size have their least
             // significant 2 bits cleared and page_size is a power of 2
             final Word alignedMask = Word.unsigned(wordSize() - 1);
-            final Word stackPointer = registerAsWord(stackPointerRegister, true, false);
+            final Word stackPointer = registerAsWord(stackPointerRegister);
             if (probability(VERY_SLOW_PATH_PROBABILITY, currentMark.subtract(stackPointer).and(alignedMask.subtract(pageSize())).notEqual(0))) {
                 // Most likely not a recursive lock, go into a slow runtime call
                 traceObject(trace, "+lock{stub:failed-cas}", object, true);
@@ -420,7 +422,7 @@ public class MonitorSnippets implements Snippets {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, Register stackPointerRegister) {
+        public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers) {
             StructuredGraph graph = monitorenterNode.graph();
             checkBalancedMonitors(graph);
             FrameState stateAfter = monitorenterNode.stateAfter();
@@ -434,7 +436,8 @@ public class MonitorSnippets implements Snippets {
             args.add("object", monitorenterNode.object());
             args.addConst("lockDepth", monitorenterNode.getLockDepth());
             boolean tracingEnabledForMethod = stateAfter != null && (isTracingEnabledForMethod(stateAfter.method()) || isTracingEnabledForMethod(graph.method()));
-            args.addConst("stackPointerRegister", stackPointerRegister);
+            args.addConst("threadRegister", registers.getThreadRegister());
+            args.addConst("stackPointerRegister", registers.getStackPointerRegister());
             args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || tracingEnabledForMethod);
 
             Map<Node, Node> nodes = template(args).instantiate(providers.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
