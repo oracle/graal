@@ -38,11 +38,12 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
     public HSAILHotSpotBackend createBackend(HotSpotGraalRuntime runtime, HotSpotBackend hostBackend) {
         HotSpotProviders host = hostBackend.getProviders();
 
+        HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None);
         HotSpotMetaAccessProvider metaAccess = host.getMetaAccess();
         HSAILHotSpotCodeCacheProvider codeCache = new HSAILHotSpotCodeCacheProvider(runtime, createTarget());
         ConstantReflectionProvider constantReflection = host.getConstantReflection();
         HotSpotForeignCallsProvider foreignCalls = new HSAILHotSpotForeignCallsProvider(runtime, metaAccess, codeCache);
-        LoweringProvider lowerer = new HSAILHotSpotLoweringProvider(host.getLowerer());
+        LoweringProvider lowerer = new HSAILHotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers);
         // Replacements cannot have speculative optimizations since they have
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
@@ -50,7 +51,6 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         Replacements replacements = new HSAILHotSpotReplacementsImpl(p, assumptions, host.getReplacements());
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
         HotSpotSuitesProvider suites = host.getSuites();
-        HotSpotRegisters registers = new HotSpotRegisters(Register.None, Register.None, Register.None);
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);
 
         return new HSAILHotSpotBackend(runtime, providers);
