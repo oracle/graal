@@ -200,7 +200,7 @@ public final class CompilationTask implements Runnable {
                 System.exit(-1);
             }
         } finally {
-            if (config.ciTime && installedCode != null) {
+            if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long processedBytes = InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes;
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
