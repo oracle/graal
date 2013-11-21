@@ -367,6 +367,20 @@ public abstract class KernelTester {
     }
 
     /**
+     * The "array stream" version of {@link #dispatchMethodKernel(int, Object...)}.
+     */
+    public void dispatchMethodKernel(Object[] ary, Object... args) {
+        if (testMethod == null) {
+            setTestMethod(getTestMethodName(), this.getClass());
+        }
+        if (dispatchMode == DispatchMode.SEQ) {
+            dispatchMethodKernelSeq(ary, args);
+        } else if (dispatchMode == DispatchMode.OKRA) {
+            dispatchMethodKernelOkra(ary, args);
+        }
+    }
+
+    /**
      * This dispatchLambdaMethodKernel dispatches the lambda version of a kernel where the "kernel"
      * is for the lambda method itself (like lambda$0).
      */
@@ -530,7 +544,11 @@ public abstract class KernelTester {
         }
     }
 
-    private void dispatchKernelOkra(int range, Object... args) {
+    /**
+     * Dispatches an okra kernel over a given range using JNI. Protected so that it can be
+     * overridden in {@link GraalKernelTester} which will dispatch without JNI.
+     */
+    protected void dispatchKernelOkra(int range, Object... args) {
         if (okraKernel == null) {
             createOkraKernel();
         }
@@ -544,6 +562,7 @@ public abstract class KernelTester {
         okraKernel.dispatchWithArgs(args);
     }
 
+    // int stream version
     private void dispatchMethodKernelSeq(int range, Object... args) {
         Object[] invokeArgs = new Object[args.length + 1];
         // Need space on the end for the gid parameter.
@@ -556,33 +575,67 @@ public abstract class KernelTester {
         }
         for (int rangeIndex = 0; rangeIndex < range; rangeIndex++) {
             invokeArgs[gidArgIndex] = rangeIndex;
-            try {
-                testMethod.invoke(this, invokeArgs);
-            } catch (IllegalAccessException e) {
-                fail("could not invoke " + testMethod + ", make sure it is public");
-            } catch (IllegalArgumentException e) {
-                fail("wrong arguments invoking " + testMethod + ", check number and type of args passed to dispatchMethodKernel");
-            } catch (InvocationTargetException e) {
-                Throwable cause = e.getCause();
-                /**
-                 * We will ignore ArrayIndexOutOfBoundsException because the graal okra target
-                 * doesn't really handle it yet (basically returns early if it sees one).
-                 */
-                if (cause instanceof ArrayIndexOutOfBoundsException) {
-                    logger.severe("ignoring ArrayIndexOutOfBoundsException for index " + rangeIndex);
-                } else {
-                    // Other exceptions.
-                    String errstr = testMethod + " threw an exception on gid=" + rangeIndex + ", exception was " + cause;
-                    fail(errstr);
-                }
-            } catch (Exception e) {
-                fail("Unknown exception " + e + " invoking " + testMethod);
-            }
+            invokeMethodKernelSeq(invokeArgs, rangeIndex);
         }
     }
 
-    protected void dispatchMethodKernelOkra(int range, Object... args) {
+    // array stream version
+    private void dispatchMethodKernelSeq(Object[] ary, Object... args) {
+        Object[] invokeArgs = new Object[args.length + 1];
+        // Need space on the end for the final obj parameter.
+        System.arraycopy(args, 0, invokeArgs, 0, args.length);
+        int objArgIndex = invokeArgs.length - 1;
+        if (logLevel.intValue() <= Level.FINE.intValue()) {
+            for (Object arg : args) {
+                logger.fine(arg.toString());
+            }
+        }
+        int range = ary.length;
+        for (int rangeIndex = 0; rangeIndex < range; rangeIndex++) {
+            invokeArgs[objArgIndex] = ary[rangeIndex];
+            invokeMethodKernelSeq(invokeArgs, rangeIndex);
+        }
+    }
+
+    private void invokeMethodKernelSeq(Object[] invokeArgs, int rangeIndex) {
+        try {
+            testMethod.invoke(this, invokeArgs);
+        } catch (IllegalAccessException e) {
+            fail("could not invoke " + testMethod + ", make sure it is public");
+        } catch (IllegalArgumentException e) {
+            fail("wrong arguments invoking " + testMethod + ", check number and type of args passed to dispatchMethodKernel");
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            String errstr = testMethod + " threw an exception on gid=" + rangeIndex + ", exception was " + cause;
+            fail(errstr);
+        } catch (Exception e) {
+            fail("Unknown exception " + e + " invoking " + testMethod);
+        }
+    }
+
+    // int stream version
+    private void dispatchMethodKernelOkra(int range, Object... args) {
         Object[] fixedArgs = fixArgTypes(args);
+        if (Modifier.isStatic(testMethod.getModifiers())) {
+            dispatchKernelOkra(range, fixedArgs);
+        } else {
+            // If it is a non-static method we have to push "this" as the first argument.
+            Object[] newFixedArgs = new Object[fixedArgs.length + 1];
+            System.arraycopy(fixedArgs, 0, newFixedArgs, 1, fixedArgs.length);
+            newFixedArgs[0] = this;
+            dispatchKernelOkra(range, newFixedArgs);
+        }
+    }
+
+    // array stream version
+    private void dispatchMethodKernelOkra(Object[] ary, Object... args) {
+        // add the ary itself as the last arg in the passed parameter list
+        Object[] argsWithAry = new Object[args.length + 1];
+        System.arraycopy(args, 0, argsWithAry, 0, args.length);
+        argsWithAry[argsWithAry.length - 1] = ary;
+
+        Object[] fixedArgs = fixArgTypes(argsWithAry);
+        int range = ary.length;
         if (Modifier.isStatic(testMethod.getModifiers())) {
             dispatchKernelOkra(range, fixedArgs);
         } else {
@@ -659,12 +712,13 @@ public abstract class KernelTester {
     private void dispatchLambdaMethodKernelOkra(Object[] ary, MyObjConsumer consumer) {
         logger.info("To determine parameters to pass to hsail kernel, we will examine   " + consumer.getClass());
         Field[] fields = consumer.getClass().getDeclaredFields();
-        Object[] args = new Object[fields.length];
+        Object[] args = new Object[fields.length + 1];  // + 1 because we also pass the array
         int argIndex = 0;
         for (Field f : fields) {
             logger.info("... " + f);
             args[argIndex++] = getFieldFromObject(f, consumer);
         }
+        args[argIndex] = ary;
         dispatchKernelOkra(ary.length, args);
     }
 
@@ -682,8 +736,9 @@ public abstract class KernelTester {
 
     private void dispatchLambdaKernelOkra(Object[] ary, MyObjConsumer consumer) {
         // The "wrapper" method always has only one arg consisting of the consumer.
-        Object[] args = new Object[1];
+        Object[] args = new Object[2];
         args[0] = consumer;
+        args[1] = ary;
         dispatchKernelOkra(ary.length, args);
     }
 
