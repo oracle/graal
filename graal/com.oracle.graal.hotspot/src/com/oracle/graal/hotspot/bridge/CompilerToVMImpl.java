@@ -176,6 +176,11 @@ public class CompilerToVMImpl implements CompilerToVM {
         return executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
     }
 
+    public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
+                    HotSpotInstalledCode installedCode);
+
+    public native void resetCompilationStatistics();
+
     /**
      * Direct call to the given nmethod with three object arguments and an object return value. This
      * method does not have an implementation on the C++ side, but its entry points (from

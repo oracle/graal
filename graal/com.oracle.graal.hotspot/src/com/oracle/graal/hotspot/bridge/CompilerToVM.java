@@ -146,6 +146,22 @@ public interface CompilerToVM {
      */
     CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog cache);
 
+    /**
+     * Notifies the VM of statistics for a completed compilation.
+     * 
+     * @param id the identifier of the compilation
+     * @param method the method compiled
+     * @param osr specifies if the compilation was for on-stack-replacement
+     * @param processedBytecodes the number of bytecodes processed during the compilation, including
+     *            the bytecodes of all inlined methods
+     * @param time the amount time spent compiling {@code method}
+     * @param timeUnitsPerSecond the granularity of the units for the {@code time} value
+     * @param installedCode the nmethod installed as a result of the compilation
+     */
+    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, HotSpotInstalledCode installedCode);
+
+    void resetCompilationStatistics();
+
     void initializeConfiguration(HotSpotVMConfig config);
 
     JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);

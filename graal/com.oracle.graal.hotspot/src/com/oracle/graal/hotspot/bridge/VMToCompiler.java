@@ -24,7 +24,6 @@
 package com.oracle.graal.hotspot.bridge;
 
 import java.io.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.debug.*;
@@ -41,23 +40,9 @@ public interface VMToCompiler {
      */
     void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking);
 
-    /**
-     * Notifies this object of statistics for a completed compilation.
-     * 
-     * @param id the identifier of the compilation
-     * @param method the method compiled
-     * @param osr specifies if the compilation was for on-stack-replacement
-     * @param processedBytecodes the number of bytecodes processed during the compilation, including
-     *            the bytecodes of all inlined methods
-     * @param time the amount time spent compiling {@code method}
-     * @param timeUnit the units of {@code time}
-     * @param installedCode the nmethod installed as a result of the compilation
-     */
-    void notifyCompilationDone(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, TimeUnit timeUnit, HotSpotInstalledCode installedCode);
-
     void shutdownCompiler() throws Exception;
 
-    void startCompiler(boolean bootstrapEnabled, long statsAddress) throws Throwable;
+    void startCompiler(boolean bootstrapEnabled) throws Throwable;
 
     void bootstrap() throws Throwable;
 

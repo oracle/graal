@@ -26,7 +26,6 @@ package com.oracle.graal.hotspot.bridge;
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
-import static java.util.concurrent.TimeUnit.*;
 
 import java.io.*;
 import java.lang.reflect.*;
@@ -101,8 +100,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private long compilerStartTime;
 
-    private long compilerStatistics;
-
     public VMToCompilerImpl(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
 
@@ -123,7 +120,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         assert unsafe.getObject(mirror, offset) == type;
     }
 
-    public void startCompiler(boolean bootstrapEnabled, long compilerStatisticsAddress) throws Throwable {
+    public void startCompiler(boolean bootstrapEnabled) throws Throwable {
 
         FastNodeClassRegistry.initialize();
 
@@ -150,7 +147,7 @@ public class VMToCompilerImpl implements VMToCompiler {
             }
         }
 
-        compilerStatistics = compilerStatisticsAddress;
+        runtime.getCompilerToVM();
 
         TTY.initialize(log);
 
@@ -318,7 +315,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         if (ResetDebugValuesAfterBootstrap.getValue()) {
             printDebugValues("bootstrap", true);
-            resetCompilerStatistics();
+            runtime.getCompilerToVM().resetCompilationStatistics();
         }
         phaseTransition("bootstrap");
 
@@ -598,64 +595,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         } finally {
             CompilationTask.withinEnqueue.set(Boolean.FALSE);
         }
-    }
-
-    private TimeUnit elapsedTimerTimeUnit;
-
-    private TimeUnit getElapsedTimerTimeUnit() {
-        if (elapsedTimerTimeUnit == null) {
-            long freq = runtime.getConfig().elapsedTimerFrequency;
-            for (TimeUnit tu : TimeUnit.values()) {
-                if (tu.toSeconds(freq) == 1) {
-                    elapsedTimerTimeUnit = tu;
-                    break;
-                }
-            }
-            assert elapsedTimerTimeUnit != null;
-        }
-        return elapsedTimerTimeUnit;
-    }
-
-    public synchronized void notifyCompilationDone(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, TimeUnit timeUnit, HotSpotInstalledCode installedCode) {
-        HotSpotVMConfig config = runtime.getConfig();
-        long dataAddress = compilerStatistics + (osr ? config.compilerStatisticsOsrOffset : config.compilerStatisticsStandardOffset);
-
-        long timeAddress = dataAddress + config.compilerStatisticsDataTimeOffset + config.elapsedTimerCounterOffset;
-        long previousElapsedTime = unsafe.getLong(timeAddress);
-        long elapsedTime = getElapsedTimerTimeUnit().convert(time, timeUnit);
-        unsafe.putLong(timeAddress, previousElapsedTime + elapsedTime);
-
-        long bytesAddress = dataAddress + config.compilerStatisticsDataBytesOffset;
-        int currentBytes = unsafe.getInt(bytesAddress);
-        unsafe.putInt(bytesAddress, currentBytes + processedBytecodes);
-
-        long countAddress = dataAddress + config.compilerStatisticsDataCountOffset;
-        int currentCount = unsafe.getInt(countAddress);
-        unsafe.putInt(countAddress, currentCount + 1);
-
-        long nmethodsSizeAddress = compilerStatistics + config.compilerStatisticsNmethodsSizeOffset;
-        int currentSize = unsafe.getInt(nmethodsSizeAddress);
-        unsafe.putInt(nmethodsSizeAddress, currentSize + installedCode.getSize());
-
-        long nmethodsCodeSizeAddress = compilerStatistics + config.compilerStatisticsNmethodsCodeSizeOffset;
-        int currentCodeSize = unsafe.getInt(nmethodsCodeSizeAddress);
-        unsafe.putInt(nmethodsCodeSizeAddress, currentCodeSize + (int) installedCode.getCodeSize());
-
-        if (config.ciTimeEach) {
-            TTY.println(String.format("%-6d {%s: %d ms, %d bytes}", id, osr ? "osr" : "standard", MILLISECONDS.convert(time, timeUnit), processedBytecodes));
-        }
-    }
-
-    private static void resetCompilerStatisticsData(HotSpotVMConfig config, long dataAddress) {
-        unsafe.putInt(dataAddress + config.compilerStatisticsDataBytesOffset, 0);
-        unsafe.putInt(dataAddress + config.compilerStatisticsDataCountOffset, 0);
-        unsafe.putLong(dataAddress + config.compilerStatisticsDataTimeOffset + config.elapsedTimerCounterOffset, 0L);
-    }
-
-    private void resetCompilerStatistics() {
-        HotSpotVMConfig config = runtime.getConfig();
-        resetCompilerStatisticsData(config, compilerStatistics + config.compilerStatisticsStandardOffset);
-        resetCompilerStatisticsData(config, compilerStatistics + config.compilerStatisticsOsrOffset);
     }
 
     @Override

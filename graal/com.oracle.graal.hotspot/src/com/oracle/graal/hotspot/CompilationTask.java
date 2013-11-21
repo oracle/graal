@@ -204,8 +204,9 @@ public final class CompilationTask implements Runnable {
                 long processedBytes = InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes;
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
-                VMToCompiler vm2c = backend.getRuntime().getVMToCompiler();
-                vm2c.notifyCompilationDone(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnit, installedCode);
+                long timeUnitsPerSecond = timeUnit.convert(1, TimeUnit.SECONDS);
+                CompilerToVM c2vm = backend.getRuntime().getCompilerToVM();
+                c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnitsPerSecond, installedCode);
             }
 
             assert method.isQueuedForCompilation();

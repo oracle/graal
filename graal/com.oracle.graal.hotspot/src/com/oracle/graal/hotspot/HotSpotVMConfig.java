@@ -738,16 +738,6 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE", optional = true) @Stable public int graalCountersSize;
 
-    @HotSpotVMField(name = "CompilerStatistics::_standard", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsStandardOffset;
-    @HotSpotVMField(name = "CompilerStatistics::_osr", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsOsrOffset;
-    @HotSpotVMField(name = "CompilerStatistics::_nmethods_size", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsNmethodsSizeOffset;
-    @HotSpotVMField(name = "CompilerStatistics::_nmethods_code_size", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsNmethodsCodeSizeOffset;
-    @HotSpotVMField(name = "CompilerStatistics::Data::_bytes", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataBytesOffset;
-    @HotSpotVMField(name = "CompilerStatistics::Data::_time", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataTimeOffset;
-    @HotSpotVMField(name = "CompilerStatistics::Data::_count", get = HotSpotVMField.Type.OFFSET) @Stable public long compilerStatisticsDataCountOffset;
-    @HotSpotVMField(name = "elapsedTimer::_counter", get = HotSpotVMField.Type.OFFSET) @Stable public long elapsedTimerCounterOffset;
-    @Stable public long elapsedTimerFrequency;
-
     /**
      * This field is used to pass exception objects into and out of the runtime system during
      * exception handling for compiled code.
