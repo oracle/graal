@@ -47,6 +47,7 @@ import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public class InliningPhase extends AbstractInliningPhase {
 
@@ -185,7 +186,7 @@ public class InliningPhase extends AbstractInliningPhase {
         InlineInfo callee = calleeInfo.callee();
         try {
             List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-            callee.inline(context, callerAssumptions);
+            callee.inline(new Providers(context), callerAssumptions);
             callerAssumptions.record(calleeInfo.assumptions());
             metricInliningRuns.increment();
             Debug.dump(callerGraph, "after %s", callee);
