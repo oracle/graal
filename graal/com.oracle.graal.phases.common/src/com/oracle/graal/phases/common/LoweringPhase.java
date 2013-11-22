@@ -178,7 +178,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         Mark expectedMark = graph.getMark();
         lower(graph, context, 1);
         Mark mark = graph.getMark();
-        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(mark).snapshot();
+        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(expectedMark).snapshot();
         return true;
     }
 
