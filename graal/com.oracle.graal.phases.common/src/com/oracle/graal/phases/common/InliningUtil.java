@@ -1502,12 +1502,7 @@ public class InliningUtil {
             InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }
 
-        FixedWithNextNode macroNode;
-        try {
-            macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
-        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
-            throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
-        }
+        FixedWithNextNode macroNode = createMacroNodeInstance(macroNodeClass, invoke);
 
         CallTargetNode callTarget = invoke.callTarget();
         if (invoke instanceof InvokeNode) {
@@ -1519,5 +1514,13 @@ public class InliningUtil {
         }
         GraphUtil.killWithUnusedFloatingInputs(callTarget);
         return macroNode;
+    }
+
+    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws GraalInternalError {
+        try {
+            return macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
+        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
+            throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
+        }
     }
 }
