@@ -520,6 +520,8 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             boxingSnippets.lower((BoxNode) n, tool);
         } else if (n instanceof UnboxNode) {
             boxingSnippets.lower((UnboxNode) n, tool);
+        } else if (n instanceof DeoptimizeNode || n instanceof UnwindNode) {
+            /* No lowering, we generate LIR directly for these nodes. */
         } else {
             assert false : "Node implementing Lowerable not handled: " + n;
             throw GraalInternalError.shouldNotReachHere();
