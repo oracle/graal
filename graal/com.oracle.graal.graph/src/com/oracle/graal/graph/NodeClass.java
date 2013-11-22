@@ -158,13 +158,17 @@ public final class NodeClass extends FieldIntrospection {
      */
     private final boolean isSimplifiable;
 
-    private NodeClass(Class<?> clazz) {
+    public NodeClass(Class<?> clazz) {
+        this(clazz, new DefaultCalcOffset(), null, 0);
+    }
+
+    public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
         this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
-        FieldScanner scanner = new FieldScanner(new DefaultCalcOffset());
+        FieldScanner scanner = new FieldScanner(calcOffset);
         scanner.scan(clazz);
 
         directInputCount = scanner.inputOffsets.size();
@@ -200,7 +204,10 @@ public final class NodeClass extends FieldIntrospection {
         }
         this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
         this.shortName = newShortName;
-        if (IterableNodeType.class.isAssignableFrom(clazz)) {
+        if (presetIterableIds != null) {
+            this.iterableIds = presetIterableIds;
+            this.iterableId = presetIterableId;
+        } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment();
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
