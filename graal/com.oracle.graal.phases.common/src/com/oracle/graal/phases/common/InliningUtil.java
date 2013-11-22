@@ -26,6 +26,7 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.nodes.type.StampFactory.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -434,6 +435,7 @@ public class InliningUtil {
             super(invoke);
             this.concrete = concrete;
             this.type = type;
+            assert !isAbstract(type.getModifiers()) : type;
         }
 
         @Override
@@ -1137,6 +1139,10 @@ public class InliningUtil {
             }
 
             ResolvedJavaType type = ptypes[0].getType();
+            if (isAbstract(type.getModifiers())) {
+                // In TieredCompilation mode, C1 can generate profiles containing abstract types
+                return null;
+            }
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -1206,6 +1212,9 @@ public class InliningUtil {
                 ResolvedJavaMethod concrete = type.getType().resolveMethod(targetMethod);
                 int index = concreteMethods.indexOf(concrete);
                 if (index == -1) {
+                    notRecordedTypeProbability += type.getProbability();
+                } else if (isAbstract(type.getType().getModifiers())) {
+                    // In TieredCompilation mode, C1 can generate profiles containing abstract types
                     notRecordedTypeProbability += type.getProbability();
                 } else {
                     usedTypes.add(type);
