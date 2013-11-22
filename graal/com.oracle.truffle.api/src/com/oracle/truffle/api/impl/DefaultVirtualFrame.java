@@ -160,7 +160,9 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     public Object getValue(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
-            resize();
+            if (!resize()) {
+                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
+            }
         }
         return locals[slotIndex];
     }
@@ -168,7 +170,9 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     private void verifySet(FrameSlot slot, FrameSlotKind accessKind) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
-            resize();
+            if (!resize()) {
+                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
+            }
         }
         tags[slotIndex] = (byte) accessKind.ordinal();
     }
@@ -176,7 +180,9 @@ public final class DefaultVirtualFrame implements VirtualFrame {
     private void verifyGet(FrameSlot slot, FrameSlotKind accessKind) throws FrameSlotTypeException {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
-            resize();
+            if (!resize()) {
+                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
+            }
         }
         byte tag = tags[slotIndex];
         if (accessKind == FrameSlotKind.Object ? tag != 0 : tag != accessKind.ordinal()) {
@@ -190,20 +196,24 @@ public final class DefaultVirtualFrame implements VirtualFrame {
         }
     }
 
-    private void resize() {
+    private boolean resize() {
         int oldSize = tags.length;
         int newSize = descriptor.getSize();
         if (newSize > oldSize) {
             locals = Arrays.copyOf(locals, newSize);
             Arrays.fill(locals, oldSize, newSize, descriptor.getTypeConversion().getDefaultValue());
             tags = Arrays.copyOf(tags, newSize);
+            return true;
         }
+        return false;
     }
 
     private byte getTag(FrameSlot slot) {
         int slotIndex = slot.getIndex();
         if (slotIndex >= tags.length) {
-            resize();
+            if (!resize()) {
+                throw new IllegalArgumentException(String.format("The frame slot '%s' is not known by the frame descriptor.", slot));
+            }
         }
         return tags[slotIndex];
     }
