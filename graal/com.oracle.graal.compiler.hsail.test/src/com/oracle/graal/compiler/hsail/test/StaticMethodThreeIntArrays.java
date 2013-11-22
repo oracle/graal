@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,15 +24,22 @@
 package com.oracle.graal.compiler.hsail.test;
 
 /**
- * Superclass that initializes two input arrays and one output array. Derived by some of the other
- * test cases that take two arrays as input parameters.
+ * Superclass that initializes two input arrays containing ints and one output array. Derived by
+ * some of the other test cases that take two arrays of ints as input parameters.
  */
 public abstract class StaticMethodThreeIntArrays extends StaticMethodTwoIntArrays {
 
+    /**
+     * Initialize the input and output arrays.
+     * 
+     * @param in1 the first input array
+     * @param in2 the second input array
+     */
     void setupArrays(int[] in1, int[] in2) {
         for (int i = 0; i < num; i++) {
-            in1[i] = i + 1;
-            in2[i] = in1[i] + 10;
+            // Fill input arrays with a mix of positive and negative values.
+            in1[i] = i < num / 2 ? i + 1 : -(i + 1);
+            in2[i] = (i & 1) == 0 ? in1[i] + 10 : -(in1[i] + 10);
             outArray[i] = -i;
         }
     }
