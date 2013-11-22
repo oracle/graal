@@ -43,6 +43,15 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
         super(object, location, stamp, guard, barrierType, compressible);
     }
 
+    private ReadNode(ValueNode object, ValueNode location, ValueNode guard, BarrierType barrierType, boolean compressible) {
+        /*
+         * Used by node intrinsics. Really, you can trust me on that! Since the initial value for
+         * location is a parameter, i.e., a LocalNode, the constructor cannot use the declared type
+         * LocationNode.
+         */
+        super(object, location, StampFactory.forNodeIntrinsic(), (GuardingNode) guard, barrierType, compressible);
+    }
+
     @Override
     public void generate(LIRGeneratorTool gen) {
         Value address = location().generateAddress(gen, gen.operand(object()));
