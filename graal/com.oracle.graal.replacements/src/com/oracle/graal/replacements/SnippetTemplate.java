@@ -926,8 +926,8 @@ public class SnippetTemplate {
 
     private class DuplicateMapper extends MemoryMapNode {
 
-        Map<Node, Node> duplicates;
-        StartNode replaceeStart;
+        private final Map<Node, Node> duplicates;
+        @Input private StartNode replaceeStart;
 
         public DuplicateMapper(Map<Node, Node> duplicates, StartNode replaceeStart) {
             this.duplicates = duplicates;
@@ -1005,7 +1005,7 @@ public class SnippetTemplate {
 
             // Replace all usages of the replacee with the value returned by the snippet
             ValueNode returnValue = null;
-            if (returnNode != null) {
+            if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 if (returnNode.result() instanceof LocalNode) {
                     returnValue = (ValueNode) replacements.get(returnNode.result());
                 } else if (returnNode.result() != null) {
