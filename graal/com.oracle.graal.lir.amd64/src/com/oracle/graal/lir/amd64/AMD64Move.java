@@ -118,7 +118,7 @@ public class AMD64Move {
         }
 
         public boolean makeNullCheckFor(Value value, LIRFrameState nullCheckState, int implicitNullCheckLimit) {
-            if (state == null && value.equals(address.base) && address.index == Value.ILLEGAL && address.displacement >= 0 && address.displacement < implicitNullCheckLimit) {
+            if (state == null && value.equals(address.base) && address.index.equals(Value.ILLEGAL) && address.displacement >= 0 && address.displacement < implicitNullCheckLimit) {
                 state = nullCheckState;
                 return true;
             }
