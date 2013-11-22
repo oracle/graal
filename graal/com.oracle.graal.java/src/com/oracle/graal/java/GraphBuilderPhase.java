@@ -159,6 +159,10 @@ public class GraphBuilderPhase extends Phase {
         return currentGraph;
     }
 
+    protected ResolvedJavaMethod getMethod() {
+        return method;
+    }
+
     public GraphBuilderPhase(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
@@ -864,10 +868,14 @@ public class GraphBuilderPhase extends Phase {
     void genNewInstance(int cpi) {
         JavaType type = lookupType(cpi, NEW);
         if (type instanceof ResolvedJavaType && ((ResolvedJavaType) type).isInitialized()) {
-            frameState.apush(append(new NewInstanceNode((ResolvedJavaType) type, true)));
+            frameState.apush(append(createNewInstance((ResolvedJavaType) type, true)));
         } else {
             handleUnresolvedNewInstance(type);
         }
+    }
+
+    protected NewInstanceNode createNewInstance(ResolvedJavaType type, boolean fillContents) {
+        return new NewInstanceNode(type, fillContents);
     }
 
     /**
@@ -905,18 +913,22 @@ public class GraphBuilderPhase extends Phase {
     private void genNewPrimitiveArray(int typeCode) {
         Class<?> clazz = arrayTypeCodeToClass(typeCode);
         ResolvedJavaType elementType = metaAccess.lookupJavaType(clazz);
-        frameState.apush(append(new NewArrayNode(elementType, frameState.ipop(), true)));
+        frameState.apush(append(createNewArray(elementType, frameState.ipop(), true)));
     }
 
     private void genNewObjectArray(int cpi) {
         JavaType type = lookupType(cpi, ANEWARRAY);
         ValueNode length = frameState.ipop();
         if (type instanceof ResolvedJavaType) {
-            frameState.apush(append(new NewArrayNode((ResolvedJavaType) type, length, true)));
+            frameState.apush(append(createNewArray((ResolvedJavaType) type, length, true)));
         } else {
             handleUnresolvedNewObjectArray(type, length);
         }
 
+    }
+
+    protected NewArrayNode createNewArray(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
+        return new NewArrayNode(elementType, length, fillContents);
     }
 
     private void genNewMultiArray(int cpi) {
@@ -1187,16 +1199,21 @@ public class GraphBuilderPhase extends Phase {
                 args[0] = TypeProfileProxyNode.create(args[0], profile);
             }
         }
-        MethodCallTargetNode callTarget = currentGraph.add(new MethodCallTargetNode(invokeKind, targetMethod, args, returnType));
+        MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
         createInvokeNode(callTarget, resultType);
+    }
+
+    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType) {
+        return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
     }
 
     protected Invoke createInvokeNode(CallTargetNode callTarget, Kind resultType) {
         // be conservative if information was not recorded (could result in endless recompiles
         // otherwise)
         if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
-            frameState.pushReturn(resultType, append(new InvokeNode(callTarget, bci())));
-            return new InvokeNode(callTarget, bci());
+            InvokeNode invoke = new InvokeNode(callTarget, bci());
+            frameState.pushReturn(resultType, append(invoke));
+            return invoke;
         } else {
             DispatchBeginNode exceptionEdge = handleException(null, bci());
             InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
@@ -1636,13 +1653,13 @@ public class GraphBuilderPhase extends Phase {
         ValueNode x = returnKind == Kind.Void ? null : frameState.pop(returnKind);
         assert frameState.stackSize() == 0;
 
+        if (graphBuilderConfig.eagerInfopointMode()) {
+            append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(bci())));
+        }
+
         synchronizedEpilogue(FrameState.AFTER_BCI, x);
         if (frameState.lockDepth() != 0) {
             throw new BailoutException("unbalanced monitors");
-        }
-
-        if (graphBuilderConfig.eagerInfopointMode()) {
-            append(new InfopointNode(InfopointReason.METHOD_END, frameState.create(FrameState.AFTER_BCI)));
         }
 
         append(new ReturnNode(x));
