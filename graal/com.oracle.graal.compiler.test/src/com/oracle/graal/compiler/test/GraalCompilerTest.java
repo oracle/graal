@@ -212,6 +212,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return providers;
     }
 
+    protected TargetDescription getTarget() {
+        return getProviders().getCodeCache().getTarget();
+    }
+
     protected CodeCacheProvider getCodeCache() {
         return getProviders().getCodeCache();
     }
