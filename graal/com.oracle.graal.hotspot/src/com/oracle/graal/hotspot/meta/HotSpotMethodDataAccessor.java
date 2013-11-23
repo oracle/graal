@@ -66,4 +66,6 @@ public interface HotSpotMethodDataAccessor {
     TriState getNullSeen(HotSpotMethodData data, int position);
 
     int getExecutionCount(HotSpotMethodData data, int position);
+
+    StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos);
 }

@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.meta;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+import static java.lang.String.*;
 
 import java.util.*;
 
@@ -96,7 +97,11 @@ public final class HotSpotMethodData extends CompilerObject {
         if (position >= normalDataSize + extraDataSize) {
             return null;
         }
-        return getData(position);
+        HotSpotMethodDataAccessor data = getData(position);
+        if (data != null) {
+            return data;
+        }
+        return data;
     }
 
     public static HotSpotMethodDataAccessor getNoDataAccessor(boolean exceptionPossiblyNotRecorded) {
@@ -168,6 +173,42 @@ public final class HotSpotMethodData extends CompilerObject {
 
     private static int cellsToBytes(int cells) {
         return cells * config.dataLayoutCellSize;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        String nl = String.format("%n");
+        String nlIndent = String.format("%n%38s", "");
+        if (hasNormalData()) {
+            int pos = 0;
+            HotSpotMethodDataAccessor data;
+            while ((data = getNormalData(pos)) != null) {
+                if (pos != 0) {
+                    sb.append(nl);
+                }
+                int bci = data.getBCI(this, pos);
+                sb.append(String.format("%-6d bci: %-6d%-20s", pos, bci, data.getClass().getSimpleName()));
+                sb.append(data.appendTo(new StringBuilder(), this, pos).toString().replace(nl, nlIndent));
+                pos = pos + data.getSize(this, pos);
+            }
+        }
+
+        if (hasExtraData()) {
+            int pos = getExtraDataBeginOffset();
+            HotSpotMethodDataAccessor data;
+            while ((data = getExtraData(pos)) != null) {
+                if (pos == getExtraDataBeginOffset()) {
+                    sb.append(nl).append("--- Extra data:");
+                }
+                int bci = data.getBCI(this, pos);
+                sb.append(String.format("%n%-6d bci: %-6d%-20s", pos, bci, data.getClass().getSimpleName()));
+                sb.append(data.appendTo(new StringBuilder(), this, pos).toString().replace(nl, nlIndent));
+                pos = pos + data.getSize(this, pos);
+            }
+
+        }
+        return sb.toString();
     }
 
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
@@ -245,6 +286,18 @@ public final class HotSpotMethodData extends CompilerObject {
         protected int getDynamicSize(@SuppressWarnings("unused") HotSpotMethodData data, @SuppressWarnings("unused") int position) {
             return 0;
         }
+
+        public StringBuilder appendFlagsTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            int flags = getFlags(data, pos);
+            if (flags != 0) {
+                sb.append(format("flags(0x%02x)", flags));
+            }
+            return sb;
+        }
+
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return appendFlagsTo(sb, data, pos);
+        }
     }
 
     private static class NoMethodData extends AbstractMethodData {
@@ -312,6 +365,11 @@ public final class HotSpotMethodData extends CompilerObject {
         protected int getCounterValue(HotSpotMethodData data, int position) {
             return data.readUnsignedIntAsSignedInt(position, COUNTER_DATA_COUNT_OFFSET);
         }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return appendFlagsTo(sb, data, pos).append(format("count(%d)", getCounterValue(data, pos)));
+        }
     }
 
     private static class JumpData extends AbstractMethodData {
@@ -339,9 +397,27 @@ public final class HotSpotMethodData extends CompilerObject {
             return data.readUnsignedIntAsSignedInt(position, TAKEN_COUNT_OFFSET);
         }
 
-        @SuppressWarnings("unused")
         public int getTakenDisplacement(HotSpotMethodData data, int position) {
             return data.readInt(position, TAKEN_DISPLACEMENT_OFFSET);
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return appendFlagsTo(sb, data, pos).append(format("taken(%d) displacement(%d)", getExecutionCount(data, pos), getTakenDisplacement(data, pos)));
+        }
+    }
+
+    static class RawItemProfile<T> {
+        final int entries;
+        final T[] items;
+        final long[] counts;
+        final long totalCount;
+
+        public RawItemProfile(int entries, T[] items, long[] counts, long totalCount) {
+            this.entries = entries;
+            this.items = items;
+            this.counts = counts;
+            this.totalCount = totalCount;
         }
     }
 
@@ -359,6 +435,10 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public JavaTypeProfile getTypeProfile(HotSpotMethodData data, int position) {
+            return createTypeProfile(getNullSeen(data, position), getRawTypeProfile(data, position));
+        }
+
+        private RawItemProfile<ResolvedJavaType> getRawTypeProfile(HotSpotMethodData data, int position) {
             int typeProfileWidth = config.typeProfileWidth;
 
             ResolvedJavaType[] types = new ResolvedJavaType[typeProfileWidth];
@@ -373,35 +453,34 @@ public final class HotSpotMethodData extends CompilerObject {
                     long count = data.readUnsignedInt(position, getTypeCountOffset(i));
                     totalCount += count;
                     counts[entries] = count;
-
                     entries++;
                 }
             }
 
             totalCount += getTypesNotRecordedExecutionCount(data, position);
-            return createTypeProfile(getNullSeen(data, position), types, counts, totalCount, entries);
+            return new RawItemProfile<>(entries, types, counts, totalCount);
         }
 
         protected abstract long getTypesNotRecordedExecutionCount(HotSpotMethodData data, int position);
 
-        private static JavaTypeProfile createTypeProfile(TriState nullSeen, ResolvedJavaType[] types, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount <= 0) {
+        private static JavaTypeProfile createTypeProfile(TriState nullSeen, RawItemProfile<ResolvedJavaType> profile) {
+            if (profile.entries <= 0 || profile.totalCount <= 0) {
                 return null;
             }
 
-            ProfiledType[] ptypes = new ProfiledType[entries];
+            ProfiledType[] ptypes = new ProfiledType[profile.entries];
             double totalProbability = 0.0;
-            for (int i = 0; i < entries; i++) {
-                double p = counts[i];
-                p = p / totalCount;
+            for (int i = 0; i < profile.entries; i++) {
+                double p = profile.counts[i];
+                p = p / profile.totalCount;
                 totalProbability += p;
-                ptypes[i] = new ProfiledType(types[i], p);
+                ptypes[i] = new ProfiledType(profile.items[i], p);
             }
 
             Arrays.sort(ptypes);
 
-            double notRecordedTypeProbability = entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            assert notRecordedTypeProbability == 0 || entries == config.typeProfileWidth;
+            double notRecordedTypeProbability = profile.entries < config.typeProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            assert notRecordedTypeProbability == 0 || profile.entries == config.typeProfileWidth;
             return new JavaTypeProfile(nullSeen, notRecordedTypeProbability, ptypes);
         }
 
@@ -411,6 +490,18 @@ public final class HotSpotMethodData extends CompilerObject {
 
         protected static int getTypeCountOffset(int row) {
             return TYPE_DATA_FIRST_TYPE_COUNT_OFFSET + row * TYPE_DATA_ROW_SIZE;
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            super.appendTo(sb, data, pos);
+            RawItemProfile<ResolvedJavaType> profile = getRawTypeProfile(data, pos);
+            sb.append(format("nonprofiled_count(%d) entries(%d)", getTypesNotRecordedExecutionCount(data, pos), profile.entries));
+            for (int i = 0; i < profile.entries; i++) {
+                long count = profile.counts[i];
+                sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.toJavaName(profile.items[i]), count, (double) count / profile.totalCount));
+            }
+            return sb;
         }
     }
 
@@ -469,6 +560,10 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public JavaMethodProfile getMethodProfile(HotSpotMethodData data, int position) {
+            return createMethodProfile(getRawMethodProfile(data, position));
+        }
+
+        private static RawItemProfile<ResolvedJavaMethod> getRawMethodProfile(HotSpotMethodData data, int position) {
             int profileWidth = config.methodProfileWidth;
 
             ResolvedJavaMethod[] methods = new ResolvedJavaMethod[profileWidth];
@@ -489,27 +584,27 @@ public final class HotSpotMethodData extends CompilerObject {
             }
 
             totalCount += getMethodsNotRecordedExecutionCount(data, position);
-            return createMethodProfile(methods, counts, totalCount, entries);
+            return new RawItemProfile<>(entries, methods, counts, totalCount);
         }
 
-        private static JavaMethodProfile createMethodProfile(ResolvedJavaMethod[] methods, long[] counts, long totalCount, int entries) {
-            if (entries <= 0 || totalCount <= 0) {
+        private static JavaMethodProfile createMethodProfile(RawItemProfile<ResolvedJavaMethod> profile) {
+            if (profile.entries <= 0 || profile.totalCount <= 0) {
                 return null;
             }
 
-            ProfiledMethod[] pmethods = new ProfiledMethod[entries];
+            ProfiledMethod[] pmethods = new ProfiledMethod[profile.entries];
             double totalProbability = 0.0;
-            for (int i = 0; i < entries; i++) {
-                double p = counts[i];
-                p = p / totalCount;
+            for (int i = 0; i < profile.entries; i++) {
+                double p = profile.counts[i];
+                p = p / profile.totalCount;
                 totalProbability += p;
-                pmethods[i] = new ProfiledMethod(methods[i], p);
+                pmethods[i] = new ProfiledMethod(profile.items[i], p);
             }
 
             Arrays.sort(pmethods);
 
-            double notRecordedMethodProbability = entries < config.methodProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
-            assert notRecordedMethodProbability == 0 || entries == config.methodProfileWidth;
+            double notRecordedMethodProbability = profile.entries < config.methodProfileWidth ? 0.0 : Math.min(1.0, Math.max(0.0, 1.0 - totalProbability));
+            assert notRecordedMethodProbability == 0 || profile.entries == config.methodProfileWidth;
             return new JavaMethodProfile(notRecordedMethodProbability, pmethods);
         }
 
@@ -519,6 +614,17 @@ public final class HotSpotMethodData extends CompilerObject {
 
         private static int getMethodCountOffset(int row) {
             return VIRTUAL_CALL_DATA_FIRST_METHOD_COUNT_OFFSET + row * TYPE_DATA_ROW_SIZE;
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            RawItemProfile<ResolvedJavaMethod> profile = getRawMethodProfile(data, pos);
+            super.appendTo(sb, data, pos).append(format("%nmethod_entries(%d)", profile.entries));
+            for (int i = 0; i < profile.entries; i++) {
+                long count = profile.counts[i];
+                sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.format("%H.%n(%p)", profile.items[i]), count, (double) count / profile.totalCount));
+            }
+            return sb;
         }
     }
 
@@ -557,6 +663,15 @@ public final class HotSpotMethodData extends CompilerObject {
             long count = data.readUnsignedInt(position, TAKEN_COUNT_OFFSET) + data.readUnsignedInt(position, NOT_TAKEN_COUNT_OFFSET);
             return truncateLongToInt(count);
         }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            long taken = data.readUnsignedInt(pos, TAKEN_COUNT_OFFSET);
+            long notTaken = data.readUnsignedInt(pos, NOT_TAKEN_COUNT_OFFSET);
+            double takenProbability = getBranchTakenProbability(data, pos);
+            return appendFlagsTo(sb, data, pos).append(
+                            format("taken(%d, %4.2f) not_taken(%d, %4.2f) displacement(%d)", taken, takenProbability, notTaken, 1.0D - takenProbability, getTakenDisplacement(data, pos)));
+        }
     }
 
     private static class ArrayData extends AbstractMethodData {
@@ -575,6 +690,11 @@ public final class HotSpotMethodData extends CompilerObject {
 
         protected static int getLength(HotSpotMethodData data, int position) {
             return data.readInt(position, ARRAY_DATA_LENGTH_OFFSET);
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return sb.append(format("length(%d)", getLength(data, pos)));
         }
     }
 
@@ -650,9 +770,18 @@ public final class HotSpotMethodData extends CompilerObject {
             return MULTI_BRANCH_DATA_FIRST_COUNT_OFFSET + index * MULTI_BRANCH_DATA_ROW_SIZE;
         }
 
-        @SuppressWarnings("unused")
         private static int getDisplacementOffset(int index) {
             return MULTI_BRANCH_DATA_FIRST_DISPLACEMENT_OFFSET + index * MULTI_BRANCH_DATA_ROW_SIZE;
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            int entries = getLength(data, pos) / MULTI_BRANCH_DATA_ROW_SIZE_IN_CELLS;
+            sb.append(format("entries(%d)", entries));
+            for (int i = 0; i < entries; i++) {
+                sb.append(format("%n  %d: count(%d) displacement(%d)", i, data.readUnsignedInt(pos, getCountOffset(i)), data.readUnsignedInt(pos, getDisplacementOffset(i))));
+            }
+            return sb;
         }
     }
 
