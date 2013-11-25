@@ -42,6 +42,19 @@ public interface Replacements {
     StructuredGraph getSnippet(ResolvedJavaMethod method);
 
     /**
+     * Registers a method as snippet.
+     */
+    void registerSnippet(ResolvedJavaMethod method);
+
+    /**
+     * Prepares the copy of a snippet graph immediately after instantiation. This can be used to do
+     * node intrinsification for example.
+     * 
+     * @param snippetCopy The copy of the snippet graph.
+     */
+    void prepareSnippetCopyAfterInstantiation(StructuredGraph snippetCopy);
+
+    /**
      * Gets the graph that is a substitution for a given method.
      * 
      * @return the graph, if any, that is a substitution for {@code method}

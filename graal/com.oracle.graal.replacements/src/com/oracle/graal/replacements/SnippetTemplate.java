@@ -398,7 +398,9 @@ public class SnippetTemplate {
                 }
             }
             assert found != null : "did not find @" + Snippet.class.getSimpleName() + " method in " + declaringClass + (methodName == null ? "" : " named " + methodName);
-            return new SnippetInfo(providers.getMetaAccess().lookupJavaMethod(found));
+            ResolvedJavaMethod javaMethod = providers.getMetaAccess().lookupJavaMethod(found);
+            providers.getReplacements().registerSnippet(javaMethod);
+            return new SnippetInfo(javaMethod);
         }
 
         /**
@@ -512,12 +514,8 @@ public class SnippetTemplate {
 
         Debug.dump(snippetCopy, "Before specialization");
         if (!nodeReplacements.isEmpty()) {
-            // Do deferred intrinsification of node intrinsics
-            new CanonicalizerPhase(true).apply(snippetCopy, phaseContext);
-            new NodeIntrinsificationPhase(providers).apply(snippetCopy);
-            new CanonicalizerPhase(true).apply(snippetCopy, phaseContext);
+            providers.getReplacements().prepareSnippetCopyAfterInstantiation(snippetCopy);
         }
-        NodeIntrinsificationVerificationPhase.verify(snippetCopy);
 
         // Gather the template parameters
         parameters = new Object[parameterCount];

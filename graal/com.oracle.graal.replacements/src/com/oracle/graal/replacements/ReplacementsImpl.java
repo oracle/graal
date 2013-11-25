@@ -60,11 +60,11 @@ public class ReplacementsImpl implements Replacements {
     /**
      * The preprocessed replacement graphs.
      */
-    private final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
+    protected final ConcurrentMap<ResolvedJavaMethod, StructuredGraph> graphs;
 
     // These data structures are all fully initialized during single-threaded
     // compiler startup and so do not need to be concurrent.
-    private final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
+    protected final Map<ResolvedJavaMethod, ResolvedJavaMethod> registeredMethodSubstitutions;
     private final Map<ResolvedJavaMethod, Class<? extends FixedWithNextNode>> registeredMacroSubstitutions;
     private final Set<ResolvedJavaMethod> forcedSubstitutions;
     private final Map<Class<? extends SnippetTemplateCache>, SnippetTemplateCache> snippetTemplateCache;
@@ -83,6 +83,7 @@ public class ReplacementsImpl implements Replacements {
     private static final boolean UseSnippetGraphCache = Boolean.parseBoolean(System.getProperty("graal.useSnippetGraphCache", "true"));
     private static final DebugTimer SnippetPreparationTime = Debug.timer("SnippetPreparationTime");
 
+    @Override
     public StructuredGraph getSnippet(ResolvedJavaMethod method) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         assert !Modifier.isAbstract(method.getModifiers()) && !Modifier.isNative(method.getModifiers()) : "Snippet must not be abstract or native";
@@ -102,6 +103,22 @@ public class ReplacementsImpl implements Replacements {
         return graph;
     }
 
+    @Override
+    public void registerSnippet(ResolvedJavaMethod method) {
+        // No initialization needed as snippet graphs are created on demand in getSnippet
+    }
+
+    @Override
+    public void prepareSnippetCopyAfterInstantiation(StructuredGraph snippetCopy) {
+
+        // Do deferred intrinsification of node intrinsics
+
+        new NodeIntrinsificationPhase(providers).apply(snippetCopy);
+        new CanonicalizerPhase(true).apply(snippetCopy, new PhaseContext(providers, assumptions));
+        NodeIntrinsificationVerificationPhase.verify(snippetCopy);
+    }
+
+    @Override
     public StructuredGraph getMethodSubstitution(ResolvedJavaMethod original) {
         ResolvedJavaMethod substitute = registeredMethodSubstitutions.get(original);
         if (substitute == null) {
