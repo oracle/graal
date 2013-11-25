@@ -376,9 +376,19 @@ public class Debug {
         }
     }
 
-    public static void setConfig(DebugConfig config) {
+    /**
+     * Changes the debug configuration for the current thread.
+     * 
+     * @param config new configuration to use for the current thread
+     * @return an object that when {@linkplain DebugConfigScope#close() closed} will restore the
+     *         debug configuration for the current thread to what it was before this method was
+     *         called
+     */
+    public static DebugConfigScope setConfig(DebugConfig config) {
         if (ENABLED) {
-            DebugScope.getInstance().setConfig(config);
+            return new DebugConfigScope(config);
+        } else {
+            return null;
         }
     }
 
