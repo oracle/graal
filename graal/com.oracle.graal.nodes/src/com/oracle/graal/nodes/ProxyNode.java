@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes;
 
-import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.ValueNumberable;
 import com.oracle.graal.graph.spi.*;
@@ -37,17 +36,15 @@ import com.oracle.graal.nodes.spi.*;
  * loop.
  */
 @NodeInfo(nameTemplate = "{p#type/s}Proxy")
-public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, LIRLowerable, ValueProxy, GuardingNode {
+public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNumberable, Canonicalizable, Virtualizable, ValueProxy, GuardingNode {
 
     @Input(notDataflow = true) private AbstractBeginNode proxyPoint;
     @Input private ValueNode value;
     private final PhiType type;
-    private final LocationIdentity identity;
 
-    public ProxyNode(ValueNode value, AbstractBeginNode exit, PhiType type, LocationIdentity identity) {
+    public ProxyNode(ValueNode value, AbstractBeginNode exit, PhiType type) {
         super(type == PhiType.Value ? value.stamp() : type.stamp);
         this.type = type;
-        this.identity = identity;
         assert exit != null;
         this.proxyPoint = exit;
         this.value = value;
@@ -70,22 +67,12 @@ public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNu
         return type;
     }
 
-    public LocationIdentity getIdentity() {
-        assert type != PhiType.Value;
-        return identity;
-    }
-
     @Override
     public boolean verify() {
         assert value != null;
         assert proxyPoint != null;
         assert !(value instanceof ProxyNode) || ((ProxyNode) value).proxyPoint != proxyPoint;
         return super.verify();
-    }
-
-    @Override
-    public void generate(LIRGeneratorTool generator) {
-        assert type == PhiType.Memory;
     }
 
     @Override
@@ -107,15 +94,11 @@ public class ProxyNode extends FloatingNode implements IterableNodeType, ValueNu
     }
 
     public static ProxyNode forGuard(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
-        return graph.unique(new ProxyNode(value, exit, PhiType.Guard, null));
+        return graph.unique(new ProxyNode(value, exit, PhiType.Guard));
     }
 
     public static ProxyNode forValue(ValueNode value, AbstractBeginNode exit, StructuredGraph graph) {
-        return graph.unique(new ProxyNode(value, exit, PhiType.Value, null));
-    }
-
-    public static ProxyNode forMemory(ValueNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
-        return graph.unique(new ProxyNode(value, exit, PhiType.Memory, location));
+        return graph.unique(new ProxyNode(value, exit, PhiType.Value));
     }
 
     @Override

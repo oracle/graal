@@ -28,7 +28,6 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
@@ -262,7 +261,7 @@ public class FloatingReadPhase extends Phase {
                         } else if (merged == null) {
                             merged = last;
                         } else {
-                            PhiNode phi = merge.graph().addWithoutUnique(new PhiNode(PhiType.Memory, merge, key));
+                            MemoryPhiNode phi = merge.graph().addWithoutUnique(new MemoryPhiNode(merge, key));
                             for (int j = 0; j < mergedStatesCount; j++) {
                                 phi.addInput(merged);
                             }
@@ -306,7 +305,7 @@ public class FloatingReadPhase extends Phase {
 
             Map<LocationIdentity, PhiNode> phis = new HashMap<>();
             for (LocationIdentity location : modifiedLocations) {
-                PhiNode phi = loop.graph().addWithoutUnique(new PhiNode(PhiType.Memory, loop, location));
+                MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
                 phi.addInput(initialState.getLastLocationAccess(location));
                 phis.put(location, phi);
                 initialState.lastMemorySnapshot.put(location, phi);
@@ -328,7 +327,7 @@ public class FloatingReadPhase extends Phase {
                 for (LocationIdentity location : modifiedLocations) {
                     ValueNode lastAccessAtExit = state.lastMemorySnapshot.get(location);
                     if (lastAccessAtExit != null) {
-                        state.lastMemorySnapshot.put(location, ProxyNode.forMemory(lastAccessAtExit, exit, location, loop.graph()));
+                        state.lastMemorySnapshot.put(location, MemoryProxyNode.forMemory(lastAccessAtExit, exit, location, loop.graph()));
                     }
                 }
             }

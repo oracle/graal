@@ -33,7 +33,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -286,14 +285,12 @@ public final class SchedulePhase extends Phase {
         KillSet excludedLocations = new KillSet();
         if (block.getBeginNode() instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) block.getBeginNode();
-            for (PhiNode phi : mergeNode.usages().filter(PhiNode.class)) {
-                if (phi.type() == PhiType.Memory) {
-                    if (foundExcludeNode) {
-                        set.add(phi.getIdentity());
-                    } else {
-                        excludedLocations.add(phi.getIdentity());
-                        foundExcludeNode = phi == excludeNode;
-                    }
+            for (MemoryPhiNode phi : mergeNode.usages().filter(MemoryPhiNode.class)) {
+                if (foundExcludeNode) {
+                    set.add(phi.getLocationIdentity());
+                } else {
+                    excludedLocations.add(phi.getLocationIdentity());
+                    foundExcludeNode = phi == excludeNode;
                 }
             }
         }
