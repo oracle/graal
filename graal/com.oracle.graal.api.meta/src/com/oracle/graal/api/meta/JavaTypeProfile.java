@@ -144,9 +144,9 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
         private static final long serialVersionUID = 1481773321889860837L;
 
-        public ProfiledType(ResolvedJavaType item, double probability) {
-            super(item, probability);
-            assert !isAbstract(item.getModifiers()) || item.isArray() : item;
+        public ProfiledType(ResolvedJavaType type, double probability) {
+            super(type, probability);
+            assert type.isArray() || !isAbstract(type.getModifiers()) : type;
         }
 
         /**
