@@ -116,7 +116,7 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
             probabilitySum += newNotRecorded;
 
             double factor = 1.0 / probabilitySum; // Normalize to 1.0
-            assert factor > 1.0;
+            assert factor >= 1.0;
             ProfiledType[] newResult = new ProfiledType[result.size()];
             for (int i = 0; i < newResult.length; ++i) {
                 ProfiledType curType = result.get(i);
