@@ -72,7 +72,7 @@ public class OptimizeGuardAnchors extends Phase {
             }
         }
         for (ControlSplitNode controlSplit : graph.getNodes(ControlSplitNode.class)) {
-            otpimizeAtControlSplit(controlSplit, cfg);
+            optimizeAtControlSplit(controlSplit, cfg);
         }
     }
 
@@ -84,7 +84,7 @@ public class OptimizeGuardAnchors extends Phase {
         return anchor.getBeginNode();
     }
 
-    private static void otpimizeAtControlSplit(ControlSplitNode controlSplit, LazyCFG cfg) {
+    private static void optimizeAtControlSplit(ControlSplitNode controlSplit, LazyCFG cfg) {
         AbstractBeginNode successor = findMinimumUsagesSuccessor(controlSplit);
         int successorCount = controlSplit.successors().count();
         List<GuardNode> otherGuards = new ArrayList<>(successorCount - 1);
