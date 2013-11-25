@@ -37,7 +37,7 @@ import com.oracle.graal.word.*;
  * is locked (ensuring the GC sees and updates the object) so it must come after any null pointer
  * check on the object.
  */
-public final class BeginLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorEnter, MemoryCheckpoint.Single {
+public final class BeginLockScopeNode extends AbstractMemoryCheckpoint implements LIRGenLowerable, MonitorEnter, MemoryCheckpoint.Single {
 
     private int lockDepth;
 

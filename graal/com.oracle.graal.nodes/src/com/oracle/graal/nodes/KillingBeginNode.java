@@ -46,4 +46,12 @@ public class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpo
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return this;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
+    }
 }

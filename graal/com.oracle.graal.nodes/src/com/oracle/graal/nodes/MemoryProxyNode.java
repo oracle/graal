@@ -24,6 +24,7 @@ package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.PhiNode.PhiType;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
 
 public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowerable {
@@ -32,6 +33,7 @@ public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowera
 
     public MemoryProxyNode(ValueNode value, AbstractBeginNode exit, LocationIdentity identity) {
         super(value, exit, PhiType.Memory);
+        assert value instanceof MemoryNode;
         this.identity = identity;
     }
 
@@ -43,7 +45,25 @@ public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowera
     public void generate(LIRGeneratorTool generator) {
     }
 
-    public static MemoryProxyNode forMemory(ValueNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
-        return graph.unique(new MemoryProxyNode(value, exit, location));
+    @Override
+    public boolean verify() {
+        assert value() instanceof MemoryNode;
+        return super.verify();
+    }
+
+    public static MemoryProxyNode forMemory(MemoryNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
+        return graph.unique(new MemoryProxyNode(ValueNodeUtil.asNode(value), exit, location));
+    }
+
+    public MemoryNode getOriginalMemoryNode() {
+        return (MemoryNode) value();
+    }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return getOriginalMemoryNode().asMemoryCheckpoint();
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return getOriginalMemoryNode().asMemoryPhi();
     }
 }

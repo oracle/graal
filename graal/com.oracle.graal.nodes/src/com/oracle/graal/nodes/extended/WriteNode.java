@@ -102,13 +102,14 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
         return location().getLocationIdentity();
     }
 
-    public Node getLastLocationAccess() {
-        return lastLocationAccess;
+    public MemoryNode getLastLocationAccess() {
+        return (MemoryNode) lastLocationAccess;
     }
 
-    public void setLastLocationAccess(Node lla) {
-        updateUsages(lastLocationAccess, lla);
-        lastLocationAccess = lla;
+    public void setLastLocationAccess(MemoryNode lla) {
+        Node newLla = ValueNodeUtil.asNode(lla);
+        updateUsages(lastLocationAccess, newLla);
+        lastLocationAccess = newLla;
     }
 
     @Override
@@ -125,5 +126,13 @@ public final class WriteNode extends AccessNode implements StateSplit, LIRLowera
                 }
             }
         }
+    }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return this;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
     }
 }

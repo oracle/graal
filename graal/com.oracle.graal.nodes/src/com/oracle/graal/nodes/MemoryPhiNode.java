@@ -23,11 +23,12 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.extended.*;
 
 /**
  * The {@code PhiNode} represents the merging of dataflow in the memory graph.
  */
-public class MemoryPhiNode extends PhiNode {
+public class MemoryPhiNode extends PhiNode implements MemoryNode {
 
     private final LocationIdentity identity;
 
@@ -38,5 +39,13 @@ public class MemoryPhiNode extends PhiNode {
 
     public LocationIdentity getLocationIdentity() {
         return identity;
+    }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return null;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return this;
     }
 }
