@@ -693,9 +693,9 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                 };
 
                 DebugConfig debugConfig = DebugScope.getConfig();
-                try {
+                DebugConfig fixedConfig = Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
+                try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
                     ReentrantNodeIterator.apply(closure, graph.start(), false, null);
-                    Debug.setConfig(Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output()));
                     new WriteBarrierVerificationPhase().apply(graph);
                 } catch (AssertionError error) {
                     /*
@@ -704,8 +704,6 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
                      */
                     Assert.assertTrue(error.getMessage().contains("Write barrier must be present"));
                     return error;
-                } finally {
-                    Debug.setConfig(debugConfig);
                 }
                 return null;
             }
