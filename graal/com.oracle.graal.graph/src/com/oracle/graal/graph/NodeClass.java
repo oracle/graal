@@ -938,6 +938,8 @@ public final class NodeClass extends FieldIntrospection {
                 Node newInput = duplicationReplacement.replacement(input, true);
                 node.updateUsages(null, newInput);
                 assert Node.verifyUniqueIfExternal(newInput, node.graph());
+                assert newInput == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(newInput.getClass()) : "Can not assign " + newInput.getClass() + " to " +
+                                fieldTypes.get(inputOffsets[index]) + " in " + node;
                 putNode(node, inputOffsets[index], newInput);
             }
             index++;
@@ -953,6 +955,8 @@ public final class NodeClass extends FieldIntrospection {
             if (successor != null) {
                 Node newSucc = duplicationReplacement.replacement(successor, false);
                 node.updatePredecessor(null, newSucc);
+                assert newSucc == null || fieldTypes.get(successorOffsets[index]).isAssignableFrom(newSucc.getClass()) : fieldTypes.get(successorOffsets[index]) + " is not compatible with " +
+                                newSucc.getClass();
                 putNode(node, successorOffsets[index], newSucc);
             }
             index++;

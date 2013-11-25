@@ -166,6 +166,24 @@ public class LoopFragmentInside extends LoopFragment {
         // TODO (gd) ?
     }
 
+    private static PhiNode patchPhi(StructuredGraph graph, PhiNode phi, MergeNode merge) {
+        PhiNode ret;
+        switch (phi.type()) {
+            case Value:
+                ret = new PhiNode(phi.kind(), merge);
+                break;
+            case Guard:
+                ret = new PhiNode(PhiType.Guard, merge);
+                break;
+            case Memory:
+                ret = new MemoryPhiNode(merge, ((MemoryPhiNode) phi).getLocationIdentity());
+                break;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
+        }
+        return graph.addWithoutUnique(ret);
+    }
+
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
         StructuredGraph graph = loopBegin.graph();
@@ -180,7 +198,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
-            PhiNode newPhi = graph.addWithoutUnique(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), loopBegin) : new PhiNode(phi.type(), loopBegin, phi.getIdentity()));
+            PhiNode newPhi = patchPhi(graph, phi, loopBegin);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -270,7 +288,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
 
             for (final PhiNode phi : loopBegin.phis().snapshot()) {
-                final PhiNode firstPhi = graph.addWithoutUnique(phi.type() == PhiType.Value ? new PhiNode(phi.kind(), newExitMerge) : new PhiNode(phi.type(), newExitMerge, phi.getIdentity()));
+                final PhiNode firstPhi = patchPhi(graph, phi, newExitMerge);
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));

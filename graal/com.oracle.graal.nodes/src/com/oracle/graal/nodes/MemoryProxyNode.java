@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,35 +23,47 @@
 package com.oracle.graal.nodes;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 
-public class KillingBeginNode extends AbstractBeginNode implements MemoryCheckpoint.Single {
+public class MemoryProxyNode extends ProxyNode implements MemoryProxy, LIRLowerable {
 
-    private LocationIdentity locationIdentity;
+    private final LocationIdentity identity;
 
-    public KillingBeginNode(LocationIdentity locationIdentity) {
-        this.locationIdentity = locationIdentity;
+    public MemoryProxyNode(ValueNode value, AbstractBeginNode exit, LocationIdentity identity) {
+        super(value, exit, PhiType.Memory);
+        assert value instanceof MemoryNode;
+        this.identity = identity;
     }
 
-    public static KillingBeginNode begin(FixedNode with, LocationIdentity locationIdentity) {
-        if (with instanceof KillingBeginNode) {
-            return (KillingBeginNode) with;
-        }
-        KillingBeginNode begin = with.graph().add(new KillingBeginNode(locationIdentity));
-        begin.setNext(with);
-        return begin;
+    public LocationIdentity getLocationIdentity() {
+        return identity;
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
+    public void generate(LIRGeneratorTool generator) {
+    }
+
+    @Override
+    public boolean verify() {
+        assert value() instanceof MemoryNode;
+        return super.verify();
+    }
+
+    public static MemoryProxyNode forMemory(MemoryNode value, AbstractBeginNode exit, LocationIdentity location, StructuredGraph graph) {
+        return graph.unique(new MemoryProxyNode(ValueNodeUtil.asNode(value), exit, location));
+    }
+
+    public MemoryNode getOriginalMemoryNode() {
+        return (MemoryNode) value();
     }
 
     public MemoryCheckpoint asMemoryCheckpoint() {
-        return this;
+        return getOriginalMemoryNode().asMemoryCheckpoint();
     }
 
     public MemoryPhiNode asMemoryPhi() {
-        return null;
+        return getOriginalMemoryNode().asMemoryPhi();
     }
 }

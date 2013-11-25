@@ -46,24 +46,24 @@ public class ReadEliminationPhase extends Phase {
         return isWrites(n, n.getLastLocationAccess(), n.graph().createNodeBitMap());
     }
 
-    private static boolean isWrites(FloatingReadNode n, Node lastLocationAccess, NodeBitMap visited) {
+    private static boolean isWrites(FloatingReadNode n, MemoryNode lastLocationAccess, NodeBitMap visited) {
         if (lastLocationAccess == null) {
             return false;
         }
-        if (visited.isMarked(lastLocationAccess)) {
+        if (visited.isMarked(ValueNodeUtil.asNode(lastLocationAccess))) {
             return true; // dataflow loops must come from Phis assume them ok until proven wrong
         }
         if (lastLocationAccess instanceof ProxyNode) {
-            return isWrites(n, ((ProxyNode) lastLocationAccess).value(), visited);
+            return isWrites(n, (MemoryNode) ((ProxyNode) lastLocationAccess).value(), visited);
         }
         if (lastLocationAccess instanceof WriteNode) {
             WriteNode other = (WriteNode) lastLocationAccess;
             return other.object() == n.object() && other.location() == n.location();
         }
         if (lastLocationAccess instanceof PhiNode) {
-            visited.mark(lastLocationAccess);
+            visited.mark(ValueNodeUtil.asNode(lastLocationAccess));
             for (ValueNode value : ((PhiNode) lastLocationAccess).values()) {
-                if (!isWrites(n, value, visited)) {
+                if (!isWrites(n, (MemoryNode) value, visited)) {
                     return false;
                 }
             }
@@ -72,15 +72,15 @@ public class ReadEliminationPhase extends Phase {
         return false;
     }
 
-    private static ValueNode getValue(FloatingReadNode n, Node lastLocationAccess, NodeMap<ValueNode> nodeMap) {
-        ValueNode exisiting = nodeMap.get(lastLocationAccess);
+    private static ValueNode getValue(FloatingReadNode n, MemoryNode lastLocationAccess, NodeMap<ValueNode> nodeMap) {
+        ValueNode exisiting = nodeMap.get(ValueNodeUtil.asNode(lastLocationAccess));
         if (exisiting != null) {
             return exisiting;
         }
-        if (lastLocationAccess instanceof ProxyNode) {
-            ProxyNode proxy = (ProxyNode) lastLocationAccess;
-            ValueNode value = getValue(n, proxy.value(), nodeMap);
-            return ProxyNode.forValue(value, proxy.proxyPoint(), (StructuredGraph) lastLocationAccess.graph());
+        if (lastLocationAccess instanceof MemoryProxyNode) {
+            MemoryProxyNode proxy = (MemoryProxyNode) lastLocationAccess;
+            ValueNode value = getValue(n, proxy.getOriginalMemoryNode(), nodeMap);
+            return ProxyNode.forValue(value, proxy.proxyPoint(), proxy.graph());
         }
         if (lastLocationAccess instanceof WriteNode) {
             return ((WriteNode) lastLocationAccess).value();
@@ -88,9 +88,9 @@ public class ReadEliminationPhase extends Phase {
         if (lastLocationAccess instanceof PhiNode) {
             PhiNode phi = (PhiNode) lastLocationAccess;
             PhiNode newPhi = phi.graph().addWithoutUnique(new PhiNode(n.kind(), phi.merge()));
-            nodeMap.set(lastLocationAccess, newPhi);
+            nodeMap.set(phi, newPhi);
             for (ValueNode value : phi.values()) {
-                newPhi.addInput(getValue(n, value, nodeMap));
+                newPhi.addInput(getValue(n, (MemoryNode) value, nodeMap));
             }
             return newPhi;
         }

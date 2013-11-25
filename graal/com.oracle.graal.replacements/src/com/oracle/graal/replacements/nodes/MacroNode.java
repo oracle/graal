@@ -37,7 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single {
+public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input protected final NodeInputList<ValueNode> arguments;
 

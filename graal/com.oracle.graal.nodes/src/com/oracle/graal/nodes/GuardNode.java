@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
+import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -41,7 +42,7 @@ import com.oracle.graal.nodes.type.*;
  * control flow would have reached the guarded node (without taking exceptions into account).
  */
 @NodeInfo(nameTemplate = "Guard(!={p#negated}) {p#reason/s}")
-public final class GuardNode extends FloatingGuardedNode implements Canonicalizable, IterableNodeType, GuardingNode, GuardedNode {
+public class GuardNode extends FloatingGuardedNode implements Canonicalizable, IterableNodeType, GuardingNode, GuardedNode {
 
     @Input private LogicNode condition;
     private final DeoptimizationReason reason;
@@ -102,6 +103,20 @@ public final class GuardNode extends FloatingGuardedNode implements Canonicaliza
             }
         }
         return this;
+    }
+
+    public FixedWithNextNode lowerGuard() {
+        if (negated() && condition() instanceof IsNullNode) {
+            IsNullNode isNull = (IsNullNode) condition();
+            NullCheckNode nullCheck = graph().add(new NullCheckNode(isNull.object()));
+            setCondition(null);
+            if (isNull.usages().isEmpty()) {
+                isNull.safeDelete();
+            }
+            return nullCheck;
+        }
+
+        return null;
     }
 
     public void negate() {

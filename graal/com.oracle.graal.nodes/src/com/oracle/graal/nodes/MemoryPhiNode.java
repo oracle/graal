@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2011, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,25 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.api.meta;
+package com.oracle.graal.nodes;
+
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.nodes.extended.*;
 
 /**
- * Enumeration of reasons for why a deoptimization is happening.
+ * The {@code PhiNode} represents the merging of dataflow in the memory graph.
  */
-public enum DeoptimizationReason {
-    None,
-    NullCheckException,
-    BoundsCheckException,
-    ClassCastException,
-    ArrayStoreException,
-    UnreachedCode,
-    TypeCheckedInliningViolated,
-    OptimizedTypeCheckViolated,
-    NotCompiledExceptionHandler,
-    Unresolved,
-    JavaSubroutineMismatch,
-    ArithmeticException,
-    RuntimeConstraint,
-    LoopLimitCheck,
-    Aliasing,
+public class MemoryPhiNode extends PhiNode implements MemoryNode {
+
+    private final LocationIdentity identity;
+
+    public MemoryPhiNode(MergeNode merge, LocationIdentity identity) {
+        super(PhiType.Memory, merge);
+        this.identity = identity;
+    }
+
+    public LocationIdentity getLocationIdentity() {
+        return identity;
+    }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return null;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return this;
+    }
 }

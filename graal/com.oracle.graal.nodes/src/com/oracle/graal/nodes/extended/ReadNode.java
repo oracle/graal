@@ -64,7 +64,7 @@ public final class ReadNode extends FloatableAccessNode implements LIRLowerable,
     }
 
     @Override
-    public FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess) {
+    public FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess) {
         return graph().unique(new FloatingReadNode(object(), location(), lastLocationAccess, stamp(), getGuard(), getBarrierType(), isCompressible()));
     }
 
