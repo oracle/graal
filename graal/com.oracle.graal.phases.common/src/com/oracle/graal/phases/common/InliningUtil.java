@@ -1447,7 +1447,7 @@ public class InliningUtil {
                 if (!returnValue.isExternal()) {
                     returnValue = duplicates.get(returnValue);
                 } else if (returnValue instanceof ValueNumberable) {
-                    returnValue = graph.uniqueWithoutAdd(returnValue);
+                    returnValue = graph.uniqueExternal(returnValue);
                 }
             }
             invoke.asNode().replaceAtUsages(returnValue);
