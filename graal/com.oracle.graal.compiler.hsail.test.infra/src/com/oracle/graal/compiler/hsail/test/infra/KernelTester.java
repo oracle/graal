@@ -88,7 +88,7 @@ public abstract class KernelTester {
 
     static {
         logger = Logger.getLogger(propPkgName);
-        logLevel = Level.parse(System.getProperty("kerneltester.logLevel", "SEVERE"));
+        logLevel = Level.parse(System.getProperty("kerneltester.logLevel", "OFF"));
 
         // This block configure the logger with handler and formatter.
         consoleHandler = new ConsoleHandler();
