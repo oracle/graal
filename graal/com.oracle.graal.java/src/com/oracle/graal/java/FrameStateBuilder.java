@@ -438,7 +438,7 @@ public class FrameStateBuilder {
         }
     }
 
-    private void storeStack(int i, ValueNode x) {
+    public void storeStack(int i, ValueNode x) {
         assert x == null || x.isAlive() && (stack[i] == null || x.kind() == stack[i].kind()) : "Method does not handle changes from one-slot to two-slot values or non-alive values";
         stack[i] = x;
     }
