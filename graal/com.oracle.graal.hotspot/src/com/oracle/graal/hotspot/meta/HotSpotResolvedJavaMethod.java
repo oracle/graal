@@ -34,6 +34,7 @@ import java.util.concurrent.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.debug.*;
@@ -282,6 +283,8 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return getCompiledCodeSize() > 0;
     }
 
+    private static final String TraceMethodDataFilter = System.getProperty("graal.traceMethodDataFilter");
+
     @Override
     public ProfilingInfo getProfilingInfo() {
         ProfilingInfo info;
@@ -290,6 +293,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             long metaspaceMethodData = unsafeReadWord(metaspaceMethod + runtime().getConfig().methodDataOffset);
             if (metaspaceMethodData != 0) {
                 methodData = new HotSpotMethodData(metaspaceMethodData);
+                if (TraceMethodDataFilter != null && MetaUtil.format("%H.%n", this).contains(TraceMethodDataFilter)) {
+                    TTY.println("Raw method data for " + MetaUtil.format("%H.%n(%p)", this) + ":");
+                    TTY.println(methodData.toString());
+                }
             }
         }
 

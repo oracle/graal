@@ -214,7 +214,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private abstract static class AbstractMethodData implements HotSpotMethodDataAccessor {
 
         /**
-         * Corresponds to DS_RECOMPILE_BIT defined in deoptimization.cpp.
+         * Corresponds to {@code exception_seen_flag}.
          */
         private static final int EXCEPTIONS_MASK = 0x2;
 
@@ -287,17 +287,7 @@ public final class HotSpotMethodData extends CompilerObject {
             return 0;
         }
 
-        public StringBuilder appendFlagsTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            int flags = getFlags(data, pos);
-            if (flags != 0) {
-                sb.append(format("flags(0x%02x)", flags));
-            }
-            return sb;
-        }
-
-        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            return appendFlagsTo(sb, data, pos);
-        }
+        public abstract StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos);
     }
 
     private static class NoMethodData extends AbstractMethodData {
@@ -321,6 +311,11 @@ public final class HotSpotMethodData extends CompilerObject {
         public TriState getExceptionSeen(HotSpotMethodData data, int position) {
             return exceptionSeen;
         }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return sb;
+        }
     }
 
     private static class BitData extends AbstractMethodData {
@@ -340,6 +335,11 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public TriState getNullSeen(HotSpotMethodData data, int position) {
             return TriState.get((getFlags(data, position) & BIT_DATA_NULL_SEEN_FLAG) != 0);
+        }
+
+        @Override
+        public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
+            return sb.append(format("exception_seen(%s)", getExceptionSeen(data, pos)));
         }
     }
 
@@ -368,7 +368,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            return appendFlagsTo(sb, data, pos).append(format("count(%d)", getCounterValue(data, pos)));
+            return sb.append(format("count(%d)", getCounterValue(data, pos)));
         }
     }
 
@@ -403,7 +403,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            return appendFlagsTo(sb, data, pos).append(format("taken(%d) displacement(%d)", getExecutionCount(data, pos), getTakenDisplacement(data, pos)));
+            return sb.append(format("taken(%d) displacement(%d)", getExecutionCount(data, pos), getTakenDisplacement(data, pos)));
         }
     }
 
@@ -494,9 +494,9 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            super.appendTo(sb, data, pos);
             RawItemProfile<ResolvedJavaType> profile = getRawTypeProfile(data, pos);
-            sb.append(format("nonprofiled_count(%d) entries(%d)", getTypesNotRecordedExecutionCount(data, pos), profile.entries));
+            TriState nullSeen = getNullSeen(data, pos);
+            sb.append(format("count(%d) null_seen(%s) nonprofiled_count(%d) entries(%d)", getCounterValue(data, pos), nullSeen, getTypesNotRecordedExecutionCount(data, pos), profile.entries));
             for (int i = 0; i < profile.entries; i++) {
                 long count = profile.counts[i];
                 sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.toJavaName(profile.items[i]), count, (double) count / profile.totalCount));
@@ -619,7 +619,7 @@ public final class HotSpotMethodData extends CompilerObject {
         @Override
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
             RawItemProfile<ResolvedJavaMethod> profile = getRawMethodProfile(data, pos);
-            super.appendTo(sb, data, pos).append(format("%nmethod_entries(%d)", profile.entries));
+            super.appendTo(sb.append(format("exception_seen(%s) ", getExceptionSeen(data, pos))), data, pos).append(format("%nmethod_entries(%d)", profile.entries));
             for (int i = 0; i < profile.entries; i++) {
                 long count = profile.counts[i];
                 sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.format("%H.%n(%p)", profile.items[i]), count, (double) count / profile.totalCount));
@@ -669,8 +669,7 @@ public final class HotSpotMethodData extends CompilerObject {
             long taken = data.readUnsignedInt(pos, TAKEN_COUNT_OFFSET);
             long notTaken = data.readUnsignedInt(pos, NOT_TAKEN_COUNT_OFFSET);
             double takenProbability = getBranchTakenProbability(data, pos);
-            return appendFlagsTo(sb, data, pos).append(
-                            format("taken(%d, %4.2f) not_taken(%d, %4.2f) displacement(%d)", taken, takenProbability, notTaken, 1.0D - takenProbability, getTakenDisplacement(data, pos)));
+            return sb.append(format("taken(%d, %4.2f) not_taken(%d, %4.2f) displacement(%d)", taken, takenProbability, notTaken, 1.0D - takenProbability, getTakenDisplacement(data, pos)));
         }
     }
 
