@@ -75,7 +75,7 @@ public final class DebugScope {
         }
 
         @Override
-        public Indent logIndent(String msg, Object... args) {
+        public Indent logAndIndent(String msg, Object... args) {
             log(msg, args);
             return indent();
         }
@@ -86,6 +86,11 @@ public final class DebugScope {
                 lastUsedIndent = parentIndent;
             }
             return lastUsedIndent;
+        }
+
+        @Override
+        public void close() {
+            outdent();
         }
     }
 
@@ -231,7 +236,6 @@ public final class DebugScope {
     public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, DebugConfig sandboxConfig, Object[] newContext) {
         DebugScope oldContext = getInstance();
         DebugConfig oldConfig = getConfig();
-        boolean oldLogEnabled = oldContext.isLogEnabled();
         DebugScope newChild = null;
         if (sandbox) {
             newChild = new DebugScope(newName, newName, null, newContext);
@@ -240,6 +244,7 @@ public final class DebugScope {
             newChild = oldContext.createChild(newName, newContext);
         }
         instanceTL.set(newChild);
+        newChild.setLogEnabled(oldContext.isLogEnabled());
         newChild.updateFlags();
         try {
             return executeScope(runnable, callable);
@@ -247,7 +252,6 @@ public final class DebugScope {
             newChild.context = null;
             instanceTL.set(oldContext);
             setConfig(oldConfig);
-            setLogEnabled(oldLogEnabled);
         }
     }
 
@@ -283,7 +287,6 @@ public final class DebugScope {
             meterEnabled = false;
             timeEnabled = false;
             dumpEnabled = false;
-            setLogEnabled(false);
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
@@ -293,7 +296,9 @@ public final class DebugScope {
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
             output = config.output();
-            setLogEnabled(config.isLogEnabled());
+            if (config.isLogEnabled()) {
+                setLogEnabled(true);
+            }
         }
     }
 

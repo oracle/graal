@@ -231,7 +231,7 @@ public class Debug {
         }
 
         @Override
-        public Indent logIndent(String msg, Object... args) {
+        public Indent logAndIndent(String msg, Object... args) {
             return this;
         }
 
@@ -240,6 +240,9 @@ public class Debug {
             return this;
         }
 
+        @Override
+        public void close() {
+        }
     }
 
     private static final NoLogger noLoggerInstance = new NoLogger();
@@ -281,9 +284,9 @@ public class Debug {
      * @param msg The format string of the log message
      * @param args The arguments referenced by the log message string
      * @return The new indentation level
-     * @see Indent#logIndent
+     * @see Indent#logAndIndent
      */
-    public static Indent logIndent(String msg, Object... args) {
+    public static Indent logAndIndent(String msg, Object... args) {
         if (ENABLED) {
             DebugScope scope = DebugScope.getInstance();
             scope.log(msg, args);
@@ -300,7 +303,7 @@ public class Debug {
      * @param args The arguments referenced by the log message string
      * @return The new indentation level
      */
-    public static Indent logIndent(boolean enabled, String msg, Object... args) {
+    public static Indent logAndIndent(boolean enabled, String msg, Object... args) {
         if (ENABLED) {
             DebugScope scope = DebugScope.getInstance();
             boolean saveLogEnabled = scope.isLogEnabled();
