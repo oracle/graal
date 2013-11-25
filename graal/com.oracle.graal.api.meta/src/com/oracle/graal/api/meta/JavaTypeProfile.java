@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.meta;
 
+import static java.lang.reflect.Modifier.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
@@ -144,6 +146,7 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
         public ProfiledType(ResolvedJavaType item, double probability) {
             super(item, probability);
+            assert !isAbstract(item.getModifiers()) || item.isArray() : item;
         }
 
         /**

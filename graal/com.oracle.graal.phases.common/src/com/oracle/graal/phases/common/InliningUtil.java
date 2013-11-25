@@ -1139,10 +1139,7 @@ public class InliningUtil {
             }
 
             ResolvedJavaType type = ptypes[0].getType();
-            if (isAbstract(type.getModifiers())) {
-                // In TieredCompilation mode, C1 can generate profiles containing abstract types
-                return null;
-            }
+            assert !isAbstract(type.getModifiers());
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -1213,10 +1210,8 @@ public class InliningUtil {
                 int index = concreteMethods.indexOf(concrete);
                 if (index == -1) {
                     notRecordedTypeProbability += type.getProbability();
-                } else if (isAbstract(type.getType().getModifiers())) {
-                    // In TieredCompilation mode, C1 can generate profiles containing abstract types
-                    notRecordedTypeProbability += type.getProbability();
                 } else {
+                    assert !isAbstract(type.getType().getModifiers());
                     usedTypes.add(type);
                     typesToConcretes.add(index);
                 }
