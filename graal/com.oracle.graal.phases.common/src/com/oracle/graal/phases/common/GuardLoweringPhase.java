@@ -142,8 +142,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         protected void processNode(Node node) {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
-                if (guard.negated() && guard.condition() instanceof IsNullNode) {
-                    lowerToNullCheck(guard);
+                FixedWithNextNode lowered = guard.lowerGuard();
+                if (lowered != null) {
+                    replaceCurrent(lowered);
                 } else {
                     lowerToIf(guard);
                 }
@@ -169,15 +170,6 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
             IfNode ifNode = graph.add(new IfNode(guard.condition(), trueSuccessor, falseSuccessor, trueSuccessor == fastPath ? 1 : 0));
             guard.replaceAndDelete(fastPath);
             insert(ifNode, fastPath);
-        }
-
-        private void lowerToNullCheck(GuardNode guard) {
-            IsNullNode isNull = (IsNullNode) guard.condition();
-            NullCheckNode nullCheck = guard.graph().add(new NullCheckNode(isNull.object()));
-            replaceCurrent(nullCheck);
-            if (isNull.usages().isEmpty()) {
-                isNull.safeDelete();
-            }
         }
 
         private void insertLoopExits(DeoptimizeNode deopt) {
