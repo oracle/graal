@@ -246,12 +246,12 @@ public class NewObjectSnippets implements Snippets {
                 new_seqInit.inc();
                 explodeLoop();
                 for (int offset = instanceHeaderSize(); offset < size; offset += wordSize()) {
-                    memory.writeWord(offset, Word.zero(), INIT_LOCATION);
+                    memory.initializeWord(offset, Word.zero(), INIT_LOCATION);
                 }
             } else {
                 new_loopInit.inc();
                 for (int offset = instanceHeaderSize(); offset < size; offset += wordSize()) {
-                    memory.writeWord(offset, Word.zero(), INIT_LOCATION);
+                    memory.initializeWord(offset, Word.zero(), INIT_LOCATION);
                 }
             }
         }
@@ -270,7 +270,7 @@ public class NewObjectSnippets implements Snippets {
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
             for (int offset = headerSize; offset < allocationSize; offset += wordSize()) {
-                memory.writeWord(offset, Word.zero(), INIT_LOCATION);
+                memory.initializeWord(offset, Word.zero(), INIT_LOCATION);
             }
         }
         return memory.toObject();
