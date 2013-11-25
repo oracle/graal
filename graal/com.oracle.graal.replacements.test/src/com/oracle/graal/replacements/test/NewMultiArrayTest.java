@@ -59,7 +59,7 @@ public class NewMultiArrayTest extends GraalCompilerTest {
             int rank = dimensions.length;
             ValueNode[] dimensionNodes = new ValueNode[rank];
             for (int i = 0; i < rank; i++) {
-                dimensionNodes[i] = graph.unique(ConstantNode.forInt(dimensions[i], graph));
+                dimensionNodes[i] = ConstantNode.forInt(dimensions[i], graph);
             }
 
             NewMultiArrayNode repl = graph.add(new NewMultiArrayNode(arrayType, dimensionNodes));

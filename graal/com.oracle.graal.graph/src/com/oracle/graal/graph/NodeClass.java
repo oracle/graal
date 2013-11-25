@@ -1381,7 +1381,7 @@ public final class NodeClass extends FieldIntrospection {
 
             public Node replacement(Node node, boolean isInput) {
                 if (node.isExternal() && node instanceof ValueNumberable) {
-                    return graph.uniqueWithoutAdd(node);
+                    return graph.uniqueExternal(node);
                 }
                 Node target = newNodes.get(node);
                 if (target == null) {
