@@ -213,7 +213,7 @@ public class GraphBuilderPhase extends Phase {
 
     protected void build() {
         if (PrintProfilingInformation.getValue()) {
-            TTY.println("Profiling info for " + method);
+            TTY.println("Profiling info for " + MetaUtil.format("%H.%n(%p)", method));
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 
