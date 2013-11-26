@@ -1143,6 +1143,11 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "vmIntrinsics::_linkToSpecial") @Stable public int vmIntrinsicLinkToSpecial;
     @HotSpotVMConstant(name = "vmIntrinsics::_linkToInterface") @Stable public int vmIntrinsicLinkToInterface;
 
+    @HotSpotVMConstant(name = "GraalEnv::ok") @Stable public int codeInstallResultOk;
+    @HotSpotVMConstant(name = "GraalEnv::dependencies_failed") @Stable public int codeInstallResultDependenciesFailed;
+    @HotSpotVMConstant(name = "GraalEnv::cache_full") @Stable public int codeInstallResultCacheFull;
+    @HotSpotVMConstant(name = "GraalEnv::code_too_large") @Stable public int codeInstallResultCodeTooLarge;
+
     public boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
             int modifiers = f.getModifiers();

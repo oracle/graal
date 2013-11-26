@@ -39,7 +39,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog) {
-        return CodeInstallResult.values()[installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap())];
+        return CodeInstallResult.getEnum(installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap()));
     }
 
     @Override
