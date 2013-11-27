@@ -292,7 +292,8 @@ public class TestResolvedJavaMethod extends MethodUniverse {
         "canBeInlined",
         "getLineNumberTable",
         "getLocalVariableTable",
-        "isInVirtualMethodTable"
+        "isInVirtualMethodTable",
+        "isDefault" // tested in TestResolvedJavaMethodJDK8
     };
     // @formatter:on
 
