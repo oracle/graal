@@ -23,7 +23,6 @@
 package com.oracle.graal.api.meta.jdk8.test;
 
 import static org.junit.Assert.*;
-import static org.junit.Assume.*;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -43,7 +42,6 @@ public class TestResolvedJavaMethodJDK8 extends MethodUniverse {
 
     @Test
     public void isDefaultTest() {
-        assumeTrue(JAVA_VERSION >= 1.8D);
         for (Map.Entry<Method, ResolvedJavaMethod> e : methods.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(e.getKey().isDefault(), m.isDefault());
