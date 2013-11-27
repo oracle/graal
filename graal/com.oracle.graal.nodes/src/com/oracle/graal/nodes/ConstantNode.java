@@ -68,11 +68,13 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         return value;
     }
 
+    private static boolean ConstantNodesAreExternal = Boolean.parseBoolean(System.getProperty("graal.constantNodesAreExternal", "true"));
+
     /**
      * Used to measure the impact of ConstantNodes not recording their usages. This and all code
      * predicated on this value being true will be removed at some point.
      */
-    public static final boolean ConstantNodeRecordsUsages = Boolean.getBoolean("graal.constantNodeRecordsUsages");
+    public static final boolean ConstantNodeRecordsUsages = !ConstantNodesAreExternal && Boolean.getBoolean("graal.constantNodeRecordsUsages");
 
     @Override
     public boolean recordsUsages() {
@@ -81,17 +83,23 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
 
     @Override
     public boolean isDeleted() {
+        if (!ConstantNodesAreExternal) {
+            return super.isDeleted();
+        }
         return false;
     }
 
     @Override
     public boolean isAlive() {
+        if (!ConstantNodesAreExternal) {
+            return super.isAlive();
+        }
         return true;
     }
 
     @Override
     public boolean isExternal() {
-        return true;
+        return ConstantNodesAreExternal;
     }
 
     /**
@@ -117,6 +125,10 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * operation that should only be used in test/verification/AOT code.
      */
     public static NodeIterable<ConstantNode> getConstantNodes(StructuredGraph graph) {
+        if (!ConstantNodesAreExternal) {
+            return graph.getNodes().filter(ConstantNode.class);
+        }
+
         Map<ConstantNode, ConstantNode> result = new HashMap<>();
         for (Node node : graph.getNodes()) {
             for (Node input : node.inputs()) {
@@ -172,7 +184,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
         if (constant.getKind().getStackKind() == Kind.Int && constant.getKind() != Kind.Int) {
             return forInt(constant.asInt(), graph);
         }
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             Stamp stamp = constant.getKind() == Kind.Object ? StampFactory.forConstant(constant, metaAccess) : StampFactory.forConstant(constant);
             return graph.asConstantNode(constant, stamp);
         }
@@ -198,7 +210,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node for a double constant
      */
     public static ConstantNode forDouble(double d, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forDouble(d), null);
         }
         return unique(graph, createPrimitive(Constant.forDouble(d)));
@@ -211,7 +223,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node for a float constant
      */
     public static ConstantNode forFloat(float f, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forFloat(f), null);
         }
         return unique(graph, createPrimitive(Constant.forFloat(f)));
@@ -224,7 +236,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node for an long constant
      */
     public static ConstantNode forLong(long i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forLong(i), null);
         }
         return unique(graph, createPrimitive(Constant.forLong(i)));
@@ -237,7 +249,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node for an integer constant
      */
     public static ConstantNode forInt(int i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forInt(i), null);
         }
         return unique(graph, createPrimitive(Constant.forInt(i)));
@@ -250,7 +262,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the boolean
      */
     public static ConstantNode forBoolean(boolean i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(i ? Constant.INT_1 : Constant.INT_0, null);
         }
         return unique(graph, createPrimitive(Constant.forInt(i ? 1 : 0)));
@@ -263,7 +275,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the byte
      */
     public static ConstantNode forByte(byte i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forInt(i), null);
         }
         return unique(graph, createPrimitive(Constant.forInt(i)));
@@ -276,7 +288,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the char
      */
     public static ConstantNode forChar(char i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forInt(i), null);
         }
         return unique(graph, createPrimitive(Constant.forInt(i)));
@@ -289,7 +301,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
      * @return a node representing the short
      */
     public static ConstantNode forShort(short i, StructuredGraph graph) {
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(Constant.forInt(i), null);
         }
         return unique(graph, createPrimitive(Constant.forInt(i)));
@@ -304,13 +316,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable {
     public static ConstantNode forObject(Object o, MetaAccessProvider metaAccess, StructuredGraph graph) {
         assert !(o instanceof Constant) : "wrapping a Constant into a Constant";
         Constant constant = Constant.forObject(o);
-        if (!CacheExternalNodesInGraph) {
+        if (ConstantNodesAreExternal && !CacheExternalNodesInGraph) {
             return graph.asConstantNode(constant, StampFactory.forConstant(constant, metaAccess));
         }
         return unique(graph, new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess)));
     }
 
     private static ConstantNode unique(StructuredGraph graph, ConstantNode node) {
+        if (!ConstantNodesAreExternal) {
+            return graph.unique(node);
+        }
         assert CacheExternalNodesInGraph;
         return graph.uniqueExternal(node);
     }
