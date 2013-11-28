@@ -133,9 +133,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public synchronized native String disassembleCodeBlob(long codeBlob);
 
     @Override
-    public native byte[] getCode(long codeBlob);
-
-    @Override
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override

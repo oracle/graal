@@ -244,13 +244,6 @@ public interface CompilerToVM {
 
     String disassembleCodeBlob(long codeBlob);
 
-    /**
-     * Gets a copy of the machine code for a CodeBlob.
-     * 
-     * @return the machine code for {@code codeBlob} if it is valid, null otherwise
-     */
-    byte[] getCode(long codeBlob);
-
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException;
