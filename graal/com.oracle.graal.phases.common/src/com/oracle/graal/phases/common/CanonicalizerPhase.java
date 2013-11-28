@@ -302,9 +302,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     FixedNode fixed = (FixedNode) node;
                     if (canonical instanceof ControlSinkNode) {
                         // case 7
-                        FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
+                        fixed.predecessor().replaceFirstSuccessor(fixed, canonical);
                         GraphUtil.killCFG(fixed);
-                        pred.setNext((FixedNode) canonical);
                         return true;
                     } else {
                         assert fixed instanceof FixedWithNextNode;
