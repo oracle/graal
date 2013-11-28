@@ -107,7 +107,7 @@ public class Debug {
 
     public static void sandbox(String name, DebugConfig config, Runnable runnable) {
         if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? DebugScope.getConfig() : config;
+            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
             DebugScope.getInstance().scope(name, runnable, null, sandboxConfig, new Object[0]);
         } else {
             runnable.run();
@@ -125,7 +125,7 @@ public class Debug {
      */
     public static void sandbox(String name, Object[] context, DebugConfig config, Runnable runnable) {
         if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? DebugScope.getConfig() : config;
+            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
             DebugScope.getInstance().scope(name, runnable, null, sandboxConfig, context);
         } else {
             runnable.run();
@@ -143,7 +143,7 @@ public class Debug {
      */
     public static <T> T sandbox(String name, Object[] context, DebugConfig config, Callable<T> callable) {
         if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? DebugScope.getConfig() : config;
+            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
             return DebugScope.getInstance().scope(name, null, callable, sandboxConfig, context);
         } else {
             return DebugScope.call(callable);
@@ -400,6 +400,10 @@ public class Debug {
      */
     public static DebugHistogram createHistogram(String name) {
         return new DebugHistogramImpl(name);
+    }
+
+    public static DebugConfig silentConfig() {
+        return fixedConfig(false, false, false, false, Collections.<DebugDumpHandler> emptyList(), System.out);
     }
 
     public static DebugConfig fixedConfig(final boolean isLogEnabled, final boolean isDumpEnabled, final boolean isMeterEnabled, final boolean isTimerEnabled,
