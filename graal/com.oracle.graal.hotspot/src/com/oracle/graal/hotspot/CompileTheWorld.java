@@ -68,13 +68,15 @@ public final class CompileTheWorld {
     private int compiledMethodsCounter = 0;
     private long compileTime = 0;
 
+    private boolean verbose;
+
     /**
      * Create a compile-the-world instance with default values from
      * {@link GraalOptions#CompileTheWorld}, {@link GraalOptions#CompileTheWorldStartAt} and
      * {@link GraalOptions#CompileTheWorldStopAt}.
      */
     public CompileTheWorld() {
-        this(CompileTheWorld.getValue(), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue());
+        this(CompileTheWorld.getValue(), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue(), true);
     }
 
     /**
@@ -84,10 +86,11 @@ public final class CompileTheWorld {
      * @param startAt index of the class file to start compilation at
      * @param stopAt index of the class file to stop compilation at
      */
-    public CompileTheWorld(String files, int startAt, int stopAt) {
+    public CompileTheWorld(String files, int startAt, int stopAt, boolean verbose) {
         this.files = files;
         this.startAt = startAt;
         this.stopAt = stopAt;
+        this.verbose = verbose;
 
         // We don't want the VM to exit when a method fails to compile...
         ExitVMOnException.setValue(false);
@@ -127,18 +130,16 @@ public final class CompileTheWorld {
         }
     }
 
-    public static void println() {
+    public void println() {
         println("");
     }
 
-    public static void println(String format, Object... args) {
+    public void println(String format, Object... args) {
         println(String.format(format, args));
     }
 
-    public static final boolean LOG = Boolean.getBoolean("graal.compileTheWorldTest.log");
-
-    public static void println(String s) {
-        if (LOG) {
+    public void println(String s) {
+        if (verbose) {
             TTY.println(s);
         }
     }
