@@ -79,8 +79,9 @@ public final class OptimizedCallTarget extends DefaultCallTarget implements Fram
         if (installedCode != null && installedCode.isValid()) {
             TruffleRuntime runtime = Truffle.getRuntime();
             if (runtime instanceof GraalTruffleRuntime) {
-                OUT.printf("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
-                OUT.println();
+                if (TraceTruffleCompilation.getValue()) {
+                    OUT.println("[truffle] reinstall OptimizedCallTarget.call code with frame prolog shortcut.");
+                }
                 GraalTruffleRuntime.installOptimizedCallTargetCallMethod();
             }
         }
