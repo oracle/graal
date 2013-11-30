@@ -82,6 +82,10 @@ public class TruffleCompilerOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilationDetails = new OptionValue<>(false);
     @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleExpansion = new OptionValue<>(false);
+    @Option(help = "")
+    public static final OptionValue<Boolean> TraceTruffleExpansionSource = new OptionValue<>(false);
+    @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCacheDetails = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> TraceTruffleCompilationExceptions = new OptionValue<>(true);

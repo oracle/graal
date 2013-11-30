@@ -81,7 +81,6 @@ public class PartialEvaluator {
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(providers.getMetaAccess());
         this.cache = runtime.getGraphCache();
         this.truffleCache = truffleCache;
-
         try {
             executeHelperMethod = providers.getMetaAccess().lookupJavaMethod(OptimizedCallTarget.class.getDeclaredMethod("executeHelper", PackedFrame.class, Arguments.class));
         } catch (NoSuchMethodException ex) {
@@ -182,6 +181,10 @@ public class PartialEvaluator {
 
     private void expandTree(StructuredGraph graph, Assumptions assumptions) {
         PhaseContext phaseContext = new PhaseContext(providers, assumptions);
+        TruffleExpansionLogger expansionLogger = null;
+        if (TraceTruffleExpansion.getValue()) {
+            expansionLogger = new TruffleExpansionLogger(graph);
+        }
         boolean changed;
         do {
             changed = false;
@@ -212,7 +215,13 @@ public class PartialEvaluator {
                     if (inlineGraph != null) {
                         int nodeCountBefore = graph.getNodeCount();
                         Mark mark = graph.getMark();
-                        InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                        if (TraceTruffleExpansion.getValue()) {
+                            expansionLogger.preExpand(methodCallTargetNode, inlineGraph);
+                        }
+                        Map<Node, Node> inlined = InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, false);
+                        if (TraceTruffleExpansion.getValue()) {
+                            expansionLogger.postExpand(inlined);
+                        }
                         if (Debug.isDumpEnabled()) {
                             int nodeCountAfter = graph.getNodeCount();
                             Debug.dump(graph, "After inlining %s %+d (%d)", methodCallTargetNode.targetMethod().toString(), nodeCountAfter - nodeCountBefore, nodeCountAfter);
@@ -231,6 +240,10 @@ public class PartialEvaluator {
                 }
             }
         } while (changed);
+
+        if (TraceTruffleExpansion.getValue()) {
+            expansionLogger.print();
+        }
     }
 
     private StructuredGraph parseGraph(final ResolvedJavaMethod targetMethod, final NodeInputList<ValueNode> arguments, final Assumptions assumptions, final PhaseContext phaseContext) {
