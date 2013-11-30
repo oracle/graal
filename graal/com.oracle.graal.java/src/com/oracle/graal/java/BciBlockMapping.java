@@ -31,6 +31,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.bytecode.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 
 /**
@@ -210,13 +211,11 @@ public final class BciBlockMapping {
             this.log("Before LivenessAnalysis");
         }
         if (OptLivenessAnalysis.getValue()) {
-            Debug.scope("LivenessAnalysis", new Runnable() {
-
-                @Override
-                public void run() {
-                    computeLiveness();
-                }
-            });
+            try (Scope s = Debug.scope("LivenessAnalysis")) {
+                computeLiveness();
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
         }
     }
 

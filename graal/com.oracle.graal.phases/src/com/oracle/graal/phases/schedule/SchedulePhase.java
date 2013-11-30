@@ -33,7 +33,6 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
@@ -286,14 +285,12 @@ public final class SchedulePhase extends Phase {
         KillSet excludedLocations = new KillSet();
         if (block.getBeginNode() instanceof MergeNode) {
             MergeNode mergeNode = (MergeNode) block.getBeginNode();
-            for (PhiNode phi : mergeNode.usages().filter(PhiNode.class)) {
-                if (phi.type() == PhiType.Memory) {
-                    if (foundExcludeNode) {
-                        set.add(phi.getIdentity());
-                    } else {
-                        excludedLocations.add(phi.getIdentity());
-                        foundExcludeNode = phi == excludeNode;
-                    }
+            for (MemoryPhiNode phi : mergeNode.usages().filter(MemoryPhiNode.class)) {
+                if (foundExcludeNode) {
+                    set.add(phi.getLocationIdentity());
+                } else {
+                    excludedLocations.add(phi.getLocationIdentity());
+                    foundExcludeNode = phi == excludeNode;
                 }
             }
         }
@@ -403,8 +400,12 @@ public final class SchedulePhase extends Phase {
         }
     }
 
-    private Block blockForFixedNode(Node n) {
-        Block b = cfg.getNodeToBlock().get(n);
+    private Block blockForMemoryNode(MemoryNode memory) {
+        MemoryNode current = memory;
+        while (current instanceof MemoryProxy) {
+            current = ((MemoryProxy) current).getOriginalMemoryNode();
+        }
+        Block b = cfg.getNodeToBlock().get(current.asNode());
         assert b != null : "all lastAccess locations should have a block assignment from CFG";
         return b;
     }
@@ -546,13 +547,11 @@ public final class SchedulePhase extends Phase {
                 if (assertionEnabled()) {
                     if (scheduleRead) {
                         FloatingReadNode read = (FloatingReadNode) node;
-                        Node lastLocationAccess = read.getLastLocationAccess();
-                        Block upperBound = blockForFixedNode(lastLocationAccess);
-                        if (!blockForFixedNode(lastLocationAccess).dominates(block)) {
-                            assert false : String.format("out of loop movement voilated memory semantics for %s (location %s). moved to %s but upper bound is %s (earliest: %s, latest: %s)", read,
-                                            read.getLocationIdentity(), block, upperBound, earliestBlock, latest);
-                        }
-
+                        MemoryNode lastLocationAccess = read.getLastLocationAccess();
+                        Block upperBound = blockForMemoryNode(lastLocationAccess);
+                        assert upperBound.dominates(block) : String.format(
+                                        "out of loop movement voilated memory semantics for %s (location %s). moved to %s but upper bound is %s (earliest: %s, latest: %s)", read,
+                                        read.getLocationIdentity(), block, upperBound, earliestBlock, latest);
                     }
                 }
                 break;
@@ -599,7 +598,7 @@ public final class SchedulePhase extends Phase {
         LocationIdentity locid = n.location().getLocationIdentity();
         assert locid != FINAL_LOCATION;
 
-        Block upperBoundBlock = blockForFixedNode(n.getLastLocationAccess());
+        Block upperBoundBlock = blockForMemoryNode(n.getLastLocationAccess());
         Block earliestBlock = earliestBlock(n);
         assert upperBoundBlock.dominates(earliestBlock) : "upper bound (" + upperBoundBlock + ") should dominate earliest (" + earliestBlock + ")";
 
@@ -630,7 +629,7 @@ public final class SchedulePhase extends Phase {
                 if (currentBlock == upperBoundBlock) {
                     assert earliestBlock == upperBoundBlock;
                     // don't treat lastLocationAccess node as a kill for this read.
-                    closure = new NewMemoryScheduleClosure(n.getLastLocationAccess(), upperBoundBlock);
+                    closure = new NewMemoryScheduleClosure(ValueNodeUtil.asNode(n.getLastLocationAccess()), upperBoundBlock);
                 } else {
                     closure = new NewMemoryScheduleClosure();
                 }
@@ -646,7 +645,7 @@ public final class SchedulePhase extends Phase {
             } else {
                 if (currentBlock == upperBoundBlock) {
                     assert earliestBlock == upperBoundBlock;
-                    KillSet ks = computeKillSet(upperBoundBlock, n.getLastLocationAccess());
+                    KillSet ks = computeKillSet(upperBoundBlock, ValueNodeUtil.asNode(n.getLastLocationAccess()));
                     if (ks.isKilled(locid)) {
                         return upperBoundBlock;
                     }

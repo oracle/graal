@@ -69,7 +69,7 @@ public class CipherBlockChainingSubstitutions {
         return AESCryptSubstitutions.AESCryptClass;
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, optional = true)
     static void encrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
         if (getAESCryptClass().isInstance(embeddedCipher)) {
@@ -79,13 +79,35 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    @MethodSubstitution(isStatic = false)
+    @MethodSubstitution(isStatic = false, optional = true)
     static void decrypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
         Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
         if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
             crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
         } else {
             decrypt(rcvr, in, inOffset, inLength, out, outOffset);
+        }
+    }
+
+    @MethodSubstitution(value = "encrypt", isStatic = false, optional = true)
+    static int encryptInt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
+        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
+        if (getAESCryptClass().isInstance(embeddedCipher)) {
+            crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, true);
+            return inLength;
+        } else {
+            return encryptInt(rcvr, in, inOffset, inLength, out, outOffset);
+        }
+    }
+
+    @MethodSubstitution(value = "decrypt", isStatic = false, optional = true)
+    static int decryptInt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
+        Object embeddedCipher = UnsafeLoadNode.load(rcvr, embeddedCipherOffset, Kind.Object, embeddedCipherLocationIdentity);
+        if (in != out && getAESCryptClass().isInstance(embeddedCipher)) {
+            crypt(rcvr, in, inOffset, inLength, out, outOffset, embeddedCipher, false);
+            return inLength;
+        } else {
+            return decryptInt(rcvr, in, inOffset, inLength, out, outOffset);
         }
     }
 

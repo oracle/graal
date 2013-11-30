@@ -28,7 +28,7 @@ import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
 
-public final class DebugScope {
+public final class DebugScope implements Debug.Scope {
 
     private final class IndentImpl implements Indent {
 
@@ -75,7 +75,7 @@ public final class DebugScope {
         }
 
         @Override
-        public Indent logIndent(String msg, Object... args) {
+        public Indent logAndIndent(String msg, Object... args) {
             log(msg, args);
             return indent();
         }
@@ -87,17 +87,25 @@ public final class DebugScope {
             }
             return lastUsedIndent;
         }
+
+        @Override
+        public void close() {
+            outdent();
+        }
     }
 
     private static ThreadLocal<DebugScope> instanceTL = new ThreadLocal<>();
+    private static ThreadLocal<DebugScope> lastClosedTL = new ThreadLocal<>();
     private static ThreadLocal<DebugConfig> configTL = new ThreadLocal<>();
     private static ThreadLocal<Throwable> lastExceptionThrownTL = new ThreadLocal<>();
 
     private final DebugScope parent;
+    private final DebugConfig parentConfig;
+    private final boolean sandbox;
     private IndentImpl lastUsedIndent;
     private boolean logScopeName;
 
-    private Object[] context;
+    private final Object[] context;
 
     private final DebugValueMap valueMap;
     private final String qualifiedName;
@@ -113,7 +121,7 @@ public final class DebugScope {
     public static DebugScope getInstance() {
         DebugScope result = instanceTL.get();
         if (result == null) {
-            DebugScope topLevelDebugScope = new DebugScope(Thread.currentThread().getName(), "", null);
+            DebugScope topLevelDebugScope = new DebugScope(Thread.currentThread().getName(), "", null, false);
             instanceTL.set(topLevelDebugScope);
             DebugValueMap.registerTopLevel(topLevelDebugScope.getValueMap());
             return topLevelDebugScope;
@@ -126,8 +134,10 @@ public final class DebugScope {
         return configTL.get();
     }
 
-    private DebugScope(String name, String qualifiedName, DebugScope parent, Object... context) {
+    private DebugScope(String name, String qualifiedName, DebugScope parent, boolean sandbox, Object... context) {
         this.parent = parent;
+        this.sandbox = sandbox;
+        this.parentConfig = getConfig();
         this.context = context;
         this.qualifiedName = qualifiedName;
         if (parent != null) {
@@ -155,6 +165,12 @@ public final class DebugScope {
         } else {
             this.valueMap = new DebugValueMap(name);
         }
+    }
+
+    public void close() {
+        instanceTL.set(parent);
+        setConfig(parentConfig);
+        lastClosedTL.set(this);
     }
 
     public boolean isDumpEnabled() {
@@ -216,65 +232,56 @@ public final class DebugScope {
     }
 
     /**
-     * Runs a task in a new debug scope which is either a child of the current scope or a disjoint
-     * top level scope.
+     * Creates and enters a new debug scope which is either a child of the current scope or a
+     * disjoint top level scope.
      * 
-     * @param newName the name of the new scope
-     * @param runnable the task to run (must be null iff {@code callable} is not null)
-     * @param callable the task to run (must be null iff {@code runnable} is not null)
+     * @param name the name of the new scope
      * @param sandbox specifies if the scope is a child of the current scope or a top level scope
-     * @param sandboxConfig the config to use of a new top level scope (ignored if
+     * @param sandboxConfig the configuration to use for a new top level scope (ignored if
      *            {@code sandbox == false})
-     * @param newContext context objects of the new scope
-     * @return the value returned by the task
+     * @param context objects to be appended to the debug context
+     * @return the new scope which will be exited when its {@link #close()} method is called
      */
-    public <T> T scope(String newName, Runnable runnable, Callable<T> callable, boolean sandbox, DebugConfig sandboxConfig, Object[] newContext) {
-        DebugScope oldContext = getInstance();
-        DebugConfig oldConfig = getConfig();
-        boolean oldLogEnabled = oldContext.isLogEnabled();
-        DebugScope newChild = null;
+    @SuppressWarnings("hiding")
+    public DebugScope scope(String name, boolean sandbox, DebugConfig sandboxConfig, Object... context) {
+        DebugScope newScope = null;
         if (sandbox) {
-            newChild = new DebugScope(newName, newName, null, newContext);
+            newScope = new DebugScope(name, name, this, true, context);
             setConfig(sandboxConfig);
         } else {
-            newChild = oldContext.createChild(newName, newContext);
+            newScope = this.createChild(name, context);
         }
-        instanceTL.set(newChild);
-        newChild.updateFlags();
-        try {
-            return executeScope(runnable, callable);
-        } finally {
-            newChild.context = null;
-            instanceTL.set(oldContext);
-            setConfig(oldConfig);
-            setLogEnabled(oldLogEnabled);
-        }
+        instanceTL.set(newScope);
+        newScope.setLogEnabled(this.isLogEnabled());
+        newScope.updateFlags();
+        return newScope;
     }
 
-    private <T> T executeScope(Runnable runnable, Callable<T> callable) {
-
-        try {
-            if (runnable != null) {
-                runnable.run();
+    public RuntimeException handle(Throwable e) {
+        DebugScope lastClosed = lastClosedTL.get();
+        assert lastClosed.parent == this : "Debug.handle() used with no matching Debug.scope(...) or Debug.sandbox(...)";
+        if (e != lastExceptionThrownTL.get()) {
+            RuntimeException newException = null;
+            instanceTL.set(lastClosed);
+            try (DebugScope s = lastClosed) {
+                newException = s.interceptException(e);
             }
-            if (callable != null) {
-                return call(callable);
-            }
-        } catch (Throwable e) {
-            if (e == lastExceptionThrownTL.get()) {
-                throw e;
+            assert instanceTL.get() == this;
+            assert lastClosed == lastClosedTL.get();
+            if (newException == null) {
+                lastExceptionThrownTL.set(e);
             } else {
-                RuntimeException newException = interceptException(e);
-                if (newException == null) {
-                    lastExceptionThrownTL.set(e);
-                    throw e;
-                } else {
-                    lastExceptionThrownTL.set(newException);
-                    throw newException;
-                }
+                lastExceptionThrownTL.set(newException);
+                throw newException;
             }
         }
-        return null;
+        if (e instanceof Error) {
+            throw (Error) e;
+        }
+        if (e instanceof RuntimeException) {
+            throw (RuntimeException) e;
+        }
+        throw new RuntimeException(e);
     }
 
     private void updateFlags() {
@@ -283,7 +290,6 @@ public final class DebugScope {
             meterEnabled = false;
             timeEnabled = false;
             dumpEnabled = false;
-            setLogEnabled(false);
 
             // Be pragmatic: provide a default log stream to prevent a crash if the stream is not
             // set while logging
@@ -293,24 +299,20 @@ public final class DebugScope {
             timeEnabled = config.isTimeEnabled();
             dumpEnabled = config.isDumpEnabled();
             output = config.output();
-            setLogEnabled(config.isLogEnabled());
+            if (config.isLogEnabled()) {
+                setLogEnabled(true);
+            }
         }
     }
 
     private RuntimeException interceptException(final Throwable e) {
         final DebugConfig config = getConfig();
         if (config != null) {
-            return scope("InterceptException", null, new Callable<RuntimeException>() {
-
-                @Override
-                public RuntimeException call() throws Exception {
-                    try {
-                        return config.interceptException(e);
-                    } catch (Throwable t) {
-                        return new RuntimeException("Exception while intercepting exception", t);
-                    }
-                }
-            }, false, null, new Object[]{e});
+            try (DebugScope s = scope("InterceptException", false, null, e)) {
+                return config.interceptException(e);
+            } catch (Throwable t) {
+                return new RuntimeException("Exception while intercepting exception", t);
+            }
         }
         return null;
     }
@@ -332,7 +334,7 @@ public final class DebugScope {
         if (this.qualifiedName.length() > 0) {
             newQualifiedName = this.qualifiedName + SCOPE_SEP + newName;
         }
-        DebugScope result = new DebugScope(newName, newQualifiedName, this, newContext);
+        DebugScope result = new DebugScope(newName, newQualifiedName, this, false, newContext);
         return result;
     }
 
@@ -355,7 +357,7 @@ public final class DebugScope {
 
                     private void selectScope() {
                         while (currentScope != null && currentScope.context.length <= objectIndex) {
-                            currentScope = currentScope.parent;
+                            currentScope = currentScope.sandbox ? null : currentScope.parent;
                             objectIndex = 0;
                         }
                     }

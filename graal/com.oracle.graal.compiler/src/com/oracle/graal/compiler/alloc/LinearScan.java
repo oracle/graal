@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.alloc.Interval.RegisterPriority;
 import com.oracle.graal.compiler.alloc.Interval.SpillState;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.OperandFlag;
@@ -1818,66 +1819,61 @@ public final class LinearScan {
 
     public void allocate() {
 
-        Debug.scope("LifetimeAnalysis", new Runnable() {
+        try (Scope s = Debug.scope("LifetimeAnalysis")) {
+            numberInstructions();
+            printLir("Before register allocation", true);
+            computeLocalLiveSets();
+            computeGlobalLiveSets();
+            buildIntervals();
+            sortIntervalsBeforeAllocation();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
-            public void run() {
-                numberInstructions();
-                printLir("Before register allocation", true);
-                computeLocalLiveSets();
-                computeGlobalLiveSets();
-                buildIntervals();
-                sortIntervalsBeforeAllocation();
+        try (Scope s = Debug.scope("RegisterAllocation")) {
+            printIntervals("Before register allocation");
+            allocateRegisters();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        try (Scope s = Debug.scope("ResolveDataFlow")) {
+            resolveDataFlow();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
+        try (Scope s = Debug.scope("DebugInfo")) {
+            frameMap.finish();
+
+            printIntervals("After register allocation");
+            printLir("After register allocation", true);
+
+            sortIntervalsAfterAllocation();
+
+            if (DetailedAsserts.getValue()) {
+                verify();
             }
-        });
 
-        Debug.scope("RegisterAllocation", new Runnable() {
+            eliminateSpillMoves();
+            assignLocations();
 
-            public void run() {
-                printIntervals("Before register allocation");
-                allocateRegisters();
+            if (DetailedAsserts.getValue()) {
+                verifyIntervals();
             }
-        });
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
-        Debug.scope("ResolveDataFlow", new Runnable() {
-
-            public void run() {
-                resolveDataFlow();
-            }
-        });
-
-        Debug.scope("DebugInfo", new Runnable() {
-
-            public void run() {
-                frameMap.finish();
-
-                printIntervals("After register allocation");
-                printLir("After register allocation", true);
-
-                sortIntervalsAfterAllocation();
-
-                if (DetailedAsserts.getValue()) {
-                    verify();
-                }
-
-                eliminateSpillMoves();
-                assignLocations();
-
-                if (DetailedAsserts.getValue()) {
-                    verifyIntervals();
-                }
-            }
-        });
-
-        Debug.scope("ControlFlowOptimizations", new Runnable() {
-
-            public void run() {
-                printLir("After register number assignment", true);
-                EdgeMoveOptimizer.optimize(ir);
-                ControlFlowOptimizer.optimize(ir);
-                NullCheckOptimizer.optimize(ir, target.implicitNullCheckLimit);
-                printLir("After control flow optimization", false);
-            }
-        });
+        try (Scope s = Debug.scope("ControlFlowOptimizations")) {
+            printLir("After register number assignment", true);
+            EdgeMoveOptimizer.optimize(ir);
+            ControlFlowOptimizer.optimize(ir);
+            NullCheckOptimizer.optimize(ir, target.implicitNullCheckLimit);
+            printLir("After control flow optimization", false);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     void printIntervals(String label) {

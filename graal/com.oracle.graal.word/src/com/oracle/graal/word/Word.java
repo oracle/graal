@@ -427,6 +427,12 @@ public abstract class Word implements Signed, Unsigned, Pointer {
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
+    public boolean equal(ComparableWord val) {
+        return equal((Word) val);
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(Signed val) {
         return equal((Word) val);
     }
@@ -446,6 +452,12 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(Word val) {
         return unbox() == val.unbox();
+    }
+
+    @Override
+    @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
+    public boolean notEqual(ComparableWord val) {
+        return notEqual((Word) val);
     }
 
     @Override

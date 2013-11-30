@@ -34,8 +34,6 @@ import com.oracle.graal.nodes.virtual.*;
  */
 public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableAllocation {
 
-    private final ResolvedJavaType elementType;
-
     /**
      * Constructs a new NewArrayNode.
      * 
@@ -46,7 +44,6 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      */
     public NewArrayNode(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
         super(StampFactory.exactNonNull(elementType.getArrayClass()), length, fillContents);
-        this.elementType = elementType;
     }
 
     /**
@@ -55,7 +52,7 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
      * @return the element type of the array
      */
     public ResolvedJavaType elementType() {
-        return elementType;
+        return ObjectStamp.typeOrNull(this).getComponentType();
     }
 
     @Override
@@ -64,14 +61,19 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
             final int constantLength = length().asConstant().asInt();
             if (constantLength >= 0 && constantLength < tool.getMaximumEntryCount()) {
                 ValueNode[] state = new ValueNode[constantLength];
-                ConstantNode defaultForKind = constantLength == 0 ? null : ConstantNode.defaultForKind(elementType().getKind(), graph());
+                ConstantNode defaultForKind = constantLength == 0 ? null : defaultElementValue();
                 for (int i = 0; i < constantLength; i++) {
                     state[i] = defaultForKind;
                 }
-                VirtualObjectNode virtualObject = new VirtualArrayNode(elementType, constantLength);
+                VirtualObjectNode virtualObject = new VirtualArrayNode(elementType(), constantLength);
                 tool.createVirtualObject(virtualObject, state, null);
                 tool.replaceWithVirtual(virtualObject);
             }
         }
+    }
+
+    /* Factored out in a separate method so that subclasses can override it. */
+    protected ConstantNode defaultElementValue() {
+        return ConstantNode.defaultForKind(elementType().getKind(), graph());
     }
 }

@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * Intrinsic for closing a {@linkplain BeginLockScopeNode scope} binding a stack-based lock with an
  * object.
  */
-public final class EndLockScopeNode extends AbstractStateSplit implements LIRGenLowerable, MonitorExit, MemoryCheckpoint.Single {
+public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements LIRGenLowerable, MonitorExit, MemoryCheckpoint.Single {
 
     public EndLockScopeNode() {
         super(StampFactory.forVoid());

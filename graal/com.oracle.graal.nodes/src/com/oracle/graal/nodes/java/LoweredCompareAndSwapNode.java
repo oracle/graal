@@ -75,4 +75,12 @@ public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit,
     public void generate(LIRGeneratorTool gen) {
         gen.visitCompareAndSwap(this, location().generateAddress(gen, gen.operand(object())));
     }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return this;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
+    }
 }

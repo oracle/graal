@@ -89,7 +89,9 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        appendPhase(new DeoptimizationGroupingPhase());
+        if (OptDeoptimizationGrouping.getValue()) {
+            appendPhase(new DeoptimizationGroupingPhase());
+        }
 
         if (OptCanonicalizer.getValue()) {
             appendPhase(canonicalizer);

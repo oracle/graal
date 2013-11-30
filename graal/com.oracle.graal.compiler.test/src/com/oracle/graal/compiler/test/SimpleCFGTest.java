@@ -31,13 +31,7 @@ import com.oracle.graal.nodes.cfg.*;
 public class SimpleCFGTest extends GraalCompilerTest {
 
     private static void dumpGraph(final StructuredGraph graph) {
-        Debug.scope("SimpleCFGTest", new Runnable() {
-
-            @Override
-            public void run() {
-                Debug.dump(graph, "Graph");
-            }
-        });
+        Debug.dump(graph, "Graph");
     }
 
     @Test

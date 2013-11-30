@@ -43,7 +43,7 @@ public final class TruffleReplacements extends ReplacementsImpl {
     private final Replacements graalReplacements;
 
     private TruffleReplacements(Providers providers) {
-        super(providers, providers.getReplacements().getAssumptions());
+        super(providers, providers.getReplacements().getAssumptions(), providers.getCodeCache().getTarget());
         this.graalReplacements = providers.getReplacements();
     }
 

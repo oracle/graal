@@ -39,7 +39,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog) {
-        return CodeInstallResult.values()[installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap())];
+        return CodeInstallResult.getEnum(installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap()));
     }
 
     @Override
@@ -131,9 +131,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     // The HotSpot disassembler seems not to be thread safe so it's better to synchronize its usage
     @Override
     public synchronized native String disassembleCodeBlob(long codeBlob);
-
-    @Override
-    public native byte[] getCode(long codeBlob);
 
     @Override
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);

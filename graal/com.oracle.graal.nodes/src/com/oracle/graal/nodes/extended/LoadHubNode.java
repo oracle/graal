@@ -61,7 +61,7 @@ public final class LoadHubNode extends FloatingGuardedNode implements Lowerable,
 
     @Override
     public void lower(LoweringTool tool) {
-        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
+        if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS || graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA) {
             tool.getLowerer().lower(this, tool);
         }
     }

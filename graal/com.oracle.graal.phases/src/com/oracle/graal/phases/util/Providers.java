@@ -25,6 +25,7 @@ package com.oracle.graal.phases.util;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
+import com.oracle.graal.phases.tiers.*;
 
 /**
  * A set of providers, some of which may not be present (i.e., null).
@@ -49,12 +50,11 @@ public class Providers {
     }
 
     public Providers(Providers copyFrom) {
-        this.metaAccess = copyFrom.metaAccess;
-        this.codeCache = copyFrom.codeCache;
-        this.constantReflection = copyFrom.constantReflection;
-        this.foreignCalls = copyFrom.foreignCalls;
-        this.lowerer = copyFrom.lowerer;
-        this.replacements = copyFrom.replacements;
+        this(copyFrom.getMetaAccess(), copyFrom.getCodeCache(), copyFrom.getConstantReflection(), copyFrom.getForeignCalls(), copyFrom.getLowerer(), copyFrom.getReplacements());
+    }
+
+    public Providers(PhaseContext copyFrom) {
+        this(copyFrom.getMetaAccess(), null, copyFrom.getConstantReflection(), null, copyFrom.getLowerer(), copyFrom.getReplacements());
     }
 
     public MetaAccessProvider getMetaAccess() {

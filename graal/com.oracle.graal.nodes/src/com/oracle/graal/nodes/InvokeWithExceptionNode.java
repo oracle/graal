@@ -253,4 +253,12 @@ public class InvokeWithExceptionNode extends ControlSplitNode implements Invoke,
             return stateAfter();
         }
     }
+
+    public MemoryCheckpoint asMemoryCheckpoint() {
+        return this;
+    }
+
+    public MemoryPhiNode asMemoryPhi() {
+        return null;
+    }
 }

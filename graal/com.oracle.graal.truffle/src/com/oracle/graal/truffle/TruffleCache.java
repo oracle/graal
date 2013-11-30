@@ -26,13 +26,13 @@ import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.java.*;
@@ -91,102 +91,101 @@ public final class TruffleCache {
         }
 
         cache.put(key, markerGraph);
-        resultGraph = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method}, new Callable<StructuredGraph>() {
+        try (Scope s = Debug.scope("TruffleCache", new Object[]{providers.getMetaAccess(), method})) {
 
-            public StructuredGraph call() {
+            final StructuredGraph graph = new StructuredGraph(method);
+            PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
+            new GraphBuilderPhase(phaseContext.getMetaAccess(), providers.getForeignCalls(), config, optimisticOptimizations).apply(graph);
 
-                final StructuredGraph graph = new StructuredGraph(method);
-                PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
-                new GraphBuilderPhase(phaseContext.getMetaAccess(), providers.getForeignCalls(), config, optimisticOptimizations).apply(graph);
+            for (LocalNode l : graph.getNodes(LocalNode.class)) {
+                if (l.kind() == Kind.Object) {
+                    ValueNode actualArgument = arguments.get(l.index());
+                    l.setStamp(l.stamp().join(actualArgument.stamp()));
+                }
+            }
 
-                for (LocalNode l : graph.getNodes(LocalNode.class)) {
-                    if (l.kind() == Kind.Object) {
-                        ValueNode actualArgument = arguments.get(l.index());
-                        l.setStamp(l.stamp().join(actualArgument.stamp()));
+            // Intrinsify methods.
+            new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
+
+            // Convert deopt to guards.
+            new ConvertDeoptimizeToGuardPhase().apply(graph);
+
+            CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
+            PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizerPhase);
+
+            Mark mark = null;
+            while (true) {
+
+                partialEscapePhase.apply(graph, phaseContext);
+
+                // Conditional elimination.
+                ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(phaseContext.getMetaAccess());
+                conditionalEliminationPhase.apply(graph);
+
+                // Canonicalize / constant propagate.
+                canonicalizerPhase.apply(graph, phaseContext);
+
+                boolean inliningProgress = false;
+                for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
+                    if (graph.getMark().equals(mark)) {
+                        // Make sure macro substitutions such as
+                        // CompilerDirectives.transferToInterpreter get processed first.
+                        for (Node newNode : graph.getNewNodes(mark)) {
+                            if (newNode instanceof MethodCallTargetNode) {
+                                MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
+                                Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
+                                if (macroSubstitution != null) {
+                                    InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
+                                } else {
+                                    tryCutOffRuntimeExceptions(methodCallTargetNode);
+                                }
+                            }
+                        }
+                        mark = graph.getMark();
+                    }
+                    if (methodCallTarget.isAlive() && methodCallTarget.invoke() != null && shouldInline(methodCallTarget)) {
+                        inliningProgress = true;
+                        List<Node> canonicalizerUsages = new ArrayList<Node>();
+                        for (Node n : methodCallTarget.invoke().asNode().usages()) {
+                            if (n instanceof Canonicalizable) {
+                                canonicalizerUsages.add(n);
+                            }
+                        }
+                        List<ValueNode> argumentSnapshot = methodCallTarget.arguments().snapshot();
+                        Mark beforeInvokeMark = graph.getMark();
+                        expandInvoke(methodCallTarget);
+                        for (Node arg : argumentSnapshot) {
+                            if (arg != null && arg.recordsUsages()) {
+                                for (Node argUsage : arg.usages()) {
+                                    if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
+                                        canonicalizerUsages.add(argUsage);
+                                    }
+                                }
+                            }
+                        }
+                        canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
                     }
                 }
-
-                // Intrinsify methods.
-                new ReplaceIntrinsicsPhase(providers.getReplacements()).apply(graph);
 
                 // Convert deopt to guards.
                 new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-                CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
-                PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizerPhase);
+                new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, phaseContext);
 
-                Mark mark = null;
-                while (true) {
-
-                    partialEscapePhase.apply(graph, phaseContext);
-
-                    // Conditional elimination.
-                    ConditionalEliminationPhase conditionalEliminationPhase = new ConditionalEliminationPhase(phaseContext.getMetaAccess());
-                    conditionalEliminationPhase.apply(graph);
-
-                    // Canonicalize / constant propagate.
-                    canonicalizerPhase.apply(graph, phaseContext);
-
-                    boolean inliningProgress = false;
-                    for (MethodCallTargetNode methodCallTarget : graph.getNodes(MethodCallTargetNode.class)) {
-                        if (graph.getMark().equals(mark)) {
-                            // Make sure macro substitutions such as
-                            // CompilerDirectives.transferToInterpreter get processed first.
-                            for (Node newNode : graph.getNewNodes(mark)) {
-                                if (newNode instanceof MethodCallTargetNode) {
-                                    MethodCallTargetNode methodCallTargetNode = (MethodCallTargetNode) newNode;
-                                    Class<? extends FixedWithNextNode> macroSubstitution = providers.getReplacements().getMacroSubstitution(methodCallTargetNode.targetMethod());
-                                    if (macroSubstitution != null) {
-                                        InliningUtil.inlineMacroNode(methodCallTargetNode.invoke(), methodCallTargetNode.targetMethod(), methodCallTargetNode.graph(), macroSubstitution);
-                                    } else {
-                                        tryCutOffRuntimeExceptions(methodCallTargetNode);
-                                    }
-                                }
-                            }
-                            mark = graph.getMark();
-                        }
-                        if (methodCallTarget.isAlive() && methodCallTarget.invoke() != null && shouldInline(methodCallTarget)) {
-                            inliningProgress = true;
-                            List<Node> canonicalizerUsages = new ArrayList<Node>();
-                            for (Node n : methodCallTarget.invoke().asNode().usages()) {
-                                if (n instanceof Canonicalizable) {
-                                    canonicalizerUsages.add(n);
-                                }
-                            }
-                            List<ValueNode> argumentSnapshot = methodCallTarget.arguments().snapshot();
-                            Mark beforeInvokeMark = graph.getMark();
-                            expandInvoke(methodCallTarget);
-                            for (Node arg : argumentSnapshot) {
-                                if (arg != null && arg.recordsUsages()) {
-                                    for (Node argUsage : arg.usages()) {
-                                        if (graph.isNew(beforeInvokeMark, argUsage) && argUsage instanceof Canonicalizable) {
-                                            canonicalizerUsages.add(argUsage);
-                                        }
-                                    }
-                                }
-                            }
-                            canonicalizerPhase.applyIncremental(graph, phaseContext, canonicalizerUsages);
-                        }
-                    }
-
-                    // Convert deopt to guards.
-                    new ConvertDeoptimizeToGuardPhase().apply(graph);
-
-                    new EarlyReadEliminationPhase(canonicalizerPhase).apply(graph, phaseContext);
-
-                    if (!inliningProgress) {
-                        break;
-                    }
+                if (!inliningProgress) {
+                    break;
                 }
-
-                if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
-                    TTY.println(String.format("[truffle] added to graph cache method %s with %d nodes.", method, graph.getNodeCount()));
-                }
-                return graph;
             }
-        });
-        cache.put(key, resultGraph);
-        return resultGraph;
+
+            cache.put(key, graph);
+            if (TruffleCompilerOptions.TraceTruffleCacheDetails.getValue()) {
+                TTY.println(String.format("[truffle] added to graph cache method %s with %d nodes.", method, graph.getNodeCount()));
+            }
+            return graph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+
     }
 
     private void expandInvoke(MethodCallTargetNode methodCallTargetNode) {

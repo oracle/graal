@@ -25,7 +25,6 @@ package com.oracle.graal.compiler.test;
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.debug.*;
 import com.oracle.graal.loop.phases.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -317,33 +316,27 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     }
 
     private void compareGraphs(final String snippet, final String referenceSnippet, final boolean loopPeeling, final boolean excludeVirtual) {
-        Debug.scope("BoxingEliminationTest " + snippet, new DebugDumpScope(snippet), new Runnable() {
+        graph = parse(snippet);
 
-            @Override
-            public void run() {
-                graph = parse(snippet);
+        Assumptions assumptions = new Assumptions(false);
+        HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+        if (loopPeeling) {
+            new LoopTransformHighPhase().apply(graph);
+        }
+        new DeadCodeEliminationPhase().apply(graph);
+        canonicalizer.apply(graph, context);
+        new PartialEscapePhase(false, canonicalizer).apply(graph, context);
 
-                Assumptions assumptions = new Assumptions(false);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                CanonicalizerPhase canonicalizer = new CanonicalizerPhase(true);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                if (loopPeeling) {
-                    new LoopTransformHighPhase().apply(graph);
-                }
-                new DeadCodeEliminationPhase().apply(graph);
-                canonicalizer.apply(graph, context);
-                new PartialEscapePhase(false, canonicalizer).apply(graph, context);
+        new DeadCodeEliminationPhase().apply(graph);
+        canonicalizer.apply(graph, context);
 
-                new DeadCodeEliminationPhase().apply(graph);
-                canonicalizer.apply(graph, context);
+        StructuredGraph referenceGraph = parse(referenceSnippet);
+        new InliningPhase(new CanonicalizerPhase(true)).apply(referenceGraph, context);
+        new DeadCodeEliminationPhase().apply(referenceGraph);
+        new CanonicalizerPhase(true).apply(referenceGraph, context);
 
-                StructuredGraph referenceGraph = parse(referenceSnippet);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(referenceGraph, context);
-                new DeadCodeEliminationPhase().apply(referenceGraph);
-                new CanonicalizerPhase(true).apply(referenceGraph, context);
-
-                assertEquals(referenceGraph, graph, excludeVirtual);
-            }
-        });
+        assertEquals(referenceGraph, graph, excludeVirtual);
     }
 }

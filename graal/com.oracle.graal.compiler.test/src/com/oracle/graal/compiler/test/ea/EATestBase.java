@@ -28,6 +28,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
@@ -144,19 +145,18 @@ public class EATestBase extends GraalCompilerTest {
     protected void prepareGraph(String snippet, final boolean iterativeEscapeAnalysis) {
         ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(snippet));
         graph = new StructuredGraph(method);
-        Debug.scope(getClass().getSimpleName(), new Object[]{graph, method, getCodeCache()}, new Runnable() {
-
-            public void run() {
-                new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                Assumptions assumptions = new Assumptions(false);
-                context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                new DeadCodeEliminationPhase().apply(graph);
-                new CanonicalizerPhase(true).apply(graph, context);
-                new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true)).apply(graph, context);
-                Assert.assertEquals(1, graph.getNodes().filter(ReturnNode.class).count());
-                returnNode = graph.getNodes().filter(ReturnNode.class).first();
-            }
-        });
+        try (Scope s = Debug.scope(getClass().getSimpleName(), graph, method, getCodeCache())) {
+            new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+            Assumptions assumptions = new Assumptions(false);
+            context = new HighTierContext(getProviders(), assumptions, null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new DeadCodeEliminationPhase().apply(graph);
+            new CanonicalizerPhase(true).apply(graph, context);
+            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(true)).apply(graph, context);
+            Assert.assertEquals(1, graph.getNodes().filter(ReturnNode.class).count());
+            returnNode = graph.getNodes().filter(ReturnNode.class).first();
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

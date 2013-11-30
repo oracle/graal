@@ -22,9 +22,9 @@
  */
 package com.oracle.graal.compiler.ptx.test;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.*;
 
-import org.junit.Test;
+import org.junit.*;
 
 /**
  * Test class for small Java methods compiled to PTX kernels.
@@ -51,9 +51,7 @@ public class BasicPTXTest extends PTXTestBase {
         for (Method m : methods) {
             String name = m.getName();
             if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
+                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
             }
         }
     }

@@ -22,7 +22,7 @@
  */
 package com.oracle.graal.word;
 
-public interface Signed extends WordBase {
+public interface Signed extends ComparableWord {
 
     /**
      * Returns a Signed whose value is {@code (this + val)}.

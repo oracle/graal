@@ -158,13 +158,17 @@ public final class NodeClass extends FieldIntrospection {
      */
     private final boolean isSimplifiable;
 
-    private NodeClass(Class<?> clazz) {
+    public NodeClass(Class<?> clazz) {
+        this(clazz, new DefaultCalcOffset(), null, 0);
+    }
+
+    public NodeClass(Class<?> clazz, CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         assert NODE_CLASS.isAssignableFrom(clazz);
         this.isCanonicalizable = Canonicalizable.class.isAssignableFrom(clazz);
         this.isSimplifiable = Simplifiable.class.isAssignableFrom(clazz);
 
-        FieldScanner scanner = new FieldScanner(new DefaultCalcOffset());
+        FieldScanner scanner = new FieldScanner(calcOffset);
         scanner.scan(clazz);
 
         directInputCount = scanner.inputOffsets.size();
@@ -200,7 +204,10 @@ public final class NodeClass extends FieldIntrospection {
         }
         this.nameTemplate = newNameTemplate == null ? newShortName : newNameTemplate;
         this.shortName = newShortName;
-        if (IterableNodeType.class.isAssignableFrom(clazz)) {
+        if (presetIterableIds != null) {
+            this.iterableIds = presetIterableIds;
+            this.iterableId = presetIterableId;
+        } else if (IterableNodeType.class.isAssignableFrom(clazz)) {
             ITERABLE_NODE_TYPES.increment();
             this.iterableId = nextIterableId++;
             List<NodeClass> existingClasses = new LinkedList<>();
@@ -931,6 +938,8 @@ public final class NodeClass extends FieldIntrospection {
                 Node newInput = duplicationReplacement.replacement(input, true);
                 node.updateUsages(null, newInput);
                 assert Node.verifyUniqueIfExternal(newInput, node.graph());
+                assert newInput == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(newInput.getClass()) : "Can not assign " + newInput.getClass() + " to " +
+                                fieldTypes.get(inputOffsets[index]) + " in " + node;
                 putNode(node, inputOffsets[index], newInput);
             }
             index++;
@@ -946,6 +955,8 @@ public final class NodeClass extends FieldIntrospection {
             if (successor != null) {
                 Node newSucc = duplicationReplacement.replacement(successor, false);
                 node.updatePredecessor(null, newSucc);
+                assert newSucc == null || fieldTypes.get(successorOffsets[index]).isAssignableFrom(newSucc.getClass()) : fieldTypes.get(successorOffsets[index]) + " is not compatible with " +
+                                newSucc.getClass();
                 putNode(node, successorOffsets[index], newSucc);
             }
             index++;
@@ -1374,7 +1385,7 @@ public final class NodeClass extends FieldIntrospection {
 
             public Node replacement(Node node, boolean isInput) {
                 if (node.isExternal() && node instanceof ValueNumberable) {
-                    return graph.uniqueWithoutAdd(node);
+                    return graph.uniqueExternal(node);
                 }
                 Node target = newNodes.get(node);
                 if (target == null) {

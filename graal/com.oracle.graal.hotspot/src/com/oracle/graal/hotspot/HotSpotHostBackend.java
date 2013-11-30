@@ -28,6 +28,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.spi.*;
 
@@ -51,24 +52,21 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
 
         // Install intrinsics.
         if (Intrinsify.getValue()) {
-            Debug.scope("RegisterReplacements", new Object[]{new DebugDumpScope("RegisterReplacements")}, new Runnable() {
-
-                @Override
-                public void run() {
-
-                    Replacements replacements = providers.getReplacements();
-                    ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
-                    for (ReplacementsProvider replacementsProvider : sl) {
-                        replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, providers.getCodeCache().getTarget());
-                    }
-                    if (BootstrapReplacements.getValue()) {
-                        for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
-                            replacements.getMacroSubstitution(method);
-                            replacements.getMethodSubstitution(method);
-                        }
+            try (Scope s = Debug.scope("RegisterReplacements", new DebugDumpScope("RegisterReplacements"))) {
+                Replacements replacements = providers.getReplacements();
+                ServiceLoader<ReplacementsProvider> sl = ServiceLoader.loadInstalled(ReplacementsProvider.class);
+                for (ReplacementsProvider replacementsProvider : sl) {
+                    replacementsProvider.registerReplacements(providers.getMetaAccess(), lowerer, replacements, providers.getCodeCache().getTarget());
+                }
+                if (BootstrapReplacements.getValue()) {
+                    for (ResolvedJavaMethod method : replacements.getAllReplacements()) {
+                        replacements.getMacroSubstitution(method);
+                        replacements.getMethodSubstitution(method);
                     }
                 }
-            });
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
         }
     }
 }

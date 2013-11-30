@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * The Java bytecode specification allows non-balanced locking. Graal does not handle such cases and
  * throws a {@link BailoutException} instead during graph building.
  */
-public abstract class AccessMonitorNode extends AbstractStateSplit implements MemoryCheckpoint {
+public abstract class AccessMonitorNode extends AbstractMemoryCheckpoint implements MemoryCheckpoint {
 
     @Input private ValueNode object;
 

@@ -40,7 +40,7 @@ import com.oracle.graal.phases.schedule.*;
  * Generates a representation of {@link Graph Graphs} that can be visualized and inspected with the
  * <a href="http://kenai.com/projects/igv">Ideal Graph Visualizer</a>.
  */
-class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
+public class IdealGraphPrinter extends BasicIdealGraphPrinter implements GraphPrinter {
 
     /**
      * Creates a new {@link IdealGraphPrinter} that writes to the specified output stream.

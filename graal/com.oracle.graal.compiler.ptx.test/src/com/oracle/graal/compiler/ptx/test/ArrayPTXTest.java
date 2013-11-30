@@ -24,12 +24,12 @@ package com.oracle.graal.compiler.ptx.test;
 
 import static com.oracle.graal.lir.ptx.ThreadDimension.*;
 
-import com.oracle.graal.lir.ptx.ParallelOver;
-import com.oracle.graal.lir.ptx.Warp;
+import java.lang.reflect.*;
+import java.util.*;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import org.junit.Test;
+import org.junit.*;
+
+import com.oracle.graal.lir.ptx.*;
 
 public class ArrayPTXTest extends PTXTestBase {
 
@@ -71,9 +71,7 @@ public class ArrayPTXTest extends PTXTestBase {
         for (Method m : ArrayPTXTest.class.getMethods()) {
             String name = m.getName();
             if (m.getAnnotation(Test.class) == null && name.startsWith("test")) {
-                // CheckStyle: stop system..print check
-                System.out.println(name + ": \n" + new String(test.compile(name).getTargetCode()));
-                // CheckStyle: resume system..print check
+                printReport(name + ": \n" + new String(test.compile(name).getTargetCode()));
             }
         }
     }

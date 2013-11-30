@@ -31,7 +31,9 @@ import com.oracle.graal.nodes.*;
  * represented by location identities (i.e. change a value at one or more locations that belong to
  * these location identities).
  */
-public interface MemoryCheckpoint {
+public interface MemoryCheckpoint extends MemoryNode {
+
+    FixedNode asNode();
 
     interface Single extends MemoryCheckpoint {
 
