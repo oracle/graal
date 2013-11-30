@@ -25,13 +25,13 @@ package com.oracle.graal.hotspot.stubs;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
@@ -135,53 +135,47 @@ public abstract class Stub {
      */
     public synchronized InstalledCode getCode(final Backend backend) {
         if (code == null) {
-            Debug.sandbox("CompilingStub", new Object[]{providers.getCodeCache(), debugScopeContext()}, DebugScope.getConfig(), new Runnable() {
-
-                @Override
-                public void run() {
-
-                    final StructuredGraph graph = getGraph();
-                    if (!(graph.start() instanceof StubStartNode)) {
-                        StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
-                        newStart.setStateAfter(graph.start().stateAfter());
-                        graph.replaceFixed(graph.start(), newStart);
-                    }
-
-                    PhasePlan phasePlan = new PhasePlan();
-                    ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-                    MetaAccessProvider metaAccess = providers.getMetaAccess();
-                    CodeCacheProvider codeCache = providers.getCodeCache();
-                    GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
-                    phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
-                    // The stub itself needs the incoming calling convention.
-                    CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                    final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan,
-                                    OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), new CompilationResult());
-
-                    assert destroyedRegisters != null;
-                    code = Debug.scope("CodeInstall", new Callable<InstalledCode>() {
-
-                        @Override
-                        public InstalledCode call() {
-                            Stub stub = Stub.this;
-                            HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
-                            HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
-                            CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
-                            if (result != CodeInstallResult.OK) {
-                                throw new GraalInternalError("Error installing stub %s: %s", Stub.this, result);
-                            }
-                            if (Debug.isDumpEnabled()) {
-                                Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-                            }
-                            if (Debug.isLogEnabled()) {
-                                Debug.log("%s", providers.getDisassembler().disassemble(installedCode));
-                            }
-                            return installedCode;
-                        }
-                    });
-
+            try (Scope d = Debug.sandbox("CompilingStub", DebugScope.getConfig(), providers.getCodeCache(), debugScopeContext())) {
+                final StructuredGraph graph = getGraph();
+                if (!(graph.start() instanceof StubStartNode)) {
+                    StubStartNode newStart = graph.add(new StubStartNode(Stub.this));
+                    newStart.setStateAfter(graph.start().stateAfter());
+                    graph.replaceFixed(graph.start(), newStart);
                 }
-            });
+
+                PhasePlan phasePlan = new PhasePlan();
+                ForeignCallsProvider foreignCalls = providers.getForeignCalls();
+                MetaAccessProvider metaAccess = providers.getMetaAccess();
+                CodeCacheProvider codeCache = providers.getCodeCache();
+                GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
+                phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
+                // The stub itself needs the incoming calling convention.
+                CallingConvention incomingCc = linkage.getIncomingCallingConvention();
+                final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan,
+                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), new CompilationResult());
+
+                assert destroyedRegisters != null;
+                try (Scope s = Debug.scope("CodeInstall")) {
+                    Stub stub = Stub.this;
+                    HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
+                    HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
+                    CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
+                    if (result != CodeInstallResult.OK) {
+                        throw new GraalInternalError("Error installing stub %s: %s", Stub.this, result);
+                    }
+                    if (Debug.isDumpEnabled()) {
+                        Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
+                    }
+                    if (Debug.isLogEnabled()) {
+                        Debug.log("%s", providers.getDisassembler().disassemble(installedCode));
+                    }
+                    code = installedCode;
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
             assert code != null : "error installing stub " + this;
         }
         return code;

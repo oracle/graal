@@ -26,7 +26,6 @@ import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import org.junit.*;
 
@@ -36,6 +35,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.LIRInstruction.ValueProcedure;
 import com.oracle.graal.lir.StandardOp.MoveOp;
@@ -47,23 +47,18 @@ public class AllocatorTest extends GraalCompilerTest {
 
     protected void test(String snippet, final int expectedRegisters, final int expectedRegRegMoves, final int expectedSpillMoves) {
         final StructuredGraph graph = parse(snippet);
-        Debug.scope("AllocatorTest", new Object[]{graph, graph.method(), getCodeCache()}, new Runnable() {
-
-            @Override
-            public void run() {
-                final RegisterStats stats = getRegisterStats(graph);
-
-                Debug.scope("Assertions", stats.lir, new Runnable() {
-
-                    @Override
-                    public void run() {
-                        Assert.assertEquals("register count", expectedRegisters, stats.registers.size());
-                        Assert.assertEquals("reg-reg moves", expectedRegRegMoves, stats.regRegMoves);
-                        Assert.assertEquals("spill moves", expectedSpillMoves, stats.spillMoves);
-                    }
-                });
+        try (Scope s = Debug.scope("AllocatorTest", graph, graph.method(), getCodeCache())) {
+            final RegisterStats stats = getRegisterStats(graph);
+            try (Scope s2 = Debug.scope("Assertions", stats.lir)) {
+                Assert.assertEquals("register count", expectedRegisters, stats.registers.size());
+                Assert.assertEquals("reg-reg moves", expectedRegRegMoves, stats.regRegMoves);
+                Assert.assertEquals("spill moves", expectedSpillMoves, stats.spillMoves);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             }
-        });
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private class RegisterStats {
@@ -115,22 +110,19 @@ public class AllocatorTest extends GraalCompilerTest {
         final PhasePlan phasePlan = getDefaultPhasePlan();
         final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
-        final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
+        LIR lir = null;
+        try (Scope s = Debug.scope("FrontEnd")) {
+            lir = GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), getSuites());
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
-            @Override
-            public LIR call() {
-                return GraalCompiler.emitHIR(getProviders(), getBackend().getTarget(), graph, assumptions, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(), getSuites());
-            }
-        });
-
-        return Debug.scope("BackEnd", lir, new Callable<RegisterStats>() {
-
-            @Override
-            public RegisterStats call() {
-                CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
-                GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), lir, graph, cc);
-                return new RegisterStats(lir);
-            }
-        });
+        try (Scope s = Debug.scope("BackEnd", lir)) {
+            CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
+            GraalCompiler.emitLIR(getBackend(), getBackend().getTarget(), lir, graph, cc);
+            return new RegisterStats(lir);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

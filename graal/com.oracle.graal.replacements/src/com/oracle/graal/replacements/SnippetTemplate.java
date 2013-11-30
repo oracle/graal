@@ -34,6 +34,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.*;
@@ -410,17 +411,13 @@ public class SnippetTemplate {
             SnippetTemplate template = UseSnippetTemplateCache ? templates.get(args.cacheKey) : null;
             if (template == null) {
                 SnippetTemplates.increment();
-                try (TimerCloseable a = SnippetTemplateCreationTime.start()) {
-                    template = Debug.scope("SnippetSpecialization", args.info.method, new Callable<SnippetTemplate>() {
-
-                        @Override
-                        public SnippetTemplate call() throws Exception {
-                            return new SnippetTemplate(providers, args);
-                        }
-                    });
+                try (TimerCloseable a = SnippetTemplateCreationTime.start(); Scope s = Debug.scope("SnippetSpecialization", args.info.method)) {
+                    template = new SnippetTemplate(providers, args);
                     if (UseSnippetTemplateCache) {
                         templates.put(args.cacheKey, template);
                     }
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
                 }
             }
             return template;
@@ -583,13 +580,12 @@ public class SnippetTemplate {
 
         // Perform lowering on the snippet
         snippetCopy.setGuardsStage(args.cacheKey.guardsStage);
-        Debug.scope("LoweringSnippetTemplate", snippetCopy, new Runnable() {
-
-            public void run() {
-                PhaseContext c = new PhaseContext(providers, new Assumptions(false));
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
-            }
-        });
+        try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
+            PhaseContext c = new PhaseContext(providers, new Assumptions(false));
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
         // Remove all frame states from snippet graph. Snippets must be atomic (i.e. free
         // of side-effects that prevent deoptimizing to a point before the snippet).

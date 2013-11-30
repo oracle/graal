@@ -27,6 +27,7 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.phases.common.*;
@@ -77,27 +78,26 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
     }
 
     private void test(final String snippet) {
-        Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Runnable() {
-
+        try (Scope s = Debug.scope("ReadAfterCheckCastTest", new DebugDumpScope(snippet))) {
             // check shape of graph, with lots of assumptions. will probably fail if graph
             // structure changes significantly
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                new FloatingReadPhase().apply(graph);
-                new OptimizeGuardAnchors().apply(graph);
-                new ReadEliminationPhase().apply(graph);
-                new CanonicalizerPhase(true).apply(graph, context);
+            StructuredGraph graph = parse(snippet);
+            PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new FloatingReadPhase().apply(graph);
+            new OptimizeGuardAnchors().apply(graph);
+            new ReadEliminationPhase().apply(graph);
+            new CanonicalizerPhase(true).apply(graph, context);
 
-                Debug.dump(graph, "After lowering");
+            Debug.dump(graph, "After lowering");
 
-                for (FloatingReadNode node : graph.getNodes(LocalNode.class).first().usages().filter(FloatingReadNode.class)) {
-                    // Checking that the parameter a is not directly used for the access to field
-                    // x10 (because x10 must be guarded by the checkcast).
-                    Assert.assertTrue(node.location().getLocationIdentity() == LocationIdentity.FINAL_LOCATION);
-                }
+            for (FloatingReadNode node : graph.getNodes(LocalNode.class).first().usages().filter(FloatingReadNode.class)) {
+                // Checking that the parameter a is not directly used for the access to field
+                // x10 (because x10 must be guarded by the checkcast).
+                Assert.assertTrue(node.location().getLocationIdentity() == LocationIdentity.FINAL_LOCATION);
             }
-        });
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

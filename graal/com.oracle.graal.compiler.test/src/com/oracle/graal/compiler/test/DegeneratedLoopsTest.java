@@ -26,6 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.common.*;
@@ -78,18 +79,17 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet) {
-        Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet), new Runnable() {
-
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                new CanonicalizerPhase(true).apply(graph, context);
-                Debug.dump(graph, "Graph");
-                StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
-                Debug.dump(referenceGraph, "ReferenceGraph");
-                assertEquals(referenceGraph, graph);
-            }
-        });
+        try (Scope s = Debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
+            StructuredGraph graph = parse(snippet);
+            HighTierContext context = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new CanonicalizerPhase(true).apply(graph, context);
+            Debug.dump(graph, "Graph");
+            StructuredGraph referenceGraph = parse(REFERENCE_SNIPPET);
+            Debug.dump(referenceGraph, "ReferenceGraph");
+            assertEquals(referenceGraph, graph);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

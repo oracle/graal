@@ -26,6 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -54,35 +55,35 @@ public class FloatingReadTest extends GraphScheduleTest {
     }
 
     private void test(final String snippet) {
-        Debug.scope("FloatingReadTest", new DebugDumpScope(snippet), new Runnable() {
+        try (Scope s = Debug.scope("FloatingReadTest", new DebugDumpScope(snippet))) {
 
-            public void run() {
-                StructuredGraph graph = parse(snippet);
-                PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                new FloatingReadPhase().apply(graph);
+            StructuredGraph graph = parse(snippet);
+            PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new FloatingReadPhase().apply(graph);
 
-                ReturnNode returnNode = null;
-                MonitorExit monitorexit = null;
+            ReturnNode returnNode = null;
+            MonitorExit monitorexit = null;
 
-                for (Node n : graph.getNodes()) {
-                    if (n instanceof ReturnNode) {
-                        returnNode = (ReturnNode) n;
-                    } else if (n instanceof MonitorExit) {
-                        monitorexit = (MonitorExit) n;
-                    }
+            for (Node n : graph.getNodes()) {
+                if (n instanceof ReturnNode) {
+                    returnNode = (ReturnNode) n;
+                } else if (n instanceof MonitorExit) {
+                    monitorexit = (MonitorExit) n;
                 }
-
-                Debug.dump(graph, "After lowering");
-
-                Assert.assertNotNull(returnNode);
-                Assert.assertNotNull(monitorexit);
-                Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
-
-                FloatingReadNode read = (FloatingReadNode) returnNode.result();
-
-                assertOrderedAfterSchedule(graph, read, (Node) monitorexit);
             }
-        });
+
+            Debug.dump(graph, "After lowering");
+
+            Assert.assertNotNull(returnNode);
+            Assert.assertNotNull(monitorexit);
+            Assert.assertTrue(returnNode.result() instanceof FloatingReadNode);
+
+            FloatingReadNode read = (FloatingReadNode) returnNode.result();
+
+            assertOrderedAfterSchedule(graph, read, (Node) monitorexit);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 }

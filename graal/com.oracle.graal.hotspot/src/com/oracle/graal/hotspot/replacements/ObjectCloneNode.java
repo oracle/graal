@@ -25,11 +25,11 @@ package com.oracle.graal.hotspot.replacements;
 import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.reflect.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.spi.*;
@@ -65,13 +65,12 @@ public class ObjectCloneNode extends MacroNode implements VirtualizableAllocatio
                 if (method != null) {
                     final ResolvedJavaMethod snippetMethod = tool.getMetaAccess().lookupJavaMethod(method);
                     final Replacements replacements = tool.getReplacements();
-                    StructuredGraph snippetGraph = Debug.scope("ArrayCopySnippet", snippetMethod, new Callable<StructuredGraph>() {
-
-                        @Override
-                        public StructuredGraph call() throws Exception {
-                            return replacements.getSnippet(snippetMethod);
-                        }
-                    });
+                    StructuredGraph snippetGraph = null;
+                    try (Scope s = Debug.scope("ArrayCopySnippet", snippetMethod)) {
+                        snippetGraph = replacements.getSnippet(snippetMethod);
+                    } catch (Throwable e) {
+                        throw Debug.handle(e);
+                    }
 
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
                     return lowerReplacement(snippetGraph.copy(), tool);

@@ -23,9 +23,9 @@
 package com.oracle.graal.loop;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
@@ -36,13 +36,12 @@ public class LoopsData {
     private ControlFlowGraph cfg;
 
     public LoopsData(final StructuredGraph graph) {
-        cfg = Debug.scope("ControlFlowGraph", new Callable<ControlFlowGraph>() {
+        try (Scope s = Debug.scope("ControlFlowGraph")) {
+            cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
-            @Override
-            public ControlFlowGraph call() throws Exception {
-                return ControlFlowGraph.compute(graph, true, true, true, true);
-            }
-        });
         for (Loop lirLoop : cfg.getLoops()) {
             LoopEx ex = new LoopEx(lirLoop, this);
             lirLoopToEx.put(lirLoop, ex);

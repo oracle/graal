@@ -105,71 +105,10 @@ public class Debug {
         return callable;
     }
 
-    public static void sandbox(String name, DebugConfig config, Runnable runnable) {
-        if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
-            DebugScope.getInstance().scope(name, runnable, null, sandboxConfig, new Object[0]);
-        } else {
-            runnable.run();
-        }
-    }
-
     /**
-     * Creates a new debug scope that is unrelated to the current scope and runs a given task in the
-     * new scope.
-     * 
-     * @param name new scope name
-     * @param context the context objects of the new scope
-     * @param config the debug configuration to use for the new scope
-     * @param runnable the task to run in the new scope
+     * Gets a string composed of the names in the current nesting of debug
+     * {@linkplain #scope(String, Object...) scopes} separated by {@code '.'}.
      */
-    public static void sandbox(String name, Object[] context, DebugConfig config, Runnable runnable) {
-        if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
-            DebugScope.getInstance().scope(name, runnable, null, sandboxConfig, context);
-        } else {
-            runnable.run();
-        }
-    }
-
-    /**
-     * Creates a new debug scope that is unrelated to the current scope and runs a given task in the
-     * new scope.
-     * 
-     * @param name new scope name
-     * @param context the context objects of the new scope
-     * @param config the debug configuration to use for the new scope
-     * @param callable the task to run in the new scope
-     */
-    public static <T> T sandbox(String name, Object[] context, DebugConfig config, Callable<T> callable) {
-        if (ENABLED) {
-            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
-            return DebugScope.getInstance().scope(name, null, callable, sandboxConfig, context);
-        } else {
-            return DebugScope.call(callable);
-        }
-    }
-
-    public static void scope(String name, Runnable runnable) {
-        scope(name, new Object[0], runnable);
-    }
-
-    public static <T> T scope(String name, Callable<T> callable) {
-        return scope(name, new Object[0], callable);
-    }
-
-    public static void scope(String name, Object context, Runnable runnable) {
-        scope(name, new Object[]{context}, runnable);
-    }
-
-    public static void scope(String name, Object[] context, Runnable runnable) {
-        if (ENABLED) {
-            DebugScope.getInstance().scope(name, runnable, null, null, context);
-        } else {
-            runnable.run();
-        }
-    }
-
     public static String currentScope() {
         if (ENABLED) {
             return DebugScope.getInstance().getQualifiedName();
@@ -178,20 +117,97 @@ public class Debug {
         }
     }
 
-    public static <T> T scope(String name, Object context, Callable<T> callable) {
-        return scope(name, new Object[]{context}, callable);
+    /**
+     * Represents a debug scope entered by {@link Debug#scope(String, Object...)} or
+     * {@link Debug#sandbox(String, DebugConfig, Object...)}. Leaving the scope is achieved via
+     * {@link #close()}.
+     */
+    public interface Scope extends AutoCloseable {
+        void close();
     }
 
-    public static <T> T scope(String name, Object[] context, Callable<T> callable) {
+    /**
+     * Creates and enters a new debug scope which will be a child of the current debug scope.
+     * <p>
+     * It is recommended to use the try-with-resource statement for managing entering and leaving
+     * debug scopes. For example:
+     * 
+     * <pre>
+     * try (Scope s = Debug.scope(&quot;InliningGraph&quot;, inlineeGraph)) {
+     *     ...
+     * } catch (Throwable e) {
+     *     throw Debug.handle(e);
+     * }
+     * </pre>
+     * 
+     * @param name the name of the new scope
+     * @param context objects to be appended to the {@linkplain #context() current} debug context
+     * @return the scope entered by this method which will be exited when its {@link Scope#close()}
+     *         method is called
+     */
+    public static Scope scope(String name, Object... context) {
         if (ENABLED) {
-            return DebugScope.getInstance().scope(name, null, callable, null, context);
+            return DebugScope.getInstance().scope(name, false, null, context);
         } else {
-            return DebugScope.call(callable);
+            return null;
         }
     }
 
     /**
-     * Prints an indented message to the current DebugLevel's logging stream if logging is enabled.
+     * Creates and enters a new debug scope which will be disjoint from the current debug scope.
+     * <p>
+     * It is recommended to use the try-with-resource statement for managing entering and leaving
+     * debug scopes. For example:
+     * 
+     * <pre>
+     * try (Scope s = Debug.sandbox(&quot;CompilingStub&quot;, null, stubGraph)) {
+     *     ...
+     * } catch (Throwable e) {
+     *     throw Debug.handle(e);
+     * }
+     * </pre>
+     * 
+     * @param name the name of the new scope
+     * @param config the debug configuration to use for the new scope
+     * @param context objects to be appended to the {@linkplain #context() current} debug context
+     * @return the scope entered by this method which will be exited when its {@link Scope#close()}
+     *         method is called
+     */
+    public static Scope sandbox(String name, DebugConfig config, Object... context) {
+        if (ENABLED) {
+            DebugConfig sandboxConfig = config == null ? silentConfig() : config;
+            return DebugScope.getInstance().scope(name, true, sandboxConfig, context);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Handles an exception in the context of the debug scope just exited. The just exited scope
+     * must have the current scope as its parent which will be the case if the try-with-resource
+     * pattern recommended by {@link #scope(String, Object...)} and
+     * {@link #sandbox(String, DebugConfig, Object...)} is used
+     * 
+     * @see #scope(String, Object...)
+     * @see #sandbox(String, DebugConfig, Object...)
+     */
+    public static RuntimeException handle(Throwable exception) {
+        if (ENABLED) {
+            return DebugScope.getInstance().handle(exception);
+        } else {
+            if (exception instanceof Error) {
+                throw (Error) exception;
+            }
+            if (exception instanceof RuntimeException) {
+                throw (RuntimeException) exception;
+            }
+            throw new RuntimeException(exception);
+        }
+    }
+
+    /**
+     * Prints an indented message to the current debug scopes's logging stream if logging is enabled
+     * in the scope.
      * 
      * @param msg The format string of the log message
      * @param args The arguments referenced by the log message string

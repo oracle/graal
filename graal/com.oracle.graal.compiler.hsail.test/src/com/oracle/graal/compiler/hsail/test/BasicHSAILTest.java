@@ -26,6 +26,7 @@ import org.junit.*;
 
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.hotspot.hsail.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.nodes.*;
@@ -332,14 +333,13 @@ public class BasicHSAILTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet) {
-        Debug.scope("HSAILTestCode", new Runnable() {
+        try (Scope s = Debug.scope("HSAILCodeGen")) {
             StructuredGraph graph = parse(snippet);
-
-            public void run() {
-                HSAILCompilationResult compResult = HSAILCompilationResult.getHSAILCompilationResult(graph);
-                Debug.log("HSAIL code generated for %s:%n%s", snippet, compResult.getHSAILCode());
-            }
-        });
+            HSAILCompilationResult compResult = HSAILCompilationResult.getHSAILCompilationResult(graph);
+            Debug.log("HSAIL code generated for %s:%n%s", snippet, compResult.getHSAILCode());
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     public static void nBodySpill(float[] inxyz, float[] outxyz, float[] invxyz, float[] outvxyz, int gid) {

@@ -25,13 +25,13 @@ package com.oracle.graal.compiler.test.inlining;
 import static org.junit.Assert.*;
 
 import java.lang.reflect.*;
-import java.util.concurrent.*;
 
 import org.junit.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -229,24 +229,22 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     private StructuredGraph getGraph(final String snippet, final boolean eagerInfopointMode) {
-        return Debug.scope("InliningTest", new DebugDumpScope(snippet), new Callable<StructuredGraph>() {
-
-            @Override
-            public StructuredGraph call() {
-                Method method = getMethod(snippet);
-                StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
-                PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
-                Assumptions assumptions = new Assumptions(true);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
-                Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(true).apply(graph, context);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(true).apply(graph, context);
-                new DeadCodeEliminationPhase().apply(graph);
-                return graph;
-            }
-        });
+        try (Scope s = Debug.scope("InliningTest", new DebugDumpScope(snippet))) {
+            Method method = getMethod(snippet);
+            StructuredGraph graph = eagerInfopointMode ? parseDebug(method) : parse(method);
+            PhasePlan phasePlan = getDefaultPhasePlan(eagerInfopointMode);
+            Assumptions assumptions = new Assumptions(true);
+            HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
+            Debug.dump(graph, "Graph");
+            new CanonicalizerPhase(true).apply(graph, context);
+            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            Debug.dump(graph, "Graph");
+            new CanonicalizerPhase(true).apply(graph, context);
+            new DeadCodeEliminationPhase().apply(graph);
+            return graph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private static StructuredGraph assertInlined(StructuredGraph graph) {

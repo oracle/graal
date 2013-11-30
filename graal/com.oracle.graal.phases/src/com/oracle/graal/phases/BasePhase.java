@@ -25,6 +25,7 @@ package com.oracle.graal.phases;
 import java.util.regex.*;
 
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.nodes.*;
 
@@ -75,19 +76,15 @@ public abstract class BasePhase<C> {
     }
 
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
-        try (TimerCloseable a = phaseTimer.start()) {
-
-            Debug.scope(name, this, new Runnable() {
-
-                public void run() {
-                    BasePhase.this.run(graph, context);
-                    phaseMetric.increment();
-                    if (dumpGraph) {
-                        Debug.dump(graph, "After phase %s", name);
-                    }
-                    assert graph.verify();
-                }
-            });
+        try (TimerCloseable a = phaseTimer.start(); Scope s = Debug.scope(name, this)) {
+            BasePhase.this.run(graph, context);
+            phaseMetric.increment();
+            if (dumpGraph) {
+                Debug.dump(graph, "After phase %s", name);
+            }
+            assert graph.verify();
+        } catch (Throwable t) {
+            throw Debug.handle(t);
         }
     }
 

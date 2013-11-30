@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -97,12 +98,11 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         replacementGraph.setGuardsStage(graph().getGuardsStage());
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions());
-        Debug.scope("LoweringReplacement", replacementGraph, new Runnable() {
-
-            public void run() {
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
-            }
-        });
+        try (Scope s = Debug.scope("LoweringReplacement", replacementGraph)) {
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         return replacementGraph;
     }
 

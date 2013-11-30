@@ -27,7 +27,6 @@ import static com.oracle.graal.compiler.MethodFilter.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
@@ -36,6 +35,7 @@ import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
@@ -132,49 +132,44 @@ public class GraalCompiler {
      *            argument can be null.
      * @return the result of the compilation
      */
-    public static <T extends CompilationResult> T compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
-                    final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
-        Debug.scope("GraalCompiler", new Object[]{graph, providers.getCodeCache()}, new Runnable() {
-
-            public void run() {
-                compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, speculationLog, suites, compilationResult);
-            }
-        });
-
+    public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
+        try (Scope s = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
+            compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, speculationLog, suites, compilationResult);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         return compilationResult;
     }
 
     /**
      * Same as {@link #compileGraph} but without entering a
-     * {@linkplain Debug#scope(String, Object[], Runnable) debug scope}.
+     * {@linkplain Debug#scope(String, Object...) debug scope}.
      */
-    public static <T extends CompilationResult> T compileGraphNoScope(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
-                    final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
-                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
-        final Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-        final LIR lir = Debug.scope("FrontEnd", new Callable<LIR>() {
+    public static <T extends CompilationResult> T compileGraphNoScope(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
+        Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
-            public LIR call() {
-                try (TimerCloseable a = FrontEnd.start()) {
-                    return emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
-                }
-            }
-        });
+        LIR lir = null;
+        try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
+            lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         try (TimerCloseable a = BackEnd.start()) {
-            final LIRGenerator lirGen = Debug.scope("BackEnd", lir, new Callable<LIRGenerator>() {
-
-                public LIRGenerator call() {
-                    return emitLIR(backend, target, lir, graph, cc);
-                }
-            });
-            Debug.scope("CodeGen", lirGen, new Runnable() {
-
-                public void run() {
-                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
-                }
-
-            });
+            LIRGenerator lirGen = null;
+            try (Scope s = Debug.scope("BackEnd", lir)) {
+                lirGen = emitLIR(backend, target, lir, graph, cc);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+            try (Scope s = Debug.scope("CodeGen", lirGen)) {
+                emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+            } catch (Throwable e) {
+                throw Debug.handle(e);
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
 
         return compilationResult;
@@ -193,8 +188,8 @@ public class GraalCompiler {
     /**
      * Builds the graph, optimizes it.
      */
-    public static LIR emitHIR(Providers providers, TargetDescription target, final StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan,
-                    OptimisticOptimizations optimisticOpts, final SpeculationLog speculationLog, final Suites suites) {
+    public static LIR emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts,
+                    SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -224,68 +219,63 @@ public class GraalCompiler {
             InliningPhase.storeStatisticsAfterLowTier(graph);
         }
 
-        final SchedulePhase schedule = new SchedulePhase();
+        SchedulePhase schedule = new SchedulePhase();
         schedule.apply(graph);
         Debug.dump(schedule, "final schedule");
 
-        final Block[] blocks = schedule.getCFG().getBlocks();
-        final Block startBlock = schedule.getCFG().getStartBlock();
+        Block[] blocks = schedule.getCFG().getBlocks();
+        Block startBlock = schedule.getCFG().getStartBlock();
         assert startBlock != null;
         assert startBlock.getPredecessorCount() == 0;
 
-        return Debug.scope("ComputeLinearScanOrder", new Callable<LIR>() {
+        try (Scope s = Debug.scope("ComputeLinearScanOrder")) {
+            NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
+            List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, nodeProbabilities);
+            List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, nodeProbabilities);
 
-            @Override
-            public LIR call() {
-                NodesToDoubles nodeProbabilities = new ComputeProbabilityClosure(graph).apply();
-                List<Block> codeEmittingOrder = ComputeBlockOrder.computeCodeEmittingOrder(blocks.length, startBlock, nodeProbabilities);
-                List<Block> linearScanOrder = ComputeBlockOrder.computeLinearScanOrder(blocks.length, startBlock, nodeProbabilities);
-
-                LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder);
-                Debug.dump(lir, "After linear scan order");
-                return lir;
-
-            }
-        });
+            LIR lir = new LIR(schedule.getCFG(), schedule.getBlockToNodesMap(), linearScanOrder, codeEmittingOrder);
+            Debug.dump(lir, "After linear scan order");
+            return lir;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
     }
 
-    public static LIRGenerator emitLIR(final Backend backend, final TargetDescription target, final LIR lir, StructuredGraph graph, CallingConvention cc) {
-        final FrameMap frameMap = backend.newFrameMap();
-        final LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, cc, lir);
-
-        Debug.scope("LIRGen", lirGen, new Runnable() {
-
-            public void run() {
-                for (Block b : lir.linearScanOrder()) {
-                    emitBlock(b);
-                }
-
-                Debug.dump(lir, "After LIR generation");
-            }
-
-            private void emitBlock(Block b) {
-                if (lir.lir(b) == null) {
-                    for (Block pred : b.getPredecessors()) {
-                        if (!b.isLoopHeader() || !pred.isLoopEnd()) {
-                            emitBlock(pred);
-                        }
-                    }
-                    lirGen.doBlock(b);
+    private static void emitBlock(LIRGenerator lirGen, Block b) {
+        if (lirGen.lir.lir(b) == null) {
+            for (Block pred : b.getPredecessors()) {
+                if (!b.isLoopHeader() || !pred.isLoopEnd()) {
+                    emitBlock(lirGen, pred);
                 }
             }
-        });
+            lirGen.doBlock(b);
+        }
+    }
+
+    public static LIRGenerator emitLIR(Backend backend, TargetDescription target, LIR lir, StructuredGraph graph, CallingConvention cc) {
+        FrameMap frameMap = backend.newFrameMap();
+        LIRGenerator lirGen = backend.newLIRGenerator(graph, frameMap, cc, lir);
+
+        try (Scope s = Debug.scope("LIRGen", lirGen)) {
+            for (Block b : lir.linearScanOrder()) {
+                emitBlock(lirGen, b);
+            }
+
+            Debug.dump(lir, "After LIR generation");
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
 
         lirGen.beforeRegisterAllocation();
 
-        Debug.scope("Allocator", new Runnable() {
-
-            public void run() {
-                if (backend.shouldAllocateRegisters()) {
-                    new LinearScan(target, lir, lirGen, frameMap).allocate();
-                }
+        try (Scope s = Debug.scope("Allocator")) {
+            if (backend.shouldAllocateRegisters()) {
+                new LinearScan(target, lir, lirGen, frameMap).allocate();
             }
-        });
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         return lirGen;
     }
 
