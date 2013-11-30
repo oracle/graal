@@ -49,7 +49,8 @@ public abstract class PTXTestBase extends GraalCompilerTest {
     private StructuredGraph sg;
 
     public static void printReport(String message) {
-        TTY.println(message);
+        // Use -G:Log=Test to see these messages on the console
+        Debug.log(message);
     }
 
     public PTXTestBase() {
