@@ -113,6 +113,11 @@ public class CodeExecutableElement extends CodeElement<Element> implements Writa
         return name;
     }
 
+    public CodeTreeBuilder getBuilder() {
+        CodeTree tree = this.bodyTree;
+        return createBuilder().tree(tree);
+    }
+
     public CodeTreeBuilder createBuilder() {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         this.bodyTree = builder.getTree();

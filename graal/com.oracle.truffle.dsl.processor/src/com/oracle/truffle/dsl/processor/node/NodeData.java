@@ -78,6 +78,13 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.assumptions = splitSource.assumptions;
     }
 
+    public int getSignatureSize() {
+        if (getSpecializations() != null && !getSpecializations().isEmpty()) {
+            return getSpecializations().get(0).getSignatureSize();
+        }
+        return 0;
+    }
+
     public boolean needsFrame(ProcessorContext context) {
         for (SpecializationData specialization : specializations) {
             if (!specialization.isReachable()) {

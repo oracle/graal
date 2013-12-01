@@ -1015,7 +1015,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 CodeTreeBuilder access = builder.create();
                 access.string("this.").string(child.getName());
                 if (child.getCardinality().isMany()) {
-                    access.string("[").string(String.valueOf(param.getIndex())).string("]");
+                    access.string("[").string(String.valueOf(param.getSpecificationIndex())).string("]");
                 }
 
                 String oldName = "old" + Utils.firstLetterUpperCase(param.getLocalName());
@@ -2102,7 +2102,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 return null;
             }
             String prefix = expect ? "expect" : "execute";
-            return prefix + Utils.firstLetterUpperCase(child.getName()) + Utils.firstLetterUpperCase(Utils.getSimpleName(param.getType())) + param.getIndex();
+            return prefix + Utils.firstLetterUpperCase(child.getName()) + Utils.firstLetterUpperCase(Utils.getSimpleName(param.getType())) + param.getSpecificationIndex();
         }
 
         private List<CodeExecutableElement> createExecuteChilds(ActualParameter param, Set<TypeData> expectTypes) {
@@ -2418,7 +2418,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 throw new AssertionError();
             }
             if (targetParameter.getSpecification().isIndexed()) {
-                builder.string("[" + targetParameter.getIndex() + "]");
+                builder.string("[" + targetParameter.getSpecificationIndex() + "]");
             }
             return builder.getRoot();
         }
@@ -2729,7 +2729,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 }
                 CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, true);
                 clazz.add(executeMethod);
-                CodeTreeBuilder builder = executeMethod.createBuilder();
+                CodeTreeBuilder builder = executeMethod.getBuilder();
                 CodeTree result = createExecuteBody(builder, specialization, execType);
                 if (result != null) {
                     builder.tree(result);
@@ -2757,7 +2757,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             ExecutableTypeData execType = parser.parse(Arrays.asList(executeCached)).get(0);
 
             CodeExecutableElement executeMethod = createExecutableTypeOverride(execType, false);
-            CodeTreeBuilder builder = executeMethod.createBuilder();
+            CodeTreeBuilder builder = executeMethod.getBuilder();
 
             if (specialization.isGeneric() || specialization.isPolymorphic()) {
                 builder.startThrow().startNew(getContext().getType(AssertionError.class));
@@ -2851,15 +2851,43 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         private CodeExecutableElement createExecutableTypeOverride(ExecutableTypeData execType, boolean evaluated) {
             CodeExecutableElement method = CodeExecutableElement.clone(getContext().getEnvironment(), execType.getMethod());
 
+            CodeTreeBuilder builder = method.createBuilder();
             int i = 0;
+            int signatureIndex = -1;
             for (VariableElement param : method.getParameters()) {
                 CodeVariableElement var = CodeVariableElement.clone(param);
                 ActualParameter actualParameter = execType.getParameters().get(i);
-                if (evaluated && actualParameter.getSpecification().isSignature()) {
-                    var.setName(valueNameEvaluated(actualParameter));
-                } else {
-                    var.setName(valueName(actualParameter));
+                if (actualParameter.getSpecification().isSignature()) {
+                    signatureIndex++;
                 }
+
+                String name;
+                if (evaluated && actualParameter.getSpecification().isSignature()) {
+                    name = valueNameEvaluated(actualParameter);
+                } else {
+                    name = valueName(actualParameter);
+                }
+
+                int varArgCount = getModel().getSignatureSize() - signatureIndex;
+                if (evaluated && actualParameter.isVarArgs()) {
+                    ActualParameter baseVarArgs = actualParameter;
+                    name = valueName(baseVarArgs) + "Args";
+
+                    builder.startAssert().string(name).string(" != null").end();
+                    builder.startAssert().string(name).string(".length == ").string(String.valueOf(varArgCount)).end();
+                    if (varArgCount > 0) {
+                        List<ActualParameter> varArgsParameter = execType.getParameters().subList(i, execType.getParameters().size());
+
+                        for (ActualParameter varArg : varArgsParameter) {
+                            TypeMirror type = baseVarArgs.getType();
+                            if (type.getKind() == TypeKind.ARRAY) {
+                                type = ((ArrayType) type).getComponentType();
+                            }
+                            builder.declaration(type, valueNameEvaluated(varArg), name + "[" + varArg.getVarArgsIndex() + "]");
+                        }
+                    }
+                }
+                var.setName(name);
                 method.getParameters().set(i, var);
                 i++;
             }

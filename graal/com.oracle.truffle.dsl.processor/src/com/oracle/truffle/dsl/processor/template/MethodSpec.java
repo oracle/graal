@@ -37,11 +37,20 @@ public class MethodSpec {
     private final List<ParameterSpec> optional = new ArrayList<>();
     private final List<ParameterSpec> required = new ArrayList<>();
 
+    private int minimumRequiredArguments;
     private boolean variableRequiredArguments;
     private List<TypeDef> typeDefinitions;
 
     public MethodSpec(ParameterSpec returnType) {
         this.returnType = returnType;
+    }
+
+    public void setMinimumRequiredArguments(int minimumRequiredArguments) {
+        this.minimumRequiredArguments = minimumRequiredArguments;
+    }
+
+    public int getMinimumRequiredArguments() {
+        return minimumRequiredArguments;
     }
 
     public void setVariableRequiredArguments(boolean variableArguments) {

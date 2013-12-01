@@ -202,6 +202,17 @@ public class TemplateMethod extends MessageContainer implements Comparable<Templ
         return prev;
     }
 
+    public int getSignatureSize() {
+        int signatureSize = 0;
+        for (ActualParameter parameter : getParameters()) {
+            if (!parameter.getSpecification().isSignature()) {
+                continue;
+            }
+            signatureSize++;
+        }
+        return signatureSize;
+    }
+
     public Signature getSignature() {
         Signature signature = new Signature();
         for (ActualParameter parameter : getReturnTypeAndParameters()) {

@@ -33,49 +33,56 @@ public class ActualParameter {
     private TypeData typeSystemType;
     private TemplateMethod method;
     private final String localName;
-    private final int index;
+    private final int specificationIndex;
+    private final int varArgsIndex;
     private final boolean implicit;
     private final TypeMirror type;
 
-    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int index, boolean implicit) {
+    public ActualParameter(ParameterSpec specification, TypeMirror actualType, int specificationIndex, int varArgsIndex, boolean implicit) {
         this.specification = specification;
         this.type = actualType;
         this.typeSystemType = null;
 
-        this.index = index;
+        this.specificationIndex = specificationIndex;
         this.implicit = implicit;
         String valueName = specification.getName() + "Value";
 
         if (specification.isIndexed()) {
-            valueName += index;
+            valueName += specificationIndex;
         }
+        this.varArgsIndex = varArgsIndex;
         this.localName = valueName;
     }
 
-    public ActualParameter(ParameterSpec specification, TypeData actualType, int index, boolean implicit) {
-        this(specification, actualType.getPrimitiveType(), index, implicit);
+    public ActualParameter(ParameterSpec specification, TypeData actualType, int specificationIndex, int varArgsIndex, boolean implicit) {
+        this(specification, actualType.getPrimitiveType(), specificationIndex, varArgsIndex, implicit);
         this.typeSystemType = actualType;
     }
 
     public ActualParameter(ActualParameter parameter, TypeData otherType) {
-        this(parameter.specification, otherType, parameter.index, parameter.implicit);
+        this(parameter.specification, otherType, parameter.specificationIndex, parameter.varArgsIndex, parameter.implicit);
     }
 
     public ActualParameter(ActualParameter parameter) {
         this.specification = parameter.specification;
         this.type = parameter.type;
         this.typeSystemType = parameter.typeSystemType;
-        this.index = parameter.index;
+        this.specificationIndex = parameter.specificationIndex;
         this.implicit = parameter.implicit;
         this.localName = parameter.localName;
+        this.varArgsIndex = parameter.varArgsIndex;
+    }
+
+    public int getVarArgsIndex() {
+        return varArgsIndex;
     }
 
     public boolean isImplicit() {
         return implicit;
     }
 
-    public int getIndex() {
-        return index;
+    public int getSpecificationIndex() {
+        return specificationIndex;
     }
 
     public String getLocalName() {
@@ -100,6 +107,10 @@ public class ActualParameter {
 
     public TypeData getTypeSystemType() {
         return typeSystemType;
+    }
+
+    public boolean isVarArgs() {
+        return varArgsIndex >= 0;
     }
 
     public ActualParameter getPreviousParameter() {

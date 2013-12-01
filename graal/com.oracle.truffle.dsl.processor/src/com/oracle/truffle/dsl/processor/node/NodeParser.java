@@ -205,6 +205,7 @@ public class NodeParser extends TemplateParser<NodeData> {
 
             finalizeSpecializations(elements, splittedNode);
             verifyNode(splittedNode, elements);
+            expandExecutableTypeVarArgs(splittedNode);
             createPolymorphicSpecializations(splittedNode);
             assignShortCircuitsToSpecializations(splittedNode);
         }
@@ -215,6 +216,26 @@ public class NodeParser extends TemplateParser<NodeData> {
             node.setSpecializations(new ArrayList<SpecializationData>());
         }
         return node;
+    }
+
+    private static void expandExecutableTypeVarArgs(NodeData node) {
+        for (ExecutableTypeData executableMethod : node.getExecutableTypes()) {
+            if (!(executableMethod.getMethod().isVarArgs() && executableMethod.getSpecification().isVariableRequiredArguments())) {
+                continue;
+            }
+            int expandArguments = node.getSignatureSize() - executableMethod.getSignatureSize();
+            if (expandArguments > 0) {
+                int signatureSize = executableMethod.getSignatureSize();
+                ActualParameter parameter = executableMethod.getSignatureParameter(signatureSize - 1);
+                for (int i = 0; i < expandArguments; i++) {
+                    int newVarArgsIndex = parameter.getVarArgsIndex() + i + 1;
+                    int newSpecificationIndex = parameter.getSpecificationIndex() + i + 1;
+                    executableMethod.getParameters().add(
+                                    new ActualParameter(parameter.getSpecification(), parameter.getTypeSystemType(), newSpecificationIndex, newVarArgsIndex, parameter.isImplicit()));
+                }
+
+            }
+        }
     }
 
     private void createPolymorphicSpecializations(NodeData node) {
