@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluated
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs2Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs3Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs4Factory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs5Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
@@ -236,6 +237,22 @@ public class ExecuteEvaluatedTest {
         @Specialization
         int call(int exp0, int exp1) {
             return exp0 + exp1;
+        }
+    }
+
+    @Test
+    public void test5VarArgs1() {
+        TestRootNode<TestEvaluatedVarArgs5> root = TestHelper.createRoot(TestEvaluatedVarArgs5Factory.getInstance());
+        Assert.assertEquals(42, root.getNode().execute1(null));
+    }
+
+    abstract static class TestEvaluatedVarArgs5 extends ValueNode {
+
+        public abstract Object execute1(VirtualFrame frame, Object... value);
+
+        @Specialization
+        int call() {
+            return 42;
         }
     }
 
