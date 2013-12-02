@@ -136,6 +136,10 @@ public class NewFrameNode extends FixedWithNextNode implements IterableNodeType,
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (!descriptor.isConstant()) {
+            return;
+        }
+
         int frameSize = getFrameSize();
 
         ResolvedJavaType frameType = stamp().javaType(tool.getMetaAccessProvider());
