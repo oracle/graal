@@ -25,13 +25,13 @@ package com.oracle.graal.lir.amd64;
 import static com.oracle.graal.api.code.ValueUtil.*;
 import static com.oracle.graal.lir.LIRInstruction.OperandFlag.*;
 
+import com.oracle.graal.amd64.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.asm.amd64.*;
-import com.oracle.graal.asm.amd64.AMD64Assembler.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
-import com.oracle.graal.nodes.spi.*;
 
 public class AMD64Call {
 
@@ -135,9 +135,14 @@ public class AMD64Call {
 
         @Temp({REG}) protected AllocatableValue callTemp;
 
-        public DirectFarForeignCallOp(LIRGeneratorTool gen, ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
+        public DirectFarForeignCallOp(ForeignCallLinkage callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState state) {
             super(callTarget, result, parameters, temps, state);
-            callTemp = gen.newVariable(Kind.Long);
+            /*
+             * The register allocator does not support virtual registers that are used at the call
+             * site, so use a fixed register.
+             */
+            callTemp = AMD64.rax.asValue(Kind.Long);
+            assert ValueUtil.differentRegisters(parameters, callTemp);
         }
 
         @Override

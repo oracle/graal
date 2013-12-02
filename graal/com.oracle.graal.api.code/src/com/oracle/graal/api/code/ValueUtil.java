@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.code;
 
+import java.util.*;
+
 import com.oracle.graal.api.meta.*;
 
 /**
@@ -127,11 +129,39 @@ public final class ValueUtil {
         return sameRegister(v1, v2) && sameRegister(v1, v3);
     }
 
-    public static boolean differentRegisters(Value v1, Value v2) {
-        return !isRegister(v1) || !isRegister(v2) || !asRegister(v1).equals(asRegister(v2));
+    /**
+     * Checks if all the provided values are different physical registers. The parameters can be
+     * either {@link Register registers}, {@link Value values} or arrays of them. All values that
+     * are not {@link RegisterValue registers} are ignored.
+     */
+    public static boolean differentRegisters(Object... values) {
+        List<Register> registers = collectRegisters(values, new ArrayList<Register>());
+        for (int i = 1; i < registers.size(); i++) {
+            Register r1 = registers.get(i);
+            for (int j = 0; j < i; j++) {
+                Register r2 = registers.get(j);
+                if (r1.equals(r2)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
-    public static boolean differentRegisters(Value v1, Value v2, Value v3) {
-        return differentRegisters(v1, v2) && differentRegisters(v1, v3) && differentRegisters(v2, v3);
+    private static List<Register> collectRegisters(Object[] values, List<Register> registers) {
+        for (Object o : values) {
+            if (o instanceof Register) {
+                registers.add((Register) o);
+            } else if (o instanceof Value) {
+                if (isRegister((Value) o)) {
+                    registers.add(asRegister((Value) o));
+                }
+            } else if (o instanceof Object[]) {
+                collectRegisters((Object[]) o, registers);
+            } else {
+                throw new IllegalArgumentException("Not a Register or Value: " + o);
+            }
+        }
+        return registers;
     }
 }
