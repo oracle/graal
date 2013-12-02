@@ -96,6 +96,7 @@ public class WordTypeRewriterPhase extends Phase {
             if (n instanceof PhiNode || n instanceof ProxyNode) {
                 ValueNode node = (ValueNode) n;
                 if (node.kind() == Kind.Object) {
+                    assert !(node.stamp() instanceof IllegalStamp) : "We assume all Phi and Proxy stamps are legal before the analysis";
                     node.setStamp(StampFactory.illegal(node.kind()));
                 }
             }
@@ -129,9 +130,9 @@ public class WordTypeRewriterPhase extends Phase {
 
     private static boolean checkNoIllegalStamp(StructuredGraph graph) {
         for (Node n : graph.getNodes()) {
-            if (n instanceof ValueNode) {
+            if (n instanceof PhiNode || n instanceof ProxyNode) {
                 ValueNode node = (ValueNode) n;
-                assert !(node.stamp() instanceof IllegalStamp);
+                assert !(node.stamp() instanceof IllegalStamp) : "Stamp is illegal after analysis. This is not necessarily an error, but a condition that we want to investigate (and then maybe relax or remove the assertion).";
             }
         }
         return true;
