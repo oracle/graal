@@ -26,10 +26,6 @@ package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.*;
 
-/**
- * EXPERIMENTAL Filter feature. May change or disappear without notice. This feature is not
- * functional yet.
- */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD})
 public @interface ImplicitCast {
