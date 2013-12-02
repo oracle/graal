@@ -35,7 +35,6 @@ import java.util.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.logging.*;
-import com.oracle.graal.java.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.common.*;
 
@@ -220,11 +219,10 @@ public class HotSpotOptions {
      * Called from VM code once all Graal command line options have been processed by
      * {@link #setOption(String)}.
      * 
-     * @param ciTime the value of the CITime HotSpot VM option
+     * @param timeCompilations true if the CITime or CITimeEach HotSpot VM options are set
      */
-    public static void finalizeOptions(boolean ciTime) {
-        if (ciTime) {
-            unconditionallyEnableTimerOrMetric(GraphBuilderPhase.class, "BytecodesParsed");
+    public static void finalizeOptions(boolean timeCompilations) {
+        if (timeCompilations) {
             unconditionallyEnableTimerOrMetric(InliningUtil.class, "InlinedBytecodes");
             unconditionallyEnableTimerOrMetric(CompilationTask.class, "CompilationTime");
         }

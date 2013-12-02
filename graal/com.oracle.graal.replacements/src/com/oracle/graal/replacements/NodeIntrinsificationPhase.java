@@ -380,7 +380,7 @@ public class NodeIntrinsificationPhase extends Phase {
         } else if (usage instanceof ProxyNode) {
             ProxyNode proxy = (ProxyNode) usage;
             assert proxy.type() == PhiType.Value;
-            ProxyNode newProxy = graph.unique(new ProxyNode((ValueNode) intrinsifiedNode, proxy.proxyPoint(), PhiType.Value, proxy.getIdentity()));
+            ProxyNode newProxy = graph.unique(new ProxyNode((ValueNode) intrinsifiedNode, proxy.proxyPoint(), PhiType.Value));
             for (Node proxyUsage : usage.usages().snapshot()) {
                 checkCheckCastUsage(graph, newProxy, proxy, proxyUsage);
             }

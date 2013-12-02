@@ -712,7 +712,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Determines if a given node is {@linkplain Graph#uniqueWithoutAdd(Node) unique} within a given
+     * Determines if a given node is {@linkplain Graph#uniqueExternal(Node) unique} within a given
      * graph if the node is non-null and {@linkplain #isExternal() external}.
      * 
      * @param node node to check
@@ -721,7 +721,7 @@ public abstract class Node implements Cloneable, Formattable {
      *         {@link VerificationError}
      */
     public static boolean verifyUniqueIfExternal(Node node, Graph graph) {
-        if (node != null && node.isExternal()) {
+        if (node != null && node.isExternal() && Graph.CacheExternalNodesInGraph) {
             Node cached = graph.findNodeInCache(node);
             node.assertTrue(cached == node, "external node does not match canonical node %s", cached);
         }

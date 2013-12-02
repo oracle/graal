@@ -64,11 +64,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public CodeCacheProvider getCodeCache() {
-            return context.getCodeCache();
-        }
-
-        @Override
         public ConstantReflectionProvider getConstantReflection() {
             return context.getConstantReflection();
         }
@@ -76,11 +71,6 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         @Override
         public MetaAccessProvider getMetaAccess() {
             return context.getMetaAccess();
-        }
-
-        @Override
-        public ForeignCallsProvider getForeignCalls() {
-            return context.getForeignCalls();
         }
 
         @Override
@@ -178,7 +168,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         Mark expectedMark = graph.getMark();
         lower(graph, context, 1);
         Mark mark = graph.getMark();
-        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(mark).snapshot();
+        assert mark.equals(expectedMark) : graph + ": a second round in the current lowering phase introduced these new nodes: " + graph.getNewNodes(expectedMark).snapshot();
         return true;
     }
 

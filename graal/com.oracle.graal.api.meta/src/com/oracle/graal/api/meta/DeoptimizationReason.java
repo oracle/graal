@@ -40,4 +40,5 @@ public enum DeoptimizationReason {
     ArithmeticException,
     RuntimeConstraint,
     LoopLimitCheck,
+    Aliasing,
 }

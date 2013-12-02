@@ -29,6 +29,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
 /**
@@ -79,6 +80,38 @@ public class StructuredGraph extends Graph {
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private boolean isAfterFloatingReadPhase = false;
+
+    /**
+     * Used to create canonical {@link ConstantNode}s for {@link Constant}s in this graph.
+     */
+    private Map<Constant, ConstantNode> constants;
+
+    /**
+     * Gets a node for a given constant that is unique/canonical within this graph.
+     * 
+     * @param stamp the stamp for an {@link Kind#Object} constant (ignored otherwise)
+     */
+    public ConstantNode asConstantNode(Constant constant, Stamp stamp) {
+        ConstantNode node;
+        if (constants == null) {
+            constants = new HashMap<>();
+            node = null;
+        } else {
+            node = constants.get(constant);
+        }
+        if (node == null) {
+            node = new ConstantNode(constant, stamp == null ? StampFactory.forConstant(constant) : stamp);
+            constants.put(constant, node);
+        }
+        return node;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T extends Node> T uniqueExternal(T node) {
+        ConstantNode cn = (ConstantNode) node;
+        return (T) asConstantNode(cn.asConstant(), cn.stamp());
+    }
 
     /**
      * Creates a new Graph containing a single {@link AbstractBeginNode} as the {@link #start()

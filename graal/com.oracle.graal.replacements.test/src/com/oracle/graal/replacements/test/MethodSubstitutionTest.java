@@ -24,12 +24,11 @@ package com.oracle.graal.replacements.test;
 
 import static org.junit.Assert.*;
 
-import java.util.concurrent.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -44,24 +43,22 @@ import com.oracle.graal.phases.tiers.*;
 public abstract class MethodSubstitutionTest extends GraalCompilerTest {
 
     protected StructuredGraph test(final String snippet) {
-        return Debug.scope("MethodSubstitutionTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)), new Callable<StructuredGraph>() {
+        try (Scope s = Debug.scope("MethodSubstitutionTest", getMetaAccess().lookupJavaMethod(getMethod(snippet)))) {
+            StructuredGraph graph = parse(snippet);
+            PhasePlan phasePlan = getDefaultPhasePlan();
+            Assumptions assumptions = new Assumptions(true);
+            HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
+            Debug.dump(graph, "Graph");
+            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            Debug.dump(graph, "Graph");
+            new CanonicalizerPhase(true).apply(graph, context);
+            new DeadCodeEliminationPhase().apply(graph);
 
-            @Override
-            public StructuredGraph call() {
-                StructuredGraph graph = parse(snippet);
-                PhasePlan phasePlan = getDefaultPhasePlan();
-                Assumptions assumptions = new Assumptions(true);
-                HighTierContext context = new HighTierContext(getProviders(), assumptions, null, phasePlan, OptimisticOptimizations.ALL);
-                Debug.dump(graph, "Graph");
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, context);
-                Debug.dump(graph, "Graph");
-                new CanonicalizerPhase(true).apply(graph, context);
-                new DeadCodeEliminationPhase().apply(graph);
-
-                assertNotInGraph(graph, Invoke.class);
-                return graph;
-            }
-        });
+            assertNotInGraph(graph, Invoke.class);
+            return graph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     protected static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {

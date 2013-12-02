@@ -73,12 +73,16 @@ public class LIRInstructionClass extends LIRIntrospection {
     private String opcodeConstant;
     private long opcodeOffset;
 
-    @SuppressWarnings("unchecked")
     public LIRInstructionClass(Class<? extends LIRInstruction> clazz) {
+        this(clazz, new DefaultCalcOffset());
+    }
+
+    @SuppressWarnings("unchecked")
+    public LIRInstructionClass(Class<? extends LIRInstruction> clazz, CalcOffset calcOffset) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
 
-        InstructionFieldScanner scanner = new InstructionFieldScanner(new DefaultCalcOffset());
+        InstructionFieldScanner scanner = new InstructionFieldScanner(calcOffset);
         scanner.scan(clazz);
 
         OperandModeAnnotation mode = scanner.valueAnnotations.get(LIRInstruction.Use.class);

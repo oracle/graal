@@ -247,7 +247,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     ValueNode value = obj.getEntry(i);
                     if (!(value instanceof VirtualObjectNode || value.isConstant())) {
                         if (exitNode.loopBegin().isPhiAtMerge(value) || initialObj == null || !initialObj.isVirtual() || initialObj.getEntry(i) != value) {
-                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value, null);
+                            ProxyNode proxy = new ProxyNode(value, exitNode, PhiType.Value);
                             obj.setEntry(i, proxy);
                             effects.addFloatingNode(proxy, "virtualProxy");
                         }
@@ -257,7 +257,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 if (initialObj == null || initialObj.isVirtual()) {
                     ProxyNode proxy = proxies.get(obj.virtual);
                     if (proxy == null) {
-                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value, null);
+                        proxy = new ProxyNode(obj.getMaterializedValue(), exitNode, PhiType.Value);
                         effects.addFloatingNode(proxy, "proxy");
                     } else {
                         effects.replaceFirstInput(proxy, proxy.value(), obj.getMaterializedValue());

@@ -22,9 +22,8 @@
  */
 package com.oracle.graal.virtual.phases.ea;
 
-import java.util.concurrent.*;
-
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
@@ -60,45 +59,37 @@ public abstract class EffectsPhase<PhaseContextT extends PhaseContext> extends B
     public boolean runAnalysis(final StructuredGraph graph, final PhaseContextT context) {
         boolean changed = false;
         for (int iteration = 0; iteration < maxIterations; iteration++) {
-            boolean currentChanged = Debug.scope("iteration " + iteration, new Callable<Boolean>() {
 
-                @Override
-                public Boolean call() {
-                    SchedulePhase schedule = new SchedulePhase();
-                    schedule.apply(graph, false);
-                    Closure<?> closure = createEffectsClosure(context, schedule);
-                    ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
+            try (Scope s = Debug.scope("iteration " + iteration)) {
+                SchedulePhase schedule = new SchedulePhase();
+                schedule.apply(graph, false);
+                Closure<?> closure = createEffectsClosure(context, schedule);
+                ReentrantBlockIterator.apply(closure, schedule.getCFG().getStartBlock());
 
-                    if (!closure.hasChanged()) {
-                        return false;
-                    }
-
-                    // apply the effects collected during this iteration
-                    HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
-                    graph.trackInputChange(listener);
-                    graph.trackUsagesDroppedZero(listener);
-                    closure.applyEffects();
-                    graph.stopTrackingInputChange();
-                    graph.stopTrackingUsagesDroppedZero();
-
-                    Debug.dump(graph, "after " + getName() + " iteration");
-
-                    new DeadCodeEliminationPhase().apply(graph);
-
-                    for (Node node : graph.getNodes()) {
-                        if (node instanceof Simplifiable) {
-                            listener.getChangedNodes().add(node);
-                        }
-                    }
-                    canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
-
-                    return true;
+                if (!closure.hasChanged()) {
+                    break;
                 }
-            });
-            if (!currentChanged) {
-                break;
+
+                // apply the effects collected during this iteration
+                HashSetNodeChangeListener listener = new HashSetNodeChangeListener();
+                graph.trackInputChange(listener);
+                graph.trackUsagesDroppedZero(listener);
+                closure.applyEffects();
+                graph.stopTrackingInputChange();
+                graph.stopTrackingUsagesDroppedZero();
+
+                Debug.dump(graph, "after " + getName() + " iteration");
+
+                new DeadCodeEliminationPhase().apply(graph);
+
+                for (Node node : graph.getNodes()) {
+                    if (node instanceof Simplifiable) {
+                        listener.getChangedNodes().add(node);
+                    }
+                }
+                canonicalizer.applyIncremental(graph, context, listener.getChangedNodes());
             }
-            changed |= currentChanged;
+            changed = true;
         }
         return changed;
     }

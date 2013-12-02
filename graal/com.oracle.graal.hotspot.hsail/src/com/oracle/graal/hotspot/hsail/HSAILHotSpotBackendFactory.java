@@ -48,7 +48,7 @@ public class HSAILHotSpotBackendFactory implements HotSpotBackendFactory {
         // to be valid for the entire run of the VM.
         Assumptions assumptions = new Assumptions(false);
         Providers p = new Providers(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, null);
-        Replacements replacements = new HSAILHotSpotReplacementsImpl(p, assumptions, host.getReplacements());
+        Replacements replacements = new HSAILHotSpotReplacementsImpl(p, assumptions, codeCache.getTarget(), host.getReplacements());
         HotSpotDisassemblerProvider disassembler = host.getDisassembler();
         HotSpotSuitesProvider suites = host.getSuites();
         HotSpotProviders providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, foreignCalls, lowerer, replacements, disassembler, suites, registers);

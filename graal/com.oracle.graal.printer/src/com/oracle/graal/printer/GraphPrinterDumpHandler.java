@@ -34,6 +34,7 @@ import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.phases.schedule.*;
 
@@ -44,7 +45,7 @@ import com.oracle.graal.phases.schedule.*;
  */
 public class GraphPrinterDumpHandler implements DebugDumpHandler {
 
-    private GraphPrinter printer;
+    protected GraphPrinter printer;
     private List<String> previousInlineContext;
     private int[] dumpIds = {};
     private int failuresCount;
@@ -62,11 +63,15 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 return;
             }
             previousInlineContext.clear();
-            if (PrintIdealGraphFile.getValue()) {
-                initializeFilePrinter();
-            } else {
-                initializeNetworkPrinter();
-            }
+            createPrinter();
+        }
+    }
+
+    protected void createPrinter() {
+        if (PrintIdealGraphFile.getValue()) {
+            initializeFilePrinter();
+        } else {
+            initializeNetworkPrinter();
         }
     }
 
@@ -172,19 +177,15 @@ public class GraphPrinterDumpHandler implements DebugDumpHandler {
                 previousInlineContext = inlineContext;
 
                 final SchedulePhase predefinedSchedule = getPredefinedSchedule();
-                Debug.sandbox("PrintingGraph", null, new Runnable() {
-
-                    @Override
-                    public void run() {
-                        // Finally, output the graph.
-                        try {
-                            printer.print(graph, nextDumpId() + ":" + message, predefinedSchedule);
-                        } catch (IOException e) {
-                            failuresCount++;
-                            printer = null;
-                        }
-                    }
-                });
+                try (Scope s = Debug.sandbox("PrintingGraph", null)) {
+                    // Finally, output the graph.
+                    printer.print(graph, nextDumpId() + ":" + message, predefinedSchedule);
+                } catch (IOException e) {
+                    failuresCount++;
+                    printer = null;
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
             }
         }
     }

@@ -27,6 +27,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -132,9 +133,49 @@ public interface CompilerToVM {
 
     Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
-    // Must be kept in sync with enum in graalEnv.hpp
     public enum CodeInstallResult {
-        OK, DEPENDENCIES_FAILED, CACHE_FULL, CODE_TOO_LARGE
+        OK("ok"), DEPENDENCIES_FAILED("dependencies failed"), CACHE_FULL("code cache is full"), CODE_TOO_LARGE("code is too large");
+
+        private int value;
+        private String message;
+
+        private CodeInstallResult(String name) {
+            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+            switch (name) {
+                case "ok":
+                    this.value = config.codeInstallResultOk;
+                    break;
+                case "dependencies failed":
+                    this.value = config.codeInstallResultDependenciesFailed;
+                    break;
+                case "code cache is full":
+                    this.value = config.codeInstallResultCacheFull;
+                    break;
+                case "code is too large":
+                    this.value = config.codeInstallResultCodeTooLarge;
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere("unknown enum name " + name);
+            }
+            this.message = name;
+        }
+
+        /**
+         * Returns the enum object for the given value.
+         */
+        public static CodeInstallResult getEnum(int value) {
+            for (CodeInstallResult e : values()) {
+                if (e.value == value) {
+                    return e;
+                }
+            }
+            throw GraalInternalError.shouldNotReachHere("unknown enum value " + value);
+        }
+
+        @Override
+        public String toString() {
+            return message;
+        }
     }
 
     /**
@@ -145,6 +186,22 @@ public interface CompilerToVM {
      * @return the outcome of the installation as a {@link CodeInstallResult}.
      */
     CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog cache);
+
+    /**
+     * Notifies the VM of statistics for a completed compilation.
+     * 
+     * @param id the identifier of the compilation
+     * @param method the method compiled
+     * @param osr specifies if the compilation was for on-stack-replacement
+     * @param processedBytecodes the number of bytecodes processed during the compilation, including
+     *            the bytecodes of all inlined methods
+     * @param time the amount time spent compiling {@code method}
+     * @param timeUnitsPerSecond the granularity of the units for the {@code time} value
+     * @param installedCode the nmethod installed as a result of the compilation
+     */
+    void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, HotSpotInstalledCode installedCode);
+
+    void resetCompilationStatistics();
 
     void initializeConfiguration(HotSpotVMConfig config);
 
@@ -186,13 +243,6 @@ public interface CompilerToVM {
     long getMaxCallTargetOffset(long address);
 
     String disassembleCodeBlob(long codeBlob);
-
-    /**
-     * Gets a copy of the machine code for a CodeBlob.
-     * 
-     * @return the machine code for {@code codeBlob} if it is valid, null otherwise
-     */
-    byte[] getCode(long codeBlob);
 
     StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 

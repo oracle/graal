@@ -30,7 +30,6 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.replacements.*;
@@ -122,7 +121,7 @@ public class TypeCheckSnippetUtils {
         }
     }
 
-    static Hints createHints(TypeCheckHints hints, MetaAccessProvider metaAccess, boolean positiveOnly, Graph graph) {
+    static Hints createHints(TypeCheckHints hints, MetaAccessProvider metaAccess, boolean positiveOnly, StructuredGraph graph) {
         ConstantNode[] hubs = new ConstantNode[hints.hints.length];
         boolean[] isPositive = new boolean[hints.hints.length];
         int index = 0;

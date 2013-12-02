@@ -39,7 +39,7 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public CodeInstallResult installCode(HotSpotCompiledCode compiledCode, HotSpotInstalledCode code, SpeculationLog speculationLog) {
-        return CodeInstallResult.values()[installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap())];
+        return CodeInstallResult.getEnum(installCode0(compiledCode, code, (speculationLog == null) ? null : speculationLog.getRawMap()));
     }
 
     @Override
@@ -133,9 +133,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public synchronized native String disassembleCodeBlob(long codeBlob);
 
     @Override
-    public native byte[] getCode(long codeBlob);
-
-    @Override
     public native StackTraceElement getStackTraceElement(long metaspaceMethod, int bci);
 
     @Override
@@ -175,6 +172,11 @@ public class CompilerToVMImpl implements CompilerToVM {
     public Object executeCompiledMethod(Object arg1, Object arg2, Object arg3, HotSpotInstalledCode hotspotInstalledCode) throws InvalidInstalledCodeException {
         return executeCompiledMethodIntrinsic(arg1, arg2, arg3, hotspotInstalledCode);
     }
+
+    public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
+                    HotSpotInstalledCode installedCode);
+
+    public native void resetCompilationStatistics();
 
     /**
      * Direct call to the given nmethod with three object arguments and an object return value. This

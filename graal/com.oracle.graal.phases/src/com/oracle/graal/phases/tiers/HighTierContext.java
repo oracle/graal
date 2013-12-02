@@ -23,6 +23,7 @@
 package com.oracle.graal.phases.tiers;
 
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.util.*;
@@ -34,11 +35,16 @@ public class HighTierContext extends PhaseContext {
     private final GraphCache cache;
     private final OptimisticOptimizations optimisticOpts;
 
-    public HighTierContext(Providers copyFrom, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
-        super(copyFrom, assumptions);
+    public HighTierContext(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, LoweringProvider lowerer, Replacements replacements, Assumptions assumptions,
+                    GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+        super(metaAccess, constantReflection, lowerer, replacements, assumptions);
         this.plan = plan;
         this.cache = cache;
         this.optimisticOpts = optimisticOpts;
+    }
+
+    public HighTierContext(Providers providers, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts) {
+        this(providers.getMetaAccess(), providers.getConstantReflection(), providers.getLowerer(), providers.getReplacements(), assumptions, cache, plan, optimisticOpts);
     }
 
     public PhasePlan getPhasePlan() {
@@ -54,6 +60,6 @@ public class HighTierContext extends PhaseContext {
     }
 
     public HighTierContext replaceAssumptions(Assumptions newAssumptions) {
-        return new HighTierContext(this, newAssumptions, getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
+        return new HighTierContext(getMetaAccess(), getConstantReflection(), getLowerer(), getReplacements(), newAssumptions, getGraphCache(), getPhasePlan(), getOptimisticOptimizations());
     }
 }

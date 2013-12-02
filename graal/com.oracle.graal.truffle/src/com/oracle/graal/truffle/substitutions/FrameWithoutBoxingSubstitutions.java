@@ -24,13 +24,14 @@ package com.oracle.graal.truffle.substitutions;
 
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.truffle.*;
+import com.oracle.truffle.api.frame.*;
 
 @ClassSubstitution(FrameWithoutBoxing.class)
 public class FrameWithoutBoxingSubstitutions {
 
     @SuppressWarnings("unused")
     @MethodSubstitution(isStatic = false, forced = true)
-    public static Object pack(FrameWithoutBoxing frame) {
+    public static PackedFrame pack(FrameWithoutBoxing frame) {
         return null;
     }
 }

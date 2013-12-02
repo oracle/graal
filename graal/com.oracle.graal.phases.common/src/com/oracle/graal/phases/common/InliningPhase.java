@@ -26,11 +26,11 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.phases.common.InliningPhase.Options.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.nodes.*;
@@ -47,6 +47,7 @@ import com.oracle.graal.phases.common.InliningUtil.InlineableMacroNode;
 import com.oracle.graal.phases.common.InliningUtil.InliningPolicy;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public class InliningPhase extends AbstractInliningPhase {
 
@@ -123,14 +124,11 @@ public class InliningPhase extends AbstractInliningPhase {
                     if (currentInvocation.processedGraphs() == currentInvocation.totalGraphs()) {
                         data.popInvocation();
                         final MethodInvocation parentInvoke = data.currentInvocation();
-                        Debug.scope("Inlining", data.inliningContext(), new Runnable() {
-
-                            @Override
-                            public void run() {
-                                tryToInline(data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context);
-                            }
-                        });
-
+                        try (Scope s = Debug.scope("Inlining", data.inliningContext())) {
+                            tryToInline(data.currentGraph(), currentInvocation, parentInvoke, data.inliningDepth() + 1, context);
+                        } catch (Throwable e) {
+                            throw Debug.handle(e);
+                        }
                     }
                 }
             }
@@ -185,7 +183,7 @@ public class InliningPhase extends AbstractInliningPhase {
         InlineInfo callee = calleeInfo.callee();
         try {
             List<Node> invokeUsages = callee.invoke().asNode().usages().snapshot();
-            callee.inline(context, callerAssumptions);
+            callee.inline(new Providers(context), callerAssumptions);
             callerAssumptions.record(calleeInfo.assumptions());
             metricInliningRuns.increment();
             Debug.dump(callerGraph, "after %s", callee);
@@ -245,44 +243,42 @@ public class InliningPhase extends AbstractInliningPhase {
             }
         }
 
-        return Debug.scope("InlineGraph", newGraph, new Callable<StructuredGraph>() {
+        try (Scope s = Debug.scope("InlineGraph", newGraph)) {
+            if (parseBytecodes) {
+                parseBytecodes(newGraph, context);
+            }
 
-            @Override
-            public StructuredGraph call() throws Exception {
-                if (parseBytecodes) {
-                    parseBytecodes(newGraph, context);
-                }
-
-                boolean callerHasMoreInformationAboutArguments = false;
-                NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-                for (LocalNode localNode : newGraph.getNodes(LocalNode.class).snapshot()) {
-                    ValueNode arg = args.get(localNode.index());
-                    if (arg.isConstant()) {
-                        Constant constant = arg.asConstant();
-                        newGraph.replaceFloating(localNode, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+            boolean callerHasMoreInformationAboutArguments = false;
+            NodeInputList<ValueNode> args = invoke.callTarget().arguments();
+            for (LocalNode localNode : newGraph.getNodes(LocalNode.class).snapshot()) {
+                ValueNode arg = args.get(localNode.index());
+                if (arg.isConstant()) {
+                    Constant constant = arg.asConstant();
+                    newGraph.replaceFloating(localNode, ConstantNode.forConstant(constant, context.getMetaAccess(), newGraph));
+                    callerHasMoreInformationAboutArguments = true;
+                } else {
+                    Stamp joinedStamp = localNode.stamp().join(arg.stamp());
+                    if (joinedStamp != null && !joinedStamp.equals(localNode.stamp())) {
+                        localNode.setStamp(joinedStamp);
                         callerHasMoreInformationAboutArguments = true;
-                    } else {
-                        Stamp joinedStamp = localNode.stamp().join(arg.stamp());
-                        if (joinedStamp != null && !joinedStamp.equals(localNode.stamp())) {
-                            localNode.setStamp(joinedStamp);
-                            callerHasMoreInformationAboutArguments = true;
-                        }
                     }
                 }
-
-                if (!callerHasMoreInformationAboutArguments) {
-                    // TODO (chaeubl): if args are not more concrete, inlining should be avoided
-                    // in most cases or we could at least use the previous graph size + invoke
-                    // probability to check the inlining
-                }
-
-                if (OptCanonicalizer.getValue()) {
-                    canonicalizer.apply(newGraph, context);
-                }
-
-                return newGraph;
             }
-        });
+
+            if (!callerHasMoreInformationAboutArguments) {
+                // TODO (chaeubl): if args are not more concrete, inlining should be avoided
+                // in most cases or we could at least use the previous graph size + invoke
+                // probability to check the inlining
+            }
+
+            if (OptCanonicalizer.getValue()) {
+                canonicalizer.apply(newGraph, context);
+            }
+
+            return newGraph;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private static StructuredGraph getCachedGraph(ResolvedJavaMethod method, HighTierContext context) {

@@ -37,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.CompilerThread;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
@@ -142,32 +143,29 @@ public final class CompilationTask implements Runnable {
             CompilationResult result = null;
             TTY.Filter filter = new TTY.Filter(PrintFilter.getValue(), method);
             long start = System.currentTimeMillis();
-            try {
-                result = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true), new Callable<CompilationResult>() {
+            try (Scope s = Debug.scope("Compiling", new DebugDumpScope(String.valueOf(id), true))) {
+                GraphCache graphCache = backend.getRuntime().getGraphCache();
+                if (graphCache != null) {
+                    graphCache.removeStaleGraphs();
+                }
 
-                    @Override
-                    public CompilationResult call() throws Exception {
-                        GraphCache graphCache = backend.getRuntime().getGraphCache();
-                        if (graphCache != null) {
-                            graphCache.removeStaleGraphs();
-                        }
+                HotSpotProviders providers = backend.getProviders();
+                Replacements replacements = providers.getReplacements();
+                graph = replacements.getMethodSubstitution(method);
+                if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
+                    graph = new StructuredGraph(method, entryBCI);
+                } else {
+                    // Compiling method substitution - must clone the graph
+                    graph = graph.copy();
+                }
+                InlinedBytecodes.add(method.getCodeSize());
+                CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
+                Suites suites = providers.getSuites().getDefaultSuites();
+                result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites,
+                                new CompilationResult());
 
-                        HotSpotProviders providers = backend.getProviders();
-                        Replacements replacements = providers.getReplacements();
-                        graph = replacements.getMethodSubstitution(method);
-                        if (graph == null || entryBCI != INVOCATION_ENTRY_BCI) {
-                            graph = new StructuredGraph(method, entryBCI);
-                        } else {
-                            // Compiling method substitution - must clone the graph
-                            graph = graph.copy();
-                        }
-                        InlinedBytecodes.add(method.getCodeSize());
-                        CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                        Suites suites = providers.getSuites().getDefaultSuites();
-                        return GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites,
-                                        new CompilationResult());
-                    }
-                });
+            } catch (Throwable e) {
+                throw Debug.handle(e);
             } finally {
                 filter.remove();
                 final boolean printAfterCompilation = PrintAfterCompilation.getValue() && !TTY.isSuppressed();
@@ -200,12 +198,13 @@ public final class CompilationTask implements Runnable {
                 System.exit(-1);
             }
         } finally {
-            if (config.ciTime && installedCode != null) {
+            if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
                 long processedBytes = InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes;
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
-                VMToCompiler vm2c = backend.getRuntime().getVMToCompiler();
-                vm2c.notifyCompilationDone(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnit, installedCode);
+                long timeUnitsPerSecond = timeUnit.convert(1, TimeUnit.SECONDS);
+                CompilerToVM c2vm = backend.getRuntime().getCompilerToVM();
+                c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnitsPerSecond, installedCode);
             }
 
             assert method.isQueuedForCompilation();
@@ -230,21 +229,19 @@ public final class CompilationTask implements Runnable {
 
     private HotSpotInstalledCode installMethod(final CompilationResult compResult) {
         final HotSpotCodeCacheProvider codeCache = backend.getProviders().getCodeCache();
-        return Debug.scope("CodeInstall", new Object[]{new DebugDumpScope(String.valueOf(id), true), codeCache, method}, new Callable<HotSpotInstalledCode>() {
-
-            @Override
-            public HotSpotInstalledCode call() {
-                HotSpotInstalledCode installedCode = codeCache.installMethod(method, entryBCI, compResult);
-                if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-                }
-                if (Debug.isLogEnabled()) {
-                    Debug.log("%s", backend.getProviders().getDisassembler().disassemble(installedCode));
-                }
-                return installedCode;
+        HotSpotInstalledCode installedCode = null;
+        try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
+            installedCode = codeCache.installMethod(method, entryBCI, compResult);
+            if (Debug.isDumpEnabled()) {
+                Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
             }
-
-        });
+            if (Debug.isLogEnabled()) {
+                Debug.log("%s", backend.getProviders().getDisassembler().disassemble(installedCode));
+            }
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
+        return installedCode;
     }
 
     private boolean tryToChangeStatus(CompilationStatus from, CompilationStatus to) {

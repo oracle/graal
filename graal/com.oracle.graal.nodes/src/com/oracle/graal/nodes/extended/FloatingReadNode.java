@@ -26,7 +26,6 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
-import com.oracle.graal.nodes.PhiNode.PhiType;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 
@@ -36,27 +35,27 @@ import com.oracle.graal.nodes.type.*;
  */
 public final class FloatingReadNode extends FloatingAccessNode implements IterableNodeType, LIRLowerable, Canonicalizable {
 
-    @Input private Node lastLocationAccess;
+    @Input private MemoryNode lastLocationAccess;
 
-    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp) {
         this(object, location, lastLocationAccess, stamp, null, BarrierType.NONE, false);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard) {
         this(object, location, lastLocationAccess, stamp, guard, BarrierType.NONE, false);
     }
 
-    public FloatingReadNode(ValueNode object, LocationNode location, Node lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
+    public FloatingReadNode(ValueNode object, LocationNode location, MemoryNode lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
         super(object, location, stamp, guard, barrierType, compressible);
         this.lastLocationAccess = lastLocationAccess;
     }
 
-    public Node getLastLocationAccess() {
+    public MemoryNode getLastLocationAccess() {
         return lastLocationAccess;
     }
 
-    public void setLastLocationAccess(Node newlla) {
-        updateUsages(lastLocationAccess, newlla);
+    public void setLastLocationAccess(MemoryNode newlla) {
+        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(newlla));
         lastLocationAccess = newlla;
     }
 
@@ -76,22 +75,10 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
         return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), getGuard(), getBarrierType(), isCompressible()));
     }
 
-    private static boolean isMemoryCheckPoint(Node n) {
-        return n instanceof MemoryCheckpoint.Single || n instanceof MemoryCheckpoint.Multi;
-    }
-
-    private static boolean isMemoryPhi(Node n) {
-        return n instanceof PhiNode && ((PhiNode) n).type() == PhiType.Memory;
-    }
-
-    private static boolean isMemoryProxy(Node n) {
-        return n instanceof ProxyNode && ((ProxyNode) n).type() == PhiType.Memory;
-    }
-
     @Override
     public boolean verify() {
-        Node lla = getLastLocationAccess();
-        assert lla == null || isMemoryCheckPoint(lla) || isMemoryPhi(lla) || isMemoryProxy(lla) : "lastLocationAccess of " + this + " should be a MemoryCheckpoint, but is " + lla;
+        MemoryNode lla = getLastLocationAccess();
+        assert lla == null || lla.asMemoryCheckpoint() != null || lla.asMemoryPhi() != null : "lastLocationAccess of " + this + " should be a MemoryCheckpoint, but is " + lla;
         return super.verify();
     }
 }

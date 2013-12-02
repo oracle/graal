@@ -27,6 +27,7 @@ import org.junit.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.extended.*;
@@ -64,29 +65,27 @@ public class PushNodesThroughPiTest extends GraalCompilerTest {
     @Test
     public void test1() {
         final String snippet = "test1Snippet";
-        Debug.scope("PushThroughPi", new DebugDumpScope(snippet), new Runnable() {
+        try (Scope s = Debug.scope("PushThroughPi", new DebugDumpScope(snippet))) {
+            StructuredGraph graph = compileTestSnippet(snippet);
+            for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
+                if (rn.location() instanceof ConstantLocationNode && rn.object().stamp() instanceof ObjectStamp) {
+                    long disp = ((ConstantLocationNode) rn.location()).getDisplacement();
+                    ResolvedJavaType receiverType = ObjectStamp.typeOrNull(rn.object());
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp);
 
-            public void run() {
-                StructuredGraph graph = compileTestSnippet(snippet);
-
-                for (ReadNode rn : graph.getNodes().filter(ReadNode.class)) {
-                    if (rn.location() instanceof ConstantLocationNode && rn.object().stamp() instanceof ObjectStamp) {
-                        long disp = ((ConstantLocationNode) rn.location()).getDisplacement();
-                        ResolvedJavaType receiverType = ObjectStamp.typeOrNull(rn.object());
-                        ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(disp);
-
-                        assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
-                        if (field.getName().equals("x")) {
-                            Assert.assertTrue(rn.object() instanceof LocalNode);
-                        } else {
-                            Assert.assertTrue(rn.object().toString(), rn.object() instanceof PiNode);
-                        }
+                    assert field != null : "Node " + rn + " tries to access a field which doesn't exists for this type";
+                    if (field.getName().equals("x")) {
+                        Assert.assertTrue(rn.object() instanceof LocalNode);
+                    } else {
+                        Assert.assertTrue(rn.object().toString(), rn.object() instanceof PiNode);
                     }
                 }
-
-                Assert.assertTrue(graph.getNodes().filter(IsNullNode.class).count() == 1);
             }
-        });
+
+            Assert.assertTrue(graph.getNodes().filter(IsNullNode.class).count() == 1);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
     }
 
     private StructuredGraph compileTestSnippet(final String snippet) {

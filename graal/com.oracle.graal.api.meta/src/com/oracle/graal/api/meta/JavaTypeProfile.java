@@ -22,6 +22,8 @@
  */
 package com.oracle.graal.api.meta;
 
+import static java.lang.reflect.Modifier.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
@@ -116,7 +118,7 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
             probabilitySum += newNotRecorded;
 
             double factor = 1.0 / probabilitySum; // Normalize to 1.0
-            assert factor > 1.0;
+            assert factor >= 1.0;
             ProfiledType[] newResult = new ProfiledType[result.size()];
             for (int i = 0; i < newResult.length; ++i) {
                 ProfiledType curType = result.get(i);
@@ -142,8 +144,9 @@ public final class JavaTypeProfile extends AbstractJavaProfile<ProfiledType, Res
 
         private static final long serialVersionUID = 1481773321889860837L;
 
-        public ProfiledType(ResolvedJavaType item, double probability) {
-            super(item, probability);
+        public ProfiledType(ResolvedJavaType type, double probability) {
+            super(type, probability);
+            assert type.isArray() || !isAbstract(type.getModifiers()) : type;
         }
 
         /**

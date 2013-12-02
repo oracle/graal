@@ -34,7 +34,11 @@ import com.oracle.graal.nodes.type.*;
  * allows unsafe casts "sideways" in the type hierarchy. It does not allow to "drop" type
  * information, i.e., an unsafe cast is removed if the input object has a more precise or equal type
  * than the type this nodes casts to.
+ * 
+ * @deprecated use {@link PiNode}.
  */
+
+@Deprecated
 public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, GuardingNode, IterableNodeType, Canonicalizable, ValueProxy {
 
     @Input private ValueNode object;
@@ -88,7 +92,7 @@ public class UnsafeCastNode extends FloatingGuardedNode implements LIRLowerable,
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }

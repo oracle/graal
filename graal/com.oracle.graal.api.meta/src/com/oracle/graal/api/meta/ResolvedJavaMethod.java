@@ -91,6 +91,17 @@ public interface ResolvedJavaMethod extends JavaMethod, InvokeTarget {
     boolean isSynthetic();
 
     /**
+     * Returns {@code true} if this method is a default method; returns {@code false} otherwise.
+     * 
+     * A default method is a public non-abstract instance method, that is, a non-static method with
+     * a body, declared in an interface type.
+     * 
+     * @return true if and only if this method is a default method as defined by the Java Language
+     *         Specification.
+     */
+    boolean isDefault();
+
+    /**
      * Checks whether this method is a class initializer.
      * 
      * @return {@code true} if the method is a class initializer

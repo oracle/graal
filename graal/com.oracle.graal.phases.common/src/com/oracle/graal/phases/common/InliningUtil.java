@@ -26,10 +26,10 @@ import static com.oracle.graal.api.meta.DeoptimizationAction.*;
 import static com.oracle.graal.api.meta.DeoptimizationReason.*;
 import static com.oracle.graal.nodes.type.StampFactory.*;
 import static com.oracle.graal.phases.GraalOptions.*;
+import static java.lang.reflect.Modifier.*;
 
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Assumptions.Assumption;
@@ -37,6 +37,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.meta.JavaTypeProfile.ProfiledType;
 import com.oracle.graal.api.meta.ResolvedJavaType.Representation;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.DuplicationReplacement;
 import com.oracle.graal.graph.Node.ValueNumberable;
@@ -172,12 +173,9 @@ public class InliningUtil {
     }
 
     public static void logInliningDecision(final String msg, final Object... args) {
-        Debug.scope(inliningDecisionsScopeString, new Runnable() {
-
-            public void run() {
-                Debug.log(msg, args);
-            }
-        });
+        try (Scope s = Debug.scope(inliningDecisionsScopeString)) {
+            Debug.log(msg, args);
+        }
     }
 
     private static boolean logNotInlinedMethod(Invoke invoke, String msg) {
@@ -219,12 +217,9 @@ public class InliningUtil {
     }
 
     public static boolean shouldLogInliningDecision() {
-        return Debug.scope(inliningDecisionsScopeString, new Callable<Boolean>() {
-
-            public Boolean call() {
-                return Debug.isLogEnabled();
-            }
-        });
+        try (Scope s = Debug.scope(inliningDecisionsScopeString)) {
+            return Debug.isLogEnabled();
+        }
     }
 
     private static String methodName(ResolvedJavaMethod method, Invoke invoke) {
@@ -434,6 +429,7 @@ public class InliningUtil {
             super(invoke);
             this.concrete = concrete;
             this.type = type;
+            assert type.isArray() || !isAbstract(type.getModifiers()) : type;
         }
 
         @Override
@@ -1137,6 +1133,7 @@ public class InliningUtil {
             }
 
             ResolvedJavaType type = ptypes[0].getType();
+            assert type.isArray() || !isAbstract(type.getModifiers());
             ResolvedJavaMethod concrete = type.resolveMethod(targetMethod);
             if (!checkTargetConditions(data, replacements, invoke, concrete, optimisticOpts)) {
                 return null;
@@ -1208,6 +1205,7 @@ public class InliningUtil {
                 if (index == -1) {
                     notRecordedTypeProbability += type.getProbability();
                 } else {
+                    assert type.getType().isArray() || !isAbstract(type.getType().getModifiers()) : type + " " + concrete;
                     usedTypes.add(type);
                     typesToConcretes.add(index);
                 }
@@ -1438,7 +1436,7 @@ public class InliningUtil {
                 if (!returnValue.isExternal()) {
                     returnValue = duplicates.get(returnValue);
                 } else if (returnValue instanceof ValueNumberable) {
-                    returnValue = graph.uniqueWithoutAdd(returnValue);
+                    returnValue = graph.uniqueExternal(returnValue);
                 }
             }
             invoke.asNode().replaceAtUsages(returnValue);
@@ -1502,12 +1500,7 @@ public class InliningUtil {
             InliningUtil.replaceInvokeCallTarget(invoke, graph, InvokeKind.Special, concrete);
         }
 
-        FixedWithNextNode macroNode;
-        try {
-            macroNode = macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
-        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
-            throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
-        }
+        FixedWithNextNode macroNode = createMacroNodeInstance(macroNodeClass, invoke);
 
         CallTargetNode callTarget = invoke.callTarget();
         if (invoke instanceof InvokeNode) {
@@ -1519,5 +1512,13 @@ public class InliningUtil {
         }
         GraphUtil.killWithUnusedFloatingInputs(callTarget);
         return macroNode;
+    }
+
+    private static FixedWithNextNode createMacroNodeInstance(Class<? extends FixedWithNextNode> macroNodeClass, Invoke invoke) throws GraalInternalError {
+        try {
+            return macroNodeClass.getConstructor(Invoke.class).newInstance(invoke);
+        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException e) {
+            throw new GraalInternalError(e).addContext(invoke.asNode()).addContext("macroSubstitution", macroNodeClass);
+        }
     }
 }

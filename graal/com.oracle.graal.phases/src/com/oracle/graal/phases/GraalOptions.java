@@ -148,9 +148,9 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> PrintBinaryGraphs = new OptionValue<>(true);
     @Option(help = "Output probabilities for fixed nodes during binary graph dumping")
     public static final OptionValue<Boolean> PrintGraphProbabilities = new OptionValue<>(false);
-    @Option(help = "Enables dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.")
+    @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.")
     public static final OptionValue<Boolean> PrintCFG = new OptionValue<>(false);
-    @Option(help = "Enables dumping LIR, register allocation and code generation info to the C1Visualizer.")
+    @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.")
     public static final OptionValue<Boolean> PrintBackendCFG = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintIdealGraphFile = new OptionValue<>(false);
@@ -166,7 +166,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> PrintCompilation = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintAfterCompilation = new OptionValue<>(false);
-    @Option(help = "")
+    @Option(help = "Print profiling information when parsing a method's bytecode")
     public static final OptionValue<Boolean> PrintProfilingInformation = new OptionValue<>(false);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintCodeBytes = new OptionValue<>(false);
@@ -180,7 +180,7 @@ public final class GraalOptions {
     public static final OptionValue<Boolean> ExitVMOnException = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> PrintStackTraceOnException = new OptionValue<>(false);
-    @Option(help = "Sets a phase after which the decompiler dumps the graph, -G:Dump= required")
+    @Option(help = "Set a phase after which the decompiler dumps the graph, -G:Dump= required")
     public static final OptionValue<String> DecompileAfterPhase = new OptionValue<>(null);
 
     // HotSpot command line options
@@ -258,7 +258,9 @@ public final class GraalOptions {
     @Option(help = "")
     public static final OptionValue<Boolean> OptCanonicalizer = new OptionValue<>(true);
     @Option(help = "")
-     public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
+    public static final OptionValue<Boolean> OptDeoptimizationGrouping = new OptionValue<>(true);
+    @Option(help = "")
+    public static final OptionValue<Boolean> OptScheduleOutOfLoops = new OptionValue<>(true);
     @Option(help = "")
     public static final OptionValue<Boolean> OptEliminateGuards = new OptionValue<>(true);
     @Option(help = "")

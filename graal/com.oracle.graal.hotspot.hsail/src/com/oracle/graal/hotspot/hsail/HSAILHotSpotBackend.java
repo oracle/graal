@@ -56,7 +56,6 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         paramTypeMap.put("HotSpotResolvedPrimitiveType<float>", "f32");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<double>", "f64");
         paramTypeMap.put("HotSpotResolvedPrimitiveType<long>", "s64");
-
     }
 
     @Override
@@ -128,13 +127,16 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         codeBuffer = tasm.asm.codeBuffer;
         codeBuffer.emitString0("version 0:95: $full : $large;");
         codeBuffer.emitString("");
+
         Signature signature = method.getSignature();
         int sigParamCount = signature.getParameterCount(false);
         // We're subtracting 1 because we're not making the final gid as a parameter.
+
         int nonConstantParamCount = sigParamCount - 1;
         boolean isStatic = (Modifier.isStatic(method.getModifiers()));
         // Determine if this is an object lambda.
         boolean isObjectLambda = true;
+
         if (signature.getParameterType(nonConstantParamCount, null).getKind() == Kind.Int) {
             isObjectLambda = false;
         } else {
@@ -152,8 +154,8 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         JavaType[] paramtypes = new JavaType[totalParamCount];
         String[] paramNames = new String[totalParamCount];
         int pidx = 0;
+        MetaAccessProvider metaAccess = getProviders().getMetaAccess();
         for (int i = 0; i < totalParamCount; i++) {
-            MetaAccessProvider metaAccess = getProviders().getMetaAccess();
             if (i == 0 && !isStatic) {
                 paramtypes[i] = metaAccess.lookupJavaType(Object.class);
                 paramNames[i] = "%_this";
@@ -168,19 +170,26 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
                 }
             }
         }
+
         codeBuffer.emitString0("// " + (isStatic ? "static" : "instance") + " method " + method);
         codeBuffer.emitString("");
         codeBuffer.emitString0("kernel &run (");
         codeBuffer.emitString("");
+
         FrameMap frameMap = tasm.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         // Build list of param types which does include the gid (for cc register mapping query).
         JavaType[] ccParamTypes = new JavaType[nonConstantParamCount + 1];
         // Include the gid.
         System.arraycopy(paramtypes, 0, ccParamTypes, 0, nonConstantParamCount);
-        // Last entry comes from the signature.
-        ccParamTypes[ccParamTypes.length - 1] = signature.getParameterType(sigParamCount - 1, null);
+
+        // Last entry is always int (its register gets used in the workitemabsid instruction)
+        // this is true even for object stream labmdas
+        if (sigParamCount > 0) {
+            ccParamTypes[ccParamTypes.length - 1] = metaAccess.lookupJavaType(int.class);
+        }
         CallingConvention cc = regConfig.getCallingConvention(JavaCallee, null, ccParamTypes, getTarget(), false);
+
         /**
          * Compute the hsail size mappings up to but not including the last non-constant parameter
          * (which is the gid).
@@ -196,6 +205,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         // Emit the kernel function parameters.
         for (int i = 0; i < totalParamCount; i++) {
             String str = "kernarg_" + paramHsailSizes[i] + " " + paramNames[i];
+
             if (i != totalParamCount - 1) {
                 str += ",";
             }
@@ -229,19 +239,45 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         codeBuffer.emitString(spillsegTemplate);
         // Emit object array load prologue here.
         if (isObjectLambda) {
-            final int arrayElementsOffset = 24;
+            boolean useCompressedOops = getRuntime().getConfig().useCompressedOops;
+            final int arrayElementsOffset = HotSpotGraalRuntime.getArrayBaseOffset(Kind.Object);
             String iterationObjArgReg = HSAIL.mapRegister(cc.getArgument(nonConstantParamCount - 1));
-            String tmpReg = workItemReg.replace("s", "d"); // "$d1";
+            // iterationObjArgReg will be the highest $d register in use (it is the last parameter)
+            // so tempReg can be the next higher $d register
+            String tmpReg = "$d" + (asRegister(cc.getArgument(nonConstantParamCount - 1)).encoding() + 1);
             // Convert gid to long.
             codeBuffer.emitString("cvt_u64_s32 " + tmpReg + ", " + workItemReg + "; // Convert gid to long");
-            // Adjust index for sizeof ref.
-            codeBuffer.emitString("mul_u64 " + tmpReg + ", " + tmpReg + ", " + 8 + "; // Adjust index for sizeof ref");
+            // Adjust index for sizeof ref. Where to pull this size from?
+            codeBuffer.emitString("mul_u64 " + tmpReg + ", " + tmpReg + ", " + (useCompressedOops ? 4 : 8) + "; // Adjust index for sizeof ref");
             // Adjust for actual data start.
             codeBuffer.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + arrayElementsOffset + "; // Adjust for actual elements data start");
             // Add to array ref ptr.
             codeBuffer.emitString("add_u64 " + tmpReg + ", " + tmpReg + ", " + iterationObjArgReg + "; // Add to array ref ptr");
             // Load the object into the parameter reg.
-            codeBuffer.emitString("ld_global_u64 " + iterationObjArgReg + ", " + "[" + tmpReg + "]" + "; // Load from array element into parameter reg");
+            if (useCompressedOops) {
+
+                // Load u32 into the d 64 reg since it will become an object address
+                codeBuffer.emitString("ld_global_u32 " + tmpReg + ", " + "[" + tmpReg + "]" + "; // Load compressed ptr from array");
+
+                long narrowOopBase = getRuntime().getConfig().narrowOopBase;
+                long narrowOopShift = getRuntime().getConfig().narrowOopShift;
+
+                if (narrowOopBase == 0 && narrowOopShift == 0) {
+                    // No more calculation to do, mov to target register
+                    codeBuffer.emitString("mov_b64 " + iterationObjArgReg + ", " + tmpReg + "; // no shift or base addition");
+                } else {
+                    if (narrowOopBase == 0) {
+                        codeBuffer.emitString("shl_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopShift + "; // do narrowOopShift");
+                    } else if (narrowOopShift == 0) {
+                        codeBuffer.emitString("add_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + narrowOopBase + "; // add narrowOopBase");
+                    } else {
+                        codeBuffer.emitString("mad_u64 " + iterationObjArgReg + ", " + tmpReg + ", " + (1 << narrowOopShift) + ", " + narrowOopBase + "; // shift and add narrowOopBase");
+                    }
+                }
+
+            } else {
+                codeBuffer.emitString("ld_global_u64 " + iterationObjArgReg + ", " + "[" + tmpReg + "]" + "; // Load from array element into parameter reg");
+            }
         }
         // Prologue done, Emit code for the LIR.
         lirGen.lir.emitCode(tasm);

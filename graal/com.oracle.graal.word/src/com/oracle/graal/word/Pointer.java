@@ -26,7 +26,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.nodes.HeapAccess.BarrierType;
 import com.oracle.graal.nodes.extended.*;
 
-public interface Pointer extends Unsigned {
+public interface Pointer extends Unsigned, PointerBase {
 
     /**
      * Unsafe conversion of this Pointer to a Java language object. No correctness checks or type

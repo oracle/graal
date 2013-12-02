@@ -22,11 +22,10 @@
  */
 package com.oracle.graal.phases.common;
 
-import java.util.concurrent.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
 import com.oracle.graal.graph.Graph.NodeChangedListener;
@@ -243,22 +242,20 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
             if (nodeClass.isCanonicalizable()) {
                 assert !nodeClass.isSimplifiable();
                 METRIC_CANONICALIZATION_CONSIDERED_NODES.increment();
-                return Debug.scope("CanonicalizeNode", node, new Callable<Boolean>() {
-
-                    public Boolean call() {
-                        Node canonical = node.canonical(tool);
-                        return performReplacement(node, canonical);
-                    }
-                });
+                try (Scope s = Debug.scope("CanonicalizeNode", node)) {
+                    Node canonical = node.canonical(tool);
+                    return performReplacement(node, canonical);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
             } else if (nodeClass.isSimplifiable()) {
                 Debug.log("Canonicalizer: simplifying %s", node);
                 METRIC_SIMPLIFICATION_CONSIDERED_NODES.increment();
-                Debug.scope("SimplifyNode", node, new Runnable() {
-
-                    public void run() {
-                        node.simplify(tool);
-                    }
-                });
+                try (Scope s = Debug.scope("SimplifyNode", node)) {
+                    node.simplify(tool);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
             }
             return node.isDeleted();
         }
@@ -302,9 +299,8 @@ public class CanonicalizerPhase extends BasePhase<PhaseContext> {
                     FixedNode fixed = (FixedNode) node;
                     if (canonical instanceof ControlSinkNode) {
                         // case 7
-                        FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
+                        fixed.predecessor().replaceFirstSuccessor(fixed, canonical);
                         GraphUtil.killCFG(fixed);
-                        pred.setNext((FixedNode) canonical);
                         return true;
                     } else {
                         assert fixed instanceof FixedWithNextNode;

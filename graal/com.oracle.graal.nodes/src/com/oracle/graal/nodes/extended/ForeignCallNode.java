@@ -33,7 +33,7 @@ import com.oracle.graal.nodes.type.*;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 @NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}")
-public class ForeignCallNode extends AbstractStateSplit implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint.Multi {
+public class ForeignCallNode extends AbstractMemoryCheckpoint implements LIRLowerable, DeoptimizingNode, MemoryCheckpoint.Multi {
 
     @Input private final NodeInputList<ValueNode> arguments;
     private final ForeignCallsProvider foreignCalls;

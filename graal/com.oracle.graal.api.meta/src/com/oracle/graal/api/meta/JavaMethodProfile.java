@@ -45,8 +45,8 @@ public final class JavaMethodProfile extends AbstractJavaProfile<ProfiledMethod,
 
         private static final long serialVersionUID = 5418813647187024693L;
 
-        public ProfiledMethod(ResolvedJavaMethod item, double probability) {
-            super(item, probability);
+        public ProfiledMethod(ResolvedJavaMethod method, double probability) {
+            super(method, probability);
         }
 
         /**

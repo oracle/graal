@@ -61,11 +61,15 @@ public class CompositeValueClass extends LIRIntrospection {
     private final long[] componentOffsets;
     private final EnumSet<OperandFlag>[] componentFlags;
 
-    @SuppressWarnings("unchecked")
     public CompositeValueClass(Class<? extends CompositeValue> clazz) {
+        this(clazz, new DefaultCalcOffset());
+    }
+
+    @SuppressWarnings("unchecked")
+    public CompositeValueClass(Class<? extends CompositeValue> clazz, CalcOffset calcOffset) {
         super(clazz);
 
-        ValueFieldScanner scanner = new ValueFieldScanner(new DefaultCalcOffset());
+        ValueFieldScanner scanner = new ValueFieldScanner(calcOffset);
         scanner.scan(clazz);
 
         OperandModeAnnotation mode = scanner.valueAnnotations.get(CompositeValue.Component.class);

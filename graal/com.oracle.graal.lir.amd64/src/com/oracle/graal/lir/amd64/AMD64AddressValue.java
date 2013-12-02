@@ -51,6 +51,8 @@ public final class AMD64AddressValue extends CompositeValue {
         this.index = index;
         this.scale = scale;
         this.displacement = displacement;
+
+        assert scale != null;
     }
 
     private static Register toRegister(AllocatableValue value) {

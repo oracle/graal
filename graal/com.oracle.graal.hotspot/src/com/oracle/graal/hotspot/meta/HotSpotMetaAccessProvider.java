@@ -187,6 +187,8 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
                 return runtime.getConfig().deoptReasonConstraint;
             case LoopLimitCheck:
                 return runtime.getConfig().deoptReasonLoopLimitCheck;
+            case Aliasing:
+                return runtime.getConfig().deoptReasonAliasing;
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
@@ -221,6 +223,8 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
             return DeoptimizationReason.RuntimeConstraint;
         } else if (reason == runtime.getConfig().deoptReasonLoopLimitCheck) {
             return DeoptimizationReason.LoopLimitCheck;
+        } else if (reason == runtime.getConfig().deoptReasonAliasing) {
+            return DeoptimizationReason.Aliasing;
         } else {
             throw GraalInternalError.shouldNotReachHere(Integer.toHexString(reason));
         }

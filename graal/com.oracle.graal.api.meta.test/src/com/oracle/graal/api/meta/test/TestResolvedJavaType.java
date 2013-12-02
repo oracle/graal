@@ -443,8 +443,14 @@ public class TestResolvedJavaType extends TypeUniverse {
             if (c.isInterface() || c.isPrimitive()) {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 for (Method m : c.getDeclaredMethods()) {
-                    ResolvedJavaMethod impl = type.resolveMethod(metaAccess.lookupJavaMethod(m));
-                    assertEquals(m.toString(), null, impl);
+                    if (JAVA_VERSION <= 1.7D || (!isStatic(m.getModifiers()) && !isPrivate(m.getModifiers()))) {
+                        ResolvedJavaMethod resolved = metaAccess.lookupJavaMethod(m);
+                        ResolvedJavaMethod impl = type.resolveMethod(resolved);
+                        ResolvedJavaMethod expected = resolved.isDefault() ? resolved : null;
+                        assertEquals(m.toString(), expected, impl);
+                    } else {
+                        // As of JDK 8, interfaces can have static and private methods
+                    }
                 }
             } else {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);

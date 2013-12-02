@@ -87,7 +87,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
     @Override
     public void virtualize(VirtualizerTool tool) {
         State state = tool.getObjectState(object);
-        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
+        if (state != null && state.getState() == EscapeState.Virtual && ObjectStamp.typeOrNull(this) != null && ObjectStamp.typeOrNull(this).isAssignableFrom(state.getVirtualObject().type())) {
             tool.replaceWithVirtual(state.getVirtualObject());
         }
     }
@@ -108,10 +108,12 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
             if (c.getValue() == negated) {
                 // The guard always fails
                 return graph().add(new DeoptimizeNode(action, reason));
-            }
-
-            if (c.getValue() != negated && stamp().equals(object().stamp())) {
+            } else if (stamp().equals(object().stamp())) {
+                // The guard always succeeds, and does not provide new type information
                 return object;
+            } else {
+                // The guard always succeeds, and provides new type information
+                return graph().unique(new PiNode(object, stamp()));
             }
         }
         return this;

@@ -26,8 +26,6 @@ package com.oracle.graal.hotspot.hsail;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
-import java.util.logging.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
@@ -69,30 +67,6 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
 
     public InstalledCode getInstalledCode() {
         return installedCode;
-    }
-
-    private static final String propPkgName = HSAILCompilationResult.class.getPackage().getName();
-    private static Level logLevel;
-    private static ConsoleHandler consoleHandler;
-    public static Logger logger;
-    static {
-        logger = Logger.getLogger(propPkgName);
-        logLevel = Level.FINE;
-        // This block configures the logger with handler and formatter.
-        consoleHandler = new ConsoleHandler();
-        logger.addHandler(consoleHandler);
-        logger.setUseParentHandlers(false);
-        SimpleFormatter formatter = new SimpleFormatter() {
-
-            @SuppressWarnings("sync-override")
-            @Override
-            public String format(LogRecord record) {
-                return (record.getMessage() + "\n");
-            }
-        };
-        consoleHandler.setFormatter(formatter);
-        logger.setLevel(logLevel);
-        consoleHandler.setLevel(logLevel);
     }
 
     static final HSAILHotSpotBackend backend;
@@ -185,9 +159,6 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         }
         // Now that we have the target lambda, compile it.
         HSAILCompilationResult hsailCompResult = HSAILCompilationResult.getHSAILCompilationResult(lambdaMethod);
-        if (hsailCompResult != null) {
-            hsailCompResult.dumpCompilationResult();
-        }
         return hsailCompResult;
     }
 
@@ -224,9 +195,9 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         } catch (GraalInternalError e) {
             String partialCode = backend.getPartialCodeString();
             if (partialCode != null && !partialCode.equals("")) {
-                logger.fine("-------------------\nPartial Code Generation:\n--------------------");
-                logger.fine(partialCode);
-                logger.fine("-------------------\nEnd of Partial Code Generation\n--------------------");
+                Debug.log("-------------------\nPartial Code Generation:\n--------------------");
+                Debug.log(partialCode);
+                Debug.log("-------------------\nEnd of Partial Code Generation\n--------------------");
             }
             throw e;
         }
@@ -249,11 +220,6 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
 
     public String getHSAILCode() {
         return new String(getTargetCode(), 0, getTargetCodeSize());
-    }
-
-    public void dumpCompilationResult() {
-        logger.fine("targetCodeSize=" + getTargetCodeSize());
-        logger.fine(getHSAILCode());
     }
 
 }

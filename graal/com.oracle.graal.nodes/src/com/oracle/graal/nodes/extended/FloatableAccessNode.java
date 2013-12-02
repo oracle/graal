@@ -43,7 +43,7 @@ public abstract class FloatableAccessNode extends AccessNode {
         super(object, location, stamp, barrierType, compressible);
     }
 
-    public abstract FloatingAccessNode asFloatingNode(ValueNode lastLocationAccess);
+    public abstract FloatingAccessNode asFloatingNode(MemoryNode lastLocationAccess);
 
     /**
      * AccessNodes can float only if their location identities are not ANY_LOCATION. Furthermore, in

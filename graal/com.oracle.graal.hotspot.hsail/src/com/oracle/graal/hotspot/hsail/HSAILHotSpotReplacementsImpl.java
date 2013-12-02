@@ -38,8 +38,8 @@ public class HSAILHotSpotReplacementsImpl extends ReplacementsImpl {
 
     private final Replacements host;
 
-    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions, Replacements host) {
-        super(providers, assumptions);
+    public HSAILHotSpotReplacementsImpl(Providers providers, Assumptions assumptions, TargetDescription target, Replacements host) {
+        super(providers, assumptions, target);
         this.host = host;
     }
 

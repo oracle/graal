@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.test;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 import org.junit.*;
 
@@ -31,6 +30,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.nodes.*;
@@ -610,108 +610,100 @@ public class WriteBarrierVerificationTest extends GraalCompilerTest {
     }
 
     private void test(final String snippet, final int expectedBarriers, final int... removedBarrierIndices) {
+        try (Scope d = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet))) {
+            final StructuredGraph graph = parse(snippet);
+            HighTierContext highTierContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
+            new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
 
-        AssertionError expectedError = Debug.scope("WriteBarrierVerificationTest", new DebugDumpScope(snippet), new Callable<AssertionError>() {
+            MidTierContext midTierContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL);
 
-            public AssertionError call() {
-                final StructuredGraph graph = parse(snippet);
-                HighTierContext highTierContext = new HighTierContext(getProviders(), new Assumptions(false), null, getDefaultPhasePlan(), OptimisticOptimizations.ALL);
-                new InliningPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
+            new GuardLoweringPhase().apply(graph, midTierContext);
+            new LoopSafepointInsertionPhase().apply(graph);
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
 
-                MidTierContext midTierContext = new MidTierContext(getProviders(), new Assumptions(false), getCodeCache().getTarget(), OptimisticOptimizations.ALL);
+            new WriteBarrierAdditionPhase().apply(graph);
 
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
-                new GuardLoweringPhase().apply(graph, midTierContext);
-                new LoopSafepointInsertionPhase().apply(graph);
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, highTierContext);
+            int barriers = 0;
+            // First, the total number of expected barriers is checked.
+            HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
+            if (config.useG1GC) {
+                barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
+                                graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
+                Assert.assertTrue(expectedBarriers * 2 == barriers);
+            } else {
+                barriers = graph.getNodes().filter(SerialWriteBarrier.class).count() + graph.getNodes().filter(SerialArrayRangeWriteBarrier.class).count();
+                Assert.assertTrue(expectedBarriers == barriers);
+            }
+            // Iterate over all write nodes and remove barriers according to input indices.
+            NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
 
-                new WriteBarrierAdditionPhase().apply(graph);
-
-                int barriers = 0;
-                // First, the total number of expected barriers is checked.
-                HotSpotVMConfig config = HotSpotGraalRuntime.runtime().getConfig();
-                if (config.useG1GC) {
-                    barriers = graph.getNodes().filter(G1PreWriteBarrier.class).count() + graph.getNodes().filter(G1PostWriteBarrier.class).count() +
-                                    graph.getNodes().filter(G1ArrayRangePreWriteBarrier.class).count() + graph.getNodes().filter(G1ArrayRangePostWriteBarrier.class).count();
-                    Assert.assertTrue(expectedBarriers * 2 == barriers);
-                } else {
-                    barriers = graph.getNodes().filter(SerialWriteBarrier.class).count() + graph.getNodes().filter(SerialArrayRangeWriteBarrier.class).count();
-                    Assert.assertTrue(expectedBarriers == barriers);
-                }
-                // Iterate over all write nodes and remove barriers according to input indices.
-                NodeIteratorClosure<Boolean> closure = new NodeIteratorClosure<Boolean>() {
-
-                    @Override
-                    protected Boolean processNode(FixedNode node, Boolean currentState) {
-                        if (node instanceof WriteNode) {
-                            WriteNode write = (WriteNode) node;
-                            LocationIdentity obj = write.getLocationIdentity();
-                            if (obj instanceof ResolvedJavaField) {
-                                if (((ResolvedJavaField) obj).getName().equals("barrierIndex")) {
-                                    /*
-                                     * A "barrierIndex" variable was found and is checked against
-                                     * the input barrier array.
-                                     */
-                                    if (eliminateBarrier(write.value().asConstant().asInt(), removedBarrierIndices)) {
-                                        return true;
-                                    }
+                @Override
+                protected Boolean processNode(FixedNode node, Boolean currentState) {
+                    if (node instanceof WriteNode) {
+                        WriteNode write = (WriteNode) node;
+                        LocationIdentity obj = write.getLocationIdentity();
+                        if (obj instanceof ResolvedJavaField) {
+                            if (((ResolvedJavaField) obj).getName().equals("barrierIndex")) {
+                                /*
+                                 * A "barrierIndex" variable was found and is checked against the
+                                 * input barrier array.
+                                 */
+                                if (eliminateBarrier(write.value().asConstant().asInt(), removedBarrierIndices)) {
+                                    return true;
                                 }
                             }
-                        } else if (node instanceof SerialWriteBarrier || node instanceof G1PostWriteBarrier) {
-                            // Remove flagged write barriers.
-                            if (currentState) {
-                                graph.removeFixed(((FixedWithNextNode) node));
-                                return false;
-                            }
                         }
-                        return currentState;
-                    }
-
-                    private boolean eliminateBarrier(int index, int[] map) {
-                        for (int i = 0; i < map.length; i++) {
-                            if (map[i] == index) {
-                                return true;
-                            }
+                    } else if (node instanceof SerialWriteBarrier || node instanceof G1PostWriteBarrier) {
+                        // Remove flagged write barriers.
+                        if (currentState) {
+                            graph.removeFixed(((FixedWithNextNode) node));
+                            return false;
                         }
-                        return false;
                     }
-
-                    @Override
-                    protected Map<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
-                        return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
-                    }
-
-                    @Override
-                    protected Boolean merge(MergeNode merge, List<Boolean> states) {
-                        return false;
-                    }
-
-                    @Override
-                    protected Boolean afterSplit(AbstractBeginNode node, Boolean oldState) {
-                        return false;
-                    }
-                };
-
-                DebugConfig debugConfig = DebugScope.getConfig();
-                try {
-                    ReentrantNodeIterator.apply(closure, graph.start(), false, null);
-                    Debug.setConfig(Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output()));
-                    new WriteBarrierVerificationPhase().apply(graph);
-                } catch (AssertionError error) {
-                    /*
-                     * Catch assertion, test for expected one and re-throw in order to validate unit
-                     * test.
-                     */
-                    Assert.assertTrue(error.getMessage().contains("Write barrier must be present"));
-                    return error;
-                } finally {
-                    Debug.setConfig(debugConfig);
+                    return currentState;
                 }
-                return null;
+
+                private boolean eliminateBarrier(int index, int[] map) {
+                    for (int i = 0; i < map.length; i++) {
+                        if (map[i] == index) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                @Override
+                protected Map<LoopExitNode, Boolean> processLoop(LoopBeginNode loop, Boolean initialState) {
+                    return ReentrantNodeIterator.processLoop(this, loop, initialState).exitStates;
+                }
+
+                @Override
+                protected Boolean merge(MergeNode merge, List<Boolean> states) {
+                    return false;
+                }
+
+                @Override
+                protected Boolean afterSplit(AbstractBeginNode node, Boolean oldState) {
+                    return false;
+                }
+            };
+
+            DebugConfig debugConfig = DebugScope.getConfig();
+            DebugConfig fixedConfig = Debug.fixedConfig(false, false, false, false, debugConfig.dumpHandlers(), debugConfig.output());
+            try (DebugConfigScope s = Debug.setConfig(fixedConfig)) {
+                ReentrantNodeIterator.apply(closure, graph.start(), false, null);
+                new WriteBarrierVerificationPhase().apply(graph);
+            } catch (AssertionError error) {
+                /*
+                 * Catch assertion, test for expected one and re-throw in order to validate unit
+                 * test.
+                 */
+                Assert.assertTrue(error.getMessage().contains("Write barrier must be present"));
+                throw error;
             }
-        });
-        if (expectedError != null) {
-            throw expectedError;
+        } catch (Throwable e) {
+            throw Debug.handle(e);
         }
     }
 }

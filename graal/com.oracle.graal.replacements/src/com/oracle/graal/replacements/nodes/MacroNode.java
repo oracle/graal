@@ -28,6 +28,7 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
@@ -37,7 +38,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
-public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCheckpoint.Single {
+public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
     @Input protected final NodeInputList<ValueNode> arguments;
 
@@ -96,14 +97,12 @@ public class MacroNode extends AbstractStateSplit implements Lowerable, MemoryCh
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
         replacementGraph.setGuardsStage(graph().getGuardsStage());
-        final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getCodeCache(), tool.getConstantReflection(), tool.getForeignCalls(), tool.getLowerer(), tool.assumptions(),
-                        tool.getReplacements());
-        Debug.scope("LoweringReplacement", replacementGraph, new Runnable() {
-
-            public void run() {
-                new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
-            }
-        });
+        final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions());
+        try (Scope s = Debug.scope("LoweringReplacement", replacementGraph)) {
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
+        } catch (Throwable e) {
+            throw Debug.handle(e);
+        }
         return replacementGraph;
     }
 
