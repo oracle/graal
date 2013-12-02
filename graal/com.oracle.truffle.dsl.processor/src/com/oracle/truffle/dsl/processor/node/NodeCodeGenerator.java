@@ -2877,13 +2877,16 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                     builder.startAssert().string(name).string(".length == ").string(String.valueOf(varArgCount)).end();
                     if (varArgCount > 0) {
                         List<ActualParameter> varArgsParameter = execType.getParameters().subList(i, execType.getParameters().size());
-
                         for (ActualParameter varArg : varArgsParameter) {
+                            if (varArgCount <= 0) {
+                                break;
+                            }
                             TypeMirror type = baseVarArgs.getType();
                             if (type.getKind() == TypeKind.ARRAY) {
                                 type = ((ArrayType) type).getComponentType();
                             }
                             builder.declaration(type, valueNameEvaluated(varArg), name + "[" + varArg.getVarArgsIndex() + "]");
+                            varArgCount--;
                         }
                     }
                 }

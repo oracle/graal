@@ -32,6 +32,8 @@ import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluated
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs0Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs1Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs2Factory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs3Factory;
+import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.TestEvaluatedVarArgs4Factory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseDoubleEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.ExecuteEvaluatedTestFactory.UseEvaluatedNodeFactory;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ArgumentNode;
@@ -194,6 +196,40 @@ public class ExecuteEvaluatedTest {
     }
 
     abstract static class TestEvaluatedVarArgs2 extends ChildrenNode {
+
+        public abstract Object execute1(VirtualFrame frame, Object... value);
+
+        @Specialization
+        int call(int exp0, int exp1) {
+            return exp0 + exp1;
+        }
+    }
+
+    @Test
+    public void test3VarArgs1() {
+        TestRootNode<TestEvaluatedVarArgs3> root = TestHelper.createRoot(TestEvaluatedVarArgs3Factory.getInstance());
+        Assert.assertEquals(42, root.getNode().execute1(null, 42));
+    }
+
+    @NodeChild
+    abstract static class TestEvaluatedVarArgs3 extends ValueNode {
+
+        public abstract Object execute1(VirtualFrame frame, Object... value);
+
+        @Specialization
+        int call(int exp0) {
+            return exp0;
+        }
+    }
+
+    @Test
+    public void test4VarArgs1() {
+        TestRootNode<TestEvaluatedVarArgs4> root = TestHelper.createRoot(TestEvaluatedVarArgs4Factory.getInstance());
+        Assert.assertEquals(42, root.getNode().execute1(null, 21, 21));
+    }
+
+    @NodeChildren({@NodeChild, @NodeChild})
+    abstract static class TestEvaluatedVarArgs4 extends ValueNode {
 
         public abstract Object execute1(VirtualFrame frame, Object... value);
 
