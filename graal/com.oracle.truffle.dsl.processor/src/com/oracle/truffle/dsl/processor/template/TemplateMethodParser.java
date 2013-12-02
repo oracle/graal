@@ -44,10 +44,19 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
 
     private boolean emitErrors = true;
     private boolean parseNullOnError = false;
+    private boolean useVarArgs = false;
 
     public TemplateMethodParser(ProcessorContext context, T template) {
         this.template = template;
         this.context = context;
+    }
+
+    protected void setUseVarArgs(boolean useVarArgs) {
+        this.useVarArgs = useVarArgs;
+    }
+
+    public boolean isUseVarArgs() {
+        return useVarArgs;
     }
 
     public boolean isEmitErrors() {
@@ -161,7 +170,7 @@ public abstract class TemplateMethodParser<T extends Template, E extends Templat
             parameterTypes.add(var.asType());
         }
 
-        List<ActualParameter> parameters = parseParameters(methodSpecification, parameterTypes, method.isVarArgs());
+        List<ActualParameter> parameters = parseParameters(methodSpecification, parameterTypes, isUseVarArgs() && method.isVarArgs());
         if (parameters == null) {
             if (isEmitErrors()) {
                 E invalidMethod = create(new TemplateMethod(id, template, methodSpecification, method, annotation, returnTypeMirror, Collections.<ActualParameter> emptyList()), true);
