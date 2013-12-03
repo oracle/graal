@@ -161,7 +161,7 @@ public final class CompilationTask implements Runnable {
                 InlinedBytecodes.add(method.getCodeSize());
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
                 Suites suites = providers.getSuites().getDefaultSuites();
-                result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites,
+                result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites, true,
                                 new CompilationResult());
 
             } catch (Throwable e) {

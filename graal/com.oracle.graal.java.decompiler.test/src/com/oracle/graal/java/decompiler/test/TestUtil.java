@@ -53,7 +53,7 @@ public class TestUtil {
         GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-        GraalCompiler.compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
+        GraalCompiler.compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, true,
                         new CompilationResult());
     }
 }

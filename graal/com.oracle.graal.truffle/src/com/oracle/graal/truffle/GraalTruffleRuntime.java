@@ -200,7 +200,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         return GraalCompiler.compileGraph(graph, cc, javaMethod, providers, instrumentBackend(backend), providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog(), suites, new CompilationResult());
+                        new SpeculationLog(), suites, true, new CompilationResult());
     }
 
     private static Providers getGraalProviders() {

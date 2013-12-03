@@ -60,7 +60,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         final StructuredGraph graph = parse(method);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultPhasePlan(),
-                        OptimisticOptimizations.ALL, new SpeculationLog(), getSuites(), new CompilationResult());
+                        OptimisticOptimizations.ALL, new SpeculationLog(), getSuites(), true, new CompilationResult());
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);
             if (sp instanceof Call) {
@@ -82,7 +82,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
         assertTrue(graphLineSPs > 0);
         CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
         final CompilationResult cr = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), getBackend(), getCodeCache().getTarget(), null, getDefaultPhasePlan(true),
-                        OptimisticOptimizations.ALL, new SpeculationLog(), getSuites(), new CompilationResult());
+                        OptimisticOptimizations.ALL, new SpeculationLog(), getSuites(), true, new CompilationResult());
         int lineSPs = 0;
         for (Infopoint sp : cr.getInfopoints()) {
             assertNotNull(sp.reason);

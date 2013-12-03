@@ -89,7 +89,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              */
             Suites suites = Suites.createDefaultSuites();
             ExternalCompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                            new SpeculationLog(), suites, new ExternalCompilationResult());
+                            new SpeculationLog(), suites, true, new ExternalCompilationResult());
 
             ResolvedJavaMethod method = graph.method();
 

@@ -208,7 +208,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
             // create suites everytime, as we modify options for the compiler
             final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
             final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog(), suitesLocal, new CompilationResult());
+                            new SpeculationLog(), suitesLocal, true, new CompilationResult());
             addMethod(method, compResult);
         }
 

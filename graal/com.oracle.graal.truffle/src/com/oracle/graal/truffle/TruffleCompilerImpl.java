@@ -221,7 +221,7 @@ public class TruffleCompilerImpl implements TruffleCompiler {
             CodeCacheProvider codeCache = providers.getCodeCache();
             CallingConvention cc = getCallingConvention(codeCache, Type.JavaCallee, graph.method(), false);
             CompilationResult compilationResult = new CompilationResult(graph.method().toString());
-            result = GraalCompiler.compileGraphNoScope(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL, new SpeculationLog(), suites,
+            result = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, codeCache.getTarget(), null, plan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, false,
                             compilationResult);
         } catch (Throwable e) {
             throw Debug.handle(e);

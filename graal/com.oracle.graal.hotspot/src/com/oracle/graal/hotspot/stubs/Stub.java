@@ -152,7 +152,7 @@ public abstract class Stub {
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan,
-                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), new CompilationResult());
+                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult());
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

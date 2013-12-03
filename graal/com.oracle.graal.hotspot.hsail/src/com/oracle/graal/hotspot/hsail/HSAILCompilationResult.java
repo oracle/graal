@@ -175,7 +175,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         SuitesProvider suitesProvider = backend.getSuites();
         try {
             HSAILCompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
-                            suitesProvider.getDefaultSuites(), new HSAILCompilationResult());
+                            suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult());
             if ((validDevice) && (compResult.getTargetCode() != null)) {
                 long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());
 

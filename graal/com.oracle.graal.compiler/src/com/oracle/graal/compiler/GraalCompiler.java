@@ -131,48 +131,43 @@ public class GraalCompiler {
      * @param installedCodeOwner the method the compiled code will be
      *            {@linkplain InstalledCode#getMethod() associated} with once installed. This
      *            argument can be null.
+     * @param withScope specifies if a {@link DebugScope} with the name {@code "GraalCompiler"}
+     *            should be used for the compilation
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
-        try (Scope s = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
-            compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, speculationLog, suites, compilationResult);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-        return compilationResult;
-    }
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, boolean withScope,
+                    T compilationResult) {
+        try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
+            Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
-    /**
-     * Same as {@link #compileGraph} but without entering a
-     * {@linkplain Debug#scope(String, Object...) debug scope}.
-     */
-    public static <T extends CompilationResult> T compileGraphNoScope(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
-        Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-
-        LIR lir = null;
-        try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
-            lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
-        } catch (Throwable e) {
-            throw Debug.handle(e);
-        }
-        try (TimerCloseable a = BackEnd.start()) {
-            LIRGenerator lirGen = null;
-            try (Scope s = Debug.scope("BackEnd", lir)) {
-                lirGen = emitLIR(backend, target, lir, graph, cc);
+            LIR lir = null;
+            try (Scope s1 = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
+                lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
-            try (Scope s = Debug.scope("CodeGen", lirGen)) {
-                emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+            try (TimerCloseable a = BackEnd.start()) {
+                LIRGenerator lirGen = null;
+                try (Scope s2 = Debug.scope("BackEnd", lir)) {
+                    lirGen = emitLIR(backend, target, lir, graph, cc);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
+                try (Scope s3 = Debug.scope("CodeGen", lirGen)) {
+                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+                } catch (Throwable e) {
+                    throw Debug.handle(e);
+                }
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
         } catch (Throwable e) {
+            if (!withScope) {
+                throw e;
+            }
             throw Debug.handle(e);
         }
-
         return compilationResult;
     }
 
