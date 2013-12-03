@@ -38,6 +38,9 @@ public abstract class LoopPolicies {
 
     // TODO (gd) change when inversion is available
     public static boolean shouldPeel(LoopEx loop, NodesToDoubles probabilities) {
+        if (loop.detectCounted()) {
+            return false;
+        }
         LoopBeginNode loopBegin = loop.loopBegin();
         double entryProbability = probabilities.get(loopBegin.forwardEnd());
         return entryProbability > MinimumPeelProbability.getValue() && loop.size() + loopBegin.graph().getNodeCount() < MaximumDesiredSize.getValue();
