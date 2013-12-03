@@ -47,12 +47,13 @@ public interface Replacements {
     void registerSnippet(ResolvedJavaMethod method);
 
     /**
-     * Prepares the copy of a snippet graph immediately after instantiation. This can be used to do
-     * node intrinsification for example.
+     * Notifies this object during snippet specialization once the specialized snippet's constant
+     * parameters have been replaced with constant values.
      * 
-     * @param snippetCopy The copy of the snippet graph.
+     * @param specializedSnippet the snippet in the process of being specialized. This is a copy of
+     *            the unspecialized snippet graph created during snippet preparation.
      */
-    void prepareSnippetCopyAfterInstantiation(StructuredGraph snippetCopy);
+    void notifyAfterConstantsBound(StructuredGraph specializedSnippet);
 
     /**
      * Gets the graph that is a substitution for a given method.

@@ -576,10 +576,11 @@ public class VMToCompilerImpl implements VMToCompiler {
             if (method.tryToQueueForCompilation()) {
                 assert method.isQueuedForCompilation();
 
-                final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(method);
+                final ProfilingInfo profilingInfo = method.getCompilationProfilingInfo(osrCompilation);
+                final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(profilingInfo);
                 int id = compileTaskIds.incrementAndGet();
                 HotSpotBackend backend = runtime.getHostBackend();
-                CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, method, entryBCI, id);
+                CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, profilingInfo, method, entryBCI, id);
 
                 if (blocking) {
                     task.runCompilation();

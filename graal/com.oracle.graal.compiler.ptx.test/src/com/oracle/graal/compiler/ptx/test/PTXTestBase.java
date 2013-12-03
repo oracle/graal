@@ -23,6 +23,7 @@
 package com.oracle.graal.compiler.ptx.test;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
+import static com.oracle.graal.compiler.GraalCompiler.*;
 
 import java.lang.annotation.*;
 import java.lang.reflect.*;
@@ -30,7 +31,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
@@ -89,7 +89,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
             Suites suites = Suites.createDefaultSuites();
-            ExternalCompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
+            ExternalCompilationResult result = compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE, getProfilingInfo(graph),
                             new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
             ResolvedJavaMethod method = graph.method();

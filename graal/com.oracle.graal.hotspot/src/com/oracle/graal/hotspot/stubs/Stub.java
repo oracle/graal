@@ -22,13 +22,13 @@
  */
 package com.oracle.graal.hotspot.stubs;
 
+import static com.oracle.graal.compiler.GraalCompiler.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
@@ -152,8 +152,8 @@ public abstract class Stub {
                 phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
-                final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan,
-                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
+                final CompilationResult compResult = compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
+                                getProfilingInfo(graph), new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

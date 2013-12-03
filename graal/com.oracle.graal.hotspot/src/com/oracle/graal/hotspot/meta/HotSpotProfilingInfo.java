@@ -39,9 +39,14 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
     private int hintBCI;
     private HotSpotMethodDataAccessor dataAccessor;
 
-    public HotSpotProfilingInfo(HotSpotMethodData methodData, HotSpotResolvedJavaMethod method) {
+    private boolean includeNormal;
+    private boolean includeOSR;
+
+    public HotSpotProfilingInfo(HotSpotMethodData methodData, HotSpotResolvedJavaMethod method, boolean includeNormal, boolean includeOSR) {
         this.methodData = methodData;
         this.method = method;
+        this.includeNormal = includeNormal;
+        this.includeOSR = includeOSR;
         hintPosition = 0;
         hintBCI = -1;
     }
@@ -95,7 +100,14 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        return methodData.getDeoptimizationCount(reason);
+        int count = 0;
+        if (includeNormal) {
+            count += methodData.getDeoptimizationCount(reason);
+        }
+        if (includeOSR) {
+            count += methodData.getOSRDeoptimizationCount(reason);
+        }
+        return count;
     }
 
     private void findBCI(int targetBCI, boolean searchExtraData) {

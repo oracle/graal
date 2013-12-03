@@ -511,7 +511,7 @@ public class SnippetTemplate {
 
         Debug.dump(snippetCopy, "Before specialization");
         if (!nodeReplacements.isEmpty()) {
-            providers.getReplacements().prepareSnippetCopyAfterInstantiation(snippetCopy);
+            providers.getReplacements().notifyAfterConstantsBound(snippetCopy);
         }
 
         // Gather the template parameters

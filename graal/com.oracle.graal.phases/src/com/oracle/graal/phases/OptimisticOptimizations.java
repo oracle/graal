@@ -39,19 +39,19 @@ public final class OptimisticOptimizations {
 
     private final Set<Optimization> enabledOpts;
 
-    public OptimisticOptimizations(ResolvedJavaMethod method) {
+    public OptimisticOptimizations(ProfilingInfo info) {
         this.enabledOpts = EnumSet.noneOf(Optimization.class);
 
         enabledOpts.add(Optimization.UseExceptionProbabilityForOperations);
-        addOptimization(method, DeoptimizationReason.UnreachedCode, Optimization.RemoveNeverExecutedCode);
-        addOptimization(method, DeoptimizationReason.TypeCheckedInliningViolated, Optimization.UseTypeCheckedInlining);
-        addOptimization(method, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.UseTypeCheckHints);
-        addOptimization(method, DeoptimizationReason.NotCompiledExceptionHandler, Optimization.UseExceptionProbability);
-        addOptimization(method, DeoptimizationReason.LoopLimitCheck, Optimization.UseLoopLimitChecks);
+        addOptimization(info, DeoptimizationReason.UnreachedCode, Optimization.RemoveNeverExecutedCode);
+        addOptimization(info, DeoptimizationReason.TypeCheckedInliningViolated, Optimization.UseTypeCheckedInlining);
+        addOptimization(info, DeoptimizationReason.OptimizedTypeCheckViolated, Optimization.UseTypeCheckHints);
+        addOptimization(info, DeoptimizationReason.NotCompiledExceptionHandler, Optimization.UseExceptionProbability);
+        addOptimization(info, DeoptimizationReason.LoopLimitCheck, Optimization.UseLoopLimitChecks);
     }
 
-    private void addOptimization(ResolvedJavaMethod method, DeoptimizationReason deoptReason, Optimization optimization) {
-        if (checkDeoptimizations(method.getProfilingInfo(), deoptReason)) {
+    private void addOptimization(ProfilingInfo info, DeoptimizationReason deoptReason, Optimization optimization) {
+        if (checkDeoptimizations(info, deoptReason)) {
             enabledOpts.add(optimization);
         } else {
             disabledOptimisticOptsMetric.increment();

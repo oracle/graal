@@ -605,7 +605,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 new FloatingReadPhase().apply(graph);
                 new RemoveValueProxyPhase().apply(graph);
 
-                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL);
+                MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
                 new GuardLoweringPhase().apply(graph, midContext);
                 new LoweringPhase(canonicalizer).apply(graph, midContext);
                 new LoweringPhase(canonicalizer).apply(graph, midContext);

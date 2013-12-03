@@ -32,6 +32,7 @@ import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -136,25 +137,24 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, boolean withScope,
-                    T compilationResult, CompilationResultBuilderFactory factory) {
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites,
+                    boolean withScope, T compilationResult, CompilationResultBuilderFactory factory) {
         try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
-
             LIR lir = null;
-            try (Scope s1 = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
-                lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+            try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
+                lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, profilingInfo, speculationLog, suites);
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }
             try (TimerCloseable a = BackEnd.start()) {
                 LIRGenerator lirGen = null;
-                try (Scope s2 = Debug.scope("BackEnd", lir)) {
+                try (Scope s = Debug.scope("BackEnd", lir)) {
                     lirGen = emitLIR(backend, target, lir, graph, cc);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
-                try (Scope s3 = Debug.scope("CodeGen", lirGen)) {
+                try (Scope s = Debug.scope("CodeGen", lirGen)) {
                     emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner, factory);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
@@ -163,12 +163,17 @@ public class GraalCompiler {
                 throw Debug.handle(e);
             }
         } catch (Throwable e) {
-            if (!withScope) {
-                throw e;
-            }
             throw Debug.handle(e);
         }
         return compilationResult;
+    }
+
+    public static ProfilingInfo getProfilingInfo(StructuredGraph graph) {
+        if (graph.method() != null) {
+            return graph.method().getProfilingInfo();
+        } else {
+            return DefaultProfilingInfo.get(TriState.UNKNOWN);
+        }
     }
 
     private static long[] getLeafGraphIdArray(StructuredGraph graph) {
@@ -185,7 +190,7 @@ public class GraalCompiler {
      * Builds the graph, optimizes it.
      */
     public static LIR emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts,
-                    SpeculationLog speculationLog, Suites suites) {
+                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -202,7 +207,7 @@ public class GraalCompiler {
         suites.getHighTier().apply(graph, highTierContext);
         graph.maybeCompress();
 
-        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts);
+        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts, profilingInfo);
         suites.getMidTier().apply(graph, midTierContext);
         graph.maybeCompress();
 
