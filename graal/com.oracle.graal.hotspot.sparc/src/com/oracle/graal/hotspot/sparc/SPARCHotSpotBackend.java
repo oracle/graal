@@ -115,6 +115,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             this.isStub = isStub;
         }
 
+        public boolean hasFrame() {
+            return true;
+        }
+
         @Override
         public void enter(CompilationResultBuilder crb) {
             final int frameSize = crb.frameMap.totalFrameSize();
@@ -207,7 +211,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
 
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
-        if (frameContext != null && !frameContext.isStub) {
+        if (!frameContext.isStub) {
             crb.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
             SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
             crb.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);

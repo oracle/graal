@@ -137,9 +137,7 @@ public class HSAILControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
-            if (crb.frameContext != null) {
-                crb.frameContext.leave(crb);
-            }
+            crb.frameContext.leave(crb);
             masm.exit();
         }
     }

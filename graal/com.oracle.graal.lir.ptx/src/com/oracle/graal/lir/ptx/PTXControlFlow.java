@@ -50,9 +50,7 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            if (crb.frameContext != null) {
-                crb.frameContext.leave(crb);
-            }
+            crb.frameContext.leave(crb);
             masm.exit();
         }
     }
@@ -64,9 +62,7 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            if (crb.frameContext != null) {
-                crb.frameContext.leave(crb);
-            }
+            crb.frameContext.leave(crb);
             masm.ret();
         }
     }

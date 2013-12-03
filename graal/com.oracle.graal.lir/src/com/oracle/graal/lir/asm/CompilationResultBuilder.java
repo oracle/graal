@@ -74,6 +74,7 @@ public class CompilationResultBuilder {
         this.asm = asm;
         this.compilationResult = compilationResult;
         this.frameContext = frameContext;
+        assert frameContext != null;
     }
 
     public void setFrameSize(int frameSize) {

@@ -46,4 +46,9 @@ public interface FrameContext {
      * </ul>
      */
     void leave(CompilationResultBuilder crb);
+
+    /**
+     * Determines if a frame is set up and torn down by this object.
+     */
+    boolean hasFrame();
 }

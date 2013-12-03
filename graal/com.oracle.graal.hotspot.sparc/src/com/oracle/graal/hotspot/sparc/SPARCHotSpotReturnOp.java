@@ -49,7 +49,7 @@ final class SPARCHotSpotReturnOp extends SPARCHotSpotEpilogueOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        if (!isStub && (crb.frameContext != null || !OptEliminateSafepoints.getValue())) {
+        if (!isStub && (crb.frameContext.hasFrame() || !OptEliminateSafepoints.getValue())) {
             // Using the same scratch register as LIR_Assembler::return_op
             // in c1_LIRAssembler_sparc.cpp
             SPARCHotSpotSafepointOp.emitCode(crb, masm, runtime().getConfig(), true, null, SPARC.l0);

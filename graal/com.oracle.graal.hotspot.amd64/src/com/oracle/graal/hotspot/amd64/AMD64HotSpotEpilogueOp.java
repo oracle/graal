@@ -57,8 +57,6 @@ abstract class AMD64HotSpotEpilogueOp extends AMD64LIRInstruction {
                 masm.movq(rbp, framePointer);
             }
         }
-        if (crb.frameContext != null) {
-            crb.frameContext.leave(crb);
-        }
+        crb.frameContext.leave(crb);
     }
 }

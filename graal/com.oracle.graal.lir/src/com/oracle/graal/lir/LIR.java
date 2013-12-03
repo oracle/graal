@@ -137,9 +137,7 @@ public class LIR {
     }
 
     public void emitCode(CompilationResultBuilder crb) {
-        if (crb.frameContext != null) {
-            crb.frameContext.enter(crb);
-        }
+        crb.frameContext.enter(crb);
 
         for (Block b : codeEmittingOrder()) {
             emitBlock(crb, b);

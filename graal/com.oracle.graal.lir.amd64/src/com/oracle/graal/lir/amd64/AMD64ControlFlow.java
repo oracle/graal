@@ -51,9 +51,7 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (crb.frameContext != null) {
-                crb.frameContext.leave(crb);
-            }
+            crb.frameContext.leave(crb);
             masm.ret(0);
         }
     }

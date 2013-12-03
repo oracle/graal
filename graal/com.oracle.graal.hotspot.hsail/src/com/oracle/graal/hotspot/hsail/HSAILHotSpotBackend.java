@@ -94,6 +94,10 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
 
     class HotSpotFrameContext implements FrameContext {
 
+        public boolean hasFrame() {
+            return true;
+        }
+
         @Override
         public void enter(CompilationResultBuilder crb) {
             Debug.log("Nothing to do here");

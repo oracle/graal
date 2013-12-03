@@ -126,6 +126,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
             this.omitFrame = omitFrame;
         }
 
+        public boolean hasFrame() {
+            return !omitFrame;
+        }
+
         @Override
         public void enter(CompilationResultBuilder crb) {
             FrameMap frameMap = crb.frameMap;
@@ -283,7 +287,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
     public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIRGenerator lirGen, AMD64MacroAssembler asm, FrameMap frameMap) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
-        if (frameContext != null && !frameContext.isStub) {
+        if (!frameContext.isStub) {
             HotSpotForeignCallsProvider foreignCalls = providers.getForeignCalls();
             crb.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
             AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);

@@ -164,6 +164,10 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         @Override
         public void leave(CompilationResultBuilder crb) {
         }
+
+        public boolean hasFrame() {
+            return true;
+        }
     }
 
     @Override
