@@ -41,6 +41,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -162,7 +163,7 @@ public final class CompilationTask implements Runnable {
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
                 Suites suites = providers.getSuites().getDefaultSuites();
                 result = GraalCompiler.compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, method.getSpeculationLog(), suites, true,
-                                new CompilationResult());
+                                new CompilationResult(), CompilationResultBuilderFactory.Default);
 
             } catch (Throwable e) {
                 throw Debug.handle(e);

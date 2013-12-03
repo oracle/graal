@@ -167,7 +167,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         // Omit the frame of the method:
         // - has no spill slots or other slots allocated during register allocation
         // - has no callee-saved registers
@@ -176,7 +176,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
-        CompilationResultBuilder crb = new CompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(0);
         return crb;
     }

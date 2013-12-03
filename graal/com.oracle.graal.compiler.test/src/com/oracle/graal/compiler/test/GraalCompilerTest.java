@@ -45,6 +45,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Node.Verbosity;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.spi.*;
@@ -555,7 +556,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
             CallingConvention cc = getCallingConvention(getCodeCache(), Type.JavaCallee, graph.method(), false);
             final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog(), getSuites(), true, new CompilationResult());
+                            new SpeculationLog(), getSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
             if (printCompilation) {
                 TTY.println(String.format("@%-6d Graal %-70s %-45s %-50s | %4dms %5dB", id, "", "", "", System.currentTimeMillis() - start, compResult.getTargetCodeSize()));
             }

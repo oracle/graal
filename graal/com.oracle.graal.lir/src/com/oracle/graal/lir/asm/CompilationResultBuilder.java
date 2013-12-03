@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,8 @@ import com.oracle.graal.lir.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
+ * 
+ * @see CompilationResultBuilderFactory
  */
 public class CompilationResultBuilder {
 
@@ -57,8 +59,7 @@ public class CompilationResultBuilder {
     public final FrameMap frameMap;
 
     /**
-     * The object that emits code for managing a method's frame. If null, no frame is used by the
-     * method.
+     * The object that emits code for managing a method's frame.
      */
     public final FrameContext frameContext;
 
@@ -99,7 +100,6 @@ public class CompilationResultBuilder {
      * the compilation result.
      */
     public void finish() {
-        // Install code, data and frame size
         compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
         // Record exception handlers if they exist

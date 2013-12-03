@@ -147,7 +147,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         assert gen.deoptimizationRescueSlot == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
@@ -156,7 +156,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         AbstractAssembler masm = createAssembler(frameMap);
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
-        CompilationResultBuilder crb = new CompilationResultBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
         if (deoptimizationRescueSlot != null && stub == null) {

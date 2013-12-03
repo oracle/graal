@@ -26,6 +26,7 @@ package com.oracle.graal.hotspot.hsail;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.lang.reflect.*;
+
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
 import com.oracle.graal.api.meta.*;
@@ -39,6 +40,7 @@ import com.oracle.graal.hotspot.bridge.CompilerToGPU;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hsail.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode;
 import com.oracle.graal.nodes.type.*;
@@ -175,7 +177,7 @@ public class HSAILCompilationResult extends ExternalCompilationResult {
         SuitesProvider suitesProvider = backend.getSuites();
         try {
             HSAILCompilationResult compResult = GraalCompiler.compileGraph(graph, cc, graph.method(), providers, backend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
-                            suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult());
+                            suitesProvider.getDefaultSuites(), true, new HSAILCompilationResult(), CompilationResultBuilderFactory.Default);
             if ((validDevice) && (compResult.getTargetCode() != null)) {
                 long kernel = toGPU.generateKernel(compResult.getTargetCode(), graph.method().getName());
 

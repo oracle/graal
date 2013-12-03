@@ -31,6 +31,7 @@ import com.oracle.graal.api.runtime.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -54,6 +55,6 @@ public class TestUtil {
         phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         GraalCompiler.compileGraph(graph, cc, method, providers, backend, providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL, new SpeculationLog(), suites, true,
-                        new CompilationResult());
+                        new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 }

@@ -75,7 +75,7 @@ public abstract class Backend {
     /**
      * Creates the object used to fill in the details of a given compilation result.
      */
-    public abstract CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult);
+    public abstract CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory);
 
     public abstract boolean shouldAllocateRegisters();
 

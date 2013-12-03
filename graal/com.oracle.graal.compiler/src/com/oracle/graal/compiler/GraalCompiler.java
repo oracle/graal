@@ -137,7 +137,7 @@ public class GraalCompiler {
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
                     TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, boolean withScope,
-                    T compilationResult) {
+                    T compilationResult, CompilationResultBuilderFactory factory) {
         try (Scope s0 = withScope ? Debug.scope("GraalCompiler", graph, providers.getCodeCache()) : null) {
             Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
@@ -155,7 +155,7 @@ public class GraalCompiler {
                     throw Debug.handle(e);
                 }
                 try (Scope s3 = Debug.scope("CodeGen", lirGen)) {
-                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner);
+                    emitCode(backend, getLeafGraphIdArray(graph), assumptions, lirGen, compilationResult, installedCodeOwner, factory);
                 } catch (Throwable e) {
                     throw Debug.handle(e);
                 }
@@ -275,8 +275,9 @@ public class GraalCompiler {
         return lirGen;
     }
 
-    public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner) {
-        CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGen, compilationResult);
+    public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner,
+                    CompilationResultBuilderFactory factory) {
+        CompilationResultBuilder crb = backend.newCompilationResultBuilder(lirGen, compilationResult, factory);
         backend.emitCode(crb, lirGen, installedCodeOwner);
         crb.finish();
         if (!assumptions.isEmpty()) {

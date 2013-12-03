@@ -111,11 +111,11 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        CompilationResultBuilder crb = new CompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        CompilationResultBuilder crb = factory.createBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
         crb.setFrameSize(frameMap.frameSize());
         return crb;
     }

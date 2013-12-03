@@ -36,6 +36,7 @@ import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
@@ -200,7 +201,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         return GraalCompiler.compileGraph(graph, cc, javaMethod, providers, instrumentBackend(backend), providers.getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                        new SpeculationLog(), suites, true, new CompilationResult());
+                        new SpeculationLog(), suites, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
     }
 
     private static Providers getGraalProviders() {

@@ -37,6 +37,7 @@ import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.options.*;
@@ -208,7 +209,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
             // create suites everytime, as we modify options for the compiler
             final Suites suitesLocal = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getSuites().createSuites();
             final CompilationResult compResult = GraalCompiler.compileGraph(graph, cc, method, getProviders(), getBackend(), getCodeCache().getTarget(), null, phasePlan, OptimisticOptimizations.ALL,
-                            new SpeculationLog(), suitesLocal, true, new CompilationResult());
+                            new SpeculationLog(), suitesLocal, true, new CompilationResult(), CompilationResultBuilderFactory.Default);
             addMethod(method, compResult);
         }
 

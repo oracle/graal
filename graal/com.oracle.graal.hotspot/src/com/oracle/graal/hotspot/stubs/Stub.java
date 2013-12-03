@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.bridge.CompilerToVM.CodeInstallResult;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.PhasePlan.PhasePosition;
@@ -152,7 +153,7 @@ public abstract class Stub {
                 // The stub itself needs the incoming calling convention.
                 CallingConvention incomingCc = linkage.getIncomingCallingConvention();
                 final CompilationResult compResult = GraalCompiler.compileGraph(graph, incomingCc, getInstalledCodeOwner(), providers, backend, codeCache.getTarget(), null, phasePlan,
-                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult());
+                                OptimisticOptimizations.ALL, new SpeculationLog(), providers.getSuites().getDefaultSuites(), true, new CompilationResult(), CompilationResultBuilderFactory.Default);
 
                 assert destroyedRegisters != null;
                 try (Scope s = Debug.scope("CodeInstall")) {

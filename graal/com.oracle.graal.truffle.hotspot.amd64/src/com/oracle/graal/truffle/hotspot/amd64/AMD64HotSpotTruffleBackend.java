@@ -99,8 +99,8 @@ class AMD64HotSpotTruffleBackend extends Backend {
     }
 
     @Override
-    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
-        return original.newCompilationResultBuilder(lirGen, compilationResult);
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult, CompilationResultBuilderFactory factory) {
+        return original.newCompilationResultBuilder(lirGen, compilationResult, factory);
     }
 
     @Override

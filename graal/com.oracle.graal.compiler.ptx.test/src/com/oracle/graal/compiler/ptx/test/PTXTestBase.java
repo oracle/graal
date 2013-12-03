@@ -39,6 +39,7 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.ptx.*;
 import com.oracle.graal.java.*;
+import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.ptx.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.phases.*;
@@ -89,7 +90,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              */
             Suites suites = Suites.createDefaultSuites();
             ExternalCompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
-                            new SpeculationLog(), suites, true, new ExternalCompilationResult());
+                            new SpeculationLog(), suites, true, new ExternalCompilationResult(), CompilationResultBuilderFactory.Default);
 
             ResolvedJavaMethod method = graph.method();
 
