@@ -53,17 +53,17 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Register scratch = ((RegisterValue) temp).getRegister();
-        emitCode(tasm, masm, config, false, state, scratch);
+        emitCode(crb, masm, config, false, state, scratch);
     }
 
-    public static void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
+    public static void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         final int pos = masm.codeBuffer.position();
         new Setx(config.safepointPollingAddress, scratch).emit(masm);
-        tasm.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
+        crb.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
         if (state != null) {
-            tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
         }
         new Ldx(new SPARCAddress(scratch, 0), g0).emit(masm);
     }

@@ -38,17 +38,17 @@ import com.oracle.graal.lir.sparc.*;
 final class SPARCHotSpotDeoptimizeCallerOp extends SPARCHotSpotEpilogueOp {
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        leaveFrame(tasm);
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        leaveFrame(crb);
 
         // SPARCHotSpotBackend backend = (SPARCHotSpotBackend)
         // HotSpotGraalRuntime.runtime().getBackend();
         // final boolean isStub = true;
         // HotSpotFrameContext frameContext = backend.new HotSpotFrameContext(isStub);
-        // frameContext.enter(tasm);
+        // frameContext.enter(crb);
         Register scratch = g3;
-        SPARCCall.indirectJmp(tasm, masm, scratch, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
+        SPARCCall.indirectJmp(crb, masm, scratch, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
 
-        // frameContext.leave(tasm);
+        // frameContext.leave(crb);
     }
 }

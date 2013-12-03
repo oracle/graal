@@ -114,7 +114,7 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitConvert(result, x, to, from);
         }
     }
@@ -131,8 +131,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -150,8 +150,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -173,8 +173,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -192,8 +192,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -217,7 +217,7 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             throw GraalInternalError.shouldNotReachHere();
         }
 
@@ -242,8 +242,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -270,8 +270,8 @@ public enum HSAILArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, opcode, result, y, state);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, opcode, result, y, state);
         }
 
         @Override
@@ -282,14 +282,14 @@ public enum HSAILArithmetic {
     }
 
     @SuppressWarnings("unused")
-    protected static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value result) {
+    protected static void emit(CompilationResultBuilder crb, HSAILAssembler masm, HSAILArithmetic opcode, Value result) {
         switch (opcode) {
             default:
                 throw GraalInternalError.shouldNotReachHere();
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
@@ -322,11 +322,11 @@ public enum HSAILArithmetic {
         }
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         /**
          * First check if one of src1 or src2 is an AddressValue. If it is, convert the address to a
          * register using an lda instruction. We can just reuse the eventual dst register for this.
@@ -334,12 +334,12 @@ public enum HSAILArithmetic {
         if (src1 instanceof HSAILAddressValue) {
             assert (!(src2 instanceof HSAILAddressValue));
             masm.emitLda(dst, ((HSAILAddressValue) src1).toAddress());
-            emit(tasm, masm, opcode, dst, dst, src2, info);
+            emit(crb, masm, opcode, dst, dst, src2, info);
             return;
         } else if (src2 instanceof HSAILAddressValue) {
             assert (!(src1 instanceof HSAILAddressValue));
             masm.emitLda(dst, ((HSAILAddressValue) src2).toAddress());
-            emit(tasm, masm, opcode, dst, src1, dst, info);
+            emit(crb, masm, opcode, dst, src1, dst, info);
             return;
         }
         int exceptionOffset = -1;
@@ -411,7 +411,7 @@ public enum HSAILArithmetic {
         }
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 

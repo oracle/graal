@@ -115,7 +115,7 @@ public abstract class AbstractAssembler {
     }
 
     /**
-     * This is used by the TargetMethodAssembler to convert a {@link StackSlot} to an
+     * This is used by the CompilationResultBuilder to convert a {@link StackSlot} to an
      * {@link AbstractAddress}.
      */
     public abstract AbstractAddress makeAddress(Register base, int displacement);

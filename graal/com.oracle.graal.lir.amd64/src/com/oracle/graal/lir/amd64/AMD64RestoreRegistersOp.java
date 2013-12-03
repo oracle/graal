@@ -54,17 +54,17 @@ public class AMD64RestoreRegistersOp extends AMD64LIRInstruction {
         return save.savedRegisters;
     }
 
-    protected void restoreRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Register register, StackSlot input) {
+    protected void restoreRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register register, StackSlot input) {
         RegisterValue result = register.asValue(input.getKind());
-        AMD64Move.move(tasm, masm, result, input);
+        AMD64Move.move(crb, masm, result, input);
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register[] savedRegisters = getSavedRegisters();
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
-                restoreRegister(tasm, masm, savedRegisters[i], slots[i]);
+                restoreRegister(crb, masm, savedRegisters[i], slots[i]);
             }
         }
     }

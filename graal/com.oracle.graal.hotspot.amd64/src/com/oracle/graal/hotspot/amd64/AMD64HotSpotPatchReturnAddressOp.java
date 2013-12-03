@@ -45,8 +45,8 @@ final class AMD64HotSpotPatchReturnAddressOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        int frameSize = tasm.frameMap.frameSize();
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        int frameSize = crb.frameMap.frameSize();
         masm.movq(new AMD64Address(rsp, frameSize), asRegister(address));
     }
 }

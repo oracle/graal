@@ -42,7 +42,7 @@ final class AMD64HotSpotCRuntimeCallPrologueOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // save last Java frame
         masm.movq(new AMD64Address(thread, threadLastJavaSpOffset), rsp);
     }

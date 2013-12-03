@@ -75,8 +75,8 @@ public class SPARCCall {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            directCall(tasm, masm, callTarget, null, true, state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            directCall(crb, masm, callTarget, null, true, state);
         }
     }
 
@@ -91,8 +91,8 @@ public class SPARCCall {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            indirectCall(tasm, masm, asRegister(targetAddress), callTarget, state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
         }
 
         @Override
@@ -125,8 +125,8 @@ public class SPARCCall {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            directCall(tasm, masm, callTarget, null, false, state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            directCall(crb, masm, callTarget, null, false, state);
         }
     }
 
@@ -138,12 +138,12 @@ public class SPARCCall {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            directCall(tasm, masm, callTarget, o7, false, state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            directCall(crb, masm, callTarget, o7, false, state);
         }
     }
 
-    public static void directCall(TargetMethodAssembler tasm, SPARCMacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
+    public static void directCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, InvokeTarget callTarget, Register scratch, boolean align, LIRFrameState info) {
         if (align) {
             // We don't need alignment on SPARC.
         }
@@ -157,28 +157,28 @@ public class SPARCCall {
             new Call(0).emit(masm);
         }
         int after = masm.codeBuffer.position();
-        tasm.recordDirectCall(before, after, callTarget, info);
-        tasm.recordExceptionHandlers(after, info);
+        crb.recordDirectCall(before, after, callTarget, info);
+        crb.recordExceptionHandlers(after, info);
         new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 
-    public static void indirectJmp(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Register dst, InvokeTarget target) {
+    public static void indirectJmp(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget target) {
         int before = masm.codeBuffer.position();
         new Sethix(0L, dst, true).emit(masm);
         new Jmp(new SPARCAddress(dst, 0)).emit(masm);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, target, null);
+        crb.recordIndirectCall(before, after, target, null);
         new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }
 
-    public static void indirectCall(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
+    public static void indirectCall(CompilationResultBuilder crb, SPARCMacroAssembler masm, Register dst, InvokeTarget callTarget, LIRFrameState info) {
         int before = masm.codeBuffer.position();
         new Jmpl(dst, 0, o7).emit(masm);
         int after = masm.codeBuffer.position();
-        tasm.recordIndirectCall(before, after, callTarget, info);
-        tasm.recordExceptionHandlers(after, info);
+        crb.recordIndirectCall(before, after, callTarget, info);
+        crb.recordExceptionHandlers(after, info);
         new Nop().emit(masm);  // delay slot
         masm.ensureUniquePC();
     }

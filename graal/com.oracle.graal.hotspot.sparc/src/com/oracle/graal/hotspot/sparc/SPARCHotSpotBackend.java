@@ -81,10 +81,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
      *            the current frame
      */
-    protected static void emitStackOverflowCheck(TargetMethodAssembler tasm, boolean afterFrameInit) {
+    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, boolean afterFrameInit) {
         if (StackShadowPages.getValue() > 0) {
-            SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
-            final int frameSize = tasm.frameMap.totalFrameSize();
+            SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
+            final int frameSize = crb.frameMap.totalFrameSize();
             if (frameSize > 0) {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
@@ -93,7 +93,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
-                    tasm.blockComment("[stack overflow check]");
+                    crb.blockComment("[stack overflow check]");
                     // Use SPARCAddress to get the final displacement including the stack bias.
                     SPARCAddress address = new SPARCAddress(sp, -disp);
                     if (SPARCAssembler.isSimm13(address.getDisplacement())) {
@@ -116,12 +116,12 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         @Override
-        public void enter(TargetMethodAssembler tasm) {
-            final int frameSize = tasm.frameMap.totalFrameSize();
+        public void enter(CompilationResultBuilder crb) {
+            final int frameSize = crb.frameMap.totalFrameSize();
 
-            SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
+            SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
             if (!isStub) {
-                emitStackOverflowCheck(tasm, false);
+                emitStackOverflowCheck(crb, false);
             }
             new Save(sp, -frameSize, sp).emit(masm);
 
@@ -135,8 +135,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         @Override
-        public void leave(TargetMethodAssembler tasm) {
-            SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
+        public void leave(CompilationResultBuilder crb) {
+            SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
             new RestoreWindow().emit(masm);
         }
     }
@@ -147,7 +147,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
         SPARCHotSpotLIRGenerator gen = (SPARCHotSpotLIRGenerator) lirGen;
         FrameMap frameMap = gen.frameMap;
         assert gen.deoptimizationRescueSlot == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
@@ -156,11 +156,11 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         AbstractAssembler masm = createAssembler(frameMap);
         // On SPARC we always use stack frames.
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
-        TargetMethodAssembler tasm = new TargetMethodAssembler(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        tasm.setFrameSize(frameMap.frameSize());
+        CompilationResultBuilder crb = new CompilationResultBuilder(getProviders().getCodeCache(), getProviders().getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        crb.setFrameSize(frameMap.frameSize());
         StackSlot deoptimizationRescueSlot = gen.deoptimizationRescueSlot;
         if (deoptimizationRescueSlot != null && stub == null) {
-            tasm.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
+            crb.compilationResult.setCustomStackAreaOffset(frameMap.offsetForStackSlot(deoptimizationRescueSlot));
         }
 
         if (stub != null) {
@@ -170,13 +170,13 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             updateStub(stub, destroyedRegisters, calleeSaveInfo, frameMap);
         }
 
-        return tasm;
+        return crb;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
-        SPARCMacroAssembler masm = (SPARCMacroAssembler) tasm.asm;
-        FrameMap frameMap = tasm.frameMap;
+    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
+        SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
+        FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = getRuntime().getConfig();
         Label unverifiedStub = installedCodeOwner == null || isStatic(installedCodeOwner.getModifiers()) ? null : new Label();
@@ -184,7 +184,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         // Emit the prefix
 
         if (unverifiedStub != null) {
-            tasm.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
+            crb.recordMark(Marks.MARK_UNVERIFIED_ENTRY);
             // We need to use JavaCall here because we haven't entered the frame yet.
             CallingConvention cc = regConfig.getCallingConvention(JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, getTarget(), false);
             Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
@@ -199,19 +199,19 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         }
 
         masm.align(config.codeEntryAlignment);
-        tasm.recordMark(Marks.MARK_OSR_ENTRY);
-        tasm.recordMark(Marks.MARK_VERIFIED_ENTRY);
+        crb.recordMark(Marks.MARK_OSR_ENTRY);
+        crb.recordMark(Marks.MARK_VERIFIED_ENTRY);
 
         // Emit code for the LIR
-        lirGen.lir.emitCode(tasm);
+        lirGen.lir.emitCode(crb);
 
-        HotSpotFrameContext frameContext = (HotSpotFrameContext) tasm.frameContext;
+        HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
         if (frameContext != null && !frameContext.isStub) {
-            tasm.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
-            SPARCCall.directCall(tasm, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
-            tasm.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
-            SPARCCall.directCall(tasm, masm, foreignCalls.lookupForeignCall(DEOPT_HANDLER), null, false, null);
+            crb.recordMark(Marks.MARK_EXCEPTION_HANDLER_ENTRY);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, false, null);
+            crb.recordMark(Marks.MARK_DEOPT_HANDLER_ENTRY);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPT_HANDLER), null, false, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries
@@ -221,7 +221,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
         if (unverifiedStub != null) {
             masm.bind(unverifiedStub);
             Register scratch = g3;
-            SPARCCall.indirectJmp(tasm, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
+            SPARCCall.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(IC_MISS_HANDLER));
         }
     }
 }

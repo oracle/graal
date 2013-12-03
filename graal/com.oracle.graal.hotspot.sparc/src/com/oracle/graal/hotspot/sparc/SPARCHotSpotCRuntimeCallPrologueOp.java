@@ -47,7 +47,7 @@ final class SPARCHotSpotCRuntimeCallPrologueOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
 
         // Save last Java frame.
         new Add(stackPointer, new SPARCAddress(stackPointer, 0).getDisplacement(), g4).emit(masm);

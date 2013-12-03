@@ -32,9 +32,9 @@ import com.oracle.graal.lir.asm.*;
 public abstract class HSAILLIRInstruction extends LIRInstruction {
 
     @Override
-    public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (HSAILAssembler) tasm.asm);
+    public final void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (HSAILAssembler) crb.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm);
+    public abstract void emitCode(CompilationResultBuilder crb, HSAILAssembler masm);
 }

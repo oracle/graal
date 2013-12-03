@@ -40,8 +40,8 @@ public class SPARCByteSwapOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        SPARCMove.move(tasm, masm, result, input);
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        SPARCMove.move(crb, masm, result, input);
         switch (input.getKind()) {
             case Int:
                 // masm.bswapl(ValueUtil.asIntReg(result));

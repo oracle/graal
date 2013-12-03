@@ -60,8 +60,8 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -87,8 +87,8 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -114,8 +114,8 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -144,9 +144,9 @@ public class HSAILMove {
         protected abstract void emitMemAccess(HSAILAssembler masm);
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             if (state != null) {
-                // tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                // crb.recordImplicitException(masm.codeBuffer.position(), state);
                 throw new InternalError("NYI");
             }
             emitMemAccess(masm);
@@ -162,7 +162,7 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitMembar(barriers);
         }
     }
@@ -249,13 +249,13 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitMov(scratch, input);
             boolean testForNull = (kind == Kind.Object);
             encodePointer(masm, scratch, base, shift, alignment, testForNull);
             if (state != null) {
                 throw new InternalError("NYI");
-                // tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                // crb.recordImplicitException(masm.codeBuffer.position(), state);
             }
             masm.emitStore(scratch, address.toAddress(), "u32");
         }
@@ -292,7 +292,7 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -308,7 +308,7 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -329,7 +329,7 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             masm.emitAtomicCas(result, address.toAddress(), cmpValue, newValue);
         }
     }
@@ -361,7 +361,7 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             // assume any encoded or decoded value could be null
             boolean testForNull = true;
             // set up scratch registers to be encoded versions
@@ -392,13 +392,13 @@ public class HSAILMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
             Debug.log("NullCheckOp unimplemented");
         }
     }
 
     @SuppressWarnings("unused")
-    public static void move(TargetMethodAssembler tasm, HSAILAssembler masm, Value result, Value input) {
+    public static void move(CompilationResultBuilder crb, HSAILAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 masm.emitMov(result, input);

@@ -56,11 +56,11 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         for (int i = 0; i < zappedRegisters.length; i++) {
             if (zappedRegisters[i] != null) {
                 RegisterValue registerValue = zappedRegisters[i].asValue(zapValues[i].getPlatformKind());
-                AMD64Move.move(tasm, masm, registerValue, zapValues[i]);
+                AMD64Move.move(crb, masm, registerValue, zapValues[i]);
             }
         }
     }

@@ -223,7 +223,7 @@ public abstract class LIRInstruction {
         id = -1;
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm);
+    public abstract void emitCode(CompilationResultBuilder crb);
 
     public final int id() {
         return id;

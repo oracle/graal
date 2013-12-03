@@ -49,7 +49,7 @@ final class SPARCHotSpotCRuntimeCallEpilogueOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
 
         // Restore the thread register when coming back from the runtime.
         new Mov(l7, thread).emit(masm);

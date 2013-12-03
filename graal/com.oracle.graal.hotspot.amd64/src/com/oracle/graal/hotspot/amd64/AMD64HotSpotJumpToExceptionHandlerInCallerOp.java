@@ -55,8 +55,8 @@ final class AMD64HotSpotJumpToExceptionHandlerInCallerOp extends AMD64HotSpotEpi
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(tasm, masm);
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        leaveFrameAndRestoreRbp(crb, masm);
 
         // Discard the return address, thus completing restoration of caller frame
         masm.incrementq(rsp, 8);

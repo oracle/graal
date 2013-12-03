@@ -44,8 +44,8 @@ public class PTXParameterOp extends LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm) {
-        PTXMacroAssembler masm = (PTXMacroAssembler) tasm.asm;
+    public void emitCode(CompilationResultBuilder crb) {
+        PTXMacroAssembler masm = (PTXMacroAssembler) crb.asm;
         // Emit parameter directives for arguments
         int argCount = params.length;
         for (int i = 0; i < argCount; i++) {

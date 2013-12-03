@@ -60,8 +60,8 @@ final class SPARCHotSpotJumpToExceptionHandlerInCallerOp extends SPARCHotSpotEpi
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        leaveFrame(tasm);
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        leaveFrame(crb);
 
         // Restore SP from L7 if the exception PC is a method handle call site.
         SPARCAddress dst = new SPARCAddress(thread, isMethodHandleReturnOffset);

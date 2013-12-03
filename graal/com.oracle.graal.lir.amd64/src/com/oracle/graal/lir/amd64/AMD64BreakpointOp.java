@@ -45,7 +45,7 @@ public class AMD64BreakpointOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
         asm.int3();
     }
 }

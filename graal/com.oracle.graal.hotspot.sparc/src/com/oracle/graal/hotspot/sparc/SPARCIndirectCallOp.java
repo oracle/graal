@@ -57,11 +57,11 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        tasm.recordMark(Marks.MARK_INLINE_INVOKE);
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        crb.recordMark(Marks.MARK_INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
         assert !callReg.equals(METHOD);
-        SPARCCall.indirectCall(tasm, masm, callReg, callTarget, state);
+        SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);
     }
 
     @Override

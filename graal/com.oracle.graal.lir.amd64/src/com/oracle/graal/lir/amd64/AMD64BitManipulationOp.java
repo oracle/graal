@@ -45,7 +45,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
         if (ValueUtil.isRegister(input)) {
             Register src = ValueUtil.asRegister(input);
@@ -67,7 +67,7 @@ public class AMD64BitManipulationOp extends AMD64LIRInstruction {
                     break;
             }
         } else {
-            AMD64Address src = (AMD64Address) tasm.asAddress(input);
+            AMD64Address src = (AMD64Address) crb.asAddress(input);
             switch (opcode) {
                 case IPOPCNT:
                     masm.popcntl(dst, src);

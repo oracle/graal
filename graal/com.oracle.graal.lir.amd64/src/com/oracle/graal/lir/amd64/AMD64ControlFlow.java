@@ -50,9 +50,9 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            if (tasm.frameContext != null) {
-                tasm.frameContext.leave(tasm);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            if (crb.frameContext != null) {
+                crb.frameContext.leave(crb);
             }
             masm.ret(0);
         }
@@ -73,7 +73,7 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             masm.jcc(condition, destination.label());
         }
 
@@ -99,7 +99,7 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             floatJcc(masm, condition, unorderedIsTrue, destination.label());
         }
 
@@ -127,8 +127,8 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            tableswitch(tasm, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch));
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            tableswitch(crb, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch));
         }
     }
 
@@ -149,12 +149,12 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (key.getKind() == Kind.Int) {
                 Register intKey = asIntReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    if (tasm.codeCache.needsDataPatch(keyConstants[i])) {
-                        tasm.recordDataReferenceInCode(keyConstants[i], 0, true);
+                    if (crb.codeCache.needsDataPatch(keyConstants[i])) {
+                        crb.recordDataReferenceInCode(keyConstants[i], 0, true);
                     }
                     long lc = keyConstants[i].asLong();
                     assert NumUtil.isInt(lc);
@@ -164,14 +164,14 @@ public class AMD64ControlFlow {
             } else if (key.getKind() == Kind.Long) {
                 Register longKey = asLongReg(key);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    masm.cmpq(longKey, (AMD64Address) tasm.asLongConstRef(keyConstants[i]));
+                    masm.cmpq(longKey, (AMD64Address) crb.asLongConstRef(keyConstants[i]));
                     masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
             } else if (key.getKind() == Kind.Object) {
                 Register objectKey = asObjectReg(key);
                 Register temp = asObjectReg(scratch);
                 for (int i = 0; i < keyConstants.length; i++) {
-                    AMD64Move.move(tasm, masm, temp.asValue(Kind.Object), keyConstants[i]);
+                    AMD64Move.move(crb, masm, temp.asValue(Kind.Object), keyConstants[i]);
                     masm.cmpptr(objectKey, temp);
                     masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
                 }
@@ -212,7 +212,7 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             assert isSorted(lowKeys) && isSorted(highKeys);
 
             Label actualDefaultTarget = defaultTarget == null ? new Label() : defaultTarget.label();
@@ -288,8 +288,8 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            cmove(tasm, masm, result, false, condition, false, trueValue, falseValue);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            cmove(crb, masm, result, false, condition, false, trueValue, falseValue);
         }
     }
 
@@ -311,12 +311,12 @@ public class AMD64ControlFlow {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            cmove(tasm, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
         }
     }
 
-    private static void tableswitch(TargetMethodAssembler tasm, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
+    private static void tableswitch(CompilationResultBuilder crb, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
         Buffer buf = masm.codeBuffer;
         // Compare index against jump table bounds
         int highKey = lowKey + targets.length - 1;
@@ -371,7 +371,7 @@ public class AMD64ControlFlow {
         }
 
         JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, 4);
-        tasm.compilationResult.addAnnotation(jt);
+        crb.compilationResult.addAnnotation(jt);
     }
 
     private static void floatJcc(AMD64MacroAssembler masm, ConditionFlag condition, boolean unorderedIsTrue, Label label) {
@@ -385,23 +385,23 @@ public class AMD64ControlFlow {
         masm.bind(endLabel);
     }
 
-    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
+    private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, boolean isFloat, ConditionFlag condition, boolean unorderedIsTrue, Value trueValue, Value falseValue) {
         // check that we don't overwrite an input operand before it is used.
         assert !result.equals(trueValue);
 
-        AMD64Move.move(tasm, masm, result, falseValue);
-        cmove(tasm, masm, result, condition, trueValue);
+        AMD64Move.move(crb, masm, result, falseValue);
+        cmove(crb, masm, result, condition, trueValue);
 
         if (isFloat) {
             if (unorderedIsTrue && !trueOnUnordered(condition)) {
-                cmove(tasm, masm, result, ConditionFlag.Parity, trueValue);
+                cmove(crb, masm, result, ConditionFlag.Parity, trueValue);
             } else if (!unorderedIsTrue && trueOnUnordered(condition)) {
-                cmove(tasm, masm, result, ConditionFlag.Parity, falseValue);
+                cmove(crb, masm, result, ConditionFlag.Parity, falseValue);
             }
         }
     }
 
-    private static void cmove(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
+    private static void cmove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, ConditionFlag cond, Value other) {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
             switch (other.getKind()) {
@@ -410,7 +410,7 @@ public class AMD64ControlFlow {
                 default:   throw GraalInternalError.shouldNotReachHere();
             }
         } else {
-            AMD64Address addr = (AMD64Address) tasm.asAddress(other);
+            AMD64Address addr = (AMD64Address) crb.asAddress(other);
             switch (other.getKind()) {
                 case Int:  masm.cmovl(cond, asRegister(result), addr); break;
                 case Long: masm.cmovq(cond, asRegister(result), addr); break;

@@ -39,7 +39,7 @@ final class AMD64DeoptimizeOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        AMD64Call.directCall(tasm, masm, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        AMD64Call.directCall(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP), null, false, info);
     }
 }

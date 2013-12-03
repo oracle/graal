@@ -99,8 +99,8 @@ class AMD64HotSpotTruffleBackend extends Backend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
-        return original.newAssembler(lirGen, compilationResult);
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
+        return original.newCompilationResultBuilder(lirGen, compilationResult);
     }
 
     @Override
@@ -109,15 +109,15 @@ class AMD64HotSpotTruffleBackend extends Backend {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
-        AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
-        FrameMap frameMap = tasm.frameMap;
+    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod installedCodeOwner) {
+        AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+        FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         HotSpotVMConfig config = original.getRuntime().getConfig();
         Label verifiedStub = new Label();
 
         // Emit the prefix
-        original.emitCodePrefix(installedCodeOwner, tasm, asm, regConfig, config, verifiedStub);
+        original.emitCodePrefix(installedCodeOwner, crb, asm, regConfig, config, verifiedStub);
 
         if (getInstrumentedMethod().equals(installedCodeOwner)) {
             // Inject code for {@link OptimizedCallTarget#call(PackedFrame, Arguments)}
@@ -125,10 +125,10 @@ class AMD64HotSpotTruffleBackend extends Backend {
         }
 
         // Emit code for the LIR
-        original.emitCodeBody(installedCodeOwner, tasm, lirGen);
+        original.emitCodeBody(installedCodeOwner, crb, lirGen);
 
         // Emit the suffix
-        original.emitCodeSuffix(installedCodeOwner, tasm, lirGen, asm, frameMap);
+        original.emitCodeSuffix(installedCodeOwner, crb, lirGen, asm, frameMap);
     }
 
     private void injectCode(AMD64MacroAssembler asm, HotSpotVMConfig config) {

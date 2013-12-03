@@ -32,9 +32,9 @@ import com.oracle.graal.lir.asm.*;
 public abstract class SPARCLIRInstruction extends LIRInstruction {
 
     @Override
-    public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (SPARCMacroAssembler) tasm.asm);
+    public final void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (SPARCMacroAssembler) crb.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm);
+    public abstract void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm);
 }

@@ -94,11 +94,11 @@ public class StandardOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
+        public void emitCode(CompilationResultBuilder crb) {
             if (align) {
-                tasm.asm.align(tasm.target.wordSize * 2);
+                crb.asm.align(crb.target.wordSize * 2);
             }
-            tasm.asm.bind(label);
+            crb.asm.bind(label);
         }
 
         public Label getLabel() {
@@ -120,8 +120,8 @@ public class StandardOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
-            tasm.asm.jmp(destination.label());
+        public void emitCode(CompilationResultBuilder crb) {
+            crb.asm.jmp(destination.label());
         }
 
         public LabelRef destination() {
@@ -209,7 +209,7 @@ public class StandardOp {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm) {
+        public void emitCode(CompilationResultBuilder crb) {
             throw new GraalInternalError(this + " should have been replaced");
         }
     }

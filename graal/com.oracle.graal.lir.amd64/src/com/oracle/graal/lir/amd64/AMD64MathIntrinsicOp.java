@@ -48,7 +48,7 @@ public class AMD64MathIntrinsicOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         switch (opcode) {
             case LOG:   masm.flog(asDoubleReg(result), asDoubleReg(input), false); break;
             case LOG10: masm.flog(asDoubleReg(result), asDoubleReg(input), true); break;

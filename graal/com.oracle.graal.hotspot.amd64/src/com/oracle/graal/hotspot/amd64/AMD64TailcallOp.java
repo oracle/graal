@@ -47,7 +47,7 @@ public class AMD64TailcallOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // destroy the current frame (now the return address is the top of stack)
         masm.leave();
 

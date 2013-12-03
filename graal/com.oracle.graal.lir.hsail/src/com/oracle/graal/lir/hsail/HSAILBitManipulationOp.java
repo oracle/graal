@@ -48,7 +48,7 @@ public class HSAILBitManipulationOp extends HSAILLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
         switch (opcode) {
             case IPOPCNT:
                 throw GraalInternalError.shouldNotReachHere();

@@ -49,8 +49,8 @@ public enum SPARCCompare {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, x, y);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, x, y);
         }
 
         @Override
@@ -62,7 +62,7 @@ public enum SPARCCompare {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, SPARCMacroAssembler masm, SPARCCompare opcode, Value x, Value y) {
+    public static void emit(CompilationResultBuilder crb, SPARCMacroAssembler masm, SPARCCompare opcode, Value x, Value y) {
         if (isRegister(y)) {
             switch (opcode) {
                 case ICMP:
@@ -87,12 +87,12 @@ public enum SPARCCompare {
             assert isConstant(y);
             switch (opcode) {
                 case ICMP:
-                    assert isSimm13(tasm.asIntConst(y));
-                    new Cmp(asIntReg(x), tasm.asIntConst(y)).emit(masm);
+                    assert isSimm13(crb.asIntConst(y));
+                    new Cmp(asIntReg(x), crb.asIntConst(y)).emit(masm);
                     break;
                 case LCMP:
-                    assert isSimm13(tasm.asIntConst(y));
-                    new Cmp(asLongReg(x), tasm.asIntConst(y)).emit(masm);
+                    assert isSimm13(crb.asIntConst(y));
+                    new Cmp(asLongReg(x), crb.asIntConst(y)).emit(masm);
                     break;
                 case ACMP:
                     if (((Constant) y).isNull()) {
@@ -102,10 +102,10 @@ public enum SPARCCompare {
                         throw GraalInternalError.shouldNotReachHere("Only null object constants are allowed in comparisons");
                     }
                 case FCMP:
-                    // masm.ucomiss(asFloatReg(x), (AMD64Address) tasm.asFloatConstRef(y));
+                    // masm.ucomiss(asFloatReg(x), (AMD64Address) crb.asFloatConstRef(y));
                     // break;
                 case DCMP:
-                    // masm.ucomisd(asDoubleReg(x), (AMD64Address) tasm.asDoubleConstRef(y));
+                    // masm.ucomisd(asDoubleReg(x), (AMD64Address) crb.asDoubleConstRef(y));
                     // break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

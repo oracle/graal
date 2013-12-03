@@ -53,9 +53,9 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
         RegisterValue scratch = (RegisterValue) temp;
-        emitCode(tasm, asm, config, false, state, scratch.getRegister());
+        emitCode(crb, asm, config, false, state, scratch.getRegister());
     }
 
     /**
@@ -68,19 +68,19 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         return !NumUtil.isInt(pollingPageAddress - config.codeCacheLowBoundary()) || !NumUtil.isInt(pollingPageAddress - config.codeCacheHighBoundary());
     }
 
-    public static void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
+    public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
         final int pos = asm.codeBuffer.position();
         if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
-            tasm.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
+            crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
             if (state != null) {
-                tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
             asm.movq(scratch, new AMD64Address(scratch));
         } else {
-            tasm.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
+            crb.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
             if (state != null) {
-                tasm.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
             // The C++ code transforms the polling page offset into an RIP displacement
             // to the real address at that offset in the polling page.

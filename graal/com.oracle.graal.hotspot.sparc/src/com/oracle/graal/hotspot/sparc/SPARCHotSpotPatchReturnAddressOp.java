@@ -45,10 +45,10 @@ final class SPARCHotSpotPatchReturnAddressOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // FIXME This is non-trivial. On SPARC we need to flush all register windows first before we
         // can patch the return address (see: frame::patch_pc).
-        // int frameSize = tasm.frameMap.frameSize();
+        // int frameSize = crb.frameMap.frameSize();
         // new Stx(asRegister(address), new SPARCAddress(sp, frameSize));
         new Ldx(new SPARCAddress(g0, 0x123), g0).emit(masm);
     }

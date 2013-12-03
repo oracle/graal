@@ -33,7 +33,10 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 
-public class TargetMethodAssembler {
+/**
+ * Fills in a {@link CompilationResult} as its code is being assembled.
+ */
+public class CompilationResultBuilder {
 
     private static class ExceptionInfo {
 
@@ -61,7 +64,7 @@ public class TargetMethodAssembler {
 
     private List<ExceptionInfo> exceptionInfoList;
 
-    public TargetMethodAssembler(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
+    public CompilationResultBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, AbstractAssembler asm, FrameContext frameContext,
                     CompilationResult compilationResult) {
         this.target = codeCache.getTarget();
         this.codeCache = codeCache;

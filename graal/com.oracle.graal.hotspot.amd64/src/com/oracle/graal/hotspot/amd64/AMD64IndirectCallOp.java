@@ -57,11 +57,11 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        tasm.recordMark(Marks.MARK_INLINE_INVOKE);
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        crb.recordMark(Marks.MARK_INLINE_INVOKE);
         Register callReg = asRegister(targetAddress);
         assert !callReg.equals(METHOD);
-        AMD64Call.indirectCall(tasm, masm, callReg, callTarget, state);
+        AMD64Call.indirectCall(crb, masm, callReg, callTarget, state);
     }
 
     @Override

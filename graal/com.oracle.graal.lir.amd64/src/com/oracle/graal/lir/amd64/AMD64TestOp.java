@@ -41,8 +41,8 @@ public class AMD64TestOp extends AMD64LIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        emit(tasm, masm, x, y);
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        emit(crb, masm, x, y);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class AMD64TestOp extends AMD64LIRInstruction {
         assert (x.getKind() == Kind.Int && y.getKind().getStackKind() == Kind.Int) || (x.getKind() == Kind.Long && y.getKind() == Kind.Long) : x + " " + y;
     }
 
-    public static void emit(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value x, Value y) {
+    public static void emit(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value x, Value y) {
         if (isRegister(y)) {
             switch (x.getKind()) {
                 case Int:
@@ -66,10 +66,10 @@ public class AMD64TestOp extends AMD64LIRInstruction {
         } else if (isConstant(y)) {
             switch (x.getKind()) {
                 case Int:
-                    masm.testl(asIntReg(x), tasm.asIntConst(y));
+                    masm.testl(asIntReg(x), crb.asIntConst(y));
                     break;
                 case Long:
-                    masm.testq(asLongReg(x), tasm.asIntConst(y));
+                    masm.testq(asLongReg(x), crb.asIntConst(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
@@ -77,10 +77,10 @@ public class AMD64TestOp extends AMD64LIRInstruction {
         } else {
             switch (x.getKind()) {
                 case Int:
-                    masm.testl(asIntReg(x), (AMD64Address) tasm.asIntAddr(y));
+                    masm.testl(asIntReg(x), (AMD64Address) crb.asIntAddr(y));
                     break;
                 case Long:
-                    masm.testq(asLongReg(x), (AMD64Address) tasm.asLongAddr(y));
+                    masm.testq(asLongReg(x), (AMD64Address) crb.asLongAddr(y));
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();

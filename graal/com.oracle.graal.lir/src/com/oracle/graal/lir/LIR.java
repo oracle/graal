@@ -136,34 +136,34 @@ public class LIR {
         firstVariableNumber = num;
     }
 
-    public void emitCode(TargetMethodAssembler tasm) {
-        if (tasm.frameContext != null) {
-            tasm.frameContext.enter(tasm);
+    public void emitCode(CompilationResultBuilder crb) {
+        if (crb.frameContext != null) {
+            crb.frameContext.enter(crb);
         }
 
         for (Block b : codeEmittingOrder()) {
-            emitBlock(tasm, b);
+            emitBlock(crb, b);
         }
     }
 
-    private void emitBlock(TargetMethodAssembler tasm, Block block) {
+    private void emitBlock(CompilationResultBuilder crb, Block block) {
         if (Debug.isDumpEnabled()) {
-            tasm.blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
+            crb.blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir(block)) {
             if (Debug.isDumpEnabled()) {
-                tasm.blockComment(String.format("%d %s", op.id(), op));
+                crb.blockComment(String.format("%d %s", op.id(), op));
             }
 
-            emitOp(tasm, op);
+            emitOp(crb, op);
         }
     }
 
-    private static void emitOp(TargetMethodAssembler tasm, LIRInstruction op) {
+    private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
         try {
             try {
-                op.emitCode(tasm);
+                op.emitCode(crb);
             } catch (AssertionError t) {
                 throw new GraalInternalError(t);
             } catch (RuntimeException t) {

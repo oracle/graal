@@ -49,8 +49,8 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -76,8 +76,8 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -103,8 +103,8 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -129,7 +129,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -145,7 +145,7 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             throw new InternalError("NYI");
         }
     }
@@ -166,12 +166,12 @@ public class PTXMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            compareAndSwap(crb, masm, result, address, cmpValue, newValue);
         }
     }
 
-    public static void move(TargetMethodAssembler tasm, PTXMacroAssembler masm, Value result, Value input) {
+    public static void move(CompilationResultBuilder crb, PTXMacroAssembler masm, Value result, Value input) {
         if (isVariable(input)) {
             if (isVariable(result)) {
                 reg2reg(masm, result, input);
@@ -180,7 +180,7 @@ public class PTXMove {
             }
         } else if (isConstant(input)) {
             if (isVariable(result)) {
-                const2reg(tasm, masm, result, (Constant) input);
+                const2reg(crb, masm, result, (Constant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -209,25 +209,25 @@ public class PTXMove {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, PTXMacroAssembler masm, Value result, Constant input) {
+    private static void const2reg(CompilationResultBuilder crb, PTXMacroAssembler masm, Value result, Constant input) {
         Variable dest = (Variable) result;
 
         switch (input.getKind().getStackKind()) {
             case Int:
             case Long:
-                if (tasm.codeCache.needsDataPatch(input)) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                if (crb.codeCache.needsDataPatch(input)) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                 }
                 new Mov(dest, input).emit(masm);
                 break;
             case Object:
                 if (input.isNull()) {
                     new Mov(dest, Constant.forLong(0x0L)).emit(masm);
-                } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                } else if (crb.target.inlineObjects) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                     new Mov(dest, Constant.forLong(0xDEADDEADDEADDEADL)).emit(masm);
                 } else {
-                    // new Mov(dest, tasm.recordDataReferenceInCode(input, 0, false));
+                    // new Mov(dest, crb.recordDataReferenceInCode(input, 0, false));
                 }
                 break;
             default:
@@ -236,7 +236,7 @@ public class PTXMove {
     }
 
     @SuppressWarnings("unused")
-    protected static void compareAndSwap(TargetMethodAssembler tasm, PTXAssembler masm, AllocatableValue result, PTXAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+    protected static void compareAndSwap(CompilationResultBuilder crb, PTXAssembler masm, AllocatableValue result, PTXAddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         throw new InternalError("NYI");
     }
 }

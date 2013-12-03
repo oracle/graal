@@ -48,7 +48,7 @@ public class SPARCMathIntrinsicOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         switch (opcode) {
             case SQRT:
                 new Fsqrtd(asDoubleReg(input), asDoubleReg(result)).emit(masm);

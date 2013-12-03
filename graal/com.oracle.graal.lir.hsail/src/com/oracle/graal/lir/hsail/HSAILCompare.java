@@ -54,8 +54,8 @@ public enum HSAILCompare {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, HSAILAssembler masm) {
-            emit(tasm, masm, condition, x, y, z, unordered);
+        public void emitCode(CompilationResultBuilder crb, HSAILAssembler masm) {
+            emit(crb, masm, condition, x, y, z, unordered);
         }
 
         @Override
@@ -67,7 +67,7 @@ public enum HSAILCompare {
     }
 
     @SuppressWarnings("unused")
-    public static void emit(TargetMethodAssembler tasm, HSAILAssembler masm, Condition condition, Value x, Value y, Value z, boolean unorderedIsTrue) {
+    public static void emit(CompilationResultBuilder crb, HSAILAssembler masm, Condition condition, Value x, Value y, Value z, boolean unorderedIsTrue) {
         emitCompare(masm, condition, x, y, unorderedIsTrue);
     }
 

@@ -54,13 +54,13 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        SPARCMove.move(tasm, masm, g5.asValue(Kind.Long), metaspaceMethod);
-        tasm.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
-        // SPARCMove.move(tasm, masm, g3.asValue(Kind.Long), Constant.LONG_0);
+        SPARCMove.move(crb, masm, g5.asValue(Kind.Long), metaspaceMethod);
+        crb.recordMark(invokeKind == InvokeKind.Static ? Marks.MARK_INVOKESTATIC : Marks.MARK_INVOKESPECIAL);
+        // SPARCMove.move(crb, masm, g3.asValue(Kind.Long), Constant.LONG_0);
         new Setx(nonOopBits, g3, true).emit(masm);
-        super.emitCode(tasm, masm);
+        super.emitCode(crb, masm);
     }
 }

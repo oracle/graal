@@ -51,11 +51,11 @@ final class SPARCHotspotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
+        crb.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
         new Setx(HotSpotGraalRuntime.runtime().getConfig().nonOopBits, g3, true).emit(masm);
-        super.emitCode(tasm, masm);
+        super.emitCode(crb, masm);
     }
 }

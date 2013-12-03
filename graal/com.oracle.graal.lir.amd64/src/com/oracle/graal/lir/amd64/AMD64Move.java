@@ -53,8 +53,8 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -80,8 +80,8 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -110,9 +110,9 @@ public class AMD64Move {
         protected abstract void emitMemAccess(AMD64MacroAssembler masm);
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.codeBuffer.position(), state);
             }
             emitMemAccess(masm);
         }
@@ -270,7 +270,7 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             masm.leaq(asLongReg(result), address.toAddress());
         }
     }
@@ -286,8 +286,8 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            masm.leaq(asLongReg(result), (AMD64Address) tasm.asAddress(slot));
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            masm.leaq(asLongReg(result), (AMD64Address) crb.asAddress(slot));
         }
     }
 
@@ -300,7 +300,7 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             masm.membar(barriers);
         }
     }
@@ -316,8 +316,8 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            tasm.recordImplicitException(masm.codeBuffer.position(), state);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            crb.recordImplicitException(masm.codeBuffer.position(), state);
             masm.nullCheck(asRegister(input));
         }
 
@@ -346,31 +346,31 @@ public class AMD64Move {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwap(tasm, masm, result, address, cmpValue, newValue);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            compareAndSwap(crb, masm, result, address, cmpValue, newValue);
         }
     }
 
-    public static void move(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
+    public static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(masm, result, input);
             } else if (isStackSlot(result)) {
-                reg2stack(tasm, masm, result, input);
+                reg2stack(crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                stack2reg(tasm, masm, result, input);
+                stack2reg(crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                const2reg(tasm, masm, result, (Constant) input);
+                const2reg(crb, masm, result, (Constant) input);
             } else if (isStackSlot(result)) {
-                const2stack(tasm, masm, result, (Constant) input);
+                const2stack(crb, masm, result, (Constant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -404,8 +404,8 @@ public class AMD64Move {
         }
     }
 
-    private static void reg2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
-        AMD64Address dest = (AMD64Address) tasm.asAddress(result);
+    private static void reg2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+        AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (input.getKind()) {
             case Int:
                 masm.movl(dest, asRegister(input));
@@ -427,8 +427,8 @@ public class AMD64Move {
         }
     }
 
-    private static void stack2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Value input) {
-        AMD64Address src = (AMD64Address) tasm.asAddress(input);
+    private static void stack2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Value input) {
+        AMD64Address src = (AMD64Address) crb.asAddress(input);
         switch (input.getKind()) {
             case Int:
                 masm.movl(asRegister(result), src);
@@ -450,7 +450,7 @@ public class AMD64Move {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
+    private static void const2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Constant input) {
         /*
          * Note: we use the kind of the input operand (and not the kind of the result operand)
          * because they don't match in all cases. For example, an object constant can be loaded to a
@@ -459,8 +459,8 @@ public class AMD64Move {
          */
         switch (input.getKind().getStackKind()) {
             case Int:
-                if (tasm.codeCache.needsDataPatch(input)) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                if (crb.codeCache.needsDataPatch(input)) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                 }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
@@ -469,8 +469,8 @@ public class AMD64Move {
 
                 break;
             case Long:
-                if (tasm.codeCache.needsDataPatch(input)) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                if (crb.codeCache.needsDataPatch(input)) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                 }
                 // Do not optimize with an XOR as this instruction may be between
                 // a CMP and a Jcc in which case the XOR will modify the condition
@@ -480,19 +480,19 @@ public class AMD64Move {
             case Float:
                 // This is *not* the same as 'constant == 0.0f' in the case where constant is -0.0f
                 if (Float.floatToRawIntBits(input.asFloat()) == Float.floatToRawIntBits(0.0f)) {
-                    assert !tasm.codeCache.needsDataPatch(input);
+                    assert !crb.codeCache.needsDataPatch(input);
                     masm.xorps(asFloatReg(result), asFloatReg(result));
                 } else {
-                    masm.movflt(asFloatReg(result), (AMD64Address) tasm.asFloatConstRef(input));
+                    masm.movflt(asFloatReg(result), (AMD64Address) crb.asFloatConstRef(input));
                 }
                 break;
             case Double:
                 // This is *not* the same as 'constant == 0.0d' in the case where constant is -0.0d
                 if (Double.doubleToRawLongBits(input.asDouble()) == Double.doubleToRawLongBits(0.0d)) {
-                    assert !tasm.codeCache.needsDataPatch(input);
+                    assert !crb.codeCache.needsDataPatch(input);
                     masm.xorpd(asDoubleReg(result), asDoubleReg(result));
                 } else {
-                    masm.movdbl(asDoubleReg(result), (AMD64Address) tasm.asDoubleConstRef(input));
+                    masm.movdbl(asDoubleReg(result), (AMD64Address) crb.asDoubleConstRef(input));
                 }
                 break;
             case Object:
@@ -501,11 +501,11 @@ public class AMD64Move {
                 // flags and interfere with the Jcc.
                 if (input.isNull()) {
                     masm.movq(asRegister(result), 0x0L);
-                } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                } else if (crb.target.inlineObjects) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                     masm.movq(asRegister(result), 0xDEADDEADDEADDEADL);
                 } else {
-                    masm.movq(asRegister(result), (AMD64Address) tasm.recordDataReferenceInCode(input, 0, false));
+                    masm.movq(asRegister(result), (AMD64Address) crb.recordDataReferenceInCode(input, 0, false));
                 }
                 break;
             default:
@@ -513,9 +513,9 @@ public class AMD64Move {
         }
     }
 
-    private static void const2stack(TargetMethodAssembler tasm, AMD64MacroAssembler masm, Value result, Constant input) {
-        assert !tasm.codeCache.needsDataPatch(input);
-        AMD64Address dest = (AMD64Address) tasm.asAddress(result);
+    private static void const2stack(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value result, Constant input) {
+        assert !crb.codeCache.needsDataPatch(input);
+        AMD64Address dest = (AMD64Address) crb.asAddress(result);
         switch (input.getKind().getStackKind()) {
             case Int:
                 masm.movl(dest, input.asInt());
@@ -541,10 +541,10 @@ public class AMD64Move {
         }
     }
 
-    protected static void compareAndSwap(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+    protected static void compareAndSwap(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
         assert asRegister(cmpValue).equals(AMD64.rax) && asRegister(result).equals(AMD64.rax);
 
-        if (tasm.target.isMP) {
+        if (crb.target.isMP) {
             masm.lock();
         }
         switch (cmpValue.getKind()) {

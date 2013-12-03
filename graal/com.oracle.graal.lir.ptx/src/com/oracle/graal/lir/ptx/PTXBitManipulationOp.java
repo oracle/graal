@@ -46,7 +46,7 @@ public class PTXBitManipulationOp extends PTXLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
         Register dst = ValueUtil.asIntReg(result);
         Register src = ValueUtil.asRegister(input);
         switch (opcode) {

@@ -30,9 +30,9 @@ import com.oracle.graal.lir.asm.*;
  */
 abstract class SPARCHotSpotEpilogueOp extends SPARCLIRInstruction {
 
-    protected void leaveFrame(TargetMethodAssembler tasm) {
-        if (tasm.frameContext != null) {
-            tasm.frameContext.leave(tasm);
+    protected void leaveFrame(CompilationResultBuilder crb) {
+        if (crb.frameContext != null) {
+            crb.frameContext.leave(crb);
         }
     }
 }

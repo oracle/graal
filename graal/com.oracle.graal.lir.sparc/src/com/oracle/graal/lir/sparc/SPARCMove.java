@@ -51,8 +51,8 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -78,8 +78,8 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            move(tasm, masm, getResult(), getInput());
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            move(crb, masm, getResult(), getInput());
         }
 
         @Override
@@ -108,9 +108,9 @@ public class SPARCMove {
         protected abstract void emitMemAccess(SPARCMacroAssembler masm);
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.codeBuffer.position(), state);
             }
             emitMemAccess(masm);
         }
@@ -179,7 +179,7 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             SPARCAddress addr = address.toAddress();
             if (addr.hasIndex()) {
                 new Add(addr.getBase(), addr.getIndex(), asLongReg(result)).emit(masm);
@@ -198,7 +198,7 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             new Membar(barriers).emit(masm);
         }
     }
@@ -214,8 +214,8 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            tasm.recordImplicitException(masm.codeBuffer.position(), state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            crb.recordImplicitException(masm.codeBuffer.position(), state);
             new Ldx(new SPARCAddress(asRegister(input), 0), r0).emit(masm);
         }
 
@@ -243,7 +243,7 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             compareAndSwap(masm, address, cmpValue, newValue);
         }
     }
@@ -259,8 +259,8 @@ public class SPARCMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            SPARCAddress address = (SPARCAddress) tasm.asAddress(slot);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            SPARCAddress address = (SPARCAddress) crb.asAddress(slot);
             new Add(address.getBase(), address.getDisplacement(), asLongReg(result)).emit(masm);
         }
     }
@@ -349,24 +349,24 @@ public class SPARCMove {
         }
     }
 
-    public static void move(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Value input) {
+    public static void move(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input) {
         if (isRegister(input)) {
             if (isRegister(result)) {
                 reg2reg(masm, result, input);
             } else if (isStackSlot(result)) {
-                reg2stack(tasm, masm, result, input);
+                reg2stack(crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isStackSlot(input)) {
             if (isRegister(result)) {
-                stack2reg(tasm, masm, result, input);
+                stack2reg(crb, masm, result, input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
         } else if (isConstant(input)) {
             if (isRegister(result)) {
-                const2reg(tasm, masm, result, (Constant) input);
+                const2reg(crb, masm, result, (Constant) input);
             } else {
                 throw GraalInternalError.shouldNotReachHere();
             }
@@ -392,8 +392,8 @@ public class SPARCMove {
         }
     }
 
-    private static void reg2stack(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Value input) {
-        SPARCAddress dst = (SPARCAddress) tasm.asAddress(result);
+    private static void reg2stack(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input) {
+        SPARCAddress dst = (SPARCAddress) crb.asAddress(result);
         Register src = asRegister(input);
         switch (input.getKind()) {
             case Int:
@@ -410,8 +410,8 @@ public class SPARCMove {
         }
     }
 
-    private static void stack2reg(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Value input) {
-        SPARCAddress src = (SPARCAddress) tasm.asAddress(input);
+    private static void stack2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Value input) {
+        SPARCAddress src = (SPARCAddress) crb.asAddress(input);
         Register dst = asRegister(result);
         switch (input.getKind()) {
             case Int:
@@ -428,11 +428,11 @@ public class SPARCMove {
         }
     }
 
-    private static void const2reg(TargetMethodAssembler tasm, SPARCMacroAssembler masm, Value result, Constant input) {
+    private static void const2reg(CompilationResultBuilder crb, SPARCMacroAssembler masm, Value result, Constant input) {
         switch (input.getKind().getStackKind()) {
             case Int:
-                if (tasm.codeCache.needsDataPatch(input)) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                if (crb.codeCache.needsDataPatch(input)) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                     new Setuw(input.asInt(), asRegister(result)).emit(masm);
                 } else {
                     if (input.isDefaultForKind()) {
@@ -443,8 +443,8 @@ public class SPARCMove {
                 }
                 break;
             case Long: {
-                if (tasm.codeCache.needsDataPatch(input)) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                if (crb.codeCache.needsDataPatch(input)) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                     new Setx(input.asLong(), asRegister(result), true).emit(masm);
                 } else {
                     if (input.isDefaultForKind()) {
@@ -458,13 +458,13 @@ public class SPARCMove {
             case Object: {
                 if (input.isNull()) {
                     new Clr(asRegister(result)).emit(masm);
-                } else if (tasm.target.inlineObjects) {
-                    tasm.recordDataReferenceInCode(input, 0, true);
+                } else if (crb.target.inlineObjects) {
+                    crb.recordDataReferenceInCode(input, 0, true);
                     new Setx(0xDEADDEADDEADDEADL, asRegister(result), true).emit(masm);
                 } else {
                     Register dst = asRegister(result);
                     new Rdpc(dst).emit(masm);
-                    tasm.asObjectConstRef(input);
+                    crb.asObjectConstRef(input);
                     new Ldx(new SPARCAddress(dst, 0), dst).emit(masm);
                     throw GraalInternalError.shouldNotReachHere("the patched offset might be too big for the load");
                 }

@@ -36,8 +36,8 @@ import com.oracle.graal.lir.asm.*;
 final class AMD64HotSpotDeoptimizeCallerOp extends AMD64HotSpotEpilogueOp {
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-        leaveFrameAndRestoreRbp(tasm, masm);
-        AMD64Call.directJmp(tasm, masm, tasm.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+        leaveFrameAndRestoreRbp(crb, masm);
+        AMD64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(UNCOMMON_TRAP));
     }
 }

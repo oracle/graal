@@ -56,7 +56,7 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             Variable dst = (Variable) result;
             Variable src = (Variable) x;
             if (from == Kind.Long && to == Kind.Int) {
@@ -81,8 +81,8 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -100,8 +100,8 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -125,8 +125,8 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -150,12 +150,12 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
             if (sameRegister(result, y)) {
-                emit(tasm, masm, opcode, result, x, null);
+                emit(crb, masm, opcode, result, x, null);
             } else {
-                PTXMove.move(tasm, masm, result, x);
-                emit(tasm, masm, opcode, result, y, null);
+                PTXMove.move(crb, masm, result, x);
+                emit(crb, masm, opcode, result, y, null);
             }
         }
 
@@ -180,8 +180,8 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -208,8 +208,8 @@ public enum PTXArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, y, state);
+        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
+            emit(crb, masm, opcode, result, y, state);
         }
 
         @Override
@@ -219,7 +219,7 @@ public enum PTXArithmetic {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, PTXMacroAssembler masm, PTXArithmetic opcode, Value dst, Value src, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, PTXMacroAssembler masm, PTXArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         Variable dest = (Variable) dst;
 
@@ -267,11 +267,11 @@ public enum PTXArithmetic {
 
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, PTXMacroAssembler masm, PTXArithmetic opcode,
+    public static void emit(CompilationResultBuilder crb, PTXMacroAssembler masm, PTXArithmetic opcode,
                             Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         Variable dest = (Variable) dst;
@@ -337,7 +337,7 @@ public enum PTXArithmetic {
 
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 

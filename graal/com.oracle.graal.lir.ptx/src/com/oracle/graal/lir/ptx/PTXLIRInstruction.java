@@ -32,9 +32,9 @@ import com.oracle.graal.lir.asm.*;
 public abstract class PTXLIRInstruction extends LIRInstruction {
 
     @Override
-    public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (PTXMacroAssembler) tasm.asm);
+    public final void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (PTXMacroAssembler) crb.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, PTXMacroAssembler masm);
+    public abstract void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm);
 }

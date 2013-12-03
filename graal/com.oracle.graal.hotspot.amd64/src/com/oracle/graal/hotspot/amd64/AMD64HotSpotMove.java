@@ -126,7 +126,7 @@ public class AMD64HotSpotMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             masm.movq(asRegister(scratch), asRegister(input));
             if (kind == Kind.Object) {
                 encodePointer(masm, asRegister(scratch), heapBaseReg, heapBase, shift, alignment);
@@ -134,7 +134,7 @@ public class AMD64HotSpotMove {
                 encodeKlassPointer(masm, asRegister(scratch), heapBaseReg, klassBase, heapBase, shift, alignment);
             }
             if (state != null) {
-                tasm.recordImplicitException(masm.codeBuffer.position(), state);
+                crb.recordImplicitException(masm.codeBuffer.position(), state);
             }
             masm.movl(address.toAddress(), asRegister(scratch));
         }
@@ -169,12 +169,12 @@ public class AMD64HotSpotMove {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
-            compareAndSwapCompressed(tasm, masm, result, address, cmpValue, newValue, scratch, base, shift, alignment, heapBaseReg);
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            compareAndSwapCompressed(crb, masm, result, address, cmpValue, newValue, scratch, base, shift, alignment, heapBaseReg);
         }
     }
 
-    protected static void compareAndSwapCompressed(TargetMethodAssembler tasm, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
+    protected static void compareAndSwapCompressed(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
                     AllocatableValue newValue, AllocatableValue scratch, long base, int shift, int alignment, Register heapBaseReg) {
         assert AMD64.rax.equals(asRegister(cmpValue)) && AMD64.rax.equals(asRegister(result));
         final Register scratchRegister = asRegister(scratch);
@@ -184,7 +184,7 @@ public class AMD64HotSpotMove {
         encodePointer(masm, cmpRegister, heapBase, base, shift, alignment);
         masm.movq(scratchRegister, newRegister);
         encodePointer(masm, scratchRegister, heapBase, base, shift, alignment);
-        if (tasm.target.isMP) {
+        if (crb.target.isMP) {
             masm.lock();
         }
         masm.cmpxchgl(scratchRegister, address.toAddress());

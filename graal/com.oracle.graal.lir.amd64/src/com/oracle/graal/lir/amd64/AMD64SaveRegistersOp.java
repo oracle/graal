@@ -66,16 +66,16 @@ public class AMD64SaveRegistersOp extends AMD64LIRInstruction implements SaveReg
         this.supportsRemove = supportsRemove;
     }
 
-    protected void saveRegister(TargetMethodAssembler tasm, AMD64MacroAssembler masm, StackSlot result, Register register) {
+    protected void saveRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, StackSlot result, Register register) {
         RegisterValue input = register.asValue(result.getKind());
-        AMD64Move.move(tasm, masm, result, input);
+        AMD64Move.move(crb, masm, result, input);
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         for (int i = 0; i < savedRegisters.length; i++) {
             if (savedRegisters[i] != null) {
-                saveRegister(tasm, masm, slots[i], savedRegisters[i]);
+                saveRegister(crb, masm, slots[i], savedRegisters[i]);
             }
         }
     }

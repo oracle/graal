@@ -63,8 +63,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -81,8 +81,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, null);
         }
     }
 
@@ -101,8 +101,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -131,8 +131,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -160,8 +160,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -189,8 +189,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, null);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -215,9 +215,9 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
             assert !(x instanceof SPARCAddressValue);
-            emit(tasm, masm, opcode, result, x, y, null);
+            emit(crb, masm, opcode, result, x, y, null);
         }
 
         @Override
@@ -249,8 +249,8 @@ public enum SPARCArithmetic {
         }
 
         @Override
-        public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-            emit(tasm, masm, opcode, result, x, y, scratch1, scratch2, state);
+        public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            emit(crb, masm, opcode, result, x, y, scratch1, scratch2, state);
         }
 
         @Override
@@ -260,18 +260,18 @@ public enum SPARCArithmetic {
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isConstant(src1)) {
             switch (opcode) {
                 case ISUB:
-                    assert isSimm13(tasm.asIntConst(src1));
-                    new Add(asIntReg(src2), -(tasm.asIntConst(src1)), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src1));
+                    new Add(asIntReg(src2), -(crb.asIntConst(src1)), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
                     throw GraalInternalError.unimplemented();
                 case IDIV:
-                    assert isSimm13(tasm.asIntConst(src1));
+                    assert isSimm13(crb.asIntConst(src1));
                     throw GraalInternalError.unimplemented();
                     // new Sdivx(masm, asIntReg(src1), asIntReg(src2),
                     // asIntReg(dst));
@@ -285,85 +285,85 @@ public enum SPARCArithmetic {
         } else if (isConstant(src2)) {
             switch (opcode) {
                 case IADD:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Add(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Add(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISUB:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sub(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sub(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IMUL:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Mulx(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Mulx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IDIV:
-                    assert isSimm13(tasm.asIntConst(src2));
+                    assert isSimm13(crb.asIntConst(src2));
                     new Signx(asIntReg(src1), asIntReg(src1)).emit(masm);
-                    new Sdivx(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    new Sdivx(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IAND:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new And(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new And(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISHL:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sll(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sll(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case ISHR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sra(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sra(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IUSHR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Srl(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Srl(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IOR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Or(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Or(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case IXOR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Xor(asIntReg(src1), tasm.asIntConst(src2), asIntReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Xor(asIntReg(src1), crb.asIntConst(src2), asIntReg(dst)).emit(masm);
                     break;
                 case LADD:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Add(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Add(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LSUB:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sub(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sub(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LMUL:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Mulx(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Mulx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LDIV:
                     throw GraalInternalError.unimplemented();
                 case LUDIV:
                     throw GraalInternalError.unimplemented();
                 case LAND:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new And(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new And(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LOR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Or(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Or(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LXOR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Xor(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Xor(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LSHL:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sllx(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sllx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LSHR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Srax(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Srax(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case LUSHR:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Srlx(asLongReg(src1), tasm.asIntConst(src2), asLongReg(dst)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Srlx(asLongReg(src1), crb.asIntConst(src2), asLongReg(dst)).emit(masm);
                     break;
                 case FADD:
                 case FMUL:
@@ -477,11 +477,11 @@ public enum SPARCArithmetic {
 
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
-    public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src1, Value src2, Value scratch1, Value scratch2, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isConstant(src1)) {
             switch (opcode) {
@@ -491,9 +491,9 @@ public enum SPARCArithmetic {
         } else if (isConstant(src2)) {
             switch (opcode) {
                 case LREM:
-                    assert isSimm13(tasm.asIntConst(src2));
-                    new Sdivx(asLongReg(src1), tasm.asIntConst(src2), asLongReg(scratch1)).emit(masm);
-                    new Mulx(asLongReg(scratch1), tasm.asIntConst(src2), asLongReg(scratch2)).emit(masm);
+                    assert isSimm13(crb.asIntConst(src2));
+                    new Sdivx(asLongReg(src1), crb.asIntConst(src2), asLongReg(scratch1)).emit(masm);
+                    new Mulx(asLongReg(scratch1), crb.asIntConst(src2), asLongReg(scratch2)).emit(masm);
                     new Sub(asLongReg(src1), asLongReg(scratch2), asLongReg(dst)).emit(masm);
                     break;
                 case LUREM:
@@ -513,12 +513,12 @@ public enum SPARCArithmetic {
 
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 
     @SuppressWarnings("unused")
-    public static void emit(TargetMethodAssembler tasm, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
+    public static void emit(CompilationResultBuilder crb, SPARCAssembler masm, SPARCArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
@@ -574,7 +574,7 @@ public enum SPARCArithmetic {
 
         if (info != null) {
             assert exceptionOffset != -1;
-            tasm.recordImplicitException(exceptionOffset, info);
+            crb.recordImplicitException(exceptionOffset, info);
         }
     }
 

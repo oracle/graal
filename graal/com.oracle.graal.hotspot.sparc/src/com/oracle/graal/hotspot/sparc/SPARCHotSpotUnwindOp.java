@@ -48,10 +48,10 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
-        leaveFrame(tasm);
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        leaveFrame(crb);
 
-        ForeignCallLinkage linkage = tasm.foreignCalls.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
+        ForeignCallLinkage linkage = crb.foreignCalls.lookupForeignCall(UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = linkage.getOutgoingCallingConvention();
         assert cc.getArgumentCount() == 2;
         assert exception.equals(cc.getArgument(0));
@@ -61,6 +61,6 @@ final class SPARCHotSpotUnwindOp extends SPARCHotSpotEpilogueOp {
         new Mov(o7, returnAddress).emit(masm);
 
         Register scratch = g5;
-        SPARCCall.indirectJmp(tasm, masm, scratch, linkage);
+        SPARCCall.indirectJmp(crb, masm, scratch, linkage);
     }
 }

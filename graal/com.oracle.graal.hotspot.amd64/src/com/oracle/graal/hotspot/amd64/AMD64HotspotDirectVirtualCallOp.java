@@ -51,11 +51,11 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // The mark for an invocation that uses an inline cache must be placed at the
         // instruction that loads the Klass from the inline cache.
-        tasm.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
-        AMD64Move.move(tasm, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
-        super.emitCode(tasm, masm);
+        crb.recordMark(invokeKind == Virtual ? Marks.MARK_INVOKEVIRTUAL : Marks.MARK_INVOKEINTERFACE);
+        AMD64Move.move(crb, masm, AMD64.rax.asValue(Kind.Long), Constant.forLong(HotSpotGraalRuntime.runtime().getConfig().nonOopBits));
+        super.emitCode(crb, masm);
     }
 }

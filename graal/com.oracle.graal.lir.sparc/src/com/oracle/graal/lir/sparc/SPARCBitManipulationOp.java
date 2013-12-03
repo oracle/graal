@@ -57,7 +57,7 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, SPARCMacroAssembler masm) {
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         Register dst = asIntReg(result);
         if (isRegister(input)) {
             Register src = asRegister(input);
@@ -130,20 +130,20 @@ public class SPARCBitManipulationOp extends SPARCLIRInstruction {
                     throw GraalInternalError.shouldNotReachHere();
 
             }
-        } else if (isConstant(input) && isSimm13(tasm.asIntConst(input))) {
+        } else if (isConstant(input) && isSimm13(crb.asIntConst(input))) {
             switch (opcode) {
                 case IPOPCNT:
-                    new Popc(tasm.asIntConst(input), dst).emit(masm);
+                    new Popc(crb.asIntConst(input), dst).emit(masm);
                     break;
                 case LPOPCNT:
-                    new Popc(tasm.asIntConst(input), dst).emit(masm);
+                    new Popc(crb.asIntConst(input), dst).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             throw GraalInternalError.shouldNotReachHere();
-            // SPARCAddress src = (SPARCAddress) tasm.asAddress(input);
+            // SPARCAddress src = (SPARCAddress) crb.asAddress(input);
             // switch (opcode) {
             // case IPOPCNT:
             // new Ldsw(src, tmp).emit(masm);

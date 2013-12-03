@@ -95,12 +95,12 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     class HotSpotFrameContext implements FrameContext {
 
         @Override
-        public void enter(TargetMethodAssembler tasm) {
+        public void enter(CompilationResultBuilder crb) {
             Debug.log("Nothing to do here");
         }
 
         @Override
-        public void leave(TargetMethodAssembler tasm) {
+        public void leave(CompilationResultBuilder crb) {
             Debug.log("Nothing to do here");
         }
     }
@@ -111,20 +111,20 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
     }
 
     @Override
-    public TargetMethodAssembler newAssembler(LIRGenerator lirGen, CompilationResult compilationResult) {
+    public CompilationResultBuilder newCompilationResultBuilder(LIRGenerator lirGen, CompilationResult compilationResult) {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         HotSpotFrameContext frameContext = new HotSpotFrameContext();
-        TargetMethodAssembler tasm = new TargetMethodAssembler(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
-        tasm.setFrameSize(frameMap.frameSize());
-        return tasm;
+        CompilationResultBuilder crb = new CompilationResultBuilder(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        crb.setFrameSize(frameMap.frameSize());
+        return crb;
     }
 
     @Override
-    public void emitCode(TargetMethodAssembler tasm, LIRGenerator lirGen, ResolvedJavaMethod method) {
+    public void emitCode(CompilationResultBuilder crb, LIRGenerator lirGen, ResolvedJavaMethod method) {
         assert method != null : lirGen.getGraph() + " is not associated with a method";
         // Emit the prologue.
-        codeBuffer = tasm.asm.codeBuffer;
+        codeBuffer = crb.asm.codeBuffer;
         codeBuffer.emitString0("version 0:95: $full : $large;");
         codeBuffer.emitString("");
 
@@ -176,7 +176,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         codeBuffer.emitString0("kernel &run (");
         codeBuffer.emitString("");
 
-        FrameMap frameMap = tasm.frameMap;
+        FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.registerConfig;
         // Build list of param types which does include the gid (for cc register mapping query).
         JavaType[] ccParamTypes = new JavaType[nonConstantParamCount + 1];
@@ -280,9 +280,9 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             }
         }
         // Prologue done, Emit code for the LIR.
-        lirGen.lir.emitCode(tasm);
+        lirGen.lir.emitCode(crb);
         // Now that code is emitted go back and figure out what the upper Bound stack size was.
-        long maxStackSize = ((HSAILAssembler) tasm.asm).upperBoundStackSize();
+        long maxStackSize = ((HSAILAssembler) crb.asm).upperBoundStackSize();
         String spillsegStringFinal;
         if (maxStackSize == 0) {
             // If no spilling, get rid of spillseg declaration.

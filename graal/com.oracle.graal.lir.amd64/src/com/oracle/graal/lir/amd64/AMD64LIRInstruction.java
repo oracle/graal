@@ -32,9 +32,9 @@ import com.oracle.graal.lir.asm.*;
 public abstract class AMD64LIRInstruction extends LIRInstruction {
 
     @Override
-    public final void emitCode(TargetMethodAssembler tasm) {
-        emitCode(tasm, (AMD64MacroAssembler) tasm.asm);
+    public final void emitCode(CompilationResultBuilder crb) {
+        emitCode(crb, (AMD64MacroAssembler) crb.asm);
     }
 
-    public abstract void emitCode(TargetMethodAssembler tasm, AMD64MacroAssembler masm);
+    public abstract void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm);
 }
