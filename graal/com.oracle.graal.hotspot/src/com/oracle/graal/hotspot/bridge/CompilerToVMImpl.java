@@ -97,11 +97,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
     @Override
-    public native boolean isTypeInitialized(HotSpotResolvedObjectType klass);
-
-    public native boolean isTypeLinked(HotSpotResolvedObjectType hotSpotResolvedObjectType);
-
-    @Override
     public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
 
     @Override

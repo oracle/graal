@@ -82,8 +82,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     private HotSpotResolvedJavaField[] instanceFields;
     private ResolvedJavaType[] interfaces;
     private ConstantPool constantPool;
-    private boolean isInitialized;
-    private boolean isLinked;
     private ResolvedJavaType arrayOfType;
 
     /**
@@ -286,27 +284,24 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean isInitialized() {
-        if (!isInitialized) {
-            isInitialized = runtime().getCompilerToVM().isTypeInitialized(this);
-        }
-        return isInitialized;
+        HotSpotVMConfig config = runtime().getConfig();
+        byte state = unsafe.getByte(metaspaceKlass + config.klassStateOffset);
+        return state == config.klassStateFullyInitialized;
     }
 
     @Override
     public boolean isLinked() {
-        if (!isLinked) {
-            isLinked = runtime().getCompilerToVM().isTypeLinked(this);
-        }
-        return isLinked;
+        HotSpotVMConfig config = runtime().getConfig();
+        byte state = unsafe.getByte(metaspaceKlass + config.klassStateOffset);
+        return state >= config.klassStateLinked;
     }
 
     @Override
     public void initialize() {
-        if (!isInitialized) {
+        if (!isInitialized()) {
             runtime().getCompilerToVM().initializeType(this);
-            assert runtime().getCompilerToVM().isTypeInitialized(this);
+            assert isInitialized();
         }
-        isInitialized = true;
     }
 
     @Override

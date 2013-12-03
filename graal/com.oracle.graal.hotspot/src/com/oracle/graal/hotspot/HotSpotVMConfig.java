@@ -720,6 +720,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Array<Klass*>::_data", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
 
     @HotSpotVMField(name = "InstanceKlass::_init_state", get = HotSpotVMField.Type.OFFSET) @Stable public int klassStateOffset;
+    @HotSpotVMConstant(name = "InstanceKlass::linked") @Stable public int klassStateLinked;
     @HotSpotVMConstant(name = "InstanceKlass::fully_initialized") @Stable public int klassStateFullyInitialized;
     @HotSpotVMField(name = "InstanceKlass::_constants", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
 
