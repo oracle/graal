@@ -244,25 +244,21 @@ public class TruffleCompilerImpl implements TruffleCompiler {
 
         result.setAssumptions(newAssumptions);
 
-        InstalledCode compiledMethod = null;
+        InstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", providers.getCodeCache()); TimerCloseable a = CodeInstallationTime.start()) {
-            InstalledCode installedCode = providers.getCodeCache().addMethod(graph.method(), result);
-            if (installedCode != null) {
-                Debug.dump(new Object[]{result, installedCode}, "After code installation");
-            }
-            compiledMethod = installedCode;
+            installedCode = providers.getCodeCache().addMethod(graph.method(), result);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
 
         for (AssumptionValidAssumption a : validAssumptions) {
-            a.getAssumption().registerInstalledCode(compiledMethod);
+            a.getAssumption().registerInstalledCode(installedCode);
         }
 
         if (Debug.isLogEnabled()) {
-            Debug.log(providers.getCodeCache().disassemble(result, compiledMethod));
+            Debug.log(providers.getCodeCache().disassemble(result, installedCode));
         }
-        return compiledMethod;
+        return installedCode;
     }
 
     private PhasePlan createPhasePlan(final GraphBuilderConfiguration config) {

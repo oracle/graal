@@ -562,24 +562,10 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             try (Scope s = Debug.scope("CodeInstall", getCodeCache(), method)) {
-                InstalledCode code = addMethod(method, compResult);
-                if (code == null) {
+                installedCode = addMethod(method, compResult);
+                if (installedCode == null) {
                     throw new GraalInternalError("Could not install code for " + MetaUtil.format("%H.%n(%p)", method));
                 }
-                if (Debug.isDumpEnabled()) {
-                    Debug.dump(new Object[]{compResult, code}, "After code installation");
-                }
-                if (Debug.isLogEnabled()) {
-                    DisassemblerProvider dis = backend.getDisassembler();
-                    if (dis != null) {
-                        String text = dis.disassemble(code);
-                        if (text != null) {
-                            Debug.log("Code installed for %s%n%s", method, text);
-                        }
-                    }
-                }
-
-                installedCode = code;
             } catch (Throwable e) {
                 throw Debug.handle(e);
             }

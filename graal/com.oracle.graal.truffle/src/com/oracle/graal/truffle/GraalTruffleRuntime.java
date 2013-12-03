@@ -167,10 +167,7 @@ public final class GraalTruffleRuntime implements TruffleRuntime {
         ResolvedJavaMethod resolvedCallMethod = metaAccess.lookupJavaMethod(getCallMethod());
         CompilationResult compResult = compileMethod(resolvedCallMethod);
         try (Scope s = Debug.scope("CodeInstall", codeCache, resolvedCallMethod)) {
-            InstalledCode installedCode = codeCache.setDefaultMethod(resolvedCallMethod, compResult);
-            if (Debug.isDumpEnabled()) {
-                Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-            }
+            codeCache.setDefaultMethod(resolvedCallMethod, compResult);
         }
     }
 

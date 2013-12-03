@@ -160,16 +160,12 @@ public abstract class Stub {
                     Stub stub = Stub.this;
                     HotSpotRuntimeStub installedCode = new HotSpotRuntimeStub(stub);
                     HotSpotCompiledCode hsCompResult = new HotSpotCompiledRuntimeStub(stub, compResult);
+
                     CodeInstallResult result = runtime().getCompilerToVM().installCode(hsCompResult, installedCode, null);
                     if (result != CodeInstallResult.OK) {
                         throw new GraalInternalError("Error installing stub %s: %s", Stub.this, result);
                     }
-                    if (Debug.isDumpEnabled()) {
-                        Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-                    }
-                    if (Debug.isLogEnabled()) {
-                        Debug.log("%s", providers.getDisassembler().disassemble(installedCode));
-                    }
+                    ((HotSpotCodeCacheProvider) codeCache).logOrDump(installedCode, compResult);
                     code = installedCode;
                 } catch (Throwable e) {
                     throw Debug.handle(e);

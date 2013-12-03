@@ -233,12 +233,6 @@ public final class CompilationTask implements Runnable {
         HotSpotInstalledCode installedCode = null;
         try (Scope s = Debug.scope("CodeInstall", new DebugDumpScope(String.valueOf(id), true), codeCache, method)) {
             installedCode = codeCache.installMethod(method, entryBCI, compResult);
-            if (Debug.isDumpEnabled()) {
-                Debug.dump(new Object[]{compResult, installedCode}, "After code installation");
-            }
-            if (Debug.isLogEnabled()) {
-                Debug.log("%s", backend.getProviders().getDisassembler().disassemble(installedCode));
-            }
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
