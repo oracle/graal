@@ -54,6 +54,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
 
             @Override
             public void generateCode(AMD64Assembler asm) {
+                asm.nop(5); // padding for mt-safe patching
                 asm.ret(0);
             }
         });
@@ -70,6 +71,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
             @Override
             public void generateCode(AMD64Assembler asm) {
                 Register arg = getArgumentRegister(0, Kind.Int);
+                asm.nop(5); // padding for mt-safe patching
                 asm.addl(arg, 5);
                 asm.movl(rax, arg);
                 asm.ret(0);
@@ -88,6 +90,7 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
             @Override
             public void generateCode(AMD64Assembler asm) {
                 Register arg = getArgumentRegister(0, Kind.Long);
+                asm.nop(5); // padding for mt-safe patching
                 asm.addq(arg, 1);
                 asm.movq(rax, arg);
                 asm.ret(0);
