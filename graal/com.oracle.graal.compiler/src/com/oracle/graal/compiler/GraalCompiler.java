@@ -282,16 +282,16 @@ public class GraalCompiler {
     public static void emitCode(Backend backend, long[] leafGraphIds, Assumptions assumptions, LIRGenerator lirGen, CompilationResult compilationResult, ResolvedJavaMethod installedCodeOwner) {
         TargetMethodAssembler tasm = backend.newAssembler(lirGen, compilationResult);
         backend.emitCode(tasm, lirGen, installedCodeOwner);
-        CompilationResult result = tasm.finishTargetMethod(lirGen.getGraph());
+        tasm.finalize(lirGen.getGraph());
         if (!assumptions.isEmpty()) {
-            result.setAssumptions(assumptions);
+            compilationResult.setAssumptions(assumptions);
         }
-        result.setLeafGraphIds(leafGraphIds);
+        compilationResult.setLeafGraphIds(leafGraphIds);
 
         if (Debug.isLogEnabled()) {
-            Debug.log("%s", backend.getProviders().getCodeCache().disassemble(result, null));
+            Debug.log("%s", backend.getProviders().getCodeCache().disassemble(compilationResult, null));
         }
 
-        Debug.dump(result, "After code generation");
+        Debug.dump(compilationResult, "After code generation");
     }
 }

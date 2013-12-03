@@ -176,7 +176,7 @@ public class PTXHotSpotBackend extends HotSpotBackend {
         FrameMap frameMap = lirGen.frameMap;
         AbstractAssembler masm = createAssembler(frameMap);
         PTXFrameContext frameContext = new PTXFrameContext();
-        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, compilationResult);
+        TargetMethodAssembler tasm = new PTXTargetMethodAssembler(getCodeCache(), getForeignCalls(), frameMap, masm, frameContext, (ExternalCompilationResult) compilationResult);
         tasm.setFrameSize(0);
         return tasm;
     }

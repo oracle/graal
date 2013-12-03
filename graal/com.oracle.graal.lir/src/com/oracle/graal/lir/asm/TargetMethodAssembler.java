@@ -92,7 +92,7 @@ public class TargetMethodAssembler {
         compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
     }
 
-    public CompilationResult finishTargetMethod(StructuredGraph graph) {
+    public void finalize(StructuredGraph graph) {
         // Install code, data and frame size
         compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
@@ -120,14 +120,13 @@ public class TargetMethodAssembler {
                 }
             }
 
-            Debug.metric("TargetMethods").increment();
+            Debug.metric("CompilationResults").increment();
             Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
             Debug.metric("InfopointsEmitted").add(compilationResult.getInfopoints().size());
             Debug.metric("DataPatches").add(ldp.size());
             Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         }
         Debug.log("Finished compiling %s", graph);
-        return compilationResult;
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
