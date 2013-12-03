@@ -110,13 +110,13 @@ public class ReplacementsImpl implements Replacements {
     }
 
     @Override
-    public void prepareSnippetCopyAfterInstantiation(StructuredGraph snippetCopy) {
+    public void notifyAfterConstantsBound(StructuredGraph specializedSnippet) {
 
         // Do deferred intrinsification of node intrinsics
 
-        new NodeIntrinsificationPhase(providers).apply(snippetCopy);
-        new CanonicalizerPhase(true).apply(snippetCopy, new PhaseContext(providers, assumptions));
-        NodeIntrinsificationVerificationPhase.verify(snippetCopy);
+        new NodeIntrinsificationPhase(providers).apply(specializedSnippet);
+        new CanonicalizerPhase(true).apply(specializedSnippet, new PhaseContext(providers, assumptions));
+        NodeIntrinsificationVerificationPhase.verify(specializedSnippet);
     }
 
     @Override
