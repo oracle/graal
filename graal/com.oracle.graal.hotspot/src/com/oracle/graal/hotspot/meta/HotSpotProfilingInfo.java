@@ -95,7 +95,7 @@ public final class HotSpotProfilingInfo extends CompilerObject implements Profil
 
     @Override
     public int getDeoptimizationCount(DeoptimizationReason reason) {
-        return methodData.getDeoptimizationCount(reason);
+        return methodData.getDeoptimizationCount(reason) + methodData.getOSRDeoptimizationCount(reason);
     }
 
     private void findBCI(int targetBCI, boolean searchExtraData) {

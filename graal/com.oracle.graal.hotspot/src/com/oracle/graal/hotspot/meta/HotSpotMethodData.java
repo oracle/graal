@@ -95,6 +95,11 @@ public final class HotSpotMethodData extends CompilerObject {
         return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + reasonIndex) & 0xFF;
     }
 
+    public int getOSRDeoptimizationCount(DeoptimizationReason reason) {
+        int reasonIndex = runtime().getHostProviders().getMetaAccess().convertDeoptReason(reason);
+        return unsafe.getByte(metaspaceMethodData + config.methodDataOopTrapHistoryOffset + config.deoptReasonOSROffset + reasonIndex) & 0xFF;
+    }
+
     public HotSpotMethodDataAccessor getNormalData(int position) {
         if (position >= normalDataSize) {
             return null;
