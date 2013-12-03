@@ -20,25 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.truffle.hotspot.amd64;
+package com.oracle.graal.truffle;
 
-import com.oracle.graal.api.runtime.*;
-import com.oracle.graal.compiler.target.*;
-import com.oracle.graal.hotspot.amd64.*;
-import com.oracle.graal.truffle.*;
+import com.oracle.graal.api.meta.*;
+import com.oracle.graal.lir.asm.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.frame.*;
 
 /**
- * Factory to create a Truffle-specialized AMD64 HotSpot backend.
+ * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
+ * {@link OptimizedCallTarget#call(PackedFrame, Arguments)}.
  */
-@ServiceProvider(TruffleBackendFactory.class)
-public class AMD64HotSpotTruffleBackendFactory implements TruffleBackendFactory {
+public interface OptimizedCallTargetInstrumentationFactory extends CompilationResultBuilderFactory {
 
-    @Override
-    public Backend createBackend(Backend original) {
-        return new AMD64HotSpotTruffleBackend((AMD64HotSpotBackend) original);
-    }
+    /**
+     * Gets the architecture supported by this factory.
+     */
+    String getArchitecture();
 
-    public String getArchitecture() {
-        return "AMD64";
-    }
+    /**
+     * Notifies this object of the method that is being instrumented.
+     */
+    void setInstrumentedMethod(ResolvedJavaMethod method);
 }
