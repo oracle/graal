@@ -207,8 +207,6 @@ public interface CompilerToVM {
 
     JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
-    boolean isTypeInitialized(HotSpotResolvedObjectType klass);
-
     void initializeType(HotSpotResolvedObjectType klass);
 
     ResolvedJavaType getResolvedType(Class<?> javaClass);
@@ -272,8 +270,6 @@ public interface CompilerToVM {
     void reprofile(long metaspaceMethod);
 
     void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);
-
-    boolean isTypeLinked(HotSpotResolvedObjectType hotSpotResolvedObjectType);
 
     /**
      * Collects the current values of all Graal benchmark counters, summed up over all threads.

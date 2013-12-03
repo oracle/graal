@@ -139,7 +139,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (codeSize == 0) {
             return null;
         }
-        if (code == null && runtime().getCompilerToVM().isTypeLinked(holder)) {
+        if (code == null && holder.isLinked()) {
             code = runtime().getCompilerToVM().initializeBytecode(metaspaceMethod, new byte[codeSize]);
             assert code.length == codeSize : "expected: " + codeSize + ", actual: " + code.length;
         }
