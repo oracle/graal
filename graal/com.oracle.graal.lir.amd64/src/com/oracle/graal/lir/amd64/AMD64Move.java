@@ -541,7 +541,8 @@ public class AMD64Move {
         }
     }
 
-    protected static void compareAndSwap(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue, AllocatableValue newValue) {
+    protected static void compareAndSwap(CompilationResultBuilder crb, AMD64MacroAssembler masm, AllocatableValue result, AMD64AddressValue address, AllocatableValue cmpValue,
+                    AllocatableValue newValue) {
         assert asRegister(cmpValue).equals(AMD64.rax) && asRegister(result).equals(AMD64.rax);
 
         if (crb.target.isMP) {
