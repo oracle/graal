@@ -31,6 +31,7 @@ import java.util.*;
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
 import com.oracle.graal.compiler.target.*;
@@ -133,9 +134,10 @@ public class GraalCompiler {
      * @return the result of the compilation
      */
     public static <T extends CompilationResult> T compileGraph(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites,
+                    T compilationResult) {
         try (Scope s = Debug.scope("GraalCompiler", graph, providers.getCodeCache())) {
-            compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, speculationLog, suites, compilationResult);
+            compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, profilingInfo, speculationLog, suites, compilationResult);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -147,12 +149,13 @@ public class GraalCompiler {
      * {@linkplain Debug#scope(String, Object...) debug scope}.
      */
     public static <T extends CompilationResult> T compileGraphNoScope(StructuredGraph graph, CallingConvention cc, ResolvedJavaMethod installedCodeOwner, Providers providers, Backend backend,
-                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, SpeculationLog speculationLog, Suites suites, T compilationResult) {
+                    TargetDescription target, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites,
+                    T compilationResult) {
         Assumptions assumptions = new Assumptions(OptAssumptions.getValue());
 
         LIR lir = null;
         try (Scope s = Debug.scope("FrontEnd"); TimerCloseable a = FrontEnd.start()) {
-            lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, speculationLog, suites);
+            lir = emitHIR(providers, target, graph, assumptions, cache, plan, optimisticOpts, profilingInfo, speculationLog, suites);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
@@ -175,6 +178,26 @@ public class GraalCompiler {
         return compilationResult;
     }
 
+    private static ProfilingInfo getProfilingInfo(StructuredGraph graph) {
+        if (graph.method() != null) {
+            return graph.method().getProfilingInfo();
+        } else {
+            return DefaultProfilingInfo.get(TriState.UNKNOWN);
+        }
+    }
+
+    public static <T extends CompilationResult> T compileGraph(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
+                    final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
+        return compileGraph(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, getProfilingInfo(graph), speculationLog, suites, compilationResult);
+    }
+
+    public static <T extends CompilationResult> T compileGraphNoScope(final StructuredGraph graph, final CallingConvention cc, final ResolvedJavaMethod installedCodeOwner, final Providers providers,
+                    final Backend backend, final TargetDescription target, final GraphCache cache, final PhasePlan plan, final OptimisticOptimizations optimisticOpts,
+                    final SpeculationLog speculationLog, final Suites suites, final T compilationResult) {
+        return compileGraphNoScope(graph, cc, installedCodeOwner, providers, backend, target, cache, plan, optimisticOpts, getProfilingInfo(graph), speculationLog, suites, compilationResult);
+    }
+
     private static long[] getLeafGraphIdArray(StructuredGraph graph) {
         long[] leafGraphIdArray = new long[graph.getLeafGraphIds().size() + 1];
         int i = 0;
@@ -189,7 +212,7 @@ public class GraalCompiler {
      * Builds the graph, optimizes it.
      */
     public static LIR emitHIR(Providers providers, TargetDescription target, StructuredGraph graph, Assumptions assumptions, GraphCache cache, PhasePlan plan, OptimisticOptimizations optimisticOpts,
-                    SpeculationLog speculationLog, Suites suites) {
+                    ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
             speculationLog.snapshot();
@@ -206,7 +229,7 @@ public class GraalCompiler {
         suites.getHighTier().apply(graph, highTierContext);
         graph.maybeCompress();
 
-        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts);
+        MidTierContext midTierContext = new MidTierContext(providers, assumptions, target, optimisticOpts, profilingInfo);
         suites.getMidTier().apply(graph, midTierContext);
         graph.maybeCompress();
 

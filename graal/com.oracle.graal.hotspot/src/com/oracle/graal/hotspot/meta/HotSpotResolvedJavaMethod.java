@@ -287,6 +287,14 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public ProfilingInfo getProfilingInfo() {
+        return getProfilingInfo(true, true);
+    }
+
+    public ProfilingInfo getCompilationProfilingInfo(boolean isOSR) {
+        return getProfilingInfo(!isOSR, isOSR);
+    }
+
+    private ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
         ProfilingInfo info;
 
         if (UseProfilingInformation.getValue() && methodData == null) {
@@ -305,7 +313,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             // case of a deoptimization.
             info = DefaultProfilingInfo.get(TriState.FALSE);
         } else {
-            info = new HotSpotProfilingInfo(methodData, this);
+            info = new HotSpotProfilingInfo(methodData, this, includeNormal, includeOSR);
         }
         return info;
     }
