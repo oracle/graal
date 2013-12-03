@@ -101,14 +101,6 @@ public interface CompilerToVM {
     void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
 
     /**
-     * Initializes a {@link HotSpotMethodData} object from a metaspace MethodData object.
-     * 
-     * @param metaspaceMethodData the metaspace MethodData object
-     * @param methodData the object to initialize from the metaspace object
-     */
-    void initializeMethodData(long metaspaceMethodData, HotSpotMethodData methodData);
-
-    /**
      * Converts a name to a Java type.
      * 
      * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format

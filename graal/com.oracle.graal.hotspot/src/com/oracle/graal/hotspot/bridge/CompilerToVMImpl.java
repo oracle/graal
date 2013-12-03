@@ -106,9 +106,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
 
     @Override
-    public native void initializeMethodData(long metaspaceMethodData, HotSpotMethodData methodData);
-
-    @Override
     public native ResolvedJavaType getResolvedType(Class<?> javaClass);
 
     @Override

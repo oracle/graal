@@ -959,6 +959,11 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "Method::_method_data", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOffset;
     @HotSpotVMField(name = "Method::_from_compiled_entry", get = HotSpotVMField.Type.OFFSET) @Stable public int methodCompiledEntryOffset;
 
+    @HotSpotVMField(name = "MethodData::_size", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataSize;
+    @HotSpotVMField(name = "MethodData::_data_size", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataDataSize;
+    @HotSpotVMField(name = "MethodData::_data[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
+    @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
+
     @HotSpotVMField(name = "nmethod::_verified_entry_point", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodEntryOffset;
 
     @HotSpotVMType(name = "BasicLock", get = HotSpotVMType.Type.SIZE) @Stable public int basicLockSize;
@@ -1033,9 +1038,6 @@ public class HotSpotVMConfig extends CompilerObject {
     public int layoutHelperElementTypePrimitiveInPlace() {
         return (layoutHelperArrayTagTypeValue & ~layoutHelperArrayTagObjectValue) << layoutHelperArrayTagShift;
     }
-
-    @HotSpotVMField(name = "MethodData::_data[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
-    @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
 
     /**
      * The DataLayout header size is the same as the cell size.
