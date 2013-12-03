@@ -1218,13 +1218,13 @@ public class GraphBuilderPhase extends Phase {
             frameState.pushReturn(resultType, append(invoke));
             return invoke;
         } else {
+            assert bci() == currentBlock.endBci;
+            frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+
             DispatchBeginNode exceptionEdge = handleException(null, bci());
             InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
             frameState.pushReturn(resultType, invoke);
             Block nextBlock = currentBlock.successors.get(0);
-
-            assert bci() == currentBlock.endBci;
-            frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
 
             invoke.setNext(createTarget(nextBlock, frameState));
             invoke.setStateAfter(frameState.create(nextBlock.startBci));
