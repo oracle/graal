@@ -27,7 +27,6 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
@@ -106,29 +105,6 @@ public class TargetMethodAssembler {
                 int codeOffset = ei.codeOffset;
                 compilationResult.recordExceptionHandler(codeOffset, ei.exceptionEdge.label().position());
             }
-        }
-
-        if (Debug.isMeterEnabled()) {
-            List<DataPatch> ldp = compilationResult.getDataReferences();
-            DebugMetric[] dms = new DebugMetric[Kind.values().length];
-            for (int i = 0; i < dms.length; i++) {
-                dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
-            }
-            DebugMetric dmRaw = Debug.metric("DataPatches-raw");
-
-            for (DataPatch dp : ldp) {
-                if (dp.constant != null) {
-                    dms[dp.constant.getKind().ordinal()].add(1);
-                } else {
-                    dmRaw.add(1);
-                }
-            }
-
-            Debug.metric("CompilationResults").increment();
-            Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
-            Debug.metric("InfopointsEmitted").add(compilationResult.getInfopoints().size());
-            Debug.metric("DataPatches").add(ldp.size());
-            Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         }
     }
 

@@ -30,6 +30,7 @@ import java.util.*;
 
 import com.oracle.graal.alloc.*;
 import com.oracle.graal.api.code.*;
+import com.oracle.graal.api.code.CompilationResult.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.alloc.*;
 import com.oracle.graal.compiler.gen.*;
@@ -287,6 +288,29 @@ public class GraalCompiler {
             compilationResult.setAssumptions(assumptions);
         }
         compilationResult.setLeafGraphIds(leafGraphIds);
+
+        if (Debug.isMeterEnabled()) {
+            List<DataPatch> ldp = compilationResult.getDataReferences();
+            DebugMetric[] dms = new DebugMetric[Kind.values().length];
+            for (int i = 0; i < dms.length; i++) {
+                dms[i] = Debug.metric("DataPatches-" + Kind.values()[i].toString());
+            }
+            DebugMetric dmRaw = Debug.metric("DataPatches-raw");
+
+            for (DataPatch dp : ldp) {
+                if (dp.constant != null) {
+                    dms[dp.constant.getKind().ordinal()].add(1);
+                } else {
+                    dmRaw.add(1);
+                }
+            }
+
+            Debug.metric("CompilationResults").increment();
+            Debug.metric("CodeBytesEmitted").add(compilationResult.getTargetCodeSize());
+            Debug.metric("InfopointsEmitted").add(compilationResult.getInfopoints().size());
+            Debug.metric("DataPatches").add(ldp.size());
+            Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
+        }
 
         if (Debug.isLogEnabled()) {
             Debug.log("%s", backend.getProviders().getCodeCache().disassemble(compilationResult, null));
