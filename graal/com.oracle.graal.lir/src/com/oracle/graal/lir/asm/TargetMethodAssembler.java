@@ -27,13 +27,12 @@ import static com.oracle.graal.api.code.ValueUtil.*;
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.api.code.CompilationResult.*;
+import com.oracle.graal.api.code.CompilationResult.DataPatch;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.nodes.*;
 
 public class TargetMethodAssembler {
 
@@ -92,7 +91,12 @@ public class TargetMethodAssembler {
         compilationResult.addAnnotation(new CompilationResult.CodeComment(asm.codeBuffer.position(), s));
     }
 
-    public void finalize(StructuredGraph graph) {
+    /**
+     * Sets the {@linkplain CompilationResult#setTargetCode(byte[], int) code} and
+     * {@linkplain CompilationResult#recordExceptionHandler(int, int) exception handler} fields of
+     * the compilation result.
+     */
+    public void finish() {
         // Install code, data and frame size
         compilationResult.setTargetCode(asm.codeBuffer.close(false), asm.codeBuffer.position());
 
@@ -126,7 +130,6 @@ public class TargetMethodAssembler {
             Debug.metric("DataPatches").add(ldp.size());
             Debug.metric("ExceptionHandlersEmitted").add(compilationResult.getExceptionHandlers().size());
         }
-        Debug.log("Finished compiling %s", graph);
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {

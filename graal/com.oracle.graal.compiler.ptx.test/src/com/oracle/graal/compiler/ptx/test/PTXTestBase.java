@@ -29,11 +29,13 @@ import java.lang.reflect.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.CallingConvention.Type;
+import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
-import com.oracle.graal.compiler.ptx.*;
 import com.oracle.graal.compiler.target.*;
 import com.oracle.graal.compiler.test.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.ptx.*;
 import com.oracle.graal.java.*;
@@ -56,6 +58,12 @@ public abstract class PTXTestBase extends GraalCompilerTest {
     public PTXTestBase() {
         super(PTX.class);
     }
+
+    private static CompilerToGPU toGPU = HotSpotGraalRuntime.runtime().getCompilerToGPU();
+
+    private static boolean validDevice = toGPU.deviceInit();
+
+    private static final int totalProcessors = (validDevice ? toGPU.availableProcessors() : 0);
 
     protected CompilationResult compile(String test) {
         if (getBackend() instanceof PTXHotSpotBackend) {
@@ -80,8 +88,20 @@ public abstract class PTXTestBase extends GraalCompilerTest {
              * GPU fallback to CPU in cases of ECC failure on kernel invocation.
              */
             Suites suites = Suites.createDefaultSuites();
-            CompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE, new SpeculationLog(),
-                            suites, new ExternalCompilationResult());
+            ExternalCompilationResult result = GraalCompiler.compileGraph(graph, cc, graph.method(), getProviders(), ptxBackend, target, null, phasePlan, OptimisticOptimizations.NONE,
+                            new SpeculationLog(), suites, new ExternalCompilationResult());
+
+            ResolvedJavaMethod method = graph.method();
+
+            try {
+                if ((validDevice) && (result.getTargetCode() != null)) {
+                    long kernel = toGPU.generateKernel(result.getTargetCode(), method.getName());
+                    result.setEntryPoint(kernel);
+                }
+            } catch (Throwable th) {
+                th.printStackTrace();
+            }
+
             return result;
         } else {
             return null;
@@ -143,7 +163,7 @@ public abstract class PTXTestBase extends GraalCompilerTest {
                  * for now assert that the warp array block is no larger than the number of physical
                  * gpu cores.
                  */
-                assert dimensionX * dimensionY * dimensionZ < PTXTargetMethodAssembler.getAvailableProcessors();
+                assert dimensionX * dimensionY * dimensionZ < totalProcessors;
 
                 r = ((HotSpotNmethod) installedCode).executeParallel(dimensionX, dimensionY, dimensionZ, executeArgs);
             } else {
