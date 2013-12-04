@@ -34,6 +34,8 @@ public @interface HotSpotVMField {
 
     String name();
 
+    String type();
+
     Type get();
 
     boolean optional() default false;

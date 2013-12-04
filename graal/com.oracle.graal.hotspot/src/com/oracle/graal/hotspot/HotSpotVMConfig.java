@@ -73,6 +73,7 @@ public class HotSpotVMConfig extends CompilerObject {
             if (f.isAnnotationPresent(HotSpotVMField.class)) {
                 HotSpotVMField annotation = f.getAnnotation(HotSpotVMField.class);
                 String name = annotation.name();
+                String type = annotation.type();
                 VMFields.Field entry = vmFields.get(name);
                 if (entry == null) {
                     if (annotation.optional()) {
@@ -81,6 +82,14 @@ public class HotSpotVMConfig extends CompilerObject {
                         throw new IllegalArgumentException("field not found: " + name);
                     }
                 }
+
+                // Make sure the native type is still the type we expect.
+                if (!type.equals("")) {
+                    if (!type.equals(entry.getTypeString())) {
+                        throw new IllegalArgumentException("compiler expects type " + type + " but field " + name + " is of type " + entry.getTypeString());
+                    }
+                }
+
                 switch (annotation.get()) {
                     case OFFSET:
                         setField(f, entry.getOffset());
@@ -664,8 +673,8 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "UseCRC32Intrinsics") @Stable public boolean useCRC32Intrinsics;
     @HotSpotVMFlag(name = "UseG1GC") @Stable public boolean useG1GC;
 
-    @HotSpotVMField(name = "Universe::_collectedHeap", get = HotSpotVMField.Type.VALUE) @Stable private long universeCollectedHeap;
-    @HotSpotVMField(name = "CollectedHeap::_total_collections", get = HotSpotVMField.Type.OFFSET) @Stable private int collectedHeapTotalCollectionsOffset;
+    @HotSpotVMField(name = "Universe::_collectedHeap", type = "CollectedHeap*", get = HotSpotVMField.Type.VALUE) @Stable private long universeCollectedHeap;
+    @HotSpotVMField(name = "CollectedHeap::_total_collections", type = "unsigned int", get = HotSpotVMField.Type.OFFSET) @Stable private int collectedHeapTotalCollectionsOffset;
 
     public long gcTotalCollectionsAddress() {
         return universeCollectedHeap + collectedHeapTotalCollectionsOffset;
@@ -678,16 +687,16 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "UseCompressedOops") @Stable public boolean useCompressedOops;
     @HotSpotVMFlag(name = "UseCompressedClassPointers") @Stable public boolean useCompressedClassPointers;
 
-    @HotSpotVMField(name = "Universe::_narrow_oop._base", get = HotSpotVMField.Type.VALUE) @Stable public long narrowOopBase;
-    @HotSpotVMField(name = "Universe::_narrow_oop._shift", get = HotSpotVMField.Type.VALUE) @Stable public int narrowOopShift;
+    @HotSpotVMField(name = "Universe::_narrow_oop._base", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long narrowOopBase;
+    @HotSpotVMField(name = "Universe::_narrow_oop._shift", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int narrowOopShift;
     @HotSpotVMFlag(name = "ObjectAlignmentInBytes") @Stable public int objectAlignment;
 
     public int logMinObjAlignment() {
         return (int) (Math.log(objectAlignment) / Math.log(2));
     }
 
-    @HotSpotVMField(name = "Universe::_narrow_klass._base", get = HotSpotVMField.Type.VALUE) @Stable public long narrowKlassBase;
-    @HotSpotVMField(name = "Universe::_narrow_klass._shift", get = HotSpotVMField.Type.VALUE) @Stable public int narrowKlassShift;
+    @HotSpotVMField(name = "Universe::_narrow_klass._base", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long narrowKlassBase;
+    @HotSpotVMField(name = "Universe::_narrow_klass._shift", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int narrowKlassShift;
     @HotSpotVMConstant(name = "LogKlassAlignmentInBytes") @Stable public int logKlassAlignment;
 
     // CPU capabilities
@@ -697,18 +706,18 @@ public class HotSpotVMConfig extends CompilerObject {
     // offsets, ...
     @HotSpotVMFlag(name = "StackShadowPages") @Stable public int stackShadowPages;
 
-    @HotSpotVMField(name = "oopDesc::_mark", get = HotSpotVMField.Type.OFFSET) @Stable public int markOffset;
-    @HotSpotVMField(name = "oopDesc::_metadata._klass", get = HotSpotVMField.Type.OFFSET) @Stable public int hubOffset;
+    @HotSpotVMField(name = "oopDesc::_mark", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int markOffset;
+    @HotSpotVMField(name = "oopDesc::_metadata._klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int hubOffset;
 
-    @HotSpotVMField(name = "Klass::_prototype_header", get = HotSpotVMField.Type.OFFSET) @Stable public int prototypeMarkWordOffset;
-    @HotSpotVMField(name = "Klass::_subklass", get = HotSpotVMField.Type.OFFSET) @Stable public int subklassOffset;
-    @HotSpotVMField(name = "Klass::_next_sibling", get = HotSpotVMField.Type.OFFSET) @Stable public int nextSiblingOffset;
-    @HotSpotVMField(name = "Klass::_super_check_offset", get = HotSpotVMField.Type.OFFSET) @Stable public int superCheckOffsetOffset;
-    @HotSpotVMField(name = "Klass::_secondary_super_cache", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySuperCacheOffset;
-    @HotSpotVMField(name = "Klass::_secondary_supers", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySupersOffset;
+    @HotSpotVMField(name = "Klass::_prototype_header", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int prototypeMarkWordOffset;
+    @HotSpotVMField(name = "Klass::_subklass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int subklassOffset;
+    @HotSpotVMField(name = "Klass::_next_sibling", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int nextSiblingOffset;
+    @HotSpotVMField(name = "Klass::_super_check_offset", type = "juint", get = HotSpotVMField.Type.OFFSET) @Stable public int superCheckOffsetOffset;
+    @HotSpotVMField(name = "Klass::_secondary_super_cache", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySuperCacheOffset;
+    @HotSpotVMField(name = "Klass::_secondary_supers", type = "Array<Klass*>*", get = HotSpotVMField.Type.OFFSET) @Stable public int secondarySupersOffset;
 
     @HotSpotVMType(name = "vtableEntry", get = HotSpotVMType.Type.SIZE) @Stable public int vtableEntrySize;
-    @HotSpotVMField(name = "vtableEntry::_method", get = HotSpotVMField.Type.OFFSET) @Stable public int vtableEntryMethodOffset;
+    @HotSpotVMField(name = "vtableEntry::_method", type = "Method*", get = HotSpotVMField.Type.OFFSET) @Stable public int vtableEntryMethodOffset;
     @Stable public int instanceKlassVtableStartOffset;
 
     /**
@@ -716,26 +725,26 @@ public class HotSpotVMConfig extends CompilerObject {
      */
     @Stable public int arrayLengthOffset;
 
-    @HotSpotVMField(name = "Array<Klass*>::_length", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayLengthOffset;
-    @HotSpotVMField(name = "Array<Klass*>::_data", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
+    @HotSpotVMField(name = "Array<Klass*>::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayLengthOffset;
+    @HotSpotVMField(name = "Array<Klass*>::_data[0]", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int metaspaceArrayBaseOffset;
 
-    @HotSpotVMField(name = "InstanceKlass::_init_state", get = HotSpotVMField.Type.OFFSET) @Stable public int klassStateOffset;
+    @HotSpotVMField(name = "InstanceKlass::_init_state", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int klassStateOffset;
     @HotSpotVMConstant(name = "InstanceKlass::linked") @Stable public int klassStateLinked;
     @HotSpotVMConstant(name = "InstanceKlass::fully_initialized") @Stable public int klassStateFullyInitialized;
-    @HotSpotVMField(name = "InstanceKlass::_constants", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
+    @HotSpotVMField(name = "InstanceKlass::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int instanceKlassConstantsOffset;
 
-    @HotSpotVMField(name = "ObjArrayKlass::_element_klass", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayClassElementOffset;
+    @HotSpotVMField(name = "ObjArrayKlass::_element_klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayClassElementOffset;
 
-    @HotSpotVMField(name = "Thread::_tlab", get = HotSpotVMField.Type.OFFSET) @Stable public int threadTlabOffset;
+    @HotSpotVMField(name = "Thread::_tlab", type = "ThreadLocalAllocBuffer", get = HotSpotVMField.Type.OFFSET) @Stable public int threadTlabOffset;
 
-    @HotSpotVMField(name = "JavaThread::_anchor", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadAnchorOffset;
-    @HotSpotVMField(name = "JavaThread::_threadObj", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectOffset;
-    @HotSpotVMField(name = "JavaThread::_osthread", get = HotSpotVMField.Type.OFFSET) @Stable public int osThreadOffset;
-    @HotSpotVMField(name = "JavaThread::_dirty_card_queue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadDirtyCardQueueOffset;
-    @HotSpotVMField(name = "JavaThread::_is_method_handle_return", get = HotSpotVMField.Type.OFFSET) @Stable public int threadIsMethodHandleReturnOffset;
-    @HotSpotVMField(name = "JavaThread::_satb_mark_queue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadSatbMarkQueueOffset;
-    @HotSpotVMField(name = "JavaThread::_vm_result", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
-    @HotSpotVMField(name = "JavaThread::_graal_counters[0]", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
+    @HotSpotVMField(name = "JavaThread::_anchor", type = "JavaFrameAnchor", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadAnchorOffset;
+    @HotSpotVMField(name = "JavaThread::_threadObj", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectOffset;
+    @HotSpotVMField(name = "JavaThread::_osthread", type = "OSThread*", get = HotSpotVMField.Type.OFFSET) @Stable public int osThreadOffset;
+    @HotSpotVMField(name = "JavaThread::_dirty_card_queue", type = "DirtyCardQueue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadDirtyCardQueueOffset;
+    @HotSpotVMField(name = "JavaThread::_is_method_handle_return", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int threadIsMethodHandleReturnOffset;
+    @HotSpotVMField(name = "JavaThread::_satb_mark_queue", type = "ObjPtrQueue", get = HotSpotVMField.Type.OFFSET) @Stable public int javaThreadSatbMarkQueueOffset;
+    @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
+    @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
     @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE", optional = true) @Stable public int graalCountersSize;
 
@@ -745,13 +754,13 @@ public class HotSpotVMConfig extends CompilerObject {
      * <p>
      * <b>NOTE: This is not the same as {@link #pendingExceptionOffset}.</b>
      */
-    @HotSpotVMField(name = "JavaThread::_exception_oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadExceptionOopOffset;
-    @HotSpotVMField(name = "JavaThread::_exception_pc", get = HotSpotVMField.Type.OFFSET) @Stable public int threadExceptionPcOffset;
+    @HotSpotVMField(name = "JavaThread::_exception_oop", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadExceptionOopOffset;
+    @HotSpotVMField(name = "JavaThread::_exception_pc", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int threadExceptionPcOffset;
 
-    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_sp", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaSpOffset;
-    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_pc", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaPcOffset;
-    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_fp", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorLastJavaFpOffset;
-    @HotSpotVMField(name = "JavaFrameAnchor::_flags", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorFlagsOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_sp", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaSpOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_pc", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaPcOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_fp", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorLastJavaFpOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_flags", type = "int", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorFlagsOffset;
 
     public int threadLastJavaSpOffset() {
         return javaThreadAnchorOffset + javaFrameAnchorLastJavaSpOffset;
@@ -777,11 +786,11 @@ public class HotSpotVMConfig extends CompilerObject {
         return javaThreadAnchorOffset + javaFrameAnchorFlagsOffset;
     }
 
-    @HotSpotVMField(name = "PtrQueue::_active", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueActiveOffset;
-    @HotSpotVMField(name = "PtrQueue::_buf", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueBufferOffset;
-    @HotSpotVMField(name = "PtrQueue::_index", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueIndexOffset;
+    @HotSpotVMField(name = "PtrQueue::_active", type = "bool", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueActiveOffset;
+    @HotSpotVMField(name = "PtrQueue::_buf", type = "void**", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueBufferOffset;
+    @HotSpotVMField(name = "PtrQueue::_index", type = "size_t", get = HotSpotVMField.Type.OFFSET) @Stable public int ptrQueueIndexOffset;
 
-    @HotSpotVMField(name = "OSThread::_interrupted", get = HotSpotVMField.Type.OFFSET) @Stable public int osThreadInterruptedOffset;
+    @HotSpotVMField(name = "OSThread::_interrupted", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int osThreadInterruptedOffset;
 
     @HotSpotVMConstant(name = "markOopDesc::unlocked_value") @Stable public int unlockedMask;
     @HotSpotVMConstant(name = "markOopDesc::biased_lock_mask_in_place") @Stable public int biasedLockMaskInPlace;
@@ -818,8 +827,8 @@ public class HotSpotVMConfig extends CompilerObject {
      * <p>
      * <b>NOTE: This is not the same as {@link #threadExceptionOopOffset}.</b>
      */
-    @HotSpotVMField(name = "ThreadShadow::_pending_exception", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingExceptionOffset;
-    @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
+    @HotSpotVMField(name = "ThreadShadow::_pending_exception", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingExceptionOffset;
+    @HotSpotVMField(name = "ThreadShadow::_pending_deoptimization", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int pendingDeoptimizationOffset;
 
     /**
      * Mark word right shift to get identity hash code.
@@ -836,22 +845,22 @@ public class HotSpotVMConfig extends CompilerObject {
      */
     @HotSpotVMConstant(name = "JVM_ACC_QUEUED") @Stable public int methodQueuedForCompilationBit;
 
-    @HotSpotVMField(name = "Method::_access_flags", get = HotSpotVMField.Type.OFFSET) @Stable public int methodAccessFlagsOffset;
-    @HotSpotVMField(name = "Method::_constMethod", get = HotSpotVMField.Type.OFFSET) @Stable public int methodConstMethodOffset;
-    @HotSpotVMField(name = "Method::_intrinsic_id", get = HotSpotVMField.Type.OFFSET) @Stable public int methodIntrinsicIdOffset;
-    @HotSpotVMField(name = "Method::_vtable_index", get = HotSpotVMField.Type.OFFSET) @Stable public int methodVtableIndexOffset;
+    @HotSpotVMField(name = "Method::_access_flags", type = "AccessFlags", get = HotSpotVMField.Type.OFFSET) @Stable public int methodAccessFlagsOffset;
+    @HotSpotVMField(name = "Method::_constMethod", type = "ConstMethod*", get = HotSpotVMField.Type.OFFSET) @Stable public int methodConstMethodOffset;
+    @HotSpotVMField(name = "Method::_intrinsic_id", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int methodIntrinsicIdOffset;
+    @HotSpotVMField(name = "Method::_vtable_index", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodVtableIndexOffset;
 
     /**
      * Value of Method::extra_stack_entries().
      */
     @Stable public int extraStackEntries;
 
-    @HotSpotVMField(name = "ConstMethod::_max_stack", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodMaxStackOffset;
-    @HotSpotVMField(name = "ConstMethod::_max_locals", get = HotSpotVMField.Type.OFFSET) @Stable public int methodMaxLocalsOffset;
-    @HotSpotVMField(name = "ConstMethod::_constants", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodConstantsOffset;
+    @HotSpotVMField(name = "ConstMethod::_max_stack", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodMaxStackOffset;
+    @HotSpotVMField(name = "ConstMethod::_max_locals", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int methodMaxLocalsOffset;
+    @HotSpotVMField(name = "ConstMethod::_constants", type = "ConstantPool*", get = HotSpotVMField.Type.OFFSET) @Stable public int constMethodConstantsOffset;
 
-    @HotSpotVMField(name = "ConstantPool::_pool_holder", get = HotSpotVMField.Type.OFFSET) @Stable public int constantPoolHolderOffset;
-    @HotSpotVMField(name = "ConstantPool::_length", get = HotSpotVMField.Type.OFFSET) @Stable public int constantPoolLengthOffset;
+    @HotSpotVMField(name = "ConstantPool::_pool_holder", type = "InstanceKlass*", get = HotSpotVMField.Type.OFFSET) @Stable public int constantPoolHolderOffset;
+    @HotSpotVMField(name = "ConstantPool::_length", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int constantPoolLengthOffset;
 
     @HotSpotVMConstant(name = "JVM_ACC_HAS_FINALIZER") @Stable public int klassHasFinalizerFlag;
 
@@ -859,17 +868,17 @@ public class HotSpotVMConfig extends CompilerObject {
      * Bit pattern that represents a non-oop. Neither the high bits nor the low bits of this value
      * are allowed to look like (respectively) the high or low bits of a real oop.
      */
-    @HotSpotVMField(name = "Universe::_non_oop_bits", get = HotSpotVMField.Type.VALUE) @Stable public long nonOopBits;
+    @HotSpotVMField(name = "Universe::_non_oop_bits", type = "intptr_t", get = HotSpotVMField.Type.VALUE) @Stable public long nonOopBits;
 
-    @HotSpotVMField(name = "StubRoutines::_verify_oop_count", get = HotSpotVMField.Type.ADDRESS) @Stable public long verifyOopCounterAddress;
+    @HotSpotVMField(name = "StubRoutines::_verify_oop_count", type = "jint", get = HotSpotVMField.Type.ADDRESS) @Stable public long verifyOopCounterAddress;
     @Stable public long verifyOopMask;
     @Stable public long verifyOopBits;
 
-    @HotSpotVMField(name = "CollectedHeap::_barrier_set", get = HotSpotVMField.Type.OFFSET) @Stable public int collectedHeapBarrierSetOffset;
+    @HotSpotVMField(name = "CollectedHeap::_barrier_set", type = "BarrierSet*", get = HotSpotVMField.Type.OFFSET) @Stable public int collectedHeapBarrierSetOffset;
 
-    @HotSpotVMField(name = "HeapRegion::LogOfHRGrainBytes", get = HotSpotVMField.Type.VALUE) @Stable public int logOfHRGrainBytes;
+    @HotSpotVMField(name = "HeapRegion::LogOfHRGrainBytes", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int logOfHRGrainBytes;
 
-    @HotSpotVMField(name = "BarrierSet::_kind", get = HotSpotVMField.Type.OFFSET) @Stable public int barrierSetKindOffset;
+    @HotSpotVMField(name = "BarrierSet::_kind", type = "BarrierSet::Name", get = HotSpotVMField.Type.OFFSET) @Stable private int barrierSetKindOffset;
     @HotSpotVMConstant(name = "BarrierSet::CardTableModRef") @Stable public int barrierSetCardTableModRef;
     @HotSpotVMConstant(name = "BarrierSet::CardTableExtension") @Stable public int barrierSetCardTableExtension;
     @HotSpotVMConstant(name = "BarrierSet::G1SATBCT") @Stable public int barrierSetG1SATBCT;
@@ -877,7 +886,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMConstant(name = "BarrierSet::ModRef") @Stable public int barrierSetModRef;
     @HotSpotVMConstant(name = "BarrierSet::Other") @Stable public int barrierSetOther;
 
-    @HotSpotVMField(name = "CardTableModRefBS::byte_map_base", get = HotSpotVMField.Type.OFFSET) @Stable public int cardTableModRefBSByteMapBaseOffset;
+    @HotSpotVMField(name = "CardTableModRefBS::byte_map_base", type = "jbyte*", get = HotSpotVMField.Type.OFFSET) @Stable private int cardTableModRefBSByteMapBaseOffset;
     @HotSpotVMConstant(name = "CardTableModRefBS::card_shift") @Stable public int cardTableModRefBSCardShift;
 
     public long cardtableStartAddress() {
@@ -908,7 +917,7 @@ public class HotSpotVMConfig extends CompilerObject {
         throw GraalInternalError.shouldNotReachHere("kind: " + kind);
     }
 
-    @HotSpotVMField(name = "os::_polling_page", get = HotSpotVMField.Type.VALUE) @Stable public long safepointPollingAddress;
+    @HotSpotVMField(name = "os::_polling_page", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long safepointPollingAddress;
 
     // G1 Collector Related Values.
 
@@ -935,56 +944,56 @@ public class HotSpotVMConfig extends CompilerObject {
     /**
      * The offset of the _java_mirror field (of type {@link Class}) in a Klass.
      */
-    @HotSpotVMField(name = "Klass::_java_mirror", get = HotSpotVMField.Type.OFFSET) @Stable public int classMirrorOffset;
+    @HotSpotVMField(name = "Klass::_java_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int classMirrorOffset;
 
     @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", optional = true) @Stable public int runtimeCallStackSize;
 
-    @HotSpotVMField(name = "Klass::_super", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSuperKlassOffset;
-    @HotSpotVMField(name = "Klass::_modifier_flags", get = HotSpotVMField.Type.OFFSET) @Stable public int klassModifierFlagsOffset;
-    @HotSpotVMField(name = "Klass::_access_flags", get = HotSpotVMField.Type.OFFSET) @Stable public int klassAccessFlagsOffset;
-    @HotSpotVMField(name = "Klass::_layout_helper", get = HotSpotVMField.Type.OFFSET) @Stable public int klassLayoutHelperOffset;
-    @HotSpotVMField(name = "Klass::_layout_helper", get = HotSpotVMField.Type.OFFSET) @Stable public int klassInstanceSizeOffset;
+    @HotSpotVMField(name = "Klass::_super", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSuperKlassOffset;
+    @HotSpotVMField(name = "Klass::_modifier_flags", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassModifierFlagsOffset;
+    @HotSpotVMField(name = "Klass::_access_flags", type = "AccessFlags", get = HotSpotVMField.Type.OFFSET) @Stable public int klassAccessFlagsOffset;
+    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassLayoutHelperOffset;
+    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassInstanceSizeOffset;
 
     /**
      * Bit pattern in the klass layout helper that can be used to identify arrays.
      */
     public final int arrayKlassLayoutHelperIdentifier = 0x80000000;
 
-    @HotSpotVMField(name = "ArrayKlass::_component_mirror", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayKlassComponentMirrorOffset;
+    @HotSpotVMField(name = "ArrayKlass::_component_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int arrayKlassComponentMirrorOffset;
 
-    @HotSpotVMField(name = "java_lang_Class::_klass_offset", get = HotSpotVMField.Type.VALUE) @Stable public int klassOffset;
-    @HotSpotVMField(name = "java_lang_Class::_array_klass_offset", get = HotSpotVMField.Type.VALUE) @Stable public int arrayKlassOffset;
-    @HotSpotVMField(name = "java_lang_Class::_graal_mirror_offset", get = HotSpotVMField.Type.VALUE) @Stable public int graalMirrorInClassOffset;
+    @HotSpotVMField(name = "java_lang_Class::_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int klassOffset;
+    @HotSpotVMField(name = "java_lang_Class::_array_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int arrayKlassOffset;
+    @HotSpotVMField(name = "java_lang_Class::_graal_mirror_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int graalMirrorInClassOffset;
 
-    @HotSpotVMField(name = "Method::_method_data", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOffset;
-    @HotSpotVMField(name = "Method::_from_compiled_entry", get = HotSpotVMField.Type.OFFSET) @Stable public int methodCompiledEntryOffset;
+    @HotSpotVMField(name = "Method::_method_data", type = "MethodData*", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOffset;
+    @HotSpotVMField(name = "Method::_from_compiled_entry", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int methodCompiledEntryOffset;
 
-    @HotSpotVMField(name = "MethodData::_size", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataSize;
-    @HotSpotVMField(name = "MethodData::_data_size", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataDataSize;
-    @HotSpotVMField(name = "MethodData::_data[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
-    @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
+    @HotSpotVMField(name = "MethodData::_size", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataSize;
+    @HotSpotVMField(name = "MethodData::_data_size", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataDataSize;
+    @HotSpotVMField(name = "MethodData::_data[0]", type = "intptr_t", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopDataOffset;
+    @HotSpotVMField(name = "MethodData::_trap_hist._array[0]", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOopTrapHistoryOffset;
 
-    @HotSpotVMField(name = "nmethod::_verified_entry_point", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodEntryOffset;
+    @HotSpotVMField(name = "nmethod::_verified_entry_point", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int nmethodEntryOffset;
 
     @HotSpotVMType(name = "BasicLock", get = HotSpotVMType.Type.SIZE) @Stable public int basicLockSize;
-    @HotSpotVMField(name = "BasicLock::_displaced_header", get = HotSpotVMField.Type.OFFSET) @Stable public int basicLockDisplacedHeaderOffset;
+    @HotSpotVMField(name = "BasicLock::_displaced_header", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int basicLockDisplacedHeaderOffset;
 
     @Stable public long heapEndAddress;
     @Stable public long heapTopAddress;
 
-    @HotSpotVMField(name = "Thread::_allocated_bytes", get = HotSpotVMField.Type.OFFSET) @Stable public int threadAllocatedBytesOffset;
+    @HotSpotVMField(name = "Thread::_allocated_bytes", type = "jlong", get = HotSpotVMField.Type.OFFSET) @Stable public int threadAllocatedBytesOffset;
 
     @HotSpotVMFlag(name = "TLABWasteIncrement") @Stable public int tlabRefillWasteIncrement;
     @Stable public int tlabAlignmentReserve;
 
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_start", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferStartOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_end", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferEndOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_top", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferTopOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_slow_allocations", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferSlowAllocationsOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_fast_refill_waste", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferFastRefillWasteOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_number_of_refills", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferNumberOfRefillsOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_refill_waste_limit", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferRefillWasteLimitOffset;
-    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_desired_size", get = HotSpotVMField.Type.OFFSET) @Stable public int threadLocalAllocBufferDesiredSizeOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_start", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferStartOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_end", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferEndOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_top", type = "HeapWord*", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferTopOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_slow_allocations", type = "unsigned", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferSlowAllocationsOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_fast_refill_waste", type = "unsigned", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferFastRefillWasteOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_number_of_refills", type = "unsigned", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferNumberOfRefillsOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_refill_waste_limit", type = "size_t", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferRefillWasteLimitOffset;
+    @HotSpotVMField(name = "ThreadLocalAllocBuffer::_desired_size", type = "size_t", get = HotSpotVMField.Type.OFFSET) @Stable private int threadLocalAllocBufferDesiredSizeOffset;
 
     public int tlabSlowAllocationsOffset() {
         return threadTlabOffset + threadLocalAllocBufferSlowAllocationsOffset;
@@ -1021,7 +1030,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "TLABStats") @Stable public boolean tlabStats;
     @Stable public boolean inlineContiguousAllocationSupported;
 
-    @HotSpotVMField(name = "Klass::_layout_helper", get = HotSpotVMField.Type.OFFSET) @Stable public int layoutHelperOffset;
+    @HotSpotVMField(name = "Klass::_layout_helper", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int layoutHelperOffset;
     @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_shift") @Stable public int layoutHelperLog2ElementSizeShift;
     @HotSpotVMConstant(name = "Klass::_lh_log2_element_size_mask") @Stable public int layoutHelperLog2ElementSizeMask;
     @HotSpotVMConstant(name = "Klass::_lh_element_type_shift") @Stable public int layoutHelperElementTypeShift;
@@ -1043,10 +1052,10 @@ public class HotSpotVMConfig extends CompilerObject {
      * The DataLayout header size is the same as the cell size.
      */
     @HotSpotVMConstant(name = "DataLayout::cell_size") @Stable public int dataLayoutHeaderSize;
-    @HotSpotVMField(name = "DataLayout::_header._struct._tag", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutTagOffset;
-    @HotSpotVMField(name = "DataLayout::_header._struct._flags", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutFlagsOffset;
-    @HotSpotVMField(name = "DataLayout::_header._struct._bci", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutBCIOffset;
-    @HotSpotVMField(name = "DataLayout::_cells[0]", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutCellsOffset;
+    @HotSpotVMField(name = "DataLayout::_header._struct._tag", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutTagOffset;
+    @HotSpotVMField(name = "DataLayout::_header._struct._flags", type = "u1", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutFlagsOffset;
+    @HotSpotVMField(name = "DataLayout::_header._struct._bci", type = "u2", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutBCIOffset;
+    @HotSpotVMField(name = "DataLayout::_cells[0]", type = "intptr_t", get = HotSpotVMField.Type.OFFSET) @Stable public int dataLayoutCellsOffset;
     @HotSpotVMConstant(name = "DataLayout::cell_size") @Stable public int dataLayoutCellSize;
 
     @HotSpotVMConstant(name = "DataLayout::no_tag") @Stable public int dataLayoutNoTag;
@@ -1067,17 +1076,17 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "TypeProfileWidth") @Stable public int typeProfileWidth;
     @HotSpotVMFlag(name = "MethodProfileWidth") @Stable public int methodProfileWidth;
 
-    @HotSpotVMField(name = "CodeBlob::_code_offset", get = HotSpotVMField.Type.OFFSET) @Stable private int codeBlobCodeOffsetOffset;
-    @HotSpotVMField(name = "SharedRuntime::_ic_miss_blob", get = HotSpotVMField.Type.VALUE) @Stable private long inlineCacheMissBlob;
+    @HotSpotVMField(name = "CodeBlob::_code_offset", type = "int", get = HotSpotVMField.Type.OFFSET) @Stable private int codeBlobCodeOffsetOffset;
+    @HotSpotVMField(name = "SharedRuntime::_ic_miss_blob", type = "RuntimeStub*", get = HotSpotVMField.Type.VALUE) @Stable private long inlineCacheMissBlob;
 
     public long inlineCacheMissStub() {
         return inlineCacheMissBlob + unsafe.getInt(inlineCacheMissBlob + codeBlobCodeOffsetOffset);
     }
 
-    @HotSpotVMField(name = "CodeCache::_heap", get = HotSpotVMField.Type.VALUE) @Stable private long codeCacheHeap;
-    @HotSpotVMField(name = "CodeHeap::_memory", get = HotSpotVMField.Type.OFFSET) @Stable private int codeHeapMemoryOffset;
-    @HotSpotVMField(name = "VirtualSpace::_low_boundary", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceLowBoundaryOffset;
-    @HotSpotVMField(name = "VirtualSpace::_high_boundary", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceHighBoundaryOffset;
+    @HotSpotVMField(name = "CodeCache::_heap", type = "CodeHeap*", get = HotSpotVMField.Type.VALUE) @Stable private long codeCacheHeap;
+    @HotSpotVMField(name = "CodeHeap::_memory", type = "VirtualSpace", get = HotSpotVMField.Type.OFFSET) @Stable private int codeHeapMemoryOffset;
+    @HotSpotVMField(name = "VirtualSpace::_low_boundary", type = "char*", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceLowBoundaryOffset;
+    @HotSpotVMField(name = "VirtualSpace::_high_boundary", type = "char*", get = HotSpotVMField.Type.OFFSET) @Stable private int virtualSpaceHighBoundaryOffset;
 
     /**
      * @return CodeCache::_heap->_memory._low_boundary
@@ -1096,12 +1105,12 @@ public class HotSpotVMConfig extends CompilerObject {
     @Stable public long handleDeoptStub;
     @Stable public long uncommonTrapStub;
 
-    @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
-    @HotSpotVMField(name = "StubRoutines::_aescrypt_decryptBlock", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptDecryptBlockStub;
-    @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_encryptAESCrypt", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingEncryptAESCryptStub;
-    @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_decryptAESCrypt", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingDecryptAESCryptStub;
-    @HotSpotVMField(name = "StubRoutines::_updateBytesCRC32", get = HotSpotVMField.Type.VALUE) @Stable public long updateBytesCRC32Stub;
-    @HotSpotVMField(name = "StubRoutines::_crc_table_adr", get = HotSpotVMField.Type.VALUE) @Stable public long crcTableAddress;
+    @HotSpotVMField(name = "StubRoutines::_aescrypt_encryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptEncryptBlockStub;
+    @HotSpotVMField(name = "StubRoutines::_aescrypt_decryptBlock", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long aescryptDecryptBlockStub;
+    @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_encryptAESCrypt", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingEncryptAESCryptStub;
+    @HotSpotVMField(name = "StubRoutines::_cipherBlockChaining_decryptAESCrypt", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long cipherBlockChainingDecryptAESCryptStub;
+    @HotSpotVMField(name = "StubRoutines::_updateBytesCRC32", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long updateBytesCRC32Stub;
+    @HotSpotVMField(name = "StubRoutines::_crc_table_adr", type = "address", get = HotSpotVMField.Type.VALUE) @Stable public long crcTableAddress;
 
     @Stable public long newInstanceAddress;
     @Stable public long newArrayAddress;
