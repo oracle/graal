@@ -113,7 +113,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             ResolvedJavaMethod m = e.getValue();
             assertFalse(m.isClassInitializer());
         }
-        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertFalse(m.isClassInitializer());
         }
@@ -125,7 +125,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             ResolvedJavaMethod m = e.getValue();
             assertFalse(m.isConstructor());
         }
-        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertTrue(m.isConstructor());
         }
@@ -137,7 +137,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(e.getKey().isSynthetic(), m.isSynthetic());
         }
-        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(e.getKey().isSynthetic(), m.isSynthetic());
         }
@@ -149,7 +149,7 @@ public class TestResolvedJavaMethod extends MethodUniverse {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(m.canBeStaticallyBound(), canBeStaticallyBound(e.getKey().getModifiers()));
         }
-        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(m.canBeStaticallyBound(), canBeStaticallyBound(e.getKey().getModifiers()));
         }

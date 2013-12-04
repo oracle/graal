@@ -33,7 +33,7 @@ import com.oracle.graal.api.meta.*;
 public class MethodUniverse extends TypeUniverse {
 
     public final Map<Method, ResolvedJavaMethod> methods = new HashMap<>();
-    public final Map<Constructor, ResolvedJavaMethod> constructors = new HashMap<>();
+    public final Map<Constructor<?>, ResolvedJavaMethod> constructors = new HashMap<>();
 
     public MethodUniverse() {
         for (Class c : classes) {

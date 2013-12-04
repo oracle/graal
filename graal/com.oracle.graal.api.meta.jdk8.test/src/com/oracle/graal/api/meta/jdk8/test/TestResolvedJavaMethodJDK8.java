@@ -46,7 +46,7 @@ public class TestResolvedJavaMethodJDK8 extends MethodUniverse {
             ResolvedJavaMethod m = e.getValue();
             assertEquals(e.getKey().isDefault(), m.isDefault());
         }
-        for (Map.Entry<Constructor, ResolvedJavaMethod> e : constructors.entrySet()) {
+        for (Map.Entry<Constructor<?>, ResolvedJavaMethod> e : constructors.entrySet()) {
             ResolvedJavaMethod m = e.getValue();
             assertFalse(m.isDefault());
         }
