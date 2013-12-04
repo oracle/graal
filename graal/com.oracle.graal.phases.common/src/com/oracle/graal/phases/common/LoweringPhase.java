@@ -192,12 +192,22 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
      * 
      * @param node a node that was just lowered
      * @param preLoweringMark the graph mark before {@code node} was lowered
+     * @param unscheduledUsages set of {@code node}'s usages that were unscheduled before it was
+     *            lowered
      * @throws AssertionError if the check fails
      */
-    private static boolean checkPostNodeLowering(Node node, LoweringToolImpl loweringTool, Mark preLoweringMark) {
+    private static boolean checkPostNodeLowering(Node node, LoweringToolImpl loweringTool, Mark preLoweringMark, Collection<Node> unscheduledUsages) {
         StructuredGraph graph = (StructuredGraph) node.graph();
         Mark postLoweringMark = graph.getMark();
         NodeIterable<Node> newNodesAfterLowering = graph.getNewNodes(preLoweringMark);
+        if (node instanceof FloatingNode) {
+            if (!unscheduledUsages.isEmpty()) {
+                for (Node n : newNodesAfterLowering) {
+                    assert !(n instanceof FixedNode) : node.graph() + ": cannot lower floatable node " + node + " as it introduces fixed node(s) but has the following unscheduled usages: " +
+                                    unscheduledUsages;
+                }
+            }
+        }
         for (Node n : newNodesAfterLowering) {
             if (n instanceof Lowerable) {
                 ((Lowerable) n).lower(loweringTool);
@@ -280,13 +290,14 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 }
 
                 if (node instanceof Lowerable) {
-                    assert checkUsagesAreScheduled(node);
+                    Collection<Node> unscheduledUsages = null;
+                    assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
                     Mark preLoweringMark = node.graph().getMark();
                     ((Lowerable) node).lower(loweringTool);
                     if (node == startAnchor && node.isDeleted()) {
                         loweringTool.guardAnchor = BeginNode.prevBegin(nextNode);
                     }
-                    assert checkPostNodeLowering(node, loweringTool, preLoweringMark);
+                    assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
                 }
 
                 if (!nextNode.isAlive()) {
@@ -313,7 +324,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         /**
-         * Checks that all usages of a floating, lowerable node are scheduled.
+         * Gets all usages of a floating, lowerable node that are unscheduled.
          * <p>
          * Given that the lowering of such nodes may introduce fixed nodes, they must be lowered in
          * the context of a usage that dominates all other usages. The fixed nodes resulting from
@@ -322,16 +333,19 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
          * 
          * @param node a {@link Lowerable} node
          */
-        private boolean checkUsagesAreScheduled(Node node) {
+        private Collection<Node> getUnscheduledUsages(Node node) {
+            List<Node> unscheduledUsages = new ArrayList<>();
             if (node instanceof FloatingNode) {
                 for (Node usage : node.usages()) {
                     if (usage instanceof ScheduledNode) {
                         Block usageBlock = schedule.getCFG().blockFor(usage);
-                        assert usageBlock != null : node.graph() + ": cannot lower floatable node " + node + " that has non-scheduled usage " + usage;
+                        if (usageBlock == null) {
+                            unscheduledUsages.add(usage);
+                        }
                     }
                 }
             }
-            return true;
+            return unscheduledUsages;
         }
     }
 }
