@@ -478,6 +478,14 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
         return createCastType(typeSystem, sourceType, targetType, true, expression);
     }
 
+    public CodeTree createDeoptimize(CodeTreeBuilder parent) {
+        CodeTreeBuilder builder = new CodeTreeBuilder(parent);
+        builder.startStatement();
+        builder.startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end();
+        builder.end();
+        return builder.getRoot();
+    }
+
     private class NodeFactoryFactory extends ClassElementFactory<NodeData> {
 
         private final Map<NodeData, List<TypeElement>> childTypes;
@@ -2470,14 +2478,6 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             return builder.getRoot();
         }
 
-        protected CodeTree createDeoptimize(CodeTreeBuilder parent) {
-            CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            builder.startStatement();
-            builder.startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end();
-            builder.end();
-            return builder.getRoot();
-        }
-
         protected CodeTree createReturnExecuteAndSpecialize(CodeTreeBuilder parent, ExecutableTypeData executable, SpecializationData current, ActualParameter exceptionParam, String reason) {
             NodeData node = current.getNode();
             SpecializationData generic = node.getGenericSpecialization();
@@ -2786,7 +2786,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             NodeData node = specialization.getNode();
 
             CodeTreeBuilder builder = new CodeTreeBuilder(parent);
-            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+            builder.tree(createDeoptimize(builder));
 
             builder.declaration(getContext().getTruffleTypes().getNode(), "root", "this");
             builder.declaration(getContext().getType(int.class), "depth", "0");

@@ -221,7 +221,7 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             }
 
             builder.startElseBlock();
-            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
             builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class)).doubleQuote("Illegal type ").end().end();
             builder.end();
             return method;
@@ -248,7 +248,7 @@ public class TypeSystemCodeGenerator extends CompilationUnitFactory<TypeSystemDa
             }
 
             builder.startElseBlock();
-            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreter").end().end();
+            builder.startStatement().startStaticCall(getContext().getTruffleTypes().getCompilerDirectives(), "transferToInterpreterAndInvalidate").end().end();
             builder.startThrow().startNew(getContext().getType(IllegalArgumentException.class)).doubleQuote("Illegal type ").end().end();
             builder.end();
 
