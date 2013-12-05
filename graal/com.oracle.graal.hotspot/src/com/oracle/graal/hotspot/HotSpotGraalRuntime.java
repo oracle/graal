@@ -235,7 +235,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
             registerBackend(factory.createBackend(this, hostBackend));
         }
 
-        GraalOptions.StackShadowPages.setValue(config.stackShadowPages);
         if (GraalOptions.CacheGraphs.getValue()) {
             cache = new HotSpotGraphCache(compilerToVm);
         }

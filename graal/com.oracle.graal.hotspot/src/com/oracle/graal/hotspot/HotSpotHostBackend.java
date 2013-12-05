@@ -37,8 +37,14 @@ import com.oracle.graal.nodes.spi.*;
  */
 public abstract class HotSpotHostBackend extends HotSpotBackend {
 
+    /**
+     * This will be 0 if stack banging is disabled.
+     */
+    protected final int stackShadowPages;
+
     public HotSpotHostBackend(HotSpotGraalRuntime runtime, HotSpotProviders providers) {
         super(runtime, providers);
+        this.stackShadowPages = runtime.getConfig().useStackBanging ? runtime.getConfig().stackShadowPages : 0;
     }
 
     @Override

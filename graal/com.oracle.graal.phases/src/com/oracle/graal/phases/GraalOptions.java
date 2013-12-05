@@ -244,9 +244,6 @@ public final class GraalOptions {
 
     // Runtime settings
     @Option(help = "")
-    public static final OptionValue<Integer> StackShadowPages = new OptionValue<>(2);
-
-    @Option(help = "")
     public static final OptionValue<Boolean> SupportJsrBytecodes = new OptionValue<>(true);
 
     @Option(help = "")

@@ -180,10 +180,14 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     private void emitArith(int op1, int op2, Register dst, int imm32) {
+        emitArith(op1, op2, dst, imm32, false);
+    }
+
+    private void emitArith(int op1, int op2, Register dst, int imm32, boolean force32Imm) {
         assert isUByte(op1) && isUByte(op2) : "wrong opcode";
         assert (op1 & 0x01) == 1 : "should be 32bit operation";
         assert (op1 & 0x02) == 0 : "sign-extension bit should not be set";
-        if (isByte(imm32)) {
+        if (isByte(imm32) && !force32Imm) {
             emitByte(op1 | 0x02); // set sign bit
             emitByte(op2 | encode(dst));
             emitByte(imm32 & 0xFF);
@@ -2272,8 +2276,12 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void subq(Register dst, int imm32) {
+        subq(dst, imm32, false);
+    }
+
+    public final void subq(Register dst, int imm32, boolean force32Imm) {
         prefixqAndEncode(dst.encoding);
-        emitArith(0x81, 0xE8, dst, imm32);
+        emitArith(0x81, 0xE8, dst, imm32, force32Imm);
     }
 
     public final void subq(Register dst, AMD64Address src) {

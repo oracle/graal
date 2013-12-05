@@ -705,6 +705,7 @@ public class HotSpotVMConfig extends CompilerObject {
 
     // offsets, ...
     @HotSpotVMFlag(name = "StackShadowPages") @Stable public int stackShadowPages;
+    @HotSpotVMFlag(name = "UseStackBanging") @Stable public boolean useStackBanging;
 
     @HotSpotVMField(name = "oopDesc::_mark", type = "markOop", get = HotSpotVMField.Type.OFFSET) @Stable public int markOffset;
     @HotSpotVMField(name = "oopDesc::_metadata._klass", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int hubOffset;
@@ -1184,8 +1185,6 @@ public class HotSpotVMConfig extends CompilerObject {
         }
 
         assert codeEntryAlignment > 0 : codeEntryAlignment;
-        assert stackShadowPages > 0 : stackShadowPages;
-
         assert (layoutHelperArrayTagObjectValue & layoutHelperArrayTagTypeValue & arrayKlassLayoutHelperIdentifier) != 0 : "object array and type array must have first bit set";
 
         return true;

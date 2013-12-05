@@ -83,8 +83,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
      * @param isVerifiedEntryPoint specifies if the code buffer is currently at the verified entry
      *            point
      */
-    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, boolean afterFrameInit, boolean isVerifiedEntryPoint) {
-        if (StackShadowPages.getValue() > 0) {
+    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, int stackShadowPages, boolean afterFrameInit, boolean isVerifiedEntryPoint) {
+        if (stackShadowPages > 0) {
 
             AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
             int frameSize = crb.frameMap.frameSize();
@@ -92,7 +92,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + StackShadowPages.getValue()) * unsafe.pageSize();
+                    int disp = (i + stackShadowPages) * unsafe.pageSize();
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
@@ -141,12 +141,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend {
                 }
             } else {
                 int verifiedEntryPointOffset = asm.codeBuffer.position();
-                if (!isStub) {
-                    emitStackOverflowCheck(crb, false, true);
+                if (!isStub && stackShadowPages > 0) {
+                    emitStackOverflowCheck(crb, stackShadowPages, false, true);
                     assert asm.codeBuffer.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
                 if (!isStub && asm.codeBuffer.position() == verifiedEntryPointOffset) {
-                    asm.subq(rsp, frameSize);
+                    asm.subq(rsp, frameSize, true);
                     assert asm.codeBuffer.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 } else {
                     asm.decrementq(rsp, frameSize);

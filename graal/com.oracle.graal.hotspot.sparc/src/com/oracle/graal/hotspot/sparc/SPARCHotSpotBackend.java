@@ -81,15 +81,15 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
      * @param afterFrameInit specifies if the stack pointer has already been adjusted to allocate
      *            the current frame
      */
-    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, boolean afterFrameInit) {
-        if (StackShadowPages.getValue() > 0) {
+    protected static void emitStackOverflowCheck(CompilationResultBuilder crb, int stackShadowPages, boolean afterFrameInit) {
+        if (stackShadowPages > 0) {
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
             final int frameSize = crb.frameMap.totalFrameSize();
             if (frameSize > 0) {
                 int lastFramePage = frameSize / unsafe.pageSize();
                 // emit multiple stack bangs for methods with frames larger than a page
                 for (int i = 0; i <= lastFramePage; i++) {
-                    int disp = (i + StackShadowPages.getValue()) * unsafe.pageSize();
+                    int disp = (i + stackShadowPages) * unsafe.pageSize();
                     if (afterFrameInit) {
                         disp -= frameSize;
                     }
@@ -124,8 +124,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend {
             final int frameSize = crb.frameMap.totalFrameSize();
 
             SPARCMacroAssembler masm = (SPARCMacroAssembler) crb.asm;
-            if (!isStub) {
-                emitStackOverflowCheck(crb, false);
+            if (!isStub && stackShadowPages > 0) {
+                emitStackOverflowCheck(crb, stackShadowPages, false);
             }
             new Save(sp, -frameSize, sp).emit(masm);
 
