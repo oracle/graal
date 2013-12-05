@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot.sparc;
 
 import com.oracle.graal.api.code.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.meta.*;
 
@@ -35,7 +34,6 @@ public class SPARCHotSpotCodeCacheProvider extends HotSpotCodeCacheProvider {
 
     @Override
     protected RegisterConfig createRegisterConfig() {
-        throw GraalInternalError.unimplemented();
+        return new SPARCHotSpotRegisterConfig(getTarget().arch, runtime.getConfig());
     }
-
 }

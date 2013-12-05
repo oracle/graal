@@ -255,8 +255,10 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         String arch = System.getProperty("os.arch");
         switch (arch) {
             case "x86_64":
-                // This is what Mac OS X reports;
                 arch = "amd64";
+                break;
+            case "sparcv9":
+                arch = "sparc";
                 break;
         }
         return arch;
