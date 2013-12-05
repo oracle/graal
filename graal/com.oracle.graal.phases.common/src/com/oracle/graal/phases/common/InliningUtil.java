@@ -1297,6 +1297,7 @@ public class InliningUtil {
     public static Map<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck) {
         final NodeInputList<ValueNode> parameters = invoke.callTarget().arguments();
         StructuredGraph graph = invoke.asNode().graph();
+        assert inlineGraph.getGuardsStage().ordinal() >= graph.getGuardsStage().ordinal();
 
         FrameState stateAfter = invoke.stateAfter();
         assert stateAfter == null || stateAfter.isAlive();
