@@ -30,13 +30,17 @@ import com.oracle.graal.hotspot.*;
 public abstract class HotSpotMethod extends CompilerObject implements JavaMethod {
 
     private static final long serialVersionUID = 7167491397941960839L;
-    protected String name;
+    protected final String name;
 
     /**
      * Controls whether {@link #toString()} includes the qualified or simple name of the class in
      * which the method is declared.
      */
     public static final boolean FULLY_QUALIFIED_METHOD_NAME = false;
+
+    protected HotSpotMethod(String name) {
+        this.name = name;
+    }
 
     @Override
     public final String getName() {

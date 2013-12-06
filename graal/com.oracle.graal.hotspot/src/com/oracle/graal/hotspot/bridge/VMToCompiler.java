@@ -76,13 +76,5 @@ public interface VMToCompiler {
      */
     ResolvedJavaType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies);
 
-    Constant createConstant(Kind kind, long value);
-
-    Constant createConstantFloat(float value);
-
-    Constant createConstantDouble(double value);
-
-    Constant createConstantObject(Object object);
-
     LocalImpl createLocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot);
 }

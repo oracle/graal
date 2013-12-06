@@ -85,6 +85,14 @@ public interface ConstantPool {
     JavaType lookupType(int cpi, int opcode);
 
     /**
+     * Looks up an Utf8 string.
+     * 
+     * @param cpi the constant pool index
+     * @return the Utf8 string at index {@code cpi} in this constant pool
+     */
+    String lookupUtf8(int cpi);
+
+    /**
      * Looks up a method signature.
      * 
      * @param cpi the constant pool index

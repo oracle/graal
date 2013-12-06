@@ -52,13 +52,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     final long metaspaceMethod;
 
     private final HotSpotResolvedObjectType holder;
-    private/* final */int codeSize;
+    private final HotSpotSignature signature;
+    private final int codeSize;
     private/* final */int exceptionHandlerCount;
     private boolean callerSensitive;
     private boolean forceInline;
     private boolean dontInline;
     private boolean ignoredBySecurityStackWalk;
-    private HotSpotSignature signature;
     private Boolean hasBalancedMonitors;
     private Map<Object, Object> compilerStorage;
     private HotSpotMethodData methodData;
@@ -96,9 +96,40 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
+        super(createName(holder, metaspaceMethod));
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;
+
+        HotSpotVMConfig config = runtime().getConfig();
+        ConstantPool constantPool = holder.constantPool();
+        final long constMethod = getConstMethod();
+        final int signatureIndex = unsafe.getChar(constMethod + config.constMethodSignatureIndexOffset);
+        this.signature = (HotSpotSignature) constantPool.lookupSignature(signatureIndex);
+        this.codeSize = unsafe.getChar(constMethod + config.constMethodCodeSizeOffset);
+
         runtime().getCompilerToVM().initializeMethod(metaspaceMethod, this);
+    }
+
+    /**
+     * Helper method to construct the method's name and pass it to the super constructor.
+     */
+    private static String createName(HotSpotResolvedObjectType holder, long metaspaceMethod) {
+        HotSpotVMConfig config = runtime().getConfig();
+        ConstantPool constantPool = holder.constantPool();
+        final long constMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
+        final int nameIndex = unsafe.getChar(constMethod + config.constMethodNameIndexOffset);
+        return constantPool.lookupUtf8(nameIndex);
+    }
+
+    /**
+     * Returns a pointer to this method's constant method data structure (
+     * {@code Method::_constMethod}).
+     * 
+     * @return pointer to this method's ConstMethod
+     */
+    private long getConstMethod() {
+        HotSpotVMConfig config = runtime().getConfig();
+        return unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
     }
 
     @Override
@@ -232,8 +263,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
-        long metaspaceConstMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
-        return unsafe.getShort(metaspaceConstMethod + config.methodMaxLocalsOffset) & 0xFFFF;
+        return unsafe.getChar(getConstMethod() + config.methodMaxLocalsOffset);
     }
 
     @Override
@@ -243,8 +273,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
             return 0;
         }
         HotSpotVMConfig config = runtime().getConfig();
-        long metaspaceConstMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
-        return config.extraStackEntries + (unsafe.getShort(metaspaceConstMethod + config.constMethodMaxStackOffset) & 0xFFFF);
+        return config.extraStackEntries + unsafe.getChar(getConstMethod() + config.constMethodMaxStackOffset);
     }
 
     @Override
@@ -269,9 +298,6 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public HotSpotSignature getSignature() {
-        if (signature == null) {
-            signature = new HotSpotSignature(runtime().getCompilerToVM().getSignature(metaspaceMethod));
-        }
         return signature;
     }
 

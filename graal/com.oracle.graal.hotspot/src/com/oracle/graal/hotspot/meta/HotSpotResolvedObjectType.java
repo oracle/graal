@@ -463,7 +463,12 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public String getSourceFileName() {
-        return runtime().getCompilerToVM().getFileName(this);
+        HotSpotVMConfig config = runtime().getConfig();
+        final int sourceFileNameIndex = unsafe.getChar(metaspaceKlass + config.klassSourceFileNameIndexOffset);
+        if (sourceFileNameIndex == 0) {
+            return null;
+        }
+        return constantPool().lookupUtf8(sourceFileNameIndex);
     }
 
     @Override

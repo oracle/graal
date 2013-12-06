@@ -675,40 +675,6 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public Constant createConstant(Kind kind, long value) {
-        if (kind == Kind.Long) {
-            return Constant.forLong(value);
-        } else if (kind == Kind.Int) {
-            return Constant.forInt((int) value);
-        } else if (kind == Kind.Short) {
-            return Constant.forShort((short) value);
-        } else if (kind == Kind.Char) {
-            return Constant.forChar((char) value);
-        } else if (kind == Kind.Byte) {
-            return Constant.forByte((byte) value);
-        } else if (kind == Kind.Boolean) {
-            return (value == 0) ? Constant.FALSE : Constant.TRUE;
-        } else {
-            throw new IllegalArgumentException();
-        }
-    }
-
-    @Override
-    public Constant createConstantFloat(float value) {
-        return Constant.forFloat(value);
-    }
-
-    @Override
-    public Constant createConstantDouble(double value) {
-        return Constant.forDouble(value);
-    }
-
-    @Override
-    public Constant createConstantObject(Object object) {
-        return Constant.forObject(object);
-    }
-
-    @Override
     public LocalImpl createLocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot) {
         return new LocalImpl(name, type, holder, bciStart, bciEnd, slot);
     }

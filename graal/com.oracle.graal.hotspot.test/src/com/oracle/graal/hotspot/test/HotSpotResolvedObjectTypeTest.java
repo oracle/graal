@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.hotspot.meta;
+package com.oracle.graal.hotspot.test;
 
-import com.oracle.graal.api.meta.*;
+import org.junit.*;
 
-public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
+import com.oracle.graal.compiler.test.*;
+import com.oracle.graal.hotspot.meta.*;
 
-    private static final long serialVersionUID = -6410840212023428347L;
+/**
+ * Tests {@link HotSpotResolvedObjectType} functionality.
+ */
+public class HotSpotResolvedObjectTypeTest extends GraalCompilerTest {
 
-    public HotSpotResolvedJavaType(String name) {
-        super(name);
+    @Test
+    public void testGetSourceFileName() throws Throwable {
+        Assert.assertEquals("Object.java", HotSpotResolvedObjectType.fromClass(Object.class).getSourceFileName());
+        Assert.assertEquals("HotSpotResolvedObjectTypeTest.java", HotSpotResolvedObjectType.fromClass(this.getClass()).getSourceFileName());
     }
-
-    public abstract Class<?> mirror();
 }
