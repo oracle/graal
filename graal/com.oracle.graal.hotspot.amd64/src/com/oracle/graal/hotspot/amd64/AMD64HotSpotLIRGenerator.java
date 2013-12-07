@@ -574,4 +574,9 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             super.visitInfopointNode(i);
         }
     }
+
+    public void emitPrefetchAllocate(ValueNode address, ValueNode distance) {
+        AMD64AddressValue addr = emitAddress(operand(address), 0, loadNonConst(operand(distance)), 1);
+        append(new AMD64PrefetchOp(addr, config.allocatePrefetchInstr));
+    }
 }

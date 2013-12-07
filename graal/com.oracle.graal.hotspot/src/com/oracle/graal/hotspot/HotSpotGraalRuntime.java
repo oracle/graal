@@ -42,6 +42,8 @@ import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.runtime.*;
 
+//JaCoCo Exclude
+
 /**
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */

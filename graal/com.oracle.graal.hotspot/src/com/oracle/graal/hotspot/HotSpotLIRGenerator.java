@@ -50,6 +50,8 @@ public interface HotSpotLIRGenerator {
 
     void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc);
 
+    void emitPrefetchAllocate(ValueNode address, ValueNode distance);
+
     void visitDirectCompareAndSwap(DirectCompareAndSwapNode x);
 
     /**

@@ -2524,4 +2524,53 @@ public class AMD64Assembler extends AbstractAssembler {
     public AMD64Address getPlaceholder() {
         return Placeholder;
     }
+
+    private void prefetchPrefix(AMD64Address src) {
+        prefix(src);
+        emitByte(0x0F);
+    }
+
+    public void prefetchnta(AMD64Address src) {
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(0, src);
+    }
+
+    void prefetchr(AMD64Address src) {
+        // assert(VM_Version::supports_3dnow_prefetch(), "must support");
+        prefetchPrefix(src);
+        emitByte(0x0D);
+        emitOperandHelper(0, src);
+    }
+
+    public void prefetcht0(AMD64Address src) {
+        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(1, src);
+    }
+
+    public void prefetcht1(AMD64Address src) {
+        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        prefetchPrefix(src);
+        emitByte(0x18);
+        emitOperandHelper(2, src);
+    }
+
+    public void prefetcht2(AMD64Address src) {
+        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        prefix(src);
+        emitByte(0x0f);
+        emitByte(0x18);
+        emitOperandHelper(3, src);
+    }
+
+    public void prefetchw(AMD64Address src) {
+        // assert(VM_Version::supports_3dnow_prefetch(), "must support");
+        prefix(src);
+        emitByte(0x0f);
+        emitByte(0x0D);
+        emitOperandHelper(1, src);
+    }
+
 }

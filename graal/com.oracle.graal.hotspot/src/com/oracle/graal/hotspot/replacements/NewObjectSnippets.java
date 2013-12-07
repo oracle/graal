@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.api.code.UnsignedMath.*;
 import static com.oracle.graal.api.meta.MetaUtil.*;
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.hotspot.replacements.NewObjectSnippets.Options.*;
 import static com.oracle.graal.nodes.PiArrayNode.*;
@@ -112,6 +113,21 @@ public class NewObjectSnippets implements Snippets {
         }
     }
 
+    private static void emitPrefetchAllocate(Word address, boolean isArray) {
+        if (config().allocatePrefetchStyle > 0) {
+            // Insert a prefetch for each allocation only on the fast-path
+            // Generate several prefetch instructions.
+            int lines = isArray ? config().allocatePrefetchLines : config().allocateInstancePrefetchLines;
+            int stepSize = config().allocatePrefetchStepSize;
+            int distance = config().allocatePrefetchDistance;
+            ExplodeLoopNode.explodeLoop();
+            for (int i = 0; i < lines; i++) {
+                PrefetchAllocateNode.prefetch(address, Word.signed(distance));
+                distance += stepSize;
+            }
+        }
+    }
+
     @Snippet
     public static Object allocateInstance(@ConstantParameter int size, Word hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
                     @ConstantParameter String typeContext) {
@@ -122,6 +138,7 @@ public class NewObjectSnippets implements Snippets {
         Word newTop = top.add(size);
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
+            emitPrefetchAllocate(newTop, false);
             result = formatObject(hub, size, top, prototypeMarkWord, fillContents);
         } else {
             new_stub.inc();
@@ -157,6 +174,7 @@ public class NewObjectSnippets implements Snippets {
         Word newTop = top.add(allocationSize);
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
+            emitPrefetchAllocate(newTop, true);
             newarray_loopInit.inc();
             result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents);
         } else {

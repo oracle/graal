@@ -142,6 +142,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     public AMD64AddressValue emitAddress(Value base, long displacement, Value index, int scale) {
+        assert (scale >= 1 && scale <= 8) || index.equals(Value.ILLEGAL) : "invalid scale";
         AllocatableValue baseRegister;
         long finalDisp = displacement;
         if (isConstant(base)) {
