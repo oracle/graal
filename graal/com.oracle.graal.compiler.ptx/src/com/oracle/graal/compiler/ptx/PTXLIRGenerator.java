@@ -89,7 +89,7 @@ public class PTXLIRGenerator extends LIRGenerator {
     public PTXLIRGenerator(StructuredGraph graph, Providers providers, FrameMap frameMap, CallingConvention cc, LIR lir) {
         super(graph, providers, frameMap, cc, lir);
         lir.spillMoveFactory = new PTXSpillMoveFactory();
-        int callVariables = cc.getArgumentCount() + (cc.getReturn() == Value.ILLEGAL ? 0 : 1);
+        int callVariables = cc.getArgumentCount() + (cc.getReturn().equals(Value.ILLEGAL) ? 0 : 1);
         lir.setFirstVariableNumber(callVariables);
         nextPredRegNum = 0;
     }
@@ -139,7 +139,7 @@ public class PTXLIRGenerator extends LIRGenerator {
         AllocatableValue[] params = incomingArguments.getArguments();
         int argCount = incomingArguments.getArgumentCount();
 
-        if (returnObject == Value.ILLEGAL) {
+        if (returnObject.equals(Value.ILLEGAL)) {
             params = incomingArguments.getArguments();
             append(new PTXParameterOp(params, false));
         } else {
