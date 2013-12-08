@@ -286,16 +286,24 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     @Override
     public boolean isInitialized() {
-        HotSpotVMConfig config = runtime().getConfig();
-        byte state = unsafe.getByte(metaspaceKlass + config.klassStateOffset);
-        return state == config.klassStateFullyInitialized;
+        final int state = getState();
+        return state == runtime().getConfig().klassStateFullyInitialized;
     }
 
     @Override
     public boolean isLinked() {
-        HotSpotVMConfig config = runtime().getConfig();
-        byte state = unsafe.getByte(metaspaceKlass + config.klassStateOffset);
-        return state >= config.klassStateLinked;
+        final int state = getState();
+        return state >= runtime().getConfig().klassStateLinked;
+    }
+
+    /**
+     * Returns the value of the state field {@code InstanceKlass::_init_state} of the metaspace
+     * klass.
+     * 
+     * @return state field value of this type
+     */
+    private int getState() {
+        return unsafe.getByte(metaspaceKlass + runtime().getConfig().klassStateOffset) & 0xFF;
     }
 
     @Override
@@ -356,7 +364,8 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
 
     public ConstantPool constantPool() {
         if (constantPool == null) {
-            constantPool = new HotSpotConstantPool(this);
+            final long metaspaceConstantPool = unsafe.getAddress(metaspaceKlass() + runtime().getConfig().instanceKlassConstantsOffset);
+            constantPool = new HotSpotConstantPool(metaspaceConstantPool);
         }
         return constantPool;
     }
@@ -493,7 +502,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     /**
      * Gets the address of the C++ Klass object for this type.
      */
-    public long metaspaceKlass() {
+    private long metaspaceKlass() {
         return metaspaceKlass;
     }
 

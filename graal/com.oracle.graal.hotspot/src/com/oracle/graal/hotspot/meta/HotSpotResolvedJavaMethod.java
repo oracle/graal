@@ -49,9 +49,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     /**
      * Reference to metaspace Method object.
      */
-    final long metaspaceMethod;
+    private final long metaspaceMethod;
 
     private final HotSpotResolvedObjectType holder;
+    private final HotSpotConstantPool constantPool;
     private final HotSpotSignature signature;
     private final int codeSize;
     private/* final */int exceptionHandlerCount;
@@ -96,29 +97,30 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     HotSpotResolvedJavaMethod(HotSpotResolvedObjectType holder, long metaspaceMethod) {
-        super(createName(holder, metaspaceMethod));
+        // It would be too much work to get the method name here so we fill it in later.
+        super(null);
         this.metaspaceMethod = metaspaceMethod;
         this.holder = holder;
 
         HotSpotVMConfig config = runtime().getConfig();
-        ConstantPool constantPool = holder.constantPool();
         final long constMethod = getConstMethod();
+
+        /*
+         * Get the constant pool from the metaspace method. Some methods (e.g. intrinsics for
+         * signature-polymorphic method handle methods) have their own constant pool instead of the
+         * one from their holder.
+         */
+        final long metaspaceConstantPool = unsafe.getAddress(constMethod + config.constMethodConstantsOffset);
+        this.constantPool = new HotSpotConstantPool(metaspaceConstantPool);
+
+        final int nameIndex = unsafe.getChar(constMethod + config.constMethodNameIndexOffset);
+        this.name = constantPool.lookupUtf8(nameIndex);
+
         final int signatureIndex = unsafe.getChar(constMethod + config.constMethodSignatureIndexOffset);
         this.signature = (HotSpotSignature) constantPool.lookupSignature(signatureIndex);
         this.codeSize = unsafe.getChar(constMethod + config.constMethodCodeSizeOffset);
 
         runtime().getCompilerToVM().initializeMethod(metaspaceMethod, this);
-    }
-
-    /**
-     * Helper method to construct the method's name and pass it to the super constructor.
-     */
-    private static String createName(HotSpotResolvedObjectType holder, long metaspaceMethod) {
-        HotSpotVMConfig config = runtime().getConfig();
-        ConstantPool constantPool = holder.constantPool();
-        final long constMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
-        final int nameIndex = unsafe.getChar(constMethod + config.constMethodNameIndexOffset);
-        return constantPool.lookupUtf8(nameIndex);
     }
 
     /**
@@ -128,17 +130,13 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      * @return pointer to this method's ConstMethod
      */
     private long getConstMethod() {
-        HotSpotVMConfig config = runtime().getConfig();
-        return unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
+        assert metaspaceMethod != 0;
+        return unsafe.getAddress(metaspaceMethod + runtime().getConfig().methodConstMethodOffset);
     }
 
     @Override
     public ResolvedJavaType getDeclaringClass() {
         return holder;
-    }
-
-    public long getMetaspaceMethod() {
-        return metaspaceMethod;
     }
 
     /**
@@ -359,7 +357,7 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
 
     @Override
     public ConstantPool getConstantPool() {
-        return ((HotSpotResolvedObjectType) getDeclaringClass()).constantPool();
+        return constantPool;
     }
 
     @Override

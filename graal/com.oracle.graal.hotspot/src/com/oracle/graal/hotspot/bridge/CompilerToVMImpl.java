@@ -73,19 +73,22 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
     @Override
-    public native Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
+    public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native JavaMethod lookupMethodInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    public native JavaMethod lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     @Override
-    public native JavaType lookupTypeInPool(HotSpotResolvedObjectType pool, int cpi);
+    public native JavaType lookupTypeInPool(long metaspaceConstantPool, int cpi);
 
     @Override
-    public native void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    public native JavaField lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     @Override
-    public native JavaField lookupFieldInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    public native void lookupReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
+
+    @Override
+    public native Object lookupAppendixInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     @Override
     public native void initializeConfiguration(HotSpotVMConfig config);
@@ -141,9 +144,6 @@ public class CompilerToVMImpl implements CompilerToVM {
 
     @Override
     public native void reprofile(long metaspaceMethod);
-
-    @Override
-    public native Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
 
     @Override
     public native void invalidateInstalledCode(HotSpotInstalledCode hotspotInstalledCode);

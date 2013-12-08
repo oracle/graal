@@ -147,7 +147,7 @@ public final class HotSpotMethodData extends CompilerObject {
     private HotSpotMethodDataAccessor getData(int position) {
         assert position >= 0 : "out of bounds";
         int tag = AbstractMethodData.readTag(this, position);
-        assert tag >= 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag";
+        assert tag >= 0 && tag < PROFILE_DATA_ACCESSORS.length : "illegal tag " + tag;
         return PROFILE_DATA_ACCESSORS[tag];
     }
 

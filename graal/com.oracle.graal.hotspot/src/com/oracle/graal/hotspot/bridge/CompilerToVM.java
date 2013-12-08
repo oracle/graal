@@ -111,17 +111,17 @@ public interface CompilerToVM {
      */
     JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
 
-    Object lookupConstantInPool(HotSpotResolvedObjectType pool, int cpi);
+    Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
 
-    JavaMethod lookupMethodInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    JavaMethod lookupMethodInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
-    JavaType lookupTypeInPool(HotSpotResolvedObjectType pool, int cpi);
+    JavaType lookupTypeInPool(long metaspaceConstantPool, int cpi);
 
-    JavaField lookupFieldInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    JavaField lookupFieldInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
-    void lookupReferencedTypeInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    void lookupReferencedTypeInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
-    Object lookupAppendixInPool(HotSpotResolvedObjectType pool, int cpi, byte opcode);
+    Object lookupAppendixInPool(long metaspaceConstantPool, int cpi, byte opcode);
 
     public enum CodeInstallResult {
         OK("ok"), DEPENDENCIES_FAILED("dependencies failed"), CACHE_FULL("code cache is full"), CODE_TOO_LARGE("code is too large");
