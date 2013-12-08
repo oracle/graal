@@ -55,9 +55,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native byte[] initializeBytecode(long metaspaceMethod, byte[] code);
 
     @Override
-    public native String getSignature(long metaspaceMethod);
-
-    @Override
     public native ExceptionHandler[] initializeExceptionHandlers(long metaspaceMethod, ExceptionHandler[] handlers);
 
     @Override

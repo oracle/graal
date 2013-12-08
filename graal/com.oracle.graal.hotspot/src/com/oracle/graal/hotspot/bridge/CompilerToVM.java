@@ -45,8 +45,6 @@ public interface CompilerToVM {
      */
     byte[] initializeBytecode(long metaspaceMethod, byte[] code);
 
-    String getSignature(long metaspaceMethod);
-
     ExceptionHandler[] initializeExceptionHandlers(long metaspaceMethod, ExceptionHandler[] handlers);
 
     /**

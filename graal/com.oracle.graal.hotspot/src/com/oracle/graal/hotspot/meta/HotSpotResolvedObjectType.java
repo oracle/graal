@@ -115,9 +115,11 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public static ResolvedJavaType fromClass(Class javaClass) {
         assert javaClass != null;
-        ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) runtime().getConfig().graalMirrorInClassOffset);
+        HotSpotGraalRuntime runtime = runtime();
+        ResolvedJavaType type = (ResolvedJavaType) unsafe.getObject(javaClass, (long) runtime.getConfig().graalMirrorInClassOffset);
         if (type == null) {
-            type = runtime().getCompilerToVM().getResolvedType(javaClass);
+            assert !javaClass.isPrimitive() : "primitive type " + javaClass + " should have its mirror initialized";
+            type = runtime.getCompilerToVM().getResolvedType(javaClass);
             assert type != null;
         }
         return type;

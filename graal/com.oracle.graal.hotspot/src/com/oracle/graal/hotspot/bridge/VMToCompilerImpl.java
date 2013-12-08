@@ -81,16 +81,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     private final HotSpotGraalRuntime runtime;
 
-    public final HotSpotResolvedPrimitiveType typeBoolean;
-    public final HotSpotResolvedPrimitiveType typeChar;
-    public final HotSpotResolvedPrimitiveType typeFloat;
-    public final HotSpotResolvedPrimitiveType typeDouble;
-    public final HotSpotResolvedPrimitiveType typeByte;
-    public final HotSpotResolvedPrimitiveType typeShort;
-    public final HotSpotResolvedPrimitiveType typeInt;
-    public final HotSpotResolvedPrimitiveType typeLong;
-    public final HotSpotResolvedPrimitiveType typeVoid;
-
     private ThreadPoolExecutor compileQueue;
     private AtomicInteger compileTaskIds = new AtomicInteger();
 
@@ -102,22 +92,6 @@ public class VMToCompilerImpl implements VMToCompiler {
 
     public VMToCompilerImpl(HotSpotGraalRuntime runtime) {
         this.runtime = runtime;
-
-        typeBoolean = new HotSpotResolvedPrimitiveType(Kind.Boolean);
-        typeChar = new HotSpotResolvedPrimitiveType(Kind.Char);
-        typeFloat = new HotSpotResolvedPrimitiveType(Kind.Float);
-        typeDouble = new HotSpotResolvedPrimitiveType(Kind.Double);
-        typeByte = new HotSpotResolvedPrimitiveType(Kind.Byte);
-        typeShort = new HotSpotResolvedPrimitiveType(Kind.Short);
-        typeInt = new HotSpotResolvedPrimitiveType(Kind.Int);
-        typeLong = new HotSpotResolvedPrimitiveType(Kind.Long);
-        typeVoid = new HotSpotResolvedPrimitiveType(Kind.Void);
-    }
-
-    private static void initMirror(HotSpotResolvedPrimitiveType type, long offset) {
-        Class<?> mirror = type.mirror();
-        unsafe.putObject(mirror, offset, type);
-        assert unsafe.getObject(mirror, offset) == type;
     }
 
     public void startCompiler(boolean bootstrapEnabled) throws Throwable {
@@ -125,18 +99,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         FastNodeClassRegistry.initialize();
 
         bootstrapRunning = bootstrapEnabled;
-
-        final HotSpotVMConfig config = runtime.getConfig();
-        long offset = config.graalMirrorInClassOffset;
-        initMirror(typeBoolean, offset);
-        initMirror(typeChar, offset);
-        initMirror(typeFloat, offset);
-        initMirror(typeDouble, offset);
-        initMirror(typeByte, offset);
-        initMirror(typeShort, offset);
-        initMirror(typeInt, offset);
-        initMirror(typeLong, offset);
-        initMirror(typeVoid, offset);
 
         if (LogFile.getValue() != null) {
             try {
@@ -622,23 +584,23 @@ public class VMToCompilerImpl implements VMToCompiler {
     public ResolvedJavaType createPrimitiveJavaType(int basicType) {
         switch (basicType) {
             case 4:
-                return typeBoolean;
+                return runtime.typeBoolean;
             case 5:
-                return typeChar;
+                return runtime.typeChar;
             case 6:
-                return typeFloat;
+                return runtime.typeFloat;
             case 7:
-                return typeDouble;
+                return runtime.typeDouble;
             case 8:
-                return typeByte;
+                return runtime.typeByte;
             case 9:
-                return typeShort;
+                return runtime.typeShort;
             case 10:
-                return typeInt;
+                return runtime.typeInt;
             case 11:
-                return typeLong;
+                return runtime.typeLong;
             case 14:
-                return typeVoid;
+                return runtime.typeVoid;
             default:
                 throw new IllegalArgumentException("Unknown basic type: " + basicType);
         }
