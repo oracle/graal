@@ -38,7 +38,7 @@ public interface VMToCompiler {
      * Compiles a method to machine code. This method is called from the VM
      * (VMToCompiler::compileMethod).
      */
-    void compileMethod(long metaspaceMethod, HotSpotResolvedObjectType holder, int entryBCI, boolean blocking);
+    void compileMethod(long metaspaceMethod, int entryBCI, boolean blocking);
 
     void shutdownCompiler() throws Exception;
 
