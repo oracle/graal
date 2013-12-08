@@ -229,7 +229,7 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    private static int klassLayoutHelperOffset() {
+    public static int klassLayoutHelperOffset() {
         return config().klassLayoutHelperOffset;
     }
 
@@ -610,11 +610,6 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static boolean tlabStats() {
         return config().tlabStats;
-    }
-
-    @Fold
-    public static int layoutHelperOffset() {
-        return config().layoutHelperOffset;
     }
 
     @Fold

@@ -89,7 +89,7 @@ public class NewArrayStub extends SnippetStub {
      */
     @Snippet
     private static Object newArray(Word hub, int length, @ConstantParameter Word intArrayHub, @ConstantParameter Register threadRegister) {
-        int layoutHelper = hub.readInt(layoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
+        int layoutHelper = hub.readInt(klassLayoutHelperOffset(), LocationIdentity.FINAL_LOCATION);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift()) & layoutHelperLog2ElementSizeMask();
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift()) & layoutHelperHeaderSizeMask();
         int elementKind = (layoutHelper >> layoutHelperElementTypeShift()) & layoutHelperElementTypeMask();

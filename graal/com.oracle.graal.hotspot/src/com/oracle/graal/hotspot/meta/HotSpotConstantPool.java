@@ -125,7 +125,7 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
      * @param index constant pool index
      */
     private void assertBounds(int index) {
-        assert 0 <= index && index < length() : "index " + index + " not between 0 or " + length();
+        assert 0 <= index && index < length() : "index " + index + " not between 0 and " + length();
     }
 
     /**
@@ -135,7 +135,63 @@ public class HotSpotConstantPool extends CompilerObject implements ConstantPool 
      * @param tag expected tag
      */
     private void assertTag(int index, int tag) {
-        assert getTagAt(index) == tag : "constant pool tag at index " + index + " is " + getTagAt(index) + " but expected " + tag;
+        assert getTagAt(index) == tag : "constant pool tag at index " + index + " is " + getNameForTag(getTagAt(index)) + " but expected " + getNameForTag(tag);
+    }
+
+    private static String getNameForTag(int tag) {
+        HotSpotVMConfig config = runtime().getConfig();
+        if (tag == config.jvmConstantUtf8) {
+            return "JVM_CONSTANT_Utf8";
+        }
+        if (tag == config.jvmConstantInteger) {
+            return "JVM_CONSTANT_Integer";
+        }
+        if (tag == config.jvmConstantLong) {
+            return "JVM_CONSTANT_Long";
+        }
+        if (tag == config.jvmConstantFloat) {
+            return "JVM_CONSTANT_Float";
+        }
+        if (tag == config.jvmConstantDouble) {
+            return "JVM_CONSTANT_Double";
+        }
+        if (tag == config.jvmConstantClass) {
+            return "JVM_CONSTANT_Class";
+        }
+        if (tag == config.jvmConstantUnresolvedClass) {
+            return "JVM_CONSTANT_UnresolvedClass";
+        }
+        if (tag == config.jvmConstantUnresolvedClassInError) {
+            return "JVM_CONSTANT_UnresolvedClassInError";
+        }
+        if (tag == config.jvmConstantString) {
+            return "JVM_CONSTANT_String";
+        }
+        if (tag == config.jvmConstantFieldref) {
+            return "JVM_CONSTANT_Fieldref";
+        }
+        if (tag == config.jvmConstantMethodref) {
+            return "JVM_CONSTANT_Methodref";
+        }
+        if (tag == config.jvmConstantInterfaceMethodref) {
+            return "JVM_CONSTANT_InterfaceMethodref";
+        }
+        if (tag == config.jvmConstantNameAndType) {
+            return "JVM_CONSTANT_NameAndType";
+        }
+        if (tag == config.jvmConstantMethodHandle) {
+            return "JVM_CONSTANT_MethodHandle";
+        }
+        if (tag == config.jvmConstantMethodHandleInError) {
+            return "JVM_CONSTANT_MethodHandleInError";
+        }
+        if (tag == config.jvmConstantMethodType) {
+            return "JVM_CONSTANT_MethodType";
+        }
+        if (tag == config.jvmConstantMethodTypeInError) {
+            return "JVM_CONSTANT_MethodTypeInError";
+        }
+        return "unknown constant tag " + tag;
     }
 
     @Override

@@ -67,9 +67,6 @@ public interface VMToCompiler {
      * @param name the {@linkplain JavaType#getName() name} of the type
      * @param simpleName a simple, unqualified name for the type
      * @param javaMirror the {@link Class} mirror
-     * @param sizeOrSpecies the size of an instance of the type, or
-     *            {@link HotSpotResolvedObjectType#INTERFACE_SPECIES_VALUE} or
-     *            {@link HotSpotResolvedObjectType#ARRAY_SPECIES_VALUE}
      * @return the resolved type associated with {@code javaMirror} which may not be the type
      *         instantiated by this call in the case of another thread racing to create the same
      *         type

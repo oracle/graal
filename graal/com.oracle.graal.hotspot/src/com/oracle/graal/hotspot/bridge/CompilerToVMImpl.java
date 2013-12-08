@@ -103,9 +103,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
 
     @Override
-    public native ResolvedJavaType getResolvedType(Class<?> javaClass);
-
-    @Override
     public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
     @Override
