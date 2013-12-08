@@ -197,8 +197,6 @@ public interface CompilerToVM {
 
     JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
-    void initializeType(HotSpotResolvedObjectType klass);
-
     ResolvedJavaType getResolvedType(Class<?> javaClass);
 
     HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);

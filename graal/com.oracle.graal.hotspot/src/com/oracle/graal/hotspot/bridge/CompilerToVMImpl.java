@@ -100,9 +100,6 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
 
     @Override
-    public native void initializeType(HotSpotResolvedObjectType klass);
-
-    @Override
     public native void initializeMethod(long metaspaceMethod, HotSpotResolvedJavaMethod method);
 
     @Override
