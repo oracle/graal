@@ -322,9 +322,9 @@ public enum AMD64Arithmetic {
                 masm.flds(tmp);
             } else {
                 assert opcode == DREM;
-                masm.movsd(tmp, asRegister(y));
+                masm.movdbl(tmp, asRegister(y));
                 masm.fldd(tmp);
-                masm.movsd(tmp, asRegister(x));
+                masm.movdbl(tmp, asRegister(x));
                 masm.fldd(tmp);
             }
 
@@ -343,7 +343,7 @@ public enum AMD64Arithmetic {
                 masm.movflt(asRegister(result), tmp);
             } else {
                 masm.fstpd(tmp);
-                masm.movsd(asRegister(result), tmp);
+                masm.movdbl(asRegister(result), tmp);
             }
             masm.addq(AMD64.rsp, 8);
         }
