@@ -52,31 +52,32 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     private final String name;
     private final JavaType type;
     private final int offset;
-    private final int flags;
+    private final int modifiers;
     private Constant constant;
 
-    public HotSpotResolvedJavaField(HotSpotResolvedObjectType holder, String name, JavaType type, int offset, int flags, boolean internal) {
-        assert (flags & FIELD_INTERNAL_FLAG) == 0;
+    public HotSpotResolvedJavaField(HotSpotResolvedObjectType holder, String name, JavaType type, long offset, int modifiers, boolean internal) {
+        assert (modifiers & FIELD_INTERNAL_FLAG) == 0;
         this.holder = holder;
         this.name = name;
         this.type = type;
         assert offset != -1;
-        this.offset = offset;
+        assert offset == (int) offset : "offset larger than int";
+        this.offset = (int) offset;
         if (internal) {
-            this.flags = flags | FIELD_INTERNAL_FLAG;
+            this.modifiers = modifiers | FIELD_INTERNAL_FLAG;
         } else {
-            this.flags = flags;
+            this.modifiers = modifiers;
         }
     }
 
     @Override
     public int getModifiers() {
-        return flags & Modifier.fieldModifiers();
+        return modifiers & Modifier.fieldModifiers();
     }
 
     @Override
     public boolean isInternal() {
-        return (flags & FIELD_INTERNAL_FLAG) != 0;
+        return (modifiers & FIELD_INTERNAL_FLAG) != 0;
     }
 
     /**
@@ -178,7 +179,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
         assert !AOTCompilation.getValue() || isCalledForSnippets() : receiver;
 
         if (receiver == null) {
-            assert Modifier.isStatic(flags);
+            assert Modifier.isStatic(modifiers);
             if (constant == null) {
                 if (holder.isInitialized() && !holder.getName().equals(SystemClassName) && isEmbeddable()) {
                     if (Modifier.isFinal(getModifiers())) {
@@ -192,7 +193,7 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
              * for non-static final fields, we must assume that they are only initialized if they
              * have a non-default value.
              */
-            assert !Modifier.isStatic(flags);
+            assert !Modifier.isStatic(modifiers);
             Object object = receiver.asObject();
 
             // Canonicalization may attempt to process an unsafe read before
@@ -232,13 +233,13 @@ public class HotSpotResolvedJavaField extends CompilerObject implements Resolved
     @Override
     public Constant readValue(Constant receiver) {
         if (receiver == null) {
-            assert Modifier.isStatic(flags);
+            assert Modifier.isStatic(modifiers);
             if (holder.isInitialized()) {
                 return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), holder.mirror(), offset, getKind() == Kind.Object);
             }
             return null;
         } else {
-            assert !Modifier.isStatic(flags);
+            assert !Modifier.isStatic(modifiers);
             Object object = receiver.asObject();
             assert object != null && isInObject(object);
             return runtime().getHostProviders().getConstantReflection().readUnsafeConstant(getKind(), object, offset, getKind() == Kind.Object);

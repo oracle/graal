@@ -418,7 +418,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return method;
     }
 
-    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, int offset, int flags, boolean internal) {
+    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, long offset, int flags, boolean internal) {
         ResolvedJavaField result = null;
 
         long id = offset + ((long) flags << 32);

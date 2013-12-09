@@ -222,8 +222,6 @@ public interface CompilerToVM {
 
     long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedObjectType[] resultHolder);
 
-    HotSpotResolvedJavaField getJavaField(Field reflectionField);
-
     long getMaxCallTargetOffset(long address);
 
     String disassembleCodeBlob(long codeBlob);
