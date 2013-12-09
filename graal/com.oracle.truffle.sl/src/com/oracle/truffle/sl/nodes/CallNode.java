@@ -140,22 +140,21 @@ public abstract class CallNode extends TypedNode {
                     }
                     return new InlinableCallNode((DefaultCallTarget) function, clonedArgs);
                 }
+                // got a call target that is not inlinable (should not occur for SL)
+                return new DispatchedCallNode(defaultFunction, clonedArgs);
+            } else {
+                throw new AssertionError();
             }
 
-            // got a call target that is not inlinable (should not occur for SL)
-            return new DispatchedCallNode(function, clonedArgs);
         }
     }
 
     private static final class InlinableCallNode extends DispatchedCallNode implements InlinableCallSite {
 
-        private final DefaultCallTarget inlinableTarget;
-
         @CompilationFinal private int callCount;
 
         InlinableCallNode(DefaultCallTarget function, ArgumentsNode arguments) {
             super(function, arguments);
-            this.inlinableTarget = function;
         }
 
         @Override
@@ -170,7 +169,7 @@ public abstract class CallNode extends TypedNode {
 
         @Override
         public Node getInlineTree() {
-            RootNode root = inlinableTarget.getRootNode();
+            RootNode root = function.getRootNode();
             if (root instanceof FunctionRootNode) {
                 return ((FunctionRootNode) root).getUninitializedBody();
             }
@@ -182,7 +181,7 @@ public abstract class CallNode extends TypedNode {
             CompilerAsserts.neverPartOfCompilation();
             TypedNode functionCall = null;
 
-            RootNode root = inlinableTarget.getRootNode();
+            RootNode root = function.getRootNode();
             if (root instanceof FunctionRootNode) {
                 functionCall = ((FunctionRootNode) root).inline(NodeUtil.cloneNode(args));
             }
@@ -204,7 +203,7 @@ public abstract class CallNode extends TypedNode {
 
         @Override
         public CallTarget getCallTarget() {
-            return inlinableTarget;
+            return function;
         }
 
     }
@@ -212,9 +211,9 @@ public abstract class CallNode extends TypedNode {
     private static class DispatchedCallNode extends TypedNode {
 
         @Child protected ArgumentsNode args;
-        protected final CallTarget function;
+        protected final DefaultCallTarget function;
 
-        DispatchedCallNode(CallTarget function, ArgumentsNode arguments) {
+        DispatchedCallNode(DefaultCallTarget function, ArgumentsNode arguments) {
             this.args = adoptChild(arguments);
             this.function = function;
         }

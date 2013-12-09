@@ -59,10 +59,6 @@ public class SLNodeFactory {
         this.parser = parser;
     }
 
-    public CallTarget findFunction(String name) {
-        return context.getFunctionRegistry().lookup(name);
-    }
-
     public void startFunction() {
         frameDescriptor = new FrameDescriptor();
     }
