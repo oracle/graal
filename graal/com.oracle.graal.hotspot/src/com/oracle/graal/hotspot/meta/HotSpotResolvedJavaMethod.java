@@ -76,13 +76,10 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
      */
     public static HotSpotResolvedObjectType getHolder(long metaspaceMethod) {
         HotSpotVMConfig config = runtime().getConfig();
-        long constMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
-        assert constMethod != 0;
-        long constantPool = unsafe.getAddress(constMethod + config.constMethodConstantsOffset);
-        assert constantPool != 0;
-        long holder = unsafe.getAddress(constantPool + config.constantPoolHolderOffset);
-        assert holder != 0;
-        return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(holder);
+        final long metaspaceConstMethod = unsafe.getAddress(metaspaceMethod + config.methodConstMethodOffset);
+        final long metaspaceConstantPool = unsafe.getAddress(metaspaceConstMethod + config.constMethodConstantsOffset);
+        final long metaspaceKlass = unsafe.getAddress(metaspaceConstantPool + config.constantPoolHolderOffset);
+        return (HotSpotResolvedObjectType) HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
     }
 
     /**

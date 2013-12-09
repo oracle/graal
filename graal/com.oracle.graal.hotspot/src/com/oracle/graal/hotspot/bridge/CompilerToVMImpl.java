@@ -23,8 +23,6 @@
 
 package com.oracle.graal.hotspot.bridge;
 
-import java.lang.reflect.*;
-
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.hotspot.*;
@@ -43,10 +41,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     }
 
     @Override
-    public native long getMetaspaceMethod(Method reflectionMethod, HotSpotResolvedObjectType[] resultHolder);
-
-    @Override
-    public native long getMetaspaceConstructor(Constructor reflectionConstructor, HotSpotResolvedObjectType[] resultHolder);
+    public native long getMetaspaceMethod(Class<?> holder, int slot);
 
     @Override
     public native byte[] initializeBytecode(long metaspaceMethod, byte[] code);

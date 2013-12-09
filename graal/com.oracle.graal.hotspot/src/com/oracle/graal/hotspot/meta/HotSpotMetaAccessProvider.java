@@ -29,7 +29,6 @@ import java.lang.reflect.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
-import com.oracle.graal.hotspot.bridge.*;
 
 /**
  * HotSpot implementation of {@link MetaAccessProvider}.
@@ -61,20 +60,46 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         return new HotSpotSignature(signature);
     }
 
+    /**
+     * {@link Field} object of {@link Method#slot}.
+     */
+    @SuppressWarnings("javadoc") private Field reflectionMethodSlot = getReflectionSlotField(Method.class);
+
+    /**
+     * {@link Field} object of {@link Constructor#slot}.
+     */
+    @SuppressWarnings("javadoc") private Field reflectionConstructorSlot = getReflectionSlotField(Constructor.class);
+
+    private static Field getReflectionSlotField(Class<?> reflectionClass) {
+        try {
+            Field field = reflectionClass.getDeclaredField("slot");
+            field.setAccessible(true);
+            return field;
+        } catch (NoSuchFieldException | SecurityException e) {
+            throw new GraalInternalError(e);
+        }
+    }
+
     public ResolvedJavaMethod lookupJavaMethod(Method reflectionMethod) {
-        CompilerToVM c2vm = runtime.getCompilerToVM();
-        HotSpotResolvedObjectType[] resultHolder = {null};
-        long metaspaceMethod = c2vm.getMetaspaceMethod(reflectionMethod, resultHolder);
-        assert metaspaceMethod != 0L;
-        return resultHolder[0].createMethod(metaspaceMethod);
+        try {
+            Class<?> holder = reflectionMethod.getDeclaringClass();
+            final int slot = reflectionMethodSlot.getInt(reflectionMethod);
+            final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
+            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+        } catch (IllegalArgumentException | IllegalAccessException e) {
+            throw new GraalInternalError(e);
+        }
     }
 
     public ResolvedJavaMethod lookupJavaConstructor(Constructor reflectionConstructor) {
-        CompilerToVM c2vm = runtime.getCompilerToVM();
-        HotSpotResolvedObjectType[] resultHolder = {null};
-        long metaspaceMethod = c2vm.getMetaspaceConstructor(reflectionConstructor, resultHolder);
-        assert metaspaceMethod != 0L;
-        return resultHolder[0].createMethod(metaspaceMethod);
+        try {
+            Class<?> holder = reflectionConstructor.getDeclaringClass();
+            final int slot = reflectionConstructorSlot.getInt(reflectionConstructor);
+            final long metaspaceMethod = runtime.getCompilerToVM().getMetaspaceMethod(holder, slot);
+            return HotSpotResolvedJavaMethod.fromMetaspace(metaspaceMethod);
+        } catch (IllegalArgumentException | IllegalAccessException e) {
+            throw new GraalInternalError(e);
+        }
     }
 
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
