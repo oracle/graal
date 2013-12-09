@@ -33,7 +33,7 @@ import com.oracle.graal.asm.sparc.*;
 import com.oracle.graal.asm.sparc.SPARCAssembler.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.FallThroughOp;
+import com.oracle.graal.lir.StandardOp.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -43,66 +43,73 @@ public class SPARCControlFlow {
 
     public static class BranchOp extends SPARCLIRInstruction implements StandardOp.BranchOp {
 
-        protected Condition condition;
-        protected LabelRef destination;
+        protected final Condition condition;
+        protected final LabelRef trueDestination;
+        protected final LabelRef falseDestination;
         protected final Kind kind;
 
-        public BranchOp(Condition condition, LabelRef destination, Kind kind) {
+        public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination, Kind kind) {
             this.condition = condition;
-            this.destination = destination;
+            this.trueDestination = trueDestination;
+            this.falseDestination = falseDestination;
             this.kind = kind;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+            int sourceIndex = crb.getCurrentBlockIndex();
+            Label actualTarget;
+            Condition actualCondition;
+            boolean needJump;
+            if (trueDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+                actualCondition = condition.negate();
+                actualTarget = falseDestination.label();
+                needJump = false;
+            } else {
+                actualCondition = condition;
+                actualTarget = trueDestination.label();
+                needJump = !falseDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex);
+            }
             assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object;
             CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;
-            switch (condition) {
+            switch (actualCondition) {
                 case EQ:
-                    new Bpe(cc, destination.label()).emit(masm);
+                    new Bpe(cc, actualTarget).emit(masm);
                     break;
                 case NE:
-                    new Bpne(cc, destination.label()).emit(masm);
+                    new Bpne(cc, actualTarget).emit(masm);
                     break;
                 case BT:
-                    new Bplu(cc, destination.label()).emit(masm);
+                    new Bplu(cc, actualTarget).emit(masm);
                     break;
                 case LT:
-                    new Bpl(cc, destination.label()).emit(masm);
+                    new Bpl(cc, actualTarget).emit(masm);
                     break;
                 case BE:
-                    new Bpleu(cc, destination.label()).emit(masm);
+                    new Bpleu(cc, actualTarget).emit(masm);
                     break;
                 case LE:
-                    new Bple(cc, destination.label()).emit(masm);
+                    new Bple(cc, actualTarget).emit(masm);
                     break;
                 case GE:
-                    new Bpge(cc, destination.label()).emit(masm);
+                    new Bpge(cc, actualTarget).emit(masm);
                     break;
                 case AE:
-                    new Bpgeu(cc, destination.label()).emit(masm);
+                    new Bpgeu(cc, actualTarget).emit(masm);
                     break;
                 case GT:
-                    new Bpg(cc, destination.label()).emit(masm);
+                    new Bpg(cc, actualTarget).emit(masm);
                     break;
                 case AT:
-                    new Bpgu(cc, destination.label()).emit(masm);
+                    new Bpgu(cc, actualTarget).emit(masm);
                     break;
                 default:
                     throw GraalInternalError.shouldNotReachHere();
             }
             new Nop().emit(masm);  // delay slot
-        }
-
-        @Override
-        public LabelRef destination() {
-            return destination;
-        }
-
-        @Override
-        public void negate(LabelRef newDestination) {
-            destination = newDestination;
-            condition = condition.negate();
+            if (needJump) {
+                masm.jmp(falseDestination.label());
+            }
         }
     }
 
@@ -257,7 +264,7 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class SequentialSwitchOp extends SPARCLIRInstruction implements FallThroughOp {
+    public static class SequentialSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
 
         @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
@@ -310,24 +317,16 @@ public class SPARCControlFlow {
                 throw new GraalInternalError("sequential switch only supported for int, long and object");
             }
             if (defaultTarget != null) {
-                masm.jmp(defaultTarget.label());
+                if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
+                    masm.jmp(defaultTarget.label());
+                }
             } else {
                 new Illtrap(0).emit(masm);
             }
         }
-
-        @Override
-        public LabelRef fallThroughTarget() {
-            return defaultTarget;
-        }
-
-        @Override
-        public void setFallThroughTarget(LabelRef target) {
-            defaultTarget = target;
-        }
     }
 
-    public static class SwitchRangesOp extends SPARCLIRInstruction implements FallThroughOp {
+    public static class SwitchRangesOp extends SPARCLIRInstruction implements BlockEndOp {
 
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
@@ -368,11 +367,14 @@ public class SPARCControlFlow {
                 }
                 prevHighKey = highKey;
             }
+
             if (defaultTarget != null) {
-                new Bpa(defaultTarget.label()).emit(masm);
+                if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
+                    new Bpa(defaultTarget.label()).emit(masm);
+                }
             } else {
                 masm.bind(actualDefaultTarget);
-                // masm.hlt();
+                new Illtrap(0).emit(masm);
             }
             throw GraalInternalError.unimplemented();
         }
@@ -385,16 +387,6 @@ public class SPARCControlFlow {
             assert key.getKind() == Kind.Int;
         }
 
-        @Override
-        public LabelRef fallThroughTarget() {
-            return defaultTarget;
-        }
-
-        @Override
-        public void setFallThroughTarget(LabelRef target) {
-            defaultTarget = target;
-        }
-
         private static boolean isSorted(int[] values) {
             for (int i = 1; i < values.length; i++) {
                 if (values[i - 1] >= values[i]) {
@@ -405,7 +397,7 @@ public class SPARCControlFlow {
         }
     }
 
-    public static class TableSwitchOp extends SPARCLIRInstruction {
+    public static class TableSwitchOp extends SPARCLIRInstruction implements BlockEndOp {
 
         private final int lowKey;
         private final LabelRef defaultTarget;

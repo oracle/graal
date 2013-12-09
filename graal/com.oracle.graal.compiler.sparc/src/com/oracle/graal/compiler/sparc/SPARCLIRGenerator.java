@@ -231,7 +231,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
         boolean mirrored = emitCompare(left, right);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
         Kind kind = left.getKind().getStackKind();
@@ -239,7 +239,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
             case Int:
             case Long:
             case Object:
-                append(new BranchOp(finalCondition, label, kind));
+                append(new BranchOp(finalCondition, trueDestination, falseDestination, kind));
                 break;
             // case Float:
             // append(new CompareOp(FCMP, x, y));
@@ -255,15 +255,15 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
         // append(new BranchOp(negated ? ConditionFlag.NoOverflow : ConditionFlag.Overflow, label));
         throw GraalInternalError.unimplemented();
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
         emitIntegerTest(left, right);
-        append(new BranchOp(negated ? Condition.NE : Condition.EQ, label, left.getKind().getStackKind()));
+        append(new BranchOp(negated ? Condition.NE : Condition.EQ, trueDestination, falseDestination, left.getKind().getStackKind()));
     }
 
     private void emitIntegerTest(Value a, Value b) {

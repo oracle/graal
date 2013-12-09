@@ -183,23 +183,14 @@ public final class EdgeMoveOptimizer {
         assert numSux == 2 : "method should not be called otherwise";
 
         LIRInstruction lastInstruction = instructions.get(instructions.size() - 1);
-        if (lastInstruction instanceof StandardOp.FallThroughOp) {
-            assert ((StandardOp.FallThroughOp) lastInstruction).fallThroughTarget() != null : "block must end with unconditional jump";
-            // fall through ops like switches cannot be optimized anyway - they have input operands
-            return;
-        } else {
-            assert lastInstruction instanceof StandardOp.JumpOp : "block must end with unconditional jump";
-        }
-
         if (lastInstruction.hasState()) {
             // cannot optimize instructions when debug info is needed
             return;
         }
 
-        LIRInstruction branch = instructions.get(instructions.size() - 2);
+        LIRInstruction branch = lastInstruction;
         if (!(branch instanceof StandardOp.BranchOp) || branch.hasOperands()) {
-            // Only blocks that end with two branches (conditional branch followed
-            // by unconditional branch) are optimized.
+            // Only blocks that end with a conditional branch are optimized.
             // In addition, a conditional branch with operands (including state) cannot
             // be optimized. Moving a successor instruction before such a branch may
             // interfere with the operands of the branch. For example, a successive move
@@ -207,9 +198,9 @@ public final class EdgeMoveOptimizer {
             return;
         }
 
-        // now it is guaranteed that the block ends with two branch instructions.
-        // the instructions are inserted at the end of the block before these two branches
-        int insertIdx = instructions.size() - 2;
+        // Now it is guaranteed that the block ends with a conditional branch.
+        // The instructions are inserted at the end of the block before the branch.
+        int insertIdx = instructions.size() - 1;
 
         // setup a list with the lir-instructions of all successors
         for (Block sux : block.getSuccessors()) {

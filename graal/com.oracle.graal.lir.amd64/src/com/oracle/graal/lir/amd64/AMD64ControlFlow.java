@@ -35,11 +35,10 @@ import com.oracle.graal.asm.amd64.AMD64Address.Scale;
 import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.FallThroughOp;
+import com.oracle.graal.lir.StandardOp.BlockEndOp;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
-// @formatter:off
 public class AMD64ControlFlow {
 
     public static class ReturnOp extends AMD64LIRInstruction {
@@ -56,60 +55,54 @@ public class AMD64ControlFlow {
         }
     }
 
-
     public static class BranchOp extends AMD64LIRInstruction implements StandardOp.BranchOp {
-        protected ConditionFlag condition;
-        protected LabelRef destination;
+        protected final ConditionFlag condition;
+        protected final LabelRef trueDestination;
+        protected final LabelRef falseDestination;
 
-        public BranchOp(Condition condition, LabelRef destination) {
-            this(intCond(condition), destination);
+        public BranchOp(Condition condition, LabelRef trueDestination, LabelRef falseDestination) {
+            this(intCond(condition), trueDestination, falseDestination);
         }
 
-        public BranchOp(ConditionFlag condition, LabelRef destination) {
+        public BranchOp(ConditionFlag condition, LabelRef trueDestination, LabelRef falseDestination) {
             this.condition = condition;
-            this.destination = destination;
+            this.trueDestination = trueDestination;
+            this.falseDestination = falseDestination;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            masm.jcc(condition, destination.label());
+            int sourceIndex = crb.getCurrentBlockIndex();
+            if (trueDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+                jcc(masm, true, falseDestination);
+            } else {
+                jcc(masm, false, trueDestination);
+                if (!falseDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+                    masm.jmp(falseDestination.label());
+                }
+            }
         }
 
-        @Override
-        public LabelRef destination() {
-            return destination;
-        }
-
-        @Override
-        public void negate(LabelRef newDestination) {
-            destination = newDestination;
-            condition = condition.negate();
+        protected void jcc(AMD64MacroAssembler masm, boolean negate, LabelRef target) {
+            masm.jcc(negate ? condition.negate() : condition, target.label());
         }
     }
-
 
     public static class FloatBranchOp extends BranchOp {
         protected boolean unorderedIsTrue;
 
-        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef destination) {
-            super(floatCond(condition), destination);
+        public FloatBranchOp(Condition condition, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
+            super(floatCond(condition), trueDestination, falseDestination);
             this.unorderedIsTrue = unorderedIsTrue;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            floatJcc(masm, condition, unorderedIsTrue, destination.label());
-        }
-
-        @Override
-        public void negate(LabelRef newDestination) {
-            super.negate(newDestination);
-            unorderedIsTrue = !unorderedIsTrue;
+        protected void jcc(AMD64MacroAssembler masm, boolean negate, LabelRef target) {
+            floatJcc(masm, negate ? condition.negate() : condition, negate ? !unorderedIsTrue : unorderedIsTrue, target.label());
         }
     }
 
-
-    public static class TableSwitchOp extends AMD64LIRInstruction {
+    public static class TableSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
@@ -130,7 +123,7 @@ public class AMD64ControlFlow {
         }
     }
 
-    public static class SequentialSwitchOp extends AMD64LIRInstruction implements FallThroughOp {
+    public static class SequentialSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
         @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
@@ -176,25 +169,13 @@ public class AMD64ControlFlow {
             } else {
                 throw new GraalInternalError("sequential switch only supported for int, long and object");
             }
-            if (defaultTarget != null) {
+            if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
                 masm.jmp(defaultTarget.label());
-            } else {
-                masm.hlt();
             }
-        }
-
-        @Override
-        public LabelRef fallThroughTarget() {
-            return defaultTarget;
-        }
-
-        @Override
-        public void setFallThroughTarget(LabelRef target) {
-            defaultTarget = target;
         }
     }
 
-    public static class SwitchRangesOp extends AMD64LIRInstruction implements FallThroughOp {
+    public static class SwitchRangesOp extends AMD64LIRInstruction implements BlockEndOp {
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         private final int[] lowKeys;
@@ -234,8 +215,11 @@ public class AMD64ControlFlow {
                 }
                 prevHighKey = highKey;
             }
+
             if (defaultTarget != null) {
-                masm.jmp(defaultTarget.label());
+                if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
+                    masm.jmp(defaultTarget.label());
+                }
             } else {
                 masm.bind(actualDefaultTarget);
                 masm.hlt();
@@ -250,16 +234,6 @@ public class AMD64ControlFlow {
             assert key.getKind() == Kind.Int;
         }
 
-        @Override
-        public LabelRef fallThroughTarget() {
-            return defaultTarget;
-        }
-
-        @Override
-        public void setFallThroughTarget(LabelRef target) {
-            defaultTarget = target;
-        }
-
         private static boolean isSorted(int[] values) {
             for (int i = 1; i < values.length; i++) {
                 if (values[i - 1] >= values[i]) {
@@ -269,7 +243,6 @@ public class AMD64ControlFlow {
             return true;
         }
     }
-
 
     @Opcode("CMOVE")
     public static class CondMoveOp extends AMD64LIRInstruction {
@@ -290,7 +263,6 @@ public class AMD64ControlFlow {
             cmove(crb, masm, result, false, condition, false, trueValue, falseValue);
         }
     }
-
 
     @Opcode("CMOVE")
     public static class FloatCondMoveOp extends AMD64LIRInstruction {
@@ -403,50 +375,78 @@ public class AMD64ControlFlow {
         if (isRegister(other)) {
             assert !asRegister(other).equals(asRegister(result)) : "other already overwritten by previous move";
             switch (other.getKind()) {
-                case Int:  masm.cmovl(cond, asRegister(result), asRegister(other)); break;
-                case Long: masm.cmovq(cond, asRegister(result), asRegister(other)); break;
-                default:   throw GraalInternalError.shouldNotReachHere();
+                case Int:
+                    masm.cmovl(cond, asRegister(result), asRegister(other));
+                    break;
+                case Long:
+                    masm.cmovq(cond, asRegister(result), asRegister(other));
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
             switch (other.getKind()) {
-                case Int:  masm.cmovl(cond, asRegister(result), addr); break;
-                case Long: masm.cmovq(cond, asRegister(result), addr); break;
-                default:   throw GraalInternalError.shouldNotReachHere();
+                case Int:
+                    masm.cmovl(cond, asRegister(result), addr);
+                    break;
+                case Long:
+                    masm.cmovq(cond, asRegister(result), addr);
+                    break;
+                default:
+                    throw GraalInternalError.shouldNotReachHere();
             }
         }
     }
 
     private static ConditionFlag intCond(Condition cond) {
         switch (cond) {
-            case EQ: return ConditionFlag.Equal;
-            case NE: return ConditionFlag.NotEqual;
-            case LT: return ConditionFlag.Less;
-            case LE: return ConditionFlag.LessEqual;
-            case GE: return ConditionFlag.GreaterEqual;
-            case GT: return ConditionFlag.Greater;
-            case BE: return ConditionFlag.BelowEqual;
-            case AE: return ConditionFlag.AboveEqual;
-            case AT: return ConditionFlag.Above;
-            case BT: return ConditionFlag.Below;
-            default: throw GraalInternalError.shouldNotReachHere();
+            case EQ:
+                return ConditionFlag.Equal;
+            case NE:
+                return ConditionFlag.NotEqual;
+            case LT:
+                return ConditionFlag.Less;
+            case LE:
+                return ConditionFlag.LessEqual;
+            case GE:
+                return ConditionFlag.GreaterEqual;
+            case GT:
+                return ConditionFlag.Greater;
+            case BE:
+                return ConditionFlag.BelowEqual;
+            case AE:
+                return ConditionFlag.AboveEqual;
+            case AT:
+                return ConditionFlag.Above;
+            case BT:
+                return ConditionFlag.Below;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static ConditionFlag floatCond(Condition cond) {
         switch (cond) {
-            case EQ: return ConditionFlag.Equal;
-            case NE: return ConditionFlag.NotEqual;
-            case LT: return ConditionFlag.Below;
-            case LE: return ConditionFlag.BelowEqual;
-            case GE: return ConditionFlag.AboveEqual;
-            case GT: return ConditionFlag.Above;
-            default: throw GraalInternalError.shouldNotReachHere();
+            case EQ:
+                return ConditionFlag.Equal;
+            case NE:
+                return ConditionFlag.NotEqual;
+            case LT:
+                return ConditionFlag.Below;
+            case LE:
+                return ConditionFlag.BelowEqual;
+            case GE:
+                return ConditionFlag.AboveEqual;
+            case GT:
+                return ConditionFlag.Above;
+            default:
+                throw GraalInternalError.shouldNotReachHere();
         }
     }
 
     private static boolean trueOnUnordered(ConditionFlag condition) {
-        switch(condition) {
+        switch (condition) {
             case AboveEqual:
             case NotEqual:
             case Above:

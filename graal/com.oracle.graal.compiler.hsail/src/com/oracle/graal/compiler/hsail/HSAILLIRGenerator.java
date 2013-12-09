@@ -44,7 +44,6 @@ import com.oracle.graal.lir.hsail.HSAILArithmetic.Op2Stack;
 import com.oracle.graal.lir.hsail.HSAILArithmetic.ShiftOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.CompareBranchOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.CondMoveOp;
-import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCompareBranchOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.ReturnOp;
 import com.oracle.graal.lir.hsail.HSAILControlFlow.SwitchOp;
@@ -191,8 +190,8 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
-        // We don't have top worry about mirroring the condition on HSAIL.
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
+        // We don't have to worry about mirroring the condition on HSAIL.
         Condition finalCondition = cond;
         Variable result = newVariable(left.getKind());
         Kind kind = left.getKind().getStackKind();
@@ -200,11 +199,11 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
             case Int:
             case Long:
             case Object:
-                append(new CompareBranchOp(mapKindToCompareOp(kind), finalCondition, left, right, result, result, label));
+                append(new CompareBranchOp(mapKindToCompareOp(kind), finalCondition, left, right, result, result, trueDestination, falseDestination, false));
                 break;
             case Float:
             case Double:
-                append(new FloatCompareBranchOp(mapKindToCompareOp(kind), finalCondition, left, right, result, result, label, unorderedIsTrue));
+                append(new CompareBranchOp(mapKindToCompareOp(kind), finalCondition, left, right, result, result, trueDestination, falseDestination, unorderedIsTrue));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
@@ -212,12 +211,12 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
         throw GraalInternalError.unimplemented();
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
         throw GraalInternalError.unimplemented();
     }
 

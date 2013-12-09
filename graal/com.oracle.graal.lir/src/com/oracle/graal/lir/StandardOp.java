@@ -40,15 +40,10 @@ import com.oracle.graal.nodes.cfg.*;
 public class StandardOp {
 
     /**
-     * Marker interface for LIR ops that can fall through to the next operation, like a switch
-     * statement. setFallThroughTarget(null) can be used to make the operation fall through to the
-     * next one.
+     * A block delimiter. Every well formed block must contain exactly one such operation and it
+     * must be the last operation in the block.
      */
-    public interface FallThroughOp {
-
-        LabelRef fallThroughTarget();
-
-        void setFallThroughTarget(LabelRef target);
+    public interface BlockEndOp {
     }
 
     public interface NullCheck {
@@ -62,8 +57,7 @@ public class StandardOp {
     }
 
     /**
-     * LIR operation that defines the position of a label. The first operation of every block must
-     * implement this interface.
+     * LIR operation that defines the position of a label.
      */
     public static class LabelOp extends LIRInstruction {
 
@@ -107,11 +101,9 @@ public class StandardOp {
     }
 
     /**
-     * LIR operation that is an unconditional jump to {@link #destination()}. When the LIR is
-     * constructed, the last operation of every block must implement this interface. After register
-     * allocation, unnecessary jumps can be deleted.
+     * LIR operation that is an unconditional jump to a {@link #destination()}.
      */
-    public static class JumpOp extends LIRInstruction {
+    public static class JumpOp extends LIRInstruction implements BlockEndOp {
 
         private final LabelRef destination;
 
@@ -130,14 +122,9 @@ public class StandardOp {
     }
 
     /**
-     * Marker interface for a LIR operation that is a conditional jump to {@link #destination()}.
-     * Conditional jumps may be negated or optimized away after register allocation.
+     * Marker interface for a LIR operation that is a conditional jump.
      */
-    public interface BranchOp {
-
-        LabelRef destination();
-
-        void negate(LabelRef newDestination);
+    public interface BranchOp extends BlockEndOp {
     }
 
     /**

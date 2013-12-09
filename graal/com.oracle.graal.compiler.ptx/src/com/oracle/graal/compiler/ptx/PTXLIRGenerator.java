@@ -294,27 +294,27 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef label) {
+    public void emitCompareBranch(Value left, Value right, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination) {
         switch (left.getKind().getStackKind()) {
             case Int:
                 append(new CompareOp(ICMP, cond, left, right, nextPredRegNum));
-                append(new BranchOp(cond, label, nextPredRegNum++));
+                append(new BranchOp(cond, trueDestination, falseDestination, nextPredRegNum++));
                 break;
             case Long:
                 append(new CompareOp(LCMP, cond, left, right, nextPredRegNum));
-                append(new BranchOp(cond, label, nextPredRegNum++));
+                append(new BranchOp(cond, trueDestination, falseDestination, nextPredRegNum++));
                 break;
             case Float:
                 append(new CompareOp(FCMP, cond, left, right, nextPredRegNum));
-                append(new BranchOp(cond, label, nextPredRegNum++));
+                append(new BranchOp(cond, trueDestination, falseDestination, nextPredRegNum++));
                 break;
             case Double:
                 append(new CompareOp(DCMP, cond, left, right, nextPredRegNum));
-                append(new BranchOp(cond, label, nextPredRegNum++));
+                append(new BranchOp(cond, trueDestination, falseDestination, nextPredRegNum++));
                 break;
             case Object:
                 append(new CompareOp(ACMP, cond, left, right, nextPredRegNum));
-                append(new BranchOp(cond, label, nextPredRegNum++));
+                append(new BranchOp(cond, trueDestination, falseDestination, nextPredRegNum++));
                 break;
             default:
                 throw GraalInternalError.shouldNotReachHere("" + left.getKind());
@@ -322,12 +322,12 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOverflowCheckBranch(LabelRef label, boolean negated) {
+    public void emitOverflowCheckBranch(LabelRef overflow, LabelRef noOverflow, boolean negated) {
         throw GraalInternalError.unimplemented("PTXLIRGenerator.emitOverflowCheckBranch()");
     }
 
     @Override
-    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef label) {
+    public void emitIntegerTestBranch(Value left, Value right, boolean negated, LabelRef trueDestination, LabelRef falseDestination) {
         // / emitIntegerTest(left, right);
         // append(new BranchOp(negated ? Condition.NE : Condition.EQ, label));
         throw GraalInternalError.unimplemented("emitIntegerTestBranch()");

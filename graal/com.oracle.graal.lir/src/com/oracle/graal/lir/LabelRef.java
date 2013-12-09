@@ -22,20 +22,26 @@
  */
 package com.oracle.graal.lir;
 
+import java.util.*;
+
 import com.oracle.graal.asm.*;
+import com.oracle.graal.lir.StandardOp.BranchOp;
+import com.oracle.graal.lir.StandardOp.JumpOp;
 import com.oracle.graal.nodes.cfg.*;
 
 /**
- * LIR instructions such as JUMP and BRANCH need to reference their target {@link Block}. However,
- * direct references are not possible since the control flow graph (and therefore successors lists)
- * can be changed by optimizations - and fixing the instructions is error prone. Therefore, we only
- * reference of block B from block A only via the tuple (A, successor-index-of-B), i.e., indirectly
- * by storing the index into the successor list of A. Note that therefore it is not allowed to
- * reorder the successor list!
+ * LIR instructions such as {@link JumpOp} and {@link BranchOp} need to reference their target
+ * {@link Block}. However, direct references are not possible since the control flow graph (and
+ * therefore successors lists) can be changed by optimizations - and fixing the instructions is
+ * error prone. Therefore, we represent an edge to block B from block A via the tuple {@code (A,
+ * successor-index-of-B)}. That is, indirectly by storing the index into the successor list of A.
+ * Note therefore that the successor list cannot be re-ordered.
  */
-public abstract class LabelRef {
+public final class LabelRef {
 
-    public abstract Label label();
+    private final LIR lir;
+    private final Block block;
+    private final int suxIndex;
 
     /**
      * Returns a new reference to a successor of the given block.
@@ -45,17 +51,48 @@ public abstract class LabelRef {
      * @return The newly created label reference.
      */
     public static LabelRef forSuccessor(final LIR lir, final Block block, final int suxIndex) {
-        return new LabelRef() {
+        return new LabelRef(lir, block, suxIndex);
+    }
 
-            @Override
-            public Label label() {
-                return ((StandardOp.LabelOp) lir.lir(block.getSuccessors().get(suxIndex)).get(0)).getLabel();
-            }
+    /**
+     * Returns a new reference to a successor of the given block.
+     * 
+     * @param block The base block that contains the successor list.
+     * @param suxIndex The index of the successor.
+     */
+    private LabelRef(final LIR lir, final Block block, final int suxIndex) {
+        this.lir = lir;
+        this.block = block;
+        this.suxIndex = suxIndex;
+    }
 
-            @Override
-            public String toString() {
-                return suxIndex < block.getSuccessorCount() ? block.getSuccessors().get(suxIndex).toString() : "?" + block + ":" + suxIndex + "?";
-            }
-        };
+    public Block getSourceBlock() {
+        return block;
+    }
+
+    public Block getTargetBlock() {
+        return block.getSuccessors().get(suxIndex);
+    }
+
+    public Label label() {
+        return ((StandardOp.LabelOp) lir.lir(getTargetBlock()).get(0)).getLabel();
+    }
+
+    /**
+     * Determines if the edge represented by this object is from a block to its lexical successor in
+     * the code emitting order of blocks.
+     * 
+     * @param sourceIndex the index of this edge's {@linkplain #getSourceBlock() source} in the code
+     *            emitting order
+     */
+    public boolean isCodeEmittingOrderSuccessorEdge(int sourceIndex) {
+        List<Block> order = lir.codeEmittingOrder();
+        assert order.get(sourceIndex) == block;
+        return sourceIndex < order.size() - 1 && order.get(sourceIndex + 1) == getTargetBlock();
+    }
+
+    @Override
+    public String toString() {
+        return suxIndex < block.getSuccessorCount() ? getTargetBlock().toString() : "?" + block + ":" + suxIndex + "?";
     }
 }

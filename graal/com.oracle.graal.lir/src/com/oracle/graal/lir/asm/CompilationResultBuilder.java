@@ -59,6 +59,11 @@ public class CompilationResultBuilder {
     public final FrameMap frameMap;
 
     /**
+     * The index of the block currently being processed in the code emitting block order.
+     */
+    private int currentBlockIndex;
+
+    /**
      * The object that emits code for managing a method's frame.
      */
     public final FrameContext frameContext;
@@ -277,5 +282,19 @@ public class CompilationResultBuilder {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
         return asm.makeAddress(frameMap.registerConfig.getFrameRegister(), frameMap.offsetForStackSlot(slot));
+    }
+
+    /**
+     * Gets the index of the block currently being processed in the code emitting block order.
+     */
+    public int getCurrentBlockIndex() {
+        return currentBlockIndex;
+    }
+
+    /**
+     * Sets the index of the block currently being processed in the code emitting block order.
+     */
+    public void setCurrentBlockIndex(int index) {
+        this.currentBlockIndex = index;
     }
 }
