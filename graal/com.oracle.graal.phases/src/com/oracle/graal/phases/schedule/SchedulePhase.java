@@ -729,7 +729,11 @@ public final class SchedulePhase extends Phase {
             }
         }
 
-        assert cdbc.block == null || earliestBlock(node).dominates(cdbc.block) : "failed to find correct latest schedule for " + node + ". cdbc: " + cdbc.block + ", earliest: " + earliestBlock(node);
+        if (assertionEnabled()) {
+            if (cdbc.block != null && !earliestBlock(node).dominates(cdbc.block)) {
+                throw new SchedulingError("failed to find correct latest schedule for %s. cdbc: %s, earliest: %s", node, cdbc.block, earliestBlock(node));
+            }
+        }
         return cdbc.block;
     }
 
