@@ -28,7 +28,7 @@ import java.lang.annotation.*;
 import java.lang.reflect.*;
 import java.util.*;
 
-import com.oracle.graal.api.meta.ProfilingInfo.TriState;
+import com.oracle.graal.api.meta.ProfilingInfo.*;
 
 /**
  * Miscellaneous collection of utility methods used by {@code com.oracle.graal.api.meta} and its
@@ -536,11 +536,11 @@ public class MetaUtil {
                 buf.append(sep);
             }
 
-            if (info.getExceptionSeen(i) == TriState.TRUE) {
+            if (info.getExceptionSeen(i) != TriState.UNKNOWN) {
                 buf.append(String.format("exceptionSeen@%d: %s%s", i, info.getExceptionSeen(i).name(), sep));
             }
 
-            if (info.getNullSeen(i) == TriState.TRUE) {
+            if (info.getNullSeen(i) != TriState.UNKNOWN) {
                 buf.append(String.format("nullSeen@%d: %s%s", i, info.getNullSeen(i).name(), sep));
             }
 
