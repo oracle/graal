@@ -475,8 +475,7 @@ public class SnippetTemplate {
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
-        Assumptions assumptions = providers.getReplacements().getAssumptions();
-        PhaseContext phaseContext = new PhaseContext(providers, assumptions);
+        PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
