@@ -577,11 +577,14 @@ public class SnippetTemplate {
             }
         } while (exploded);
 
+        GuardsStage guardsStage = args.cacheKey.guardsStage;
         // Perform lowering on the snippet
-        snippetCopy.setGuardsStage(args.cacheKey.guardsStage);
+        if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
+            new GuardLoweringPhase().apply(snippetCopy, null);
+        }
+        snippetCopy.setGuardsStage(guardsStage);
         try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            PhaseContext c = new PhaseContext(providers, new Assumptions(false));
-            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, phaseContext);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
