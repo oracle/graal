@@ -62,6 +62,7 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -269,18 +270,26 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoad(Kind kind, Value address, Access access) {
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
+        append(new LoadOp(kind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
+        append(new StoreOp(kind, storeAddress, input, state));
     }
 
     @Override

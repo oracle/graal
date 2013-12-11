@@ -59,6 +59,7 @@ import com.oracle.graal.lir.amd64.AMD64Move.StoreConstantOp;
 import com.oracle.graal.lir.amd64.AMD64Move.StoreOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
 
@@ -446,15 +447,18 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     /**
      * Returns whether or not the input access is a (de)compression candidate.
      */
-    private static boolean isCompressCandidate(DeoptimizingNode access) {
-        return access != null && ((HeapAccess) access).isCompressible();
+    private static boolean isCompressCandidate(Access access) {
+        return access != null && access.isCompressible();
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode access) {
+    public Variable emitLoad(Kind kind, Value address, Access access) {
         AMD64AddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        assert access == null || access instanceof HeapAccess;
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
         /**
          * Currently, the (de)compression of pointers applies conditionally to some objects (oops,
          * kind==Object) and some addresses (klass pointers, kind==Long). Initially, the input
@@ -467,24 +471,27 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
          */
         if (isCompressCandidate(access)) {
             if (config.useCompressedOops && kind == Kind.Object) {
-                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowKlassBase(),
-                                getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
+                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, getNarrowKlassBase(), getNarrowOopBase(),
+                                getNarrowOopShift(), getLogMinObjectAlignment()));
             } else if (config.useCompressedClassPointers && kind == Kind.Long) {
-                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, access != null ? state(access) : null, getNarrowKlassBase(),
-                                getNarrowOopBase(), getNarrowKlassShift(), getLogKlassAlignment()));
+                append(new LoadCompressedPointer(kind, result, getProviders().getRegisters().getHeapBaseRegister().asValue(), loadAddress, state, getNarrowKlassBase(), getNarrowOopBase(),
+                                getNarrowKlassShift(), getLogKlassAlignment()));
             } else {
-                append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
+                append(new LoadOp(kind, result, loadAddress, state));
             }
         } else {
-            append(new LoadOp(kind, result, loadAddress, access != null ? state(access) : null));
+            append(new LoadOp(kind, result, loadAddress, state));
         }
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode access) {
+    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
         AMD64AddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = access != null ? state(access) : null;
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
         if (isConstant(inputVal)) {
             Constant c = asConstant(inputVal);
             if (canStoreConstant(c)) {
