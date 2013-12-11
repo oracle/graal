@@ -63,7 +63,7 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
     @Override
     public void lower(LoweringTool tool) {
         if (graph().getGuardsStage() == StructuredGraph.GuardsStage.FLOATING_GUARDS) {
-            ValueNode guard = tool.createGuard(condition(), getReason(), getAction(), isNegated()).asNode();
+            ValueNode guard = tool.createGuard(this, condition(), getReason(), getAction(), isNegated()).asNode();
             this.replaceAtUsages(guard);
             ValueAnchorNode newAnchor = graph().add(new ValueAnchorNode(guard.asNode()));
             graph().replaceFixedWithFixed(this, newAnchor);

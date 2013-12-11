@@ -89,7 +89,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object) {
+        public GuardingNode createNullCheckGuard(FixedNode before, GuardedNode guardedNode, ValueNode object) {
             if (ObjectStamp.isObjectNonNull(object)) {
                 // Short cut creation of null check guard if the object is known to be non-null.
                 return null;
@@ -97,10 +97,10 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             StructuredGraph graph = guardedNode.asNode().graph();
             if (graph.getGuardsStage().ordinal() > GuardsStage.FLOATING_GUARDS.ordinal()) {
                 NullCheckNode nullCheck = graph.add(new NullCheckNode(object));
-                graph.addBeforeFixed((FixedNode) guardedNode, nullCheck);
+                graph.addBeforeFixed(before, nullCheck);
                 return nullCheck;
             } else {
-                GuardingNode guard = createGuard(graph.unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
+                GuardingNode guard = createGuard(before, graph.unique(new IsNullNode(object)), DeoptimizationReason.NullCheckException, DeoptimizationAction.InvalidateReprofile, true);
                 assert guardedNode.getGuard() == null;
                 guardedNode.setGuard(guard);
                 return guard;
@@ -108,8 +108,8 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
         }
 
         @Override
-        public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
-            return createGuard(condition, deoptReason, action, false);
+        public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
+            return createGuard(before, condition, deoptReason, action, false);
         }
 
         @Override
@@ -117,11 +117,32 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             return context.getAssumptions();
         }
 
-        @Override
-        public GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
-            if (condition.graph().getGuardsStage().ordinal() > StructuredGraph.GuardsStage.FLOATING_GUARDS.ordinal()) {
-                throw new GraalInternalError("Cannot create guards after guard lowering");
+        private class DummyGuardHandle extends ValueNode implements GuardedNode {
+            @Input private GuardingNode guard;
+
+            public DummyGuardHandle(GuardingNode guard) {
+                super(StampFactory.forVoid());
+                this.guard = guard;
             }
+
+            public GuardingNode getGuard() {
+                return guard;
+            }
+
+            public void setGuard(GuardingNode guard) {
+                updateUsages(this.guard == null ? null : this.guard.asNode(), guard == null ? null : guard.asNode());
+                this.guard = guard;
+            }
+
+            @Override
+            public ValueNode asNode() {
+                return this;
+            }
+
+        }
+
+        @Override
+        public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated) {
             if (OptEliminateGuards.getValue()) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).negated() == negated) {
@@ -129,12 +150,21 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     }
                 }
             }
-            GuardNode newGuard = guardAnchor.asNode().graph().unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
-            if (OptEliminateGuards.getValue()) {
-                activeGuards.grow();
-                activeGuards.mark(newGuard);
+            StructuredGraph graph = before.graph();
+            if (condition.graph().getGuardsStage().ordinal() >= StructuredGraph.GuardsStage.FIXED_DEOPTS.ordinal()) {
+                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, deoptReason, action, negated));
+                graph.addBeforeFixed(before, fixedGuard);
+                DummyGuardHandle handle = graph.add(new DummyGuardHandle(fixedGuard));
+                fixedGuard.lower(this);
+                return handle.getGuard();
+            } else {
+                GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
+                if (OptEliminateGuards.getValue()) {
+                    activeGuards.grow();
+                    activeGuards.mark(newGuard);
+                }
+                return newGuard;
             }
-            return newGuard;
         }
 
         @Override
