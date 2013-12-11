@@ -28,7 +28,6 @@ import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 import java.util.Map.Entry;
