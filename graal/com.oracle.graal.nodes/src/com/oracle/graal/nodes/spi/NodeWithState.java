@@ -26,4 +26,6 @@ import com.oracle.graal.nodes.*;
 
 public interface NodeWithState {
     FrameState getState();
+
+    Node asNode();
 }
