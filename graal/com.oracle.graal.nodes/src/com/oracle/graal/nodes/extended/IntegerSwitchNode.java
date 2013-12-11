@@ -54,6 +54,15 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         assert keySuccessors.length == keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
+        assert assertValues();
+        assert assertSorted();
+    }
+
+    private boolean assertSorted() {
+        for (int i = 1; i < keys.length; i++) {
+            assert keys[i - 1] < keys[i];
+        }
+        return true;
     }
 
     /**
@@ -68,6 +77,11 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
      */
     public IntegerSwitchNode(ValueNode value, int successorCount, int[] keys, double[] keyProbabilities, int[] keySuccessors) {
         this(value, new AbstractBeginNode[successorCount], keys, keyProbabilities, keySuccessors);
+    }
+
+    @Override
+    public boolean isSorted() {
+        return true;
     }
 
     /**

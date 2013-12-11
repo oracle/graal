@@ -71,7 +71,7 @@ public enum HSAILCompare {
         emitCompare(masm, condition, x, y, unorderedIsTrue);
     }
 
-    private static String conditionToString(Condition condition) {
+    public static String conditionToString(Condition condition) {
         switch (condition) {
             case EQ:
                 return "eq";

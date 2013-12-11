@@ -29,13 +29,14 @@ import static com.oracle.graal.nodes.calc.Condition.*;
 import com.oracle.graal.api.code.CompilationResult.JumpTable;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
-import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXAssembler.Global;
 import com.oracle.graal.asm.ptx.PTXAssembler.Setp;
+import com.oracle.graal.asm.ptx.*;
 import com.oracle.graal.asm.ptx.PTXMacroAssembler.Mov;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.SwitchStrategy.BaseSwitchClosure;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -193,54 +194,55 @@ public class PTXControlFlow {
         }
     }
 
-    public static class SequentialSwitchOp extends PTXLIRInstruction implements BlockEndOp {
+    public static class StrategySwitchOp extends PTXLIRInstruction implements BlockEndOp {
 
         @Use({CONST}) protected Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
         @Alive({REG}) protected Value key;
         @Temp({REG, ILLEGAL}) protected Value scratch;
+        private final SwitchStrategy strategy;
         // Number of predicate register that would be set by this instruction.
         protected int predRegNum;
 
-        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch, int predReg) {
-            assert keyConstants.length == keyTargets.length;
-            this.keyConstants = keyConstants;
+        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch, int predReg) {
+            this.strategy = strategy;
+            this.keyConstants = strategy.keyConstants;
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
             this.key = key;
             this.scratch = scratch;
+            assert keyConstants.length == keyTargets.length;
+            assert keyConstants.length == strategy.keyProbabilities.length;
+            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int || key.getKind() == Kind.Long);
             predRegNum = predReg;
         }
 
         @Override
-        public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            Kind keyKind = key.getKind();
-
-            if (keyKind == Kind.Int || keyKind == Kind.Long) {
-                for (int i = 0; i < keyConstants.length; i++) {
-                    if (crb.codeCache.needsDataPatch(keyConstants[i])) {
-                        crb.recordDataReferenceInCode(keyConstants[i], 0, true);
+        public void emitCode(final CompilationResultBuilder crb, final PTXMacroAssembler masm) {
+            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
+                @Override
+                protected void conditionalJump(int index, Condition condition, Label target) {
+                    switch (key.getKind()) {
+                        case Int:
+                        case Long:
+                            if (crb.codeCache.needsDataPatch(keyConstants[index])) {
+                                crb.recordDataReferenceInCode(keyConstants[index], 0, true);
+                            }
+                            new Setp(EQ, keyConstants[index], key, predRegNum).emit(masm);
+                            break;
+                        case Object:
+                            assert condition == Condition.EQ || condition == Condition.NE;
+                            PTXMove.move(crb, masm, scratch, keyConstants[index]);
+                            new Setp(condition, scratch, key, predRegNum).emit(masm);
+                            break;
+                        default:
+                            throw new GraalInternalError("switch only supported for int, long and object");
                     }
-                    new Setp(EQ, keyConstants[i], key, predRegNum).emit(masm);
-                    masm.bra(masm.nameOf(keyTargets[i].label()), predRegNum);
+                    masm.bra(masm.nameOf(target), predRegNum);
                 }
-            } else if (keyKind == Kind.Object) {
-                for (int i = 0; i < keyConstants.length; i++) {
-                    PTXMove.move(crb, masm, scratch, keyConstants[i]);
-                    new Setp(EQ, keyConstants[i], scratch, predRegNum).emit(masm);
-                    masm.bra(keyTargets[i].label().toString(), predRegNum);
-                }
-            } else {
-                throw new GraalInternalError("sequential switch only supported for int, long and object");
-            }
-            if (defaultTarget != null) {
-                if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
-                    masm.jmp(defaultTarget.label());
-                }
-            } else {
-                // masm.hlt();
-            }
+            };
+            strategy.run(closure);
         }
     }
 
@@ -265,41 +267,35 @@ public class PTXControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, PTXMacroAssembler masm) {
-            tableswitch(crb, masm, lowKey, defaultTarget, targets, index, scratch, predRegNum);
+            Buffer buf = masm.codeBuffer;
+
+            // Compare index against jump table bounds
+
+            int highKey = lowKey + targets.length - 1;
+            if (lowKey != 0) {
+                // subtract the low value from the switch value
+                // new Sub(value, value, lowKey).emit(masm);
+                new Setp(GT, index, Constant.forInt(highKey - lowKey), predRegNum).emit(masm);
+            } else {
+                new Setp(GT, index, Constant.forInt(highKey), predRegNum).emit(masm);
+            }
+
+            // Jump to default target if index is not within the jump table
+            if (defaultTarget != null) {
+                masm.bra(masm.nameOf(defaultTarget.label()), predRegNum);
+            }
+
+            // address of jump table
+            int tablePos = buf.position();
+
+            JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
+            String name = "jumptable" + jt.position;
+
+            new Global(index, name, targets).emit(masm);
+
+            // bra(Value, name);
+
+            crb.compilationResult.addAnnotation(jt);
         }
-    }
-
-    @SuppressWarnings("unused")
-    private static void tableswitch(CompilationResultBuilder crb, PTXAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value value, Value scratch, int predNum) {
-        Buffer buf = masm.codeBuffer;
-
-        // Compare index against jump table bounds
-
-        int highKey = lowKey + targets.length - 1;
-        if (lowKey != 0) {
-            // subtract the low value from the switch value
-            // new Sub(value, value, lowKey).emit(masm);
-            new Setp(GT, value, Constant.forInt(highKey - lowKey), predNum).emit(masm);
-        } else {
-            new Setp(GT, value, Constant.forInt(highKey), predNum).emit(masm);
-        }
-
-        // Jump to default target if index is not within the jump table
-        if (defaultTarget != null) {
-            masm.bra(masm.nameOf(defaultTarget.label()), predNum);
-        }
-
-        // address of jump table
-        int tablePos = buf.position();
-
-        JumpTable jt = new JumpTable(tablePos, lowKey, highKey, 4);
-        String name = "jumptable" + jt.position;
-
-        new Global(value, name, targets).emit(masm);
-
-        // bra(Value, name);
-
-        crb.compilationResult.addAnnotation(jt);
-
     }
 }

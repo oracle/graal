@@ -36,6 +36,7 @@ import com.oracle.graal.asm.amd64.AMD64Assembler.ConditionFlag;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
+import com.oracle.graal.lir.SwitchStrategy.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
@@ -102,6 +103,61 @@ public class AMD64ControlFlow {
         }
     }
 
+    public static class StrategySwitchOp extends AMD64LIRInstruction implements BlockEndOp {
+        @Use({CONST}) protected Constant[] keyConstants;
+        private final LabelRef[] keyTargets;
+        private LabelRef defaultTarget;
+        @Alive({REG}) protected Value key;
+        @Temp({REG, ILLEGAL}) protected Value scratch;
+        private final SwitchStrategy strategy;
+
+        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+            this.strategy = strategy;
+            this.keyConstants = strategy.keyConstants;
+            this.keyTargets = keyTargets;
+            this.defaultTarget = defaultTarget;
+            this.key = key;
+            this.scratch = scratch;
+            assert keyConstants.length == keyTargets.length;
+            assert keyConstants.length == strategy.keyProbabilities.length;
+            assert (scratch.getKind() == Kind.Illegal) == (key.getKind() == Kind.Int || key.getKind() == Kind.Long);
+        }
+
+        @Override
+        public void emitCode(final CompilationResultBuilder crb, final AMD64MacroAssembler masm) {
+            final Register keyRegister = asRegister(key);
+
+            BaseSwitchClosure closure = new BaseSwitchClosure(crb, masm, keyTargets, defaultTarget) {
+                @Override
+                protected void conditionalJump(int index, Condition condition, Label target) {
+                    switch (key.getKind()) {
+                        case Int:
+                            if (crb.codeCache.needsDataPatch(keyConstants[index])) {
+                                crb.recordDataReferenceInCode(keyConstants[index], 0, true);
+                            }
+                            long lc = keyConstants[index].asLong();
+                            assert NumUtil.isInt(lc);
+                            masm.cmpl(keyRegister, (int) lc);
+                            break;
+                        case Long:
+                            masm.cmpq(keyRegister, (AMD64Address) crb.asLongConstRef(keyConstants[index]));
+                            break;
+                        case Object:
+                            assert condition == Condition.EQ || condition == Condition.NE;
+                            Register temp = asObjectReg(scratch);
+                            AMD64Move.move(crb, masm, temp.asValue(Kind.Object), keyConstants[index]);
+                            masm.cmpptr(keyRegister, temp);
+                            break;
+                        default:
+                            throw new GraalInternalError("switch only supported for int, long and object");
+                    }
+                    masm.jcc(intCond(condition), target);
+                }
+            };
+            strategy.run(closure);
+        }
+    }
+
     public static class TableSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
         private final int lowKey;
         private final LabelRef defaultTarget;
@@ -119,128 +175,64 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            tableswitch(crb, masm, lowKey, defaultTarget, targets, asIntReg(index), asLongReg(scratch));
-        }
-    }
+            Register value = asIntReg(index);
+            Register scratchReg = asLongReg(scratch);
 
-    public static class SequentialSwitchOp extends AMD64LIRInstruction implements BlockEndOp {
-        @Use({CONST}) protected Constant[] keyConstants;
-        private final LabelRef[] keyTargets;
-        private LabelRef defaultTarget;
-        @Alive({REG}) protected Value key;
-        @Temp({REG, ILLEGAL}) protected Value scratch;
-
-        public SequentialSwitchOp(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
-            assert keyConstants.length == keyTargets.length;
-            this.keyConstants = keyConstants;
-            this.keyTargets = keyTargets;
-            this.defaultTarget = defaultTarget;
-            this.key = key;
-            this.scratch = scratch;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (key.getKind() == Kind.Int) {
-                Register intKey = asIntReg(key);
-                for (int i = 0; i < keyConstants.length; i++) {
-                    if (crb.codeCache.needsDataPatch(keyConstants[i])) {
-                        crb.recordDataReferenceInCode(keyConstants[i], 0, true);
-                    }
-                    long lc = keyConstants[i].asLong();
-                    assert NumUtil.isInt(lc);
-                    masm.cmpl(intKey, (int) lc);
-                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
-                }
-            } else if (key.getKind() == Kind.Long) {
-                Register longKey = asLongReg(key);
-                for (int i = 0; i < keyConstants.length; i++) {
-                    masm.cmpq(longKey, (AMD64Address) crb.asLongConstRef(keyConstants[i]));
-                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
-                }
-            } else if (key.getKind() == Kind.Object) {
-                Register objectKey = asObjectReg(key);
-                Register temp = asObjectReg(scratch);
-                for (int i = 0; i < keyConstants.length; i++) {
-                    AMD64Move.move(crb, masm, temp.asValue(Kind.Object), keyConstants[i]);
-                    masm.cmpptr(objectKey, temp);
-                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
-                }
+            Buffer buf = masm.codeBuffer;
+            // Compare index against jump table bounds
+            int highKey = lowKey + targets.length - 1;
+            if (lowKey != 0) {
+                // subtract the low value from the switch value
+                masm.subl(value, lowKey);
+                masm.cmpl(value, highKey - lowKey);
             } else {
-                throw new GraalInternalError("sequential switch only supported for int, long and object");
-            }
-            if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
-                masm.jmp(defaultTarget.label());
-            }
-        }
-    }
-
-    public static class SwitchRangesOp extends AMD64LIRInstruction implements BlockEndOp {
-        private final LabelRef[] keyTargets;
-        private LabelRef defaultTarget;
-        private final int[] lowKeys;
-        private final int[] highKeys;
-        @Alive protected Value key;
-
-        public SwitchRangesOp(int[] lowKeys, int[] highKeys, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-            this.lowKeys = lowKeys;
-            this.highKeys = highKeys;
-            this.keyTargets = keyTargets;
-            this.defaultTarget = defaultTarget;
-            this.key = key;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            assert isSorted(lowKeys) && isSorted(highKeys);
-
-            Label actualDefaultTarget = defaultTarget == null ? new Label() : defaultTarget.label();
-            int prevHighKey = 0;
-            boolean skipLowCheck = false;
-            for (int i = 0; i < lowKeys.length; i++) {
-                int lowKey = lowKeys[i];
-                int highKey = highKeys[i];
-                if (lowKey == highKey) {
-                    masm.cmpl(asIntReg(key), lowKey);
-                    masm.jcc(ConditionFlag.Equal, keyTargets[i].label());
-                    skipLowCheck = false;
-                } else {
-                    if (!skipLowCheck || (prevHighKey + 1) != lowKey) {
-                        masm.cmpl(asIntReg(key), lowKey);
-                        masm.jcc(ConditionFlag.Less, actualDefaultTarget);
-                    }
-                    masm.cmpl(asIntReg(key), highKey);
-                    masm.jcc(ConditionFlag.LessEqual, keyTargets[i].label());
-                    skipLowCheck = true;
-                }
-                prevHighKey = highKey;
+                masm.cmpl(value, highKey);
             }
 
+            // Jump to default target if index is not within the jump table
             if (defaultTarget != null) {
-                if (!defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
-                    masm.jmp(defaultTarget.label());
-                }
-            } else {
-                masm.bind(actualDefaultTarget);
-                masm.hlt();
+                masm.jcc(ConditionFlag.Above, defaultTarget.label());
             }
-        }
 
-        @Override
-        protected void verify() {
-            super.verify();
-            assert lowKeys.length == keyTargets.length;
-            assert highKeys.length == keyTargets.length;
-            assert key.getKind() == Kind.Int;
-        }
+            // Set scratch to address of jump table
+            int leaPos = buf.position();
+            masm.leaq(scratchReg, new AMD64Address(AMD64.rip, 0));
+            int afterLea = buf.position();
 
-        private static boolean isSorted(int[] values) {
-            for (int i = 1; i < values.length; i++) {
-                if (values[i - 1] >= values[i]) {
-                    return false;
+            // Load jump table entry into scratch and jump to it
+            masm.movslq(value, new AMD64Address(scratchReg, value, Scale.Times4, 0));
+            masm.addq(scratchReg, value);
+            masm.jmp(scratchReg);
+
+            // Inserting padding so that jump table address is 4-byte aligned
+            if ((buf.position() & 0x3) != 0) {
+                masm.nop(4 - (buf.position() & 0x3));
+            }
+
+            // Patch LEA instruction above now that we know the position of the jump table
+            int jumpTablePos = buf.position();
+            buf.setPosition(leaPos);
+            masm.leaq(scratchReg, new AMD64Address(AMD64.rip, jumpTablePos - afterLea));
+            buf.setPosition(jumpTablePos);
+
+            // Emit jump table entries
+            for (LabelRef target : targets) {
+                Label label = target.label();
+                int offsetToJumpTableBase = buf.position() - jumpTablePos;
+                if (label.isBound()) {
+                    int imm32 = label.position() - jumpTablePos;
+                    buf.emitInt(imm32);
+                } else {
+                    label.addPatchAt(buf.position());
+
+                    buf.emitByte(0); // pseudo-opcode for jump table entry
+                    buf.emitShort(offsetToJumpTableBase);
+                    buf.emitByte(0); // padding to make jump table entry 4 bytes wide
                 }
             }
-            return true;
+
+            JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, 4);
+            crb.compilationResult.addAnnotation(jt);
         }
     }
 
@@ -284,64 +276,6 @@ public class AMD64ControlFlow {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             cmove(crb, masm, result, true, condition, unorderedIsTrue, trueValue, falseValue);
         }
-    }
-
-    private static void tableswitch(CompilationResultBuilder crb, AMD64MacroAssembler masm, int lowKey, LabelRef defaultTarget, LabelRef[] targets, Register value, Register scratch) {
-        Buffer buf = masm.codeBuffer;
-        // Compare index against jump table bounds
-        int highKey = lowKey + targets.length - 1;
-        if (lowKey != 0) {
-            // subtract the low value from the switch value
-            masm.subl(value, lowKey);
-            masm.cmpl(value, highKey - lowKey);
-        } else {
-            masm.cmpl(value, highKey);
-        }
-
-        // Jump to default target if index is not within the jump table
-        if (defaultTarget != null) {
-            masm.jcc(ConditionFlag.Above, defaultTarget.label());
-        }
-
-        // Set scratch to address of jump table
-        int leaPos = buf.position();
-        masm.leaq(scratch, new AMD64Address(AMD64.rip, 0));
-        int afterLea = buf.position();
-
-        // Load jump table entry into scratch and jump to it
-        masm.movslq(value, new AMD64Address(scratch, value, Scale.Times4, 0));
-        masm.addq(scratch, value);
-        masm.jmp(scratch);
-
-        // Inserting padding so that jump table address is 4-byte aligned
-        if ((buf.position() & 0x3) != 0) {
-            masm.nop(4 - (buf.position() & 0x3));
-        }
-
-        // Patch LEA instruction above now that we know the position of the jump table
-        int jumpTablePos = buf.position();
-        buf.setPosition(leaPos);
-        masm.leaq(scratch, new AMD64Address(AMD64.rip, jumpTablePos - afterLea));
-        buf.setPosition(jumpTablePos);
-
-        // Emit jump table entries
-        for (LabelRef target : targets) {
-            Label label = target.label();
-            int offsetToJumpTableBase = buf.position() - jumpTablePos;
-            if (label.isBound()) {
-                int imm32 = label.position() - jumpTablePos;
-                buf.emitInt(imm32);
-            } else {
-                label.addPatchAt(buf.position());
-
-                buf.emitByte(0); // pseudo-opcode for jump table entry
-                buf.emitShort(offsetToJumpTableBase);
-                buf.emitByte(0); // padding to make jump table entry 4 bytes wide
-            }
-        }
-
-        JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, 4);
-        crb.compilationResult.addAnnotation(jt);
     }
 
     private static void floatJcc(AMD64MacroAssembler masm, ConditionFlag condition, boolean unorderedIsTrue, Label label) {
