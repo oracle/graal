@@ -33,6 +33,8 @@ import com.oracle.graal.nodes.virtual.*;
 /**
  * The {@code FrameState} class encapsulates the frame state (i.e. local variables and operand
  * stack) at a particular point in the abstract interpretation.
+ * 
+ * This can be used as debug or deoptimization information.
  */
 @NodeInfo(nameTemplate = "FrameState@{p#method/s}:{p#bci}")
 public final class FrameState extends VirtualState implements IterableNodeType {

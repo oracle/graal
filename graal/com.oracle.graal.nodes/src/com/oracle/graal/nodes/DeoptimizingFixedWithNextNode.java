@@ -26,7 +26,7 @@ import com.oracle.graal.nodes.type.*;
 
 public abstract class DeoptimizingFixedWithNextNode extends FixedWithNextNode implements DeoptimizingNode {
 
-    @Input private FrameState deoptState;
+    @Input(notDataflow = true) private FrameState deoptState;
 
     public DeoptimizingFixedWithNextNode(Stamp stamp) {
         super(stamp);

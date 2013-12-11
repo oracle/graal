@@ -25,7 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.nodes.spi.*;
 
 /**
- * Interface implemented by nodes which need deoptimization information.
+ * Interface implemented by nodes which may need {@linkplain FrameState deoptimization information}.
  */
 public interface DeoptimizingNode extends NodeWithState {
 
@@ -42,7 +42,7 @@ public interface DeoptimizingNode extends NodeWithState {
     /**
      * Sets the deoptimization information associated with this node.
      * 
-     * @param state the FrameState which represents the deoptimization information
+     * @param state the {@link FrameState} which represents the deoptimization information
      */
     void setDeoptimizationState(FrameState state);
 }
