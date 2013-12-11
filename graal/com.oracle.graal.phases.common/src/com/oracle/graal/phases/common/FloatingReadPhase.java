@@ -226,7 +226,6 @@ public class FloatingReadPhase extends Phase {
             if (accessNode.canFloat()) {
                 MemoryNode lastLocationAccess = state.getLastLocationAccess(locationIdentity);
                 FloatingAccessNode floatingNode = accessNode.asFloatingNode(lastLocationAccess);
-                floatingNode.setNullCheck(accessNode.getNullCheck());
                 ValueAnchorNode anchor = null;
                 GuardingNode guard = accessNode.getGuard();
                 if (guard != null) {
