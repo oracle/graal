@@ -65,6 +65,9 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Option(help = "Print compilation queue activity periodically")
     private static final OptionValue<Boolean> PrintQueue = new OptionValue<>(false);
 
+    @Option(help = "Print bootstrap progress and summary")
+    private static final OptionValue<Boolean> PrintBootstrap = new OptionValue<>(true);
+
     @Option(help = "Time limit in milliseconds for bootstrap (-1 for no limit)")
     private static final OptionValue<Integer> TimedBootstrap = new OptionValue<>(-1);
 
@@ -226,8 +229,11 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     public void bootstrap() throws Throwable {
-        TTY.print("Bootstrapping Graal");
-        TTY.flush();
+        if (PrintBootstrap.getValue()) {
+            TTY.print("Bootstrapping Graal");
+            TTY.flush();
+        }
+
         long startTime = System.currentTimeMillis();
 
         boolean firstRun = true;
@@ -261,8 +267,10 @@ public class VMToCompilerImpl implements VMToCompiler {
                 Thread.sleep(100);
                 while (z < compileQueue.getCompletedTaskCount() / 100) {
                     ++z;
-                    TTY.print(".");
-                    TTY.flush();
+                    if (PrintBootstrap.getValue()) {
+                        TTY.print(".");
+                        TTY.flush();
+                    }
                 }
 
                 // Are we out of time?
@@ -283,7 +291,10 @@ public class VMToCompilerImpl implements VMToCompiler {
 
         bootstrapRunning = false;
 
-        TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
+        if (PrintBootstrap.getValue()) {
+            TTY.println(" in %d ms (compiled %d methods)", System.currentTimeMillis() - startTime, compileQueue.getCompletedTaskCount());
+        }
+
         if (runtime.getGraphCache() != null) {
             runtime.getGraphCache().clear();
         }
