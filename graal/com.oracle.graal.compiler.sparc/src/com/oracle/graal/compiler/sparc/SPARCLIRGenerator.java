@@ -50,8 +50,7 @@ import com.oracle.graal.lir.sparc.SPARCControlFlow.BranchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.CondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.ReturnOp;
-import com.oracle.graal.lir.sparc.SPARCControlFlow.SequentialSwitchOp;
-import com.oracle.graal.lir.sparc.SPARCControlFlow.SwitchRangesOp;
+import com.oracle.graal.lir.sparc.SPARCControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.sparc.SPARCControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.sparc.SPARCMove.LoadAddressOp;
 import com.oracle.graal.lir.sparc.SPARCMove.MembarOp;
@@ -359,16 +358,9 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-        // Making a copy of the switch value is necessary because jump table destroys the input
-        // value
-        assert key.getKind() == Kind.Int || key.getKind() == Kind.Long || key.getKind() == Kind.Object : key.getKind();
-        append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(key.getKind())));
-    }
-
-    @Override
-    protected void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key) {
-        append(new SwitchRangesOp(lowKeys, highKeys, targets, defaultTarget, key));
+    protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+        boolean needsTemp = key.getKind() == Kind.Long || key.getKind() == Kind.Object;
+        append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getKind()) : Value.ILLEGAL));
     }
 
     @Override

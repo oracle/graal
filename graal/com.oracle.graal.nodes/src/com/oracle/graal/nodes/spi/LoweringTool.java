@@ -39,11 +39,11 @@ public interface LoweringTool {
 
     Replacements getReplacements();
 
-    GuardingNode createNullCheckGuard(GuardedNode guardedNode, ValueNode object);
+    GuardingNode createNullCheckGuard(FixedNode before, GuardedNode guardedNode, ValueNode object);
 
-    GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
+    GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action);
 
-    GuardingNode createGuard(LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
+    GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action, boolean negated);
 
     Assumptions assumptions();
 

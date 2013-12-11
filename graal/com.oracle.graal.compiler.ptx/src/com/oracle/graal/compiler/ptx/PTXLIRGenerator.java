@@ -51,7 +51,7 @@ import com.oracle.graal.lir.ptx.PTXControlFlow.CondMoveOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.FloatCondMoveOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnNoValOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.ReturnOp;
-import com.oracle.graal.lir.ptx.PTXControlFlow.SequentialSwitchOp;
+import com.oracle.graal.lir.ptx.PTXControlFlow.StrategySwitchOp;
 import com.oracle.graal.lir.ptx.PTXControlFlow.TableSwitchOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadOp;
 import com.oracle.graal.lir.ptx.PTXMemOp.LoadParamOp;
@@ -62,6 +62,7 @@ import com.oracle.graal.lir.ptx.PTXMove.MoveFromRegOp;
 import com.oracle.graal.lir.ptx.PTXMove.MoveToRegOp;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -269,18 +270,26 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode deopting) {
+    public Variable emitLoad(Kind kind, Value address, Access access) {
         PTXAddressValue loadAddress = asAddress(address);
         Variable result = newVariable(kind);
-        append(new LoadOp(kind, result, loadAddress, deopting != null ? state(deopting) : null));
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
+        append(new LoadOp(kind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode deopting) {
+    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
         PTXAddressValue storeAddress = asAddress(address);
         Variable input = load(inputVal);
-        append(new StoreOp(kind, storeAddress, input, deopting != null ? state(deopting) : null));
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
+        append(new StoreOp(kind, storeAddress, input, state));
     }
 
     @Override
@@ -779,20 +788,9 @@ public class PTXLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key) {
-        // Making a copy of the switch value is necessary because jump table destroys the input
-        // value
-        if (key.getKind() == Kind.Int || key.getKind() == Kind.Long) {
-            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, Value.ILLEGAL, nextPredRegNum++));
-        } else {
-            assert key.getKind() == Kind.Object : key.getKind();
-            append(new SequentialSwitchOp(keyConstants, keyTargets, defaultTarget, key, newVariable(Kind.Object), nextPredRegNum++));
-        }
-    }
-
-    @Override
-    protected void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key) {
-        throw new InternalError("NYI");
+    protected void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+        boolean needsTemp = key.getKind() == Kind.Object;
+        append(new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getKind()) : Value.ILLEGAL, nextPredRegNum++));
     }
 
     @Override

@@ -325,7 +325,7 @@ public class SnippetTemplate {
             this.method = info.method;
             this.guardsStage = guardsStage;
             this.values = new Object[info.getParameterCount()];
-            this.hash = info.method.hashCode();
+            this.hash = info.method.hashCode() + 31 * guardsStage.hashCode();
         }
 
         protected void setParam(int paramIdx, Object value) {
@@ -475,8 +475,7 @@ public class SnippetTemplate {
         ResolvedJavaMethod method = snippetGraph.method();
         Signature signature = method.getSignature();
 
-        Assumptions assumptions = providers.getReplacements().getAssumptions();
-        PhaseContext phaseContext = new PhaseContext(providers, assumptions);
+        PhaseContext phaseContext = new PhaseContext(providers, new Assumptions(false));
 
         // Copy snippet graph, replacing constant parameters with given arguments
         final StructuredGraph snippetCopy = new StructuredGraph(snippetGraph.name, snippetGraph.method());
@@ -578,11 +577,14 @@ public class SnippetTemplate {
             }
         } while (exploded);
 
+        GuardsStage guardsStage = args.cacheKey.guardsStage;
         // Perform lowering on the snippet
-        snippetCopy.setGuardsStage(args.cacheKey.guardsStage);
+        if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
+            new GuardLoweringPhase().apply(snippetCopy, null);
+        }
+        snippetCopy.setGuardsStage(guardsStage);
         try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            PhaseContext c = new PhaseContext(providers, new Assumptions(false));
-            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, c);
+            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, phaseContext);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

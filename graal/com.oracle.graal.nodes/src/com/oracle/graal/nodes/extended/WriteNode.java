@@ -31,9 +31,9 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * Writes a given {@linkplain #value() value} a {@linkplain AccessNode memory location}.
+ * Writes a given {@linkplain #value() value} a {@linkplain FixedAccessNode memory location}.
  */
-public final class WriteNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Virtualizable {
+public final class WriteNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single, MemoryAccess, Virtualizable {
 
     @Input private ValueNode value;
     @Input(notDataflow = true) private FrameState stateAfter;

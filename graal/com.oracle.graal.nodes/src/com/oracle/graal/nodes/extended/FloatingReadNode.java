@@ -71,7 +71,7 @@ public final class FloatingReadNode extends FloatingAccessNode implements Iterab
     }
 
     @Override
-    public Access asFixedNode() {
+    public FixedAccessNode asFixedNode() {
         return graph().add(new ReadNode(object(), nullCheckLocation(), stamp(), getGuard(), getBarrierType(), isCompressible()));
     }
 

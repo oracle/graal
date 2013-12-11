@@ -891,7 +891,7 @@ public final class SchedulePhase extends Phase {
                         closure.apply(cfg.getNodeToBlock().get(pred));
                     }
                 } else {
-                    // For the time being, only FrameStates can be connected to StateSplits.
+                    // For the time being, FrameStates can only be connected to NodeWithState.
                     if (!(usage instanceof FrameState)) {
                         throw new SchedulingError(usage.toString());
                     }

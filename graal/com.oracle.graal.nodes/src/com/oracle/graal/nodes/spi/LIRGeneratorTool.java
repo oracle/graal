@@ -61,9 +61,9 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     Value emitAddress(StackSlot slot);
 
-    Value emitLoad(Kind kind, Value address, DeoptimizingNode deopting);
+    Value emitLoad(Kind kind, Value address, Access access);
 
-    void emitStore(Kind kind, Value address, Value input, DeoptimizingNode deopting);
+    void emitStore(Kind kind, Value address, Value input, Access access);
 
     void emitMembar(int barriers);
 

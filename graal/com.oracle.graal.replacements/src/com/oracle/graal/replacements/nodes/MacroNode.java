@@ -31,6 +31,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.nodes.java.MethodCallTargetNode.InvokeKind;
@@ -96,9 +97,15 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
      */
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
-        replacementGraph.setGuardsStage(graph().getGuardsStage());
         final PhaseContext c = new PhaseContext(tool.getMetaAccess(), tool.getConstantReflection(), tool.getLowerer(), tool.getReplacements(), tool.assumptions());
-        try (Scope s = Debug.scope("LoweringReplacement", replacementGraph)) {
+        GuardsStage guardsStage = graph().getGuardsStage();
+        if (guardsStage.ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal()) {
+            new GuardLoweringPhase().apply(replacementGraph, null);
+            if (guardsStage.ordinal() >= GuardsStage.AFTER_FSA.ordinal()) {
+                new FrameStateAssignmentPhase().apply(replacementGraph);
+            }
+        }
+        try (Scope s = Debug.scope("LoweringSnippetTemplate", replacementGraph)) {
             new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
         } catch (Throwable e) {
             throw Debug.handle(e);

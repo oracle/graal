@@ -35,6 +35,7 @@ import com.oracle.graal.lir.hsail.HSAILControlFlow.*;
 import com.oracle.graal.lir.hsail.HSAILMove.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.calc.*;
+import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
 import com.oracle.graal.phases.util.*;
 
@@ -74,8 +75,8 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
         return config.narrowKlassBase;
     }
 
-    private static boolean isCompressCandidate(DeoptimizingNode access) {
-        return access != null && ((HeapAccess) access).isCompressible();
+    private static boolean isCompressCandidate(Access access) {
+        return access != null && access.isCompressible();
     }
 
     /**
@@ -114,11 +115,13 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     }
 
     @Override
-    public Variable emitLoad(Kind kind, Value address, DeoptimizingNode access) {
+    public Variable emitLoad(Kind kind, Value address, Access access) {
         HSAILAddressValue loadAddress = asAddressValue(address);
         Variable result = newVariable(kind);
-        LIRFrameState state = access != null ? state(access) : null;
-        assert access == null || access instanceof HeapAccess;
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
         if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);
             append(new LoadCompressedPointer(kind, result, scratch, loadAddress, state, getNarrowOopBase(), getNarrowOopShift(), getLogMinObjectAlignment()));
@@ -132,9 +135,12 @@ public class HSAILHotSpotLIRGenerator extends HSAILLIRGenerator {
     }
 
     @Override
-    public void emitStore(Kind kind, Value address, Value inputVal, DeoptimizingNode access) {
+    public void emitStore(Kind kind, Value address, Value inputVal, Access access) {
         HSAILAddressValue storeAddress = asAddressValue(address);
-        LIRFrameState state = access != null ? state(access) : null;
+        LIRFrameState state = null;
+        if (access instanceof DeoptimizingNode) {
+            state = state((DeoptimizingNode) access);
+        }
         Variable input = load(inputVal);
         if (isCompressCandidate(access) && config.useCompressedOops && kind == Kind.Object) {
             Variable scratch = newVariable(Kind.Long);

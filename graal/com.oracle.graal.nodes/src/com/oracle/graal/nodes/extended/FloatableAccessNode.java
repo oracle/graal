@@ -27,9 +27,9 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.type.*;
 
 /**
- * An {@link AccessNode} that can be converted to a {@link FloatingAccessNode}.
+ * An {@link FixedAccessNode} that can be converted to a {@link FloatingAccessNode}.
  */
-public abstract class FloatableAccessNode extends AccessNode {
+public abstract class FloatableAccessNode extends FixedAccessNode {
 
     public FloatableAccessNode(ValueNode object, ValueNode location, Stamp stamp) {
         super(object, location, stamp);

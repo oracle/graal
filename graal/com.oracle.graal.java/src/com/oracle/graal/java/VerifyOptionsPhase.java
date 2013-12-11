@@ -64,12 +64,11 @@ public class VerifyOptionsPhase extends Phase {
             if (superType != null && !MetaUtil.isJavaLangObject(superType)) {
                 checkType(superType, option, metaAccess, foreignCalls, checked);
             }
-            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-                if (method.isClassInitializer()) {
-                    StructuredGraph graph = new StructuredGraph(method);
-                    new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
-                    new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
-                }
+            ResolvedJavaMethod clinit = type.getClassInitializer();
+            if (clinit != null) {
+                StructuredGraph graph = new StructuredGraph(clinit);
+                new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getEagerDefault(), OptimisticOptimizations.ALL).apply(graph);
+                new VerifyOptionsPhase(type, metaAccess, option).apply(graph);
             }
         }
     }

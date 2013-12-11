@@ -56,6 +56,25 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
         assert successors.length <= keys.length + 1;
         assert keySuccessors.length == keyProbabilities.length;
         this.keys = keys;
+        assert assertValues();
+    }
+
+    @Override
+    public boolean isSorted() {
+        Kind kind = value().kind();
+        if (kind.isNumericInteger()) {
+            Constant lastKey = null;
+            for (int i = 0; i < keyCount(); i++) {
+                Constant key = keyAt(i);
+                if (lastKey != null && key.asLong() <= lastKey.asLong()) {
+                    return false;
+                }
+                lastKey = key;
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override

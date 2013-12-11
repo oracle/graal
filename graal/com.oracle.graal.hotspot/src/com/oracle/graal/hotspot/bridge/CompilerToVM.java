@@ -197,7 +197,7 @@ public interface CompilerToVM {
 
     HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
-    HotSpotResolvedJavaMethod[] getMethods(HotSpotResolvedObjectType klass);
+    long getClassInitializer(HotSpotResolvedObjectType klass);
 
     boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
 

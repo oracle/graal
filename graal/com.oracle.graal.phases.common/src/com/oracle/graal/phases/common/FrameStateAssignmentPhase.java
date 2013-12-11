@@ -86,10 +86,11 @@ public class FrameStateAssignmentPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        assert checkFixedDeopts(graph);
-        ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null, null);
-
-        graph.setGuardsStage(GuardsStage.AFTER_FSA);
+        assert graph.getGuardsStage().ordinal() >= GuardsStage.FIXED_DEOPTS.ordinal() && checkFixedDeopts(graph);
+        if (graph.getGuardsStage().ordinal() < GuardsStage.AFTER_FSA.ordinal()) {
+            ReentrantNodeIterator.apply(new FrameStateAssignmentClosure(), graph.start(), null, null);
+            graph.setGuardsStage(GuardsStage.AFTER_FSA);
+        }
     }
 
     private static boolean checkFixedDeopts(StructuredGraph graph) {

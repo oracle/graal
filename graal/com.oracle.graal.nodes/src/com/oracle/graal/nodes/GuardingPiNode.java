@@ -77,7 +77,7 @@ public class GuardingPiNode extends FixedWithNextNode implements Lowerable, Virt
 
     @Override
     public void lower(LoweringTool tool) {
-        GuardingNode guard = tool.createGuard(condition, reason, action, negated);
+        GuardingNode guard = tool.createGuard(next(), condition, reason, action, negated);
         ValueAnchorNode anchor = graph().add(new ValueAnchorNode((ValueNode) guard));
         PiNode pi = graph().unique(new PiNode(object, stamp(), (ValueNode) guard));
         replaceAtUsages(pi);

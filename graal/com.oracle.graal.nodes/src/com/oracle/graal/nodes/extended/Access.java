@@ -24,12 +24,10 @@ package com.oracle.graal.nodes.extended;
 
 import com.oracle.graal.nodes.*;
 
-public interface Access extends DeoptimizingNode, GuardedNode, HeapAccess {
+public interface Access extends GuardedNode, HeapAccess {
 
     ValueNode object();
 
     LocationNode nullCheckLocation();
-
-    void setNullCheck(boolean check);
 
 }

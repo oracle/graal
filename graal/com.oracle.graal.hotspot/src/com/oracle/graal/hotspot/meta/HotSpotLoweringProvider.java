@@ -106,7 +106,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             ValueNode array = arrayLengthNode.array();
             ReadNode arrayLengthRead = graph.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, config.arrayLengthOffset, graph), StampFactory.positiveInt(),
                             BarrierType.NONE, false));
-            tool.createNullCheckGuard(arrayLengthRead, array);
+            tool.createNullCheckGuard(arrayLengthNode, arrayLengthRead, array);
             graph.replaceFixedWithFixed(arrayLengthNode, arrayLengthRead);
         } else if (n instanceof Invoke) {
             Invoke invoke = (Invoke) n;
@@ -117,7 +117,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
                 ValueNode receiver = parameters.size() <= 0 ? null : parameters.get(0);
                 GuardingNode receiverNullCheck = null;
                 if (!callTarget.isStatic() && receiver.stamp() instanceof ObjectStamp && !ObjectStamp.isObjectNonNull(receiver)) {
-                    receiverNullCheck = tool.createNullCheckGuard(invoke, receiver);
+                    receiverNullCheck = tool.createNullCheckGuard(invoke.asNode(), invoke, receiver);
                 }
                 JavaType[] signature = MetaUtil.signatureToTypes(callTarget.targetMethod().getSignature(), callTarget.isStatic() ? null : callTarget.targetMethod().getDeclaringClass());
 
@@ -161,7 +161,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             BarrierType barrierType = getFieldLoadBarrierType(field);
             ReadNode memoryRead = graph.add(new ReadNode(object, createFieldLocation(graph, field, false), loadField.stamp(), barrierType, (loadField.kind() == Kind.Object)));
             graph.replaceFixedWithFixed(loadField, memoryRead);
-            tool.createNullCheckGuard(memoryRead, object);
+            tool.createNullCheckGuard(memoryRead, memoryRead, object);
 
             if (loadField.isVolatile()) {
                 MembarNode preMembar = graph.add(new MembarNode(JMM_PRE_VOLATILE_READ));
@@ -175,9 +175,9 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             ValueNode object = storeField.isStatic() ? ConstantNode.forObject(field.getDeclaringClass().mirror(), metaAccess, graph) : storeField.object();
             BarrierType barrierType = getFieldStoreBarrierType(storeField);
             WriteNode memoryWrite = graph.add(new WriteNode(object, storeField.value(), createFieldLocation(graph, field, false), barrierType, storeField.field().getKind() == Kind.Object));
-            tool.createNullCheckGuard(memoryWrite, object);
             memoryWrite.setStateAfter(storeField.stateAfter());
             graph.replaceFixedWithFixed(storeField, memoryWrite);
+            tool.createNullCheckGuard(memoryWrite, memoryWrite, object);
             FixedWithNextNode last = memoryWrite;
             FixedWithNextNode first = memoryWrite;
 
@@ -197,11 +197,10 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             graph.replaceFixedWithFixed(cas, atomicNode);
         } else if (n instanceof LoadIndexedNode) {
             LoadIndexedNode loadIndexed = (LoadIndexedNode) n;
-            GuardingNode boundsCheck = createBoundsCheck(loadIndexed, tool);
             Kind elementKind = loadIndexed.elementKind();
             LocationNode arrayLocation = createArrayLocation(graph, elementKind, loadIndexed.index(), false);
             ReadNode memoryRead = graph.add(new ReadNode(loadIndexed.array(), arrayLocation, loadIndexed.stamp(), BarrierType.NONE, elementKind == Kind.Object));
-            memoryRead.setGuard(boundsCheck);
+            memoryRead.setGuard(createBoundsCheck(loadIndexed, tool));
             graph.replaceFixedWithFixed(loadIndexed, memoryRead);
         } else if (n instanceof StoreIndexedNode) {
             StoreIndexedNode storeIndexed = (StoreIndexedNode) n;
@@ -719,11 +718,11 @@ public class HotSpotLoweringProvider implements LoweringProvider {
             Stamp stamp = StampFactory.positiveInt();
             ReadNode readArrayLength = g.add(new ReadNode(array, ConstantLocationNode.create(FINAL_LOCATION, Kind.Int, runtime.getConfig().arrayLengthOffset, g), stamp, BarrierType.NONE, false));
             g.addBeforeFixed(n, readArrayLength);
-            tool.createNullCheckGuard(readArrayLength, array);
+            tool.createNullCheckGuard(readArrayLength, readArrayLength, array);
             arrayLength = readArrayLength;
         }
 
-        return tool.createGuard(g.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
+        return tool.createGuard(n, g.unique(new IntegerBelowThanNode(n.index(), arrayLength)), BoundsCheckException, InvalidateReprofile);
     }
 
 }

@@ -28,7 +28,6 @@ import static com.oracle.graal.api.meta.Value.*;
 import static com.oracle.graal.lir.LIR.*;
 import static com.oracle.graal.lir.LIRValueUtil.*;
 import static com.oracle.graal.nodes.ConstantNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -730,117 +729,65 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      */
     @Override
     public void emitSwitch(SwitchNode x) {
+        assert x.defaultSuccessor() != null;
+        LabelRef defaultTarget = getLIRBlock(x.defaultSuccessor());
         int keyCount = x.keyCount();
         if (keyCount == 0) {
-            emitJump(getLIRBlock(x.defaultSuccessor()));
+            emitJump(defaultTarget);
         } else {
             Variable value = load(operand(x.value()));
-            LabelRef defaultTarget = x.defaultSuccessor() == null ? null : getLIRBlock(x.defaultSuccessor());
-            if (value.getKind() != Kind.Int) {
-                // hopefully only a few entries
-                emitSequentialSwitch(x, value, defaultTarget);
+            if (keyCount == 1) {
+                assert defaultTarget != null;
+                emitCompareBranch(load(operand(x.value())), x.keyAt(0), Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget);
             } else {
-                assert value.getKind() == Kind.Int;
-                long valueRange = x.keyAt(keyCount - 1).asLong() - x.keyAt(0).asLong() + 1;
-                int switchRangeCount = switchRangeCount(x);
-                if (switchRangeCount == 0) {
-                    emitJump(getLIRBlock(x.defaultSuccessor()));
-                } else if (switchRangeCount >= MinimumJumpTableSize.getValue() && keyCount / (double) valueRange >= MinTableSwitchDensity.getValue()) {
-                    int minValue = x.keyAt(0).asInt();
-                    assert valueRange < Integer.MAX_VALUE;
-                    LabelRef[] targets = new LabelRef[(int) valueRange];
-                    for (int i = 0; i < valueRange; i++) {
-                        targets[i] = defaultTarget;
-                    }
-                    for (int i = 0; i < keyCount; i++) {
-                        targets[x.keyAt(i).asInt() - minValue] = getLIRBlock(x.keySuccessor(i));
-                    }
-                    emitTableSwitch(minValue, defaultTarget, targets, value);
-                } else if (keyCount / switchRangeCount >= RangeTestsSwitchDensity.getValue()) {
-                    emitSwitchRanges(x, switchRangeCount, value, defaultTarget);
+                LabelRef[] keyTargets = new LabelRef[keyCount];
+                Constant[] keyConstants = new Constant[keyCount];
+                double[] keyProbabilities = new double[keyCount];
+                for (int i = 0; i < keyCount; i++) {
+                    keyTargets[i] = getLIRBlock(x.keySuccessor(i));
+                    keyConstants[i] = x.keyAt(i);
+                    keyProbabilities[i] = x.keyProbability(i);
+                }
+                if (value.getKind() != Kind.Int || !x.isSorted()) {
+                    // hopefully only a few entries
+                    emitStrategySwitch(new SwitchStrategy.SequentialStrategy(keyProbabilities, keyConstants), value, keyTargets, defaultTarget);
                 } else {
-                    emitSequentialSwitch(x, value, defaultTarget);
+                    emitStrategySwitch(keyConstants, keyProbabilities, keyTargets, defaultTarget, value);
                 }
             }
         }
     }
 
-    protected void emitSequentialSwitch(final SwitchNode x, Variable key, LabelRef defaultTarget) {
-        int keyCount = x.keyCount();
-        Integer[] indexes = Util.createSortedPermutation(keyCount, new Comparator<Integer>() {
-
-            @Override
-            public int compare(Integer o1, Integer o2) {
-                return x.keyProbability(o1) < x.keyProbability(o2) ? 1 : x.keyProbability(o1) > x.keyProbability(o2) ? -1 : 0;
+    protected void emitStrategySwitch(Constant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, Variable value) {
+        int keyCount = keyConstants.length;
+        SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
+        long valueRange = keyConstants[keyCount - 1].asLong() - keyConstants[0].asLong() + 1;
+        double tableSwitchDensity = keyCount / (double) valueRange;
+        /*
+         * This heuristic tries to find a compromise between the effort for the best switch strategy
+         * and the density of a tableswitch. If the effort for the strategy is at least 4, then a
+         * tableswitch is preferred if better than a certain value that starts at 0.5 and lowers
+         * gradually with additional effort.
+         */
+        if (strategy.getAverageEffort() < 4 || tableSwitchDensity < (1 / Math.sqrt(strategy.getAverageEffort()))) {
+            emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
+        } else {
+            int minValue = keyConstants[0].asInt();
+            assert valueRange < Integer.MAX_VALUE;
+            LabelRef[] targets = new LabelRef[(int) valueRange];
+            for (int i = 0; i < valueRange; i++) {
+                targets[i] = defaultTarget;
             }
-        });
-        LabelRef[] keyTargets = new LabelRef[keyCount];
-        Constant[] keyConstants = new Constant[keyCount];
-        for (int i = 0; i < keyCount; i++) {
-            keyTargets[i] = getLIRBlock(x.keySuccessor(indexes[i]));
-            keyConstants[i] = x.keyAt(indexes[i]);
+            for (int i = 0; i < keyCount; i++) {
+                targets[keyConstants[i].asInt() - minValue] = keyTargets[i];
+            }
+            emitTableSwitch(minValue, defaultTarget, targets, value);
         }
-        emitSequentialSwitch(keyConstants, keyTargets, defaultTarget, key);
     }
 
-    protected abstract void emitSequentialSwitch(Constant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, Value key);
-
-    protected abstract void emitSwitchRanges(int[] lowKeys, int[] highKeys, LabelRef[] targets, LabelRef defaultTarget, Value key);
+    protected abstract void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
     protected abstract void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key);
-
-    private static int switchRangeCount(SwitchNode x) {
-        int keyCount = x.keyCount();
-        int switchRangeCount = 0;
-        int defaultSux = x.defaultSuccessorIndex();
-
-        int key = x.keyAt(0).asInt();
-        int sux = x.keySuccessorIndex(0);
-        for (int i = 0; i < keyCount; i++) {
-            int newKey = x.keyAt(i).asInt();
-            int newSux = x.keySuccessorIndex(i);
-            if (newSux != defaultSux && (newKey != key + 1 || sux != newSux)) {
-                switchRangeCount++;
-            }
-            key = newKey;
-            sux = newSux;
-        }
-        return switchRangeCount;
-    }
-
-    private void emitSwitchRanges(SwitchNode x, int switchRangeCount, Variable keyValue, LabelRef defaultTarget) {
-        assert switchRangeCount >= 1 : "switch ranges should not be used for emitting only the default case";
-
-        int[] lowKeys = new int[switchRangeCount];
-        int[] highKeys = new int[switchRangeCount];
-        LabelRef[] targets = new LabelRef[switchRangeCount];
-
-        int keyCount = x.keyCount();
-        int defaultSuccessor = x.defaultSuccessorIndex();
-
-        int current = -1;
-        int key = -1;
-        int successor = -1;
-        for (int i = 0; i < keyCount; i++) {
-            int newSuccessor = x.keySuccessorIndex(i);
-            int newKey = x.keyAt(i).asInt();
-            if (newSuccessor != defaultSuccessor) {
-                if (key + 1 == newKey && successor == newSuccessor) {
-                    // still in same range
-                    highKeys[current] = newKey;
-                } else {
-                    current++;
-                    lowKeys[current] = newKey;
-                    highKeys[current] = newKey;
-                    targets[current] = getLIRBlock(x.blockSuccessor(newSuccessor));
-                }
-            }
-            key = newKey;
-            successor = newSuccessor;
-        }
-        assert current == switchRangeCount - 1;
-        emitSwitchRanges(lowKeys, highKeys, targets, defaultTarget, keyValue);
-    }
 
     public FrameMap frameMap() {
         return frameMap;

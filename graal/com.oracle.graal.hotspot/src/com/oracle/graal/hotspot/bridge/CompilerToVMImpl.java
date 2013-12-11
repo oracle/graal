@@ -98,7 +98,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native HotSpotResolvedJavaField[] getInstanceFields(HotSpotResolvedObjectType klass);
 
     @Override
-    public native HotSpotResolvedJavaMethod[] getMethods(HotSpotResolvedObjectType klass);
+    public native long getClassInitializer(HotSpotResolvedObjectType klass);
 
     @Override
     public native int getCompiledCodeSize(long metaspaceMethod);

@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.virtual.*;
 
 /**
- * Reads an {@linkplain AccessNode accessed} value.
+ * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 public final class ReadNode extends FloatableAccessNode implements LIRLowerable, Canonicalizable, PiPushable, Virtualizable {
 
