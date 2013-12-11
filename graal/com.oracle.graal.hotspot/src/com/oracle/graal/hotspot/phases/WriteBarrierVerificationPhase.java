@@ -73,12 +73,12 @@ public class WriteBarrierVerificationPhase extends Phase {
             Node currentNode = iterator.next();
             assert !isSafepoint(currentNode) : "Write barrier must be present " + write;
             if (useG1GC()) {
-                if (!(currentNode instanceof G1PostWriteBarrier) || ((currentNode instanceof G1PostWriteBarrier) && !validateBarrier((AccessNode) write, (WriteBarrier) currentNode))) {
+                if (!(currentNode instanceof G1PostWriteBarrier) || ((currentNode instanceof G1PostWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
             } else {
-                if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((AccessNode) write, (WriteBarrier) currentNode)) ||
-                                ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((AccessNode) write, (WriteBarrier) currentNode))) {
+                if (!(currentNode instanceof SerialWriteBarrier) || ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode)) ||
+                                ((currentNode instanceof SerialWriteBarrier) && !validateBarrier((FixedAccessNode) write, (WriteBarrier) currentNode))) {
                     expandFrontier(frontier, currentNode);
                 }
             }
@@ -90,8 +90,8 @@ public class WriteBarrierVerificationPhase extends Phase {
         final Node previous = node.predecessor();
         final boolean validatePreBarrier = HotSpotReplacementsUtil.useG1GC() && (isObjectWrite(node) || !((ArrayRangeWriteNode) node).isInitialization());
         if (isObjectWrite(node)) {
-            return next instanceof WriteBarrier && validateBarrier((AccessNode) node, (WriteBarrier) next) &&
-                            (!validatePreBarrier || (previous instanceof WriteBarrier && validateBarrier((AccessNode) node, (WriteBarrier) previous)));
+            return next instanceof WriteBarrier && validateBarrier((FixedAccessNode) node, (WriteBarrier) next) &&
+                            (!validatePreBarrier || (previous instanceof WriteBarrier && validateBarrier((FixedAccessNode) node, (WriteBarrier) previous)));
 
         } else if (isObjectArrayRangeWrite(node)) {
             return ((next instanceof ArrayRangeWriteBarrier) && ((ArrayRangeWriteNode) node).getArray() == ((ArrayRangeWriteBarrier) next).getObject()) &&
@@ -103,7 +103,7 @@ public class WriteBarrierVerificationPhase extends Phase {
 
     private static boolean isObjectWrite(Node node) {
         // Read nodes with barrier attached (G1 Ref field) are not validated yet.
-        return node instanceof AccessNode && ((HeapAccess) node).getBarrierType() != BarrierType.NONE && !(node instanceof ReadNode);
+        return node instanceof FixedAccessNode && ((HeapAccess) node).getBarrierType() != BarrierType.NONE && !(node instanceof ReadNode);
     }
 
     private static boolean isObjectArrayRangeWrite(Node node) {
@@ -127,7 +127,7 @@ public class WriteBarrierVerificationPhase extends Phase {
         return ((node instanceof DeoptimizingNode) && ((DeoptimizingNode) node).canDeoptimize()) || (node instanceof LoopBeginNode);
     }
 
-    private static boolean validateBarrier(AccessNode write, WriteBarrier barrier) {
+    private static boolean validateBarrier(FixedAccessNode write, WriteBarrier barrier) {
         assert write instanceof WriteNode || write instanceof LoweredCompareAndSwapNode : "Node must be of type requiring a write barrier";
         if ((barrier.getObject() == write.object()) && (!barrier.usePrecise() || (barrier.usePrecise() && barrier.getLocation() == write.location()))) {
             return true;

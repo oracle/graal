@@ -30,7 +30,7 @@ import com.oracle.graal.nodes.type.*;
  * {@linkplain #nullCheckLocation() location}. The access does not include a null check on the
  * object.
  */
-public abstract class AccessNode extends DeoptimizingFixedWithNextNode implements Access, GuardingNode {
+public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode implements Access, GuardingNode {
 
     @Input private GuardingNode guard;
     @Input private ValueNode object;
@@ -59,15 +59,15 @@ public abstract class AccessNode extends DeoptimizingFixedWithNextNode implement
         this.nullCheck = check;
     }
 
-    public AccessNode(ValueNode object, ValueNode location, Stamp stamp) {
+    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp) {
         this(object, location, stamp, null, BarrierType.NONE, false);
     }
 
-    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
+    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, BarrierType barrierType, boolean compressible) {
         this(object, location, stamp, null, barrierType, compressible);
     }
 
-    public AccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
+    public FixedAccessNode(ValueNode object, ValueNode location, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean compressible) {
         super(stamp);
         this.object = object;
         this.location = location;

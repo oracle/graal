@@ -31,7 +31,7 @@ import com.oracle.graal.nodes.type.*;
 /**
  * Represents the lowered version of an atomic compare-and-swap operation{@code CompareAndSwapNode}.
  */
-public class LoweredCompareAndSwapNode extends AccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
+public class LoweredCompareAndSwapNode extends FixedAccessNode implements StateSplit, LIRLowerable, MemoryCheckpoint.Single {
 
     @Input private ValueNode expectedValue;
     @Input private ValueNode newValue;
