@@ -652,11 +652,6 @@ public class VMToCompilerImpl implements VMToCompiler {
         return type;
     }
 
-    @Override
-    public LocalImpl createLocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot) {
-        return new LocalImpl(name, type, holder, bciStart, bciEnd, slot);
-    }
-
     public PhasePlan createPhasePlan(HotSpotProviders providers, OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
         PhasePlan phasePlan = new PhasePlan();
         MetaAccessProvider metaAccess = providers.getMetaAccess();

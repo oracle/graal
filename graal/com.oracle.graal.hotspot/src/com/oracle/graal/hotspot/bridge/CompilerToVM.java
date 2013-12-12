@@ -233,7 +233,9 @@ public interface CompilerToVM {
 
     long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
 
-    Local[] getLocalVariableTable(HotSpotResolvedJavaMethod method);
+    long getLocalVariableTableStart(HotSpotResolvedJavaMethod method);
+
+    int getLocalVariableTableLength(HotSpotResolvedJavaMethod method);
 
     String getFileName(HotSpotResolvedJavaType method);
 

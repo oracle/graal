@@ -30,15 +30,15 @@ import com.oracle.graal.hotspot.meta.*;
 public class LocalImpl implements Local {
 
     private final String name;
-    private final int bciStart;
-    private final int bciEnd;
+    private final int startBci;
+    private final int endBci;
     private final int slot;
     private final ResolvedJavaType resolvedType;
 
-    public LocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot) {
+    public LocalImpl(String name, String type, HotSpotResolvedObjectType holder, int startBci, int endBci, int slot) {
         this.name = name;
-        this.bciStart = bciStart;
-        this.bciEnd = bciEnd;
+        this.startBci = startBci;
+        this.endBci = endBci;
         this.slot = slot;
         JavaType t = runtime().lookupType(type, holder, true);
         if (t instanceof ResolvedJavaType) {
@@ -50,12 +50,12 @@ public class LocalImpl implements Local {
 
     @Override
     public int getStartBCI() {
-        return bciStart;
+        return startBci;
     }
 
     @Override
     public int getEndBCI() {
-        return bciEnd;
+        return endBci;
     }
 
     @Override
@@ -71,5 +71,24 @@ public class LocalImpl implements Local {
     @Override
     public int getSlot() {
         return slot;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof LocalImpl)) {
+            return false;
+        }
+        LocalImpl that = (LocalImpl) obj;
+        return this.name.equals(that.name) && this.startBci == that.startBci && this.endBci == that.endBci && this.slot == that.slot && this.resolvedType.equals(that.resolvedType);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "LocalImpl<name=" + name + ", resolvedType=" + resolvedType + ", startBci=" + startBci + ", endBci=" + endBci + ", slot=" + slot + ">";
     }
 }

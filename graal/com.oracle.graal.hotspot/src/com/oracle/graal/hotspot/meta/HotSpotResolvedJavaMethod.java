@@ -131,6 +131,15 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return unsafe.getAddress(metaspaceMethod + runtime().getConfig().methodConstMethodOffset);
     }
 
+    /**
+     * Returns this method's constant method flags ({@code ConstMethod::_flags}).
+     * 
+     * @return flags of this method's ConstMethod
+     */
+    private long getConstMethodFlags() {
+        return unsafe.getChar(getConstMethod() + runtime().getConfig().constMethodFlagsOffset);
+    }
+
     @Override
     public ResolvedJavaType getDeclaringClass() {
         return holder;
@@ -512,12 +521,42 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return new LineNumberTableImpl(line, bci);
     }
 
+    /**
+     * Returns whether or not this method has a local variable table.
+     * 
+     * @return true if this method has a local variable table
+     */
+    private boolean hasLocalVariableTable() {
+        return (getConstMethodFlags() & runtime().getConfig().constMethodHasLocalVariableTable) != 0;
+    }
+
     @Override
     public LocalVariableTable getLocalVariableTable() {
-        Local[] locals = runtime().getCompilerToVM().getLocalVariableTable(this);
-        if (locals == null) {
+        if (!hasLocalVariableTable()) {
             return null;
         }
+
+        HotSpotVMConfig config = runtime().getConfig();
+        long localVariableTableElement = runtime().getCompilerToVM().getLocalVariableTableStart(this);
+        final int localVariableTableLength = runtime().getCompilerToVM().getLocalVariableTableLength(this);
+        Local[] locals = new Local[localVariableTableLength];
+
+        for (int i = 0; i < localVariableTableLength; i++) {
+            final int startBci = unsafe.getChar(localVariableTableElement + config.localVariableTableElementStartBciOffset);
+            final int endBci = startBci + unsafe.getChar(localVariableTableElement + config.localVariableTableElementLengthOffset);
+            final int nameCpIndex = unsafe.getChar(localVariableTableElement + config.localVariableTableElementNameCpIndexOffset);
+            final int typeCpIndex = unsafe.getChar(localVariableTableElement + config.localVariableTableElementDescriptorCpIndexOffset);
+            final int slot = unsafe.getChar(localVariableTableElement + config.localVariableTableElementSlotOffset);
+
+            String localName = getConstantPool().lookupUtf8(nameCpIndex);
+            String localType = getConstantPool().lookupUtf8(typeCpIndex);
+
+            locals[i] = new LocalImpl(localName, localType, holder, startBci, endBci, slot);
+
+            // Go to the next LocalVariableTableElement
+            localVariableTableElement += config.localVariableTableElementSize;
+        }
+
         return new LocalVariableTableImpl(locals);
     }
 
@@ -541,6 +580,11 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         return getVtableIndex() >= 0;
     }
 
+    /**
+     * Returns this method's virtual table index.
+     * 
+     * @return virtual table index
+     */
     private int getVtableIndex() {
         HotSpotVMConfig config = runtime().getConfig();
         return unsafe.getInt(metaspaceMethod + config.methodVtableIndexOffset);

@@ -26,8 +26,6 @@ package com.oracle.graal.hotspot.bridge;
 import java.io.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.hotspot.debug.*;
-import com.oracle.graal.hotspot.meta.*;
 
 /**
  * Calls from HotSpot into Java.
@@ -72,6 +70,4 @@ public interface VMToCompiler {
      *         type
      */
     ResolvedJavaType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies);
-
-    LocalImpl createLocalImpl(String name, String type, HotSpotResolvedObjectType holder, int bciStart, int bciEnd, int slot);
 }

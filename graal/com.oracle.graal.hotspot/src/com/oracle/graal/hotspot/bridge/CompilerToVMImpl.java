@@ -123,7 +123,10 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long[] getLineNumberTable(HotSpotResolvedJavaMethod method);
 
     @Override
-    public native Local[] getLocalVariableTable(HotSpotResolvedJavaMethod method);
+    public native long getLocalVariableTableStart(HotSpotResolvedJavaMethod method);
+
+    @Override
+    public native int getLocalVariableTableLength(HotSpotResolvedJavaMethod method);
 
     @Override
     public native String getFileName(HotSpotResolvedJavaType method);
