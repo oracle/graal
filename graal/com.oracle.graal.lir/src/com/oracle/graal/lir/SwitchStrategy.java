@@ -314,13 +314,13 @@ public abstract class SwitchStrategy {
         }
     }
 
-    public static class BooleanStrategy extends SwitchStrategy {
+    public static class BinaryStrategy extends SwitchStrategy {
 
         private static final double MIN_PROBABILITY = 0.00001;
 
         private final double[] probabilitySums;
 
-        public BooleanStrategy(double[] keyProbabilities, Constant[] keyConstants) {
+        public BinaryStrategy(double[] keyProbabilities, Constant[] keyConstants) {
             super(keyProbabilities, keyConstants);
             probabilitySums = new double[keyProbabilities.length + 1];
             double sum = 0;
@@ -332,15 +332,15 @@ public abstract class SwitchStrategy {
 
         @Override
         public void run(SwitchClosure closure) {
-            recurseBooleanSwitch(closure, 0, keyConstants.length - 1, 0);
+            recurseBinarySwitch(closure, 0, keyConstants.length - 1, 0);
         }
 
         /**
          * Recursively generate a list of comparisons that always subdivides the key list in the
          * middle (in terms of probability, not index).
          */
-        private void recurseBooleanSwitch(SwitchClosure closure, int left, int right, int startDepth) {
-            assert startDepth < keyConstants.length * 3 : "runaway recursion in boolean switch";
+        private void recurseBinarySwitch(SwitchClosure closure, int left, int right, int startDepth) {
+            assert startDepth < keyConstants.length * 3 : "runaway recursion in binary switch";
             int depth = startDepth;
             boolean leftBorder = left == 0;
             boolean rightBorder = right == keyConstants.length - 1;
@@ -398,7 +398,7 @@ public abstract class SwitchStrategy {
                             registerEffort(middle + 1, right, depth);
                         }
                     } else {
-                        recurseBooleanSwitch(closure, middle + 1, right, depth);
+                        recurseBinarySwitch(closure, middle + 1, right, depth);
                     }
                 }
             } else if (getSliceEnd(closure, middle + 1) == right) {
@@ -408,13 +408,13 @@ public abstract class SwitchStrategy {
                 }
                 closure.conditionalJump(middle + 1, Condition.GE, false);
                 registerEffort(middle + 1, right, ++depth);
-                recurseBooleanSwitch(closure, left, middle, depth);
+                recurseBinarySwitch(closure, left, middle, depth);
             } else {
                 Label label = closure.conditionalJump(middle + 1, Condition.GE);
                 depth++;
-                recurseBooleanSwitch(closure, left, middle, depth);
+                recurseBinarySwitch(closure, left, middle, depth);
                 closure.bind(label);
-                recurseBooleanSwitch(closure, middle + 1, right, depth);
+                recurseBinarySwitch(closure, middle + 1, right, depth);
             }
         }
     }
@@ -423,7 +423,7 @@ public abstract class SwitchStrategy {
 
     private static SwitchStrategy[] getStrategies(double[] keyProbabilities, Constant[] keyConstants, LabelRef[] keyTargets) {
         SwitchStrategy[] strategies = new SwitchStrategy[]{new SequentialStrategy(keyProbabilities, keyConstants), new RangesStrategy(keyProbabilities, keyConstants),
-                        new BooleanStrategy(keyProbabilities, keyConstants)};
+                        new BinaryStrategy(keyProbabilities, keyConstants)};
         for (SwitchStrategy strategy : strategies) {
             strategy.effortClosure = strategy.new EffortClosure(keyTargets);
             strategy.run(strategy.effortClosure);
