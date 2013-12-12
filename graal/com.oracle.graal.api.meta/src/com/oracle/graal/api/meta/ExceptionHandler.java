@@ -94,4 +94,21 @@ public final class ExceptionHandler {
     public JavaType getCatchType() {
         return catchType;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        ExceptionHandler that = (ExceptionHandler) obj;
+        if (this.startBCI != that.startBCI || this.endBCI != that.endBCI || this.handlerBCI != that.handlerBCI || this.catchTypeCPI != that.catchTypeCPI) {
+            return false;
+        }
+        if (this.catchType == null || that.catchType == null) {
+            return this.catchType == that.catchType;
+        }
+        return this.catchType.equals(that.catchType);
+    }
+
+    @Override
+    public String toString() {
+        return "ExceptionHandler<startBCI=" + startBCI + ", endBCI=" + endBCI + ", handlerBCI=" + handlerBCI + ", catchTypeCPI=" + catchTypeCPI + ", catchType=" + catchType + ">";
+    }
 }

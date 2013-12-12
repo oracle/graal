@@ -182,11 +182,40 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
         if (exceptionHandlerCount == 0) {
             return new ExceptionHandler[0];
         }
+
         ExceptionHandler[] handlers = new ExceptionHandler[exceptionHandlerCount];
+        HotSpotVMConfig config = runtime().getConfig();
+        long exceptionTableElement = runtime().getCompilerToVM().exceptionTableStart(metaspaceMethod);
+
         for (int i = 0; i < exceptionHandlerCount; i++) {
-            handlers[i] = new ExceptionHandler(-1, -1, -1, -1, null);
+            final int startPc = unsafe.getChar(exceptionTableElement + config.exceptionTableElementStartPcOffset);
+            final int endPc = unsafe.getChar(exceptionTableElement + config.exceptionTableElementEndPcOffset);
+            final int handlerPc = unsafe.getChar(exceptionTableElement + config.exceptionTableElementHandlerPcOffset);
+            int catchTypeIndex = unsafe.getChar(exceptionTableElement + config.exceptionTableElementCatchTypeIndexOffset);
+
+            JavaType catchType;
+            if (catchTypeIndex == 0) {
+                catchType = null;
+            } else {
+                final int opcode = -1;  // opcode is not used
+                catchType = constantPool.lookupType(catchTypeIndex, opcode);
+
+                // Check for Throwable which catches everything.
+                if (catchType instanceof HotSpotResolvedObjectType) {
+                    HotSpotResolvedObjectType resolvedType = (HotSpotResolvedObjectType) catchType;
+                    if (resolvedType.mirror() == Throwable.class) {
+                        catchTypeIndex = 0;
+                        catchType = null;
+                    }
+                }
+            }
+            handlers[i] = new ExceptionHandler(startPc, endPc, handlerPc, catchTypeIndex, catchType);
+
+            // Go to the next ExceptionTableElement
+            exceptionTableElement += config.exceptionTableElementSize;
         }
-        return runtime().getCompilerToVM().initializeExceptionHandlers(metaspaceMethod, handlers);
+
+        return handlers;
     }
 
     /**

@@ -363,17 +363,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return res;
     }
 
-    @Override
-    public String toString() {
-        String simpleName;
-        if (isArray() || isInterface()) {
-            simpleName = getName();
-        } else {
-            simpleName = getName().substring(1, getName().length() - 1);
-        }
-        return "HotSpotType<" + simpleName + ", resolved>";
-    }
-
     public ConstantPool constantPool() {
         if (constantPool == null) {
             final long metaspaceConstantPool = unsafe.getAddress(metaspaceKlass() + runtime().getConfig().instanceKlassConstantsOffset);
@@ -620,5 +609,30 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      */
     public void setNodeClass(NodeClass nodeClass) {
         this.nodeClass = nodeClass;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof HotSpotResolvedObjectType)) {
+            return false;
+        }
+        HotSpotResolvedObjectType that = (HotSpotResolvedObjectType) obj;
+        return this.mirror() == that.mirror();
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        String simpleName;
+        if (isArray() || isInterface()) {
+            simpleName = getName();
+        } else {
+            simpleName = getName().substring(1, getName().length() - 1);
+        }
+        return "HotSpotType<" + simpleName + ", resolved>";
     }
 }

@@ -43,7 +43,7 @@ public interface CompilerToVM {
      */
     byte[] initializeBytecode(long metaspaceMethod, byte[] code);
 
-    ExceptionHandler[] initializeExceptionHandlers(long metaspaceMethod, ExceptionHandler[] handlers);
+    long exceptionTableStart(long metaspaceMethod);
 
     /**
      * Determines if a given metaspace Method object has balanced monitors.
