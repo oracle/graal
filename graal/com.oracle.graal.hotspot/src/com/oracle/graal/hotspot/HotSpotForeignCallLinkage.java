@@ -55,7 +55,7 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
      * by another thread.
      */
     public enum Transition {
-        LEAF, NOT_LEAF;
+        LEAF_NOFP, LEAF, NOT_LEAF;
     }
 
     /**
@@ -255,6 +255,10 @@ public class HotSpotForeignCallLinkage implements ForeignCallLinkage, InvokeTarg
 
     @Override
     public boolean canDeoptimize() {
-        return transition != Transition.LEAF;
+        return transition == Transition.NOT_LEAF;
+    }
+
+    public boolean mayContainFP() {
+        return transition != Transition.LEAF_NOFP;
     }
 }
