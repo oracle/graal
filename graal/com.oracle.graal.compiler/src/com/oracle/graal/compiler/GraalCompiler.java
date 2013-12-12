@@ -192,7 +192,7 @@ public class GraalCompiler {
                     OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, SpeculationLog speculationLog, Suites suites) {
 
         if (speculationLog != null) {
-            speculationLog.snapshot();
+            speculationLog.collectFailedSpeculations();
         }
 
         HighTierContext highTierContext = new HighTierContext(providers, assumptions, cache, graphBuilderSuite, optimisticOpts);

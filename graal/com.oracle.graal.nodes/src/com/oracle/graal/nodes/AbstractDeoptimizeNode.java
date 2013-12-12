@@ -63,4 +63,6 @@ public abstract class AbstractDeoptimizeNode extends ControlSinkNode implements 
     }
 
     public abstract ValueNode getActionAndReason(MetaAccessProvider metaAccess);
+
+    public abstract ValueNode getSpeculation(MetaAccessProvider metaAccess);
 }

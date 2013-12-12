@@ -143,7 +143,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                 fixedGuard.lower(this);
                 return handle.getGuard();
             } else {
-                GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated));
+                GuardNode newGuard = graph.unique(new GuardNode(condition, guardAnchor, deoptReason, action, negated, Constant.NULL_OBJECT));
                 if (OptEliminateGuards.getValue()) {
                     activeGuards.grow();
                     activeGuards.mark(newGuard);

@@ -386,29 +386,33 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         append(new AMD64HotSpotUnwindOp(exceptionParameter));
     }
 
-    private void moveDeoptimizationActionAndReasonToThread(Value actionAndReason) {
-        int pendingDeoptimizationOffset = runtime().getConfig().pendingDeoptimizationOffset;
+    private void moveDeoptValuesToThread(Value actionAndReason, Value speculation) {
+        moveValueToThread(actionAndReason, runtime().getConfig().pendingDeoptimizationOffset);
+        moveValueToThread(speculation, runtime().getConfig().pendingFailedSpeculationOffset);
+    }
+
+    private void moveValueToThread(Value v, int offset) {
         Kind wordKind = getProviders().getCodeCache().getTarget().wordKind;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(actionAndReason.getKind(), thread, pendingDeoptimizationOffset);
-        if (actionAndReason instanceof Constant && !getCodeCache().needsDataPatch((Constant) actionAndReason)) {
-            Constant constantActionAndReason = (Constant) actionAndReason;
+        AMD64AddressValue pendingDeoptAddress = new AMD64AddressValue(v.getKind(), thread, offset);
+        if (v instanceof Constant && !getCodeCache().needsDataPatch((Constant) v)) {
+            Constant constantActionAndReason = (Constant) v;
             assert !getCodeCache().needsDataPatch(constantActionAndReason);
             append(new StoreConstantOp(constantActionAndReason.getKind(), pendingDeoptAddress, constantActionAndReason, null));
         } else {
-            append(new StoreOp(actionAndReason.getKind(), pendingDeoptAddress, load(actionAndReason), null));
+            append(new StoreOp(v.getKind(), pendingDeoptAddress, load(v), null));
         }
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting) {
-        moveDeoptimizationActionAndReasonToThread(actionAndReason);
+    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+        moveDeoptValuesToThread(actionAndReason, speculation);
         append(new AMD64DeoptimizeOp(state(deopting)));
     }
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptimizationActionAndReasonToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
+        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), Constant.NULL_OBJECT);
         append(new AMD64HotSpotDeoptimizeCallerOp());
     }
 

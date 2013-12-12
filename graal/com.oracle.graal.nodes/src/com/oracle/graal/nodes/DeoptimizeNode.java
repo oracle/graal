@@ -31,18 +31,21 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
 
     private final DeoptimizationAction action;
     private final DeoptimizationReason reason;
-    private final int speculationId;
+    private final int debugId;
+    private final Constant speculation;
 
     public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason) {
-        this(action, reason, 0);
+        this(action, reason, 0, Constant.NULL_OBJECT);
     }
 
-    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int speculationId) {
+    public DeoptimizeNode(DeoptimizationAction action, DeoptimizationReason reason, int debugId, Constant speculation) {
         assert action != null;
         assert reason != null;
+        assert speculation.getKind() == Kind.Object;
         this.action = action;
         this.reason = reason;
-        this.speculationId = speculationId;
+        this.debugId = debugId;
+        this.speculation = speculation;
     }
 
     public DeoptimizationAction action() {
@@ -60,12 +63,17 @@ public class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable,
 
     @Override
     public void generate(LIRGeneratorTool gen) {
-        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason, speculationId), this);
+        gen.emitDeoptimize(gen.getMetaAccess().encodeDeoptActionAndReason(action, reason, debugId), speculation, this);
     }
 
     @Override
     public ValueNode getActionAndReason(MetaAccessProvider metaAccess) {
-        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason, speculationId), metaAccess, graph());
+        return ConstantNode.forConstant(metaAccess.encodeDeoptActionAndReason(action, reason, debugId), metaAccess, graph());
+    }
+
+    @Override
+    public ValueNode getSpeculation(MetaAccessProvider metaAccess) {
+        return ConstantNode.forConstant(speculation, metaAccess, graph());
     }
 
     @NodeIntrinsic

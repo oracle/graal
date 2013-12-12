@@ -922,7 +922,7 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting) {
+    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
         append(new ReturnOp(Value.ILLEGAL));
     }
 

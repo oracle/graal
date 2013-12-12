@@ -69,7 +69,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     void emitMembar(int barriers);
 
-    void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting);
+    void emitDeoptimize(Value actionAndReason, Value failedSpeculation, DeoptimizingNode deopting);
 
     void emitNullCheck(ValueNode v, DeoptimizingNode deopting);
 

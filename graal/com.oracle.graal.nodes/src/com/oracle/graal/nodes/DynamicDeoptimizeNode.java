@@ -29,13 +29,19 @@ import com.oracle.graal.nodes.spi.*;
 
 public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIRLowerable, Canonicalizable {
     @Input private ValueNode actionAndReason;
+    @Input private ValueNode speculation;
 
-    public DynamicDeoptimizeNode(ValueNode actionAndReason) {
+    public DynamicDeoptimizeNode(ValueNode actionAndReason, ValueNode speculation) {
         this.actionAndReason = actionAndReason;
+        this.speculation = speculation;
     }
 
     public ValueNode getActionAndReason() {
         return actionAndReason;
+    }
+
+    public ValueNode getSpeculation() {
+        return speculation;
     }
 
     @Override
@@ -43,8 +49,13 @@ public class DynamicDeoptimizeNode extends AbstractDeoptimizeNode implements LIR
         return getActionAndReason();
     }
 
+    @Override
+    public ValueNode getSpeculation(MetaAccessProvider metaAccess) {
+        return getSpeculation();
+    }
+
     public void generate(LIRGeneratorTool generator) {
-        generator.emitDeoptimize(generator.operand(actionAndReason), this);
+        generator.emitDeoptimize(generator.operand(actionAndReason), generator.operand(speculation), this);
     }
 
     @Override

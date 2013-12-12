@@ -192,23 +192,27 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         append(new SPARCHotSpotUnwindOp(exceptionParameter));
     }
 
-    private void moveDeoptimizationActionAndReasonToThread(Value actionAndReason) {
-        int pendingDeoptimizationOffset = runtime().getConfig().pendingDeoptimizationOffset;
+    private void moveDeoptValuesToThread(Value actionAndReason, Value speculation) {
+        moveValueToThread(actionAndReason, runtime().getConfig().pendingDeoptimizationOffset);
+        moveValueToThread(speculation, runtime().getConfig().pendingFailedSpeculationOffset);
+    }
+
+    private void moveValueToThread(Value v, int offset) {
         Kind wordKind = getProviders().getCodeCache().getTarget().wordKind;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
-        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(actionAndReason.getKind(), thread, pendingDeoptimizationOffset);
-        append(new StoreOp(actionAndReason.getKind(), pendingDeoptAddress, emitMove(actionAndReason), null));
+        SPARCAddressValue pendingDeoptAddress = new SPARCAddressValue(v.getKind(), thread, offset);
+        append(new StoreOp(v.getKind(), pendingDeoptAddress, emitMove(v), null));
     }
 
     @Override
-    public void emitDeoptimize(Value actionAndReason, DeoptimizingNode deopting) {
-        moveDeoptimizationActionAndReasonToThread(actionAndReason);
+    public void emitDeoptimize(Value actionAndReason, Value speculation, DeoptimizingNode deopting) {
+        moveDeoptValuesToThread(actionAndReason, speculation);
         append(new SPARCDeoptimizeOp(state(deopting)));
     }
 
     @Override
     public void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason) {
-        moveDeoptimizationActionAndReasonToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0));
+        moveDeoptValuesToThread(getMetaAccess().encodeDeoptActionAndReason(action, reason, 0), Constant.NULL_OBJECT);
         append(new SPARCHotSpotDeoptimizeCallerOp());
     }
 

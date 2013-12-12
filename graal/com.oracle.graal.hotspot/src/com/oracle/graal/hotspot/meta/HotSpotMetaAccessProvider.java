@@ -134,8 +134,8 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
         HotSpotVMConfig config = runtime.getConfig();
         int actionValue = convertDeoptAction(action);
         int reasonValue = convertDeoptReason(reason);
-        int speculationValue = speculationId & intMaskRight(config.deoptimizationSpeculationIdBits);
-        Constant c = Constant.forInt(~((speculationValue << config.deoptimizationSpeculationIdShift) | (reasonValue << config.deoptimizationReasonShift) | (actionValue << config.deoptimizationActionShift)));
+        int speculationValue = speculationId & intMaskRight(config.deoptimizationDebugIdBits);
+        Constant c = Constant.forInt(~((speculationValue << config.deoptimizationDebugIdShift) | (reasonValue << config.deoptimizationReasonShift) | (actionValue << config.deoptimizationActionShift)));
         assert c.asInt() < 0;
         return c;
     }
@@ -156,7 +156,7 @@ public class HotSpotMetaAccessProvider implements MetaAccessProvider {
 
     public short decodeSpeculationId(Constant constant) {
         HotSpotVMConfig config = runtime.getConfig();
-        return (short) (((~constant.asInt()) >> config.deoptimizationSpeculationIdShift) & intMaskRight(config.deoptimizationSpeculationIdBits));
+        return (short) (((~constant.asInt()) >> config.deoptimizationDebugIdShift) & intMaskRight(config.deoptimizationDebugIdBits));
     }
 
     public int convertDeoptAction(DeoptimizationAction action) {
