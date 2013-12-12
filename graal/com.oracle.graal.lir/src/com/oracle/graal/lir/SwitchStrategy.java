@@ -29,6 +29,14 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.calc.*;
 
+/**
+ * This class encapsulates different strategies on how to generate code for switch instructions.
+ * 
+ * The {@link #getBestStrategy(double[], Constant[], LabelRef[])} method can be used to get strategy
+ * with the smallest average effort (average number of comparisons until a decision is reached). The
+ * strategy returned by this method will have its averageEffort set, while a strategy constructed
+ * directly will not.
+ */
 public abstract class SwitchStrategy {
 
     private interface SwitchClosure {
@@ -75,7 +83,8 @@ public abstract class SwitchStrategy {
     }
 
     /**
-     * Backends can subclass this abstract class to generate code for switch strategies.
+     * Backends can subclass this abstract class and generate code for switch strategies by
+     * implementing the {@link #conditionalJump(int, Condition, Label)} method.
      */
     public abstract static class BaseSwitchClosure implements SwitchClosure {
 
@@ -133,6 +142,10 @@ public abstract class SwitchStrategy {
 
     }
 
+    /**
+     * This closure is used internally to determine the average effort for a certain strategy on a
+     * given switch instruction.
+     */
     private class EffortClosure implements SwitchClosure {
 
         private int defaultEffort;
@@ -189,11 +202,11 @@ public abstract class SwitchStrategy {
     }
 
     public double getAverageEffort() {
-        assert averageEffort >= 0;
+        assert averageEffort >= 0 : "average effort was not calculated yet for this strategy";
         return averageEffort;
     }
 
-    /*
+    /**
      * Looks for the end of a stretch of key constants that are successive numbers and have the same
      * target.
      */
@@ -205,6 +218,10 @@ public abstract class SwitchStrategy {
         return slice;
     }
 
+    /**
+     * Tells the system that the given (inclusive) range of keys is reached after depth number of
+     * comparisons, which is used to calculate the average effort.
+     */
     protected void registerEffort(int rangeStart, int rangeEnd, int depth) {
         if (effortClosure != null) {
             for (int i = rangeStart; i <= rangeEnd; i++) {
@@ -214,6 +231,10 @@ public abstract class SwitchStrategy {
         }
     }
 
+    /**
+     * Tells the system that the default successor is reached after depth number of comparisons,
+     * which is used to calculate average effort.
+     */
     protected void registerDefaultEffort(int depth) {
         if (effortClosure != null) {
             effortClosure.defaultEffort += depth;
@@ -226,6 +247,10 @@ public abstract class SwitchStrategy {
         return getClass().getSimpleName() + "[avgEffort=" + averageEffort + "]";
     }
 
+    /**
+     * This strategy orders the keys according to their probability and creates one equality
+     * comparison per key.
+     */
     public static class SequentialStrategy extends SwitchStrategy {
         private final Integer[] indexes;
 
@@ -257,6 +282,10 @@ public abstract class SwitchStrategy {
         }
     }
 
+    /**
+     * This strategy divides the keys into ranges of successive keys with the same target and
+     * creates comparisons for these ranges.
+     */
     public static class RangesStrategy extends SwitchStrategy {
         private final Integer[] indexes;
 
@@ -314,6 +343,10 @@ public abstract class SwitchStrategy {
         }
     }
 
+    /**
+     * This strategy recursively subdivides the list of keys to create a binary search based on
+     * probabilities.
+     */
     public static class BinaryStrategy extends SwitchStrategy {
 
         private static final double MIN_PROBABILITY = 0.00001;
@@ -336,8 +369,10 @@ public abstract class SwitchStrategy {
         }
 
         /**
-         * Recursively generate a list of comparisons that always subdivides the key list in the
-         * middle (in terms of probability, not index).
+         * Recursively generate a list of comparisons that always subdivides the keys in the given
+         * (inclusive) range in the middle (in terms of probability, not index). If left is bigger
+         * than zero, then we always know that the value is equal to or bigger than the left key.
+         * This does not hold for the right key, as there may be a gap afterwards.
          */
         private void recurseBinarySwitch(SwitchClosure closure, int left, int right, int startDepth) {
             assert startDepth < keyConstants.length * 3 : "runaway recursion in binary switch";
@@ -354,6 +389,7 @@ public abstract class SwitchStrategy {
                     registerEffort(right, right, ++depth);
                     registerDefaultEffort(depth);
                 } else {
+                    // here we know that the value can only be one of these two keys in the range
                     closure.conditionalJump(left, Condition.EQ, false);
                     registerEffort(left, left, ++depth);
                     closure.conditionalJump(right, null, false);
@@ -433,6 +469,10 @@ public abstract class SwitchStrategy {
         return strategies;
     }
 
+    /**
+     * Creates all switch strategies for the given switch, evaluates them (based on average effort)
+     * and returns the best one.
+     */
     public static SwitchStrategy getBestStrategy(double[] keyProbabilities, Constant[] keyConstants, LabelRef[] keyTargets) {
         SwitchStrategy[] strategies = getStrategies(keyProbabilities, keyConstants, keyTargets);
         double bestEffort = Integer.MAX_VALUE;

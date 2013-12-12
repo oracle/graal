@@ -47,7 +47,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      */
     public SwitchNode(ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, double[] keyProbabilities) {
         super(StampFactory.forVoid());
-        assert value.kind() == Kind.Int || value.kind() == Kind.Long || value.kind() == Kind.Object;
+        assert value.kind() == Kind.Int || value.kind() == Kind.Long || value.kind() == Kind.Object : value.kind() + " key not supported by SwitchNode";
         assert keySuccessors.length == keyProbabilities.length;
         this.successors = new NodeSuccessorList<>(this, successors);
         this.value = value;
