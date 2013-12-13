@@ -48,7 +48,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.stubs.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.StandardOp.PlaceholderOp;
+import com.oracle.graal.lir.StandardOp.NoOp;
 import com.oracle.graal.lir.StandardOp.SaveRegistersOp;
 import com.oracle.graal.lir.amd64.*;
 import com.oracle.graal.lir.amd64.AMD64ControlFlow.CondMoveOp;
@@ -93,14 +93,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
      */
     class SaveRbp {
 
-        final PlaceholderOp placeholder;
+        final NoOp placeholder;
 
         /**
          * The slot reserved for saving RBP.
          */
         final StackSlot reservedSlot;
 
-        public SaveRbp(PlaceholderOp placeholder) {
+        public SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
             this.reservedSlot = frameMap.allocateSpillSlot(Kind.Long);
             assert reservedSlot.getRawOffset() == -16 : reservedSlot.getRawOffset();
@@ -172,7 +172,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         emitIncomingValues(params);
 
-        saveRbp = new SaveRbp(new PlaceholderOp(currentBlock, lir.lir(currentBlock).size()));
+        saveRbp = new SaveRbp(new NoOp(currentBlock, lir.lir(currentBlock).size()));
         append(saveRbp.placeholder);
 
         for (LocalNode local : graph.getNodes(LocalNode.class)) {
@@ -433,6 +433,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
     @Override
     public void beforeRegisterAllocation() {
+        super.beforeRegisterAllocation();
         boolean hasDebugInfo = lir.hasDebugInfo();
         AllocatableValue savedRbp = saveRbp.finalize(hasDebugInfo);
         if (hasDebugInfo) {
