@@ -40,6 +40,13 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
     private final Register[] allocatable;
 
+    /**
+     * The same as {@link #allocatable}, except if parameter registers are removed with the
+     * {@link #RegisterPressure} option. The caller saved registers always include all parameter
+     * registers.
+     */
+    private final Register[] callerSaved;
+
     private final HashMap<PlatformKind, Register[]> categorized = new HashMap<>();
 
     private final RegisterAttributes[] attributesMap;
@@ -129,12 +136,20 @@ public class AMD64HotSpotRegisterConfig implements RegisterConfig {
 
         csl = null;
         allocatable = initAllocatable(config.useCompressedOops);
+        Set<Register> callerSaveSet = new HashSet<>();
+        Collections.addAll(callerSaveSet, allocatable);
+        Collections.addAll(callerSaveSet, xmmParameterRegisters);
+        Collections.addAll(callerSaveSet, javaGeneralParameterRegisters);
+        Collections.addAll(callerSaveSet, nativeGeneralParameterRegisters);
+        callerSaved = callerSaveSet.toArray(new Register[callerSaveSet.size()]);
+        assert callerSaved.length == allocatable.length || RegisterPressure.getValue() != null;
+
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
     }
 
     @Override
     public Register[] getCallerSaveRegisters() {
-        return getAllocatableRegisters();
+        return callerSaved;
     }
 
     @Override
