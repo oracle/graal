@@ -182,6 +182,19 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         this.printIRWithLIR = Options.PrintIRWithLIR.getValue();
     }
 
+    /**
+     * Returns a value for a interval definition, which can be used for re-materialization.
+     * 
+     * @param op An instruction which defines a value
+     * @param operand The destination operand of the instruction
+     * @return Returns the value which is moved to the instruction and which can be reused at all
+     *         reload-locations in case the interval of this instruction is spilled. Currently this
+     *         can only be a {@link Constant}.
+     */
+    public Constant getMaterializedValue(LIRInstruction op, Value operand) {
+        return null;
+    }
+
     @SuppressWarnings("hiding")
     protected DebugInfoBuilder createDebugInfoBuilder(NodeMap<Value> nodeOperands) {
         return new DebugInfoBuilder(nodeOperands);

@@ -418,7 +418,8 @@ public final class Interval {
 
     /**
      * The {@linkplain RegisterValue register} or {@linkplain StackSlot spill slot} assigned to this
-     * interval.
+     * interval. In case of a spilled interval which is re-materialized this is
+     * {@link Value#ILLEGAL}.
      */
     private AllocatableValue location;
 
@@ -498,6 +499,17 @@ public final class Interval {
      */
     private Interval locationHint;
 
+    /**
+     * The value with which a spilled child interval can be re-materialized. Currently this must be
+     * a Constant.
+     */
+    private Constant materializedValue;
+
+    /**
+     * The number of times {@link #addMaterializationValue(Constant)} is called.
+     */
+    private int numMaterializationValuesAdded;
+
     void assignLocation(AllocatableValue newLocation) {
         if (isRegister(newLocation)) {
             assert this.location == null : "cannot re-assign location for " + this;
@@ -505,6 +517,8 @@ public final class Interval {
                 this.location = asRegister(newLocation).asValue(kind);
                 return;
             }
+        } else if (isIllegal(newLocation)) {
+            assert canMaterialize();
         } else {
             assert this.location == null || isRegister(this.location) : "cannot re-assign location for " + this;
             assert isStackSlot(newLocation);
@@ -621,7 +635,7 @@ public final class Interval {
 
     // returns true if this interval has a shadow copy on the stack that is always correct
     boolean alwaysInMemory() {
-        return splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory;
+        return (splitParent().spillState == SpillState.StoreAtDefinition || splitParent().spillState == SpillState.StartInMemory) && !canMaterialize();
     }
 
     void removeFirstUsePos() {
@@ -691,6 +705,34 @@ public final class Interval {
         this.spillDefinitionPos = -1;
         splitParent = this;
         currentSplitChild = this;
+    }
+
+    /**
+     * Sets the value which is used for re-materialization.
+     */
+    void addMaterializationValue(Constant value) {
+        if (numMaterializationValuesAdded == 0) {
+            materializedValue = value;
+        } else {
+            // Interval is defined on multiple places -> no materialization is possible.
+            materializedValue = null;
+        }
+        numMaterializationValuesAdded++;
+    }
+
+    /**
+     * Returns true if this interval can be re-materialized when spilled. This means that no
+     * spill-moves are needed. Instead of restore-moves the materializeValue is restored.
+     */
+    public boolean canMaterialize() {
+        return getMaterializedValue() != null;
+    }
+
+    /**
+     * Returns the value which is moved to a register instead of a restore-move from stack.
+     */
+    public Constant getMaterializedValue() {
+        return splitParent().materializedValue;
     }
 
     int calcTo() {
@@ -864,12 +906,24 @@ public final class Interval {
         }
     }
 
+    private RegisterPriority adaptPriority(RegisterPriority priority) {
+        /*
+         * In case of re-materialized values we require that use-operands are registers, because we
+         * don't have the value at a stack location. (Note that ShouldHaveRegister means that the
+         * operand can also be a StackSlot).
+         */
+        if (priority == RegisterPriority.ShouldHaveRegister && canMaterialize()) {
+            return RegisterPriority.MustHaveRegister;
+        }
+        return priority;
+    }
+
     // Note: use positions are sorted descending . first use has highest index
     int firstUsage(RegisterPriority minRegisterPriority) {
         assert isVariable(operand) : "cannot access use positions for fixed intervals";
 
         for (int i = usePosList.size() - 1; i >= 0; --i) {
-            RegisterPriority registerPriority = usePosList.registerPriority(i);
+            RegisterPriority registerPriority = adaptPriority(usePosList.registerPriority(i));
             if (registerPriority.greaterEqual(minRegisterPriority)) {
                 return usePosList.usePos(i);
             }
@@ -882,7 +936,7 @@ public final class Interval {
 
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             int usePos = usePosList.usePos(i);
-            if (usePos >= from && usePosList.registerPriority(i).greaterEqual(minRegisterPriority)) {
+            if (usePos >= from && adaptPriority(usePosList.registerPriority(i)).greaterEqual(minRegisterPriority)) {
                 return usePos;
             }
         }
@@ -894,7 +948,7 @@ public final class Interval {
 
         for (int i = usePosList.size() - 1; i >= 0; --i) {
             int usePos = usePosList.usePos(i);
-            if (usePos >= from && usePosList.registerPriority(i) == exactRegisterPriority) {
+            if (usePos >= from && adaptPriority(usePosList.registerPriority(i)) == exactRegisterPriority) {
                 return usePos;
             }
         }
@@ -910,7 +964,7 @@ public final class Interval {
             if (usePos > from) {
                 return prev;
             }
-            if (usePosList.registerPriority(i).greaterEqual(minRegisterPriority)) {
+            if (adaptPriority(usePosList.registerPriority(i)).greaterEqual(minRegisterPriority)) {
                 prev = usePos;
             }
         }
@@ -1181,6 +1235,10 @@ public final class Interval {
             buf.append(usePosList.usePos(i)).append(':').append(usePosList.registerPriority(i));
             prev = usePosList.usePos(i);
         }
-        return buf.append("} spill-state{").append(spillState()).append("}").toString();
+        buf.append("} spill-state{").append(spillState()).append("}");
+        if (canMaterialize()) {
+            buf.append(" (remat:").append(getMaterializedValue().toString()).append(")");
+        }
+        return buf.toString();
     }
 }

@@ -217,7 +217,7 @@ public class GraphBuilderPhase extends Phase {
             TTY.println(MetaUtil.indent(MetaUtil.profileToString(profilingInfo, method, CodeUtil.NEW_LINE), "  "));
         }
 
-        Indent indent = Debug.logAndIndent(false, "build graph for %s", method.toString());
+        Indent indent = Debug.logAndIndent(false, "build graph for %s", method);
 
         // compute the block map, setup exception handlers and get the entrypoint(s)
         BciBlockMapping blockMap = createBlockMap();
