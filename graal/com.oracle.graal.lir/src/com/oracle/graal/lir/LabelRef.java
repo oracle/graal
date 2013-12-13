@@ -93,6 +93,6 @@ public final class LabelRef {
 
     @Override
     public String toString() {
-        return suxIndex < block.getSuccessorCount() ? getTargetBlock().toString() : "?" + block + ":" + suxIndex + "?";
+        return getSourceBlock() + " -> " + (suxIndex < block.getSuccessors().size() ? getTargetBlock() : "?");
     }
 }
