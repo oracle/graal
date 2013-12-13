@@ -646,11 +646,61 @@ public abstract class HSAILLIRGenerator extends LIRGenerator {
         throw GraalInternalError.unimplemented();
     }
 
+    /**
+     * Emits the LIR code for the {@link HSAILArithmetic#ABS} operation.
+     * 
+     * @param input the source operand
+     * @return Value representing the result of the operation
+     */
     @Override
     public Value emitMathAbs(Value input) {
-        throw GraalInternalError.unimplemented();
+        Variable result = newVariable(input.getPlatformKind());
+        append(new Op1Stack(ABS, result, input));
+        return result;
     }
 
+    /**
+     * Emits the LIR code for the {@link HSAILArithmetic#CEIL} operation.
+     * 
+     * @param input the source operand
+     * @return Value representing the result of the operation
+     */
+    public Value emitMathCeil(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new Op1Stack(CEIL, result, input));
+        return result;
+    }
+
+    /**
+     * Emits the LIR code for the {@link HSAILArithmetic#FLOOR} operation.
+     * 
+     * @param input the source operand
+     * @return Value representing the result of the operation
+     */
+    public Value emitMathFloor(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new Op1Stack(FLOOR, result, input));
+        return result;
+    }
+
+    /**
+     * Emits the LIR code for the {@link HSAILArithmetic#RINT} operation.
+     * 
+     * @param input the source operand
+     * @return Value representing the result of the operation
+     */
+    public Value emitMathRint(Value input) {
+        Variable result = newVariable(input.getPlatformKind());
+        append(new Op1Stack(RINT, result, input));
+        return result;
+    }
+
+    /**
+     * Emits the LIR code for the {@link HSAILArithmetic#SQRT} operation.
+     * 
+     * @param input the source operand
+     * @return value representing the result of the operation
+     */
     @Override
     public Value emitMathSqrt(Value input) {
         Variable result = newVariable(input.getPlatformKind());

@@ -41,6 +41,8 @@ import com.oracle.graal.lir.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.lir.hsail.*;
 import com.oracle.graal.nodes.*;
+import com.oracle.graal.nodes.spi.Replacements;
+import com.oracle.graal.replacements.hsail.*;
 
 /**
  * HSAIL specific backend.
@@ -63,12 +65,23 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
         return true;
     }
 
+    /**
+     * Completes the initialization of the HSAIL backend. This includes initializing the providers
+     * and registering any method substitutions specified by the HSAIL backend.
+     */
     @Override
     public void completeInitialization() {
         final HotSpotProviders providers = getProviders();
         HotSpotVMConfig config = getRuntime().getConfig();
+        // Initialize the lowering provider.
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
         lowerer.initialize(providers, config);
+
+        // Register the replacements used by the HSAIL backend.
+        Replacements replacements = providers.getReplacements();
+
+        // Register the substitutions for java.lang.Math routines.
+        replacements.registerSubstitutions(HSAILMathSubstitutions.class);
     }
 
     /**

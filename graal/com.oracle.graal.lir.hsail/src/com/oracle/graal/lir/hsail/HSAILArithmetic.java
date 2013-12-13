@@ -29,14 +29,17 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.hsail.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
-import com.oracle.graal.lir.asm.*;
+import com.oracle.graal.lir.asm.CompilationResultBuilder;
 
 /**
  * Defines arithmetic instruction nodes.
  */
 public enum HSAILArithmetic {
+    ABS,
     CALL,
+    CEIL,
     FDIV,
+    FLOOR,
     FREM,
     DADD,
     DDIV,
@@ -97,6 +100,7 @@ public enum HSAILArithmetic {
     LUSUB,
     LXOR,
     OADD,
+    RINT,
     SQRT,
     UNDEF;
 
@@ -289,10 +293,33 @@ public enum HSAILArithmetic {
         }
     }
 
+    /**
+     * Emits the HSAIL code for an arithmetic operation taking one input parameter.
+     * 
+     * @param crb the CompilationResultBuilder
+     * @param masm the HSAIL assembler
+     * @param opcode the opcode of the arithmetic operation
+     * @param dst the destination
+     * @param src the source parameter
+     * @param info structure that stores the LIRFrameState. Used for exception handling.
+     */
+
     public static void emit(CompilationResultBuilder crb, HSAILAssembler masm, HSAILArithmetic opcode, Value dst, Value src, LIRFrameState info) {
         int exceptionOffset = -1;
         if (isRegister(src)) {
             switch (opcode) {
+                case ABS:
+                    masm.emit("abs", dst, src);
+                    break;
+                case CEIL:
+                    masm.emit("ceil", dst, src);
+                    break;
+                case FLOOR:
+                    masm.emit("floor", dst, src);
+                    break;
+                case RINT:
+                    masm.emit("rint", dst, src);
+                    break;
                 case SQRT:
                     masm.emit("sqrt", dst, src);
                     break;
@@ -304,14 +331,12 @@ public enum HSAILArithmetic {
                     break;
                 case INOT:
                 case LNOT:
-                    // Emit the HSAIL instruction for a bitwise not.
                     masm.emitForceBitwise("not", dst, src);
                     break;
                 case INEG:
                 case LNEG:
                 case FNEG:
                 case DNEG:
-                    // Emit the HSAIL instruction for a negate operation.
                     masm.emit("neg", dst, src);
                     break;
                 default:
