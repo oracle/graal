@@ -1446,6 +1446,14 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x50 | encode);
     }
 
+    public void pushfq() {
+        emitByte(0x9c);
+    }
+
+    public void popfq() {
+        emitByte(0x9D);
+    }
+
     public final void ret(int imm16) {
         if (imm16 == 0) {
             emitByte(0xC3);
