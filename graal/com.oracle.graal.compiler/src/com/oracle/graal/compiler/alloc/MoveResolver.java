@@ -199,9 +199,7 @@ final class MoveResolver {
 
         insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
-        if (allocator.getTraceLevel() >= 4) {
-            TTY.println("MoveResolver: inserted move from %d (%s) to %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
-        }
+        Debug.log("insert move from %s to %s at %d", fromInterval, toInterval, insertIdx);
     }
 
     private void insertMove(Value fromOpr, Interval toInterval) {
@@ -211,9 +209,7 @@ final class MoveResolver {
         AllocatableValue toOpr = toInterval.operand;
         insertionBuffer.append(insertIdx, allocator.ir.spillMoveFactory.createMove(toOpr, fromOpr));
 
-        if (allocator.getTraceLevel() >= 4) {
-            TTY.print("MoveResolver: inserted move from constant %s to %d (%s)", fromOpr, toInterval.operandNumber, toInterval.location());
-        }
+        Debug.log("insert move from value %s to %s at %d", fromOpr, toInterval, insertIdx);
     }
 
     private void resolveMappings() {
@@ -283,9 +279,7 @@ final class MoveResolver {
                 }
                 spillInterval.assignLocation(spillSlot);
 
-                if (allocator.getTraceLevel() >= 4) {
-                    TTY.println("created new Interval %s for spilling", spillInterval.operand);
-                }
+                Debug.log("created new Interval for spilling: %s", spillInterval);
 
                 // insert a move from register to stack and update the mapping
                 insertMove(fromInterval, spillInterval);
@@ -325,9 +319,18 @@ final class MoveResolver {
     }
 
     void addMapping(Interval fromInterval, Interval toInterval) {
-        if (allocator.getTraceLevel() >= 4) {
-            TTY.println("MoveResolver: adding mapping from interval %d (%s) to interval %d (%s)", fromInterval.operandNumber, fromInterval.location(), toInterval.operandNumber, toInterval.location());
+
+        if (isIllegal(toInterval.location()) && toInterval.canMaterialize()) {
+            Debug.log("no store to rematerializable interval %s needed", toInterval);
+            return;
         }
+        if (isIllegal(fromInterval.location()) && fromInterval.canMaterialize()) {
+            // Instead of a reload, re-materialize the value
+            Value rematValue = fromInterval.getMaterializedValue();
+            addMapping(rematValue, toInterval);
+            return;
+        }
+        Debug.log("add move mapping from %s to %s", fromInterval, toInterval);
 
         assert !fromInterval.operand.equals(toInterval.operand) : "from and to interval equal: " + fromInterval;
         assert fromInterval.kind() == toInterval.kind();
@@ -337,9 +340,8 @@ final class MoveResolver {
     }
 
     void addMapping(Value fromOpr, Interval toInterval) {
-        if (allocator.getTraceLevel() >= 4) {
-            TTY.println("MoveResolver: adding mapping from %s to %d (%s)", fromOpr, toInterval.operandNumber, toInterval.location());
-        }
+        Debug.log("add move mapping from %s to %s", fromOpr, toInterval);
+
         assert isConstant(fromOpr) : "only for constants";
 
         mappingFrom.add(null);

@@ -41,7 +41,7 @@ public class LIRFrameState {
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;
     public final LabelRef exceptionEdge;
-    private DebugInfo debugInfo;
+    protected DebugInfo debugInfo;
 
     public LIRFrameState(BytecodeFrame topFrame, VirtualObject[] virtualObjects, LabelRef exceptionEdge) {
         this.topFrame = topFrame;
@@ -109,8 +109,45 @@ public class LIRFrameState {
         }
     }
 
-    public void finish(BitSet registerRefMap, BitSet frameRefMap) {
-        debugInfo = new DebugInfo(topFrame, registerRefMap, frameRefMap);
+    /**
+     * Called by the register allocator before {@link #markLocation} to initialize the frame state.
+     * 
+     * @param frameMap The frame map.
+     * @param canHaveRegisters True if there can be any register map entries.
+     */
+    public void initDebugInfo(FrameMap frameMap, boolean canHaveRegisters) {
+        BitSet registerRefMap = (canHaveRegisters ? frameMap.initRegisterRefMap() : null);
+        debugInfo = new DebugInfo(topFrame, registerRefMap, frameMap.initFrameRefMap());
+    }
+
+    /**
+     * Called by the register allocator to mark the specified location as a reference in the
+     * reference map of the debug information. The tracked location can be a {@link RegisterValue}
+     * or a {@link StackSlot}. Note that a {@link Constant} is automatically tracked.
+     * 
+     * @param location The location to be added to the reference map.
+     * @param frameMap The frame map.
+     */
+    public void markLocation(Value location, FrameMap frameMap) {
+        if (location.getKind() == Kind.Object) {
+            if (isRegister(location)) {
+                debugInfo.getRegisterRefMap().set(asRegister(location).number);
+            } else if (isStackSlot(location)) {
+                int index = frameMap.indexForStackSlot(asStackSlot(location));
+                debugInfo.getFrameRefMap().set(index);
+            } else {
+                assert isConstant(location);
+            }
+        }
+    }
+
+    /**
+     * Called by the register allocator after all locations are marked.
+     * 
+     * @param op The instruction to which this frame state belongs.
+     * @param frameMap The frame map.
+     */
+    public void finish(LIRInstruction op, FrameMap frameMap) {
     }
 
     @Override
