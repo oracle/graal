@@ -23,6 +23,7 @@
 package com.oracle.graal.nodes.java;
 
 import java.lang.reflect.*;
+import java.util.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
@@ -34,7 +35,7 @@ import com.oracle.graal.nodes.type.*;
  * The {@code DynamicNewArrayNode} is used for allocation of arrays when the type is not a
  * compile-time constant.
  */
-public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonicalizable {
+public class DynamicNewArrayNode extends AbstractNewArrayNode {
 
     @Input private ValueNode elementType;
 
@@ -52,15 +53,20 @@ public class DynamicNewArrayNode extends AbstractNewArrayNode implements Canonic
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (elementType.isConstant()) {
+    public void simplify(SimplifierTool tool) {
+        if (isAlive() && elementType.isConstant()) {
             Class<?> elementClass = (Class<?>) elementType.asConstant().asObject();
             if (elementClass != null && !(elementClass.equals(void.class))) {
                 ResolvedJavaType javaType = tool.getMetaAccess().lookupJavaType(elementClass);
-                return graph().add(new NewArrayNode(javaType, length(), fillContents()));
+                NewArrayNode newArray = graph().add(new NewArrayNode(javaType, length(), fillContents()));
+                List<Node> snapshot = inputs().snapshot();
+                graph().replaceFixedWithFixed(this, newArray);
+                for (Node input : snapshot) {
+                    tool.removeIfUnused(input);
+                }
+                tool.addToWorkList(newArray);
             }
         }
-        return this;
     }
 
     @NodeIntrinsic

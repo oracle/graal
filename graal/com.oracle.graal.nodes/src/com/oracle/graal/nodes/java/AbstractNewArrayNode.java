@@ -22,7 +22,6 @@
  */
 package com.oracle.graal.nodes.java;
 
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
@@ -31,10 +30,9 @@ import com.oracle.graal.nodes.type.*;
 /**
  * The {@code AbstractNewArrayNode} is used for all 1-dimensional array allocations.
  */
-public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implements Canonicalizable, Lowerable, ArrayLengthProvider {
+public class AbstractNewArrayNode extends AbstractNewObjectNode implements ArrayLengthProvider {
 
     @Input private ValueNode length;
-    private final boolean fillContents;
 
     @Override
     public ValueNode length() {
@@ -49,16 +47,8 @@ public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implemen
      * @param fillContents determines whether the array elements should be initialized to zero/null.
      */
     protected AbstractNewArrayNode(Stamp stamp, ValueNode length, boolean fillContents) {
-        super(stamp);
+        super(stamp, fillContents);
         this.length = length;
-        this.fillContents = fillContents;
-    }
-
-    /**
-     * @return <code>true</code> if the elements of the array will be initialized.
-     */
-    public boolean fillContents() {
-        return fillContents;
     }
 
     /**
@@ -77,23 +67,11 @@ public class AbstractNewArrayNode extends DeoptimizingFixedWithNextNode implemen
     }
 
     @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
-            Stamp stamp = length.stamp();
-            if (stamp instanceof IntegerStamp && ((IntegerStamp) stamp).isPositive()) {
-                return null;
-            }
+    public void simplify(SimplifierTool tool) {
+        Stamp stamp = length.stamp();
+        if (stamp instanceof IntegerStamp && ((IntegerStamp) stamp).isPositive()) {
+            // otherwise, removing the allocation might swallow a NegativeArraySizeException
+            super.simplify(tool);
         }
-        return this;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
     }
 }

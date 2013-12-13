@@ -26,7 +26,6 @@ import java.lang.ref.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.*;
-import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
@@ -36,10 +35,9 @@ import com.oracle.graal.nodes.virtual.*;
  * The {@code NewInstanceNode} represents the allocation of an instance class object.
  */
 @NodeInfo(nameTemplate = "New {p#instanceClass/s}")
-public class NewInstanceNode extends DeoptimizingFixedWithNextNode implements Canonicalizable, Lowerable, VirtualizableAllocation {
+public class NewInstanceNode extends AbstractNewObjectNode implements VirtualizableAllocation {
 
     private final ResolvedJavaType instanceClass;
-    private final boolean fillContents;
 
     /**
      * Constructs a NewInstanceNode.
@@ -49,10 +47,9 @@ public class NewInstanceNode extends DeoptimizingFixedWithNextNode implements Ca
      *            zero/null.
      */
     public NewInstanceNode(ResolvedJavaType type, boolean fillContents) {
-        super(StampFactory.exactNonNull(type));
+        super(StampFactory.exactNonNull(type), fillContents);
         assert !type.isArray();
         this.instanceClass = type;
-        this.fillContents = fillContents;
     }
 
     /**
@@ -62,27 +59,6 @@ public class NewInstanceNode extends DeoptimizingFixedWithNextNode implements Ca
      */
     public ResolvedJavaType instanceClass() {
         return instanceClass;
-    }
-
-    /**
-     * @return <code>true</code> if the fields of the new object will be initialized.
-     */
-    public boolean fillContents() {
-        return fillContents;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (usages().isEmpty()) {
-            return null;
-        } else {
-            return this;
-        }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -106,10 +82,5 @@ public class NewInstanceNode extends DeoptimizingFixedWithNextNode implements Ca
     /* Factored out in a separate method so that subclasses can override it. */
     protected ConstantNode defaultFieldValue(ResolvedJavaField field) {
         return ConstantNode.defaultForKind(field.getType().getKind(), graph());
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
     }
 }
