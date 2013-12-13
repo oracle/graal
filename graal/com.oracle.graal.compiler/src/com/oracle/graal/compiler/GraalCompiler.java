@@ -262,13 +262,12 @@ public class GraalCompiler {
             for (Block b : lir.linearScanOrder()) {
                 emitBlock(lirGen, b);
             }
+            lirGen.beforeRegisterAllocation();
 
             Debug.dump(lir, "After LIR generation");
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
-
-        lirGen.beforeRegisterAllocation();
 
         try (Scope s = Debug.scope("Allocator")) {
             if (backend.shouldAllocateRegisters()) {
