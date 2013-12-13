@@ -110,12 +110,20 @@ public class GraalDebugConfig implements DebugConfig {
         return isEnabled(logFilter);
     }
 
+    public boolean isLogEnabledForMethod() {
+        return isEnabledForMethod(logFilter);
+    }
+
     public boolean isMeterEnabled() {
         return isEnabled(meterFilter);
     }
 
     public boolean isDumpEnabled() {
         return isEnabled(dumpFilter);
+    }
+
+    public boolean isDumpEnabledForMethod() {
+        return isEnabledForMethod(dumpFilter);
     }
 
     public boolean isTimeEnabled() {
@@ -128,6 +136,10 @@ public class GraalDebugConfig implements DebugConfig {
 
     private boolean isEnabled(DebugFilter filter) {
         return checkDebugFilter(Debug.currentScope(), filter) && checkMethodFilter();
+    }
+
+    private boolean isEnabledForMethod(DebugFilter filter) {
+        return filter != null && checkMethodFilter();
     }
 
     private static boolean checkDebugFilter(String currentScope, DebugFilter filter) {

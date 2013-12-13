@@ -565,7 +565,7 @@ public class Graph {
      * ordering between the nodes within the list.
      */
     public boolean maybeCompress() {
-        if (Debug.isEnabled()) {
+        if (Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()) {
             return false;
         }
         int liveNodeCount = getNodeCount();
