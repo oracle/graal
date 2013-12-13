@@ -324,7 +324,7 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
                     assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
                     Mark preLoweringMark = node.graph().getMark();
                     ((Lowerable) node).lower(loweringTool);
-                    if (node == startAnchor && node.isDeleted()) {
+                    if (loweringTool.guardAnchor.asNode().isDeleted()) {
                         loweringTool.guardAnchor = BeginNode.prevBegin(nextNode);
                     }
                     assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
