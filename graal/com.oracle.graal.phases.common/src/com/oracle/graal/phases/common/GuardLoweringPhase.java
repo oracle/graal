@@ -27,6 +27,7 @@ import static com.oracle.graal.phases.GraalOptions.*;
 import java.util.*;
 import java.util.Map.Entry;
 
+import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -34,7 +35,6 @@ import com.oracle.graal.nodes.calc.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.util.*;
-import com.oracle.graal.options.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.schedule.*;
@@ -54,13 +54,6 @@ import com.oracle.graal.phases.tiers.*;
  * does the actual control-flow expansion of the remaining {@link GuardNode GuardNodes}.
  */
 public class GuardLoweringPhase extends BasePhase<MidTierContext> {
-    static class Options {
-        //@formatter:off
-        @Option(help = "")
-        public static final OptionValue<Boolean> UseGuardIdAsSpeculationId = new OptionValue<>(false);
-        //@formatter:on
-    }
-
     private static class UseImplicitNullChecks extends ScheduledNodeIterator {
 
         private final IdentityHashMap<ValueNode, GuardNode> nullGuarded = new IdentityHashMap<>();
@@ -134,9 +127,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         private final Block block;
         private boolean useGuardIdAsSpeculationId;
 
-        public LowerGuards(Block block) {
+        public LowerGuards(Block block, boolean useGuardIdAsSpeculationId) {
             this.block = block;
-            this.useGuardIdAsSpeculationId = Options.UseGuardIdAsSpeculationId.getValue();
+            this.useGuardIdAsSpeculationId = useGuardIdAsSpeculationId;
         }
 
         @Override
@@ -203,6 +196,6 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
         if (OptImplicitNullChecks.getValue() && implicitNullCheckLimit > 0) {
             new UseImplicitNullChecks(implicitNullCheckLimit).processNodes(block, schedule);
         }
-        new LowerGuards(block).processNodes(block, schedule);
+        new LowerGuards(block, Debug.isDumpEnabledForMethod() || Debug.isLogEnabledForMethod()).processNodes(block, schedule);
     }
 }
