@@ -73,12 +73,11 @@ public class AMD64ControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            int sourceIndex = crb.getCurrentBlockIndex();
-            if (trueDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+            if (crb.isSuccessorEdge(trueDestination)) {
                 jcc(masm, true, falseDestination);
             } else {
                 jcc(masm, false, trueDestination);
-                if (!falseDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+                if (!crb.isSuccessorEdge(falseDestination)) {
                     masm.jmp(falseDestination.label());
                 }
             }

@@ -25,11 +25,8 @@ package com.oracle.graal.lir;
 import java.util.*;
 
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.debug.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.LIRInstruction.StateProcedure;
 import com.oracle.graal.lir.StandardOp.BlockEndOp;
-import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 
@@ -136,44 +133,6 @@ public class LIR {
 
     public void setFirstVariableNumber(int num) {
         firstVariableNumber = num;
-    }
-
-    public void emitCode(CompilationResultBuilder crb) {
-        crb.frameContext.enter(crb);
-
-        int index = 0;
-        for (Block b : codeEmittingOrder) {
-            crb.setCurrentBlockIndex(index++);
-            emitBlock(crb, b);
-        }
-    }
-
-    private void emitBlock(CompilationResultBuilder crb, Block block) {
-        if (Debug.isDumpEnabled()) {
-            crb.blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
-        }
-
-        for (LIRInstruction op : lir(block)) {
-            if (Debug.isDumpEnabled()) {
-                crb.blockComment(String.format("%d %s", op.id(), op));
-            }
-
-            try {
-                emitOp(crb, op);
-            } catch (GraalInternalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + codeEmittingOrder);
-            }
-        }
-    }
-
-    private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
-        try {
-            op.emitCode(crb);
-        } catch (AssertionError t) {
-            throw new GraalInternalError(t);
-        } catch (RuntimeException t) {
-            throw new GraalInternalError(t);
-        }
     }
 
     public void setHasArgInCallerFrame() {

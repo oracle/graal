@@ -297,7 +297,7 @@ public class HSAILHotSpotBackend extends HotSpotBackend {
             }
         }
         // Prologue done, Emit code for the LIR.
-        lirGen.lir.emitCode(crb);
+        crb.emit(lirGen.lir);
         // Now that code is emitted go back and figure out what the upper Bound stack size was.
         long maxStackSize = ((HSAILAssembler) crb.asm).upperBoundStackSize();
         String spillsegStringFinal;

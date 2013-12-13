@@ -73,18 +73,17 @@ public class SPARCControlFlow {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-            int sourceIndex = crb.getCurrentBlockIndex();
             Label actualTarget;
             Condition actualCondition;
             boolean needJump;
-            if (trueDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex)) {
+            if (crb.isSuccessorEdge(trueDestination)) {
                 actualCondition = condition.negate();
                 actualTarget = falseDestination.label();
                 needJump = false;
             } else {
                 actualCondition = condition;
                 actualTarget = trueDestination.label();
-                needJump = !falseDestination.isCodeEmittingOrderSuccessorEdge(sourceIndex);
+                needJump = !crb.isSuccessorEdge(falseDestination);
             }
             assert kind == Kind.Int || kind == Kind.Long || kind == Kind.Object;
             CC cc = kind == Kind.Int ? CC.Icc : CC.Xcc;

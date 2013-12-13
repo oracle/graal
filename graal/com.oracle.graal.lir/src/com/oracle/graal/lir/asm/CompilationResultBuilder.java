@@ -32,6 +32,7 @@ import com.oracle.graal.asm.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.lir.*;
+import com.oracle.graal.nodes.cfg.*;
 
 /**
  * Fills in a {@link CompilationResult} as its code is being assembled.
@@ -59,7 +60,12 @@ public class CompilationResultBuilder {
     public final FrameMap frameMap;
 
     /**
-     * The index of the block currently being processed in the code emitting block order.
+     * The LIR for which code is being generated.
+     */
+    private LIR lir;
+
+    /**
+     * The index of the block currently being emitted.
      */
     private int currentBlockIndex;
 
@@ -285,16 +291,58 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Gets the index of the block currently being processed in the code emitting block order.
+     * Determines if a given edge from the block currently being emitted goes to its lexical
+     * successor.
      */
-    public int getCurrentBlockIndex() {
-        return currentBlockIndex;
+    public boolean isSuccessorEdge(LabelRef edge) {
+        assert lir != null;
+        List<Block> order = lir.codeEmittingOrder();
+        assert order.get(currentBlockIndex) == edge.getSourceBlock();
+        return currentBlockIndex < order.size() - 1 && order.get(currentBlockIndex + 1) == edge.getTargetBlock();
     }
 
     /**
-     * Sets the index of the block currently being processed in the code emitting block order.
+     * Emits code for {@code lir} in its {@linkplain LIR#codeEmittingOrder() code emitting order}.
      */
-    public void setCurrentBlockIndex(int index) {
-        this.currentBlockIndex = index;
+    public void emit(@SuppressWarnings("hiding") LIR lir) {
+        assert this.lir == null;
+        assert currentBlockIndex == 0;
+        this.lir = lir;
+        this.currentBlockIndex = 0;
+        frameContext.enter(this);
+        for (Block b : lir.codeEmittingOrder()) {
+            emitBlock(b);
+            currentBlockIndex++;
+        }
+        this.lir = null;
+        this.currentBlockIndex = 0;
+    }
+
+    private void emitBlock(Block block) {
+        if (Debug.isDumpEnabled()) {
+            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
+        }
+
+        for (LIRInstruction op : lir.lir(block)) {
+            if (Debug.isDumpEnabled()) {
+                blockComment(String.format("%d %s", op.id(), op));
+            }
+
+            try {
+                emitOp(this, op);
+            } catch (GraalInternalError e) {
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op + "\n" + lir.codeEmittingOrder());
+            }
+        }
+    }
+
+    private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
+        try {
+            op.emitCode(crb);
+        } catch (AssertionError t) {
+            throw new GraalInternalError(t);
+        } catch (RuntimeException t) {
+            throw new GraalInternalError(t);
+        }
     }
 }

@@ -116,9 +116,9 @@ public abstract class SwitchStrategy {
         }
 
         public void conditionalJumpOrDefault(int index, Condition condition, boolean canFallThrough) {
-            if (canFallThrough && defaultTarget.isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
+            if (canFallThrough && crb.isSuccessorEdge(defaultTarget)) {
                 conditionalJump(index, condition, keyTargets[index].label());
-            } else if (canFallThrough && keyTargets[index].isCodeEmittingOrderSuccessorEdge(crb.getCurrentBlockIndex())) {
+            } else if (canFallThrough && crb.isSuccessorEdge(keyTargets[index])) {
                 conditionalJump(index, condition.negate(), defaultTarget.label());
             } else {
                 conditionalJump(index, condition, keyTargets[index].label());
