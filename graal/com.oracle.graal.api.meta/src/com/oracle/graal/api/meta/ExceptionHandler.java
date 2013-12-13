@@ -111,4 +111,9 @@ public final class ExceptionHandler {
     public String toString() {
         return "ExceptionHandler<startBCI=" + startBCI + ", endBCI=" + endBCI + ", handlerBCI=" + handlerBCI + ", catchTypeCPI=" + catchTypeCPI + ", catchType=" + catchType + ">";
     }
+
+    @Override
+    public int hashCode() {
+        return catchTypeCPI ^ endBCI ^ handlerBCI;
+    }
 }
