@@ -42,9 +42,9 @@ public interface StateSplit extends NodeWithState {
     void setStateAfter(FrameState x);
 
     /**
-     * Determines if this node has a side-effect. Such nodes can not be safely re-executed because
-     * they modified state which is visible to other thread or modified state beyond what is
-     * captured in {@link FrameState} nodes.
+     * Determines if this node has a side-effect. Such nodes cannot be safely re-executed because
+     * they modify state which is visible to other threads or modify state beyond what is captured
+     * in {@link FrameState} nodes.
      */
     boolean hasSideEffect();
 }

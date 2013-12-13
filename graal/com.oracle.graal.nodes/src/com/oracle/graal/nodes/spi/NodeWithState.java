@@ -29,13 +29,11 @@ import static com.oracle.graal.nodes.StructuredGraph.GuardsStage.*;
 /**
  * Interface for nodes which have {@link FrameState} nodes as input.
  * <p>
- * Some node can declare more than one interface which requires a {@link FrameState} input (e.g.
+ * Some node can implement more than one interface which requires a {@link FrameState} input (e.g.
  * {@link DeoptimizingNode} and {@link StateSplit}). Since this interface can only report one
- * {@link FrameState}, such nodes must ensure they only maintain a link to at most one
- * {@link FrameState} at all times. Usually this is not a problem because {@link FrameState} are
- * associated only with {@link StateSplit} nodes before the {@link #AFTER_FSA} stage and only with
- * {@link DeoptimizingNode} after.
- * 
+ * FrameState, such nodes must ensure they only maintain a link to at most one FrameState at all
+ * times. Usually this is not a problem because FrameStates are associated only with StateSplit
+ * nodes before the {@link #AFTER_FSA} stage and only with DeoptimizingNodes after.
  * 
  */
 public interface NodeWithState {
