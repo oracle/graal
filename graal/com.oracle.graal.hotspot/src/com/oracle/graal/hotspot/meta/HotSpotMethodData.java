@@ -397,7 +397,7 @@ public final class HotSpotMethodData extends CompilerObject {
 
         @Override
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
-            return sb.append(format("count(%d)", getCounterValue(data, pos)));
+            return sb.append(format("count(%d) null_seen(%s) exception_seen(%s)", getCounterValue(data, pos), getNullSeen(data, pos), getExceptionSeen(data, pos)));
         }
     }
 
@@ -524,7 +524,9 @@ public final class HotSpotMethodData extends CompilerObject {
         public StringBuilder appendTo(StringBuilder sb, HotSpotMethodData data, int pos) {
             RawItemProfile<ResolvedJavaType> profile = getRawTypeProfile(data, pos);
             TriState nullSeen = getNullSeen(data, pos);
-            sb.append(format("count(%d) null_seen(%s) nonprofiled_count(%d) entries(%d)", getCounterValue(data, pos), nullSeen, getTypesNotRecordedExecutionCount(data, pos), profile.entries));
+            TriState exceptionSeen = getExceptionSeen(data, pos);
+            sb.append(format("count(%d) null_seen(%s) exception_seen(%s) nonprofiled_count(%d) entries(%d)", getCounterValue(data, pos), nullSeen, exceptionSeen,
+                            getTypesNotRecordedExecutionCount(data, pos), profile.entries));
             for (int i = 0; i < profile.entries; i++) {
                 long count = profile.counts[i];
                 sb.append(format("%n  %s (%d, %4.2f)", MetaUtil.toJavaName(profile.items[i]), count, (double) count / profile.totalCount));
