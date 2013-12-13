@@ -1869,6 +1869,7 @@ public final class LinearScan {
             printLir("After register number assignment", true);
             EdgeMoveOptimizer.optimize(ir);
             ControlFlowOptimizer.optimize(ir);
+            RedundantMoveElimination.optimize(ir, frameMap, gen.getGraph().method());
             NullCheckOptimizer.optimize(ir, target.implicitNullCheckLimit);
             printLir("After control flow optimization", false);
         } catch (Throwable e) {
