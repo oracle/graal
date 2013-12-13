@@ -102,6 +102,7 @@ public interface LIRGeneratorTool extends ArithmeticLIRGenerator {
 
     /**
      * Called just before register allocation is performed on the LIR owned by this generator.
+     * Overriding implementations of this method must call the overridden method.
      */
     void beforeRegisterAllocation();
 
