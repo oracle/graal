@@ -257,6 +257,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                         loadedValue = load.variable;
                         if (dominator != load.block) {
                             if (load.index >= 0) {
+                                // Replace the move with a filler op so that the operation
+                                // list does not need to be adjusted.
                                 List<LIRInstruction> instructions = lir.lir(load.block);
                                 instructions.set(load.index, new NoOp(null, -1));
                                 load.index = -1;
