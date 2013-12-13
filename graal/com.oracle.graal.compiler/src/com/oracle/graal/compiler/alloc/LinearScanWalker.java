@@ -490,8 +490,7 @@ final class LinearScanWalker extends IntervalWalker {
                             allocator.assignSpillSlot(parent);
                         } else {
                             // do not go further back because the register is actually used by
-// the
-                            // interval
+                            // the interval
                             parent = null;
                         }
                     }
