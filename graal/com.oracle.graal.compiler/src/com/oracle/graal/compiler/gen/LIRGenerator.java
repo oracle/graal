@@ -83,12 +83,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private final boolean printIRWithLIR;
 
     /**
-     * Maps constants to variables within the scope of a single block to avoid loading a constant
-     * more than once per block.
-     */
-    private Map<Constant, Variable> constantsLoadedInCurrentBlock;
-
-    /**
      * Handle for an operation that loads a constant into a variable. The operation starts in the
      * first block where the constant is used but will eventually be
      * {@linkplain LIRGenerator#insertConstantLoads() moved} to a block dominating all usages of the
@@ -240,12 +234,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return operand;
     }
 
-    /**
-     * Controls whether commoning is performed on {@linkplain #canInlineConstant(Constant)
-     * non-inlinable} constants.
-     */
-    private static final boolean CommonConstantLoads = Boolean.parseBoolean(System.getProperty("graal.commonConstantLoads", "true"));
-
     private Value getConstantOperand(ValueNode node) {
         if (!ConstantNodeRecordsUsages) {
             Constant value = node.asConstant();
@@ -254,42 +242,29 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                     return !node.isExternal() ? setResult(node, value) : value;
                 } else {
                     Variable loadedValue;
-                    if (CommonConstantLoads) {
-                        if (constantLoads == null) {
-                            constantLoads = new HashMap<>();
-                        }
-                        LoadConstant load = constantLoads.get(value);
-                        if (load == null) {
-                            int index = lir.lir(currentBlock).size();
-                            // loadedValue = newVariable(value.getPlatformKind());
-                            loadedValue = emitMove(value);
-                            LIRInstruction op = lir.lir(currentBlock).get(index);
-                            constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
-                        } else {
-                            Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
-                            loadedValue = load.variable;
-                            if (dominator != load.block) {
-                                if (load.index >= 0) {
-                                    List<LIRInstruction> instructions = lir.lir(load.block);
-                                    instructions.set(load.index, new NoOp(null, -1));
-                                    load.index = -1;
-                                }
-                            } else {
-                                assert load.block != currentBlock || load.index < lir.lir(currentBlock).size();
-                            }
-                            load.block = dominator;
-                        }
+                    if (constantLoads == null) {
+                        constantLoads = new HashMap<>();
+                    }
+                    LoadConstant load = constantLoads.get(value);
+                    if (load == null) {
+                        int index = lir.lir(currentBlock).size();
+                        // loadedValue = newVariable(value.getPlatformKind());
+                        loadedValue = emitMove(value);
+                        LIRInstruction op = lir.lir(currentBlock).get(index);
+                        constantLoads.put(value, new LoadConstant(loadedValue, currentBlock, index, op));
                     } else {
-                        if (constantsLoadedInCurrentBlock == null) {
-                            constantsLoadedInCurrentBlock = new HashMap<>();
-                            loadedValue = null;
+                        Block dominator = ControlFlowGraph.commonDominator(load.block, currentBlock);
+                        loadedValue = load.variable;
+                        if (dominator != load.block) {
+                            if (load.index >= 0) {
+                                List<LIRInstruction> instructions = lir.lir(load.block);
+                                instructions.set(load.index, new NoOp(null, -1));
+                                load.index = -1;
+                            }
                         } else {
-                            loadedValue = constantsLoadedInCurrentBlock.get(value);
+                            assert load.block != currentBlock || load.index < lir.lir(currentBlock).size();
                         }
-                        if (loadedValue == null) {
-                            loadedValue = emitMove(value);
-                            constantsLoadedInCurrentBlock.put(value, loadedValue);
-                        }
+                        load.block = dominator;
                     }
                     return loadedValue;
                 }
@@ -442,7 +417,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         }
 
         currentBlock = block;
-        resetLoadedConstants();
 
         // set up the list of LIR instructions
         assert lir.lir(block) == null : "LIR list already computed for this block";
@@ -503,12 +477,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         if (printIRWithLIR) {
             TTY.println();
-        }
-    }
-
-    private void resetLoadedConstants() {
-        if (constantsLoadedInCurrentBlock != null && !constantsLoadedInCurrentBlock.isEmpty()) {
-            constantsLoadedInCurrentBlock.clear();
         }
     }
 
