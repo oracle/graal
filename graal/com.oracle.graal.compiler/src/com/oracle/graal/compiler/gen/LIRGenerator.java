@@ -227,7 +227,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         if (nodeOperands == null) {
             return null;
         }
-        Value operand = !node.isExternal() ? nodeOperands.get(node) : null;
+        Value operand = nodeOperands.get(node);
         if (operand == null) {
             return getConstantOperand(node);
         }
@@ -239,7 +239,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             Constant value = node.asConstant();
             if (value != null) {
                 if (canInlineConstant(value)) {
-                    return !node.isExternal() ? setResult(node, value) : value;
+                    return setResult(node, value);
                 } else {
                     Variable loadedValue;
                     if (constantLoads == null) {

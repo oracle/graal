@@ -105,7 +105,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
     }
 
     private final ConstantPool constantPool;
-    private final Map<Node, Integer> externalNodeIds;
     private final ByteBuffer buffer;
     private final WritableByteChannel channel;
 
@@ -113,7 +112,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
         constantPool = new ConstantPool();
         buffer = ByteBuffer.allocateDirect(256 * 1024);
         this.channel = channel;
-        this.externalNodeIds = new HashMap<>();
     }
 
     public void print(Graph graph, String title, SchedulePhase predefinedSchedule) throws IOException {
@@ -389,25 +387,9 @@ public class BinaryGraphPrinter implements GraphPrinter {
         }
     }
 
-    /**
-     * Should be higher than any internal {@link Node#getId() node id}.
-     */
-    @SuppressWarnings("javadoc") private static final int FIRST_EXTERNAL_NODE_ID = Integer.getInteger("graal.binaryGraphPrinter.firstExternalNodeId", 10000000);
-
     @SuppressWarnings("deprecation")
-    private int getNodeId(Node node) {
-        if (!node.isExternal()) {
-            assert node.getId() < FIRST_EXTERNAL_NODE_ID : "internal node ids exceeded lowest external node id (" + FIRST_EXTERNAL_NODE_ID +
-                            ") - use graal.binaryGraphPrinter.firstExternalNodeId system property to increase the latter";
-            return node.getId();
-        } else {
-            Integer id = externalNodeIds.get(node);
-            if (id == null) {
-                id = FIRST_EXTERNAL_NODE_ID + externalNodeIds.size();
-                externalNodeIds.put(node, id);
-            }
-            return id;
-        }
+    private static int getNodeId(Node node) {
+        return node.getId();
     }
 
     private void writeNodes(Graph graph) throws IOException {
@@ -419,16 +401,8 @@ public class BinaryGraphPrinter implements GraphPrinter {
             }
         }
         Map<Object, Object> props = new HashMap<>();
-        Map<Node, Integer> externalNodes = new HashMap<>();
-        for (Node node : graph.getNodes()) {
-            for (Node input : node.inputs()) {
-                if (input.isExternal()) {
-                    externalNodes.put(input, getNodeId(input));
-                }
-            }
-        }
 
-        writeInt(graph.getNodeCount() + externalNodes.size());
+        writeInt(graph.getNodeCount());
 
         for (Node node : graph.getNodes()) {
             NodeClass nodeClass = node.getNodeClass();
@@ -451,22 +425,6 @@ public class BinaryGraphPrinter implements GraphPrinter {
             // successors
             writeEdges(node, nodeClass.getFirstLevelSuccessorPositions());
 
-            props.clear();
-        }
-        for (Map.Entry<Node, Integer> e : externalNodes.entrySet()) {
-            Node node = e.getKey();
-            NodeClass nodeClass = node.getNodeClass();
-            node.getDebugProperties(props);
-            writeInt(e.getValue());
-            writePoolObject(nodeClass);
-            writeByte(0);
-            // properties
-            writeShort((char) props.size());
-            for (Entry<Object, Object> entry : props.entrySet()) {
-                String key = entry.getKey().toString();
-                writePoolObject(key);
-                writePropertyObject(entry.getValue());
-            }
             props.clear();
         }
     }
