@@ -31,19 +31,21 @@ import com.oracle.truffle.api.impl.*;
  */
 public class Truffle {
 
-    private static TruffleRuntime runtime;
+    private static final TruffleRuntime RUNTIME;
 
     private static native TruffleRuntime initializeRuntime();
 
     public static TruffleRuntime getRuntime() {
-        return runtime;
+        return RUNTIME;
     }
 
     static {
+        TruffleRuntime runtime;
         try {
             runtime = initializeRuntime();
         } catch (UnsatisfiedLinkError e) {
             runtime = new DefaultTruffleRuntime();
         }
+        RUNTIME = runtime;
     }
 }
