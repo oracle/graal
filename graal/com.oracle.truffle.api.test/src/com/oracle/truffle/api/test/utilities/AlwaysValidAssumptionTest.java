@@ -32,19 +32,19 @@ public class AlwaysValidAssumptionTest {
 
     @Test
     public void testCheck() throws InvalidAssumptionException {
-        final AlwaysValidAssumption assumption = new AlwaysValidAssumption();
+        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
         assumption.check();
     }
 
     @Test
     public void testIsValid() {
-        final AlwaysValidAssumption assumption = new AlwaysValidAssumption();
+        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
         assertTrue(assumption.isValid());
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testCannotInvalidate() {
-        final AlwaysValidAssumption assumption = new AlwaysValidAssumption();
+        final AlwaysValidAssumption assumption = AlwaysValidAssumption.INSTANCE;
         assumption.invalidate();
     }
 
