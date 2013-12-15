@@ -23,11 +23,15 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.runtime.*;
 
 public class ReadArgumentNode extends TypedNode {
 
     private final int index;
+
+    private final BranchProfile outOfBounds = new BranchProfile();
+    private final BranchProfile inBounds = new BranchProfile();
 
     public ReadArgumentNode(int index) {
         this.index = index;
@@ -37,8 +41,10 @@ public class ReadArgumentNode extends TypedNode {
     public Object executeGeneric(VirtualFrame frame) {
         Object[] args = SLArguments.get(frame).arguments;
         if (index < args.length) {
+            inBounds.enter();
             return args[index];
         } else {
+            outOfBounds.enter();
             return SLNull.INSTANCE;
         }
     }

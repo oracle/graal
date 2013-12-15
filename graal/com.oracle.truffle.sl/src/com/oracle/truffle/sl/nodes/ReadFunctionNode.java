@@ -23,16 +23,15 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.*;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 import com.oracle.truffle.sl.runtime.*;
 
 public final class ReadFunctionNode extends TypedNode {
 
     private final SLFunctionRegistry registry;
     private final String name;
-
-    @CompilationFinal private boolean seenInvalidFunction;
+    private final BranchProfile invalidFunction = new BranchProfile();
 
     public ReadFunctionNode(SLFunctionRegistry registry, String name) {
         this.registry = registry;
@@ -50,14 +49,8 @@ public final class ReadFunctionNode extends TypedNode {
         if (target != null) {
             return target;
         }
-        if (!seenInvalidFunction) {
-            CompilerDirectives.transferToInterpreter();
-            seenInvalidFunction = true;
-        }
-        if (seenInvalidFunction) {
-            throw new RuntimeException("Function with name '" + name + "' not found.");
-        }
-        return null;
+        invalidFunction.enter();
+        throw new RuntimeException("Function with name '" + name + "' not found.");
     }
 
 }

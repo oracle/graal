@@ -24,12 +24,16 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 
 @NodeChild(value = "conditionNode", type = ConditionNode.class)
 public abstract class IfNode extends StatementNode {
 
     @Child private StatementNode thenPartNode;
     @Child private StatementNode elsePartNode;
+
+    private final BranchProfile ifBranch = new BranchProfile();
+    private final BranchProfile elseBranch = new BranchProfile();
 
     public IfNode(StatementNode thenPart, StatementNode elsePart) {
         this.thenPartNode = adoptChild(thenPart);
@@ -43,9 +47,11 @@ public abstract class IfNode extends StatementNode {
     @Specialization
     public void doVoid(VirtualFrame frame, boolean condition) {
         if (condition) {
+            ifBranch.enter();
             thenPartNode.executeVoid(frame);
         } else {
             if (elsePartNode != null) {
+                elseBranch.enter();
                 elsePartNode.executeVoid(frame);
             }
         }
