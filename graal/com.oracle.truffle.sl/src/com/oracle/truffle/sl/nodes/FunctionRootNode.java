@@ -35,14 +35,14 @@ public final class FunctionRootNode extends RootNode {
 
     private final TypedNode uninitializedBody;
     private final String name;
-    private final boolean alwaysInline;
+    private final boolean inlineImmediatly;
 
-    private FunctionRootNode(TypedNode body, String name, boolean alwaysInline) {
+    private FunctionRootNode(TypedNode body, String name, boolean inlineImmediatly) {
         super(null);
         this.uninitializedBody = NodeUtil.cloneNode(body);
         this.body = adoptChild(body);
         this.name = name;
-        this.alwaysInline = alwaysInline;
+        this.inlineImmediatly = inlineImmediatly;
     }
 
     public static CallTarget createBuiltin(SLContext context, NodeFactory<? extends BuiltinNode> factory, String name) {
@@ -67,36 +67,12 @@ public final class FunctionRootNode extends RootNode {
         return body.executeGeneric(frame);
     }
 
-    public boolean isAlwaysInline() {
-        return alwaysInline;
+    public boolean isInlineImmediatly() {
+        return inlineImmediatly;
     }
 
-    public TypedNode inline(ArgumentsNode clonedArgs) {
-        TypedNode clonedBody = NodeUtil.cloneNode(uninitializedBody);
-        if (clonedBody instanceof BuiltinNode) {
-            return inlineBuiltin(clonedArgs, (BuiltinNode) clonedBody);
-        } else if (clonedBody instanceof FunctionBodyNode) {
-            return inlineFunction(clonedArgs, (FunctionBodyNode) clonedBody);
-        } else {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    private InlinedFunctionNode inlineFunction(ArgumentsNode clonedArgs, FunctionBodyNode clonedBody) {
-        return new InlinedFunctionNode(getCallTarget(), clonedBody, clonedArgs);
-    }
-
-    private static TypedNode inlineBuiltin(ArgumentsNode clonedArgs, BuiltinNode builtin) {
-        TypedNode[] callerArgs = clonedArgs.getArguments();
-        TypedNode[] builtinArgs = builtin.getArguments();
-        for (int i = 0; i < builtinArgs.length; i++) {
-            if (i < callerArgs.length) {
-                builtinArgs[i].replace(callerArgs[i]);
-            } else {
-                builtinArgs[i].replace(new NullLiteralNode());
-            }
-        }
-        return builtin;
+    public TypedNode inline() {
+        return NodeUtil.cloneNode(uninitializedBody);
     }
 
     public Node getUninitializedBody() {
@@ -106,34 +82,6 @@ public final class FunctionRootNode extends RootNode {
     @Override
     public String toString() {
         return "function " + name;
-    }
-
-    private static final class InlinedFunctionNode extends TypedNode implements InlinedCallSite {
-
-        @Child private FunctionBodyNode body;
-        @Child private ArgumentsNode arguments;
-
-        private final CallTarget callTarget;
-        private final FrameDescriptor frameDescriptor;
-
-        public InlinedFunctionNode(CallTarget callTarget, FunctionBodyNode body, ArgumentsNode arguments) {
-            this.callTarget = callTarget;
-            this.body = adoptChild(body);
-            this.frameDescriptor = body.getFrameDescriptor();
-            this.arguments = adoptChild(arguments);
-        }
-
-        @Override
-        public Object executeGeneric(VirtualFrame frame) {
-            SLArguments args = new SLArguments(arguments.executeArray(frame));
-            VirtualFrame childFrame = Truffle.getRuntime().createVirtualFrame(frame.pack(), args, frameDescriptor);
-            return body.executeGeneric(childFrame);
-        }
-
-        public CallTarget getCallTarget() {
-            return callTarget;
-        }
-
     }
 
     public String getName() {
