@@ -47,7 +47,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 
-public final class CompilationTask implements Runnable {
+public class CompilationTask implements Runnable {
 
     public static final ThreadLocal<Boolean> withinEnqueue = new ThreadLocal<Boolean>() {
 
@@ -77,7 +77,7 @@ public final class CompilationTask implements Runnable {
         return new CompilationTask(backend, plan, optimisticOpts, profilingInfo, method, entryBCI, id);
     }
 
-    private CompilationTask(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+    protected CompilationTask(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
         assert id >= 0;
         this.backend = backend;
         this.plan = plan;
@@ -119,6 +119,10 @@ public final class CompilationTask implements Runnable {
     public static final DebugTimer CompilationTime = Debug.timer("CompilationTime");
 
     public static final DebugTimer CodeInstallationTime = Debug.timer("CodeInstallation");
+
+    protected Suites getSuites(HotSpotProviders providers) {
+        return providers.getSuites().getDefaultSuites();
+    }
 
     public void runCompilation() {
         /*
@@ -164,7 +168,7 @@ public final class CompilationTask implements Runnable {
                 }
                 InlinedBytecodes.add(method.getCodeSize());
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
-                Suites suites = providers.getSuites().getDefaultSuites();
+                Suites suites = getSuites(providers);
                 result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, profilingInfo, method.getSpeculationLog(), suites, true,
                                 new CompilationResult(), CompilationResultBuilderFactory.Default);
 

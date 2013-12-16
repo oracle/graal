@@ -97,6 +97,10 @@ public class VMToCompilerImpl implements VMToCompiler {
         this.runtime = runtime;
     }
 
+    public int allocateCompileTaskId() {
+        return compileTaskIds.incrementAndGet();
+    }
+
     public void startCompiler(boolean bootstrapEnabled) throws Throwable {
 
         FastNodeClassRegistry.initialize();
@@ -556,7 +560,7 @@ public class VMToCompilerImpl implements VMToCompiler {
 
                 final ProfilingInfo profilingInfo = method.getCompilationProfilingInfo(osrCompilation);
                 final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(profilingInfo);
-                int id = compileTaskIds.incrementAndGet();
+                int id = allocateCompileTaskId();
                 HotSpotBackend backend = runtime.getHostBackend();
                 CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, profilingInfo, method, entryBCI, id);
 
