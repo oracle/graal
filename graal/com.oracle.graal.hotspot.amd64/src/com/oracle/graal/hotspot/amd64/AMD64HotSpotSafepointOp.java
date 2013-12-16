@@ -42,20 +42,24 @@ import com.oracle.graal.nodes.spi.*;
 public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
 
     @State protected LIRFrameState state;
-    @Temp({OperandFlag.REG}) private AllocatableValue temp;
+    @Temp({OperandFlag.REG, OperandFlag.ILLEGAL}) private AllocatableValue temp;
 
     private final HotSpotVMConfig config;
 
     public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
-        temp = tool.newVariable(tool.target().wordKind);
+        if (isPollingPageFar(config)) {
+            temp = tool.newVariable(tool.target().wordKind);
+        } else {
+            // Don't waste a register if it's unneeded
+            temp = Value.ILLEGAL;
+        }
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        RegisterValue scratch = (RegisterValue) temp;
-        emitCode(crb, asm, config, false, state, scratch.getRegister());
+        emitCode(crb, asm, config, false, state, temp instanceof RegisterValue ? ((RegisterValue) temp).getRegister() : null);
     }
 
     /**
@@ -76,7 +80,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
-            asm.movq(scratch, new AMD64Address(scratch));
+            asm.testl(rax, new AMD64Address(scratch));
         } else {
             crb.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
             if (state != null) {
@@ -84,7 +88,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
             }
             // The C++ code transforms the polling page offset into an RIP displacement
             // to the real address at that offset in the polling page.
-            asm.movq(scratch, new AMD64Address(rip, 0));
+            asm.testl(rax, new AMD64Address(rip, 0));
         }
     }
 }
