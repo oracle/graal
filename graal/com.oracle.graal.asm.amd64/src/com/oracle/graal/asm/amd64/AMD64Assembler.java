@@ -174,6 +174,10 @@ public class AMD64Assembler extends AbstractAssembler {
         this.frameRegister = registerConfig == null ? null : registerConfig.getFrameRegister();
     }
 
+    private boolean supports(CPUFeature feature) {
+        return ((AMD64) target.arch).getFeatures().contains(feature);
+    }
+
     private static int encode(Register r) {
         assert r.encoding < 16 && r.encoding >= 0 : "encoding out of range: " + r.encoding;
         return r.encoding & 0x7;
@@ -450,6 +454,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrq(Register dst, Register src) {
+        assert !supports(CPUFeature.LZCNT);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -457,6 +462,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrq(Register dst, AMD64Address src) {
+        assert !supports(CPUFeature.LZCNT);
         prefixq(src, dst);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -464,6 +470,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrl(Register dst, Register src) {
+        assert !supports(CPUFeature.LZCNT);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -471,6 +478,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void bsrl(Register dst, AMD64Address src) {
+        assert !supports(CPUFeature.LZCNT);
         prefix(src, dst);
         emitByte(0x0F);
         emitByte(0xBD);
@@ -1405,6 +1413,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void popcntl(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.POPCNT);
         emitByte(0xF3);
         prefix(src, dst);
         emitByte(0x0F);
@@ -1413,6 +1422,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void popcntl(Register dst, Register src) {
+        assert supports(CPUFeature.POPCNT);
         emitByte(0xF3);
         int encode = prefixAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -1421,6 +1431,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void popcntq(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.POPCNT);
         emitByte(0xF3);
         prefixq(src, dst);
         emitByte(0x0F);
@@ -1429,6 +1440,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public final void popcntq(Register dst, Register src) {
+        assert supports(CPUFeature.POPCNT);
         emitByte(0xF3);
         int encode = prefixqAndEncode(dst.encoding, src.encoding);
         emitByte(0x0F);
@@ -2549,28 +2561,28 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     void prefetchr(AMD64Address src) {
-        // assert(VM_Version::supports_3dnow_prefetch(), "must support");
+        assert supports(CPUFeature.AMD_3DNOW_PREFETCH);
         prefetchPrefix(src);
         emitByte(0x0D);
         emitOperandHelper(0, src);
     }
 
     public void prefetcht0(AMD64Address src) {
-        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        assert supports(CPUFeature.SSE);
         prefetchPrefix(src);
         emitByte(0x18);
         emitOperandHelper(1, src);
     }
 
     public void prefetcht1(AMD64Address src) {
-        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        assert supports(CPUFeature.SSE);
         prefetchPrefix(src);
         emitByte(0x18);
         emitOperandHelper(2, src);
     }
 
     public void prefetcht2(AMD64Address src) {
-        // NOT_LP64(assert(VM_Version::supports_sse(), "must support"));
+        assert supports(CPUFeature.SSE);
         prefix(src);
         emitByte(0x0f);
         emitByte(0x18);
@@ -2578,7 +2590,7 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     public void prefetchw(AMD64Address src) {
-        // assert(VM_Version::supports_3dnow_prefetch(), "must support");
+        assert supports(CPUFeature.AMD_3DNOW_PREFETCH);
         prefix(src);
         emitByte(0x0f);
         emitByte(0x0D);

@@ -26,6 +26,7 @@ import static com.oracle.graal.api.code.MemoryBarriers.*;
 import static com.oracle.graal.api.code.Register.*;
 
 import java.nio.*;
+import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.code.Register.RegisterCategory;
@@ -111,22 +112,23 @@ public class AMD64 extends Architecture {
 
     // @formatter:on
 
-    private final int supportedSSEVersion;
-    private final int supportedAVXVersion;
+    /**
+     * Basic set of CPU features mirroring what is returned from the cpuid instruction.
+     */
+    public static enum CPUFeature {
+        SSE, SSE2, SSE3, SSE4, SSE4a, SSE4_1, SSE4_2, SSSE3, POPCNT, LZCNT, AVX, AVX2, ERMS, AMD_3DNOW_PREFETCH, AES,
+    }
 
-    public AMD64(int supportedSSEVersion, int supportedAVXVersion) {
+    private final EnumSet<CPUFeature> features;
+
+    public AMD64(EnumSet<CPUFeature> features) {
         super("AMD64", 8, ByteOrder.LITTLE_ENDIAN, true, allRegisters, LOAD_STORE | STORE_STORE, 1, r15.encoding + 1, 8);
-        assert supportedSSEVersion >= 2;
-        this.supportedSSEVersion = supportedSSEVersion;
-        this.supportedAVXVersion = supportedAVXVersion;
+        this.features = features;
+        assert features.contains(CPUFeature.SSE2) : "minimum config for x64";
     }
 
-    public int getSupportedSSEVersion() {
-        return supportedSSEVersion;
-    }
-
-    public int getSupportedAVXVersion() {
-        return supportedAVXVersion;
+    public EnumSet<CPUFeature> getFeatures() {
+        return features;
     }
 
     @Override
