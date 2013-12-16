@@ -937,7 +937,6 @@ public final class NodeClass extends FieldIntrospection {
             if (input != null) {
                 Node newInput = duplicationReplacement.replacement(input, true);
                 node.updateUsages(null, newInput);
-                assert Node.verifyUniqueIfExternal(newInput, node.graph());
                 assert newInput == null || fieldTypes.get(inputOffsets[index]).isAssignableFrom(newInput.getClass()) : "Can not assign " + newInput.getClass() + " to " +
                                 fieldTypes.get(inputOffsets[index]) + " in " + node;
                 putNode(node, inputOffsets[index], newInput);
@@ -994,7 +993,6 @@ public final class NodeClass extends FieldIntrospection {
             Node oldNode = list.get(i);
             if (oldNode != null) {
                 Node newNode = duplicationReplacement.replacement(oldNode, true);
-                assert Node.verifyUniqueIfExternal(newNode, node.graph());
                 result.set(i, newNode);
             }
         }
@@ -1079,7 +1077,6 @@ public final class NodeClass extends FieldIntrospection {
     }
 
     public boolean replaceFirstInput(Node node, Node old, Node other) {
-        assert Node.verifyUniqueIfExternal(other, node.graph());
         int index = 0;
         while (index < directInputCount) {
             Node input = getNode(node, inputOffsets[index]);
@@ -1384,9 +1381,6 @@ public final class NodeClass extends FieldIntrospection {
         InplaceUpdateClosure replacementClosure = new InplaceUpdateClosure() {
 
             public Node replacement(Node node, boolean isInput) {
-                if (node.isExternal() && node instanceof ValueNumberable) {
-                    return graph.uniqueExternal(node);
-                }
                 Node target = newNodes.get(node);
                 if (target == null) {
                     Node replacement = node;

@@ -157,11 +157,9 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Gets the graph context of this node. This must not be called for {@linkplain #isExternal()
-     * external} nodes.
+     * Gets the graph context of this node.
      */
     public Graph graph() {
-        assert !isExternal() : "external node has no graph: " + this;
         return graph;
     }
 
@@ -285,15 +283,6 @@ public abstract class Node implements Cloneable, Formattable {
      */
     public boolean recordsUsages() {
         return true;
-    }
-
-    /**
-     * Determines if this node has a {@linkplain #graph() graph} context or is external to any
-     * graph. The {@link #graph()} method must only be called on nodes for which this method returns
-     * true.
-     */
-    public boolean isExternal() {
-        return false;
     }
 
     /**
@@ -531,7 +520,6 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertFalse(other == this, "cannot replace a node with itself");
         assert assertFalse(isDeleted(), "cannot replace deleted node");
         assert assertTrue(other == null || !other.isDeleted(), "cannot replace with deleted node %s", other);
-        assert assertTrue(other == null || other.isExternal() || other.graph() == graph, "cannot replace with node in different graph: %s", other == null || other.isExternal() ? null : other.graph());
         return true;
     }
 
@@ -588,7 +576,7 @@ public abstract class Node implements Cloneable, Formattable {
         assert assertFalse(isDeleted(), "cannot clear inputs of deleted node");
 
         for (Node input : inputs()) {
-            if (input.recordsUsages() && !input.isExternal()) {
+            if (input.recordsUsages()) {
                 removeThisFromUsages(input);
                 if (input.usages().isEmpty()) {
                     NodeChangedListener listener = graph.usagesDroppedToZeroListener;
@@ -637,7 +625,6 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     public final Node copyWithInputs() {
-        assert !isExternal();
         Node newNode = clone(graph);
         NodeClass clazz = getNodeClass();
         clazz.copyInputs(this, newNode);
@@ -676,7 +663,6 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     final Node clone(Graph into, boolean clearInputsAndSuccessors) {
-        assert !isExternal();
         NodeClass nodeClass = getNodeClass();
         if (nodeClass.valueNumberable() && nodeClass.isLeafNode()) {
             Node otherNode = into.findNodeInCache(this);
@@ -711,23 +697,6 @@ public abstract class Node implements Cloneable, Formattable {
         return newNode;
     }
 
-    /**
-     * Determines if a given node is {@linkplain Graph#uniqueExternal(Node) unique} within a given
-     * graph if the node is non-null and {@linkplain #isExternal() external}.
-     * 
-     * @param node node to check
-     * @param graph graph context to use
-     * @return true if node is null, not external or unique within {@code graph} otherwise raises a
-     *         {@link VerificationError}
-     */
-    public static boolean verifyUniqueIfExternal(Node node, Graph graph) {
-        if (node != null && node.isExternal() && Graph.CacheExternalNodesInGraph) {
-            Node cached = graph.findNodeInCache(node);
-            node.assertTrue(cached == node, "external node does not match canonical node %s", cached);
-        }
-        return true;
-    }
-
     protected void afterClone(@SuppressWarnings("unused") Node other) {
     }
 
@@ -736,8 +705,6 @@ public abstract class Node implements Cloneable, Formattable {
         assertTrue(graph() != null, "null graph");
         for (Node input : inputs()) {
             assertTrue(!input.recordsUsages() || input.usages().contains(this), "missing usage in input %s", input);
-            assert verifyUniqueIfExternal(input, graph());
-            assertTrue(input.isExternal() || input.graph() == graph(), "mismatching graph in input %s", input);
         }
         for (Node successor : successors()) {
             assertTrue(successor.predecessor() == this, "missing predecessor in %s (actual: %s)", successor, successor.predecessor());
@@ -791,9 +758,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Nodes always use an {@linkplain System#identityHashCode(Object) identity} hash code. For this
-     * reason, {@linkplain #isExternal() external} nodes should still be {@link Graph#unique unique}
-     * within the context of a graph.
+     * Nodes always use an {@linkplain System#identityHashCode(Object) identity} hash code.
      */
     @Override
     public final int hashCode() {
@@ -801,8 +766,7 @@ public abstract class Node implements Cloneable, Formattable {
     }
 
     /**
-     * Equality tests must rely solely on identity. For this reason, {@linkplain #isExternal()
-     * external} nodes should still be {@link Graph#unique unique} within the context of a graph.
+     * Equality tests must rely solely on identity.
      */
     @Override
     public final boolean equals(Object obj) {

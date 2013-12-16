@@ -38,6 +38,10 @@ public class DelegatingDebugConfig implements DebugConfig {
         return delegate.isLogEnabled();
     }
 
+    public boolean isLogEnabledForMethod() {
+        return delegate.isLogEnabledForMethod();
+    }
+
     @Override
     public boolean isMeterEnabled() {
         return delegate.isMeterEnabled();
@@ -46,6 +50,10 @@ public class DelegatingDebugConfig implements DebugConfig {
     @Override
     public boolean isDumpEnabled() {
         return delegate.isDumpEnabled();
+    }
+
+    public boolean isDumpEnabledForMethod() {
+        return delegate.isDumpEnabledForMethod();
     }
 
     @Override

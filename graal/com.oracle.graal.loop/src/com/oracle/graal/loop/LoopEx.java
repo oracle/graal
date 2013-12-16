@@ -84,7 +84,7 @@ public class LoopEx {
     }
 
     public boolean isOutsideLoop(Node n) {
-        return n.isExternal() || !whole().contains(n);
+        return !whole().contains(n);
     }
 
     public LoopBeginNode loopBegin() {

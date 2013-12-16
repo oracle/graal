@@ -69,22 +69,18 @@ public final class VirtualUtil {
         for (Node node : graph.getNodes()) {
             if (flood.isMarked(node)) {
                 for (Node input : node.inputs()) {
-                    if (!input.isExternal()) {
-                        flood.add(input);
-                        if (!path.containsKey(input)) {
-                            path.put(input, node);
-                        }
+                    flood.add(input);
+                    if (!path.containsKey(input)) {
+                        path.put(input, node);
                     }
                 }
             }
         }
         for (Node current : flood) {
             for (Node input : current.inputs()) {
-                if (!input.isExternal()) {
-                    flood.add(input);
-                    if (!path.containsKey(input)) {
-                        path.put(input, current);
-                    }
+                flood.add(input);
+                if (!path.containsKey(input)) {
+                    path.put(input, current);
                 }
             }
         }

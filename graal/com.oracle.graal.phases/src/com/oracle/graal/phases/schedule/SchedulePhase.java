@@ -759,10 +759,6 @@ public final class SchedulePhase extends Phase {
      * Determines the earliest block in which the given node can be scheduled.
      */
     private Block earliestBlock(Node node) {
-        if (node.isExternal()) {
-            return cfg.getStartBlock();
-        }
-
         Block earliest = cfg.getNodeToBlock().get(node);
         if (earliest != null) {
             return earliest;
@@ -1088,7 +1084,7 @@ public final class SchedulePhase extends Phase {
             for (Node input : state.inputs()) {
                 if (input instanceof VirtualState) {
                     addUnscheduledToLatestSorting(b, (VirtualState) input, sortedInstructions, visited, reads, beforeLastLocation);
-                } else if (!input.isExternal()) {
+                } else {
                     addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
                 }
             }
@@ -1105,7 +1101,7 @@ public final class SchedulePhase extends Phase {
             if (input instanceof FrameState) {
                 assert state == null;
                 state = (FrameState) input;
-            } else if (!input.isExternal()) {
+            } else {
                 addToLatestSorting(b, (ScheduledNode) input, sortedInstructions, visited, reads, beforeLastLocation);
 
             }

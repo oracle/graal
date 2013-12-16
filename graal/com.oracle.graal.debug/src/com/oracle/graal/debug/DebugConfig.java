@@ -36,6 +36,12 @@ public interface DebugConfig {
     boolean isLogEnabled();
 
     /**
+     * Determines if logging can be enabled in the current method, regardless of the
+     * {@linkplain Debug#currentScope() current debug scope}.
+     */
+    boolean isLogEnabledForMethod();
+
+    /**
      * Determines if metering is enabled in the {@linkplain Debug#currentScope() current debug
      * scope}.
      * 
@@ -50,6 +56,12 @@ public interface DebugConfig {
      * @see Debug#dump(Object, String, Object...)
      */
     boolean isDumpEnabled();
+
+    /**
+     * Determines if dumping can be enabled in the current method, regardless of the
+     * {@linkplain Debug#currentScope() current debug scope}.
+     */
+    boolean isDumpEnabledForMethod();
 
     /**
      * Adds an object the context used by this configuration to do filtering.
