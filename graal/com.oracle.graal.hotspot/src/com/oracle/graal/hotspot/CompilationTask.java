@@ -104,7 +104,7 @@ public class CompilationTask implements Runnable {
     public void run() {
         withinEnqueue.set(Boolean.FALSE);
         try {
-            runCompilation();
+            runCompilation(true);
         } finally {
             if (method.currentTask() == this) {
                 method.setCurrentTask(null);
@@ -124,7 +124,7 @@ public class CompilationTask implements Runnable {
         return providers.getSuites().getDefaultSuites();
     }
 
-    public void runCompilation() {
+    public void runCompilation(boolean clearFromCompilationQueue) {
         /*
          * no code must be outside this try/finally because it could happen otherwise that
          * clearQueuedForCompilation() is not executed
@@ -215,8 +215,10 @@ public class CompilationTask implements Runnable {
                 c2vm.notifyCompilationStatistics(id, method, entryBCI != INVOCATION_ENTRY_BCI, (int) processedBytes, time, timeUnitsPerSecond, installedCode);
             }
 
-            assert method.isQueuedForCompilation();
-            method.clearQueuedForCompilation();
+            if (clearFromCompilationQueue) {
+                assert method.isQueuedForCompilation();
+                method.clearQueuedForCompilation();
+            }
         }
     }
 

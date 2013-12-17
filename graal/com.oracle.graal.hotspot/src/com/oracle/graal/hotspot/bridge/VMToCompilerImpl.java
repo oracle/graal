@@ -599,7 +599,7 @@ public class VMToCompilerImpl implements VMToCompiler {
                 CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, profilingInfo, method, entryBCI, id);
 
                 if (blocking) {
-                    task.runCompilation();
+                    task.runCompilation(true);
                 } else {
                     try {
                         method.setCurrentTask(task);
