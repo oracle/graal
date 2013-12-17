@@ -25,6 +25,8 @@ package com.oracle.graal.nodes.java;
 import static com.oracle.graal.graph.UnsafeAccess.*;
 
 import com.oracle.graal.api.meta.*;
+import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
@@ -34,13 +36,14 @@ import com.oracle.graal.nodes.type.*;
  * Represents an atomic compare-and-swap operation The result is a boolean that contains whether the
  * value matched the expected value.
  */
-public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single, Canonicalizable {
 
     @Input private ValueNode object;
     @Input private ValueNode offset;
     @Input private ValueNode expected;
     @Input private ValueNode newValue;
     private final int displacement;
+    private final LocationIdentity locationIdentity;
 
     public ValueNode object() {
         return object;
@@ -63,6 +66,10 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
     }
 
     public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue) {
+        this(object, displacement, offset, expected, newValue, LocationIdentity.ANY_LOCATION);
+    }
+
+    public CompareAndSwapNode(ValueNode object, int displacement, ValueNode offset, ValueNode expected, ValueNode newValue, LocationIdentity locationIdentity) {
         super(StampFactory.forKind(Kind.Boolean.getStackKind()));
         assert expected.kind() == newValue.kind();
         this.object = object;
@@ -70,16 +77,35 @@ public class CompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowe
         this.expected = expected;
         this.newValue = newValue;
         this.displacement = displacement;
+        this.locationIdentity = locationIdentity;
     }
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.ANY_LOCATION;
+        return locationIdentity;
     }
 
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);
+    }
+
+    @Override
+    public Node canonical(CanonicalizerTool tool) {
+        if (getLocationIdentity() == LocationIdentity.ANY_LOCATION) {
+            Constant offsetConstant = offset().asConstant();
+            if (offsetConstant != null) {
+                ResolvedJavaType receiverType = ObjectStamp.typeOrNull(object());
+                if (receiverType != null) {
+                    long constantOffset = offsetConstant.asLong();
+                    ResolvedJavaField field = receiverType.findInstanceFieldWithOffset(constantOffset);
+                    if (field != null && expected().kind() == field.getKind() && newValue().kind() == field.getKind()) {
+                        return graph().add(new CompareAndSwapNode(object, displacement, offset, expected, newValue, field));
+                    }
+                }
+            }
+        }
+        return this;
     }
 
     // specialized on value type until boxing/unboxing is sorted out in intrinsification
