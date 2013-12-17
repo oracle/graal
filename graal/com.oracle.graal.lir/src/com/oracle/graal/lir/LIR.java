@@ -166,15 +166,15 @@ public class LIR {
 
     /**
      * The maximum distance an operation with an {@linkplain #getExceptionEdge(LIRInstruction)
-     * exception edge} can be from the last instruction of a LIR block. The value of 2 is based on a
-     * non-void call operation that has an exception edge. Such a call op will have a move op after
-     * it to put the return value into the result variable.
+     * exception edge} can be from the last instruction of a LIR block. The value of 3 is based on a
+     * non-void call operation that has an exception edge. Such a call may move the result to
+     * another register and then spill it.
      * <p>
      * The rationale for such a constant is to limit the search for an insertion point when adding
      * move operations at the end of a block. Such moves must be inserted before all control flow
      * instructions.
      */
-    public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 2;
+    public static final int MAX_EXCEPTION_EDGE_OP_DISTANCE_FROM_END = 3;
 
     public static boolean verifyBlock(LIR lir, Block block) {
         List<LIRInstruction> ops = lir.lir(block);
