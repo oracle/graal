@@ -189,6 +189,8 @@ public interface CompilerToVM {
      */
     void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond, HotSpotInstalledCode installedCode);
 
+    void printCompilationStatistics(boolean perCompiler, boolean aggregate);
+
     void resetCompilationStatistics();
 
     void initializeConfiguration(HotSpotVMConfig config);

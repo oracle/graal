@@ -154,6 +154,8 @@ public class CompilerToVMImpl implements CompilerToVM {
     public synchronized native void notifyCompilationStatistics(int id, HotSpotResolvedJavaMethod method, boolean osr, int processedBytecodes, long time, long timeUnitsPerSecond,
                     HotSpotInstalledCode installedCode);
 
+    public synchronized native void printCompilationStatistics(boolean perCompiler, boolean aggregate);
+
     public native void resetCompilationStatistics();
 
     /**

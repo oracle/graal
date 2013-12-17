@@ -67,6 +67,10 @@ public class VMToCompilerImpl implements VMToCompiler {
     @Option(help = "Print compilation queue activity periodically")
     private static final OptionValue<Boolean> PrintQueue = new OptionValue<>(false);
 
+    @Option(help = "Interval in milliseconds at which to print compilation rate periodically. " +
+                   "The compilation statistics are reset after each print out.")
+    private static final OptionValue<Integer> PrintCompRate = new OptionValue<>(0);
+
     @Option(help = "Print bootstrap progress and summary")
     private static final OptionValue<Boolean> PrintBootstrap = new OptionValue<>(true);
 
@@ -180,6 +184,29 @@ public class VMToCompilerImpl implements VMToCompiler {
             };
             t.setDaemon(true);
             t.start();
+        }
+
+        if (PrintCompRate.getValue() != 0) {
+            if (!runtime.getConfig().ciTime && !runtime.getConfig().ciTimeEach) {
+                TTY.println("PrintCompRate requires CITime or CITimeEach");
+            } else {
+                Thread t = new Thread() {
+
+                    @Override
+                    public void run() {
+                        while (true) {
+                            runtime.getCompilerToVM().printCompilationStatistics(true, false);
+                            runtime.getCompilerToVM().resetCompilationStatistics();
+                            try {
+                                Thread.sleep(PrintCompRate.getValue());
+                            } catch (InterruptedException e) {
+                            }
+                        }
+                    }
+                };
+                t.setDaemon(true);
+                t.start();
+            }
         }
 
         BenchmarkCounters.initialize(runtime.getCompilerToVM());
