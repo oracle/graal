@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.bridge;
 
 import static com.oracle.graal.compiler.GraalDebugConfig.*;
 import static com.oracle.graal.graph.UnsafeAccess.*;
+import static com.oracle.graal.hotspot.CompileTheWorld.Options.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
 
 import java.io.*;
@@ -42,6 +43,7 @@ import com.oracle.graal.debug.*;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.hotspot.*;
+import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.phases.*;
@@ -115,8 +117,6 @@ public class VMToCompilerImpl implements VMToCompiler {
                 throw new RuntimeException("couldn't open log file: " + LogFile.getValue(), e);
             }
         }
-
-        runtime.getCompilerToVM();
 
         TTY.initialize(log);
 
@@ -307,7 +307,14 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     public void compileTheWorld() throws Throwable {
-        new CompileTheWorld().compile();
+        int iterations = CompileTheWorld.Options.CompileTheWorldIterations.getValue();
+        for (int i = 0; i < iterations; i++) {
+            runtime.getCompilerToVM().resetCompilationStatistics();
+            TTY.println("CompileTheWorld : iteration " + i);
+            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), Config.parse(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
+                            CompileTheWorldStopAt.getValue(), CompileTheWorldVerbose.getValue());
+            ctw.compile();
+        }
         System.exit(0);
     }
 

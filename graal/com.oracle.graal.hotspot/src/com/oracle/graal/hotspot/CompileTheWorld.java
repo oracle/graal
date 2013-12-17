@@ -51,10 +51,19 @@ import com.oracle.graal.replacements.*;
  */
 public final class CompileTheWorld {
 
-    static class Options {
+    /**
+     * Magic token to trigger reading files from the boot class path.
+     */
+    public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
+
+    public static class Options {
         // @formatter:off
         @Option(help = "Compile all methods in all classes on given class path")
-        public static final OptionValue<String> CompileTheWorldClasspath = new OptionValue<>(null);
+        public static final OptionValue<String> CompileTheWorldClasspath = new OptionValue<>(SUN_BOOT_CLASS_PATH);
+        @Option(help = "Verbose CompileTheWorld operation")
+        public static final OptionValue<Boolean> CompileTheWorldVerbose = new OptionValue<>(true);
+        @Option(help = "The number of CompileTheWorld iterations to perform")
+        public static final OptionValue<Integer> CompileTheWorldIterations = new OptionValue<>(1);
         @Option(help = "First class to consider when using -XX:+CompileTheWorld")
         public static final OptionValue<Integer> CompileTheWorldStartAt = new OptionValue<>(1);
         @Option(help = "Last class to consider when using -XX:+CompileTheWorld")
@@ -64,6 +73,19 @@ public final class CompileTheWorld {
                        "The format for each option is the same as on the command line just without the '-G:' prefix.")
         public static final OptionValue<String> CompileTheWorldConfig = new OptionValue<>(null);
         // @formatter:on
+
+        /**
+         * Overrides {@link #CompileTheWorldStartAt} and {@link #CompileTheWorldStopAt} from
+         * {@code -XX} HotSpot options of the same name if the latter have non-default values.
+         */
+        static void overrideWithNativeOptions(HotSpotVMConfig c) {
+            if (c.compileTheWorldStartAt != 1) {
+                CompileTheWorldStartAt.setValue(c.compileTheWorldStartAt);
+            }
+            if (c.compileTheWorldStopAt != Integer.MAX_VALUE) {
+                CompileTheWorldStopAt.setValue(c.compileTheWorldStopAt);
+            }
+        }
     }
 
     /**
@@ -79,7 +101,7 @@ public final class CompileTheWorld {
      * </pre>
      */
     @SuppressWarnings("serial")
-    static class Config extends HashMap<OptionValue<?>, Object> implements AutoCloseable, OptionConsumer {
+    public static class Config extends HashMap<OptionValue<?>, Object> implements AutoCloseable, OptionConsumer {
         OverrideScope scope;
 
         /**
@@ -89,7 +111,7 @@ public final class CompileTheWorld {
          *            a format compatible with
          *            {@link HotSpotOptions#parseOption(String, OptionConsumer)}
          */
-        Config(String options) {
+        public Config(String options) {
             for (String option : options.split("\\s+")) {
                 if (!HotSpotOptions.parseOption(option, this)) {
                     throw new GraalInternalError("Invalid option specified: %s", option);
@@ -118,20 +140,15 @@ public final class CompileTheWorld {
         public void set(OptionDescriptor desc, Object value) {
             put(desc.getOptionValue(), value);
         }
-    }
 
-    static Config parseConfig(String input) {
-        if (input == null) {
-            return null;
-        } else {
-            return new Config(input);
+        public static Config parse(String input) {
+            if (input == null) {
+                return null;
+            } else {
+                return new Config(input);
+            }
         }
     }
-
-    /**
-     * This is our magic token to trigger reading files from the boot class path.
-     */
-    public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
     // Some runtime instances we need.
     private final HotSpotGraalRuntime runtime = runtime();
@@ -153,15 +170,6 @@ public final class CompileTheWorld {
 
     private boolean verbose;
     private final Config config;
-
-    /**
-     * Creates a compile-the-world instance with default values from
-     * {@link Options#CompileTheWorldClasspath}, {@link Options#CompileTheWorldStartAt} and
-     * {@link Options#CompileTheWorldStopAt}.
-     */
-    public CompileTheWorld() {
-        this(CompileTheWorldClasspath.getValue(), parseConfig(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(), CompileTheWorldStopAt.getValue(), true);
-    }
 
     /**
      * Creates a compile-the-world instance.

@@ -23,7 +23,6 @@
 package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.graph.UnsafeAccess.*;
-import static com.oracle.graal.hotspot.CompileTheWorld.*;
 import static com.oracle.graal.hotspot.HotSpotGraalRuntime.Options.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 
@@ -233,16 +232,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         initMirror(typeDouble);
         initMirror(typeVoid);
 
-        // Set some global options:
-        if (config.compileTheWorld && CompileTheWorld.Options.CompileTheWorldClasspath.getValue() == null) {
-            CompileTheWorld.Options.CompileTheWorldClasspath.setValue(SUN_BOOT_CLASS_PATH);
-        }
-        if (config.compileTheWorldStartAt != 1) {
-            CompileTheWorld.Options.CompileTheWorldStartAt.setValue(config.compileTheWorldStartAt);
-        }
-        if (config.compileTheWorldStopAt != Integer.MAX_VALUE) {
-            CompileTheWorld.Options.CompileTheWorldStopAt.setValue(config.compileTheWorldStopAt);
-        }
+        CompileTheWorld.Options.overrideWithNativeOptions(config);
 
         // Only set HotSpotPrintCompilation and HotSpotPrintInlining if they still have their
         // default value (false).
