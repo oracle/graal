@@ -344,7 +344,7 @@ public class GraphEffectList extends EffectList {
                     commit.getLocks().addAll(locks);
 
                     assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.usages().count();
-                    HashSet<AllocatedObjectNode> materializedValues = new HashSet<>(commit.usages().filter(AllocatedObjectNode.class).snapshot());
+                    List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
                     for (int i = 0; i < commit.getValues().size(); i++) {
                         if (materializedValues.contains(commit.getValues().get(i))) {
                             commit.getValues().set(i, ((AllocatedObjectNode) commit.getValues().get(i)).getVirtualObject());

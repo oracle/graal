@@ -87,17 +87,22 @@ public class TailDuplicationPhase extends BasePhase<PhaseContext> {
             if (fixedNodeCount < TailDuplicationTrivialSize.getValue()) {
                 return true;
             }
-            HashSet<PhiNode> improvements = new HashSet<>();
+            ArrayList<PhiNode> improvements = null;
             for (PhiNode phi : merge.phis()) {
                 Stamp phiStamp = phi.stamp();
                 for (ValueNode input : phi.values()) {
                     if (!input.stamp().equals(phiStamp)) {
-                        improvements.add(phi);
+                        if (improvements == null) {
+                            improvements = new ArrayList<>();
+                        }
+                        if (!improvements.contains(phi)) {
+                            improvements.add(phi);
+                        }
                         break;
                     }
                 }
             }
-            if (improvements.isEmpty()) {
+            if (improvements == null) {
                 return false;
             }
             FixedNode current = merge;
