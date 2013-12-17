@@ -23,6 +23,7 @@
 package com.oracle.graal.api.code;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import com.oracle.graal.api.meta.*;
 
@@ -31,8 +32,9 @@ import com.oracle.graal.api.meta.*;
  * 
  */
 public final class SpeculationLog {
+    private volatile Object lastFailed;
+    private volatile Collection<Object> speculations;
     private Set<Object> failedSpeculations;
-    private Object lastFailed;
 
     public synchronized void collectFailedSpeculations() {
         if (lastFailed != null) {
@@ -41,6 +43,7 @@ public final class SpeculationLog {
             }
             failedSpeculations.add(lastFailed);
             lastFailed = null;
+            speculations = null;
         }
     }
 
@@ -48,6 +51,14 @@ public final class SpeculationLog {
         if (failedSpeculations != null && failedSpeculations.contains(reason)) {
             return null;
         }
+        if (speculations == null) {
+            synchronized (this) {
+                if (speculations == null) {
+                    speculations = new ConcurrentLinkedQueue<>();
+                }
+            }
+        }
+        speculations.add(reason);
         return Constant.forObject(reason);
     }
 }
