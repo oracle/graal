@@ -90,7 +90,7 @@ public final class CompileTheWorld {
     }
 
     /**
-     * A mechanism for overriding Graal options that effect compilation. A {@link Config} object
+     * A mechanism for overriding Graal options that affect compilation. A {@link Config} object
      * should be used in a try-with-resources statement to ensure overriding of options is scoped
      * properly. For example:
      * 
@@ -272,7 +272,7 @@ public final class CompileTheWorld {
                 String className = je.getName().substring(0, je.getName().length() - ".class".length());
                 classFileCounter++;
 
-                try (AutoCloseable s = config == null ? null : config.apply()) {
+                try (AutoCloseable s = config.apply()) {
                     // Load and initialize class
                     Class<?> javaClass = Class.forName(className.replace('/', '.'), true, loader);
 
@@ -356,7 +356,7 @@ public final class CompileTheWorld {
             method.reprofile();  // makes the method also not-entrant
         } catch (Throwable t) {
             // Catch everything and print a message
-            println("CompileTheWorldClasspath (%d) : Error compiling method: %s", classFileCounter, MetaUtil.format("%H.%n(%p):%r", method));
+            println("CompileTheWorld (%d) : Error compiling method: %s", classFileCounter, MetaUtil.format("%H.%n(%p):%r", method));
             t.printStackTrace(TTY.cachedOut);
         }
     }
@@ -366,13 +366,12 @@ public final class CompileTheWorld {
      * 
      * @return true if it can be compiled, false otherwise
      */
-    private static boolean canBeCompiled(HotSpotResolvedJavaMethod javaMethod, int modifiers) {
+    private boolean canBeCompiled(HotSpotResolvedJavaMethod javaMethod, int modifiers) {
         if (Modifier.isAbstract(modifiers) || Modifier.isNative(modifiers)) {
             return false;
         }
-        // This number is from HotSpot:
-        final int hugeMethodLimit = 8000;
-        if (javaMethod.getCodeSize() > hugeMethodLimit) {
+        HotSpotVMConfig c = runtime.getConfig();
+        if (c.dontCompileHugeMethods && javaMethod.getCodeSize() > c.hugeMethodLimit) {
             return false;
         }
         // Skip @Snippets for now
