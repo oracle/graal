@@ -41,7 +41,7 @@ import com.oracle.graal.replacements.SnippetTemplate.Arguments;
 /**
  * Represents a field in a HotSpot type.
  */
-public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField, LocationIdentity {
+public class HotSpotResolvedJavaField extends CompilerObject implements ResolvedJavaField {
 
     // Must not conflict with any fields flags used by the VM - the assertion in the constructor
     // checks this assumption
