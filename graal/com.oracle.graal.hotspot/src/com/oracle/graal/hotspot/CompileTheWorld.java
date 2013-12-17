@@ -110,12 +110,14 @@ public final class CompileTheWorld {
          * 
          * @param options a space separated set of option value settings with each option setting in
          *            a format compatible with
-         *            {@link HotSpotOptions#parseOption(String, OptionConsumer)}
+         *            {@link HotSpotOptions#parseOption(String, OptionConsumer)}. Ignored if null.
          */
         public Config(String options) {
-            for (String option : options.split("\\s+")) {
-                if (!HotSpotOptions.parseOption(option, this)) {
-                    throw new GraalInternalError("Invalid option specified: %s", option);
+            if (options != null) {
+                for (String option : options.split("\\s+")) {
+                    if (!HotSpotOptions.parseOption(option, this)) {
+                        throw new GraalInternalError("Invalid option specified: %s", option);
+                    }
                 }
             }
         }
@@ -140,14 +142,6 @@ public final class CompileTheWorld {
 
         public void set(OptionDescriptor desc, Object value) {
             put(desc.getOptionValue(), value);
-        }
-
-        public static Config parse(String input) {
-            if (input == null) {
-                return null;
-            } else {
-                return new Config(input);
-            }
         }
     }
 
@@ -187,11 +181,11 @@ public final class CompileTheWorld {
         this.config = config;
 
         // We don't want the VM to exit when a method fails to compile...
-        ExitVMOnException.setValue(false);
+        config.put(ExitVMOnException, false);
 
         // ...but we want to see exceptions.
-        PrintBailout.setValue(true);
-        PrintStackTraceOnException.setValue(true);
+        config.put(PrintBailout, true);
+        config.put(PrintStackTraceOnException, true);
     }
 
     /**
@@ -321,7 +315,7 @@ public final class CompileTheWorld {
         }
 
         println();
-        println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
+        TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
     }
 
     /**

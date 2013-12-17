@@ -338,7 +338,7 @@ public class VMToCompilerImpl implements VMToCompiler {
         for (int i = 0; i < iterations; i++) {
             runtime.getCompilerToVM().resetCompilationStatistics();
             TTY.println("CompileTheWorld : iteration " + i);
-            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), Config.parse(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
+            CompileTheWorld ctw = new CompileTheWorld(CompileTheWorldClasspath.getValue(), new Config(CompileTheWorldConfig.getValue()), CompileTheWorldStartAt.getValue(),
                             CompileTheWorldStopAt.getValue(), CompileTheWorldVerbose.getValue());
             ctw.compile();
         }
