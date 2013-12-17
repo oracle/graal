@@ -37,6 +37,7 @@ import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.spi.Virtualizable.EscapeState;
 import com.oracle.graal.nodes.virtual.*;
 import com.oracle.graal.phases.schedule.*;
+import com.oracle.graal.phases.util.*;
 import com.oracle.graal.virtual.nodes.*;
 
 public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockState<BlockT>> extends EffectsClosure<BlockT> {
@@ -136,7 +137,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 nodeWithState.asNode().replaceFirstInput(frameState, frameState.copyWithInputs());
                 frameState = nodeWithState.getState();
             }
-            final HashSet<ObjectState> virtual = new HashSet<>();
+            final Set<ObjectState> virtual = new ArraySet<>();
             frameState.applyToNonVirtual(new NodeClosure<ValueNode>() {
 
                 @Override

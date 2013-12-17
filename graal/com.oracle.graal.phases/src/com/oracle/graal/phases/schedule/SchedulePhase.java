@@ -42,6 +42,7 @@ import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.graph.*;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import com.oracle.graal.phases.graph.ReentrantBlockIterator.LoopInfo;
+import com.oracle.graal.phases.util.*;
 
 public final class SchedulePhase extends Phase {
 
@@ -178,7 +179,7 @@ public final class SchedulePhase extends Phase {
         private final Set<LocationIdentity> set;
 
         public KillSet() {
-            this.set = new HashSet<>();
+            this.set = new ArraySet<>();
         }
 
         public KillSet(KillSet other) {
