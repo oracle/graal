@@ -1655,9 +1655,23 @@ public final class LinearScan {
         }
 
         if (isIllegal(interval.location()) && interval.canMaterialize()) {
+            assert mode != OperandMode.DEF;
             return interval.getMaterializedValue();
         }
         return interval.location();
+    }
+
+    private boolean isMaterialized(AllocatableValue operand, int opId, OperandMode mode) {
+        Interval interval = intervalFor(operand);
+        assert interval != null : "interval must exist";
+
+        if (opId != -1) {
+            // operands are not changed when an interval is split during allocation,
+            // so search the right interval here
+            interval = splitChildAtOpId(interval, opId, mode);
+        }
+
+        return isIllegal(interval.location()) && interval.canMaterialize();
     }
 
     protected IntervalWalker initIntervalWalker(IntervalPredicate predicate) {
@@ -1776,6 +1790,23 @@ public final class LinearScan {
                 continue;
             }
 
+            // remove useless moves
+            MoveOp move = null;
+            if (op instanceof MoveOp) {
+                move = (MoveOp) op;
+                AllocatableValue result = move.getResult();
+                if (isVariable(result) && isMaterialized(result, op.id(), OperandMode.DEF)) {
+                    /*
+                     * This happens if a materializable interval is originally not spilled but then
+                     * kicked out in LinearScanWalker.splitForSpilling(). When kicking out such an
+                     * interval this move operation was already generated.
+                     */
+                    instructions.set(j, null);
+                    hasDead = true;
+                    continue;
+                }
+            }
+
             ValueProcedure assignProc = new ValueProcedure() {
 
                 @Override
@@ -1802,8 +1833,7 @@ public final class LinearScan {
             });
 
             // remove useless moves
-            if (op instanceof MoveOp) {
-                MoveOp move = (MoveOp) op;
+            if (move != null) {
                 if (move.getInput().equals(move.getResult())) {
                     instructions.set(j, null);
                     hasDead = true;
