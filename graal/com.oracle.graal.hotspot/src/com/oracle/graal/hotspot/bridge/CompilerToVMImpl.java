@@ -86,7 +86,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
+    public native long resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
     @Override
     public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);
