@@ -917,7 +917,7 @@ public class AMD64Assembler extends AbstractAssembler {
 
     public final void movb(AMD64Address dst, Register src) {
         assert src.getRegisterCategory() == AMD64.CPU : "must have byte register";
-        prefix(dst, src); // , true)
+        prefix(dst, src, true);
         emitByte(0x88);
         emitOperandHelper(src, dst);
     }
@@ -1895,6 +1895,10 @@ public class AMD64Assembler extends AbstractAssembler {
     }
 
     private void prefix(AMD64Address adr, Register reg) {
+        prefix(adr, reg, false);
+    }
+
+    private void prefix(AMD64Address adr, Register reg, boolean byteinst) {
         if (reg.encoding < 8) {
             if (needsRex(adr.getBase())) {
                 if (needsRex(adr.getIndex())) {
@@ -1905,7 +1909,7 @@ public class AMD64Assembler extends AbstractAssembler {
             } else {
                 if (needsRex(adr.getIndex())) {
                     emitByte(Prefix.REXX);
-                } else if (reg.encoding >= 4) {
+                } else if (byteinst && reg.encoding >= 4) {
                     emitByte(Prefix.REX);
                 }
             }
