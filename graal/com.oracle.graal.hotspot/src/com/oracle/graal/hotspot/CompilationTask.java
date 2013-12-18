@@ -41,11 +41,15 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
+import com.oracle.graal.hotspot.phases.*;
+import com.oracle.graal.java.*;
 import com.oracle.graal.lir.asm.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.*;
+import com.oracle.graal.phases.PhasePlan.*;
 import com.oracle.graal.phases.tiers.*;
+import com.oracle.graal.phases.util.*;
 
 public class CompilationTask implements Runnable {
 
@@ -62,9 +66,6 @@ public class CompilationTask implements Runnable {
     }
 
     private final HotSpotBackend backend;
-    private final PhasePlan plan;
-    private final OptimisticOptimizations optimisticOpts;
-    private final ProfilingInfo profilingInfo;
     private final HotSpotResolvedJavaMethod method;
     private final int entryBCI;
     private final int id;
@@ -72,18 +73,10 @@ public class CompilationTask implements Runnable {
 
     private StructuredGraph graph;
 
-    public static CompilationTask create(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, HotSpotResolvedJavaMethod method, int entryBCI,
-                    int id) {
-        return new CompilationTask(backend, plan, optimisticOpts, profilingInfo, method, entryBCI, id);
-    }
-
-    protected CompilationTask(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
+    public CompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
         assert id >= 0;
         this.backend = backend;
-        this.plan = plan;
         this.method = method;
-        this.optimisticOpts = optimisticOpts;
-        this.profilingInfo = profilingInfo;
         this.entryBCI = entryBCI;
         this.id = id;
         this.status = new AtomicReference<>(CompilationStatus.Queued);
@@ -122,6 +115,27 @@ public class CompilationTask implements Runnable {
 
     protected Suites getSuites(HotSpotProviders providers) {
         return providers.getSuites().getDefaultSuites();
+    }
+
+    protected PhasePlan getPhasePlan(Providers providers, OptimisticOptimizations optimisticOpts) {
+        boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+        PhasePlan phasePlan = new PhasePlan();
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
+        if (osrCompilation) {
+            phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
+        }
+        return phasePlan;
+    }
+
+    protected OptimisticOptimizations getOptimisticOpts(ProfilingInfo profilingInfo) {
+        return new OptimisticOptimizations(profilingInfo);
+    }
+
+    protected ProfilingInfo getProfilingInfo() {
+        boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
+        return method.getCompilationProfilingInfo(osrCompilation);
     }
 
     public void runCompilation(boolean clearFromCompilationQueue) {
@@ -169,7 +183,10 @@ public class CompilationTask implements Runnable {
                 InlinedBytecodes.add(method.getCodeSize());
                 CallingConvention cc = getCallingConvention(providers.getCodeCache(), Type.JavaCallee, graph.method(), false);
                 Suites suites = getSuites(providers);
-                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, plan, optimisticOpts, profilingInfo, method.getSpeculationLog(), suites, true,
+                ProfilingInfo profilingInfo = getProfilingInfo();
+                OptimisticOptimizations optimisticOpts = getOptimisticOpts(profilingInfo);
+                PhasePlan phasePlan = getPhasePlan(providers, optimisticOpts);
+                result = compileGraph(graph, cc, method, providers, backend, backend.getTarget(), graphCache, phasePlan, optimisticOpts, profilingInfo, method.getSpeculationLog(), suites, true,
                                 new CompilationResult(), CompilationResultBuilderFactory.Default);
 
             } catch (Throwable e) {

@@ -35,7 +35,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.compiler.*;
 import com.oracle.graal.compiler.CompilerThreadFactory.DebugConfigAccess;
@@ -46,12 +45,9 @@ import com.oracle.graal.hotspot.*;
 import com.oracle.graal.hotspot.CompileTheWorld.Config;
 import com.oracle.graal.hotspot.debug.*;
 import com.oracle.graal.hotspot.meta.*;
-import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.java.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.options.*;
-import com.oracle.graal.phases.*;
-import com.oracle.graal.phases.PhasePlan.PhasePosition;
 import com.oracle.graal.printer.*;
 import com.oracle.graal.replacements.*;
 
@@ -571,7 +567,7 @@ public class VMToCompilerImpl implements VMToCompiler {
     /**
      * Compiles a method to machine code.
      */
-    public void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, final boolean blocking) {
+    void compileMethod(final HotSpotResolvedJavaMethod method, final int entryBCI, final boolean blocking) {
         boolean osrCompilation = entryBCI != StructuredGraph.INVOCATION_ENTRY_BCI;
         if (osrCompilation && bootstrapRunning) {
             // no OSR compilations during bootstrap - the compiler is just too slow at this point,
@@ -592,11 +588,9 @@ public class VMToCompilerImpl implements VMToCompiler {
             if (method.tryToQueueForCompilation()) {
                 assert method.isQueuedForCompilation();
 
-                final ProfilingInfo profilingInfo = method.getCompilationProfilingInfo(osrCompilation);
-                final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(profilingInfo);
                 int id = allocateCompileTaskId();
                 HotSpotBackend backend = runtime.getHostBackend();
-                CompilationTask task = CompilationTask.create(backend, createPhasePlan(backend.getProviders(), optimisticOpts, osrCompilation), optimisticOpts, profilingInfo, method, entryBCI, id);
+                CompilationTask task = new CompilationTask(backend, method, entryBCI, id);
 
                 if (blocking) {
                     task.runCompilation(true);
@@ -688,17 +682,6 @@ public class VMToCompilerImpl implements VMToCompiler {
             type = (HotSpotResolvedObjectType) unsafe.getObject(javaMirror, offset);
         }
         return type;
-    }
-
-    public PhasePlan createPhasePlan(HotSpotProviders providers, OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
-        PhasePlan phasePlan = new PhasePlan();
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
-        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        phasePlan.addPhase(PhasePosition.AFTER_PARSING, new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getDefault(), optimisticOpts));
-        if (onStackReplacement) {
-            phasePlan.addPhase(PhasePosition.AFTER_PARSING, new OnStackReplacementPhase());
-        }
-        return phasePlan;
     }
 
     @Override

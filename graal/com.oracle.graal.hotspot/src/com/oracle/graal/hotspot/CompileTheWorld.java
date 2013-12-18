@@ -43,7 +43,6 @@ import com.oracle.graal.hotspot.bridge.*;
 import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
-import com.oracle.graal.phases.*;
 import com.oracle.graal.phases.tiers.*;
 import com.oracle.graal.replacements.*;
 
@@ -318,20 +317,29 @@ public final class CompileTheWorld {
         TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms)", classFileCounter, compiledMethodsCounter, compileTime);
     }
 
-    /**
-     * A compilation task that creates a fresh compilation suite for its compilation. This is
-     * required so that a CTW compilation can be {@linkplain Config configured} differently from a
-     * VM triggered compilation.
-     */
-    static class CTWCompilationTask extends CompilationTask {
+    class CTWCompilationTask extends CompilationTask {
 
-        CTWCompilationTask(HotSpotBackend backend, PhasePlan plan, OptimisticOptimizations optimisticOpts, ProfilingInfo profilingInfo, HotSpotResolvedJavaMethod method, int entryBCI, int id) {
-            super(backend, plan, optimisticOpts, profilingInfo, method, entryBCI, id);
+        CTWCompilationTask(HotSpotBackend backend, HotSpotResolvedJavaMethod method, int id) {
+            super(backend, method, INVOCATION_ENTRY_BCI, id);
         }
 
+        /**
+         * Returns a fresh compilation suite for its compilation so that the CTW option value
+         * overriding configuration has effect.
+         */
         @Override
         protected Suites getSuites(HotSpotProviders providers) {
+            assert config.scope != null : "not inside a CTW option value overriding scope";
             return providers.getSuites().createSuites();
+        }
+
+        /**
+         * Returns empty profiling info to be as close to the CTW behavior of C1 and C2 as possible.
+         */
+        @Override
+        protected ProfilingInfo getProfilingInfo() {
+            // Be optimistic and return false for exceptionSeen.
+            return DefaultProfilingInfo.get(TriState.FALSE);
         }
     }
 
@@ -342,13 +350,9 @@ public final class CompileTheWorld {
         try {
             long start = System.currentTimeMillis();
 
-            // Be optimistic and return false for exceptionSeen.
-            final ProfilingInfo profilingInfo = DefaultProfilingInfo.get(TriState.FALSE);
-            final OptimisticOptimizations optimisticOpts = new OptimisticOptimizations(profilingInfo);
             int id = vmToCompiler.allocateCompileTaskId();
             HotSpotBackend backend = runtime.getHostBackend();
-            PhasePlan phasePlan = vmToCompiler.createPhasePlan(backend.getProviders(), optimisticOpts, false);
-            CompilationTask task = new CTWCompilationTask(backend, phasePlan, optimisticOpts, profilingInfo, method, INVOCATION_ENTRY_BCI, id);
+            CompilationTask task = new CTWCompilationTask(backend, method, id);
             task.runCompilation(false);
 
             compileTime += (System.currentTimeMillis() - start);
