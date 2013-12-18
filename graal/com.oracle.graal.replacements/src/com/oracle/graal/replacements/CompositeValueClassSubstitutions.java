@@ -51,7 +51,7 @@ public class CompositeValueClassSubstitutions {
         @SuppressWarnings("unchecked")
         @Override
         protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            if (param.isNull() || AOTCompilation.getValue()) {
+            if (param.isNull() || ImmutableCode.getValue()) {
                 return null;
             }
             return Constant.forObject(CompositeValueClass.get((Class<? extends CompositeValue>) param.asObject()));

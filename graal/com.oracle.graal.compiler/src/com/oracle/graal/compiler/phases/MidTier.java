@@ -33,7 +33,7 @@ import com.oracle.graal.virtual.phases.ea.*;
 public class MidTier extends PhaseSuite<MidTierContext> {
 
     public MidTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
 
         if (OptPushThroughPi.getValue()) {
             appendPhase(new PushThroughPiPhase());

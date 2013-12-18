@@ -76,7 +76,7 @@ public class PartialEvaluator {
     public PartialEvaluator(RuntimeProvider runtime, Providers providers, TruffleCache truffleCache) {
         this.providers = providers;
         CustomCanonicalizer customCanonicalizer = new PartialEvaluatorCanonicalizer(providers.getMetaAccess(), providers.getConstantReflection());
-        this.canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue(), customCanonicalizer);
+        this.canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue(), customCanonicalizer);
         this.skippedExceptionTypes = TruffleCompilerImpl.getSkippedExceptionTypes(providers.getMetaAccess());
         this.cache = runtime.getGraphCache();
         this.truffleCache = truffleCache;

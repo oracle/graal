@@ -711,7 +711,7 @@ public class InliningUtil {
                     metricInliningTailDuplication.increment();
                     Debug.log("MultiTypeGuardInlineInfo starting tail duplication (%d opportunities)", opportunities);
                     PhaseContext phaseContext = new PhaseContext(providers, assumptions);
-                    CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+                    CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
                     TailDuplicationPhase.tailDuplicate(returnMerge, TailDuplicationPhase.TRUE_DECISION, replacementNodes, phaseContext, canonicalizer);
                 }
             }

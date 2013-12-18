@@ -55,7 +55,7 @@ public class NodeClassSubstitutions {
 
         @Override
         protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            return param.isNull() || AOTCompilation.getValue() ? null : Constant.forObject(NodeClass.get((Class<?>) param.asObject()));
+            return param.isNull() || ImmutableCode.getValue() ? null : Constant.forObject(NodeClass.get((Class<?>) param.asObject()));
         }
     }
 

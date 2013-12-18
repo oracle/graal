@@ -201,7 +201,7 @@ public class AheadOfTimeCompilationTest extends GraalCompilerTest {
         StructuredGraph graph = parse(test);
         ResolvedJavaMethod method = graph.method();
 
-        try (OverrideScope s = OptionValue.override(AOTCompilation, compileAOT)) {
+        try (OverrideScope s = OptionValue.override(ImmutableCode, compileAOT)) {
             PhasePlan phasePlan = new PhasePlan();
             GraphBuilderPhase graphBuilderPhase = new GraphBuilderPhase(getMetaAccess(), getForeignCalls(), GraphBuilderConfiguration.getDefault(), OptimisticOptimizations.ALL);
             phasePlan.addPhase(PhasePosition.AFTER_PARSING, graphBuilderPhase);
