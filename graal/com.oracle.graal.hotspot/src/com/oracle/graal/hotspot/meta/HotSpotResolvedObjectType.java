@@ -109,13 +109,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return type;
     }
 
-    public HotSpotResolvedObjectType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies) {
-        super(name);
-        assert HotSpotGraalRuntime.unsafeReadWord(javaMirror, runtime().getConfig().klassOffset) == metaspaceKlass;
-        this.javaClass = javaMirror;
-        assert name.charAt(0) != '[' || isArray() : name + " " + simpleName + " " + Long.toHexString(sizeOrSpecies);
-    }
-
     /**
      * Creates the Graal mirror for a {@link Class} object.
      * 

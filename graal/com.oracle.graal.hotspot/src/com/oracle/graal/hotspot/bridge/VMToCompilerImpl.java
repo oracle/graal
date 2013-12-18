@@ -679,15 +679,8 @@ public class VMToCompilerImpl implements VMToCompiler {
     }
 
     @Override
-    public HotSpotResolvedObjectType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies) {
-        HotSpotResolvedObjectType type = new HotSpotResolvedObjectType(metaspaceKlass, name, simpleName, javaMirror, sizeOrSpecies);
-
-        long offset = runtime().getConfig().graalMirrorInClassOffset;
-        if (!unsafe.compareAndSwapObject(javaMirror, offset, null, type)) {
-            // lost the race - return the existing value instead
-            type = (HotSpotResolvedObjectType) unsafe.getObject(javaMirror, offset);
-        }
-        return type;
+    public ResolvedJavaType createResolvedJavaType(Class javaMirror) {
+        return HotSpotResolvedObjectType.fromClass(javaMirror);
     }
 
     public PhasePlan createPhasePlan(HotSpotProviders providers, OptimisticOptimizations optimisticOpts, boolean onStackReplacement) {
