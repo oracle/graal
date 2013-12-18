@@ -23,6 +23,7 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.*;
+import com.oracle.truffle.api.utilities.*;
 
 public class WhileNode extends StatementNode {
 
@@ -32,6 +33,11 @@ public class WhileNode extends StatementNode {
 
     private final BreakException breakTarget;
     private final ContinueException continueTarget;
+
+    private final BranchProfile continueMismatch = new BranchProfile();
+    private final BranchProfile continueMatch = new BranchProfile();
+    private final BranchProfile breakMismatch = new BranchProfile();
+    private final BranchProfile breakMatch = new BranchProfile();
 
     public WhileNode(ConditionNode condition, StatementNode body) {
         this.condition = adoptChild(condition);
@@ -49,15 +55,19 @@ public class WhileNode extends StatementNode {
                     body.executeVoid(frame);
                 } catch (ContinueException ex) {
                     if (ex != continueTarget) {
+                        continueMismatch.enter();
                         throw ex;
                     }
+                    continueMatch.enter();
                     // Fall through to next loop iteration.
                 }
             }
         } catch (BreakException ex) {
             if (ex != breakTarget) {
+                breakMismatch.enter();
                 throw ex;
             }
+            breakMatch.enter();
             // Done executing this loop, exit method to execute statement following the loop.
         }
     }

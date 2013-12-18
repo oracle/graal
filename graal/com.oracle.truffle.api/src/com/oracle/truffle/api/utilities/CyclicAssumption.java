@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.*;
 
 /**
- * Class for obtaining the Truffle runtime singleton object of this virtual machine.
+ * Holds an {@link Assumption}, and knows how to recreate it with the same properties on
+ * invalidation. Used so that mutability is isolated in this class, and all other classes that need
+ * an assumption that may be recreated can have a final reference to an object of this class. Note
+ * that you should be careful that repeated invalidations do not cause a deoptimization loop in that
+ * same way that you would with any other assumption.
  */
-public class Truffle {
+public class CyclicAssumption {
 
-    private static final TruffleRuntime RUNTIME;
+    private final String name;
+    private Assumption assumption;
 
-    private static native TruffleRuntime initializeRuntime();
-
-    public static TruffleRuntime getRuntime() {
-        return RUNTIME;
+    public CyclicAssumption(String name) {
+        this.name = name;
+        invalidate();
     }
 
-    static {
-        TruffleRuntime runtime;
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new DefaultTruffleRuntime();
+    public void invalidate() {
+        if (assumption != null) {
+            assumption.invalidate();
         }
-        RUNTIME = runtime;
+
+        assumption = Truffle.getRuntime().createAssumption(name);
     }
+
+    public Assumption getAssumption() {
+        return assumption;
+    }
+
 }

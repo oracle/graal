@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.CompilerDirectives.*;
 
 /**
- * Class for obtaining the Truffle runtime singleton object of this virtual machine.
+ * Utility class to speculate on branches to be never visited. If the {@link #enter()} method is
+ * invoked first the optimized code is invalidated and the branch where {@link #enter()} is invoked
+ * is enabled for compilation. Otherwise if the {@link #enter()} method was never invoked the branch
+ * will not get compiled.
  */
-public class Truffle {
+public final class BranchProfile {
 
-    private static final TruffleRuntime RUNTIME;
+    @CompilationFinal private boolean visited;
 
-    private static native TruffleRuntime initializeRuntime();
-
-    public static TruffleRuntime getRuntime() {
-        return RUNTIME;
-    }
-
-    static {
-        TruffleRuntime runtime;
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new DefaultTruffleRuntime();
+    public void enter() {
+        if (!visited) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            visited = true;
         }
-        RUNTIME = runtime;
     }
+
 }

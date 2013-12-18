@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.utilities;
 
-import com.oracle.truffle.api.impl.*;
+import com.oracle.truffle.api.*;
+import com.oracle.truffle.api.nodes.*;
 
 /**
- * Class for obtaining the Truffle runtime singleton object of this virtual machine.
+ * An assumption that combines two other assumptions. A check on this assumption checks both of the
+ * child assumptions.
  */
-public class Truffle {
+public class UnionAssumption implements Assumption {
 
-    private static final TruffleRuntime RUNTIME;
+    private final String name;
+    private final Assumption first;
+    private final Assumption second;
 
-    private static native TruffleRuntime initializeRuntime();
-
-    public static TruffleRuntime getRuntime() {
-        return RUNTIME;
+    public UnionAssumption(String name, Assumption first, Assumption second) {
+        this.name = name;
+        this.first = first;
+        this.second = second;
     }
 
-    static {
-        TruffleRuntime runtime;
-        try {
-            runtime = initializeRuntime();
-        } catch (UnsatisfiedLinkError e) {
-            runtime = new DefaultTruffleRuntime();
-        }
-        RUNTIME = runtime;
+    public UnionAssumption(Assumption first, Assumption second) {
+        this(null, first, second);
     }
+
+    @Override
+    public void check() throws InvalidAssumptionException {
+        first.check();
+        second.check();
+    }
+
+    @Override
+    public void invalidate() {
+        first.invalidate();
+        second.invalidate();
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public boolean isValid() {
+        return first.isValid() && second.isValid();
+    }
+
 }
