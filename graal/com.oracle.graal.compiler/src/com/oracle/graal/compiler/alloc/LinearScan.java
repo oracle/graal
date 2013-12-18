@@ -1878,14 +1878,7 @@ public final class LinearScan {
             printLir("After register number assignment", true);
             EdgeMoveOptimizer.optimize(ir);
             ControlFlowOptimizer.optimize(ir);
-
-            /*
-             * Temporarily disabled because of problem in specjvm2008. TODO: fix the problem and
-             * re-enable it.
-             * 
-             * RedundantMoveElimination.optimize(ir, frameMap, gen.getGraph().method());
-             */
-
+            RedundantMoveElimination.optimize(ir, frameMap, gen.getGraph().method());
             NullCheckOptimizer.optimize(ir, target.implicitNullCheckLimit);
             printLir("After control flow optimization", false);
         } catch (Throwable e) {
