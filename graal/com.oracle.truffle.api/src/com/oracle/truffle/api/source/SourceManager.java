@@ -142,7 +142,8 @@ public final class SourceManager {
         return builder.toString();
     }
 
-    private abstract static class SourceImpl implements Source {
+    // TODO (mlvdv) make this private once some related code changes propagate
+    public abstract static class SourceImpl implements Source {
 
         protected TextMap textMap = null;
 
