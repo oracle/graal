@@ -61,13 +61,10 @@ public interface VMToCompiler {
     /**
      * Creates a resolved Java type.
      * 
-     * @param metaspaceKlass the metaspace Klass object for the type
-     * @param name the {@linkplain JavaType#getName() name} of the type
-     * @param simpleName a simple, unqualified name for the type
      * @param javaMirror the {@link Class} mirror
      * @return the resolved type associated with {@code javaMirror} which may not be the type
      *         instantiated by this call in the case of another thread racing to create the same
      *         type
      */
-    ResolvedJavaType createResolvedJavaType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies);
+    ResolvedJavaType createResolvedJavaType(Class javaMirror);
 }

@@ -56,7 +56,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native boolean isMethodCompilable(long metaspaceMethod);
 
     @Override
-    public native long getUniqueConcreteMethod(long metaspaceMethod, HotSpotResolvedObjectType[] resultHolder);
+    public native long findUniqueConcreteMethod(long metaspaceMethod);
 
     @Override
     public native ResolvedJavaType getUniqueImplementor(HotSpotResolvedObjectType interfaceType);
@@ -86,7 +86,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native void initializeConfiguration(HotSpotVMConfig config);
 
     @Override
-    public native JavaMethod resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
+    public native long resolveMethod(HotSpotResolvedObjectType klass, String name, String signature);
 
     @Override
     public native boolean hasFinalizableSubclass(HotSpotResolvedObjectType klass);

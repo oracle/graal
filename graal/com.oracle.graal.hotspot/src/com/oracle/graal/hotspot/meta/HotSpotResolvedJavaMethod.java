@@ -320,13 +320,22 @@ public final class HotSpotResolvedJavaMethod extends HotSpotMethod implements Re
     }
 
     public ResolvedJavaMethod uniqueConcreteMethod() {
-        HotSpotResolvedObjectType[] resultHolder = {null};
-        long ucm = runtime().getCompilerToVM().getUniqueConcreteMethod(metaspaceMethod, resultHolder);
-        if (ucm != 0L) {
-            assert resultHolder[0] != null;
-            return resultHolder[0].createMethod(ucm);
+        if (holder.isInterface()) {
+            // Cannot trust interfaces. Because of:
+            // interface I { void foo(); }
+            // class A { public void foo() {} }
+            // class B extends A implements I { }
+            // class C extends B { public void foo() { } }
+            // class D extends B { }
+            // Would lead to identify C.foo() as the unique concrete method for I.foo() without
+            // seeing A.foo().
+            return null;
         }
-        return null;
+        final long uniqueConcreteMethod = runtime().getCompilerToVM().findUniqueConcreteMethod(metaspaceMethod);
+        if (uniqueConcreteMethod == 0) {
+            return null;
+        }
+        return fromMetaspace(uniqueConcreteMethod);
     }
 
     @Override

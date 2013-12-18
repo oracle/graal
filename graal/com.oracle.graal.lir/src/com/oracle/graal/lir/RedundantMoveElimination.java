@@ -297,6 +297,7 @@ public final class RedundantMoveElimination {
                 int sourceIdx = getStateIdx(moveOp.getInput());
                 int destIdx = getStateIdx(moveOp.getResult());
                 if (sourceIdx >= 0 && destIdx >= 0) {
+                    assert isObjectValue(state[sourceIdx]) || (moveOp.getInput().getKind() != Kind.Object) : "move op moves object but input is not defined as object";
                     state[destIdx] = state[sourceIdx];
                     indent.log("move value %d from %d to %d", state[sourceIdx], sourceIdx, destIdx);
                     return initValueNum;
@@ -342,8 +343,13 @@ public final class RedundantMoveElimination {
             }
 
             OutputValueProc outputValueProc = new OutputValueProc(valueNum);
-            op.forEachOutput(outputValueProc);
+
             op.forEachTemp(outputValueProc);
+            /*
+             * Semantically the output values are written _after_ the temp values
+             */
+            op.forEachOutput(outputValueProc);
+
             valueNum = outputValueProc.opValueNum;
 
             if (op.hasState()) {
@@ -351,6 +357,9 @@ public final class RedundantMoveElimination {
                  * All instructions with framestates (mostly method calls), may do garbage
                  * collection. GC will rewrite all object references which are live at this point.
                  * So we can't rely on their values.
+                 * 
+                 * It would be sufficient to just kill all values which are referenced in the state
+                 * (or all values which are not), but for simplicity we kill all values.
                  */
                 indent.log("kill all object values");
                 clearValuesOfKindObject(state, valueNum);

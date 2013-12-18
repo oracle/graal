@@ -109,13 +109,6 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return type;
     }
 
-    public HotSpotResolvedObjectType(long metaspaceKlass, String name, String simpleName, Class javaMirror, int sizeOrSpecies) {
-        super(name);
-        assert HotSpotGraalRuntime.unsafeReadWord(javaMirror, runtime().getConfig().klassOffset) == metaspaceKlass;
-        this.javaClass = javaMirror;
-        assert name.charAt(0) != '[' || isArray() : name + " " + simpleName + " " + Long.toHexString(sizeOrSpecies);
-    }
-
     /**
      * Creates the Graal mirror for a {@link Class} object.
      * 
@@ -125,7 +118,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
      * 
      * @param javaClass the Class to create the mirror for
      */
-    public HotSpotResolvedObjectType(Class<?> javaClass) {
+    private HotSpotResolvedObjectType(Class<?> javaClass) {
         super(getSignatureName(javaClass));
         this.javaClass = javaClass;
         assert getName().charAt(0) != '[' || isArray() : getName();
@@ -356,11 +349,15 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
     @Override
     public ResolvedJavaMethod resolveMethod(ResolvedJavaMethod method) {
         assert method instanceof HotSpotMethod;
-        ResolvedJavaMethod res = (ResolvedJavaMethod) runtime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
-        if (res == null || isAbstract(res.getModifiers())) {
+        final long resolvedMetaspaceMethod = runtime().getCompilerToVM().resolveMethod(this, method.getName(), ((HotSpotSignature) method.getSignature()).getMethodDescriptor());
+        if (resolvedMetaspaceMethod == 0) {
             return null;
         }
-        return res;
+        HotSpotResolvedJavaMethod resolvedMethod = HotSpotResolvedJavaMethod.fromMetaspace(resolvedMetaspaceMethod);
+        if (isAbstract(resolvedMethod.getModifiers())) {
+            return null;
+        }
+        return resolvedMethod;
     }
 
     public ConstantPool constantPool() {

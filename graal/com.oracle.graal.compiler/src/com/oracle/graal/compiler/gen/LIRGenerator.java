@@ -197,6 +197,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
      *         can only be a {@link Constant}.
      */
     public Constant getMaterializedValue(LIRInstruction op, Value operand) {
+        if (op instanceof MoveOp) {
+            MoveOp move = (MoveOp) op;
+            if (move.getInput() instanceof Constant) {
+                return (Constant) move.getInput();
+            }
+        }
         return null;
     }
 
