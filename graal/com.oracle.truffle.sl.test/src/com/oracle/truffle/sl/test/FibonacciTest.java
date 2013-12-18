@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import javax.script.*;
 
 import org.junit.*;
 
+import com.oracle.truffle.api.*;
 import com.oracle.truffle.sl.*;
 import com.oracle.truffle.sl.runtime.*;
 
@@ -75,7 +76,9 @@ public class FibonacciTest extends AbstractTest{
         for (String line : INPUT) {
             s.append(line).append("\n");
         }
-        SLScript script = SLScript.create(new SLContext(System.out), s.toString());
+        final SLContext context = new SLContext(System.out);
+        final Source source = context.getSourceManager().get("(fib test)", s.toString());
+        SLScript script = SLScript.create(context, source);
         Integer reference = test(TEST_VALUE);
         for (int i = 0; i < ITERATIONS; i++) {
             if (!reference.equals(script.run(TEST_VALUE))) {

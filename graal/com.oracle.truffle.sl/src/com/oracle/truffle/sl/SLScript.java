@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,8 +21,6 @@
  * questions.
  */
 package com.oracle.truffle.sl;
-
-import java.io.*;
 
 import javax.script.*;
 
@@ -57,24 +55,11 @@ public final class SLScript {
         return main.toString();
     }
 
-    public static SLScript create(SLContext context, String input) throws ScriptException {
-        return create(context, new ByteArrayInputStream(input.getBytes()));
-
-    }
-
-    public static SLScript create(SLContext context, InputStream input) throws ScriptException {
+    public static SLScript create(SLContext context, Source source) throws ScriptException {
         SLNodeFactory factory = new SLNodeFactory(context);
-        Parser parser = new Parser(new Scanner(input), factory);
+        Parser parser = new Parser(new Scanner(source.getInputStream()), factory);
         factory.setParser(parser);
-        factory.setSource(new Source() {
-            public String getName() {
-                return "Unknown";
-            }
-
-            public String getCode() {
-                return null;
-            }
-        });
+        factory.setSource(source);
         String error = parser.ParseErrors();
         if (!error.isEmpty()) {
             throw new ScriptException(String.format("Error(s) parsing script: %s", error));

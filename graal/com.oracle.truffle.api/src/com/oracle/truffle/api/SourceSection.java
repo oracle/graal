@@ -92,4 +92,44 @@ public interface SourceSection {
      */
     String getCode();
 
+    /**
+     * Singleton instance with no content.
+     */
+    SourceSection NULL = new SourceSection() {
+
+        public Source getSource() {
+            return null;
+        }
+
+        public int getStartLine() {
+            return 0;
+        }
+
+        public int getStartColumn() {
+            return 0;
+        }
+
+        public int getCharIndex() {
+            return 0;
+        }
+
+        @Override
+        public int getCharLength() {
+            return 0;
+        }
+
+        public int getCharEndIndex() {
+            return 0;
+        }
+
+        public String getIdentifier() {
+            return null;
+        }
+
+        public String getCode() {
+            return null;
+        }
+
+    };
+
 }

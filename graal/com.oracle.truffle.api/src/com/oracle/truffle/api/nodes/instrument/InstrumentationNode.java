@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,36 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.api.nodes.instrument;
 
-import java.io.*;
-
-import com.oracle.truffle.api.source.*;
-import com.oracle.truffle.sl.builtins.*;
-
-public final class SLContext {
-
-    private final PrintStream printOutput;
-    private final SLFunctionRegistry functionRegistry;
-    private final SourceManager sourceManager;
-
-    public SLContext(PrintStream print) {
-        this.printOutput = print;
-        this.functionRegistry = new SLFunctionRegistry();
-        DefaultBuiltins.install(this);
-        this.sourceManager = new SourceManager();
-    }
-
-    public PrintStream getPrintOutput() {
-        return printOutput;
-    }
-
-    public SLFunctionRegistry getFunctionRegistry() {
-        return functionRegistry;
-    }
-
-    public SourceManager getSourceManager() {
-        return sourceManager;
-    }
+/**
+ * Marker interface for all Truffle <strong>instrumentation nodes</strong>: nodes that are do not
+ * appear in Truffle ASTs as part of a language's execution semantics.
+ * <p>
+ * In documentation related to instrumentation nodes, these are distinguished by referring to all
+ * other nodes (i.e. ones that <em>do</em> implement language semantics) as <em>AST nodes</em>.
+ */
+public interface InstrumentationNode {
 
 }

@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.api;
 
+import java.io.*;
+
 /**
- * Represents the source code of a guest language program.
+ * Represents a unit (typically a file) of guest language source code.
  */
 public interface Source {
 
@@ -38,9 +40,52 @@ public interface Source {
     String getName();
 
     /**
-     * Returns the guest language source code represented by this source object.
-     * 
-     * @return the source code as a String object
+     * The normalized, canonical name of the file.
+     */
+    String getPath();
+
+    /**
+     * Access to the source contents.
+     */
+    Reader getReader();
+
+    /**
+     * Access to the source contents.
+     */
+    InputStream getInputStream();
+
+    /**
+     * Return the complete text of the code.
      */
     String getCode();
+
+    /**
+     * Given a 1-based line number, return the text in the line, not including a possible
+     * terminating newline.
+     */
+    String getCode(int lineNumber);
+
+    /**
+     * The number of text lines in the source, including empty lines; characters at the end of the
+     * source without a terminating newline count as a line.
+     */
+    int getLineCount();
+
+    /**
+     * Given a 0-based character offset, return the 1-based number of the line that includes the
+     * position.
+     */
+    int getLineNumber(int offset);
+
+    /**
+     * Given a 1-based line number, return the 0-based offset of the first character in the line.
+     */
+    int getLineStartOffset(int lineNumber);
+
+    /**
+     * The number of characters (not counting a possible terminating newline) in a (1-based)
+     * numbered line.
+     */
+    int getLineLength(int lineNumber);
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,21 +35,41 @@ public class SimpleLanguage {
 
     private static final Object[] NO_ARGUMENTS = new Object[0];
 
-    public static void main(String[] args) throws IOException {
-        run(new FileInputStream(args[0]), System.out, 10, true);
+    public static void main(String[] args) {
+        run(args[0], System.out, 10, true);
     }
 
-    public static void run(InputStream input, PrintStream printOutput, int repeats, boolean log) {
+    public static void run(String name, String input, PrintStream printOutput, int repeats, boolean log) {
         if (log) {
             // CheckStyle: stop system..print check
             System.out.printf("== running on %s\n", Truffle.getRuntime().getName());
             // CheckStyle: resume system..print check
         }
 
-        SLContext context = new SLContext(printOutput);
+        final SLContext context = new SLContext(printOutput);
+        final Source source = context.getSourceManager().get(name, input);
+
+        run(context, source, printOutput, repeats, log);
+    }
+
+    public static void run(String fileName, PrintStream printOutput, int repeats, boolean log) {
+        if (log) {
+            // CheckStyle: stop system..print check
+            System.out.printf("== running on %s\n", Truffle.getRuntime().getName());
+            // CheckStyle: resume system..print check
+        }
+
+        final SLContext context = new SLContext(printOutput);
+        final Source source = context.getSourceManager().get(fileName);
+
+        run(context, source, printOutput, repeats, log);
+    }
+
+    public static void run(SLContext context, Source source, PrintStream printOutput, int repeats, boolean log) {
+
         SLScript script;
         try {
-            script = SLScript.create(context, input);
+            script = SLScript.create(context, source);
         } catch (ScriptException e) {
             // TODO temporary hack
             throw new RuntimeException(e);
