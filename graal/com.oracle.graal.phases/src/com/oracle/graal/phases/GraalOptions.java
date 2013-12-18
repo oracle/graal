@@ -229,8 +229,8 @@ public final class GraalOptions {
     public static final OptionValue<Double> MinTableSwitchDensity = new OptionValue<>(0.5);
 
     // Ahead of time compilation
-    @Option(help = "Configure compiler to emit code  compatible with AOT requirements for HotSpot")
-    public static final OptionValue<Boolean> AOTCompilation = new OptionValue<>(false);
+    @Option(help = "Try to avoid emitting code where patching is required")
+    public static final OptionValue<Boolean> ImmutableCode = new OptionValue<>(false);
 
     // Runtime settings
     @Option(help = "")

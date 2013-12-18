@@ -48,7 +48,7 @@ public class HotSpotSuitesProvider implements SuitesProvider {
     public Suites createSuites() {
         Suites ret = Suites.createDefaultSuites();
 
-        if (AOTCompilation.getValue()) {
+        if (ImmutableCode.getValue()) {
             // lowering introduces class constants, therefore it must be after lowering
             ret.getHighTier().appendPhase(new LoadJavaMirrorWithKlassPhase(runtime.getConfig().classMirrorOffset));
             if (VerifyPhases.getValue()) {

@@ -65,7 +65,7 @@ public class SystemSubstitutions {
 
         @Override
         protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            return AOTCompilation.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
+            return ImmutableCode.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
         }
     }
 

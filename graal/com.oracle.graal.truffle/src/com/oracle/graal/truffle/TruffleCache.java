@@ -110,7 +110,7 @@ public final class TruffleCache {
             // Convert deopt to guards.
             new ConvertDeoptimizeToGuardPhase().apply(graph);
 
-            CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!AOTCompilation.getValue());
+            CanonicalizerPhase canonicalizerPhase = new CanonicalizerPhase(!ImmutableCode.getValue());
             PartialEscapePhase partialEscapePhase = new PartialEscapePhase(false, canonicalizerPhase);
 
             Mark mark = null;

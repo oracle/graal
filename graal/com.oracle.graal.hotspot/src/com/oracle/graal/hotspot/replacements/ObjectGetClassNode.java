@@ -49,7 +49,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        if (AOTCompilation.getValue()) {
+        if (ImmutableCode.getValue()) {
             return;
         }
         State state = tool.getObjectState(getObject());
@@ -61,7 +61,7 @@ public class ObjectGetClassNode extends MacroNode implements Virtualizable, Cano
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (AOTCompilation.getValue()) {
+        if (ImmutableCode.getValue()) {
             return this;
         }
         if (usages().isEmpty()) {

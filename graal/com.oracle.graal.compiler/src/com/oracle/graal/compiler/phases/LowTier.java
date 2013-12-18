@@ -31,7 +31,7 @@ import com.oracle.graal.phases.tiers.*;
 public class LowTier extends PhaseSuite<LowTierContext> {
 
     public LowTier() {
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!AOTCompilation.getValue());
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase(!ImmutableCode.getValue());
 
         appendPhase(new LoweringPhase(canonicalizer));
 
