@@ -24,6 +24,7 @@ package com.oracle.graal.hotspot;
 
 import static com.oracle.graal.api.code.CodeUtil.*;
 import static com.oracle.graal.compiler.GraalCompiler.*;
+import static com.oracle.graal.hotspot.bridge.VMToCompilerImpl.*;
 import static com.oracle.graal.nodes.StructuredGraph.*;
 import static com.oracle.graal.phases.GraalOptions.*;
 import static com.oracle.graal.phases.common.InliningUtil.*;
@@ -223,7 +224,7 @@ public class CompilationTask implements Runnable {
                 System.exit(-1);
             }
         } finally {
-            if ((config.ciTime || config.ciTimeEach) && installedCode != null) {
+            if ((config.ciTime || config.ciTimeEach || PrintCompRate.getValue() != 0) && installedCode != null) {
                 long processedBytes = InlinedBytecodes.getCurrentValue() - previousInlinedBytecodes;
                 long time = CompilationTime.getCurrentValue() - previousCompilationTime;
                 TimeUnit timeUnit = CompilationTime.getTimeUnit();
