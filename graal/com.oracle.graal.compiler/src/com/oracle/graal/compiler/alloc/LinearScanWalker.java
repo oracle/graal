@@ -858,17 +858,14 @@ final class LinearScanWalker extends IntervalWalker {
         Interval interval = currentInterval;
         boolean result = true;
 
-        Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %s, insertMoveWhenActivated: %b", interval.logString(allocator), interval.splitParent().operandNumber,
-                        interval.insertMoveWhenActivated());
+        Indent indent = Debug.logAndIndent("activating interval %s,  splitParent: %d, insertMoveWhenActivated: %b", interval, interval.splitParent().operandNumber);
 
         final Value operand = interval.operand;
         if (interval.location() != null && isStackSlot(interval.location())) {
             // activating an interval that has a stack slot assigned . split it at first use
             // position
             // used for method parameters
-            if (getTraceLevel() >= 4) {
-                TTY.println("      interval has spill slot assigned (method parameter) . split it before first use");
-            }
+            indent.log("interval has spill slot assigned (method parameter) . split it before first use");
             splitStackInterval(interval);
             result = false;
 
@@ -902,9 +899,7 @@ final class LinearScanWalker extends IntervalWalker {
             assert interval.isSplitChild();
             assert interval.currentSplitChild() != null;
             assert !interval.currentSplitChild().operand.equals(operand) : "cannot insert move between same interval";
-            if (getTraceLevel() >= 4) {
-                TTY.println("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
-            }
+            indent.log("Inserting move from interval %d to %d because insertMoveWhenActivated is set", interval.currentSplitChild().operandNumber, interval.operandNumber);
 
             insertMove(interval.from(), interval.currentSplitChild(), interval);
         }
