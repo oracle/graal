@@ -103,16 +103,26 @@ public final class RedundantMoveElimination {
 
             initBlockData(lir);
 
-            solveDataFlow(lir);
+            if (!solveDataFlow(lir)) {
+                return;
+            }
 
             eliminateMoves(lir);
         }
     }
 
+    /**
+     * The maximum number of locations * blocks. This is a complexity limit for the inner loop in
+     * {@link #mergeState} (assuming a small number of iterations in {@link #solveDataFlow}.
+     */
+    private static final int COMPLEXITY_LIMIT = 30000;
+
     private void initBlockData(LIR lir) {
 
         List<Block> blocks = lir.linearScanOrder();
         numRegs = 0;
+
+        int maxStackLocations = COMPLEXITY_LIMIT / blocks.size();
 
         /*
          * Search for relevant locations which can be optimized. These are register or stack slots
@@ -130,7 +140,7 @@ public final class RedundantMoveElimination {
                         }
                     } else if (isStackSlot(dest)) {
                         StackSlot stackSlot = (StackSlot) dest;
-                        if (!stackIndices.containsKey(stackSlot)) {
+                        if (!stackIndices.containsKey(stackSlot) && stackIndices.size() < maxStackLocations) {
                             stackIndices.put(stackSlot, stackIndices.size());
                         }
                     }
@@ -151,12 +161,16 @@ public final class RedundantMoveElimination {
 
     /**
      * Calculates the entry and exit states for all basic blocks.
+     * 
+     * @return Returns true on success and false if the the control flow is too complex.
      */
-    private void solveDataFlow(LIR lir) {
+    private boolean solveDataFlow(LIR lir) {
 
         Indent indent = Debug.logAndIndent("solve data flow");
 
         List<Block> blocks = lir.linearScanOrder();
+
+        int numIter = 0;
 
         /*
          * Iterate until there are no more changes.
@@ -229,10 +243,20 @@ public final class RedundantMoveElimination {
             }
             firstRound = false;
             indent2.outdent();
+            numIter++;
+
+            if (numIter > 5) {
+                /*
+                 * This is _very_ seldom.
+                 */
+                return false;
+            }
 
         } while (changed);
 
         indent.outdent();
+
+        return true;
     }
 
     /**
@@ -378,12 +402,15 @@ public final class RedundantMoveElimination {
         boolean changed = false;
         for (int idx = 0; idx < source.length; idx++) {
             int phiNum = defNum + idx;
-            if (dest[idx] != source[idx] && source[idx] != INIT_VALUE && dest[idx] != encodeValueNum(phiNum, isObjectValue(dest[idx]))) {
-                if (dest[idx] != INIT_VALUE) {
-                    dest[idx] = encodeValueNum(phiNum, isObjectValue(dest[idx]) || isObjectValue(source[idx]));
+            int dst = dest[idx];
+            int src = source[idx];
+            if (dst != src && src != INIT_VALUE && dst != encodeValueNum(phiNum, isObjectValue(dst))) {
+                if (dst != INIT_VALUE) {
+                    dst = encodeValueNum(phiNum, isObjectValue(dst) || isObjectValue(src));
                 } else {
-                    dest[idx] = source[idx];
+                    dst = src;
                 }
+                dest[idx] = dst;
                 changed = true;
             }
         }
