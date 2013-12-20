@@ -988,10 +988,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     @Override
     protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        // Making a copy of the switch value is necessary because jump table destroys the input
-        // value
-        Variable tmp = emitMove(key);
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, tmp, newVariable(target().wordKind)));
+        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(target().wordKind), newVariable(key.getPlatformKind())));
     }
 
     @Override
