@@ -90,34 +90,27 @@ final class RegisterVerifier {
     }
 
     private void processBlock(Block block) {
-        if (allocator.getTraceLevel() >= 2) {
-            TTY.println();
-            TTY.println("processBlock B%d", block.getId());
-        }
+        try (Indent indent = Debug.logAndIndent("processBlock B%d", block.getId())) {
+            // must copy state because it is modified
+            Interval[] inputState = copy(stateForBlock(block));
 
-        // must copy state because it is modified
-        Interval[] inputState = copy(stateForBlock(block));
-
-        if (allocator.getTraceLevel() >= 4) {
-            TTY.println("Input-State of intervals:");
-            TTY.print("    ");
-            for (int i = 0; i < stateSize(); i++) {
-                if (inputState[i] != null) {
-                    TTY.print(" %4d", inputState[i].operandNumber);
-                } else {
-                    TTY.print("   __");
+            try (Indent indent2 = Debug.logAndIndent("Input-State of intervals:")) {
+                for (int i = 0; i < stateSize(); i++) {
+                    if (inputState[i] != null) {
+                        Debug.log(" %4d", inputState[i].operandNumber);
+                    } else {
+                        Debug.log("   __");
+                    }
                 }
             }
-            TTY.println();
-            TTY.println();
-        }
 
-        // process all operations of the block
-        processOperations(allocator.ir.lir(block), inputState);
+            // process all operations of the block
+            processOperations(allocator.ir.lir(block), inputState);
 
-        // iterate all successors
-        for (Block succ : block.getSuccessors()) {
-            processSuccessor(succ, inputState);
+            // iterate all successors
+            for (Block succ : block.getSuccessors()) {
+                processSuccessor(succ, inputState);
+            }
         }
     }
 
@@ -140,31 +133,23 @@ final class RegisterVerifier {
                         savedStateCorrect = false;
                         savedState[i] = null;
 
-                        if (allocator.getTraceLevel() >= 4) {
-                            TTY.println("processSuccessor B%d: invalidating slot %d", block.getId(), i);
-                        }
+                        Debug.log("processSuccessor B%d: invalidating slot %d", block.getId(), i);
                     }
                 }
             }
 
             if (savedStateCorrect) {
                 // already processed block with correct inputState
-                if (allocator.getTraceLevel() >= 2) {
-                    TTY.println("processSuccessor B%d: previous visit already correct", block.getId());
-                }
+                Debug.log("processSuccessor B%d: previous visit already correct", block.getId());
             } else {
                 // must re-visit this block
-                if (allocator.getTraceLevel() >= 2) {
-                    TTY.println("processSuccessor B%d: must re-visit because input state changed", block.getId());
-                }
+                Debug.log("processSuccessor B%d: must re-visit because input state changed", block.getId());
                 addToWorkList(block);
             }
 
         } else {
             // block was not processed before, so set initial inputState
-            if (allocator.getTraceLevel() >= 2) {
-                TTY.println("processSuccessor B%d: initial visit", block.getId());
-            }
+            Debug.log("processSuccessor B%d: initial visit", block.getId());
 
             setStateForBlock(block, copy(inputState));
             addToWorkList(block);
@@ -175,18 +160,14 @@ final class RegisterVerifier {
         return inputState.clone();
     }
 
-    static void statePut(Interval[] inputState, Value location, Interval interval, int traceLevel) {
+    static void statePut(Interval[] inputState, Value location, Interval interval) {
         if (location != null && isRegister(location)) {
             Register reg = asRegister(location);
             int regNum = reg.number;
             if (interval != null) {
-                if (traceLevel >= 4) {
-                    TTY.println("        %s = %s", reg, interval.operand);
-                }
+                Debug.log("%s = %s", reg, interval.operand);
             } else if (inputState[regNum] != null) {
-                if (traceLevel >= 4) {
-                    TTY.println("        %s = null", reg);
-                }
+                Debug.log("%s = null", reg);
             }
 
             inputState[regNum] = interval;
@@ -207,8 +188,8 @@ final class RegisterVerifier {
         for (int i = 0; i < ops.size(); i++) {
             final LIRInstruction op = ops.get(i);
 
-            if (allocator.getTraceLevel() >= 4) {
-                TTY.println(op.toStringWithIdPrefix());
+            if (Debug.isLogEnabled()) {
+                Debug.log("%s", op.toStringWithIdPrefix());
             }
 
             ValueProcedure useProc = new ValueProcedure() {
@@ -237,7 +218,7 @@ final class RegisterVerifier {
                             interval = interval.getSplitChildAtOpId(op.id(), mode, allocator);
                         }
 
-                        statePut(inputState, interval.location(), interval.splitParent(), allocator.getTraceLevel());
+                        statePut(inputState, interval.location(), interval.splitParent());
                     }
                     return operand;
                 }
@@ -248,7 +229,7 @@ final class RegisterVerifier {
             // invalidate all caller save registers at calls
             if (op.destroysCallerSavedRegisters()) {
                 for (Register r : allocator.frameMap.registerConfig.getCallerSaveRegisters()) {
-                    statePut(inputState, r.asValue(), null, allocator.getTraceLevel());
+                    statePut(inputState, r.asValue(), null);
                 }
             }
             op.forEachAlive(useProc);

@@ -722,14 +722,14 @@ public final class Interval {
 
     /**
      * Returns true if this interval can be re-materialized when spilled. This means that no
-     * spill-moves are needed. Instead of restore-moves the materializeValue is restored.
+     * spill-moves are needed. Instead of restore-moves the {@link #materializedValue} is restored.
      */
     public boolean canMaterialize() {
         return getMaterializedValue() != null;
     }
 
     /**
-     * Returns the value which is moved to a register instead of a restore-move from stack.
+     * Returns a value which can be moved to a register instead of a restore-move from stack.
      */
     public Constant getMaterializedValue() {
         return splitParent().materializedValue;
@@ -909,7 +909,7 @@ public final class Interval {
     private RegisterPriority adaptPriority(RegisterPriority priority) {
         /*
          * In case of re-materialized values we require that use-operands are registers, because we
-         * don't have the value at a stack location. (Note that ShouldHaveRegister means that the
+         * don't have the value in a stack location. (Note that ShouldHaveRegister means that the
          * operand can also be a StackSlot).
          */
         if (priority == RegisterPriority.ShouldHaveRegister && canMaterialize()) {
