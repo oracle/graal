@@ -72,16 +72,17 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
-        final int pos = asm.codeBuffer.position();
         if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
             crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
+            final int pos = asm.codeBuffer.position();
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
             asm.testl(rax, new AMD64Address(scratch));
         } else {
             crb.recordMark(atReturn ? MARK_POLL_RETURN_NEAR : MARK_POLL_NEAR);
+            final int pos = asm.codeBuffer.position();
             if (state != null) {
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
             }
