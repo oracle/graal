@@ -667,6 +667,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMFlag(name = "PrintCompilation") @Stable public boolean printCompilation;
     @HotSpotVMFlag(name = "PrintInlining") @Stable public boolean printInlining;
     @HotSpotVMFlag(name = "GraalUseFastLocking") @Stable public boolean useFastLocking;
+    @HotSpotVMFlag(name = "ForceUnreachable") @Stable public boolean forceUnreachable;
 
     @HotSpotVMFlag(name = "UseTLAB") @Stable public boolean useTLAB;
     @HotSpotVMFlag(name = "UseBiasedLocking") @Stable public boolean useBiasedLocking;
