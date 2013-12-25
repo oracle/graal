@@ -171,21 +171,58 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         if (isArray()) {
             return isFinal(getElementalType(this).getModifiers()) ? this : null;
         } else if (isInterface()) {
-            return runtime().getCompilerToVM().getUniqueImplementor(this);
+            final long implementorMetaspaceKlass = runtime().getCompilerToVM().getKlassImplementor(metaspaceKlass());
+
+            // No implementor.
+            if (implementorMetaspaceKlass == 0) {
+                return null;
+            }
+
+            HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) fromMetaspaceKlass(implementorMetaspaceKlass);
+
+            /*
+             * If the implementor field contains itself that indicates that the interface has more
+             * than one implementors (see: InstanceKlass::add_implementor). The isInterface check
+             * takes care of this fact since this class is an interface.
+             */
+            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
+                return null;
+            }
+            return type;
         } else {
             HotSpotResolvedObjectType type = this;
             while (isAbstract(type.getModifiers())) {
-                long subklass = unsafeReadWord(type.metaspaceKlass() + config.subklassOffset);
+                long subklass = type.getSubklass();
                 if (subklass == 0 || unsafeReadWord(subklass + config.nextSiblingOffset) != 0) {
                     return null;
                 }
                 type = (HotSpotResolvedObjectType) fromMetaspaceKlass(subklass);
             }
-            if (isAbstract(type.getModifiers()) || type.isInterface() || unsafeReadWord(type.metaspaceKlass() + config.subklassOffset) != 0) {
+            if (isAbstract(type.getModifiers()) || type.isInterface() || !type.isLeafClass()) {
                 return null;
             }
             return type;
         }
+    }
+
+    /**
+     * Returns if type {@code type} is a leaf class. This is the case if the
+     * {@code Klass::_subklass} field of the underlying class is zero.
+     * 
+     * @return true if the type is a leaf class
+     */
+    private boolean isLeafClass() {
+        return getSubklass() == 0;
+    }
+
+    /**
+     * Returns the {@code Klass::_subklass} field of the underlying metaspace klass for the given
+     * type {@code type}.
+     * 
+     * @return value of the subklass field as metaspace klass pointer
+     */
+    private long getSubklass() {
+        return unsafeReadWord(metaspaceKlass() + runtime().getConfig().subklassOffset);
     }
 
     @Override
