@@ -39,11 +39,32 @@ public final class HotSpotResolvedPrimitiveType extends HotSpotResolvedJavaType 
     private final Class<?> javaMirror;
     private final Class javaArrayMirror;
 
+    /**
+     * Gets the Graal mirror for a {@link Kind}.
+     * 
+     * @return the {@link HotSpotResolvedObjectType} corresponding to {@code kind}
+     */
+    public static ResolvedJavaType fromKind(Kind kind) {
+        Class<?> javaClass = kind.toJavaClass();
+        return fromClass(javaClass);
+    }
+
+    /**
+     * Creates the Graal mirror for a primitive {@link Kind}.
+     * 
+     * <p>
+     * <b>NOTE</b>: Creating an instance of this class does not install the mirror for the
+     * {@link Class} type. Use {@link #fromKind(Kind)} or {@link #fromClass(Class)} instead.
+     * </p>
+     * 
+     * @param kind the Kind to create the mirror for
+     */
     public HotSpotResolvedPrimitiveType(Kind kind) {
         super(String.valueOf(Character.toUpperCase(kind.getTypeChar())));
         this.kind = kind;
         this.javaMirror = kind.toJavaClass();
         this.javaArrayMirror = kind == Kind.Void ? null : Array.newInstance(javaMirror, 0).getClass();
+        assert javaMirror.isPrimitive() : javaMirror + " not a primitive type";
     }
 
     @Override

@@ -22,11 +22,22 @@
  */
 package com.oracle.graal.hotspot.meta;
 
+import static com.oracle.graal.hotspot.HotSpotGraalRuntime.*;
+
 import com.oracle.graal.api.meta.*;
 
 public abstract class HotSpotResolvedJavaType extends HotSpotJavaType implements ResolvedJavaType {
 
     private static final long serialVersionUID = -6410840212023428347L;
+
+    /**
+     * Gets the Graal mirror for a {@link Class} object.
+     * 
+     * @return the {@link HotSpotResolvedJavaType} corresponding to {@code javaClass}
+     */
+    public static ResolvedJavaType fromClass(Class<?> javaClass) {
+        return runtime().fromClass(javaClass);
+    }
 
     public HotSpotResolvedJavaType(String name) {
         super(name);

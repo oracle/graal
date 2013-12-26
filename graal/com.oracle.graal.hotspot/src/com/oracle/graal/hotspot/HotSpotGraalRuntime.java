@@ -190,15 +190,22 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     protected final HotSpotVMConfig config;
     private final HotSpotBackend hostBackend;
 
-    public final HotSpotResolvedPrimitiveType typeBoolean;
-    public final HotSpotResolvedPrimitiveType typeByte;
-    public final HotSpotResolvedPrimitiveType typeChar;
-    public final HotSpotResolvedPrimitiveType typeShort;
-    public final HotSpotResolvedPrimitiveType typeInt;
-    public final HotSpotResolvedPrimitiveType typeLong;
-    public final HotSpotResolvedPrimitiveType typeFloat;
-    public final HotSpotResolvedPrimitiveType typeDouble;
-    public final HotSpotResolvedPrimitiveType typeVoid;
+    /**
+     * Graal mirrors are stored as a {@link ClassValue} associated with the {@link Class} of the
+     * type. This data structure stores both {@link HotSpotResolvedObjectType} and
+     * {@link HotSpotResolvedPrimitiveType} types.
+     */
+    private final ClassValue<ResolvedJavaType> graalMirrors = new ClassValue<ResolvedJavaType>() {
+        @Override
+        protected ResolvedJavaType computeValue(Class<?> javaClass) {
+            if (javaClass.isPrimitive()) {
+                Kind kind = Kind.fromJavaClass(javaClass);
+                return new HotSpotResolvedPrimitiveType(kind);
+            } else {
+                return new HotSpotResolvedObjectType(javaClass);
+            }
+        }
+    };
 
     private final Map<Class<? extends Architecture>, HotSpotBackend> backends = new HashMap<>();
 
@@ -211,26 +218,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         compilerToGpu = toGPU;
         vmToCompiler = toCompiler;
         config = new HotSpotVMConfig(compilerToVm);
-
-        typeBoolean = new HotSpotResolvedPrimitiveType(Kind.Boolean);
-        typeByte = new HotSpotResolvedPrimitiveType(Kind.Byte);
-        typeChar = new HotSpotResolvedPrimitiveType(Kind.Char);
-        typeShort = new HotSpotResolvedPrimitiveType(Kind.Short);
-        typeInt = new HotSpotResolvedPrimitiveType(Kind.Int);
-        typeLong = new HotSpotResolvedPrimitiveType(Kind.Long);
-        typeFloat = new HotSpotResolvedPrimitiveType(Kind.Float);
-        typeDouble = new HotSpotResolvedPrimitiveType(Kind.Double);
-        typeVoid = new HotSpotResolvedPrimitiveType(Kind.Void);
-
-        initMirror(typeBoolean);
-        initMirror(typeByte);
-        initMirror(typeChar);
-        initMirror(typeShort);
-        initMirror(typeInt);
-        initMirror(typeLong);
-        initMirror(typeFloat);
-        initMirror(typeDouble);
-        initMirror(typeVoid);
 
         CompileTheWorld.Options.overrideWithNativeOptions(config);
 
@@ -264,18 +251,20 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         }
     }
 
-    private void initMirror(HotSpotResolvedPrimitiveType type) {
-        Class<?> mirror = type.mirror();
-        final long offset = config.graalMirrorInClassOffset;
-        unsafe.putObject(mirror, offset, type);
-        assert unsafe.getObject(mirror, offset) == type;
-    }
-
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
         Class<? extends Architecture> arch = backend.getTarget().arch.getClass();
         HotSpotBackend oldValue = backends.put(arch, backend);
         assert oldValue == null : "cannot overwrite existing backend for architecture " + arch.getSimpleName();
         return backend;
+    }
+
+    /**
+     * Gets the Graal mirror for a {@link Class} object.
+     * 
+     * @return the {@link HotSpotResolvedJavaType} corresponding to {@code javaClass}
+     */
+    public ResolvedJavaType fromClass(Class<?> javaClass) {
+        return graalMirrors.get(javaClass);
     }
 
     /**
@@ -353,32 +342,10 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
     }
 
     public JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve) {
+        // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
-            switch (kind) {
-                case Boolean:
-                    return typeBoolean;
-                case Byte:
-                    return typeByte;
-                case Char:
-                    return typeChar;
-                case Short:
-                    return typeShort;
-                case Int:
-                    return typeInt;
-                case Long:
-                    return typeLong;
-                case Float:
-                    return typeFloat;
-                case Double:
-                    return typeDouble;
-                case Void:
-                    return typeVoid;
-                case Object:
-                    break;
-                case Illegal:
-                    break;
-            }
+            return HotSpotResolvedPrimitiveType.fromKind(kind);
         }
         return compilerToVm.lookupType(name, accessingClass, eagerResolve);
     }

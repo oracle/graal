@@ -1041,7 +1041,6 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "java_lang_Class::_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int klassOffset;
     @HotSpotVMField(name = "java_lang_Class::_array_klass_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int arrayKlassOffset;
-    @HotSpotVMField(name = "java_lang_Class::_graal_mirror_offset", type = "int", get = HotSpotVMField.Type.VALUE) @Stable public int graalMirrorInClassOffset;
 
     @HotSpotVMField(name = "Method::_method_data", type = "MethodData*", get = HotSpotVMField.Type.OFFSET) @Stable public int methodDataOffset;
     @HotSpotVMField(name = "Method::_from_compiled_entry", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable public int methodCompiledEntryOffset;
