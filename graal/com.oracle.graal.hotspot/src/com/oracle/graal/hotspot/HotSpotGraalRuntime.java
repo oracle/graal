@@ -341,13 +341,36 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
         return compilerToGpu;
     }
 
-    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve) {
+    /**
+     * Converts a name to a Java type.
+     * 
+     * @param name a well formed Java type in {@linkplain JavaType#getName() internal} format
+     * @param accessingType the context of resolution (may be null)
+     * @param eagerResolve force resolution to a {@link ResolvedJavaType}. If true, this method will
+     *            either return a {@link ResolvedJavaType} or throw an exception
+     * @return a Java type for {@code name} which is guaranteed to be of type
+     *         {@link ResolvedJavaType} if {@code eagerResolve == true}
+     * @throws LinkageError if {@code eagerResolve == true} and the resolution failed
+     */
+    public JavaType lookupType(String name, HotSpotResolvedObjectType accessingType, boolean eagerResolve) {
         // If the name represents a primitive type we can short-circuit the lookup.
         if (name.length() == 1) {
             Kind kind = Kind.fromPrimitiveOrVoidTypeChar(name.charAt(0));
             return HotSpotResolvedPrimitiveType.fromKind(kind);
         }
-        return compilerToVm.lookupType(name, accessingClass, eagerResolve);
+
+        // Handle non-primitive types.
+        Class<?> accessingClass = null;
+        if (accessingType != null) {
+            accessingClass = accessingType.mirror();
+        }
+
+        // Resolve the type in the VM.
+        final long metaspaceKlass = compilerToVm.lookupType(name, accessingClass, eagerResolve);
+        if (metaspaceKlass == 0) {
+            return vmToCompiler.createUnresolvedJavaType(name);
+        }
+        return HotSpotResolvedObjectType.fromMetaspaceKlass(metaspaceKlass);
     }
 
     public HotSpotRuntimeInterpreterInterface getRuntimeInterpreterInterface() {

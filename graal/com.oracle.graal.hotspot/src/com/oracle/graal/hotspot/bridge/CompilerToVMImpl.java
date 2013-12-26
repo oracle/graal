@@ -62,7 +62,7 @@ public class CompilerToVMImpl implements CompilerToVM {
     public native long getKlassImplementor(long metaspaceKlass);
 
     @Override
-    public native JavaType lookupType(String name, HotSpotResolvedObjectType accessingClass, boolean eagerResolve);
+    public native long lookupType(String name, Class<?> accessingClass, boolean eagerResolve);
 
     @Override
     public native Object lookupConstantInPool(long metaspaceConstantPool, int cpi);
