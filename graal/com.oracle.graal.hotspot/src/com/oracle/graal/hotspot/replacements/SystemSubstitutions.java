@@ -24,16 +24,13 @@ package com.oracle.graal.hotspot.replacements;
 
 import static com.oracle.graal.hotspot.replacements.HotSpotReplacementsUtil.*;
 import static com.oracle.graal.nodes.extended.BranchProbabilityNode.*;
-import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.api.replacements.*;
 import com.oracle.graal.graph.Node.ConstantNodeParameter;
 import com.oracle.graal.graph.Node.NodeIntrinsic;
-import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.spi.*;
-import com.oracle.graal.replacements.nodes.*;
 
 /**
  * Substitutions for {@link java.lang.System} methods.
@@ -55,18 +52,6 @@ public class SystemSubstitutions {
     @MethodSubstitution
     public static long nanoTime() {
         return callLong(JAVA_TIME_NANOS);
-    }
-
-    public static class SystemIdentityHashCodeNode extends PureFunctionMacroNode {
-
-        public SystemIdentityHashCodeNode(Invoke invoke) {
-            super(invoke);
-        }
-
-        @Override
-        protected Constant evaluate(Constant param, MetaAccessProvider metaAccess) {
-            return ImmutableCode.getValue() || param.isNull() ? null : Constant.forInt(System.identityHashCode(param.asObject()));
-        }
     }
 
     @MacroSubstitution(macro = SystemIdentityHashCodeNode.class)
