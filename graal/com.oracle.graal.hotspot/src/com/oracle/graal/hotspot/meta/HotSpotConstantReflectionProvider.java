@@ -43,7 +43,7 @@ public class HotSpotConstantReflectionProvider implements ConstantReflectionProv
     }
 
     @Override
-    public boolean constantEquals(Constant x, Constant y) {
+    public Boolean constantEquals(Constant x, Constant y) {
         return x.equals(y);
     }
 

@@ -320,7 +320,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
     private static boolean valuesDistinct(ConstantReflectionProvider constantReflection, ValueNode a, ValueNode b) {
         if (a.isConstant() && b.isConstant()) {
-            return !constantReflection.constantEquals(a.asConstant(), b.asConstant());
+            Boolean equal = constantReflection.constantEquals(a.asConstant(), b.asConstant());
+            if (equal != null) {
+                return !equal.booleanValue();
+            }
         }
 
         Stamp stampA = a.stamp();
