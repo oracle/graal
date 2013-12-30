@@ -363,7 +363,7 @@ public class HotSpotLoweringProvider implements LoweringProvider {
 
                                 int scale = getScalingFactor(componentKind);
                                 ConstantLocationNode location = ConstantLocationNode.create(INIT_LOCATION, accessKind, getArrayBaseOffset(componentKind) + i * scale, graph);
-                                BarrierType barrierType = (componentKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.IMPRECISE : BarrierType.NONE;
+                                BarrierType barrierType = (componentKind == Kind.Object && !useDeferredInitBarriers()) ? BarrierType.PRECISE : BarrierType.NONE;
                                 WriteNode write = new WriteNode(newObject, value, location, barrierType, componentKind == Kind.Object);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
