@@ -23,11 +23,13 @@
 package com.oracle.graal.compiler.alloc;
 
 import static com.oracle.graal.api.code.ValueUtil.*;
+
 import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
+import com.oracle.graal.debug.internal.*;
 import com.oracle.graal.lir.*;
 
 /**
@@ -120,6 +122,12 @@ final class MoveResolver {
         for (i = 0; i < mappingTo.size(); i++) {
             Interval interval = mappingTo.get(i);
             boolean unique = usedRegs.add(interval.location());
+            if (!unique) {
+                DebugScope.dump(this.allocator.ir, "exception");
+                DebugScope.dump(this.allocator.intervals, "exception");
+                DebugScope.dump(interval, "interval");
+                System.err.println(interval);
+            }
             assert unique : "cannot write to same register twice";
         }
 

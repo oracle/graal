@@ -83,6 +83,11 @@ public final class RedundantMoveElimination {
 
     Register[] callerSaveRegs;
 
+    /**
+     * Contains the register number for registers which can be optimized and -1 for the others.
+     */
+    int[] eligibleRegs;
+
     Map<StackSlot, Integer> stackIndices = new HashMap<>();
 
     int numRegs;
@@ -97,11 +102,21 @@ public final class RedundantMoveElimination {
      */
     private void doOptimize(LIR lir, FrameMap frameMap, ResolvedJavaMethod method) {
 
-        try (Indent indent = Debug.logAndIndent(false, "eliminate redundant moves in %s", method)) {
+        try (Indent indent = Debug.logAndIndent("eliminate redundant moves in %s", method)) {
 
             callerSaveRegs = frameMap.registerConfig.getCallerSaveRegisters();
 
             initBlockData(lir);
+
+            // Compute a table of the registers which are eligible for move optimization.
+            // Unallocatable registers should never be optimized.
+            eligibleRegs = new int[numRegs];
+            Arrays.fill(eligibleRegs, -1);
+            for (Register reg : frameMap.registerConfig.getAllocatableRegisters()) {
+                if (reg.number < numRegs) {
+                    eligibleRegs[reg.number] = reg.number;
+                }
+            }
 
             if (!solveDataFlow(lir)) {
                 return;
@@ -448,8 +463,9 @@ public final class RedundantMoveElimination {
         if (isRegister(location)) {
             int regNum = ((RegisterValue) location).getRegister().number;
             if (regNum < numRegs) {
-                return regNum;
+                return eligibleRegs[regNum];
             }
+            return -1;
         }
         if (isStackSlot(location)) {
             StackSlot slot = (StackSlot) location;

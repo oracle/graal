@@ -29,6 +29,8 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.graph.*;
+import com.oracle.graal.graph.Node.Verbosity;
+import com.oracle.graal.lir.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
@@ -224,12 +226,20 @@ public class GraalDebugConfig implements DebugConfig {
                 } else {
                     Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
                 }
+            } else if (o instanceof LIR) {
+                Debug.log("Context obj %s", o);
+                if (DumpOnError.getValue()) {
+                    Debug.dump(o, "LIR");
+                } else {
+                    Debug.log("Use -G:+DumpOnError to enable dumping of graphs on this error");
+                }
             } else if (o instanceof Node) {
                 String location = GraphUtil.approxSourceLocation((Node) o);
+                String node = ((Node) o).toString(Verbosity.Debugger);
                 if (location != null) {
-                    Debug.log("Context obj %s (approx. location: %s)", o, location);
+                    Debug.log("Context obj %s (approx. location: %s)", node, location);
                 } else {
-                    Debug.log("Context obj %s", o);
+                    Debug.log("Context obj %s", node);
                 }
             } else {
                 Debug.log("Context obj %s", o);
