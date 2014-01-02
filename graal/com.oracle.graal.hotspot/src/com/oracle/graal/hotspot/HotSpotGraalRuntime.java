@@ -234,7 +234,7 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
             printConfig(config);
         }
 
-        String hostArchitecture = getHostArchitectureName();
+        String hostArchitecture = config.getHostArchitectureName();
         hostBackend = registerBackend(findFactory(hostArchitecture).createBackend(this, null));
 
         String[] gpuArchitectures = getGPUArchitectureNames();
@@ -265,23 +265,6 @@ public final class HotSpotGraalRuntime implements GraalRuntime, RuntimeProvider 
      */
     public ResolvedJavaType fromClass(Class<?> javaClass) {
         return graalMirrors.get(javaClass);
-    }
-
-    /**
-     * Gets the host architecture name for the purpose of finding the corresponding
-     * {@linkplain HotSpotBackendFactory backend}.
-     */
-    private static String getHostArchitectureName() {
-        String arch = System.getProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
-        }
-        return arch;
     }
 
     public static final String GRAAL_GPU_ISALIST_PROPERTY_NAME = "graal.gpu.isalist";

@@ -46,28 +46,40 @@ public class AMD64HotSpotBackendFactory implements HotSpotBackendFactory {
         assert config.useSSE >= 2 : "minimum config for x64";
         features.add(AMD64.CPUFeature.SSE);
         features.add(AMD64.CPUFeature.SSE2);
-        if (config.useSSE > 2) {
+        if ((config.x86CPUFeatures & config.cpuSSE3) != 0) {
             features.add(AMD64.CPUFeature.SSE3);
         }
-        if (config.useSSE > 3) {
-            features.add(AMD64.CPUFeature.SSE4);
+        if ((config.x86CPUFeatures & config.cpuSSSE3) != 0) {
+            features.add(AMD64.CPUFeature.SSSE3);
         }
-        if (config.useAVX > 0) {
+        if ((config.x86CPUFeatures & config.cpuSSE4A) != 0) {
+            features.add(AMD64.CPUFeature.SSE4a);
+        }
+        if ((config.x86CPUFeatures & config.cpuSSE41) != 0) {
+            features.add(AMD64.CPUFeature.SSE4_1);
+        }
+        if ((config.x86CPUFeatures & config.cpuSSE42) != 0) {
+            features.add(AMD64.CPUFeature.SSE4_2);
+        }
+        if ((config.x86CPUFeatures & config.cpuAVX) != 0) {
             features.add(AMD64.CPUFeature.AVX);
         }
-        if (config.useAVX > 1) {
+        if ((config.x86CPUFeatures & config.cpuAVX2) != 0) {
             features.add(AMD64.CPUFeature.AVX2);
         }
-        if (config.useCountLeadingZerosInstruction) {
+        if ((config.x86CPUFeatures & config.cpuERMS) != 0) {
+            features.add(AMD64.CPUFeature.ERMS);
+        }
+        if ((config.x86CPUFeatures & config.cpuLZCNT) != 0) {
             features.add(AMD64.CPUFeature.LZCNT);
         }
-        if (config.usePopCountInstruction) {
+        if ((config.x86CPUFeatures & config.cpuPOPCNT) != 0) {
             features.add(AMD64.CPUFeature.POPCNT);
         }
-        if (config.useAESIntrinsics) {
+        if ((config.x86CPUFeatures & config.cpuAES) != 0) {
             features.add(AMD64.CPUFeature.AES);
         }
-        if (config.allocatePrefetchInstr == 3) {
+        if ((config.x86CPUFeatures & config.cpu3DNOWPREFETCH) != 0) {
             features.add(AMD64.CPUFeature.AMD_3DNOW_PREFETCH);
         }
         return features;

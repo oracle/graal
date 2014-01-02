@@ -39,6 +39,18 @@ public class HotSpotVMConfig extends CompilerObject {
 
     private static final long serialVersionUID = -4744897993263044184L;
 
+    private static boolean containsString(String[] array, String item) {
+        if (array == null) {
+            return false;
+        }
+        for (String arch : array) {
+            if (arch.equals(item)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     HotSpotVMConfig(CompilerToVM compilerToVm) {
         compilerToVm.initializeConfiguration(this);
 
@@ -69,6 +81,8 @@ public class HotSpotVMConfig extends CompilerObject {
             flags.put(e.getName(), e);
         }
 
+        String currentArch = getHostArchitectureName();
+
         for (Field f : HotSpotVMConfig.class.getDeclaredFields()) {
             if (f.isAnnotationPresent(HotSpotVMField.class)) {
                 HotSpotVMField annotation = f.getAnnotation(HotSpotVMField.class);
@@ -76,11 +90,10 @@ public class HotSpotVMConfig extends CompilerObject {
                 String type = annotation.type();
                 VMFields.Field entry = vmFields.get(name);
                 if (entry == null) {
-                    if (annotation.optional()) {
+                    if (annotation.optional() || !containsString(annotation.archs(), currentArch)) {
                         continue;
-                    } else {
-                        throw new IllegalArgumentException("field not found: " + name);
                     }
+                    throw new IllegalArgumentException("field not found: " + name);
                 }
 
                 // Make sure the native type is still the type we expect.
@@ -122,7 +135,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 String name = annotation.name();
                 AbstractConstant entry = vmConstants.get(name);
                 if (entry == null) {
-                    if (annotation.optional()) {
+                    if (!containsString(annotation.archs(), currentArch)) {
                         continue;
                     } else {
                         throw new IllegalArgumentException("constant not found: " + name);
@@ -134,7 +147,7 @@ public class HotSpotVMConfig extends CompilerObject {
                 String name = annotation.name();
                 Flags.Flag entry = flags.get(name);
                 if (entry == null) {
-                    if (annotation.optional()) {
+                    if (annotation.optional() || !containsString(annotation.archs(), currentArch)) {
                         continue;
                     } else {
                         throw new IllegalArgumentException("flag not found: " + name);
@@ -176,6 +189,23 @@ public class HotSpotVMConfig extends CompilerObject {
         } catch (IllegalAccessException e) {
             throw GraalInternalError.shouldNotReachHere(field.toString() + ": " + e);
         }
+    }
+
+    /**
+     * Gets the host architecture name for the purpose of finding the corresponding
+     * {@linkplain HotSpotBackendFactory backend}.
+     */
+    public String getHostArchitectureName() {
+        String arch = System.getProperty("os.arch");
+        switch (arch) {
+            case "x86_64":
+                arch = "amd64";
+                break;
+            case "sparcv9":
+                arch = "sparc";
+                break;
+        }
+        return arch;
     }
 
     /**
@@ -712,7 +742,32 @@ public class HotSpotVMConfig extends CompilerObject {
 
     // CPU capabilities
     @HotSpotVMFlag(name = "UseSSE") @Stable public int useSSE;
-    @HotSpotVMFlag(name = "UseAVX", optional = true) @Stable public int useAVX;
+    @HotSpotVMFlag(name = "UseAVX", archs = {"amd64"}) @Stable public int useAVX;
+
+    // X86 specific values
+    @HotSpotVMField(name = "VM_Version::_cpuFeatures", type = "int", get = HotSpotVMField.Type.VALUE, archs = {"amd64"}) @Stable public int x86CPUFeatures;
+    @HotSpotVMConstant(name = "VM_Version::CPU_CX8", archs = {"amd64"}) @Stable public int cpuCX8;
+    @HotSpotVMConstant(name = "VM_Version::CPU_CMOV", archs = {"amd64"}) @Stable public int cpuCMOV;
+    @HotSpotVMConstant(name = "VM_Version::CPU_FXSR", archs = {"amd64"}) @Stable public int cpuFXSR;
+    @HotSpotVMConstant(name = "VM_Version::CPU_HT", archs = {"amd64"}) @Stable public int cpuHT;
+    @HotSpotVMConstant(name = "VM_Version::CPU_MMX", archs = {"amd64"}) @Stable public int cpuMMX;
+    @HotSpotVMConstant(name = "VM_Version::CPU_3DNOW_PREFETCH", archs = {"amd64"}) @Stable public int cpu3DNOWPREFETCH;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE", archs = {"amd64"}) @Stable public int cpuSSE;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE2", archs = {"amd64"}) @Stable public int cpuSSE2;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE3", archs = {"amd64"}) @Stable public int cpuSSE3;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSSE3", archs = {"amd64"}) @Stable public int cpuSSSE3;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE4A", archs = {"amd64"}) @Stable public int cpuSSE4A;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE4_1", archs = {"amd64"}) @Stable public int cpuSSE41;
+    @HotSpotVMConstant(name = "VM_Version::CPU_SSE4_2", archs = {"amd64"}) @Stable public int cpuSSE42;
+    @HotSpotVMConstant(name = "VM_Version::CPU_POPCNT", archs = {"amd64"}) @Stable public int cpuPOPCNT;
+    @HotSpotVMConstant(name = "VM_Version::CPU_LZCNT", archs = {"amd64"}) @Stable public int cpuLZCNT;
+    @HotSpotVMConstant(name = "VM_Version::CPU_TSC", archs = {"amd64"}) @Stable public int cpuTSC;
+    @HotSpotVMConstant(name = "VM_Version::CPU_TSCINV", archs = {"amd64"}) @Stable public int cpuTSCINV;
+    @HotSpotVMConstant(name = "VM_Version::CPU_AVX", archs = {"amd64"}) @Stable public int cpuAVX;
+    @HotSpotVMConstant(name = "VM_Version::CPU_AVX2", archs = {"amd64"}) @Stable public int cpuAVX2;
+    @HotSpotVMConstant(name = "VM_Version::CPU_AES", archs = {"amd64"}) @Stable public int cpuAES;
+    @HotSpotVMConstant(name = "VM_Version::CPU_ERMS", archs = {"amd64"}) @Stable public int cpuERMS;
+    @HotSpotVMConstant(name = "VM_Version::CPU_CLMUL", archs = {"amd64"}) @Stable public int cpuCLMUL;
 
     // offsets, ...
     @HotSpotVMFlag(name = "StackShadowPages") @Stable public int stackShadowPages;
@@ -762,7 +817,7 @@ public class HotSpotVMConfig extends CompilerObject {
     @HotSpotVMField(name = "JavaThread::_vm_result", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int threadObjectResultOffset;
     @HotSpotVMField(name = "JavaThread::_graal_counters[0]", type = "jlong", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable public int graalCountersThreadOffset;
 
-    @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE", optional = true) @Stable public int graalCountersSize;
+    @HotSpotVMConstant(name = "GRAAL_COUNTERS_SIZE") @Stable public int graalCountersSize;
 
     /**
      * This field is used to pass exception objects into and out of the runtime system during
@@ -775,8 +830,8 @@ public class HotSpotVMConfig extends CompilerObject {
 
     @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_sp", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaSpOffset;
     @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_pc", type = "address", get = HotSpotVMField.Type.OFFSET) @Stable private int javaFrameAnchorLastJavaPcOffset;
-    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_fp", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorLastJavaFpOffset;
-    @HotSpotVMField(name = "JavaFrameAnchor::_flags", type = "int", get = HotSpotVMField.Type.OFFSET, optional = true) @Stable private int javaFrameAnchorFlagsOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_last_Java_fp", type = "intptr_t*", get = HotSpotVMField.Type.OFFSET, archs = {"amd64"}) @Stable private int javaFrameAnchorLastJavaFpOffset;
+    @HotSpotVMField(name = "JavaFrameAnchor::_flags", type = "int", get = HotSpotVMField.Type.OFFSET, archs = {"sparc"}) @Stable private int javaFrameAnchorFlagsOffset;
 
     public int threadLastJavaSpOffset() {
         return javaThreadAnchorOffset + javaFrameAnchorLastJavaSpOffset;
@@ -1005,7 +1060,7 @@ public class HotSpotVMConfig extends CompilerObject {
      */
     @HotSpotVMField(name = "Klass::_java_mirror", type = "oop", get = HotSpotVMField.Type.OFFSET) @Stable public int classMirrorOffset;
 
-    @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", optional = true) @Stable public int runtimeCallStackSize;
+    @HotSpotVMConstant(name = "frame::arg_reg_save_area_bytes", archs = {"amd64"}) @Stable public int runtimeCallStackSize;
 
     @HotSpotVMField(name = "Klass::_super", type = "Klass*", get = HotSpotVMField.Type.OFFSET) @Stable public int klassSuperKlassOffset;
     @HotSpotVMField(name = "Klass::_modifier_flags", type = "jint", get = HotSpotVMField.Type.OFFSET) @Stable public int klassModifierFlagsOffset;
