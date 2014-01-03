@@ -413,13 +413,7 @@ public class ReplacementsImpl implements Replacements {
                 for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.class)) {
                     ResolvedJavaMethod callee = callTarget.targetMethod();
                     if (callee == method) {
-                        final StructuredGraph originalGraph = new StructuredGraph(original);
-                        MetaAccessProvider metaAccess = providers.getMetaAccess();
-                        ForeignCallsProvider foreignCalls = providers.getForeignCalls();
-                        new GraphBuilderPhase(metaAccess, foreignCalls, GraphBuilderConfiguration.getSnippetDefault(), OptimisticOptimizations.NONE).apply(originalGraph);
-                        new WordTypeVerificationPhase(metaAccess, target.wordKind).apply(graph);
-                        new WordTypeRewriterPhase(metaAccess, target.wordKind).apply(graph);
-
+                        final StructuredGraph originalGraph = buildInitialGraph(original);
                         InliningUtil.inline(callTarget.invoke(), originalGraph, true);
 
                         Debug.dump(graph, "after inlining %s", callee);
