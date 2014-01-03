@@ -1368,7 +1368,9 @@ public class InliningUtil {
             // get rid of memory kill
             AbstractBeginNode begin = invokeWithException.next();
             if (begin instanceof KillingBeginNode) {
-                graph.addAfterFixed(begin, graph.add(new BeginNode()));
+                BeginNode newBegin = new BeginNode();
+                graph.addAfterFixed(begin, graph.add(newBegin));
+                begin.replaceAtUsages(newBegin);
                 graph.removeFixed(begin);
             }
         } else {
