@@ -25,6 +25,7 @@ package com.oracle.graal.nodes;
 import com.oracle.graal.api.meta.*;
 import com.oracle.graal.graph.spi.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.nodes.util.*;
 
@@ -82,7 +83,7 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
         }
     }
 
-    public void lowerToIf() {
+    public void lowerToIf(LoweringTool tool) {
         FixedNode next = next();
         setNext(null);
         DeoptimizeNode deopt = graph().add(new DeoptimizeNode(action, reason));
@@ -99,6 +100,8 @@ public abstract class AbstractFixedGuardNode extends DeoptimizingFixedWithNextNo
         ((FixedWithNextNode) predecessor()).setNext(ifNode);
         this.replaceAtUsages(noDeoptSuccessor);
         GraphUtil.killWithUnusedFloatingInputs(this);
+
+        deopt.lower(tool);
     }
 
     @Override

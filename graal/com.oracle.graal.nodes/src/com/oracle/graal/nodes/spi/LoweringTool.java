@@ -55,4 +55,23 @@ public interface LoweringTool {
     FixedWithNextNode lastFixedNode();
 
     GuardingNode getCurrentGuardAnchor();
+
+    /**
+     * Marker interface lowering stages.
+     */
+    interface LoweringStage {
+    }
+
+    /**
+     * The lowering stages used in a standard Graal phase plan. Lowering is called 3 times, during
+     * every tier of compilation.
+     */
+    enum StandardLoweringStage implements LoweringStage {
+        HIGH_TIER, MID_TIER, LOW_TIER
+    }
+
+    /**
+     * Returns current lowering stage.
+     */
+    LoweringStage getLoweringStage();
 }

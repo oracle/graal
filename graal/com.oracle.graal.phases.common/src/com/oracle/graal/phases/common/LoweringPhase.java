@@ -28,8 +28,8 @@ import java.util.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
-import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.Graph.Mark;
+import com.oracle.graal.graph.*;
 import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
@@ -61,6 +61,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
             this.activeGuards = activeGuards;
             this.lastFixedNode = lastFixedNode;
             this.cfg = cfg;
+        }
+
+        @Override
+        public LoweringStage getLoweringStage() {
+            return loweringStage;
         }
 
         @Override
@@ -183,9 +188,11 @@ public class LoweringPhase extends BasePhase<PhaseContext> {
     }
 
     private final CanonicalizerPhase canonicalizer;
+    private final LoweringTool.LoweringStage loweringStage;
 
-    public LoweringPhase(CanonicalizerPhase canonicalizer) {
+    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
         this.canonicalizer = canonicalizer;
+        this.loweringStage = loweringStage;
     }
 
     /**

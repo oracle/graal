@@ -221,7 +221,7 @@ public class BoxingSnippets implements Snippets {
             if (canonical != null && !ImmutableCode.getValue()) {
                 box.graph().replaceFloating(box, canonical);
             } else {
-                Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage());
+                Arguments args = new Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("value", box.getValue());
 
                 SnippetTemplate template = template(args);
@@ -232,7 +232,7 @@ public class BoxingSnippets implements Snippets {
         }
 
         public void lower(UnboxNode unbox, LoweringTool tool) {
-            Arguments args = new Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage());
+            Arguments args = new Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", unbox.getValue());
 
             SnippetTemplate template = template(args);

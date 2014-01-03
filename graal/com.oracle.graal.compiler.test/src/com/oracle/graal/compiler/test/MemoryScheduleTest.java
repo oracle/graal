@@ -37,6 +37,7 @@ import com.oracle.graal.graph.iterators.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.cfg.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.util.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.options.OptionValue.OverrideScope;
@@ -592,7 +593,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
                 if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     new InliningPhase(canonicalizer).apply(graph, context);
                 }
-                new LoweringPhase(canonicalizer).apply(graph, context);
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
                 if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                     for (Node node : graph.getNodes()) {
                         if (node instanceof StateSplit) {
@@ -611,8 +612,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
 
                 MidTierContext midContext = new MidTierContext(getProviders(), assumptions, getCodeCache().getTarget(), OptimisticOptimizations.ALL, graph.method().getProfilingInfo());
                 new GuardLoweringPhase().apply(graph, midContext);
-                new LoweringPhase(canonicalizer).apply(graph, midContext);
-                new LoweringPhase(canonicalizer).apply(graph, midContext);
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
 
                 SchedulePhase schedule = new SchedulePhase(schedulingStrategy, memsched);
                 schedule.apply(graph);

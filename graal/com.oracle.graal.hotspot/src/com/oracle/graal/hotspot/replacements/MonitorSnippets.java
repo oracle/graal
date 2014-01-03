@@ -422,16 +422,16 @@ public class MonitorSnippets implements Snippets {
             this.useFastLocking = useFastLocking;
         }
 
-        public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers) {
+        public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorenterNode.graph();
-            checkBalancedMonitors(graph);
+            checkBalancedMonitors(graph, tool);
             FrameState stateAfter = monitorenterNode.stateAfter();
 
             Arguments args;
             if (useFastLocking) {
-                args = new Arguments(monitorenter, graph.getGuardsStage());
+                args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
             } else {
-                args = new Arguments(monitorenterStub, graph.getGuardsStage());
+                args = new Arguments(monitorenterStub, graph.getGuardsStage(), tool.getLoweringStage());
             }
             args.add("object", monitorenterNode.object());
             args.addConst("lockDepth", monitorenterNode.getLockDepth());
@@ -450,15 +450,15 @@ public class MonitorSnippets implements Snippets {
             }
         }
 
-        public void lower(MonitorExitNode monitorexitNode, @SuppressWarnings("unused") LoweringTool tool) {
+        public void lower(MonitorExitNode monitorexitNode, LoweringTool tool) {
             StructuredGraph graph = monitorexitNode.graph();
             FrameState stateAfter = monitorexitNode.stateAfter();
 
             Arguments args;
             if (useFastLocking) {
-                args = new Arguments(monitorexit, graph.getGuardsStage());
+                args = new Arguments(monitorexit, graph.getGuardsStage(), tool.getLoweringStage());
             } else {
-                args = new Arguments(monitorexitStub, graph.getGuardsStage());
+                args = new Arguments(monitorexitStub, graph.getGuardsStage(), tool.getLoweringStage());
             }
             args.add("object", monitorexitNode.object());
             args.addConst("lockDepth", monitorexitNode.getLockDepth());
@@ -507,7 +507,7 @@ public class MonitorSnippets implements Snippets {
          * If balanced monitor checking is enabled then nodes are inserted at the start and all
          * return points of the graph to initialize and check the monitor counter respectively.
          */
-        private void checkBalancedMonitors(StructuredGraph graph) {
+        private void checkBalancedMonitors(StructuredGraph graph, LoweringTool tool) {
             if (CHECK_BALANCED_MONITORS) {
                 NodeIterable<MonitorCounterNode> nodes = graph.getNodes().filter(MonitorCounterNode.class);
                 if (nodes.isEmpty()) {
@@ -533,7 +533,7 @@ public class MonitorSnippets implements Snippets {
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 
-                        Arguments args = new Arguments(checkCounter, graph.getGuardsStage());
+                        Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
                         args.addConst("errMsg", msg);
                         inlineeGraph = template(args).copySpecializedGraph();
 

@@ -37,6 +37,7 @@ import com.oracle.graal.hotspot.meta.*;
 import com.oracle.graal.hotspot.nodes.*;
 import com.oracle.graal.hotspot.replacements.*;
 import com.oracle.graal.nodes.StructuredGraph.GuardsStage;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.ConstantParameter;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -66,7 +67,7 @@ public class NewArrayStub extends SnippetStub {
         Constant intArrayHub = intArrayType.klass();
         intArrayHub = Constant.forIntegerKind(runtime().getTarget().wordKind, intArrayHub.asLong(), null);
 
-        Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS);
+        Arguments args = new Arguments(stub, GuardsStage.FLOATING_GUARDS, LoweringTool.StandardLoweringStage.HIGH_TIER);
         args.add("hub", null);
         args.add("length", null);
         args.addConst("intArrayHub", intArrayHub);

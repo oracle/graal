@@ -106,7 +106,7 @@ public class MacroNode extends AbstractMemoryCheckpoint implements Lowerable, Me
             }
         }
         try (Scope s = Debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(new CanonicalizerPhase(true)).apply(replacementGraph, c);
+            new LoweringPhase(new CanonicalizerPhase(true), tool.getLoweringStage()).apply(replacementGraph, c);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }

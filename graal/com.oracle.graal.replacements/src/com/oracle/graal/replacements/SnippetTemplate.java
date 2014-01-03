@@ -185,9 +185,9 @@ public class SnippetTemplate {
 
         protected int nextParamIdx;
 
-        public Arguments(SnippetInfo info, GuardsStage guardsStage) {
+        public Arguments(SnippetInfo info, GuardsStage guardsStage, LoweringTool.LoweringStage loweringStage) {
             this.info = info;
-            this.cacheKey = new CacheKey(info, guardsStage);
+            this.cacheKey = new CacheKey(info, guardsStage, loweringStage);
             this.values = new Object[info.getParameterCount()];
         }
 
@@ -319,11 +319,13 @@ public class SnippetTemplate {
         private final ResolvedJavaMethod method;
         private final Object[] values;
         private final GuardsStage guardsStage;
+        private final LoweringTool.LoweringStage loweringStage;
         private int hash;
 
-        protected CacheKey(SnippetInfo info, GuardsStage guardsStage) {
+        protected CacheKey(SnippetInfo info, GuardsStage guardsStage, LoweringTool.LoweringStage loweringStage) {
             this.method = info.method;
             this.guardsStage = guardsStage;
+            this.loweringStage = loweringStage;
             this.values = new Object[info.getParameterCount()];
             this.hash = info.method.hashCode() + 31 * guardsStage.hashCode();
         }
@@ -342,7 +344,7 @@ public class SnippetTemplate {
             if (method != other.method) {
                 return false;
             }
-            if (guardsStage != other.guardsStage) {
+            if (guardsStage != other.guardsStage || loweringStage != other.loweringStage) {
                 return false;
             }
             for (int i = 0; i < values.length; i++) {
@@ -584,7 +586,7 @@ public class SnippetTemplate {
         }
         snippetCopy.setGuardsStage(guardsStage);
         try (Scope s = Debug.scope("LoweringSnippetTemplate", snippetCopy)) {
-            new LoweringPhase(new CanonicalizerPhase(true)).apply(snippetCopy, phaseContext);
+            new LoweringPhase(new CanonicalizerPhase(true), args.cacheKey.loweringStage).apply(snippetCopy, phaseContext);
         } catch (Throwable e) {
             throw Debug.handle(e);
         }
