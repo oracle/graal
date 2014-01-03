@@ -65,7 +65,7 @@ public final class ControlFlowOptimizer {
         assert ((StandardOp.JumpOp) instructions.get(instructions.size() - 1)).destination().label() == ((StandardOp.LabelOp) lir.lir(block.getFirstSuccessor()).get(0)).getLabel() : "branch target must be the successor";
 
         // Block must have exactly one successor.
-        return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState();
+        return instructions.size() == 2 && !instructions.get(instructions.size() - 1).hasState() && !block.isExceptionEntry();
     }
 
     private static void deleteEmptyBlocks(LIR lir, List<Block> blocks) {
