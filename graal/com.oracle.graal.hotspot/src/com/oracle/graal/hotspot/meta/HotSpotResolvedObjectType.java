@@ -418,8 +418,14 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
         return method;
     }
 
-    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, long offset, int flags, boolean internal) {
+    public synchronized ResolvedJavaField createField(String fieldName, JavaType type, long offset, int rawFlags, boolean internal) {
         ResolvedJavaField result = null;
+
+        /*
+         * Filter out flags used internally by HotSpot, to get a canonical id value. When a field is
+         * created from a java.lang.reflect.Field, these flags would not be available anyway.
+         */
+        int flags = rawFlags & fieldModifiers();
 
         long id = offset + ((long) flags << 32);
 
@@ -436,7 +442,7 @@ public final class HotSpotResolvedObjectType extends HotSpotResolvedJavaType {
             fieldCache.put(id, result);
         } else {
             assert result.getName().equals(fieldName);
-            assert result.getModifiers() == (fieldModifiers() & flags);
+            assert result.getModifiers() == flags;
         }
 
         return result;
