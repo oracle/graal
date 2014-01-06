@@ -30,6 +30,7 @@ import com.oracle.graal.debug.Debug.Scope;
 import com.oracle.graal.graph.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.common.*;
 import com.oracle.graal.phases.tiers.*;
 
@@ -59,7 +60,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
             StructuredGraph graph = parse(snippet);
             PhaseContext context = new PhaseContext(getProviders(), new Assumptions(false));
-            new LoweringPhase(new CanonicalizerPhase(true)).apply(graph, context);
+            new LoweringPhase(new CanonicalizerPhase(true), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             new FloatingReadPhase().apply(graph);
 
             ReturnNode returnNode = null;

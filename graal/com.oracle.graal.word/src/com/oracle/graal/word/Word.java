@@ -111,6 +111,19 @@ public abstract class Word implements Signed, Unsigned, Pointer {
     }
 
     /**
+     * Unsafe conversion from a Java long value to a {@link PointerBase pointer}. The parameter is
+     * treated as an unsigned 64-bit value (in contrast to the semantics of a Java long).
+     * 
+     * @param val a 64 bit unsigned value
+     * @return the value cast to PointerBase
+     */
+    @Operation(opcode = Opcode.FROM_UNSIGNED)
+    @SuppressWarnings("unchecked")
+    public static <T extends PointerBase> T pointer(long val) {
+        return (T) box(val);
+    }
+
+    /**
      * Unsafe conversion from a Java int value to a Word. The parameter is treated as an unsigned
      * 32-bit value (in contrast to the semantics of a Java int).
      * 

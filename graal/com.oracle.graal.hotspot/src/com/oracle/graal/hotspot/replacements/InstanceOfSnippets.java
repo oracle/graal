@@ -232,23 +232,23 @@ public class InstanceOfSnippets implements Snippets {
                 StructuredGraph graph = instanceOf.graph();
                 if (hintInfo.hintHitProbability >= hintHitProbabilityThresholdForDeoptimizingSnippet()) {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
-                    args = new Arguments(instanceofWithProfile, graph.getGuardsStage());
+                    args = new Arguments(instanceofWithProfile, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     Kind wordKind = providers.getCodeCache().getTarget().wordKind;
                     args.addVarargs("hints", Word.class, StampFactory.forKind(wordKind), hints.hubs);
                     args.addVarargs("hintIsPositive", boolean.class, StampFactory.forKind(Kind.Boolean), hints.isPositive);
                 } else if (hintInfo.exact != null) {
-                    args = new Arguments(instanceofExact, graph.getGuardsStage());
+                    args = new Arguments(instanceofExact, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("object", object);
                     args.add("exactHub", ConstantNode.forConstant(((HotSpotResolvedObjectType) hintInfo.exact).klass(), providers.getMetaAccess(), graph));
                 } else if (type.isPrimaryType()) {
-                    args = new Arguments(instanceofPrimary, graph.getGuardsStage());
+                    args = new Arguments(instanceofPrimary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addConst("superCheckOffset", type.superCheckOffset());
                 } else {
                     Hints hints = createHints(hintInfo, providers.getMetaAccess(), false, graph);
-                    args = new Arguments(instanceofSecondary, graph.getGuardsStage());
+                    args = new Arguments(instanceofSecondary, graph.getGuardsStage(), tool.getLoweringStage());
                     args.add("hub", hub);
                     args.add("object", object);
                     args.addVarargs("hints", Word.class, StampFactory.forKind(getWordKind()), hints.hubs);
@@ -266,7 +266,7 @@ public class InstanceOfSnippets implements Snippets {
                 InstanceOfDynamicNode instanceOf = (InstanceOfDynamicNode) replacer.instanceOf;
                 ValueNode object = instanceOf.object();
 
-                Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage());
+                Arguments args = new Arguments(instanceofDynamic, instanceOf.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("mirror", instanceOf.mirror());
                 args.add("object", object);
                 args.add("trueValue", replacer.trueValue);

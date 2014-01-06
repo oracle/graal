@@ -51,7 +51,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     protected Value computeLockValue(FrameState state, int i) {
         int lockDepth = i;
         if (state.outerFrameState() != null) {
-            lockDepth = state.outerFrameState().nestedLockDepth();
+            lockDepth += state.outerFrameState().nestedLockDepth();
         }
         StackSlot slot = lockStack.makeLockSlot(lockDepth);
         ValueNode lock = state.lockAt(i);

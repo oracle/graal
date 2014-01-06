@@ -118,7 +118,7 @@ public final class ObjectEqualsNode extends CompareNode implements Virtualizable
                 // both are virtual without identity: check contents
                 assert stateX.getVirtualObject().entryCount() == 1 && stateY.getVirtualObject().entryCount() == 1;
                 assert stateX.getVirtualObject().type() == stateY.getVirtualObject().type();
-                assert stateX.getVirtualObject().entryKind(0) == Kind.Int || stateX.getVirtualObject().entryKind(0) == Kind.Long;
+                assert stateX.getVirtualObject().entryKind(0).getStackKind() == Kind.Int || stateX.getVirtualObject().entryKind(0) == Kind.Long;
                 IntegerEqualsNode equals = new IntegerEqualsNode(stateX.getEntry(0), stateY.getEntry(0));
                 tool.addNode(equals);
                 tool.replaceWithValue(equals);

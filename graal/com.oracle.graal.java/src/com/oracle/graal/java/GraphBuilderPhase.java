@@ -1203,33 +1203,39 @@ public class GraphBuilderPhase extends Phase {
             }
         }
         MethodCallTargetNode callTarget = currentGraph.add(createMethodCallTarget(invokeKind, targetMethod, args, returnType));
-        createInvokeNode(callTarget, resultType);
+
+        // be conservative if information was not recorded (could result in endless recompiles
+        // otherwise)
+        if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
+            createInvoke(callTarget, resultType);
+        } else {
+            assert bci() == currentBlock.endBci;
+            frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+
+            InvokeWithExceptionNode invoke = createInvokeWithException(callTarget, resultType);
+
+            Block nextBlock = currentBlock.successors.get(0);
+            invoke.setNext(createTarget(nextBlock, frameState));
+        }
     }
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, JavaType returnType) {
         return new MethodCallTargetNode(invokeKind, targetMethod, args, returnType);
     }
 
-    protected Invoke createInvokeNode(CallTargetNode callTarget, Kind resultType) {
-        // be conservative if information was not recorded (could result in endless recompiles
-        // otherwise)
-        if (graphBuilderConfig.omitAllExceptionEdges() || (optimisticOpts.useExceptionProbability() && profilingInfo.getExceptionSeen(bci()) == TriState.FALSE)) {
-            InvokeNode invoke = new InvokeNode(callTarget, bci());
-            frameState.pushReturn(resultType, append(invoke));
-            return invoke;
-        } else {
-            assert bci() == currentBlock.endBci;
-            frameState.clearNonLiveLocals(currentBlock.localsLiveOut);
+    protected InvokeNode createInvoke(CallTargetNode callTarget, Kind resultType) {
+        InvokeNode invoke = append(new InvokeNode(callTarget, bci()));
+        frameState.pushReturn(resultType, invoke);
+        return invoke;
+    }
 
-            DispatchBeginNode exceptionEdge = handleException(null, bci());
-            InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
-            frameState.pushReturn(resultType, invoke);
-            Block nextBlock = currentBlock.successors.get(0);
-
-            invoke.setNext(createTarget(nextBlock, frameState));
-            invoke.setStateAfter(frameState.create(nextBlock.startBci));
-            return invoke;
-        }
+    protected InvokeWithExceptionNode createInvokeWithException(CallTargetNode callTarget, Kind resultType) {
+        DispatchBeginNode exceptionEdge = handleException(null, bci());
+        InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionEdge, bci()));
+        frameState.pushReturn(resultType, invoke);
+        Block nextBlock = currentBlock.successors.get(0);
+        invoke.setStateAfter(frameState.create(nextBlock.startBci));
+        return invoke;
     }
 
     private void genReturn(ValueNode x) {

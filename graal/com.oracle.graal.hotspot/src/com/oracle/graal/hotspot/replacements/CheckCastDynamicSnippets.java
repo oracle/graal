@@ -34,6 +34,7 @@ import com.oracle.graal.api.code.*;
 import com.oracle.graal.debug.*;
 import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
@@ -70,11 +71,11 @@ public class CheckCastDynamicSnippets implements Snippets {
             super(providers, target);
         }
 
-        public void lower(CheckCastDynamicNode checkcast) {
+        public void lower(CheckCastDynamicNode checkcast, LoweringTool tool) {
             StructuredGraph graph = checkcast.graph();
             ValueNode object = checkcast.object();
 
-            Arguments args = new Arguments(dynamic, graph.getGuardsStage());
+            Arguments args = new Arguments(dynamic, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", checkcast.hub());
             args.add("object", object);
 

@@ -46,6 +46,7 @@ import com.oracle.graal.nodes.*;
 import com.oracle.graal.nodes.debug.*;
 import com.oracle.graal.nodes.extended.*;
 import com.oracle.graal.nodes.java.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.nodes.type.*;
 import com.oracle.graal.options.*;
 import com.oracle.graal.phases.util.*;
@@ -307,14 +308,14 @@ public class NewObjectSnippets implements Snippets {
         /**
          * Lowers a {@link NewInstanceNode}.
          */
-        public void lower(NewInstanceNode newInstanceNode, HotSpotRegistersProvider registers) {
+        public void lower(NewInstanceNode newInstanceNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newInstanceNode.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newInstanceNode.instanceClass();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
             int size = instanceSize(type);
 
-            Arguments args = new Arguments(allocateInstance, graph.getGuardsStage());
+            Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
             args.addConst("size", size);
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
@@ -330,7 +331,7 @@ public class NewObjectSnippets implements Snippets {
         /**
          * Lowers a {@link NewArrayNode}.
          */
-        public void lower(NewArrayNode newArrayNode, HotSpotRegistersProvider registers) {
+        public void lower(NewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
             ResolvedJavaType elementType = newArrayNode.elementType();
             HotSpotResolvedObjectType arrayType = (HotSpotResolvedObjectType) elementType.getArrayClass();
@@ -340,7 +341,7 @@ public class NewObjectSnippets implements Snippets {
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             int log2ElementSize = CodeUtil.log2(lowerer.getScalingFactor(elementKind));
 
-            Arguments args = new Arguments(allocateArray, graph.getGuardsStage());
+            Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.add("length", newArrayNode.length());
             args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
@@ -355,8 +356,8 @@ public class NewObjectSnippets implements Snippets {
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
-        public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers) {
-            Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage());
+        public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
+            Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
             args.add("length", newArrayNode.length());
             args.addConst("fillContents", newArrayNode.fillContents());
@@ -366,7 +367,7 @@ public class NewObjectSnippets implements Snippets {
             template.instantiate(providers.getMetaAccess(), newArrayNode, DEFAULT_REPLACER, args);
         }
 
-        public void lower(NewMultiArrayNode newmultiarrayNode) {
+        public void lower(NewMultiArrayNode newmultiarrayNode, LoweringTool tool) {
             StructuredGraph graph = newmultiarrayNode.graph();
             int rank = newmultiarrayNode.dimensionCount();
             ValueNode[] dims = new ValueNode[rank];
@@ -376,7 +377,7 @@ public class NewObjectSnippets implements Snippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) newmultiarrayNode.type();
             ConstantNode hub = ConstantNode.forConstant(type.klass(), providers.getMetaAccess(), graph);
 
-            Arguments args = new Arguments(newmultiarray, graph.getGuardsStage());
+            Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.addConst("rank", rank);
             args.addVarargs("dimensions", int.class, StampFactory.forKind(Kind.Int), dims);

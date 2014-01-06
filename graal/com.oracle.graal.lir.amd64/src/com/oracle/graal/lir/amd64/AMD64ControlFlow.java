@@ -42,7 +42,7 @@ import com.oracle.graal.nodes.calc.*;
 
 public class AMD64ControlFlow {
 
-    public static class ReturnOp extends AMD64LIRInstruction {
+    public static class ReturnOp extends AMD64LIRInstruction implements BlockEndOp {
         @Use({REG, ILLEGAL}) protected Value x;
 
         public ReturnOp(Value x) {

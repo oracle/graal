@@ -33,6 +33,7 @@ import com.oracle.graal.api.meta.*;
 import com.oracle.graal.asm.*;
 import com.oracle.graal.hotspot.phases.*;
 import com.oracle.graal.nodes.extended.*;
+import com.oracle.graal.nodes.spi.*;
 import com.oracle.graal.phases.util.*;
 import com.oracle.graal.replacements.*;
 import com.oracle.graal.replacements.Snippet.Fold;
@@ -265,7 +266,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
             genericPrimitiveSnippet = snippet(UnsafeArrayCopySnippets.class, "arraycopyPrimitive");
         }
 
-        public void lower(UnsafeArrayCopyNode node) {
+        public void lower(UnsafeArrayCopyNode node, LoweringTool tool) {
             Kind elementKind = node.getElementKind();
             SnippetInfo snippet;
             if (elementKind == null) {
@@ -276,7 +277,7 @@ public class UnsafeArrayCopySnippets implements Snippets {
                 assert snippet != null : "arraycopy snippet for " + elementKind.name() + " not found";
             }
 
-            Arguments args = new Arguments(snippet, node.graph().getGuardsStage());
+            Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             node.addSnippetArguments(args);
 
             SnippetTemplate template = template(args);
