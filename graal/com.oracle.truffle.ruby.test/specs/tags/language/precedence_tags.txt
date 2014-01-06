@@ -1,0 +1,2 @@
+fails:Operators + - have higher precedence than >> <<
+fails:Operators + - are left-associative

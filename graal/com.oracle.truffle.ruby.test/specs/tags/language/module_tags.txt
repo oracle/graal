@@ -1,0 +1,7 @@
+fails:The module keyword reopens a module included in Object
+fails:The module keyword raises a TypeError if the constant is a Class
+fails:The module keyword raises a TypeError if the constant is a String
+fails:The module keyword raises a TypeError if the constant is a Fixnum
+fails:The module keyword raises a TypeError if the constant is nil
+fails:The module keyword raises a TypeError if the constant is true
+fails:The module keyword raises a TypeError if the constant is false

@@ -1,0 +1,16 @@
+fails:self in a metaclass body (class << obj) is TrueClass for true
+fails:self in a metaclass body (class << obj) is FalseClass for false
+fails:self in a metaclass body (class << obj) is NilClass for nil
+fails:self in a metaclass body (class << obj) raises a TypeError for numbers
+fails:self in a metaclass body (class << obj) raises a TypeError for symbols
+fails:self in a metaclass body (class << obj) is a singleton Class instance
+fails:A constant on a metaclass can be accessed via const_get
+fails:A constant on a metaclass cannot be accessed via object::CONST
+fails:A constant on a metaclass raises a NameError for anonymous_module::CONST
+fails:A constant on a metaclass appears in the metaclass constant list
+fails:A constant on a metaclass does not appear in the object's class constant list
+fails:A constant on a metaclass is not preserved when the object is duped
+fails:A constant on a metaclass is preserved when the object is cloned
+fails:calling methods on the metaclass calls a method on the instance's metaclass
+fails:calling methods on the metaclass calls a method in deeper chains of metaclasses
+fails:calling methods on the metaclass calls a method defined on the metaclass of the metaclass

@@ -1,0 +1,7 @@
+fails:ruby -U sets Encoding.default_internal to UTF-8
+fails:ruby -U does nothing different if specified multiple times
+fails:ruby -U is overruled by Encoding.default_internal=
+fails:ruby -U does not affect the default external encoding
+fails:ruby -U does not affect the source encoding
+fails:ruby -U raises a RuntimeError if used with -Eext:int
+fails:ruby -U raises a RuntimeError if used with -E:int

@@ -1,0 +1,1 @@
+fails:Regexps with anchors supports B (non-word-boundary)

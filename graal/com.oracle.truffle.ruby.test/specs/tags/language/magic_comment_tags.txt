@@ -1,0 +1,8 @@
+fails:Magic comment is optional
+fails:Magic comment determines __ENCODING__
+fails:Magic comment is case-insensitive
+fails:Magic comment must be at the first line
+fails:Magic comment must be the first token of the line
+fails:Magic comment can be after the shebang
+fails:Magic comment can take Emacs style
+fails:Magic comment can take vim style

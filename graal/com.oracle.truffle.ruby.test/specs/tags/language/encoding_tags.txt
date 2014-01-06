@@ -1,0 +1,14 @@
+fails:The __ENCODING__ pseudo-variable is an instance of Encoding
+fails:The __ENCODING__ pseudo-variable is US-ASCII by default
+fails:The __ENCODING__ pseudo-variable is the evaluated strings's one inside an eval
+fails:The __ENCODING__ pseudo-variable is the encoding specified by a magic comment inside an eval
+fails:The __ENCODING__ pseudo-variable is the encoding specified by a magic comment in the file
+fails:The __ENCODING__ pseudo-variable is Encoding::ASCII_8BIT when the interpreter is invoked with -Ka
+fails:The __ENCODING__ pseudo-variable is Encoding::ASCII_8BIT when the interpreter is invoked with -KA
+fails:The __ENCODING__ pseudo-variable is Encoding::EUC_JP when the interpreter is invoked with -Ke
+fails:The __ENCODING__ pseudo-variable is Encoding::EUC_JP when the interpreter is invoked with -KE
+fails:The __ENCODING__ pseudo-variable is Encoding::UTF_8 when the interpreter is invoked with -Ku
+fails:The __ENCODING__ pseudo-variable is Encoding::UTF_8 when the interpreter is invoked with -KU
+fails:The __ENCODING__ pseudo-variable is Encoding::Windows_31J when the interpreter is invoked with -Ks
+fails:The __ENCODING__ pseudo-variable is Encoding::Windows_31J when the interpreter is invoked with -KS
+fails:The __ENCODING__ pseudo-variable raises a SyntaxError if assigned to

@@ -1,0 +1,9 @@
+fails:The next statement from within the block returns the argument passed
+fails:The next statement from within the block returns to the invoking method, with the specified value
+fails:The next statement from within the block returns to the currently yielding method in case of chained calls
+fails:Assignment via next assigns objects
+fails:Assignment via next assigns splatted objects
+fails:Assignment via next assigns objects to a splatted reference
+fails:Assignment via next assigns splatted objects to a splatted reference via a splatted yield
+fails:Assignment via next assigns objects to multiple variables
+fails:Assignment via next assigns splatted objects to multiple variables

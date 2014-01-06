@@ -1,0 +1,1 @@
+fails:The -I command line option adds the path to the load path ($:)

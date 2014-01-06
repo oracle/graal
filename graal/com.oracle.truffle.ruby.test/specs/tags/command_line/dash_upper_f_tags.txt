@@ -1,0 +1,1 @@
+fails:the -F command line option specifies the field separator pattern for -a

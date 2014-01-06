@@ -1,0 +1,16 @@
+fails:Literal Regexps matches against $_ (last input) in a conditional if no explicit matchee provided
+fails:Literal Regexps throws SyntaxError for malformed literals
+fails:Literal Regexps supports paired delimiters with %r
+fails:Literal Regexps supports grouping constructs that are also paired delimiters
+fails:Literal Regexps allows second part of paired delimiters to be used as non-paired delimiters
+fails:Literal Regexps supports non-paired delimiters delimiters with %r
+fails:Literal Regexps allows unescaped / to be used with %r
+fails:Literal Regexps supports . (any character except line terminator)
+fails:Literal Regexps supports | (alternations)
+fails:Literal Regexps supports (?> ) (embedded subexpression)
+fails:Literal Regexps supports (?# )
+fails:Literal Regexps supports (?<= ) (positive lookbehind)
+fails:Literal Regexps supports (?<! ) (negative lookbehind)
+fails:Literal Regexps supports g (named backreference)
+fails:Literal Regexps supports character class composition
+fails:Literal Regexps supports possessive quantifiers

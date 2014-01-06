@@ -1,0 +1,18 @@
+fails:A Proc taking zero arguments raises an ArgumentErro if a value is passed
+fails:A Proc taking || arguments raises an ArgumentError if a value is passed
+fails:A Proc taking |a| arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |a| arguments raises an ArgumentError if no value is passed
+fails:A Proc taking |a, b| arguments raises an ArgumentError if passed no values
+fails:A Proc taking |a, b| arguments raises an ArgumentError if passed one value
+fails:A Proc taking |a, b| arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |a, *b| arguments raises an ArgumentError if passed no values
+fails:A Proc taking |a, *b| arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |*| arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |*a| arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |a, | arguments raises an ArgumentError when passed no values
+fails:A Proc taking |a, | arguments raises an ArgumentError when passed more than one value
+fails:A Proc taking |a, | arguments does not call #to_ary to convert a single passed object to an Array
+fails:A Proc taking |(a, b)| arguments raises an ArgumentError when passed no values
+fails:A Proc taking |(a, b)| arguments calls #to_ary to convert a single passed object to an Array
+fails:A Proc taking |(a, b)| arguments raises an TypeError if #to_ary does not return an Array
+fails:A Proc taking |(a, b)| arguments destructures a single Array value yielded
