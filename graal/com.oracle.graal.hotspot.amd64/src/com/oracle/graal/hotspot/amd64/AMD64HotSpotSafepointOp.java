@@ -25,6 +25,7 @@ package com.oracle.graal.hotspot.amd64;
 import static com.oracle.graal.amd64.AMD64.*;
 import static com.oracle.graal.asm.NumUtil.*;
 import static com.oracle.graal.hotspot.bridge.Marks.*;
+import static com.oracle.graal.phases.GraalOptions.*;
 
 import com.oracle.graal.api.code.*;
 import com.oracle.graal.api.meta.*;
@@ -49,7 +50,7 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     public AMD64HotSpotSafepointOp(LIRFrameState state, HotSpotVMConfig config, LIRGeneratorTool tool) {
         this.state = state;
         this.config = config;
-        if (isPollingPageFar(config)) {
+        if (isPollingPageFar(config) || ImmutableCode.getValue()) {
             temp = tool.newVariable(tool.target().wordKind);
         } else {
             // Don't waste a register if it's unneeded
@@ -72,7 +73,20 @@ public class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, HotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register scratch) {
-        if (isPollingPageFar(config)) {
+        if (ImmutableCode.getValue()) {
+            Kind hostWordKind = HotSpotGraalRuntime.getHostWordKind();
+            int alignment = hostWordKind.getBitCount() / Byte.SIZE;
+            Constant pollingPageAddress = Constant.forIntegerKind(hostWordKind, config.safepointPollingAddress, null);
+            // This move will be patched to load the safepoint page from a data segment
+            // co-located with the immutable code.
+            asm.movq(scratch, (AMD64Address) crb.recordDataReferenceInCode(pollingPageAddress, alignment, false));
+            final int pos = asm.codeBuffer.position();
+            crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
+            if (state != null) {
+                crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
+            }
+            asm.testl(rax, new AMD64Address(scratch));
+        } else if (isPollingPageFar(config)) {
             asm.movq(scratch, config.safepointPollingAddress);
             crb.recordMark(atReturn ? MARK_POLL_RETURN_FAR : MARK_POLL_FAR);
             final int pos = asm.codeBuffer.position();
