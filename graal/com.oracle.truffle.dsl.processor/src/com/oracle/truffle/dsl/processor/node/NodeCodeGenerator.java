@@ -1163,7 +1163,7 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
                 NodeChildData child = node.findChild(var.getSimpleName().toString());
 
                 if (child != null) {
-                    method.getParameters().add(new CodeVariableElement(child.getNodeType(), child.getName()));
+                    method.getParameters().add(new CodeVariableElement(child.getOriginalType(), child.getName()));
                 } else {
                     method.getParameters().add(new CodeVariableElement(var.asType(), var.getSimpleName().toString()));
                 }
@@ -2914,38 +2914,22 @@ public class NodeCodeGenerator extends CompilationUnitFactory<NodeData> {
             }
 
             if (!returnBuilder.isEmpty()) {
-                ExecutableTypeData sourceExecutableType = node.findExecutableType(specialization.getReturnType().getTypeSystemType(), 0);
-                boolean sourceThrowsUnexpected = sourceExecutableType != null && sourceExecutableType.hasUnexpectedValue(getContext());
-                boolean targetSupportsUnexpected = executable.hasUnexpectedValue(getContext());
-
                 TypeData targetType = node.getTypeSystem().findTypeData(builder.findMethod().getReturnType());
                 TypeData sourceType = specialization.getReturnType().getTypeSystemType();
 
-                if (specialization.isPolymorphic() && sourceThrowsUnexpected && !targetSupportsUnexpected) {
-                    builder.startTryBlock();
-                }
                 builder.startReturn();
                 if (targetType == null || sourceType == null) {
                     builder.tree(returnBuilder.getRoot());
                 } else if (sourceType.needsCastTo(getContext(), targetType)) {
-                    builder.tree(createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.expectTypeMethodName(targetType), returnBuilder.getRoot()));
+                    String castMethodName = TypeSystemCodeGenerator.expectTypeMethodName(targetType);
+                    if (!executable.hasUnexpectedValue(context)) {
+                        castMethodName = TypeSystemCodeGenerator.asTypeMethodName(targetType);
+                    }
+                    builder.tree(createCallTypeSystemMethod(context, parent, node, castMethodName, returnBuilder.getRoot()));
                 } else {
                     builder.tree(returnBuilder.getRoot());
                 }
                 builder.end();
-                if (specialization.isPolymorphic() && sourceThrowsUnexpected && !targetSupportsUnexpected) {
-                    builder.end();
-                    builder.startCatchBlock(getUnexpectedValueException(), "ex");
-                    builder.startReturn();
-                    CodeTree returns = CodeTreeBuilder.singleString("ex.getResult()");
-                    if (sourceType.needsCastTo(getContext(), targetType)) {
-                        builder.tree(createCallTypeSystemMethod(context, parent, node, TypeSystemCodeGenerator.asTypeMethodName(targetType), returns));
-                    } else {
-                        builder.tree(returns);
-                    }
-                    builder.end();
-                    builder.end();
-                }
             }
 
             if (!specialization.getExceptions().isEmpty()) {
