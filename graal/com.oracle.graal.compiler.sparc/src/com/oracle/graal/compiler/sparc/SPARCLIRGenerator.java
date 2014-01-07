@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -440,6 +440,12 @@ public abstract class SPARCLIRGenerator extends LIRGenerator {
     @Override
     public void emitByteSwap(Variable result, Value input) {
         append(new SPARCByteSwapOp(result, input));
+    }
+
+    @Override
+    public void emitCharArrayEquals(Variable result, Value array1, Value array2, Value length) {
+        // TODO Auto-generated method stub
+        throw GraalInternalError.unimplemented();
     }
 
     @Override

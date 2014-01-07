@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1453,6 +1453,20 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x58 | encode);
     }
 
+    public void popfq() {
+        emitByte(0x9D);
+    }
+
+    public final void ptest(Register dst, Register src) {
+        assert supports(CPUFeature.SSE4_1);
+        emitByte(0x66);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0x38);
+        emitByte(0x17);
+        emitByte(0xC0 | encode);
+    }
+
     public final void push(Register src) {
         int encode = prefixAndEncode(src.encoding);
         emitByte(0x50 | encode);
@@ -1462,8 +1476,12 @@ public class AMD64Assembler extends AbstractAssembler {
         emitByte(0x9c);
     }
 
-    public void popfq() {
-        emitByte(0x9D);
+    public final void pxor(Register dst, Register src) {
+        emitByte(0x66);
+        int encode = prefixAndEncode(dst.encoding, src.encoding);
+        emitByte(0x0F);
+        emitByte(0xEF);
+        emitByte(0xC0 | encode);
     }
 
     public final void ret(int imm16) {
@@ -2205,6 +2223,14 @@ public class AMD64Assembler extends AbstractAssembler {
         } else {
             throw new InternalError("should not reach here");
         }
+    }
+
+    public final void movdqu(Register dst, AMD64Address src) {
+        emitByte(0xF3);
+        prefix(src, dst);
+        emitByte(0x0F);
+        emitByte(0x6F);
+        emitOperandHelper(dst, src);
     }
 
     public final void movslq(AMD64Address dst, int imm32) {

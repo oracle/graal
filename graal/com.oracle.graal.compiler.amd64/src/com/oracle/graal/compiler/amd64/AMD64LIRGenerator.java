@@ -981,6 +981,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitCharArrayEquals(Variable result, Value array1, Value array2, Value length) {
+        append(new AMD64CharArrayEqualsOp(this, result, array1, array2, asAllocatable(length)));
+    }
+
+    @Override
     protected void emitReturn(Value input) {
         append(new ReturnOp(input));
     }

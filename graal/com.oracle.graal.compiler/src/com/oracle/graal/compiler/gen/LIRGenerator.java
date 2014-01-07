@@ -1007,4 +1007,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     public abstract void emitBitScanReverse(Variable result, Value operand);
 
     public abstract void emitByteSwap(Variable result, Value operand);
+
+    public abstract void emitCharArrayEquals(Variable result, Value array1, Value array2, Value length);
 }
