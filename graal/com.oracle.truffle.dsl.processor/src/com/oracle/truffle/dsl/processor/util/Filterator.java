@@ -78,6 +78,7 @@ public class Filterator<T> implements Iterator<T> {
         return null;
     }
 
+    @Override
     public void remove() {
         elements.remove();
     }
